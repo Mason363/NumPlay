@@ -197,7 +197,7 @@ def commit(m, dest, rev):
     if git("diff", "--cached", "--quiet", cwd=dest, check=False).returncode == 0:
         print("sync_mirror: the mirror is already up to date")
         return
-    paths = inputs(m)
+    paths = inputs(m) + ([os.path.relpath(RELEASE_TEMPLATE, ROOT)] if m["release"] else [])
     name, email, date, subject = git(
         "log", "-1", "--format=%an%n%ae%n%aI%n%s", rev, "--", *paths,
         stdout=subprocess.PIPE, text=True).stdout.strip().split("\n", 3)
