@@ -381,9 +381,9 @@ V2 level_spawn_near(V2 at) {
   return player_spawn_near(at);
 }
 
-bool level_in_bounds(V2 p, float pad) {
+bool level_in_bounds(V2 p, float pad) {   /* Level.IsInBounds(position, pad): the room grown by pad */
   Room *rm = g_level.room;
-  return p.x >= rm->x + pad && p.x < rm->x + rm->w - pad && p.y >= rm->y + pad && p.y < rm->y + rm->h - pad;
+  return p.x >= rm->x - pad && p.x < rm->x + rm->w + pad && p.y >= rm->y - pad && p.y < rm->y + rm->h + pad;
 }
 
 static int room_at(V2 p) {

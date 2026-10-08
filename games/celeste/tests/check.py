@@ -119,6 +119,13 @@ out = run(["--chapter", "13", "--room", "c-10", "--nowipe"], 520,
           "300-500:r,306-316:j,314-315:x,314-460:g,330-460:u", what="5A's c-10")
 check("room c-12 " in out and " deaths 0 " in out, f"5A's c-10 was not crossed (its touch switches' gate): {out[-160:]}")
 
+# 6A's boss-00: after the intro (its dialog, OK pressed through), Badeline hit twice dives through the floor, a dash block only
+# she breaks, and the player follows her down into boss-01 (the second hit: the player put next to her, out of her shots)
+out = run(["--chapter", "16", "--room", "boss-00", "--nowipe", "--at", "352,144", "--tp", "1680:546,112"], 2100,
+          ",".join(f"{f}-{f + 2}:o" for f in range(60, 1450, 10)) + ",1500-1560:r,1505-1515:j,1522-1523:x,1760-1830:r,1762-1775:j",
+          what="6A's boss-00")
+check("room boss-01 " in out, f"6A's boss-00: Badeline didn't break the floor: {out[-160:]}")
+
 # a chapter's end: its screen, then the chapter select
 out = run(["--chapter", "1", "--room", "1"], 500, "400-401:o", env={"COMPLETE_AT": "60"}, what="a chapter's end")
 

@@ -1,5 +1,6 @@
 /* Host runner: plays the game with scripted keys and saves screenshots.
  *   play DATA.bin [--frames N] [--keys "F0-F1:keys,..."] [--shot F:path ...] [--room NAME] [--chapter N]
+ *        [--tp F:X,Y] (the player moved there at frame F)
  *        [--draw N: draw every N frames (else only for shots and the last frame)]
  *        [--load F:ROOM:INTRO:FX:FY: at frame F, LoadLevel(INTRO) into ROOM at the spawn nearest (FX, FY) of it]
  *        [--record A-B:DIR: every frame from A to B as DIR/NNNNN.ppm (for the README's GIFs)]
@@ -52,6 +53,8 @@ int main(int argc, char **argv) {
   fread(data, 1, n, f);
   fclose(f);
   cel_bin = data;
+  int tp_at = -1;
+  float tp_x = 0, tp_y = 0;
   int frames = 120, chapter = -1, area = -1, checkpoint = -1, at_set = 0, dash_code = 0, list = 0, draw = 0, load_at = -1, load_intro = 0,
       nowipe = 0;
   const char *load_room = NULL, *rec_dir = NULL;
@@ -91,6 +94,7 @@ int main(int argc, char **argv) {
     }
     else if (!strcmp(argv[i], "--list")) list = 1;
     else if (!strcmp(argv[i], "--at")) sscanf(argv[++i], "%f,%f", &at_x, &at_y), at_set = 1;
+    else if (!strcmp(argv[i], "--tp")) sscanf(argv[++i], "%d:%f,%f", &tp_at, &tp_x, &tp_y);
     else if (!strcmp(argv[i], "--shot")) {
       char *s = argv[++i], *c = strchr(s, ':');
       shot_at[nshots] = atoi(s);
@@ -138,6 +142,10 @@ int main(int argc, char **argv) {
     if (dash_code && fr >= 120 && fr < 126) {   /* --dash-code: the dash listeners hear U, L, DR, UR, L, UL */
       static const float d[6][2] = {{0, -1}, {-1, 0}, {0.7071f, 0.7071f}, {0.7071f, -0.7071f}, {-1, 0}, {-0.7071f, -0.7071f}};
       level_dash_listeners(v2(d[fr - 120][0], d[fr - 120][1]));
+    }
+    if (fr == tp_at && g_player.ent && g_level.room) {   /* --tp F:X,Y: at frame F, the player there (in the room), still */
+      g_player.ent->x = g_level.room->x + tp_x, g_player.ent->y = g_level.room->y + tp_y;
+      g_player.speed = v2(0, 0);
     }
     if (fr == load_at) level_load_room_near(chapter_find_room(g_session.chapter, load_room), load_intro, load_fx, load_fy);
     game_frame();
