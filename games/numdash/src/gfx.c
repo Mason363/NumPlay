@@ -3,7 +3,12 @@
 #include <string.h>
 #include "../../common/np_text.h"
 
-uint16_t gfx_strip[GFX_W * STRIP_H] __attribute__((aligned(8)));
+#if PLATFORM_DEVICE
+uint16_t *gfx_strip; /* main() points it at a strip on its stack */
+#else
+static uint16_t host_strip[GFX_W * STRIP_H] __attribute__((aligned(8)));
+uint16_t *gfx_strip = host_strip;
+#endif
 int gfx_y0 = 0, gfx_y1 = STRIP_H;
 static int clip_x0 = 0, clip_y0 = 0, clip_x1 = GFX_W, clip_y1 = GFX_H;
 

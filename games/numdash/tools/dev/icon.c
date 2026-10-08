@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
     float cx = x0 + 27.5f, cy = y0 + 42 - 14;
     gfx_sprite_ex(SPR_CUBE1_S, (int)(cx * 16), (int)(cy * 16), 0, 360, 0, rgb(0, 255, 255), 256, BLEND_NORMAL);
     gfx_sprite_ex(SPR_CUBE1_P, (int)(cx * 16), (int)(cy * 16), 0, 360, 0, rgb(125, 255, 0), 256, BLEND_NORMAL);
-    memcpy(fb + s * STRIP_H * GFX_W, gfx_strip, sizeof(gfx_strip));
+    memcpy(fb + s * STRIP_H * GFX_W, gfx_strip, GFX_W * STRIP_H * sizeof(uint16_t));
   }
   FILE *f = fopen(argv[1], "wb");
   if (!f) return 1;

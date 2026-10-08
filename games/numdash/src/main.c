@@ -13,6 +13,10 @@ __attribute__((used)) volatile uint32_t perf_frames;
 int main(int argc, char **argv) {
   (void)argc;
   (void)argv;
+#if PLATFORM_DEVICE
+  uint16_t strip[GFX_W * STRIP_H] __attribute__((aligned(8)));
+  gfx_strip = strip;
+#endif
   if (!platform_init()) return 1;
 #if PLATFORM_DEVICE
   platform_begin();

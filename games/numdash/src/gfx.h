@@ -8,7 +8,7 @@
 /* The screen is rendered in horizontal strips: every primitive clips to the
  * current strip, so a full frame needs only one strip of RGB565 memory. */
 enum { GFX_W = 320, GFX_H = 240, STRIP_H = 24, STRIPS = GFX_H / STRIP_H };
-extern uint16_t gfx_strip[GFX_W * STRIP_H];
+extern uint16_t *gfx_strip; /* (on main's stack: the RAM apps get is smaller on some calculator software) */
 extern int gfx_y0, gfx_y1;
 void gfx_begin_strip(int index);
 void gfx_clip(int x0, int y0, int x1, int y1);

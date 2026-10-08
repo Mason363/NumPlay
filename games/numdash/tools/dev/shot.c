@@ -9,7 +9,7 @@ static void render(void) {
   for (int s = 0; s < STRIPS; s++) {
     gfx_begin_strip(s);
     scene_draw();
-    memcpy(fb + s * STRIP_H * GFX_W, gfx_strip, sizeof(gfx_strip));
+    memcpy(fb + s * STRIP_H * GFX_W, gfx_strip, GFX_W * STRIP_H * sizeof(uint16_t));
   }
 }
 static void save(const char *path) {
