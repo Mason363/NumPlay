@@ -35,8 +35,21 @@ uint32_t np_game_size(int i) {
 #endif
 }
 
+uint32_t np_game_ram_missing(int i) {
+#if NP_SIMULATOR
+  (void)i;
+  return 0;
+#else
+  const np_game_t *g = &np_games[i];
+  uint32_t data = (uint32_t)(g->data + g->data_size - np_arena), bss = (uint32_t)(g->bss + g->bss_size - np_arena);
+  uint32_t need = data > bss ? data : bss, room = np_arena_room();
+  return need > room ? need - room : 0;
+#endif
+}
+
 void np_game_run(int i) {
   const np_game_t *g = &np_games[i];
+  if (np_game_ram_missing(i)) return; /* (the home screen says so and doesn't start it) */
   /* fresh RAM, as if the game had just been launched from the home screen */
   if (g->data_size) memcpy(g->data, g->data_init, g->data_size);
   if (g->bss_size) memset(g->bss, 0, g->bss_size);

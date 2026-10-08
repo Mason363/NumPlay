@@ -54,11 +54,12 @@ CPU_HZ = 216_000_000
 MODEL, SYSTEM = "n0120", "epsilon"
 
 
-def configure(model="n0120", system="epsilon"):
+def configure(model="n0120", system="epsilon", ram_length=None):
     """The calculator to emulate: the N0120 (RAM at 0x24000000, the userland after an extra data
     sector) or the N0110/N0115 (RAM at 0x20000000); Epsilon or Upsilon (its userland header has no
     device name, apps get 107674 bytes of RAM, its file system is Epsilon 15's and it has none of
-    the system calls for Home, checksums or flash)."""
+    the system calls for Home, checksums or flash). ram_length: the RAM apps get, when another
+    build of the software gives them another amount."""
     global MODEL, SYSTEM, SRAM, USERLAND_HEADER, STORAGE, STORAGE_SIZE, EXT_RAM_END, EXT_RAM_LEN, EXT_RAM_START, \
         STACK_TOP
     MODEL, SYSTEM = model, system
@@ -67,7 +68,7 @@ def configure(model="n0120", system="epsilon"):
     STORAGE = SRAM + 0x1000
     STORAGE_SIZE = 64400 if system == "upsilon" else 42 * 1024
     EXT_RAM_END = SRAM + 0x37000
-    EXT_RAM_LEN = 107674 if system == "upsilon" else 153676
+    EXT_RAM_LEN = ram_length or (107674 if system == "upsilon" else 153676)
     EXT_RAM_START = EXT_RAM_END - EXT_RAM_LEN
     STACK_TOP = SRAM + 0x3F000
 # Epsilon's SmallFont.ttf and LargeFont.ttf (from the epsilon repository), for text drawn by
@@ -562,12 +563,13 @@ def main():
     ap.add_argument("--nwlink", default="nwlink")
     ap.add_argument("--model", choices=["n0120", "n0110"], default="n0120")
     ap.add_argument("--system", choices=["epsilon", "upsilon"], default="epsilon")
+    ap.add_argument("--ram-length", type=int, help="the RAM apps get (default: the system's)")
     ap.add_argument("--records", action="store_true", help="list storage records at the end")
     ap.add_argument("--frames", help="save raw RGB565 frames here (for tools/record.py --frames)")
     ap.add_argument("--profile", type=int, default=0,
                     help="print the N functions the CPU was found in most (build the .nwa without stripping it)")
     a = ap.parse_args()
-    configure(a.model, a.system)
+    configure(a.model, a.system, a.ram_length)
     os.makedirs(a.out, exist_ok=True)
     c = Calculator(a.nwa, a.flash_start, a.storage, a.nwlink)
     c.keys = parse_keys(a.keys)

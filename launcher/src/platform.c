@@ -33,10 +33,22 @@ void np_wait_release(void) {
   while (eadk_keyboard_scan()) eadk_timing_msleep(10);
 }
 
+/* The arena is the last of NumPlay's RAM: after it, up to _heap_end, the RAM the calculator's
+ * software gives apps goes on (more of it on some software than on other). */
+uint32_t np_arena_room(void) {
+#if PLATFORM_DEVICE && !NP_SIMULATOR
+  extern char _heap_end[];
+  uint32_t room = (uint32_t)(_heap_end - (char *)np_arena);
+  return room > np_arena_size ? room : np_arena_size;
+#else
+  return np_arena_size;
+#endif
+}
+
 static uint32_t alloc_pos;
 void *np_alloc(uint32_t size) {
   size = (size + 7) & ~7u;
-  if (alloc_pos + size > np_arena_size) return 0;
+  if (alloc_pos + size > np_arena_room()) return 0;
   void *p = np_arena + alloc_pos;
   alloc_pos += size;
   return p;

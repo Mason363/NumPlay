@@ -34,6 +34,7 @@ void np_wait_release(void);
  * launcher's buffers while no game runs */
 extern uint8_t np_arena[];
 extern const uint32_t np_arena_size;
+uint32_t np_arena_room(void);     /* the arena and the RAM after it, up to the end of the app's */
 void *np_alloc(uint32_t size);    /* bump allocator in the arena */
 void np_alloc_reset(void);
 
@@ -68,6 +69,7 @@ extern const int np_game_count;
 
 bool np_game_installed(int i);
 uint32_t np_game_size(int i);            /* bytes of flash */
+uint32_t np_game_ram_missing(int i);  /* the bytes of RAM a game needs more than there is, or 0 */
 void np_game_run(int i);
 
 /* ---- storage (storage.c): Epsilon's record file system */

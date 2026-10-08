@@ -103,3 +103,6 @@ Inspired by Minecraft, not affiliated with Mojang	灵感来自《我的世界》
 By Tatone26, from All the Apps	作者 Tatone26，出自 All the Apps
 Inspired by Tatone26's All the Apps	灵感来自 Tatone26 的 All the Apps
 Based on 2048 by Gabriele Cirulli	改编自 Gabriele Cirulli 的 2048
+# a game the RAM of the calculator's software is too small for
+Needs 	内存还差 
+ KB more memory	 KB

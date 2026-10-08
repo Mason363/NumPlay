@@ -104,3 +104,6 @@ Inspired by Minecraft, not affiliated with Mojang	Inspiré de Minecraft, sans li
 By Tatone26, from All the Apps	Par Tatone26, tiré d'All the Apps
 Inspired by Tatone26's All the Apps	Inspiré d'All the Apps de Tatone26
 Based on 2048 by Gabriele Cirulli	D'après 2048 de Gabriele Cirulli
+# a game the RAM of the calculator's software is too small for
+Needs 	Il manque 
+ KB more memory	 Ko de mémoire

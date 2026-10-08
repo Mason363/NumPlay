@@ -50,6 +50,7 @@ jobs:
           python3 tests/test_progress.py build/NumPlay.nwa
           python3 tests/test_numblocks_progress.py build/apps/NumBlocks.nwa
           python3 tests/test_upsilon.py build/NumPlay-Upsilon.nwa
+          python3 tests/test_small_ram.py build/NumPlay.nwa
 
       - uses: actions/upload-artifact@v4
         with:

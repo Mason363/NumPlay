@@ -16,7 +16,10 @@ ARM_OBJCOPY = arm-none-eabi-objcopy
 PY ?= python3
 CARGO ?= cargo
 B = build
-# the RAM the oldest calculator software that runs apps gives them (23.2: 148928 bytes; 25.2 gives 153676)
+# the RAM the oldest calculator software that runs apps gives them (23.2: 148928 bytes; 25.2 gives 153676).
+# NumPlay itself takes less: a game goes on past it into the RAM the software has left (see
+# tools/gen_games.py), so it installs with less too, custom builds of the software say, where a game that
+# needs more says so. The check: every game fits in RAM_LIMIT.
 RAM_LIMIT = 148928
 # the calculator's space for installed apps (0x90200000 to 0x903F0000 in its flash)
 APP_SPACE = 2031616
@@ -135,11 +138,13 @@ $(B)/%.nwa: $(ARM_OBJS) $(MODULES) $(B)/variant/%-name.o $(B)/variant/%-icon.o
 	@if [ "$*" = NumPlay ]; then $(PY) tools/sizes.py $@ $(B)/modules; fi
 
 check: nwa
-	@$(NWLINK) nwa-bin --ram-length $(UPSILON_RAM) $(B)/NumPlay-Upsilon.nwa $(B)/NumPlay-Upsilon.bin && \
-	  echo "NumPlay-Upsilon.nwa installs as $$(wc -c < $(B)/NumPlay-Upsilon.bin) bytes; its RAM fits in $(UPSILON_RAM) bytes"
-	@for v in $(VARIANTS); do $(NWLINK) nwa-bin --ram-length $(RAM_LIMIT) $(B)/$$v.nwa $(B)/$$v.bin || exit 1; \
+	@x=$$(cat $(B)/gen-upsilon/arena_extra); \
+	  $(NWLINK) nwa-bin --ram-length $$(( $(UPSILON_RAM) - x )) $(B)/NumPlay-Upsilon.nwa $(B)/NumPlay-Upsilon.bin && \
+	  echo "NumPlay-Upsilon.nwa installs as $$(wc -c < $(B)/NumPlay-Upsilon.bin) bytes; its RAM and any game's fit in $(UPSILON_RAM) bytes"
+	@x=$$(cat $(B)/gen/arena_extra); \
+	  for v in $(VARIANTS); do $(NWLINK) nwa-bin --ram-length $$(( $(RAM_LIMIT) - x )) $(B)/$$v.nwa $(B)/$$v.bin || exit 1; \
 	  n=$$(wc -c < $(B)/$$v.bin); \
-	  echo "$$v.nwa installs as $$n bytes ($$(( $(APP_SPACE) - n )) to spare); its RAM fits in $(RAM_LIMIT) bytes"; \
+	  echo "$$v.nwa installs as $$n bytes ($$(( $(APP_SPACE) - n )) to spare); its RAM and any game's fit in $(RAM_LIMIT) bytes"; \
 	  [ $$n -le $(APP_SPACE) ] || { echo "$$v.nwa is bigger than the calculator's app space ($(APP_SPACE) bytes)"; exit 1; }; done
 
 # ------------------------------------------------------------------ NumPlay-Upsilon.nwa
@@ -170,7 +175,8 @@ $(foreach l,$(LANGS),$(B)/NumPlay-$(LANG_$(l)).nwa): $(B)/NumPlay-%.nwa: FORCE |
 	$(eval L := $(if $(filter French,$*),fr,zh))
 	$(PY) tools/lang.py tree $(L) $(B)/lang/$(L)
 	$(MAKE) -C $(B)/lang/$(L) build/NumPlay.nwa NWLINK="$(NWLINK)"
-	$(NWLINK) nwa-bin --ram-length $(RAM_LIMIT) $(B)/lang/$(L)/build/NumPlay.nwa $(B)/lang/$(L)/build/NumPlay.bin
+	$(NWLINK) nwa-bin --ram-length $$(( $(RAM_LIMIT) - $$(cat $(B)/lang/$(L)/build/gen/arena_extra) )) \
+	  $(B)/lang/$(L)/build/NumPlay.nwa $(B)/lang/$(L)/build/NumPlay.bin
 	@n=$$(wc -c < $(B)/lang/$(L)/build/NumPlay.bin); echo "NumPlay-$*.nwa installs as $$n bytes ($$(( $(APP_SPACE) - n )) to spare)"; \
 	  [ $$n -le $(APP_SPACE) ] || { echo "NumPlay-$*.nwa is bigger than the calculator's app space"; exit 1; }
 	cp $(B)/lang/$(L)/build/NumPlay.nwa $@

@@ -40,7 +40,23 @@ static uint32_t item_color(int game, int which) {
 }
 
 static const char *item_title(int game) { return game < 0 ? T("Settings") : np_games[game].title; }
-static const char *item_tagline(int game) { return game < 0 ? T("Reset, uninstall, more") : np_games[game].tagline; }
+/* under the name, the tagline; or, when the calculator's software gives apps too little RAM for the
+ * game, how much it lacks */
+static const char *item_tagline(int game) {
+  if (game < 0) return T("Reset, uninstall, more");
+  uint32_t missing = np_game_ram_missing(game);
+  if (!missing) return np_games[game].tagline;
+  static char line[96];
+  char digits[8];
+  int n = 0;
+  for (uint32_t kb = (missing + 1023) / 1024; kb || !n; kb /= 10) digits[n++] = (char)('0' + kb % 10);
+  char *o = line;
+  for (const char *s = T("Needs "); *s;) *o++ = *s++;
+  while (n) *o++ = digits[--n];
+  for (const char *s = T(" KB more memory"); *s;) *o++ = *s++;
+  *o = 0;
+  return line;
+}
 
 static float absf(float v) { return v < 0 ? -v : v; }
 
@@ -98,8 +114,8 @@ static void draw_card(home_t *h, int k, float d) {
     gfx_clip_x1 = SCREEN_W;
   }
   gfx_corners(ix, iy, iiw, iih, ir, frame_color);
-  /* play badge on the selected game */
-  if (k == h->sel && game >= 0 && h->badge > 0 && z == 0) {
+  /* play badge on the selected game (not on one there isn't the RAM for) */
+  if (k == h->sel && game >= 0 && h->badge > 0 && z == 0 && !np_game_ram_missing(game)) {
     float b = ui_ease_out(h->badge);
     int r = (int)(15 * b);
     int bx = x + iw - 14, by = y + ih - 14;
@@ -237,7 +253,7 @@ int np_home(int *selected, bool returning) {
         h.shot_time = 0;
         h.badge = 0;
       }
-      if (pressed & K_OK) result = h.item[h.sel];
+      if ((pressed & K_OK) && (h.item[h.sel] < 0 || !np_game_ram_missing(h.item[h.sel]))) result = h.item[h.sel];
       if (pressed & K_BACKSPACE) { /* the next background, then none */
         live_next();
         np_bg_save(live_mode());
