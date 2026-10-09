@@ -284,9 +284,9 @@ You need your calculator, its USB cable, and a computer with **Google Chrome** o
 | N0120 | Epsilon 23.2 or newer (the calculator's own software) | Everything |
 | N0110, N0115 | Epsilon 23.2 or newer | Everything. These models are about 2.5 times slower, so the big games (Hollow Knight, Celeste, NumDrive, NumBlocks, Champion Island) show fewer frames per second, but they keep their speed. |
 | N0110, N0115 | Upsilon | NumPlay-Upsilon.nwa: 13 games. See [On Upsilon](#on-upsilon). |
-| Any | Custom software built from Epsilon's source | NumPlay installs. These builds can give apps less memory: a game that needs more than there is says how much on its card (NumBlocks and NumDrive need about 147 KB and 143 KB). |
+| Any | Custom software built from Epsilon 25.2's source | Everything, Celeste, Hollow Knight and Champion Island too. These builds can give apps less memory (133 KB): on one that gives even less, a game that needs more than there is says how much on its card. |
 
-Champion Island needs Epsilon 25.2 or newer. To see your calculator's model and software, open **Settings**, then **About**. To update the software, go to [my.numworks.com](https://my.numworks.com) with the calculator plugged in.
+To see your calculator's model and software, open **Settings**, then **About**. To update the software, go to [my.numworks.com](https://my.numworks.com) with the calculator plugged in.
 
 ### In French and Chinese
 

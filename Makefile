@@ -21,6 +21,10 @@ B = build
 # tools/gen_games.py), so it installs with less too, custom builds of the software say, where a game that
 # needs more says so. The check: every game fits in RAM_LIMIT.
 RAM_LIMIT = 148928
+# custom builds of Epsilon 25.2's source give apps less: 133652 bytes; every game fits there too, in NumPlay and on
+# its own (their big buffers are on the stack, 32 KB apart from that RAM, or in the RAM the software has left)
+CUSTOM_RAM = 133652
+BIG_APPS = Celeste HollowKnight ChampionIsland NumBlocks NumDrive
 # the calculator's space for installed apps (0x90200000 to 0x903F0000 in its flash)
 APP_SPACE = 2031616
 # Upsilon, the N0110 and N0115's custom software, gives .nwa apps less RAM: NumPlay-Upsilon.nwa has
@@ -137,7 +141,13 @@ $(B)/%.nwa: $(ARM_OBJS) $(MODULES) $(B)/variant/%-name.o $(B)/variant/%-icon.o
 	arm-none-eabi-strip --strip-unneeded $@
 	@if [ "$*" = NumPlay ]; then $(PY) tools/sizes.py $@ $(B)/modules; fi
 
-check: nwa
+check: nwa apps
+	@x=$$(cat $(B)/gen/arena_extra); \
+	  $(NWLINK) nwa-bin --ram-length $$(( $(CUSTOM_RAM) - x )) $(B)/NumPlay.nwa $(B)/NumPlay-custom.bin >/dev/null || \
+	  { echo "a game of NumPlay needs more RAM than custom builds of 25.2 give apps ($(CUSTOM_RAM) bytes)"; exit 1; }
+	@for a in $(BIG_APPS); do $(NWLINK) nwa-bin --ram-length $(CUSTOM_RAM) $(B)/apps/$$a.nwa $(B)/apps/$$a.bin >/dev/null || \
+	  { echo "$$a.nwa needs more RAM than custom builds of 25.2 give apps ($(CUSTOM_RAM) bytes)"; exit 1; }; done; \
+	  echo "NumPlay's games and $(BIG_APPS) fit in $(CUSTOM_RAM) bytes of RAM"
 	@x=$$(cat $(B)/gen-upsilon/arena_extra); \
 	  $(NWLINK) nwa-bin --ram-length $$(( $(UPSILON_RAM) - x )) $(B)/NumPlay-Upsilon.nwa $(B)/NumPlay-Upsilon.bin && \
 	  echo "NumPlay-Upsilon.nwa installs as $$(wc -c < $(B)/NumPlay-Upsilon.bin) bytes; its RAM and any game's fit in $(UPSILON_RAM) bytes"
@@ -175,7 +185,7 @@ $(foreach l,$(LANGS),$(B)/NumPlay-$(LANG_$(l)).nwa): $(B)/NumPlay-%.nwa: FORCE |
 	$(eval L := $(if $(filter French,$*),fr,zh))
 	$(PY) tools/lang.py tree $(L) $(B)/lang/$(L)
 	$(MAKE) -C $(B)/lang/$(L) build/NumPlay.nwa NWLINK="$(NWLINK)"
-	$(NWLINK) nwa-bin --ram-length $$(( $(RAM_LIMIT) - $$(cat $(B)/lang/$(L)/build/gen/arena_extra) )) \
+	$(NWLINK) nwa-bin --ram-length $$(( $(CUSTOM_RAM) - $$(cat $(B)/lang/$(L)/build/gen/arena_extra) )) \
 	  $(B)/lang/$(L)/build/NumPlay.nwa $(B)/lang/$(L)/build/NumPlay.bin
 	@n=$$(wc -c < $(B)/lang/$(L)/build/NumPlay.bin); echo "NumPlay-$*.nwa installs as $$n bytes ($$(( $(APP_SPACE) - n )) to spare)"; \
 	  [ $$n -le $(APP_SPACE) ] || { echo "NumPlay-$*.nwa is bigger than the calculator's app space"; exit 1; }
