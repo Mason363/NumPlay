@@ -46,7 +46,8 @@ enum { NF2_LAZY = 1, NF2_KEEP = 2, NF2_NOLOOP = 4, NF2_MODE = 24 /* mode << 3 */
 static inline uint8_t node_mode(const Node *n) { return (uint8_t)((n->flags2 & NF2_MODE) >> 3); }
 static inline bool node_loops(const Node *n) { return !(n->flags2 & NF2_NOLOOP); }
 
-extern Node nodes[NODE_MAX];
+extern Node *nodes;                  /* NODE_MAX of them, on main's stack on the calculator */
+void node_set_memory(Node *mem);
 static inline Node *N(NodeId id) { return &nodes[id]; }
 
 void node_reset(void);

@@ -32,6 +32,7 @@ void spr_release(uint16_t sprite);                    /* not needed again this f
 void spr_setup(uint8_t *mem, uint32_t size);   /* where the cache lives (game.c's arena) */
 void spr_reset(void);
 uint8_t *z_scratch(uint32_t *size);             /* the decoder's ring when it is idle */
+void spr_set_ring(uint8_t *mem);   /* LZMA_DICT bytes, on main's stack on the calculator */
 void spr_tick(void);
 uint32_t spr_cache_used(void);
 uint32_t spr_capacity(void);

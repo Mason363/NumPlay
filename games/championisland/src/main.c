@@ -45,6 +45,11 @@ uint32_t perf_max __attribute__((used));      /* the slowest frame's work, ms (a
 uint32_t perf_slow __attribute__((used));     /* frames (after the first second) over 33 ms of work */
 
 int main(void) {
+  /* the display tree and the sprite decoder's ring, here on the stack: some calculator software gives apps less RAM */
+  Node nodes_mem[NODE_MAX];
+  uint8_t ring_mem[LZMA_DICT] __attribute__((aligned(4)));
+  node_set_memory(nodes_mem);
+  spr_set_ring(ring_mem);
   plat_begin();
 #ifdef BENCH_STREAMS
   /* decode speed of every big image: perf_frames = raw KB, perf_ms = time */

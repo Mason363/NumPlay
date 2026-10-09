@@ -11,8 +11,21 @@ Input in;
 Game game;
 bool game_running = true;
 
-/* the big memory: the background layer (if the scene has one) and the sprite cache */
-static uint8_t arena[ARENA_BYTES] __attribute__((aligned(4)));
+/* the big memory: the background layer (if the scene has one) and the sprite cache. On the calculator, the RAM after
+ * the game's own (_heap_start to _heap_end), ARENA_BYTES of it at most: software 25.2 and newer gives apps 153676
+ * bytes of RAM, 23.2 and 24 give 148928 and some builds of it less, and the sprite cache takes what there is */
+#ifdef HOST
+static uint8_t arena_mem[ARENA_BYTES] __attribute__((aligned(4)));
+#define arena arena_mem
+static uint32_t arena_size(void) { return ARENA_BYTES; }
+#else
+extern char _heap_start[], _heap_end[];
+#define arena ((uint8_t *)(((uintptr_t)_heap_start + 7) & ~(uintptr_t)7))
+static uint32_t arena_size(void) {
+  uint32_t n = (uint32_t)((uintptr_t)_heap_end - (uintptr_t)arena);
+  return n < ARENA_BYTES ? n : ARENA_BYTES;
+}
+#endif
 
 /* the arena: the scene's state, then its background layer, then the sprite cache */
 static uint32_t state_bytes;
@@ -20,9 +33,10 @@ static struct { int w, h; uint8_t sheet; BgPaint paint; } bg_def;
 
 static void relayout(void) {
   uint32_t bg = bg_def.w > 0 && bg_def.h > 0 ? (uint32_t)(bg_def.w * bg_def.h + 3) & ~3u : 0;
-  if (state_bytes + bg > ARENA_BYTES - MIN_CACHE) bg = 0;
+  uint32_t size = arena_size();
+  if (state_bytes + bg + MIN_CACHE > size) bg = 0;
   if (bg) bg_setup(arena + state_bytes, bg_def.w, bg_def.h, bg_def.sheet, bg_def.paint); else bg_off();
-  spr_setup(arena + state_bytes + bg, ARENA_BYTES - state_bytes - bg);
+  spr_setup(arena + state_bytes + bg, size - state_bytes - bg);
 }
 
 void mem_layout(int bg_w, int bg_h, uint8_t sheet, BgPaint paint) {

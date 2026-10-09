@@ -4,7 +4,15 @@
 #include "spr.h"
 #include "font.h"
 
-Node nodes[NODE_MAX];
+/* on main's stack (node_set_memory): the calculator gives apps 32 KB of it apart from their RAM, and some calculator
+ * software gives apps less RAM than 25.2's 153676 bytes */
+#ifdef HOST
+static Node nodes_mem[NODE_MAX];
+Node *nodes = nodes_mem;
+#else
+Node *nodes;
+#endif
+void node_set_memory(Node *mem) { nodes = mem; }
 static NodeId free_head;
 static unsigned used_count;
 
@@ -24,7 +32,7 @@ typedef struct { NodeId n; uint16_t ev; EventFn fn; void *ctx; } Listener;
 static Listener evs[EV_MAX];
 
 void node_reset(void) {
-  memset(nodes, 0, sizeof nodes);
+  memset(nodes, 0, NODE_MAX * sizeof *nodes);
   for (int i = 1; i < NODE_MAX - 1; i++) nodes[i].next = (NodeId)(i + 1);
   nodes[NODE_MAX - 1].next = 0;
   free_head = 1;

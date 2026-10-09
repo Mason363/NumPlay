@@ -13,7 +13,13 @@
 
 /* ---------------------------------------------------------------- LZMA */
 static CLzmaProb probs[1984 + 0x300];
-static uint8_t ring[LZMA_DICT] __attribute__((aligned(4)));
+#ifdef HOST
+static uint8_t ring_mem[LZMA_DICT] __attribute__((aligned(4)));
+static uint8_t *ring = ring_mem;
+#else
+static uint8_t *ring;   /* on main's stack (spr_set_ring), like the nodes */
+#endif
+void spr_set_ring(uint8_t *mem) { ring = mem; }
 static CLzmaDec dec;
 static const uint8_t *z_src;
 static uint32_t z_in, z_len, z_out, z_total;
@@ -98,7 +104,7 @@ bool z_get(uint8_t *dst, uint32_t n) {
 }
 
 /* the decoder's ring when no stream is being read: scratch memory for others */
-uint8_t *z_scratch(uint32_t *size) { *size = sizeof ring; return ring; }
+uint8_t *z_scratch(uint32_t *size) { *size = LZMA_DICT; return ring; }
 
 /* ---------------------------------------------------------------- the cache */
 #define ENTRIES 160
