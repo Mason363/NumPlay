@@ -3,6 +3,7 @@
  * placed between the last two ticks so it moves smoothly. */
 #include <math.h>
 #include "nb.h"
+#include "gen.h"
 #pragma GCC optimize("Os")   /* (not where the time goes: small) */
 
 #ifndef HOST
@@ -250,6 +251,9 @@ bool game_frame(void) {
 
 #ifndef HOST
 int main(void) {
+  /* the world generator's summary cache, here on the stack: some calculator software gives apps less RAM */
+  uint32_t gen_cache[GEN_CACHE_BYTES / 4];
+  gen_set_cache(gen_cache);
   plat_begin();
   game_init();
   while (game_frame()) {}

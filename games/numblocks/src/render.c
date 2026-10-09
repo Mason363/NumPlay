@@ -17,8 +17,6 @@
 /* the strip sent to the screen: on render_frame's stack (the calculator gives apps 32 KB of it, the
  * game uses a few), not in the RAM that calculator software since 23.2 gives apps (148928 bytes) */
 static uint16_t *strip;
-static uint16_t cbuf[SR][RW];      /* a strip of the picture */
-static float zbuf[SR][RW];         /* and how far each pixel's ray went (entities are hidden behind) */
 
 /* per frame */
 static float ox, oy, oz;           /* camera, cache coordinates */
@@ -1916,6 +1914,8 @@ static void strips_sent(bool still) { shown_ok = still; }
 void render_frame(const Camera *c, uint32_t tod) {
   uint16_t buf[STRIP_N] __attribute__((aligned(4)));
   strip = buf;
+  uint16_t cbuf[SR][RW];             /* a strip of the picture */
+  float zbuf[SR][RW];                /* and how far each pixel's ray went (entities are hidden behind) */
   bool still = still_screen();
   static int last_gui;
   bool opening_pause = gui == GUI_PAUSE && last_gui == GUI_NONE && c;

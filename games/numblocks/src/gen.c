@@ -3150,7 +3150,14 @@ typedef struct {
     uint8_t b00;  /* biome of block (0, 0): the biome of the population of chunk (cx-1, cz-1) */
     ColSum s[256];
 } SumEntry;
-static SumEntry sumc[NSUM];
+_Static_assert(sizeof(SumEntry) * NSUM == GEN_CACHE_BYTES, "nb.h's GEN_CACHE_BYTES: the summary cache's size");
+#ifdef HOST
+static SumEntry sumc_mem[NSUM];
+static SumEntry *sumc = sumc_mem;
+#else
+static SumEntry *sumc;   /* on main's stack (gen_set_cache): calculator software gives apps 32 KB of it apart */
+void gen_set_cache(void *mem) { sumc = mem; }
+#endif
 static uint32_t sum_clock;
 
 static SumEntry *sum_find(int cx, int cz) {
@@ -5405,7 +5412,7 @@ void gen_init(int64_t seed) {
     cave_mul_x = jr_long(&r);
     cave_mul_z = jr_long(&r);
     /* caches */
-    memset(sumc, 0, sizeof sumc);
+    memset(sumc, 0, NSUM * sizeof *sumc);
     memset(pmemo, 0, sizeof pmemo);
     memset(sum_pin, 0, sizeof sum_pin);
     last_cx = bc_cx = 0x7fffffff;
@@ -5616,5 +5623,5 @@ unsigned gen_ram_bytes(void) {
                       sizeof pmemo + sizeof tstack + sizeof biome_index + sizeof c_b16 + sizeof c_sl +
                       sizeof c_top + sizeof cb16 + sizeof col_tmp + sizeof perm_grass + sizeof perm_temp +
                       sizeof bgrid + sizeof lay_wseed + sizeof bflags + sizeof tov + sizeof crec + sizeof U +
-                      sizeof sumc);
+                      NSUM * sizeof *sumc);
 }

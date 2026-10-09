@@ -8,6 +8,8 @@
 
 /* Starts a world: seed as a Java long (what /seed prints). Call before anything else. */
 void gen_init(int64_t seed);
+#define GEN_CACHE_BYTES (25 * 528)   /* the summary cache: on main's stack on the calculator (gen_set_cache) */
+void gen_set_cache(void *mem);
 
 /* The world type: 0 Minecraft's default, 1 superflat (FlatGeneratorInfo's default preset
  * "2;7,2x3,2;1": bedrock, two dirt, grass, all plains, nothing else). Kept across gen_init. */
