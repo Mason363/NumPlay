@@ -106,6 +106,8 @@ int main(int argc, char **argv) {
 #ifdef ARMTEST
   environ = argv + 1; /* semihosting has no environment: pass KEY=VALUE arguments */
 #endif
+  uint16_t strip[SCREEN_W * STRIP_H] __attribute__((aligned(4)));
+  render_set_buffer(strip);
   plat_begin();
   if (!world_init()) return plat_end(1);
   save_load();

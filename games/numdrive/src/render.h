@@ -27,6 +27,7 @@ void render_frame(void (*post)(uint16_t *px, int y, int n)); /* full screen, pos
 void render_prepare(int x0, int x1);            /* per-view object culling */
 uint16_t *render_strip(int y, int n, int x0, int x1); /* world into the strip buffer */
 uint16_t *render_buffer(void);
+void render_set_buffer(uint16_t *b); /* SCREEN_W * STRIP_H colours, on main's stack */
 void cam_default(void);
 void cam_view(float cx, float cy, float zoom_mul, float roll);
 void cam_update(void);

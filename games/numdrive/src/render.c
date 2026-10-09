@@ -25,10 +25,12 @@ static vec3 light_to; /* direction towards the light */
 static const float AMB[3] = {0.764f, 0.773f, 0.839f};
 static const float LEFF[3] = {0.444f, 0.423f, 0.304f};
 
-static uint16_t cbuf[SCREEN_W * STRIP_H] __attribute__((aligned(4)));
-/* the depth of the strip being drawn: on render_strip's stack (the calculator gives apps 32 KB of it,
- * the game uses a few), not in the RAM that calculator software since 23.2 gives apps (148928 bytes) */
+/* the strip's colours: on main's stack (render_set_buffer); the depth of the strip being drawn: on
+ * render_strip's stack (the calculator gives apps 32 KB of stack apart from their RAM, and some calculator
+ * software gives apps less RAM than 23.2's 148928 bytes) */
+static uint16_t *cbuf;
 static uint16_t *zbuf;
+void render_set_buffer(uint16_t *b) { cbuf = b; }
 typedef uint32_t __attribute__((may_alias)) u32a;
 static int strip_y0, strip_y1; /* current strip rows [y0, y1) */
 static int clip_x0, clip_x1;
