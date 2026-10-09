@@ -9,7 +9,16 @@
 #define NO 0xFFFF
 #define BLOCK_TILES 16
 
-static uint8_t slot_px[NSLOTS][128] __attribute__((aligned(4)));
+/* the slots' texels: on the calculator, in the RAM after the game's own (_heap_start to _heap_end), as many slots as
+ * fit (NSLOTS at most): the calculator's software gives apps 148928 bytes of RAM or more, some builds of it less */
+#ifdef HOST
+static uint8_t slot_mem[NSLOTS][128] __attribute__((aligned(4)));
+static uint8_t (*slot_px)[128] = slot_mem;
+static int nslots = NSLOTS;
+#else
+static uint8_t (*slot_px)[128];
+static int nslots;
+#endif
 static uint16_t slot_box[NSLOTS];   /* where each tile's texels that are not clear are (tile_box) */
 static uint32_t slot_key[NSLOTS];
 static uint16_t slot_next[NSLOTS], slot_frame[NSLOTS];
@@ -194,10 +203,17 @@ static int tex_tiles(const TexRec *r) {
 }
 
 static void init(void) {
+#ifndef HOST
+  extern char _heap_start[], _heap_end[];
+  uintptr_t from = ((uintptr_t)_heap_start + 3) & ~(uintptr_t)3;
+  uint32_t n = (uint32_t)((uintptr_t)_heap_end - from) / 128;
+  slot_px = (uint8_t (*)[128])from;
+  nslots = n < NSLOTS ? (int)n : NSLOTS;
+#endif
   init_kept4();
   sec_tex = section(SEC_TEX) + 4, sec_tdat = section(SEC_TDAT);
   for (int i = 0; i < NHASH; i++) head[i] = NO;
-  for (int i = 0; i < NSLOTS; i++) slot_key[i] = 0xFFFFFFFF, slot_next[i] = NO, slot_frame[i] = 0;
+  for (int i = 0; i < nslots; i++) slot_key[i] = 0xFFFFFFFF, slot_next[i] = NO, slot_frame[i] = 0;
   inited = true;
 }
 
@@ -222,9 +238,9 @@ static void unlink_slot(int s) {
  * one before it (done with, until the next frame); else any */
 static int victim(void) {
   int ahead = -1, done = -1;
-  for (int n = 0; n < NSLOTS; n++) {
+  for (int n = 0; n < nslots; n++) {
     int s = hand;
-    hand = (uint16_t)((hand + 1) % NSLOTS);
+    hand = (uint16_t)((hand + 1) % nslots);
     uint16_t age = (uint16_t)(frame - slot_frame[s]);
     if (age > 1) return s;
     if (!age && slot_strip[s] + 1 < cur_strip) {
@@ -239,7 +255,7 @@ static int victim(void) {
   if (ahead >= 0) return ahead;
   g_tex_overload = true;
   int s = hand;   /* the view needs more tiles than the cache holds */
-  hand = (uint16_t)((hand + 1) % NSLOTS);
+  hand = (uint16_t)((hand + 1) % nslots);
   return s;
 }
 
@@ -280,7 +296,7 @@ static int insert(uint32_t key, const uint8_t *px, int bytes) {
 static int stale_slot(void) {
   for (int n = 0; n < 64; n++) {
     int s = hand;
-    hand = (uint16_t)((hand + 1) % NSLOTS);
+    hand = (uint16_t)((hand + 1) % nslots);
     if ((uint16_t)(frame - slot_frame[s]) > 1) return s;
   }
   return -1;
@@ -368,8 +384,8 @@ void tex_frame(void) {
   if (!inited) init();
   g_tex_overload = false;
   g_tex_used = 0;
-  for (int i = 0; i < NSLOTS; i++) g_tex_used += slot_frame[i] == frame;
-  full = g_tex_used >= NSLOTS - 16;
+  for (int i = 0; i < nslots; i++) g_tex_used += slot_frame[i] == frame;
+  full = g_tex_used >= (uint32_t)nslots - 16;
   cur_strip = 0;
   frame++;
   if (!frame) frame = 1;
