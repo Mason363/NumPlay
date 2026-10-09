@@ -35,7 +35,7 @@ bool pal_opaque(uint16_t pal) {
 
 /* ---------------------------------------------------------------- LZMA streams */
 #define DICT_SIZE 9600   /* (tools/pack.py DICT: the strip, all of it) */
-extern uint16_t g_strip[];          /* gfx.c: the ring buffer borrows the strip */
+extern uint16_t *g_strip;          /* gfx.c: the ring buffer borrows the strip */
 #define NPROBS (1984 + 768)         /* NUM_BASE_PROBS + LZMA_LIT_SIZE << (lc + lp) */
 
 static void pack_info(uint16_t p, const uint8_t **data, uint32_t *comp, uint32_t *raw) {

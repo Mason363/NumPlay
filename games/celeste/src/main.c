@@ -19,6 +19,8 @@ uint32_t perf_frames __attribute__((used));   /* read by tools/emu.py */
 uint32_t perf_updates __attribute__((used));
 
 int main(void) {
+  uint32_t strip[GFX_STRIP_BYTES / 4], cmds[GFX_CMD_BYTES / 4];   /* (gfx.c: here, out of the RAM apps get) */
+  gfx_set_memory(strip, cmds);
   plat_begin();
   cel_bin = cel_data;
   game_init();

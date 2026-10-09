@@ -13,7 +13,14 @@
 #define MAX_CMDS 400
 #define MAX_AFFINE 56
 
-uint16_t g_strip[VIEW_W * STRIP_H];
+/* the strip and the frame's draw commands: on main's stack (gfx_set_memory), the calculator gives apps 32 KB
+ * of it apart from their RAM, and some calculator software gives apps less RAM than 23.2's 148928 bytes */
+#ifdef HOST
+static uint16_t strip_mem[VIEW_W * STRIP_H];
+uint16_t *g_strip = strip_mem;
+#else
+uint16_t *g_strip;
+#endif
 int g_camx, g_camy;
 static float camx, camy;
 static bool hud, ui;   /* hud: screen coordinates; ui: the interface (drawn after the zoom) */
@@ -41,7 +48,15 @@ typedef struct {
 
 typedef struct { StripFn fn; void *ctx; } Custom;
 
-static Cmd cmds[MAX_CMDS];
+#ifdef HOST
+static Cmd cmds_mem[MAX_CMDS];
+static Cmd *cmds = cmds_mem;
+#else
+static Cmd *cmds;
+#endif
+_Static_assert(VIEW_W * STRIP_H * sizeof(uint16_t) == GFX_STRIP_BYTES && MAX_CMDS * sizeof(Cmd) == GFX_CMD_BYTES,
+               "celeste.h's GFX_STRIP_BYTES, GFX_CMD_BYTES");
+void gfx_set_memory(void *strip, void *cmd) { g_strip = strip, cmds = cmd; }
 static int ncmds;
 static Affine affs[MAX_AFFINE];
 static int naffs;
