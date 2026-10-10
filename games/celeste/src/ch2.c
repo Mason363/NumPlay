@@ -735,6 +735,15 @@ static void touch_turn_on(Ent *e) {
   switches_finished_check();
 }
 static void touch_on_player(Ent *e, Player *p) { (void)p, touch_turn_on(e); }
+/* the touch switches a circle reaches (their Collider, 16 x 16): a seeker's regeneration blast turns them on */
+void level_touch_switches_in_circle(V2 c, float r) {
+  for (int i = 0; i < g_nents; i++) {
+    Ent *e = &g_ents[i];
+    if (e->cls != &TOUCHSWITCH || e->dead == 1) continue;
+    float nx = clampf(c.x, e->x - 8, e->x + 8), ny = clampf(c.y, e->y - 8, e->y + 8);
+    if ((nx - c.x) * (nx - c.x) + (ny - c.y) * (ny - c.y) < r * r) touch_turn_on(e);
+  }
+}
 static void touch_awake(Ent *e) {   /* Switch.EntityAdded: CheckLevelFlag -> StartFinished */
   Touch *t = ST(e, Touch);
   char f[48];

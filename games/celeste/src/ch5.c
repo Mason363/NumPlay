@@ -513,6 +513,7 @@ static bool gate_theo_nearby(Ent *e) {
   return dist2(g->hold_from, theo_center(t)) < (g->open ? 6400 : 4096);
 }
 bool level_switch_check(void);   /* Switch.Check: the touch switches (ch2.c) are all on */
+void level_touch_switches_in_circle(V2 c, float r);   /* (ch2.c) */
 static void gate_update(Ent *e) {
   Gate *g = ST(e, Gate);
   plat_update(e);
@@ -2240,7 +2241,7 @@ static void seeker_set_state(Ent *e, int st) {
       break;
   }
 }
-/* the regeneration's blast: the player, Theo, cracked walls (touch switches: TODO, another file's) */
+/* the regeneration's blast: the player, Theo, cracked walls, touch switches */
 static void seeker_explode_push(Ent *e) {
   V2 c = v2(e->x, e->y);
   Player *p = level_player();
@@ -2260,6 +2261,7 @@ static void seeker_explode_push(Ent *e) {
     float nx = clampf(c.x, e_left(o), e_right(o)), ny = clampf(c.y, e_top(o), e_bottom(o));
     if ((nx - c.x) * (nx - c.x) + (ny - c.y) * (ny - c.y) < 1600) cracked_break(o, c);
   }
+  level_touch_switches_in_circle(c, 40);
   for (float a = 0; a < PI_F * 2; a += 0.17453292f) {
     V2 at = v2add(c, angle_vec(a + rnd_rangef(-PI_F / 90, PI_F / 90), (float)(12 + rndi(6))));
     particles_emit1(PL_MID, &P_Seeker_P_Regen, at, a);
@@ -2426,7 +2428,7 @@ static void seeker_update(Ent *e) {
     e->y -= e_bottom(e) - (rm->y + rm->h);
     seeker_collide_v(e, &none);
   }
-  /* SeekerColliders: touch switches (TODO: another chapter's file) */
+  /* SeekerColliders: the touch switches check for seekers themselves (ch2.c) */
   s = ST(e, Seeker);
   if (s->state == SK_ATTACK && s->speed.x > 0) s->bounce_w = 16, s->bounce_x = -10;
   else if (s->state == SK_ATTACK && s->speed.y < 0) s->bounce_w = 16, s->bounce_x = -6;
