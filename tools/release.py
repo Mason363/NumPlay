@@ -25,6 +25,8 @@ EXTRAS = {"numvisuals"}
 ALONE = {
     "celeste": ("Celeste", "the whole climb up Celeste Mountain. Too big to share the calculator with NumPlay: install it "
                 "on its own"),
+    "tycoon": ("NumTycoon", "build a business empire, from a lemonade stand to a space port. NumPlay's share of the "
+               "calculator's app space is full: install it on its own"),
     "hollowknight": ("Hollow Knight", "from King's Pass to Hornet in Greenpath. Too big to share the calculator with "
                      "NumPlay: install it on its own"),
     "championisland": ("Champion Island", "the Doodle Champion Island Games. Too big to share the calculator with "
@@ -34,13 +36,6 @@ VARIANTS = [
     ("NumPlay-Invisible.nwa", "The same app, hidden: a blank icon with no name"),
     ("NumPlay-Matrices.nwa", "The same app, disguised as a math app called Matrices"),
 ]
-# other languages, and Upsilon (see the README)
-LANGUAGES = [
-    ("NumPlay-French.nwa", "NumPlay en français : tous les jeux, en français"),
-    ("NumPlay-Chinese.nwa", "NumPlay 中文版：所有游戏，简体中文"),
-]
-UPSILON = ("NumPlay-Upsilon.nwa", "For calculators running Upsilon (N0110, N0115): the 13 games that fit in the memory "
-           "Upsilon gives apps. Install it with nwlink, see the README")
 
 
 def standalone_names():
@@ -75,13 +70,6 @@ def main():
     for name, what in VARIANTS:
         files.append((os.path.join(a.build, name), f"{name} · {what}"))
         notes.append(f"| {link(name)} | {what} |")
-    notes += ["", "### In French and Chinese", "", "| File | |", "| --- | --- |"]
-    for name, what in LANGUAGES:
-        files.append((os.path.join(a.build, name), f"{name} · {what}"))
-        notes.append(f"| {link(name)} | {what} |")
-    name, what = UPSILON
-    notes += ["", "### On Upsilon", "", "| File | |", "| --- | --- |", f"| {link(name)} | {what} |"]
-    files.append((os.path.join(a.build, name), f"{name} · {what}"))
     notes += ["", "### Each one on its own", "", "In the launcher's order.", "", "| File | |", "| --- | --- |"]
     def alone_entry(gid):
         title, what = ALONE[gid]

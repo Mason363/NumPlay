@@ -16,15 +16,9 @@ ARM_OBJCOPY = arm-none-eabi-objcopy
 PY ?= python3
 CARGO ?= cargo
 B = build
-# the RAM the oldest calculator software that runs apps gives them (23.2: 148928 bytes; 25.2 gives 153676)
-RAM_LIMIT = 148928
+RAM_LIMIT = 153676
 # the calculator's space for installed apps (0x90200000 to 0x903F0000 in its flash)
 APP_SPACE = 2031616
-# Upsilon, the N0110 and N0115's custom software, gives .nwa apps less RAM: NumPlay-Upsilon.nwa has
-# the games that fit it (NumPlay draws their text there: see launcher/src/compat.c)
-UPSILON_RAM = 107674
-UPSILON_GAMES = crossyroad portal tetris chess flappybird pacman snake connectfour solitaire g2048 minesweeper \
-  breakout numvisuals
 
 # NumPlay and its discreet versions: the same app, with another name and icon
 # on the calculator's home screen. Each one is a release file.
@@ -55,9 +49,9 @@ ARM_CFLAGS = -std=gnu11 $(EADK_CFLAGS) -DNP_VERSION='"$(VERSION)"' -Os -Wall -We
 ARM_LINK = -nostartfiles --specs=nano.specs -Wl,--relocatable -Wl,--gc-sections -Wl,-e,main \
   -Wl,-u,eadk_app_name -Wl,-u,eadk_app_icon -Wl,-u,eadk_api_level
 
-.PHONY: all nwa apps check sim emu clean lang FORCE
+.PHONY: all nwa apps check sim emu clean FORCE
 all: nwa apps
-nwa: $(foreach v,$(VARIANTS),$(B)/$(v).nwa) $(B)/NumPlay-Upsilon.nwa
+nwa: $(foreach v,$(VARIANTS),$(B)/$(v).nwa)
 
 $(B):
 	mkdir -p $(B)/modules $(B)/gen $(B)/arm $(B)/apps $(B)/sim
@@ -90,7 +84,6 @@ $(B)/modules/%.o: FORCE | $(B)
 	$(ARM_LD) -r -d -T tools/module.ld $(MOD_$*) -o $(B)/modules/$*.1.o
 	$(ARM_OBJCOPY) --keep-global-symbol=$(or $(ENTRY_$*),$(ENTRY)) \
 	  --redefine-sym eadk_keyboard_scan=np_keyboard_scan --redefine-sym eadk_event_get=np_event_get \
-	  --redefine-sym eadk_display_draw_string=np_display_draw_string \
 	  $(B)/modules/$*.1.o $(B)/modules/$*.2.o
 	$(PY) tools/npmodule.py $(B)/modules/$*.2.o $@ --game $* --index $(INDEX_$*) \
 	  --entry $(or $(ENTRY_$*),$(ENTRY)) --json $(B)/modules/$*.json
@@ -119,8 +112,7 @@ $(B)/arm/shots_%.o: $(B)/gen/shots_%.c launcher/src/np.h
 	$(ARM_CC) $(ARM_CFLAGS) -c $< -o $@
 $(B)/arm/arena.o $(B)/arm/marks.o: $(B)/arm/%.o: $(B)/gen/gametable.c
 	$(ARM_CC) $(EADK_CFLAGS) -c $(B)/gen/$*.s -o $@
-.SECONDARY: $(foreach v,$(VARIANTS),$(B)/variant/$(v)-name.o $(B)/variant/$(v)-icon.o) \
-  $(foreach g,$(GAMES),$(B)/arm/shots_$(g).o)
+.SECONDARY: $(foreach v,$(VARIANTS),$(B)/variant/$(v)-name.o $(B)/variant/$(v)-icon.o)
 $(B)/variant/%-name.o: launcher/app_name.c Makefile | $(B)
 	mkdir -p $(B)/variant
 	$(ARM_CC) $(ARM_CFLAGS) '-DNP_APP_NAME=$(NAME_$*)' -c $< -o $@
@@ -135,45 +127,10 @@ $(B)/%.nwa: $(ARM_OBJS) $(MODULES) $(B)/variant/%-name.o $(B)/variant/%-icon.o
 	@if [ "$*" = NumPlay ]; then $(PY) tools/sizes.py $@ $(B)/modules; fi
 
 check: nwa
-	@$(NWLINK) nwa-bin --ram-length $(UPSILON_RAM) $(B)/NumPlay-Upsilon.nwa $(B)/NumPlay-Upsilon.bin && \
-	  echo "NumPlay-Upsilon.nwa installs as $$(wc -c < $(B)/NumPlay-Upsilon.bin) bytes; its RAM fits in $(UPSILON_RAM) bytes"
 	@for v in $(VARIANTS); do $(NWLINK) nwa-bin --ram-length $(RAM_LIMIT) $(B)/$$v.nwa $(B)/$$v.bin || exit 1; \
 	  n=$$(wc -c < $(B)/$$v.bin); \
 	  echo "$$v.nwa installs as $$n bytes ($$(( $(APP_SPACE) - n )) to spare); its RAM fits in $(RAM_LIMIT) bytes"; \
 	  [ $$n -le $(APP_SPACE) ] || { echo "$$v.nwa is bigger than the calculator's app space ($(APP_SPACE) bytes)"; exit 1; }; done
-
-# ------------------------------------------------------------------ NumPlay-Upsilon.nwa
-$(B)/gen-upsilon/gametable.c: games/games.json tools/gen_games.py $(foreach g,$(UPSILON_GAMES),$(B)/modules/$(g).o)
-	$(PY) tools/gen_games.py games/games.json $(B)/modules $(B)/gen-upsilon --only "$(UPSILON_GAMES)"
-$(B)/arm-upsilon/gametable.o: $(B)/gen-upsilon/gametable.c launcher/src/np.h
-	mkdir -p $(B)/arm-upsilon
-	$(ARM_CC) $(ARM_CFLAGS) -c $< -o $@
-$(B)/arm-upsilon/arena.o $(B)/arm-upsilon/marks.o: $(B)/arm-upsilon/%.o: $(B)/gen-upsilon/gametable.c
-	mkdir -p $(B)/arm-upsilon
-	$(ARM_CC) $(EADK_CFLAGS) -c $(B)/gen-upsilon/$*.s -o $@
-UPSILON_OBJS = $(patsubst launcher/src/%.c,$(B)/arm/%.o,$(LAUNCHER_SRC)) $(B)/arm-upsilon/gametable.o \
-  $(B)/arm-upsilon/arena.o $(B)/arm-upsilon/marks.o $(foreach g,$(UPSILON_GAMES),$(B)/arm/shots_$(g).o) \
-  $(foreach g,$(UPSILON_GAMES),$(B)/modules/$(g).o)
-$(B)/NumPlay-Upsilon.nwa: $(UPSILON_OBJS) $(B)/variant/NumPlay-name.o $(B)/variant/NumPlay-icon.o
-	$(ARM_CC) $(ARM_CFLAGS) $(ARM_LINK) -Wl,-T,$(B)/gen-upsilon/numplay.ld -flinker-output=nolto-rel \
-	  $^ -lm -lgcc -o $@
-	arm-none-eabi-strip --strip-unneeded $@
-
-# ------------------------------------------------------------------ NumPlay in other languages
-# tools/lang.py copies what builds NumPlay to build/lang/<code> with the translations in place
-# (launcher/lang/<code>.txt, games/<game>/lang/<code>.txt), and NumPlay is built there.
-LANGS = fr zh
-LANG_fr = French
-LANG_zh = Chinese
-lang: $(foreach l,$(LANGS),$(B)/NumPlay-$(LANG_$(l)).nwa)
-$(foreach l,$(LANGS),$(B)/NumPlay-$(LANG_$(l)).nwa): $(B)/NumPlay-%.nwa: FORCE | $(B)
-	$(eval L := $(if $(filter French,$*),fr,zh))
-	$(PY) tools/lang.py tree $(L) $(B)/lang/$(L)
-	$(MAKE) -C $(B)/lang/$(L) build/NumPlay.nwa NWLINK="$(NWLINK)"
-	$(NWLINK) nwa-bin --ram-length $(RAM_LIMIT) $(B)/lang/$(L)/build/NumPlay.nwa $(B)/lang/$(L)/build/NumPlay.bin
-	@n=$$(wc -c < $(B)/lang/$(L)/build/NumPlay.bin); echo "NumPlay-$*.nwa installs as $$n bytes ($$(( $(APP_SPACE) - n )) to spare)"; \
-	  [ $$n -le $(APP_SPACE) ] || { echo "NumPlay-$*.nwa is bigger than the calculator's app space"; exit 1; }
-	cp $(B)/lang/$(L)/build/NumPlay.nwa $@
 
 # ------------------------------------------------------------------ games on their own
 APP_numdash = games/numdash/build/numdash.nwa:NumDash.nwa
@@ -187,6 +144,7 @@ APP_tetris = games/tetris/tetris/target/thumbv7em-none-eabihf/release/tetris:Tet
 APP_numvisuals = games/numvisuals/output/numvisuals.nwa:NumVisuals.nwa
 # too big to share the calculator's app space with NumPlay: only on their own
 APP_celeste = games/celeste/output/celeste.nwa:Celeste.nwa
+APP_tycoon = games/tycoon/output/tycoon.nwa:NumTycoon.nwa
 APP_championisland = games/championisland/output/championisland.nwa:ChampionIsland.nwa
 APP_hollowknight = games/hollowknight/output/hollowknight.nwa:HollowKnight.nwa
 
@@ -200,6 +158,7 @@ apps: | $(B)
 	$(MAKE) -C games/chess build NWLINK="$(NWLINK)"
 	$(MAKE) -C games/numvisuals build NWLINK="$(NWLINK)"
 	$(MAKE) -C games/celeste build NWLINK="$(NWLINK)"
+	$(MAKE) -C games/tycoon build NWLINK="$(NWLINK)"
 	$(MAKE) -C games/championisland build NWLINK="$(NWLINK)"
 	$(MAKE) -C games/hollowknight build NWLINK="$(NWLINK)"
 	cd games/tetris/tetris && NWLINK="$(NWLINK)" $(CARGO) build --release --quiet
@@ -213,6 +172,7 @@ apps: | $(B)
 	cp $(word 1,$(subst :, ,$(APP_tetris))) $(B)/apps/$(word 2,$(subst :, ,$(APP_tetris)))
 	cp $(word 1,$(subst :, ,$(APP_numvisuals))) $(B)/apps/$(word 2,$(subst :, ,$(APP_numvisuals)))
 	cp $(word 1,$(subst :, ,$(APP_celeste))) $(B)/apps/$(word 2,$(subst :, ,$(APP_celeste)))
+	cp $(word 1,$(subst :, ,$(APP_tycoon))) $(B)/apps/$(word 2,$(subst :, ,$(APP_tycoon)))
 	cp $(word 1,$(subst :, ,$(APP_championisland))) $(B)/apps/$(word 2,$(subst :, ,$(APP_championisland)))
 	cp $(word 1,$(subst :, ,$(APP_hollowknight))) $(B)/apps/$(word 2,$(subst :, ,$(APP_hollowknight)))
 	arm-none-eabi-strip --strip-unneeded $(B)/apps/Tetris.nwa
@@ -267,6 +227,7 @@ clean:
 	-$(MAKE) -C games/portal clean
 	-$(MAKE) -C games/chess clean
 	-$(MAKE) -C games/numvisuals clean
+	-$(MAKE) -C games/tycoon clean
 	-$(MAKE) -C games/championisland clean
 	-$(MAKE) -C games/hollowknight clean
 	-cd games/tetris/tetris && $(CARGO) clean

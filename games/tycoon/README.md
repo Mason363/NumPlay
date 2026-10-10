@@ -32,7 +32,7 @@ A business tycoon for the NumWorks calculator. Start with a lemonade stand and $
 
 `make host` builds the real game code against a fake screen and keyboard (`test/host.c`) with AddressSanitizer: scripted sessions, screenshots (PPM), a save that is reloaded, a bot that plays for hours to check the pace of the game, and random key presses. Run `output/host/host SCRIPT OUTDIR` (see the header of `test/host.c` for the script lines). The calculator build is played in the ARM emulator by `tests/test_games.py`, like the other games.
 
-Build: `make` (needs `arm-none-eabi-gcc` and Node.js for nwlink). Inside NumPlay it is built by the top-level `make`.
+Build: `make` (needs `arm-none-eabi-gcc` and Node.js for nwlink). The top-level `make` builds it on its own (`build/apps/NumTycoon.nwa`): NumPlay's share of the calculator's app space is full, so it cannot be one of the games inside `NumPlay.nwa`, like Celeste and Hollow Knight.
 
 ## Credits
 

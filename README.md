@@ -32,7 +32,7 @@
 </p>
 
 <p align="center">
-  <sub>NumDash, Crossy Road, NumBlocks, NumDrive, Balatro, Buckshot Roulette, Portal Returns, Tetris, Chess, Flappy Bird, Pac-Man, Snake, Connect Four, Solitaire, 2048, Minesweeper, Block Breaker and NumTycoon, plus NumVisuals: moving backgrounds with a clock, a timer and more.</sub>
+  <sub>NumDash, Crossy Road, NumBlocks, NumDrive, Balatro, Buckshot Roulette, Portal Returns, Tetris, Chess, Flappy Bird, Pac-Man, Snake, Connect Four, Solitaire, 2048, Minesweeper and Block Breaker, plus NumVisuals: moving backgrounds with a clock, a timer and more.</sub>
 </p>
 
 ## ⭐ Enjoying NumPlay? Give it a star
@@ -239,7 +239,7 @@ Click a file to download it. Not sure which one? Take the first.
   </tr>
   <tr>
     <td width="120" align="center"><img src="docs/media/thumb_tycoon.png" width="112" alt="NumTycoon"></td>
-    <td><a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumTycoon.nwa">NumTycoon.nwa</a><br>Only NumTycoon: build a business empire, hire managers, franchise for stars</td>
+    <td><a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumTycoon.nwa">NumTycoon.nwa</a><br>NumTycoon: build a business empire, hire managers, franchise for stars. NumPlay's space on the calculator is full: install it on its own</td>
   </tr>
   <tr>
     <td width="120" align="center"><img src="docs/media/thumb_numvisuals.png" width="112" alt="NumVisuals"></td>
