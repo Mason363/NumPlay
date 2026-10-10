@@ -876,7 +876,7 @@ static const uint8_t BBF_IDLE[] = {0, 1, 2, 3, 4, 5}, BBF_FLASH[] = {6, 7, 8, 9,
                      BBF_BLINK[] = {12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25};
 static const FAnim BB_ANIMS[3] = {{BBF_IDLE, 6, 0, 255, 0.08f}, {BBF_FLASH, 6, 0, BB_IDLE, 0.08f}, {BBF_BLINK, 14, 0, BB_IDLE, 0.08f}};
 static uint16_t bb_tex[26];
-#define BB_NODES 8
+#define BB_NODES 9   /* with her own place: 7A's e-13 has the most, 8 nodes */
 typedef struct {
   FSpr spr;
   CSpr dummy;           /* BadelineDummy: her sprite (the hair is not drawn) */

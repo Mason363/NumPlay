@@ -1284,13 +1284,14 @@ static void lspr_update(LSpr *s) {
   if (s->anim == LA_LOOKRIGHT || s->anim == LA_LOOKLEFT) s->anim = LA_LOOKING;   /* goto */
   s->frame = 0;
 }
+#define LOOK_NODES 28   /* the summit's lookout (7A's g-03) has the most */
 typedef struct {
   LSpr spr;
   Talk talk;
   V2 cam, speed, cam_start, cam_start_center, last_dir;
   float wait, node_pct, t;
   int16_t hud;
-  int16_t nodes[8][2];
+  int16_t nodes[LOOK_NODES][2];
   Walk walk;
   Step zs;                /* the summit's Level.ZoomTo */
   uint8_t nnodes, node, step, interacting, summit, only_y, at_top;
@@ -1537,7 +1538,7 @@ static void new_lookout(const EData *d) {
     look_tex[0][i] = tex(path2(p, "objects/lookout/lookout", NULL, i));
     look_tex[1][i] = tex(path2(p, "objects/lookout/nobackpack", NULL, i));
   }
-  l->nnodes = (uint8_t)(d->nnodes < 8 ? d->nnodes : 8);
+  l->nnodes = (uint8_t)(d->nnodes < LOOK_NODES ? d->nnodes : LOOK_NODES);
   for (int i = 0; i < l->nnodes; i++) {
     V2 n = ed_node(d, i);
     l->nodes[i][0] = (int16_t)n.x, l->nodes[i][1] = (int16_t)n.y;
