@@ -5,6 +5,7 @@ AddressSanitizer and UBSan, through the menus, the saves and every room.
     python3 tests/check.py build/play src/data.bin [--quick]
 
 --quick skips playing every room (the longest part)."""
+import math
 import os
 import re
 import shutil
@@ -125,6 +126,28 @@ out = run(["--chapter", "16", "--room", "boss-00", "--nowipe", "--at", "352,144"
           ",".join(f"{f}-{f + 2}:o" for f in range(60, 1450, 10)) + ",1500-1560:r,1505-1515:j,1522-1523:x,1760-1830:r,1762-1775:j",
           what="6A's boss-00")
 check("room boss-01 " in out, f"6A's boss-00: Badeline didn't break the floor: {out[-160:]}")
+
+# 7A's ascents: Badeline's boosts up each section's last room (the player put at each of her places, kept at the next
+# while she flies there), her last one the summit launch, its cutscene (OK pressed through), the player up and out
+# the top, landing in the next section's first room (e-13: her 9 places, the most)
+ASCENTS = {"a-06": ("b-00", [(152, 696), (256, 576), (48, 520), (160, 408)]),
+           "b-09": ("c-00", [(272, 1072), (88, 1048), (160, 664)]),
+           "c-09": ("d-00", [(264, 888), (32, 768), (160, 616)]),
+           "d-11": ("e-00b", [(160, 976), (160, 760), (40, 728), (280, 720), (160, 648)]),
+           "e-13": ("f-00", [(272, 1352), (296, 1216), (56, 1208), (24, 1104), (288, 1000), (264, 848), (48, 840),
+                             (64, 704), (160, 624)]),
+           "f-11": ("g-00", [(80, 1672), (264, 1616), (264, 1320), (160, 528)])}
+for room, (above, places) in ASCENTS.items():
+    t, args = 30, ["--chapter", "19", "--room", room, "--nowipe"]
+    for k, (x, y) in enumerate(places):
+        args += ["--tp", f"{t}:{x},{y + 4}"]
+        if k + 1 < len(places):
+            arrive = t + 30 + math.ceil(min(3, math.dist(places[k], places[k + 1]) / 320) * 60)
+            args += ["--tp", f"{t + 40}-{arrive}:{places[k + 1][0]},{places[k + 1][1] + 4}"]
+            t = arrive
+    out = run(args, t + 2400, ",".join(f"{f}-{f + 2}:o" for f in range(t + 60, t + 2200, 12)), what=f"7A's {room} ascent")
+    check(f"room {above} " in out and " deaths 0 " in out and "state 0 " in out,
+          f"7A's {room}: the ascent didn't land in {above}: {out[-160:]}")
 
 # a chapter's end: its screen, then the chapter select
 out = run(["--chapter", "1", "--room", "1"], 500, "400-401:o", env={"COMPLETE_AT": "60"}, what="a chapter's end")

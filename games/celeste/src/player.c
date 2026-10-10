@@ -2095,13 +2095,21 @@ static float co_intro_walk(void) {
       return -1;
   }
 }
+static bool intro_summit;   /* the jump into a room after a summit launch (7A's ascents: PreviousState StSummitLaunch) */
 static float co_intro_jump(void) {
   switch (P->co_step) {
     case 0:
       intro_start = v2(E->x, E->y);
+      intro_summit = P->prev_state == ST_SUMMITLAUNCH;
       E->depth = D_TOP;
       ents_mark_unsorted();
       P->facing = 1;
+      if (intro_summit) {   /* up from the room's bottom to 24 px above it, on the 8 px grid */
+        intro_start.y = g_level.room->y + g_level.room->h - 24.f;
+        actor_move_to_x(E, roundf(E->x / 8) * 8, NULL);
+        P->co_step = 2;
+        goto rise;
+      }
       E->y = g_level.room->y + g_level.room->h + 16.f;
       P->co_step = 1;
       return .5f;
@@ -2110,10 +2118,12 @@ static float co_intro_jump(void) {
       P->co_step = 2;
       /* fall through */
     case 2:
+    rise:
       if (E->y > intro_start.y - 8) {
         E->y += -120 * DT;
         return 0;
       }
+      E->y = roundf(E->y);
       P->speed.y = -100;
       P->co_step = 3;
       /* fall through */
@@ -2123,10 +2133,18 @@ static float co_intro_jump(void) {
         return 0;
       }
       P->speed.y = 0;
+      if (intro_summit) {
+        P->co_step = 30;
+        return .2f;
+      }
+      P->co_step = 4;
+      return .1f;
+    case 30:   /* (the area start sound is not played) */
+      play(A_player_launchRecover);
       P->co_step = 4;
       return .1f;
     case 4:
-      play(A_player_fallSlow);
+      if (!intro_summit) play(A_player_fallSlow);
       P->co_step = 5;
       /* fall through */
     case 5:
@@ -2134,10 +2152,22 @@ static float co_intro_jump(void) {
         P->speed.y += DT * 800;
         return 0;
       }
-      E->x = intro_start.x, E->y = intro_start.y;
+      if (!intro_summit) E->x = intro_start.x, E->y = intro_start.y;
       E->depth = D_PLAYER;
       ents_mark_unsorted();
       level_dir_shake(v2(0, 1), .3f);
+      if (intro_summit) {
+        V2 at = v2(E->x, E->y);
+        particles_emit(PL_MID, &P_Player_P_SummitLandA, 12, at, v2(3, 0), -PI_F / 2);
+        particles_emit(PL_MID, &P_Player_P_SummitLandB, 8, v2(at.x - 2, at.y), v2(2, 0), 3.403392f);
+        particles_emit(PL_MID, &P_Player_P_SummitLandB, 8, v2(at.x + 2, at.y), v2(2, 0), -PI_F / 12);
+        particles_emit(PL_BG, &P_Player_P_SummitLandC, 30, at, v2(5, 0), P_Player_P_SummitLandC.direction);
+        P->co_step = 6;
+        return .35f;
+      }
+      SET(ST_NORMAL);
+      return -1;
+    case 6:   /* (the hair settles by itself) */
       SET(ST_NORMAL);
       return -1;
   }
