@@ -40,7 +40,8 @@ typedef struct {
 } list_t;
 
 static const char *const secret_names[NP_SECRET_COUNT] = {T("x,n,t key"), T("var key"), T("Toolbox key"), T("Pi key"),
-                                                          T("Square root key"), T("Menu: Examples")};
+                                                          T("Square root key"), T("Menu: Examples"),
+                                                          T("Konami code")};
 
 static void build_rows(list_t *l) {
   l->n = l->ngames = 0;

@@ -24,6 +24,7 @@ Toolbox key	touche Boîte à outils
 Pi key	touche Pi
 Square root key	touche racine carrée
 Menu: Examples	Menu : Exemples
+Konami code	Code Konami
 INSTALLED GAMES	JEUX INSTALLÉS
 Made with 	Fait avec 
  by Mason Chen	 par Mason Chen

@@ -23,6 +23,7 @@ Toolbox key	工具箱键
 Pi key	π 键
 Square root key	根号键
 Menu: Examples	菜单：示例
+Konami code	科乐美秘技
 INSTALLED GAMES	已安装的游戏
 Made with 	用
  by Mason Chen	打造 · Mason Chen

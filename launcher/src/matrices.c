@@ -1,7 +1,7 @@
 /* Matrices: NumPlay dressed as a calculator app, drawn like the calculator's
  * own apps (their fonts, colours and layout): a matrix to fill in, its results,
- * and a menu on the Toolbox key. The secret chosen in Settings (a key, or the
- * Examples item of the menu) opens NumPlay; Home quits. */
+ * and a menu on the Toolbox key. The secret chosen in Settings (a key, the
+ * Examples item of the menu, or the Konami code) opens NumPlay; Home quits. */
 #include <eadk.h>
 #include <string.h>
 #include "np.h"
@@ -27,9 +27,12 @@ enum {
   KEY_DOT = 49, KEY_EXE = 52
 };
 static const int8_t digit_keys[10] = {48, 42, 43, 44, 36, 37, 38, 30, 31, 32};
-static const uint8_t secret_keys[NP_SECRET_COUNT] = {KEY_XNT, KEY_VAR, KEY_TOOLBOX, KEY_PI, KEY_SQRT, 255};
+static const uint8_t secret_keys[NP_SECRET_COUNT] = {KEY_XNT, KEY_VAR, KEY_TOOLBOX, KEY_PI, KEY_SQRT, 255, 255};
 /* the hint, if Settings keeps it: the secret's name, bottom left in light gray */
-static const char *const secret_hints[NP_SECRET_COUNT] = {"x,n,t", "var", T("Toolbox"), "\xCF\x80", "\xE2\x88\x9A", T("Examples")};
+static const char *const secret_hints[NP_SECRET_COUNT] = {"x,n,t", "var", T("Toolbox"), "\xCF\x80", "\xE2\x88\x9A", T("Examples"),
+                                                          T("Konami code")};
+/* the Konami code: up, up, down, down, left, right, left, right (an idea of LanoCodes17's) */
+static const uint8_t konami[8] = {KEY_UP, KEY_UP, KEY_DOWN, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_LEFT, KEY_RIGHT};
 static const char *hint;
 
 static struct {
@@ -326,8 +329,14 @@ bool np_matrices(const np_config_t *cfg) {
   redraw();
   uint64_t prev = eadk_keyboard_scan();
   uint32_t repeat_at = 0;
+  int code = 0; /* the Konami code's keys pressed so far */
   for (int frame = 0;; frame++) {
     uint64_t k = eadk_keyboard_scan(), hit = k & ~prev;
+    if (cfg->secret == NP_SECRET_KONAMI && hit) { /* fresh presses only, not held arrows repeating */
+      if (hit == 1ull << konami[code]) code++;
+      else code = hit == 1ull << KEY_UP ? (code == 2 ? 2 : 1) : 0; /* up, up, up... still the start */
+      if (code == 8) return true;
+    }
     uint32_t now = np_millis();
     const uint64_t arrows = 0xF;
     if (hit & arrows) repeat_at = now + 400;

@@ -79,7 +79,7 @@ uint32_t np_storage_record_size(const char *name);
 bool np_reset_game(int game);
 
 /* NumPlay's own settings, in the file numplay.set */
-enum { NP_SECRET_XNT, NP_SECRET_VAR, NP_SECRET_TOOLBOX, NP_SECRET_PI, NP_SECRET_SQRT, NP_SECRET_MENU, NP_SECRET_COUNT };
+enum { NP_SECRET_XNT, NP_SECRET_VAR, NP_SECRET_TOOLBOX, NP_SECRET_PI, NP_SECRET_SQRT, NP_SECRET_MENU, NP_SECRET_KONAMI, NP_SECRET_COUNT };
 typedef struct {
   bool disguise;  /* start as Matrices, a calculator app; NumPlay opens through the secret */
   uint8_t secret; /* NP_SECRET_* */
