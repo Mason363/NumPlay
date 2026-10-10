@@ -88,6 +88,9 @@ GAMES = {
     # Play, serve, a brick or more: the best is kept; next time, Settings, screen shake off, back
     "breakout": ("BlockBreaker.nwa", "breakout.sav", presses((1500, "ok"), (2500, "ok")), 6000,
                  presses((1500, "down"), (1800, "ok"), (2100, "down"), (2400, "ok"), (2800, "back")), 4000),
+    # Play, buy a lemonade stand (OK), run a sale (EXE); next time Continue, then the Upgrades tab (Right)
+    "tycoon": ("NumTycoon.nwa", "tycoon.sav", presses((1500, "ok"), (2200, "ok"), (2600, "exe")), 5000,
+               presses((1500, "ok"), (2200, "right")), 3500),
     # play, new run, the small blind, pick two cards and play them; then continue the run
     "balatro": ("Balatro.nwa", "balatro.sav",
                 presses((1500, "ok"), (2500, "ok"), (3500, "ok"), (5000, "ok"), (5400, "right"), (5800, "ok"),
@@ -186,6 +189,10 @@ CHECKS = {
     # the world's record: its magic, then (offset 16) the time of day, which goes on from one session to the next
     "numblocks": (lambda v: v[:4] == b"NBW3" and struct.unpack_from("<I", v, 16)[0] > 0,
                   lambda v: v[:4] == b"NBW3" and struct.unpack_from("<I", v, 16)[0] > 60),
+    # a stand bought (offset 32: businesses owned), the Biz tab; then Continue and the Upgrades tab (offset 4)
+    "tycoon": (lambda v: len(v) == 168 and v[:2] == b"T\1" and v[7] == 1 and v[4] == 0
+               and struct.unpack_from("<I", v, 32)[0] == 1,
+               lambda v: v[7] == 1 and v[4] == 1 and struct.unpack_from("<I", v, 32)[0] == 1),
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
 }

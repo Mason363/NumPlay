@@ -7,7 +7,6 @@
 | **Left / Right** (or 4 / 6) | Pick a game |
 | **OK** or **EXE** (or 5) | Play |
 | **Back** | Leave a game's main menu to come back here. On the carousel, quit NumPlay |
-| **⌫** (backspace) | A moving background behind the carousel: Aurora, Sunset Drive, Plasma, Pastel, Lava Lamp, Ocean, then none again. NumPlay remembers it |
 | **Home** | Quit, from anywhere |
 
 The last card, **Settings**, can:
@@ -51,7 +50,7 @@ Keep moving, or the eagle gets you. Coins add up across every run and stay saved
 
 ## NumBlocks
 
-<img src="media/numblocks.gif" width="320" align="right" alt="NumBlocks: the inventory, TNT, water and lava">
+<img src="media/numblocks.gif" width="320" align="right" alt="NumBlocks: chopping a birch tree, then building a pillar of planks">
 
 | Key | What it does |
 | --- | --- |
@@ -355,6 +354,24 @@ Beginner, Intermediate, Expert or your own size and number of mines. The first s
 | **Back** | Pause menu (with Quit game) |
 
 Google's brick breaker: seven bricks across in blue, red, yellow and green, wall after wall, each a little faster. Bricks with a sign hold a power-up: **TNT** blows up its neighbors, **+** gives a ball, **O** splits the ball in three, **<->** widens the paddle, a **flame** makes a fireball and **beams** fire lasers. Settings: speed and screen shake.
+
+<br clear="right">
+
+## NumTycoon
+
+<img src="../games/tycoon/docs/shot.png" width="320" align="right" alt="NumTycoon">
+
+| Key | What it does |
+| --- | --- |
+| **Up / Down** | Pick a line |
+| **Left / Right** (or **1** to **5**) | Change tab: Biz, Upgrades, Managers, Stars, Stats |
+| **OK** | Buy the line |
+| **EXE** | Run a sale by hand |
+| **Backspace** | Buy x1, x10, x100 or Max |
+| **Shift** | Catch the golden truck |
+| **Back** | Pause menu (with Options and Quit game) |
+
+Buy businesses and run them with EXE; hire managers so they run by themselves; buy upgrades; catch the golden truck when it drives by. Once you have earned $1T, **Franchise** resets your empire for Stars, each worth +2% profit for good, and the Stars tab sells permanent upgrades. Your progress saves by itself.
 
 <br clear="right">
 

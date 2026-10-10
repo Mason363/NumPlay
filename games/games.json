@@ -327,6 +327,23 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/breakout"
   },
   {
+    "id": "tycoon",
+    "title": "NumTycoon",
+    "tagline": "Build your empire",
+    "credit": null,
+    "top": "0x2F6FD6",
+    "bottom": "0x0E1330",
+    "accent": "0xFFC933",
+    "records": [
+      "tycoon.sav"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "app": "NumTycoon.nwa",
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/tycoon"
+  },
+  {
     "id": "numvisuals",
     "title": "NumVisuals",
     "tagline": "Backgrounds, clocks, timers",
@@ -340,7 +357,7 @@
     "shots": [
       "docs/shot.png"
     ],
-    "colors": 48,
+    "colors": 64,
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/numvisuals"
   }
 ]
