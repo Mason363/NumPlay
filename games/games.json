@@ -20,7 +20,8 @@
     "repo": "https://github.com/Mason363/NumDash",
     "reset": [
       "numdash.nds"
-    ]
+    ],
+    "colors": 4
   },
   {
     "id": "crossyroad",
@@ -36,7 +37,8 @@
     "shots": [
       "screenshots/title.png"
     ],
-    "repo": "https://github.com/Mason363/CrossyWorks"
+    "repo": "https://github.com/Mason363/CrossyWorks",
+    "colors": 4
   },
   {
     "id": "numblocks",
@@ -91,7 +93,8 @@
       "docs/shot.png"
     ],
     "app": "NumBlocks.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/numblocks"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/numblocks",
+    "colors": 4
   },
   {
     "id": "numdrive",
@@ -123,7 +126,8 @@
     "shots": [
       "docs/shot.png"
     ],
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/balatro"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/balatro",
+    "colors": 4
   },
   {
     "id": "buckshot",
@@ -139,7 +143,8 @@
     "shots": [
       "docs/shot.png"
     ],
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/buckshot"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/buckshot",
+    "colors": 4
   },
   {
     "id": "blockblast",
@@ -191,6 +196,23 @@
       "docs/shot1.png"
     ],
     "repo": "https://github.com/Tatone26/Numworks-games/tree/main/apps/tetris"
+  },
+  {
+    "id": "dinorun",
+    "title": "Chrome Dino",
+    "tagline": "Jump, duck, survive",
+    "credit": "Google Chrome Dino - LilyTheCatgirl",
+    "top": "0xE5E5E5",
+    "bottom": "0x555555",
+    "accent": "0x71A050",
+    "records": [
+      "dinorun.sav"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "app": "ChromeDino.nwa",
+    "repo": "https://github.com/LilyTheCuteCatgirl/lilys-small-numworks-games/blob/main/games/chrome_dino.py"
   },
   {
     "id": "chess",
