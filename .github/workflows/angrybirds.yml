@@ -1,0 +1,56 @@
+name: Angry Birds
+
+on:
+  pull_request:
+    paths:
+      - 'games/angrybirds/**'
+      - 'games/common/**'
+      - 'launcher/src/font*'
+      - 'tools/emu.py'
+      - 'Makefile'
+      - '.github/workflows/angrybirds.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'games/angrybirds/**'
+      - 'games/common/**'
+      - 'launcher/src/font*'
+      - '.github/workflows/angrybirds.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  game:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: ARM toolchain
+        run: |
+          v=15.2.1-1.1
+          curl -fsSL "https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/download/v$v/xpack-arm-none-eabi-gcc-$v-linux-x64.tar.gz" | tar -xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xpack-arm-none-eabi-gcc-$v/bin" >> "$GITHUB_PATH"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Tools
+        run: |
+          npm install -g nwlink@1.0.0
+          pip install pillow==11.3.0 numpy pyelftools unicorn==2.1.4
+      - name: Build and native tests
+        run: |
+          make build/data/apps/AngryBirds.nwa NWLINK=nwlink
+          make -C games/angrybirds check test test-assets NWLINK=nwlink
+          (cd games/angrybirds/output && ./test solve)
+      - name: ARM profiles, saves and safe exit
+        run: python3 games/angrybirds/tests/test_arm.py --nwlink nwlink
+      - name: Level selection and interrupted loading
+        run: python3 games/angrybirds/tests/test_arm.py --nwlink nwlink --selection-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Angry Birds
+          path: build/data/apps/AngryBirds.nwa
