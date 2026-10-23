@@ -1,0 +1,46 @@
+name: Turbo Rush
+
+on:
+  pull_request:
+    paths: ['games/turborush/**', 'games/common/**', 'launcher/src/**', 'tools/emu.py', 'tools/build.py', 'tools/release.py', 'Makefile', '.github/workflows/turborush.yml']
+  push:
+    branches: [main]
+    paths: ['games/turborush/**', 'games/common/**', 'launcher/src/**', '.github/workflows/turborush.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  game:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: ARM toolchain
+        run: |
+          v=15.2.1-1.1
+          curl -fsSL "https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/download/v$v/xpack-arm-none-eabi-gcc-$v-linux-x64.tar.gz" | tar -xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xpack-arm-none-eabi-gcc-$v/bin" >> "$GITHUB_PATH"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Tools
+        run: |
+          npm install -g nwlink@1.0.0
+          pip install pillow numpy pyelftools unicorn==2.1.4
+      - name: Standalone build
+        run: make build/data/apps/TurboRush.nwa NWLINK=nwlink
+      - name: Races, random controls and guarded rendering
+        run: make -C games/turborush test
+      - name: ARM controls, saves and firmware safety on all profiles
+        run: python3 games/turborush/tests/test_arm.py --nwlink nwlink
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TurboRush
+          path: |
+            build/data/apps/TurboRush.nwa
+            games/turborush/output/sizes.json
+            games/turborush/output/arm/report.json
