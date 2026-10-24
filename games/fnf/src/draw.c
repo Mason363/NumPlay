@@ -485,9 +485,9 @@ static void strip_scene(const scene_t *sc) {
   int32_t age;
   int cd = fnf_countdown(g, &age);
   if (cd) {
-    static const uint16_t funkin_cd[3] = {FNF_SPR_FUNKIN_COUNTTWO, FNF_SPR_FUNKIN_COUNTONE, FNF_SPR_FUNKIN_COUNTGO};
-    static const uint16_t pixel_cd[3] = {FNF_SPR_PIXEL_COUNTTWO, FNF_SPR_PIXEL_COUNTONE, FNF_SPR_PIXEL_COUNTGO};
-    trans_show((g->style ? pixel_cd : funkin_cd)[cd - 1]);
+    static const uint16_t cd_spr[2][3] = {{FNF_SPR_FUNKIN_COUNTTWO, FNF_SPR_FUNKIN_COUNTONE, FNF_SPR_FUNKIN_COUNTGO},
+                                          {FNF_SPR_PIXEL_COUNTTWO, FNF_SPR_PIXEL_COUNTONE, FNF_SPR_PIXEL_COUNTGO}};
+    trans_show(cd_spr[g->style != 0][cd - 1]);
     float x = age / (float)(fnf_step_len(g, now) * 4);
     x = x < 0 ? 0 : x > 1 ? 1 : x;
     float a = g->style ? 1 - floorf(x * 8) / 8 : 1 - ease_cube_in_out(x);
