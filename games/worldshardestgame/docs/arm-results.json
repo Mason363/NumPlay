@@ -1,0 +1,67 @@
+[
+  {
+    "profile": "n0120",
+    "max_play_render_ms": 9,
+    "max_render_ms": 25,
+    "peak_stack": 636,
+    "all_30_levels": true,
+    "controls": true,
+    "pause_freezes": true,
+    "real_enemy_collision": true,
+    "coins": true,
+    "completion_once": true,
+    "script_backup_restore": true,
+    "firmware_preserved": true,
+    "clean_exit": true
+  },
+  {
+    "profile": "n0110",
+    "max_play_render_ms": 23,
+    "max_render_ms": 62,
+    "peak_stack": 636,
+    "all_30_levels": true,
+    "controls": true,
+    "pause_freezes": true,
+    "real_enemy_collision": true,
+    "coins": true,
+    "completion_once": true,
+    "script_backup_restore": true,
+    "firmware_preserved": true,
+    "clean_exit": true
+  },
+  {
+    "profile": "n0115",
+    "max_play_render_ms": 23,
+    "max_render_ms": 62,
+    "peak_stack": 636,
+    "all_30_levels": true,
+    "controls": true,
+    "pause_freezes": true,
+    "real_enemy_collision": true,
+    "coins": true,
+    "completion_once": true,
+    "script_backup_restore": true,
+    "firmware_preserved": true,
+    "clean_exit": true
+  },
+  {
+    "profile": "upsilon",
+    "max_play_render_ms": 23,
+    "max_render_ms": 62,
+    "peak_stack": 636,
+    "all_30_levels": true,
+    "controls": true,
+    "pause_freezes": true,
+    "real_enemy_collision": true,
+    "coins": true,
+    "completion_once": true,
+    "script_backup_restore": true,
+    "firmware_preserved": true,
+    "clean_exit": true
+  },
+  {
+    "full_storage": true,
+    "corrupt_save": true,
+    "held_launch_key": true
+  }
+]
