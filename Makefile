@@ -29,7 +29,7 @@ RAM_LIMIT = 148928
 # custom builds of Epsilon 25.2's source give apps less: 133652 bytes; every game fits there too, in NumPlay and on
 # its own (their big buffers are on the stack, 32 KB apart from that RAM, or in the RAM the software has left)
 CUSTOM_RAM = 133652
-BIG_APPS = Celeste HollowKnight Undertale ChampionIsland FinalEarth2 NumPowder NumBlocks NumDrive SubwaySurfers FiveNightsAtFreddys Doom BindingOfIsaac HillClimbRacing PlantsVsZombies SonicTheHedgehog CookieClicker LevelDevil JetpackJoyride StickmanHook DonkeyKong Dune MonkeyMart TombOfTheMask UNO FridayNightFunkin
+BIG_APPS = Celeste HollowKnight Undertale ChampionIsland FinalEarth2 NumPowder NumBlocks NumDrive SubwaySurfers FiveNightsAtFreddys Doom BindingOfIsaac HillClimbRacing PlantsVsZombies SonicTheHedgehog CookieClicker LevelDevil JetpackJoyride StickmanHook DonkeyKong Dune MonkeyMart TombOfTheMask UNO FridayNightFunkin FootballFC
 # the calculator's space for installed apps: from the end of its software (64 KiB aligned) to 64 KiB before the
 # end of its 4 MiB slot of flash, 0x903F0000. The software's size sets the start: 0x90200000 is the latest a
 # NumPlay counts on (1.94 MB, APP_SPACE); Epsilon 26.4 on an N0120 ends at 0x90180000 (2.44 MB, the
@@ -47,7 +47,7 @@ XL_APP_SPACE = 6291456
 # the spaces the customizer website offers (kit.json "spaces"; tools/kit.py links a NumPlay at each)
 SPACES = std:$(APP_START):$(APP_END) e26:$(APP_START_26):$(APP_END) xl:$(APP_START):$(XL_END) xl26:$(APP_START_26):$(XL_END)
 # big games that must install on their own without Enlarged Extra Apps: make check holds them to APP_SPACE
-APP_SPACE_APPS = HillClimbRacing FridayNightFunkin
+APP_SPACE_APPS = HillClimbRacing FridayNightFunkin FootballFC
 # Upsilon, the N0110 and N0115's custom software, gives .nwa apps less RAM: NumPlay-Upsilon.nwa has
 # the games that fit it (NumPlay draws their text there: see launcher/src/compat.c)
 UPSILON_RAM = 107674
@@ -323,6 +323,7 @@ APP_monkeymart = $(B)/games/monkeymart/monkeymart.nwa:MonkeyMart.nwa
 APP_tombofthemask = $(B)/games/tombofthemask/tombofthemask.nwa:TombOfTheMask.nwa
 APP_uno = $(B)/games/uno/uno.nwa:UNO.nwa
 APP_fnf = $(B)/games/fnf/fnf.nwa:FridayNightFunkin.nwa
+APP_footballfc = games/footballfc/output/footballfc.nwa:FootballFC.nwa
 # the big games' modules are made from these (the kit)
 $(foreach g,$(XL_GAMES),$(eval MOD_$(g) = $$(word 1,$$(subst :, ,$$(APP_$(g))))))
 
@@ -392,6 +393,13 @@ apps: | $(B)
 	cp $(word 1,$(subst :, ,$(APP_uno))) $(B)/apps/$(word 2,$(subst :, ,$(APP_uno)))
 	cp $(word 1,$(subst :, ,$(APP_fnf))) $(B)/apps/$(word 2,$(subst :, ,$(APP_fnf)))
 	arm-none-eabi-strip --strip-unneeded $(B)/apps/Tetris.nwa
+
+# Football FC is a separate download, outside the default launcher and customizer kit.
+apps: $(B)/apps/FootballFC.nwa
+$(B)/apps/FootballFC.nwa: FORCE | $(B)
+	$(MAKE) --no-print-directory -C games/footballfc build NWLINK="$(NWLINK)" PYTHON="$(PY)"
+	mkdir -p $(B)/apps
+	cp games/footballfc/output/footballfc.nwa $@
 
 STD_APPS = $(foreach g,$(STD_GAMES),$(B)/apps/$(NWA_$(g)))
 apps: $(STD_APPS)
@@ -464,5 +472,6 @@ clean:
 	-$(MAKE) -C games/tombofthemask clean
 	-$(MAKE) -C games/uno clean
 	-$(MAKE) -C games/fnf clean
+	-$(MAKE) -C games/footballfc clean
 	-cd games/tetris/tetris && $(CARGO) clean
 	-$(foreach g,$(STD_GAMES),$(MAKE) -C games/$(g) clean;)
