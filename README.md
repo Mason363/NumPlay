@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>29 free games for your NumWorks calculator, in one app.</b><br>
-  Plus 23 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.
+  Plus 24 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.
 </p>
 
 <p align="center">
@@ -136,7 +136,7 @@ These are too big to fit next to NumPlay, so each one is its own app. Install it
   </tr>
   <tr>
     <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-Bros"><b>Super Mario Bros.</b></a><br><sub>All 32 stages, in a repository of its own: NumWorks-Super-Mario-Bros</sub></td>
-    <td align="center"><a href="#roadmap"><b>More on the way</b></a><br><sub>Minecraft 1.18.2 and more: see the roadmap</sub></td>
+    <td align="center"><a href="games/worldshardestgame/README.md"><img src="games/worldshardestgame/docs/gameplay.png" width="200" alt="The World's Hardest Game"><br><b>The World's Hardest Game</b></a><br><sub>All 30 original stages, coins and checkpoints. By Bobydeluxe.</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/WorldsHardestGame.nwa">Download</a></td>
   </tr>
 </table>
 
@@ -310,6 +310,8 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Brawl Stars, against bots
 
 ## Credits
+
+- **[The World's Hardest Game](https://armorgames.com/play/1043/the-worlds-hardest-game)** was created by **Stephen Critoph / Snubby Land** and published by **Armor Games**. **[Bobydeluxe](https://github.com/Bobydeluxe)** adapted its original 30 stages, artwork and animation cycles for NumWorks. Not affiliated with Snubby Land or Armor Games. Original materials retain their original ownership; see [credits and reference data](games/worldshardestgame/README.md#credits).
 
 NumPlay is a fan project, made out of love for these games and for the NumWorks calculator. If you enjoy a game here, go play the original and support the people who made it. NumWorks also has a great community of people making games by hand: try [Numcraft](https://github.com/yannis300307/NumcraftRust), [Celeste Classic](https://github.com/BenchatonDev/Celeste-Numworks), [Tatone26's All the Apps](https://github.com/Tatone26/Numworks-games), the apps on [Nwagyu](https://nwagyu.org/guide/) and [yannis300307's list](https://gist.github.com/yannis300307/9123136f90877107ec0d49ba96b303e5).
 
