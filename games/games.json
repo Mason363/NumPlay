@@ -1130,5 +1130,24 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/fnf",
     "default": false,
     "xl": true
+  },
+  {
+    "id": "polygt3d",
+    "rank": 50,
+    "title": "PolyGT 3D",
+    "tagline": "PS1-style low-poly 3D racing simulator",
+    "credit": "By Boris-TH",
+    "top": "0x231955",
+    "bottom": "0xEB6E50",
+    "accent": "0x00C3EB",
+    "colors": 16,
+    "records": [],
+    "shots": [
+      "docs/preview.png",
+      "docs/sunset.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/polygt3d",
+    "default": false,
+    "xl": true
   }
 ]
