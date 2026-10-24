@@ -308,6 +308,8 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] More of Retro-Go: Game & Watch, SNES, Mega Drive, SG-1000 and ColecoVision
 - [ ] Five Nights at Freddy's 2, 3, 4 and FNAF World
 - [ ] Brawl Stars, against bots
+- [ ] Papers, Please, with the story and Endless
+- [ ] Mario Kart
 
 ## Credits
 
