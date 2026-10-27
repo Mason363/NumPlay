@@ -401,17 +401,20 @@ void world_reach(int *x, int *y, int *w, int *h) {
   *h += *y - top, *y = top;
 }
 
-static void interact(void) {
+Obj *world_talk_target(void) {
   int x, y, w, h;
   world_reach(&x, &y, &w, &h);
   for (int i = 0; i < MAX_OBJS; i++) {
     Obj *o = &objs[i];
     if (o->kind == OBJ_NONE || !(o->flags & OF_TALK)) continue;
-    if (boxes_meet(x, y, w, h, o->x + o->bx, o->y + o->by, o->bw, o->bh)) {
-      event_start(o->event, o);
-      return;
-    }
+    if (boxes_meet(x, y, w, h, o->x + o->bx, o->y + o->by, o->bw, o->bh)) return o;
   }
+  return NULL;
+}
+
+static void interact(void) {
+  Obj *o = world_talk_target();
+  if (o) event_start(o->event, o);
 }
 
 static void touches(void) {

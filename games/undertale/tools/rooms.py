@@ -149,6 +149,8 @@ AREAS.append(dict(name="waterfall", map="Waterfall_map.png", floor=WF_FLOOR, mar
     ("erase", 8466, 578, 15, 19, [(27, 33, 90), (27, 21, 72), (23, 13, 43)]),
     ("erase", 1240, 1240, 22, 10, [(23, 13, 43), (27, 21, 72), (27, 33, 90)]),
     ("erase", 10156, 150, 12, 7, [(27, 21, 72), (27, 33, 90), (54, 47, 121)]),
+    # the song over the statue in the rain shows only once it has an umbrella (an object, as in the game)
+    ("erase", 10705, 554, 158, 18, [(0, 0, 0), (48, 48, 48), (10, 5, 23), (55, 52, 65), (30, 25, 73), (73, 68, 128)]),
     ("fill", 10156, 157, 12, 1, (0, 0, 0)), ("fill", 10156, 158, 12, 3, (99, 102, 135)),
     ("erase", 2380, 1500, 80, 20, "ring"), ("erase", 2850, 1240, 30, 80, "ring"), ("erase", 3040, 1540, 80, 20, "ring"),
 ]))

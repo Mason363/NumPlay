@@ -236,7 +236,12 @@ static void c_menu_input(uint32_t pressed) {
       if (pressed & K_RIGHT) item_act = (item_act + 1) % 3;
       if (pressed & K_X) st = M_ITEMS;
       if (pressed & K_Z) {
-        if (item_act == 0) {
+        if (item_act != 1 && sv.items[item_sel] == ITEM_ANNOYING_DOG) {
+          /* used or dropped, the dog is deployed (wf1.c) */
+          menu_close();
+          event_start(EV_WF_DOG, NULL);
+          event_cur_arg(item_sel);
+        } else if (item_act == 0) {
           item_use(item_sel, buf, sizeof buf, 0);
           menu_say(buf);
         } else if (item_act == 1) {
@@ -372,7 +377,8 @@ static void draw_save(void) {
   gfx_text(FONT_MENU, 136, 68, s, c, 255);
   unsigned secs = shown->time / 30;
   snprintf(s, sizeof s, "%u:%02u", secs / 60, secs % 60);
-  gfx_text(FONT_MENU, 222, 68, s, c, 255);
+  /* (100 minutes and more: the time moves left, to stay in the box) */
+  gfx_text(FONT_MENU, min_i(222, 54 + 212 - 7 - gfx_text_width(FONT_MENU, s, (int)strlen(s))), 68, s, c, 255);
   RoomInfo ri;
   room_info(g_room, &ri);
   gfx_text(FONT_MENU, 68, 88, str(ri.name), c, 255);

@@ -52,6 +52,10 @@ enum {
   /* New Home */
   ITEM_WORN_DAGGER,
   ITEM_HEART_LOCKET,
+  /* the artifact's room, in Waterfall (ITEM_ARTIFACT is no longer found: the dog gets it first) */
+  ITEM_ANNOYING_DOG,
+  ITEM_DOG_RESIDUE,
+  ITEM_DOG_SALAD,
   ITEM_COUNT
 };
 enum { IT_FOOD, IT_WEAPON, IT_ARMOR, IT_SPECIAL };

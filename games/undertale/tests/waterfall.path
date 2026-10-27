@@ -181,6 +181,13 @@ go:10150,162
 u
 z
 talk
+# (too many dogs: one deployed, the last in the list, gets the artifact)
+c
+z
+u
+z
+z
+talk
 go:10150,264
 10150,300
 go:10137,612

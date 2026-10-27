@@ -32,8 +32,9 @@ static void chase_update(void) {
     stun_t--;
     return;
   }
-  int dx = pl.x + 10 - u->x, dy = pl.y + 29 - u->y;
-  u->x = (int16_t)(u->x + clamp_i(dx, -2, 2)), u->y = (int16_t)(u->y + clamp_i(dy, -2, 2));
+  /* (two thirds of Frisk's speed, walking fast too) */
+  int dx = pl.x + 10 - u->x, dy = pl.y + 29 - u->y, sp = 2 * (1 + g_walk_fast);
+  u->x = (int16_t)(u->x + clamp_i(dx, -sp, sp)), u->y = (int16_t)(u->y + clamp_i(dy, -sp, sp));
   if (abs_i(dx) < 14 && abs_i(dy) < 12) event_start(EV_UNDYNE_CATCH, u);
 }
 /* she comes in after Frisk, from the way Frisk came */
