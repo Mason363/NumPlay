@@ -1058,19 +1058,22 @@ static void whole_game(void) {
 /* ---------------------------------------------------------------- the README's pictures and film, from the bot's game */
 static const char *pic_dir;
 static bool drawing;
-static void view(int tab) {   /* the screen with another tab open (the app's own tab put back after) */
-  int old = ui.tab;
+static void view(int tab, bool top) {   /* the screen with a tab open (from its top), the app's put back after */
+  pc_ui keep_ui = ui;
   drawing = true;
-  if (tab >= 0 && ui_tab_shown(tab)) ui.tab = tab;
+  if (tab >= 0 && ui_tab_shown(tab) && (top || tab != ui.tab)) {
+    ui.tab = tab, ui.scroll[tab] = 0, ui.focus[tab] = -1, ui.focus_at[tab] = 0;
+    memcpy(ui.seen, keep_ui.seen, sizeof ui.seen);
+  }
   ui_render(&ui);
-  ui.tab = old;
+  ui = keep_ui;
   drawing = false;
 }
 static bool pic_done[16];
 static const struct {
   const char *name;
   int tab;
-} PICS[] = {{"shot", T_PROJECTS}, {"business", T_BUSINESS}, {"computer", T_COMPUTER}, {"strategy", T_STRATEGY},
+} PICS[] = {{"projects", T_PROJECTS}, {"shot", T_BUSINESS}, {"computer", T_COMPUTER}, {"strategy", T_STRATEGY},
             {"invest", T_INVEST}, {"hypno", -1}, {"earth", T_CLIPS}, {"wire", T_WIRE}, {"power", T_POWER},
             {"swarm", T_COMPUTER}, {"space", T_SPACE}, {"probes", T_SPACE}, {"combat", T_COMBAT}, {"drift", T_PROJECTS},
             {"end", T_CLIPS}};
@@ -1101,7 +1104,7 @@ static void pictures(void) {
   if (drawing || !pic_dir) return;
   for (unsigned i = 0; i < sizeof PICS / sizeof PICS[0]; i++)
     if (!pic_done[i] && pic_when((int)i)) {
-      view(PICS[i].tab);
+      view(PICS[i].tab, true);
       shot(pic_dir, PICS[i].name);
       pic_done[i] = true;
     }
@@ -1130,7 +1133,7 @@ static void filming(void) {
     film_part = film_next++, film_tab = FILM_TAB[film_part], film_end = game.now + FILM_MS[film_part];
   if (film_part < 0) return;
   if (!(frame_no & 1)) {
-    view(film_tab);
+    view(film_tab, false);
     char path[512];
     snprintf(path, sizeof path, "%s/%06u_%06u.raw", film_dir, film_frames++, film_t);
     FILE *f = fopen(path, "wb");

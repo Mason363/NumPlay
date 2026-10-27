@@ -10,7 +10,7 @@ enum { T_CLIPS, T_BUSINESS, T_WIRE, T_POWER, T_SPACE, T_PROBES, T_COMBAT, T_COMP
        T_STRATEGY, T_COUNT };
 enum { O_NONE, O_GUIDE, O_PAUSE, O_HELP, O_QUIT, O_RESTART, O_NEW };   /* what's over the game */
 enum { PAUSE_RESUME, PAUSE_HELP, PAUSE_QUIT, PAUSE_NEW };
-#define PC_HELP_PAGES 4
+#define PC_HELP_PAGES 5
 
 typedef struct {
   int tab;

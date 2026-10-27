@@ -950,7 +950,8 @@ static void menu_item(int y, const char *s, bool sel) {
   center(BODY, y + 14, s, C_BLACK);
 }
 
-static const char *const HELP_TITLE[PC_HELP_PAGES] = {"The keys", "Making paperclips", "Computing", "What comes next"};
+static const char *const HELP_TITLE[PC_HELP_PAGES] = {"The keys", "Making paperclips", "Computing", "What comes next",
+                                                       "Credits"};
 static const char *const HELP_TEXT[PC_HELP_PAGES] = {
   "OK presses the button in the blue frame. Hold OK to press it again and again.\n"
   "Up and Down choose a button. Left and Right go to another panel.\n"
@@ -963,6 +964,9 @@ static const char *const HELP_TEXT[PC_HELP_PAGES] = {
   "Projects bring investments, strategy tournaments that earn yomi, and quantum computing: press Compute when the "
   "chips are bright.\n"
   "Then the whole Earth, and after that the universe.",
+  "Universal Paperclips by Frank Lantz (Everybody House Games), its rules, numbers and words from the game's web "
+  "build. Not affiliated with them.\n"
+  "Made by Mason Chen as part of NumPlay.",
 };
 
 static void overlay(pc_ui *u) {
