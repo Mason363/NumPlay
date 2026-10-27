@@ -494,6 +494,55 @@ def floor_mask(area, r, x0, y0, x1, y1):
     return np.isin(area.idx[y0:y1, x0:x1], walk_idx)
 
 
+def wave_walls(area, x0, y0, x1, y1):
+    """the pixels of a rectangle of the map that are a wall drawn with waves (the area's "waves": line colour,
+    background colours, reach, gap): Waterfall draws its walls and its darker floors in the same colours, the walls
+    with waves across them, the floors dotted. A wave is a thin curve of the line colour, 12 pixels across or more;
+    the wall is what's between two waves `gap` pixels apart or less, in each column, and `reach` pixels past the
+    first and the last, up to the first pixel of another colour (the black line at the wall's foot)"""
+    H, W = area.idx.shape
+    pad = 24
+    out = np.zeros((y1 - y0, x1 - x0), bool)
+    xs0, ys0, xs1, ys1 = max(x0, 0), max(y0, 0), min(x1, W), min(y1, H)
+    if xs1 <= xs0 or ys1 <= ys0:
+        return out
+    X0, Y0, X1, Y1 = max(0, xs0 - pad), max(0, ys0 - pad), min(W, xs1 + pad), min(H, ys1 + pad)
+    win = area.idx[Y0:Y1, X0:X1]
+    wall = np.zeros(win.shape, bool)
+    for line, backs, reach, gap in area.spec.get("waves", []):
+        is_line = np.isin(win, [i for i, k in enumerate(area.rgb) if k == tuple(line)])
+        ok = is_line | np.isin(win, [i for i, k in enumerate(area.rgb) if k in [tuple(c) for c in backs]])
+        lab, n = ndimage.label(is_line, structure=np.ones((3, 3), int))
+        if not n:
+            continue
+        # thin (few of its pixels have the line colour all round) and long
+        inner = is_line.copy()
+        inner[1:] &= is_line[:-1]
+        inner[:-1] &= is_line[1:]
+        inner[:, 1:] &= is_line[:, :-1]
+        inner[:, :-1] &= is_line[:, 1:]
+        size = ndimage.sum(is_line, lab, range(n + 1))
+        full = ndimage.sum(inner, lab, range(n + 1))
+        good = np.zeros(n + 1, bool)
+        for i, sl in enumerate(ndimage.find_objects(lab), 1):
+            good[i] = sl[1].stop - sl[1].start >= 12 and full[i] <= 0.1 * size[i]
+        wave = good[lab]
+        # in each column, the last wave above and the last break (a pixel of another colour) above; the same below
+        ys = np.arange(win.shape[0])[:, None]
+        wa = np.maximum.accumulate(np.where(wave, ys, -1), axis=0)
+        ba = np.maximum.accumulate(np.where(ok, -1, ys), axis=0)
+        # (below: the same, rows counted from the bottom)
+        wb = np.maximum.accumulate(np.where(wave[::-1], ys, -1), axis=0)[::-1]
+        bb = np.maximum.accumulate(np.where(ok[::-1], -1, ys), axis=0)[::-1]
+        above = wa > ba
+        below = wb > bb
+        top = win.shape[0] - 1
+        da, db = ys - wa, (top - ys) - wb
+        wall |= ok & ((above & below & (da + db <= gap)) | (above & (da <= reach)) | (below & (db <= reach)))
+    out[ys0 - y0:ys1 - y0, xs0 - x0:xs1 - x0] = wall[ys0 - Y0:ys1 - Y0, xs0 - X0:xs1 - X0]
+    return out
+
+
 KEEP = -32768   # a door's landing: Frisk's own x or y, kept
 
 
@@ -559,6 +608,8 @@ def collision(area, r):
     big = np.zeros((Y1 - Y0, X1 - X0), bool)
     xs0, ys0, xs1, ys1 = max(X0, 0), max(Y0, 0), min(X1, W), min(Y1, H)
     big[ys0 - Y0:ys1 - Y0, xs0 - X0:xs1 - X0] = np.isin(area.idx[ys0:ys1, xs0:xs1], list(walk_idx))
+    if area.spec.get("waves"):   # (walls in the floor's colours, told apart by their waves)
+        big &= ~wave_walls(area, X0, Y0, X1, Y1)
     sub = big[margin:margin + ch * 4, margin:margin + cw * 4]
     if r.get("open"):   # floors of many colours (a carpet, planks): its floor_rects alone say
         sub = np.ones_like(sub)

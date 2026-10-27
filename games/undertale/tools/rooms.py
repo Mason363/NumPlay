@@ -118,7 +118,10 @@ WF_WATER = [(27, 33, 90), (27, 21, 72)]
 WF_CYAN = [(123, 251, 254), (47, 234, 255)]
 WF_DUMP = [(17, 11, 49), (18, 24, 71), (5, 6, 33), (15, 9, 47)]   # (the dump's water, waded in)
 NAPSTA_FLOOR = [(198, 88, 41), (100, 50, 17), (133, 59, 41), (136, 68, 41)]
-AREAS.append(dict(name="waterfall", map="Waterfall_map.png", floor=WF_FLOOR, margin=0, close=True, patches=[
+AREAS.append(dict(name="waterfall", map="Waterfall_map.png", floor=WF_FLOOR, margin=0, close=True,
+                  waves=[((27, 21, 72), [(27, 33, 90)], 12, 26), ((27, 21, 72), [(0, 0, 0)], 2, 9),
+                         ((23, 13, 43), [(0, 0, 0)], 2, 9)],
+                  patches=[
     # the people the game moves about (they're the game's objects here): Monster Kid, the fish by the first
     # echo flower, Undyne (her black ledges kept black), Woshua, the Goner Kid, Onionsan, Shyren, the grey
     # figure by the piano, Aaron
@@ -471,18 +474,18 @@ ROOMS = [
     dict(name="wf_hist", area="waterfall", rect=(2980, 400, 530, 380), title="Waterfall"),
     dict(name="wf_chase1", area="waterfall", rect=(4000, 300, 2520, 400), title="Waterfall"),
     dict(name="wf_grass1", area="waterfall", rect=(6520, 400, 1320, 300), title="Waterfall", floor_colors=WF_WATER,
-         floor_rects=[(6520, 540, 360, 72), (6880, 560, 960, 44)], fix=[("walk", 6520, 544, 360, 64)]),
-    dict(name="wf_sans2", area="waterfall", rect=(7840, 0, 360, 600), title="Waterfall", floor_colors=WF_WATER,
-         floor_rects=[(7860, 92, 300, 118), (7956, 206, 38, 360), (7840, 556, 360, 50)],
+         floor_rects=[(6520, 540, 360, 72), (6880, 560, 960, 44), (7100, 520, 200, 40)], fix=[("walk", 6520, 544, 360, 64)]),
+    dict(name="wf_sans2", area="waterfall", rect=(7840, 0, 360, 620), view=(7840, 0, 360, 660), title="Waterfall",
+         floor_colors=WF_WATER, floor_rects=[(7860, 92, 300, 118), (7956, 206, 38, 360), (7840, 540, 360, 80)],
          fix=[("walk", 7956, 420, 38, 140)]),
     # the marsh, where the colours turn: its land is black, its water bright blue (the planks cross it), and around
     # it plain black is nothing (its rectangles); the boardwalk ends at a gap the bird carries Frisk over, a ladder
     # goes down into the marsh
-    dict(name="wf_marsh_top", area="waterfall", rect=(8200, 400, 450, 200), title="Waterfall",
-         floor_colors=WF_WATER + [(23, 13, 43), (0, 0, 0)], floor_rects=[(8200, 556, 284, 64), (8536, 556, 114, 64)]),
-    dict(name="wf_marsh_mid", area="waterfall", rect=(7400, 600, 1250, 200), title="Waterfall",
-         floor_colors=[(0, 0, 0)], floor_rects=[(8060, 600, 590, 100), (8060, 700, 110, 100), (7760, 780, 300, 20)],
-         fix=[("walk", 8140, 600, 20, 84)]),
+    dict(name="wf_marsh_top", area="waterfall", rect=(8200, 400, 450, 220), view=(8200, 400, 450, 260), title="Waterfall",
+         floor_colors=WF_WATER + [(23, 13, 43), (0, 0, 0)], floor_rects=[(8200, 560, 280, 60), (8540, 560, 110, 60)]),
+    dict(name="wf_marsh_mid", area="waterfall", rect=(7400, 620, 1250, 180), title="Waterfall",
+         floor_colors=[(0, 0, 0)], floor_rects=[(8060, 620, 590, 80), (8060, 700, 110, 100), (7760, 780, 300, 20)],
+         fix=[("walk", 8140, 620, 20, 64)]),
     dict(name="wf_marsh", area="waterfall", rect=(7400, 800, 1650, 660), title="Waterfall",
          floor_colors=[(0, 0, 0)], floor_rects=[(7660, 800, 510, 660), (8170, 940, 190, 520), (8360, 1000, 380, 460),
                                                (8740, 800, 55, 660), (8795, 800, 85, 120), (8795, 1000, 265, 460),
@@ -494,16 +497,24 @@ ROOMS = [
          floor_rects=[(8740, 656, 1160, 48), (8740, 656, 60, 144)], fix=[("walk", 9860, 660, 40, 40)]),
     dict(name="wf_piano", area="waterfall", rect=(9900, 20, 600, 780), title="Waterfall", floor_colors=WF_WATER,
          floor_rects=[(10060, 140, 200, 64), (10136, 200, 48, 104), (10118, 300, 64, 100), (10040, 398, 220, 64),
-                      (10118, 460, 64, 140), (10040, 598, 220, 124), (9900, 638, 142, 46), (10258, 638, 242, 46)]),
-    dict(name="wf_statue", area="waterfall", rect=(10500, 520, 1000, 260), title="Waterfall", floor_colors=WF_WATER,
-         fix=[("walk", 10500, 640, 1000, 60)]),
+                      (10118, 460, 64, 140), (10040, 598, 220, 124), (9900, 660, 142, 40), (10258, 660, 242, 40)],
+         # (the arch in the wall north of the piano: the way up to the artifact, once the piano has opened it)
+         doors=[((10136, 376, 48, 8), "wf_piano", (10150, 258), "up"), ((10136, 294, 48, 6), "wf_piano", (10150, 384), "down")]),
+    dict(name="wf_statue", area="waterfall", rect=(10500, 520, 1000, 260), title="Waterfall",
+         floor_colors=WF_WATER + [(12, 9, 42), (10, 5, 23), (23, 13, 43), (12, 16, 53), (30, 25, 73), (73, 68, 128), (8, 12, 42)],
+         floor_rects=[(10500, 640, 1000, 80)]),   # (the rain, the statue's light)
     # (the rain's puddles are black)
     dict(name="wf_rain1", area="waterfall", rect=(11500, 520, 1360, 300), title="Waterfall",
-         floor_colors=WF_WATER + [(0, 0, 0)], floor_rects=[(11500, 636, 1360, 68), (12740, 700, 80, 120)]),
-    dict(name="wf_rain2", area="waterfall", rect=(12700, 820, 220, 980), title="Waterfall", floor_colors=WF_WATER),
-    dict(name="wf_castle", area="waterfall", rect=(12920, 1560, 1480, 260), title="Waterfall", floor_colors=WF_WATER,
-         fix=[("walk", 12920, 1676, 1480, 48)]),
-    dict(name="wf_aaron", area="waterfall", rect=(14400, 1560, 960, 260), title="Waterfall", floor_colors=WF_WATER),
+         floor_colors=WF_WATER + [(0, 0, 0)], floor_rects=[(11500, 660, 1360, 60), (11880, 620, 60, 40), (12800, 720, 60, 100)]),
+    dict(name="wf_rain2", area="waterfall", rect=(12700, 820, 300, 980), title="Waterfall", floor_colors=WF_WATER,
+         floor_rects=[(12800, 820, 60, 900), (12800, 1660, 200, 60)],
+         doors=[((12990, 1660, 10, 60), "wf_castle", (13004, 1726), "right")]),
+    dict(name="wf_castle", area="waterfall", rect=(13000, 1560, 1400, 260), title="Waterfall", floor_colors=[],
+         fix=[("walk", 13000, 1736, 1400, 40)],
+         doors=[((13000, 1736, 6, 40), "wf_rain2", (12966, 1674), "left"),
+                ((14394, 1736, 6, 40), "wf_aaron", (14406, 1680), "right")]),
+    dict(name="wf_aaron", area="waterfall", rect=(14400, 1560, 960, 260), title="Waterfall", floor_colors=WF_WATER,
+         doors=[((14400, 1680, 6, 60), "wf_castle", (14372, 1726), "left")]),
     dict(name="wf_bridge", area="waterfall", rect=(15360, 1540, 2300, 460), title="Waterfall"),
     # under the bridge: the garbage dump's landing (Frisk wades in its water), the Trash Zone, the walkway up to
     # Mad Dummy
@@ -527,10 +538,10 @@ ROOMS = [
     # the twin waterfalls (waded through), the mushroom maze (its walls dotted lines of grass: kept clear of), Temmie
     # Village below it
     dict(name="wf_twin", area="waterfall", rect=(19850, 2200, 700, 220), title="Waterfall",
-         floor_colors=WF_WATER + WF_DUMP + [(0, 0, 0)], floor_rects=[(19850, 2286, 700, 48)]),
+         floor_colors=WF_WATER + WF_DUMP + [(0, 0, 0)], floor_rects=[(19850, 2320, 700, 40)]),
     dict(name="wf_mushroom", area="waterfall", rect=(20550, 2280, 610, 600), title="Waterfall",
-         floor_colors=[(0, 0, 0)] + WF_WATER + WF_DUMP, margin=3, floor_rects=[(20550, 2306, 214, 48), (20555, 2350, 605, 530)],
-         fix=[("walk", 20550, 2310, 214, 40), ("walk", 20556, 2346, 212, 16), ("walk", 20764, 2320, 24, 40),
+         floor_colors=[(0, 0, 0)] + WF_WATER + WF_DUMP, margin=3, floor_rects=[(20550, 2320, 214, 40), (20555, 2350, 605, 530)],
+         fix=[("walk", 20550, 2320, 214, 40), ("walk", 20556, 2346, 212, 16), ("walk", 20764, 2320, 24, 40),
               ("walk", 21020, 2372, 140, 26), ("walk", 21056, 2850, 44, 30)]),
     # (the way in, into the maze; out at its top right; the hidden way down to the village)
     dict(name="wf_temmie", area="waterfall", rect=(21020, 2880, 660, 320), title="Temmie Village", floor_colors=WF_WATER,

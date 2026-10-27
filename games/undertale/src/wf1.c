@@ -428,8 +428,8 @@ void wf1_setup(int room, int from) {
       if (flag(F_MK_RAIN) == 1) {
         obj_mk(pl.x + 10, pl.y + 29, DIR_DOWN);
         mk_follows = true;
-        if (room == ROOM_WF_RAIN2) obj_trigger(12740, 1300, 60, 20, EV_MK_TALK, ACTOR_TRIGGER2);
-        else obj_trigger(13600, 1660, 20, 70, EV_MK_TALK, ACTOR_TRIGGER3);
+        if (room == ROOM_WF_RAIN2) obj_trigger(12800, 1300, 60, 20, EV_MK_TALK, ACTOR_TRIGGER2);
+        else obj_trigger(13600, 1700, 20, 80, EV_MK_TALK, ACTOR_TRIGGER3);
       }
       break;
     case ROOM_WF_AARON:
