@@ -3,6 +3,7 @@
  *   play [--frames N] [--keys "10-40:right,50:ok,..."] [--shots 30,60|every:N] [--out DIR] [--saves DIR]
  *        [--progress L] [--money M]
  *   play --sim L [--frames N] [--shots ...] [--out DIR] [--quiet]
+ *   play --bot L [--progress P] [--replay] [--stall-home] [--frames N] [--saves DIR] (see "the player" below)
  *   ... [--raw DIR --raw-from T --raw-to T] [--sun-from T]
  *
  * Keys: left right up down ok back shovel home almanac 0-9. "a-b:key" holds the key from tick a to b, "a:key" for
@@ -290,6 +291,119 @@ static void robot(void) {
   }
 }
 
+/* ---------------------------------------------------------------- the player (--bot) */
+
+/* --bot L: the Adventure through its screens, keys pressed as a player would, until level L is won or lost: OK through the
+ * title, the menu, Crazy Dave and the rewards; on the lawn the robot above plants, but Wall-nut Bowling is played with
+ * the keys (the shovel lesson, then a nut picked from the belt, the cursor to its row, OK). --replay: level L from
+ * Choose a Level. --stall-home: in 1-5's bowling, the lawn left standing as NumPlay 1.17.0 and earlier left it after the
+ * shovel lesson, and Home (the next start must bring the level back going). */
+static int bot_level, bot_replay, bot_stall, bot_done;
+static int bot_prev = -1, bot_t, bot_n;
+static struct {
+  int dave, line_dave, lesson, line_lesson, belt_lesson, play_t0, line_play, first_zombie, belt, explodenuts;
+  int bounced, exploded, cones, huge, final, flag, stalled, came;
+  uint16_t bounce_ids[64];
+} bw;
+
+static uint32_t step_to(int col, int row) {
+  return hud.col < col ? K_RIGHT : hud.col > col ? K_LEFT : hud.row < row ? K_DOWN : hud.row > row ? K_UP : 0;
+}
+
+static uint32_t bot_bowl(int t) {
+  if (B.tutorial == 4) {
+    /* the shovel lesson: the shovel, then each peashooter */
+    if (!hud.shovel) return K_SHOVEL;
+    for (int i = 0; i < B.nplants; i++)
+      if (B.plants[i].health > 0) {
+        uint32_t k = step_to(B.plants[i].col, B.plants[i].row);
+        return k ? k : K_OK;
+      }
+    return 0;
+  }
+  if (bot_stall && B.wave >= 1) {
+    B.started = 0, bw.stalled = 1;
+    return K_HOME;
+  }
+  /* the zombie nearest the house: a nut down its row (or, the belt full, down the rows in turn) */
+  const Zombie *near = NULL;
+  int alive = 0;
+  for (int i = 0; i < B.nzombies; i++) {
+    const Zombie *z = &B.zombies[i];
+    if (z->health <= 0 || (z->flags & ZF_HYPNO) || z->x > 760) continue;
+    alive++;
+    if (!near || z->x < near->x) near = z;
+  }
+  int row = near ? near->row : B.npackets >= 8 ? t / 60 % B.nrows : -1;
+  if (row < 0 || !B.npackets) return 0;
+  if (hud.selected < 0) {
+    int pick = -1;
+    for (int i = 0; i < B.npackets && pick < 0; i++)
+      if (B.packets[i].kind == (alive >= 3 ? P_EXPLODENUT : P_WALLNUT)) pick = i;
+    return K_DIGIT((pick < 0 ? 0 : pick) + 1);
+  }
+  uint32_t k = step_to(2, row);
+  return k ? k : K_OK;
+}
+
+static uint32_t bot_keys(int t) {
+  if (g_state != bot_prev) bot_prev = g_state, bot_t = 0, bot_n = 0;
+  else bot_t++;
+  /* (the robot plants every tick, the keys are pressed one at a time) */
+  if (g_state == ST_PLAY && B.mode != MODE_BOWLING) robot();
+  if (t % 6) return 0;
+  uint32_t k = 0;
+  switch (g_state) {
+  case ST_TITLE: case ST_HELP: case ST_DAVE: case ST_PAUSE: k = K_OK; break;
+  case ST_MENU: k = bot_replay && !board_saved() && bot_n == 0 ? K_DOWN : K_OK; break;
+  case ST_LEVELS: k = bot_n < progress.level - bot_level ? K_LEFT : K_OK; break;
+  case ST_CHOOSE: bot_done = -2; break;   /* (the levels with a seed choice aren't the player's) */
+  case ST_PLAY: k = B.mode == MODE_BOWLING ? bot_bowl(t) : 0; break;
+  case ST_WON: k = bot_t > 70 ? K_OK : 0; break;
+  case ST_AWARD:
+    if (B.level >= bot_level) bot_done = 1;
+    else k = bot_t > 50 ? K_OK : 0;
+    break;
+  case ST_LOST: bot_done = -1; break;
+  }
+  bot_n++;
+  return k;
+}
+
+/* what 1-5 showed, after each tick */
+static void bot_watch(int t) {
+  /* (on every level: the zombies came) */
+  if (g_state == ST_PLAY && B.level == bot_level && B.nzombies) bw.came = 1;
+  if (B.mode != MODE_BOWLING) return;
+  if (g_state == ST_DAVE && !bw.dave) bw.dave = 1, bw.line_dave = bowling_line();
+  if (g_state != ST_PLAY) return;
+  if (B.tutorial == 4) {
+    bw.lesson = 1, bw.line_lesson |= bowling_line(), bw.belt_lesson |= B.nrollers > 0;
+    return;
+  }
+  if (!bw.play_t0) bw.play_t0 = t, bw.line_play = 1;
+  bw.line_play &= bowling_line();
+  if (B.nzombies && !bw.first_zombie) bw.first_zombie = t - bw.play_t0;
+  if (B.npackets > bw.belt) bw.belt = B.npackets;
+  for (int i = 0; i < B.npackets; i++) bw.explodenuts |= B.packets[i].kind == P_EXPLODENUT;
+  for (int i = 0; i < B.nrollers; i++) {
+    if (!B.rollers[i].dir) continue;
+    bool seen = false;
+    for (int k = 0; k < 64; k++) seen |= bw.bounce_ids[k] == B.rollers[i].id;
+    if (!seen) bw.bounce_ids[bw.bounced++ % 64] = B.rollers[i].id;
+  }
+  for (int i = 0; i < B.nfx; i++) {
+    const Fx *f = &B.fx[i];
+    if (f->t) continue;
+    bw.exploded += f->kind == FX_BOOM, bw.huge += f->kind == FX_TEXT && f->v == 0, bw.final += f->kind == FX_TEXT && f->v == 2;
+  }
+  for (int i = 0; i < B.nzombies; i++) {
+    const Zombie *z = &B.zombies[i];
+    bw.flag |= z->kind == Z_FLAG;
+    bw.cones |= z->kind == Z_CONE && z->armor == 0 && z->health > 0;   /* (a nut knocks the cone off, no more) */
+  }
+}
+
 static int sim(int level, int frames, const char *out, bool quiet) {
   progress_load();
   progress.level = (uint8_t)level, progress.slots = 10, progress.items = 0x7F;
@@ -361,6 +475,9 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[i], "--raw-from") && i + 1 < argc) raw_from = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--raw-to") && i + 1 < argc) raw_to = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--sun-from") && i + 1 < argc) sun_from = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--bot") && i + 1 < argc) bot_level = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--replay")) bot_replay = 1;
+    else if (!strcmp(argv[i], "--stall-home")) bot_stall = 1;
   }
   mkdir(out, 0755);
   mkdir(saves, 0755);
@@ -389,12 +506,14 @@ int main(int argc, char **argv) {
     }
   }
   if (money >= 0) progress.money = (uint32_t)money;
-  for (int t = 0; t < frames && g_running; t++) {
-    host_keys = 0;
+  int t;
+  for (t = 0; t < frames && g_running && !bot_done; t++) {
+    host_keys = bot_level ? bot_keys(t) : 0;
     for (int i = 0; i < nholds; i++)
       if (t >= holds[i].a && t <= holds[i].b) host_keys |= holds[i].k;
     if (host_keys) host_keys |= K_ANY;
     game_frame(host_keys);
+    if (bot_level) bot_watch(t);
     host_time += 10;
     if (t % 3 == 0 || shot_now(t)) game_draw();
     if (raw_now(t)) raw_frame(t);
@@ -407,5 +526,12 @@ int main(int argc, char **argv) {
   printf("state %d level %d phase %d sun %d zombies %d plants %d wave %d/%d progress %d money %u slots %d items %d "
          "running %d\n", g_state, B.level, B.phase, (int)B.sun, B.nzombies, B.nplants, B.wave, B.nwaves, progress.level,
          (unsigned)progress.money, progress.slots, progress.items, g_running);
+  if (bot_level)
+    printf("bot %s ticks %d dave %d line_dave %d lesson %d line_lesson %d belt_lesson %d line_play %d first_zombie %d "
+           "belt %d explodenuts %d rolled %d bounced %d exploded %d cones %d huge %d final %d flag %d stalled %d came %d\n",
+           bot_done == 1 ? "won" : bot_done == -1 ? "lost" : bot_done == -2 ? "choose" : "unfinished", t, bw.dave,
+           bw.line_dave, bw.lesson, bw.line_lesson, bw.belt_lesson, bw.line_play, bw.first_zombie, bw.belt,
+           bw.explodenuts, B.mode == MODE_BOWLING ? B.planted : 0, bw.bounced, bw.exploded, bw.cones, bw.huge, bw.final,
+           bw.flag, bw.stalled, bw.came);
   return 0;
 }

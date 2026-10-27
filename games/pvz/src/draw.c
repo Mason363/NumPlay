@@ -576,7 +576,7 @@ void draw_lawn(bool hud_mower) {
     for (float x = ice->x; x < 820; x += 75)
       gfx_anim(I_ICE_TRAIL, 0, SX(x), SY(row_y(r, x) - 22), 0, TINT_NONE, a);
   }
-  if (B.mode == MODE_BOWLING) gfx_image(I_BOWLING_STRIPE, SX(BOARD_LEFT + 3 * CELL_W), SY(BOARD_TOP + 250));
+  if (bowling_line()) gfx_image(I_BOWLING_STRIPE, SX(BOARD_LEFT + 3 * CELL_W), SY(BOARD_TOP + 250));
   /* row by row, from the back */
   for (int r = 0; r < B.nrows; r++) {
     for (int i = 0; i < B.ngraves; i++)
