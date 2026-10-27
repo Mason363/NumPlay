@@ -92,6 +92,7 @@ jobs:
           make -C games/turborush host test BUILD_DIR=../../build/data/games/turborush
           make -C games/angrybirds host test
           make -C games/polytrack host test
+          make -C games/paperclips host test
 
 
 

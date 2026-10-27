@@ -268,6 +268,11 @@ GAMES = {
     "polytrack": ("PolyTrack.nwa", "polytrack.sav",
                   presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "ok"), (4300, "ok"), (9500, "back"))
                   + [(5000, 9000, K["up"])], 11000, presses((1500, "ok"), (2200, "ok")) + [(3000, 6500, K["up"])], 7500),
+    # how to play (the first time: OK starts), then Make Paperclip held, Back to pause (that saves); Home keeps the
+    # clips. Next time, from the copy, no guide: a clip more, quit with On/Off
+    "paperclips": ("UniversalPaperclips.nwa", "paperclips.sav",
+                   presses((1500, "ok"), (4500, "back")) + [(2200, 4000, K["ok"])], 6000,
+                   presses((1500, "ok"), (2000, "ok")), 4000),
     # a level, its message, then play; then back to the level select
     "portal": ("PortalReturns.nwa", "portal.sav",
                presses((1500, "ok"), (2500, "ok"), (3500, "ok")) + every(4000, 7000, 400, "right", 300), 8000,
@@ -335,7 +340,17 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "donkeykong": "donkeykong_saves.py", "dune": "dune_saves.py", "monkeymart": "monkeymart_saves.py",
           "tombofthemask": "tombofthemask_saves.py", "uno": "uno_saves.py",
           "fnf": "fnf_saves.py", "turborush": "turborush_saves.py",
-          "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py"}
+          "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py"}
+
+
+def paperclips_ok(v):
+    """Universal Paperclips' save: "UPC1", version 1, 3400 bytes, an FNV-1a sum of the rest at the end"""
+    if len(v) != 3400 or v[:4] != b"UPC1" or struct.unpack_from("<HH", v, 4) != (1, 3400):
+        return False
+    h = 2166136261
+    for x in v[:-4]:
+        h = (h ^ x) * 16777619 & 0xFFFFFFFF
+    return struct.unpack_from("<I", v, len(v) - 4)[0] == h
 
 
 def polytrack_ok(v):
@@ -514,6 +529,10 @@ CHECKS = {
     # after the reinstall, from the copy, the same
     "polytrack": (lambda v: polytrack_ok(v) and v[763] == 1 and v[760] == 0,
                   lambda v: polytrack_ok(v) and v[763] == 1),
+    # "UPC1", version 1, its size (3400): how to play shown (guide at 8), clips made (the first number, at 12); after the
+    # reinstall, from the copy, one more
+    "paperclips": (lambda v: paperclips_ok(v) and v[8] == 1 and struct.unpack_from("<d", v, 12)[0] >= 10,
+                   lambda v: paperclips_ok(v) and v[8] == 1 and struct.unpack_from("<d", v, 12)[0] >= 11),
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept

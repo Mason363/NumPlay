@@ -1,7 +1,7 @@
 /* ui.h: the game's page, for 320 x 240 and the keypad.
  *
  * The web page has three columns; here they are tabs with the page's own sections: Clips (Make Paperclip and
- * Manufacturing), Business, Wire (Wire Production), Power, Space (Space Exploration), Probes (Von Neumann Probe
+ * Manufacturing), Business, Wire (Wire Production), Power, Space (Space Exploration and Von Neumann Probe
  * Design), Combat (the battle canvas, at its own 310 x 150), Computer (Computational Resources, the swarm and
  * Quantum Computing), Projects, Invest (Investments) and Strategy (Strategic Modeling), each shown when the game
  * shows its section. The console stays at the top, Paperclips under it. The page's look: white, black text, grey
@@ -56,6 +56,11 @@ static int glyph_at(uint8_t b) {
 static int text_w(const np_font_t *f, const char *s) {
   int w = 0;
   for (; *s; s++) w += f->glyphs[glyph_at((uint8_t)*s)].advance;
+  return w;
+}
+static int text_wn(const np_font_t *f, const char *s, int n) {
+  int w = 0;
+  for (int i = 0; i < n && s[i]; i++) w += f->glyphs[glyph_at((uint8_t)s[i])].advance;
   return w;
 }
 static void draw_text(const np_font_t *f, int x, int base, const char *s, color_t c, int a) {
@@ -172,9 +177,17 @@ static void heading(const char *s) {
   fill(LEFT, cy + 15, WIDTH, 1, C_LINE);
   cy += 19;
 }
-static void line(const char *s) {
-  text(BODY, LEFT, cy + 11, s, C_TEXT);
-  cy += 14;
+static void line(const char *s) {   /* a line of text; too long, it goes on under, indented */
+  int x = LEFT, w = WIDTH;
+  while (*s) {
+    const char *next;
+    int n = wrap(BODY, s, w, &next);
+    char *t = P(n + 1);
+    memcpy(t, s, (size_t)n), t[n] = 0;
+    text(BODY, x, cy + 11, t, C_TEXT);
+    cy += 14;
+    s = next, x = LEFT + 12, w = WIDTH - 12;
+  }
 }
 static void line_small(const char *s, color_t c) {
   const char *p = s;
@@ -198,6 +211,7 @@ static int button(int id, int x, const char *label) {
     text(BODY, x + 6, cy + 12, label, C_BLACK);
   } else {
     grad(x, cy, w, BTN_H, 0xFFFFFF, 0xD7D7D7);
+    frame(x, cy, w, BTN_H, 1, HEX(0xC4C4C4));
     text(BODY, x + 6, cy + 12, label, HEX(0x8C8C8C));
   }
   if (f) frame(x - 2, cy - 2, w + 4, BTN_H + 4, 2, C_FOCUS);
@@ -332,7 +346,13 @@ static void tab_power(void) {
   drone_rows(B_BATT1, "Battery Tower", g->batteryLevel, g->batteryBill, g->batteryCost);
 }
 
+static void tab_probes(void);
+static void space_exploration(void);
 static void tab_space(void) {
+  if (!(g->dismantle >= 1 && g->endTimer1 >= 150)) space_exploration();
+  tab_probes();
+}
+static void space_exploration(void) {
   heading("Space Exploration");
   line(S2(js_tofixed(100 / (g->totalMatter / g->foundMatter), 12, P(40), 40), "% of universe explored"));
   int x = button(B_PROBE, LEFT, "Launch Probe");
@@ -624,9 +644,9 @@ bool ui_tab_shown(int t) {
     case T_BUSINESS: return g->humanFlag == 1;
     case T_WIRE: return g->humanFlag == 0 && g->wireProductionFlag == 1 && g->dismantle < 2;
     case T_POWER: return g->flag[P127] == 1 && g->spaceFlag == 0;
-    case T_SPACE: return g->spaceFlag == 1 && !(g->dismantle >= 1 && g->endTimer1 >= 150);
-    case T_PROBES:
-      return g->spaceFlag == 1 && (g->dismantle < 1 || g->endTimer1 < 50 || (g->flag[P121] == 1 && g->endTimer1 < 100));
+    case T_SPACE:   /* Space Exploration and the probes' design */
+      return g->spaceFlag == 1 && (g->dismantle < 1 || g->endTimer1 < 150);
+    case T_PROBES: return false;
     case T_COMBAT: return g->battleFlag == 1 && !(g->dismantle >= 1 && g->endTimer1 >= 190);
     case T_COMPUTER: return g->compFlag == 1 && g->dismantle < 7;
     case T_PROJECTS: return g->projectsFlag == 1 && g->dismantle < 7;
@@ -843,12 +863,18 @@ static void header(void) {
     text(TITLE, LEFT, HDR_Y + 18, all, C_BLACK);
   } else if (text_w(BODY, all) <= WIDTH) {
     text(BODY, LEFT, HDR_Y + 15, all, C_BLACK);
-  } else {
+  } else if (text_w(SMALL, digits) <= WIDTH) {   /* the count spelled out, then its digits */
     if (!crunched) crunched = sp(js_round(g->clips));
-    text(SMALL, LEFT, HDR_Y + 9, S3("Paperclips: ", crunched, ""), C_BLACK);
-    int w = text_w(SMALL, digits);
-    if (w > WIDTH + 6) w = WIDTH + 6;
+    text(SMALL, LEFT, HDR_Y + 9, S2("Paperclips: ", crunched), C_BLACK);
     text(SMALL, LEFT, HDR_Y + 20, digits, C_TEXT);
+  } else {   /* the digits on two lines, cut after a comma */
+    int n = (int)strlen(digits), cut = 0;
+    for (int i = 0; i < n; i++)
+      if (digits[i] == ',' && text_w(SMALL, "Paperclips: ") + text_wn(SMALL, digits, i + 1) <= WIDTH) cut = i + 1;
+    char *a = P(cut + 1);
+    memcpy(a, digits, (size_t)cut), a[cut] = 0;
+    text(SMALL, LEFT, HDR_Y + 9, S2("Paperclips: ", a), C_BLACK);
+    text(SMALL, LEFT + text_w(SMALL, "Paperclips: "), HDR_Y + 20, digits + cut, C_BLACK);
   }
 }
 
@@ -863,9 +889,11 @@ static void tabs(pc_ui *u) {
   int shown[T_COUNT], n = 0, total = 0;
   for (int t = 0; t < T_COUNT; t++)
     if (ui_tab_shown(t)) shown[n++] = t, total += text_w(SMALL, TAB_NAME[t]);
+  bool marked = new_projects(u) && u->tab != T_PROJECTS && ui_tab_shown(T_PROJECTS);
+  if (marked) total += 6;
   int pad = n ? (SCREEN_W - total) / n : 0;
   if (pad > 16) pad = 16;
-  if (pad < 4) pad = 4;
+  if (pad < 2) pad = 2;
   int x = 0;
   for (int k = 0; k < n; k++) {
     int t = shown[k], w = text_w(SMALL, TAB_NAME[t]) + pad;

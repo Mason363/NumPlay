@@ -1214,5 +1214,26 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/polytrack",
     "default": false,
     "xl": true
+  },
+  {
+    "id": "paperclips",
+    "rank": 27,
+    "title": "Universal Paperclips",
+    "tagline": "Turn everything into paperclips",
+    "credit": "Based on Universal Paperclips by Frank Lantz",
+    "top": "0x8E96A3",
+    "bottom": "0x24282F",
+    "accent": "0xE9EDF3",
+    "colors": 16,
+    "records": [
+      "paperclips.sav",
+      "paperclips_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/paperclips",
+    "default": false,
+    "xl": true
   }
 ]
