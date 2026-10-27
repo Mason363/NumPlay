@@ -378,18 +378,7 @@ static void fireball(const Entity *from, float x, float y, float z, float dx, fl
     (void)from;
 }
 /* explosion power p, setting fire about it (Explosion with isFlaming) */
-static void explode_fire(float x, float y, float z, float p, bool blocks, bool flame) {
-    explode(x, y, z, p, blocks);
-    if (!flame || !blocks) return;
-    int r = (int)ceilf(p) + 1;
-    for (int dy = -r; dy <= r; dy++)
-        for (int dz = -r; dz <= r; dz++)
-            for (int dx = -r; dx <= r; dx++) {
-                int bx = ifl(x) + dx, by = ifl(y) + dy, bz = ifl(z) + dz;
-                if (dx * dx + dy * dy + dz * dz > r * r || rnd(3)) continue;
-                if (world_get(bx, by, bz) == B_AIR && (blk_flags[world_get(bx, by - 1, bz)] & BF_OPAQUE)) fire_set(bx, by, bz, 0);
-            }
-}
+static void explode_fire(float x, float y, float z, float p, bool blocks, bool flame) { explode_ex(x, y, z, p, blocks, flame); }
 static void fireball_tick(Entity *e) {
     bool small = e->item.aux == 1;
     float ay = e->limb;
@@ -660,6 +649,7 @@ static void ender_tick(Entity *e) {
 /* the dimensions' creatures each tick: the ones that are all theirs (true), or what the others do before
  * they go on as zombies do */
 void dragon_tick(Entity *e);     /* (end.c) */
+void crystal_gone(Entity *e);    /* (end.c) */
 static bool dims_tick(Entity *e) {
     if (e->type == E_FIREBALL) {
         fireball_tick(e);
@@ -674,7 +664,11 @@ static bool dims_tick(Entity *e) {
         return true;
     }
     if (e->type == E_CRYSTAL) {
-        /* EntityEnderCrystal: fire where it is, in the End */
+        /* EntityEnderCrystal: fire where it is, in the End; caught in an explosion, it blows up */
+        if (e->health <= 0) {
+            crystal_gone(e);
+            return true;
+        }
         if (e->hurt > 0) e->hurt--;
         if (dim == DIM_END && world_get(ifl(e->x), ifl(e->y), ifl(e->z)) == B_AIR) world_set(ifl(e->x), ifl(e->y), ifl(e->z), B_FIRE);
         return true;
@@ -692,7 +686,6 @@ static bool dims_tick(Entity *e) {
 
 /* the dimensions' creatures hurt (after their health went down) */
 void dragon_hurt(Entity *e, float dmg);   /* (end.c) */
-void crystal_gone(Entity *e);             /* (end.c) */
 static void dims_hurt(Entity *e, float kx, float kz) {
     if (e->type == E_PIGMAN && (kx != 0 || kz != 0)) {
         /* EntityPigZombie.becomeAngryAt: every pigman within 32 */

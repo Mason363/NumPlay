@@ -489,7 +489,7 @@ static void push_player(float kx, float kz, float s) {
   if (pl.vy > 0.4f) pl.vy = 0.4f;
 }
 
-/* ---------------------------------------------------------------- explosions (Explosion, power 3) */
+/* ---------------------------------------------------------------- explosions (Explosion) */
 /* EntityTNTPrimed: lit TNT hops up, a little to one side, and blows when its fuse is out */
 void tnt_light(int x, int y, int z, int fuse) {
   Entity *t = ent_new(E_TNT, x + 0.5f, (float)y, z + 0.5f);
@@ -499,50 +499,134 @@ void tnt_light(int x, int y, int z, int fuse) {
   t->vx = -sinf(a) * 0.02f, t->vy = 0.2f, t->vz = -cosf(a) * 0.02f;
 }
 
-void explode(float x, float y, float z, float power, bool blocks) {
-  int r = blocks ? (int)ceilf(power) : -1;
-  for (int dy = -r; dy <= r; dy++)
-    for (int dz = -r; dz <= r; dz++)
-      for (int dx = -r; dx <= r; dx++) {
-        float d = sqrtf((float)(dx * dx + dy * dy + dz * dz));
-        /* the blast fades with distance and randomly (0.7 to 1.3 of the power), blocks resist it */
-        float f = power * (0.7f + rndf() * 0.6f) - d * 0.9f;
-        int bx = ifl(x) + dx, by = ifl(y) + dy, bz = ifl(z) + dz;
-        int b = world_get(bx, by, bz);
-        if (b == B_AIR || blk_model[b] == M_LIQUID || blk_hard[b] == 255 || b == B_OBSIDIAN) continue;
-        float resist = blk_hard[b] / 20.0f * 5 / 5 + 0.3f;   /* (blast resistance, about the hardness) */
-        if (f - resist * 0.3f <= 0) continue;
-        if (b == B_CHEST || b == B_FURNACE || b == B_FURNACE_LIT) tiles_removed(bx, by, bz);
-        world_set(bx, by, bz, B_AIR);
-        if (b == B_TNT) {
-          /* TNT caught in a blast is lit, with a shorter fuse */
-          tnt_light(bx, by, bz, 10 + rnd(20));
-          continue;
-        }
-        /* one in power of the blocks drop */
-        if (rnd((int)power) == 0 && rule(GR_TILE_DROPS)) {
-          Stack out[2];
-          int n = block_drops(b, I_DIAMOND_PICKAXE, out);
-          for (int i = 0; i < n; i++) ent_drop(out[i].id, out[i].aux, 0, bx + 0.5f, by + 0.5f, bz + 0.5f, false);
-        }
-      }
-  /* the player: up to 2 x power blocks away, (impact^2 + impact) / 2 x 7 x 2 power + 1 */
-  float px = pl.x - x, py = pl.y + 0.9f - y, pz = pl.z - z;
-  float dist = sqrtf(px * px + py * py + pz * pz) / (power * 2);
-  if (dist <= 1) {
-    float impact = 1 - dist;
-    float dmg = (impact * impact + impact) / 2 * 7 * power * 2 + 1;
-    player_hurt(scaled(dmg), DMG_EXPLOSION);
-    push_player(px, pz, impact);
-  }
-  for (int i = 0; i < N_ENT; i++) {
-    Entity *e = &ents[i];
-    if (NOT_MOB(e->type)) continue;
-    float ex = e->x - x, ez = e->z - z, ey = e->y - y;
-    float d = sqrtf(ex * ex + ey * ey + ez * ez) / (power * 2);
-    if (d <= 1) hurt(e, ((1 - d) * (1 - d) + (1 - d)) / 2 * 7 * power * 2 + 1, ex, ez);
-  }
+/* Block.getExplosionResistance: a fifth of its resistance, which Block.setHardness makes at least five
+ * times the hardness and setResistance three times what it is given (Block.registerBlocks); here by
+ * block id where that is not a fifth of five times the hardness */
+static const uint8_t res_id[] = {7, 119, 120, 137, 49, 116, 145, 130, 8, 9, 10, 11, 121, 122, 154, 159, 172, 90,
+                                 1, 4, 41, 42, 43, 44, 45, 48, 57, 67, 84, 98, 101, 108, 109, 112, 113, 114, 133, 139,
+                                 152, 168, 173, 181, 182, 5, 53, 85, 107, 125, 126, 127, 134, 135, 136, 163, 164};
+static const float res_of[] = {3600000, 1200, 600, 100, 9, 4.8f, 4.2f, 0, 6, 3};
+static const uint8_t res_n[] = {4, 3, 1, 4, 2, 1, 2, 1, 25, 12};   /* (how many ids of each) */
+static float resistance(int b) {
+  int id = blk_id[b];
+  if (id >= 183 && id <= 192) return 3;   /* (the fences and gates of other woods) */
+  for (int k = 0, i = 0; k < (int)sizeof res_n; k++)
+    for (int n = res_n[k]; n--; i++)
+      if (res_id[i] == id) return res_of[k];
+  return blk_hard[b] / 20.0f;
 }
+
+/* nothing with these flags between two places (looked at every step of the way, not at its ends) */
+static bool line_clear(float x, float y, float z, float dx, float dy, float dz, float step, int flags) {
+  int n = (int)(sqrtf(dx * dx + dy * dy + dz * dz) / step);
+  for (int k = 1; k < n; k++) {
+    float t = (float)k / n;
+    if (blk_flags[world_get(ifl(x + dx * t), ifl(y + dy * t), ifl(z + dz * t))] & flags) return false;
+  }
+  return true;
+}
+
+/* Explosion: doExplosionA's rays, then what they do to entities (with the blocks still there) and to
+ * blocks (doExplosionB), fire about it if flame (isFlaming) */
+#if NB_DIMS
+#define XR 12   /* (how far a ray of power 6, or 4, can reach: 1.3 x power / 0.225 x 0.3) */
+#else
+#define XR 8
+#endif
+static void explode_ex(float x, float y, float z, float power, bool blocks, bool flame) {
+  enum { XS = 2 * XR + 1 };
+  uint8_t set[(XS * XS * XS + 7) / 8];
+  memset(set, 0, sizeof set);
+  int cx = ifl(x) - XR, cy = ifl(y) - XR, cz = ifl(z) - XR;
+  /* a ray to each of the 1352 points on the sides of a cube of 16: strong 0.7 to 1.3 times the power,
+   * it loses 0.225 each 0.3 it goes and (resistance + 0.3) x 0.3 in each block it meets; the blocks it
+   * reaches still strong go */
+  if (blocks || flame)
+    for (int j = 0; j < 16; j++)
+      for (int k = 0; k < 16; k++)
+        for (int l = 0; l < 16; l++) {
+          if (j && j != 15 && k && k != 15 && l && l != 15) continue;
+          float dx = j / 15.0f * 2 - 1, dy = k / 15.0f * 2 - 1, dz = l / 15.0f * 2 - 1;
+          float d = sqrtf(dx * dx + dy * dy + dz * dz) / 0.3f, px = x, py = y, pz = z;
+          dx /= d, dy /= d, dz /= d;
+          for (float f = power * (0.7f + rndf() * 0.6f); f > 0; f -= 0.225f) {
+            int bx = ifl(px), by = ifl(py), bz = ifl(pz), b = world_get(bx, by, bz);
+            if (b != B_AIR) f -= (resistance(b) + 0.3f) * 0.3f;
+            unsigned ix = (unsigned)(bx - cx), iy = (unsigned)(by - cy), iz = (unsigned)(bz - cz);
+            if (f > 0 && ix < XS && iy < XS && iz < XS) {
+              unsigned i = (iy * XS + iz) * XS + ix;
+              set[i >> 3] |= (uint8_t)(1 << (i & 7));
+            }
+            px += dx, py += dy, pz += dz;
+          }
+        }
+  /* entities within twice the power: hurt by (impact^2 + impact) / 2 x 8 x 2 power + 1 and pushed away by
+   * the impact, (1 - distance / 2 power) x how much of them it sees */
+  float f3 = power * 2;
+  for (int i = -1; i < N_ENT; i++) {
+    Entity *e = &ents[i < 0 ? 0 : i];
+    int t = i < 0 ? -1 : e->type;
+    float *p = i < 0 ? &pl.x : &e->x;   /* (where it is, then how it moves: the player's are laid out alike) */
+    if (!t || (t < 0 && (pl.dead || pl.mode == 1 || pl.mode == 3))) continue;
+    float w = t < 0 ? 0.6f : mob_width(t), h = t < 0 ? 1.8f : mob_height(t);
+    float rx = p[0] - x, ry = p[1] - y, rz = p[2] - z, d12 = sqrtf(rx * rx + ry * ry + rz * rz) / f3;
+    ry += t < 0 ? 1.62f : h * 0.85f;   /* (the way: to the eyes) */
+    float d13 = sqrtf(rx * rx + ry * ry + rz * rz);
+    if (d12 > 1 || d13 == 0) continue;
+    /* World.getBlockDensity: the part of the points across its box (steps of 1 / (2 size + 1)) that see
+     * the middle past every solid block */
+    float sx = 1 / (w * 2 + 1), sy = 1 / (h * 2 + 1), o = (1 - floorf(1 / sx) * sx) / 2 - w / 2;
+    int seen = 0, all = 0;
+#if NB_DIMS
+    if (t == E_DRAGON) seen = all = 1;   /* (out in the air, all of its huge box) */
+#endif
+    for (float f = all * 2; f <= 1; f += sx)
+      for (float f1 = 0; f1 <= 1; f1 += sy)
+        for (float f2 = 0; f2 <= 1; f2 += sx, all++) {
+          float px = p[0] + w * f + o, py = p[1] + h * f1, pz = p[2] + w * f2 + o;
+          seen += line_clear(px, py, pz, x - px, y - py, z - pz, 0.25f, BF_SOLID);
+        }
+    float d10 = (1 - d12) * seen / all, dmg = (float)(int)((d10 * d10 + d10) / 2 * 8 * f3 + 1);
+    if (t < 0) player_hurt(scaled(dmg), DMG_EXPLOSION);
+#if NB_DIMS
+    else if (t == E_CRYSTAL) {   /* (it blows up in its next tick, not inside this explosion) */
+      e->health = 0;
+      continue;
+    }
+#endif
+    else if (IS_MOB(t)) hurt(e, dmg, 0, 0);
+    else if (t == E_ITEM && dmg >= 5) {   /* (an item has 5 health) */
+      e->type = E_NONE;
+      continue;
+    }
+    d10 /= d13;
+    p[3] += rx * d10, p[4] += ry * d10, p[5] += rz * d10;
+  }
+  /* doExplosionB: the blocks reached go (TNT lit, with a shorter fuse); one in power of them drop */
+  unsigned i = 0;
+  for (int by = cy; by < cy + XS; by++)
+    for (int bz = cz; bz < cz + XS; bz++)
+      for (int bx = cx; bx < cx + XS; bx++, i++) {
+        if (!(set[i >> 3] >> (i & 7) & 1)) continue;
+        int b = world_get(bx, by, bz);
+        if (blocks && b != B_AIR) {
+          if (b == B_CHEST || b == B_FURNACE || b == B_FURNACE_LIT) tiles_removed(bx, by, bz);
+          world_set(bx, by, bz, B_AIR);
+          if (b == B_TNT) tnt_light(bx, by, bz, 10 + rnd(20));
+          else if (rndf() < 1 / power && rule(GR_TILE_DROPS)) {
+            Stack out[2];
+            int n = block_drops(b, I_DIAMOND_PICKAXE, out);
+            for (int q = 0; q < n; q++) ent_drop(out[q].id, out[q].aux, 0, bx + 0.5f, by + 0.5f, bz + 0.5f, false);
+          }
+        }
+#if NB_DIMS
+        /* isFlaming: fire on one in three of the air reached over a whole block */
+        if (flame && world_get(bx, by, bz) == B_AIR && (blk_flags[world_get(bx, by - 1, bz)] & BF_OPAQUE) && !rnd(3))
+          fire_set(bx, by, bz, 0);
+#endif
+      }
+}
+void explode(float x, float y, float z, float power, bool blocks) { explode_ex(x, y, z, power, blocks, false); }
 
 /* ---------------------------------------------------------------- arrows */
 static void shoot(const Entity *from) {
@@ -648,7 +732,7 @@ static void tnt_tick(Entity *e) {
   if (ground) e->vx *= 0.7f, e->vz *= 0.7f, e->vy *= -0.5f;
   if (--e->delay <= 0) {
     e->type = E_NONE;
-    explode(e->x, e->y + 0.49f, e->z, 4, true);
+    explode(e->x, e->y + 0.06125f, e->z, 4, true);   /* (its height / 16 up) */
   }
 }
 
@@ -656,14 +740,8 @@ static void tnt_tick(Entity *e) {
 /* ---------------------------------------------------------------- finding the way */
 /* EntitySenses.canSee: nothing opaque between its eyes and the player's */
 static bool sees(const Entity *e) {
-  float x = e->x, y = e->y + info[e->type].h * 0.85f, z = e->z;
-  float dx = pl.x - x, dy = pl.y + 1.62f - y, dz = pl.z - z, d = sqrtf(dx * dx + dy * dy + dz * dz);
-  int n = (int)(d / 0.4f);
-  for (int k = 1; k < n; k++) {
-    float t = (float)k / n;
-    if (blk_flags[world_get(ifl(x + dx * t), ifl(y + dy * t), ifl(z + dz * t))] & BF_OPAQUE) return false;
-  }
-  return true;
+  float y = e->y + info[e->type].h * 0.85f;
+  return line_clear(e->x, y, e->z, pl.x - e->x, pl.y + 1.62f - y, pl.z - e->z, 0.4f, BF_OPAQUE);
 }
 /* where a mob as tall as h can stand, going from height y onto the column (x, z): up a step, level,
  * or down up to three (PathFinder.getSafePoint); -1: nowhere */
@@ -886,7 +964,7 @@ void mob_tick(Entity *e) {
       else if (e->delay > 0) e->delay++, go = dist > 2;
       if (e->delay >= 30) {
         e->type = E_NONE;
-        explode(e->x, e->y + 0.85f, e->z, opt.difficulty ? 3 : 0, rule(GR_MOB_GRIEFING));
+        explode(e->x, e->y, e->z, opt.difficulty ? 3 : 0, rule(GR_MOB_GRIEFING));
         return;
       }
     }

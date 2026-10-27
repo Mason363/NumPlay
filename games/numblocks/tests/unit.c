@@ -1,5 +1,6 @@
 /* Checks of the item rules: crafting, stacking, smelting, drops. */
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
 #include "nb.h"
@@ -162,6 +163,49 @@ int main(void) {
     while (t < 400000 && world_get(9, y, 8) == B_TNT) ticks_run++, world_tick(), t++;
     CHECK(world_get(9, y, 8) != B_TNT);
     plat_remove_prefix("ut5");
+  }
+  /* explosions as Explosion's rays: TNT walled in bedrock leaves what is past it, obsidian takes a blast that
+   * takes stone, a wall keeps the player behind it from harm (getBlockDensity) */
+  {
+    world_new(0, "ut6");
+    world_follow(8, 70, 8);
+    int y = 70;
+    for (int z = 0; z <= 16; z++)
+      for (int x = 0; x <= 16; x++)
+        for (int k = -3; k <= 5; k++) world_set(x, y + k, z, k < 0 ? B_STONE : B_AIR);
+    for (int dz = -2; dz <= 2; dz++)
+      for (int dy = -2; dy <= 2; dy++)
+        for (int dx = -2; dx <= 2; dx++)
+          world_set(8 + dx, y + 1 + dy, 8 + dz, abs(dx) == 2 || abs(dy) == 2 || abs(dz) == 2 ? B_STONE : B_BEDROCK);
+    world_set(8, y + 1, 8, B_AIR);
+    explode(8.5f, y + 1.06125f, 8.5f, 4, true);
+    int left = 0;
+    for (int dz = -2; dz <= 2; dz++)
+      for (int dy = -2; dy <= 2; dy++)
+        for (int dx = -2; dx <= 2; dx++) left += world_get(8 + dx, y + 1 + dy, 8 + dz) != B_AIR;
+    CHECK(left == 5 * 5 * 5 - 1);
+    /* in the open: stone next to it goes, obsidian stays, and a wall of obsidian shields stone behind it */
+    for (int z = 0; z <= 16; z++)
+      for (int x = 0; x <= 16; x++)
+        for (int k = -3; k <= 5; k++) world_set(x, y + k, z, k < 0 ? B_STONE : B_AIR);
+    world_set(9, y, 8, B_OBSIDIAN);
+    world_set(7, y, 8, B_STONE);
+    for (int k = 0; k <= 3; k++)
+      for (int dz = -3; dz <= 3; dz++) world_set(5, y + k, 8 + dz, B_OBSIDIAN);
+    world_set(4, y, 8, B_DIRT);
+    explode(8.5f, y + 0.06125f, 8.5f, 4, true);
+    CHECK(world_get(8, y - 1, 8) == B_AIR && world_get(7, y, 8) == B_AIR);
+    CHECK(world_get(9, y, 8) == B_OBSIDIAN && world_get(5, y, 8) == B_OBSIDIAN && world_get(4, y, 8) == B_DIRT);
+    CHECK(world_get(8, y - 3, 1) == B_STONE && world_get(15, y - 1, 15) == B_STONE);
+    /* the player: behind the wall only the 1 every blast in reach does, in the open hurt and pushed away */
+    pl.mode = 0, pl.dead = false, pl.invuln = 0, pl.health = 20, opt.difficulty = 2;
+    pl.x = 3.5f, pl.y = (float)y, pl.z = 8.5f, pl.vx = pl.vy = pl.vz = 0;
+    explode(8.5f, y + 0.06125f, 8.5f, 4, false);
+    CHECK(pl.health == 19 && pl.vx == 0);
+    pl.x = 8.5f, pl.z = 11.5f, pl.y = (float)y;
+    explode(8.5f, y + 0.06125f, 8.5f, 4, false);
+    CHECK(pl.health <= 0 && pl.vz > 0.5f);
+    plat_remove_prefix("ut6");
   }
   /* two cows fed wheat make a calf (EntityAIMate) */
   {
