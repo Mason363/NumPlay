@@ -25,7 +25,7 @@ static inline uint16_t *row_at(int y) { return clip_buf + (y - clip_y0) * SCREEN
 static void sprite_part(int id, int x, int y, int sx, int sy, int w, int h) {
   int stride = (spr_w[id] + 1) / 2;
   const uint8_t *px = spr_px + spr_off[id];
-  const uint16_t *pal = spr_pal[id];
+  const uint16_t *pal = SPR_PAL(id);
   /* (the rows in the strip, the columns on the screen) */
   int r0 = clip_y0 - y > 0 ? clip_y0 - y : 0, r1 = clip_y1 - y < h ? clip_y1 - y : h;
   int c0 = x < 0 ? -x : 0, c1 = x + w > SCREEN_W ? SCREEN_W - x : w;
@@ -436,7 +436,7 @@ static void credits_screen(void) {
   if (f3 > 1) f3 = 1;
   int lum = (int)(f3 * f3 * 96 / 64 * 256);   /* (the tiles' palette has 64 / 255) */
   const uint8_t *px = spr_px + spr_off[SP_DIRT_BG];
-  const uint16_t *pal = spr_pal[SP_DIRT_BG];
+  const uint16_t *pal = SPR_PAL(SP_DIRT_BG);
   int scroll = (int)(tk * 0.25f);
   for (int y = clip_y0; y < clip_y1; y++) {
     uint16_t *d = row_at(y);
@@ -1760,7 +1760,7 @@ static void dirt_background(void) {
   /* GuiScreen.drawBackground: the options background, 32 pixel tiles, darkened */
   int id = SP_DIRT_BG;
   const uint8_t *px = spr_px + spr_off[id];
-  const uint16_t *pal = spr_pal[id];
+  const uint16_t *pal = SPR_PAL(id);
   for (int y = clip_y0; y < clip_y1; y++) {
     uint16_t *d = row_at(y);
     const uint8_t *s = px + ((y / 2) & 15) * 8;

@@ -156,8 +156,8 @@ static __attribute__((noinline)) uint16_t sky(float dx, float dy, float dz, floa
       int c0 = sp == SP_SUN ? 2 : 8, w = spr_w[sp];
       int iu = (int)u - c0, iv = (int)v - c0;
       if ((unsigned)iu < (unsigned)w && (unsigned)iv < (unsigned)w) {
-        uint8_t q = spr_px[spr_off[sp] + iv * ((w + 1) / 2) + (iu >> 1)];
-        uint16_t c = spr_pal[sp][(iu & 1) ? q >> 4 : q & 15];
+        uint8_t q = spr_px[spr_off[sp] + iv * ((w + 1) / 2) + (iu >> 1)], k = (iu & 1) ? q >> 4 : q & 15;
+        uint16_t c = k ? SPR_PAL(sp)[k] : 0;
         r += (int)(r5(c) * sun_a), g += (int)(g6(c) * sun_a), b += (int)(b5(c) * sun_a);
       }
     }
@@ -232,8 +232,8 @@ static inline __attribute__((always_inline)) uint16_t sky_px(const SkyRow *k, fl
       int c0 = sp == SP_SUN ? 2 : 8, w = spr_w[sp];
       int iu = (int)u - c0, iv = (int)v - c0;
       if ((unsigned)iu < (unsigned)w && (unsigned)iv < (unsigned)w) {
-        uint8_t q = spr_px[spr_off[sp] + iv * ((w + 1) / 2) + (iu >> 1)];
-        uint16_t c = spr_pal[sp][(iu & 1) ? q >> 4 : q & 15];
+        uint8_t q = spr_px[spr_off[sp] + iv * ((w + 1) / 2) + (iu >> 1)], k = (iu & 1) ? q >> 4 : q & 15;
+        uint16_t c = k ? SPR_PAL(sp)[k] : 0;
         r += (int)(r5(c) * sun_a), g += (int)(g6(c) * sun_a), b += (int)(b5(c) * sun_a);
       }
     }
@@ -1496,7 +1496,7 @@ static bool item_hit(const Draw *dr, const float *d, float *best_t, uint16_t *co
   int i = (pxu & 1) ? px[pxu >> 1] >> 4 : px[pxu >> 1] & 15;
   if (!i) return false;
   *best_t = t;
-  *col = lit565(spr_pal[ic][i], 1, dr->light, t * sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]));
+  *col = lit565(SPR_PAL(ic)[i], 1, dr->light, t * sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]));
   return true;
 }
 

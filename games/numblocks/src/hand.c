@@ -298,7 +298,7 @@ static inline int sprite_texel(int id, int u, int v) {   /* -1: see-through */
   u = u * w >> 4, v = v * h >> 4;
   const uint8_t *s = spr_px + spr_off[id] + v * ((w + 1) / 2);
   int i = (u & 1) ? s[u >> 1] >> 4 : s[u >> 1] & 15;
-  return i ? spr_pal[id][i] : -1;
+  return i ? SPR_PAL(id)[i] : -1;
 }
 static inline int clamp15(float x) { int i = (int)x; return i < 0 ? 0 : i > 15 ? 15 : i; }   /* (below 0 is 0 anyway) */
 
