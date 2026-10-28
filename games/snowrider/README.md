@@ -24,7 +24,7 @@
 
 * **The game's own slope:** made as Snow Rider 3D makes it, 10 metres at a time from its forest and plains, with the same structures, chunks, trees, rocks, snowmen, stumps and fences, turned at random as in the game.
 * **Tunnels, cracks and floating islands:** past 10 points the slope throws in tunnels, ramps over a crack and islands floating over the void, and rows of giant snowballs roll across it.
-* **The game's sled:** its speed, which grows with your score, its turning, its jump and its gravity, and the four rays that tell when it hits something, all with Snow Rider 3D's numbers.
+* **The game's sled:** its speed, which grows with your score, its turning, its jump and its gravity, and the three rays that tell when it hits something (the game has a fourth, switched off), all with Snow Rider 3D's numbers.
 * **Its camera and look:** the view from just behind the sled, leaning with the turns and the slopes, the world bending away over a near horizon, the low-poly colours, the sun and the falling snow.
 * **Gifts and 11 sleds:** pick up the gifts on the slope and spend them on the Metal Sleigh, the Santa Sleigh and the rest, each with its own model.
 * **Crashes:** the sled breaks into its pieces, time slows down and the camera turns around the wreck.
@@ -70,7 +70,7 @@ In the menus, the arrows choose, **OK** picks and **Back** goes back. 8, 4, 6, 2
 
 * **On its own:** Snow Rider 3D is too big to fit next to NumPlay. Installing it from the NumWorks website swaps out NumPlay and the other apps, and installing NumPlay again swaps it back out. Your progress in each one is kept.
 * **Quit game** in the pause menu asks first.
-* The meshes have fewer triangles than the game's, each with a simpler version for far away, so that it runs at about 37 frames a second on the N0110. Only the sled casts a shadow.
+* The meshes have fewer triangles than the game's, each with a simpler version for far away, so that it runs at about 38 frames a second on the N0110 (31 on the crash). The walls, ramps and rocks the sled meets keep all their triangles. Only the sled casts a shadow.
 * There is no music or sound: the calculator has no speaker.
 
 ## Credits

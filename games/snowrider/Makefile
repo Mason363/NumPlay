@@ -2,7 +2,8 @@
 #   make            output/snowrider.nwa
 #   make check      link it like the calculator does (output/snowrider.bin)
 #   make host       build/play: the game on a computer, scripted keys and pictures (tests/play.c)
-#   make test       the slope made far ahead, two minutes down it, the walls, a jump, saves (kept, from the copy,
+#   make test       the slope made far ahead, two minutes down it, the walls (and their colliders whole), the
+#                   snowballs' colliders, a jump, saves (kept, from the copy,
 #                   damaged), buying a sled, 300 sessions of random keys (with the sanitizers)
 #   make data UNITY=DIR   src/data.c and src/data.h again, from Snow Rider 3D's Unity project's Assets folder in DIR
 #                   (tools/gen.py: Python 3 with PyYAML, NumPy and Pillow; the project is only read)

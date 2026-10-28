@@ -101,6 +101,7 @@ void r_box(V3 c, V3 ax, V3 ay, V3 az, const uint32_t *rgb6, int skip);
 /* an axis-aligned box from (x0,y0,z0) to (x1,y1,z1), one colour lit by face */
 void r_cube(float x0, float y0, float z0, float x1, float y1, float z1, uint32_t rgb, int skip);
 int r_count(void);   /* polygons this frame */
+bool r_full(void);   /* the list is (nearly) full: what comes next may be left out */
 
 /* sine and cosine (short series: no C library) */
 void r_sincos(float a, float *s, float *c);

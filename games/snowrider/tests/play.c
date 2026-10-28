@@ -15,6 +15,7 @@ extern uint32_t host_time;
 void host_shot(const char *path);
 void host_save_dir(const char *d);
 bool host_god;
+#define SNOWBALL_SIDE 43   /* SideGroundSnowball in data.c */
 
 /* the autopilot: looks ahead along a fan of headings, steers to the clearest, jumps when it must */
 static float clear_along(float yaw) {
@@ -91,6 +92,24 @@ static void test_slope(void) {
   CHECK(alive > 50, "instances alive: %d", alive);
 }
 
+static void test_balls(void) {
+  /* the snowballs: they keep coming from their hill (a ball each 0.7 s) and roll across the slope (to the other
+   * side's SnowballDestroy), and leave nothing behind */
+  world_start();
+  int on = 0, ghosts = 0;
+  float z = 0;
+  for (int i = 0; i < 60 * 300; i++) {
+    while (world_update(z += 6 * DT_REF)) {}
+    world_balls(DT_REF);
+    for (int b = 0; b < MAXB; b++) {
+      on += balls[b].alive && balls[b].x > 0 && balls[b].x < STRUCT_W * CHUNK_X && balls[b].z > z;
+      ghosts += ball_inst[b].alive && !balls[b].alive;
+    }
+  }
+  CHECK(on * DT_REF > 180, "snowballs on the slope ahead: %.0f s", on * DT_REF);
+  CHECK(!ghosts, "snowballs gone but still there: %d", ghosts);
+}
+
 static void test_ride(const char *dir) {
   /* the autopilot through the sled's own physics: points, gifts, and the slope under it all along */
   restart(dir);
@@ -120,6 +139,34 @@ static void test_walls(const char *dir) {
     press(SK_OK);   /* Play again */
     CHECK(mode == M_PLAY && score == 0, "play again: mode %d", mode);
   }
+}
+
+static void test_sides(void) {
+  /* from the side chunks, rays along the snow outwards and ahead: the walls and banks stop them (collision meshes
+   * with fewer triangles than the game's let them out, the snowballs' side most of all) */
+  int out = 0, out_snow = 0, n = 0;
+  for (uint32_t seed = 1; seed <= 2; seed++) {
+    rnd_seed(seed);
+    world_start();
+    for (float zs = 20; zs < 600; zs += CHUNK_Z) {
+      while (generate_distance < zs + 40) world_update(generate_distance + 1);
+      for (float z = zs + 0.5f; z < zs + CHUNK_Z; z += 0.25f)
+        for (float x = 1.5f; x < STRUCT_W * CHUNK_X; x += x == 4.5f ? 11 : 1) {
+          float o[3] = {x, 5, z}, dn[3] = {0, -1, 0};
+          Hit h;
+          if (!ray_cast(o, dn, 6, L_SURFACE, &h)) continue;   /* (a crack) */
+          int pf = h.inst->prefab;
+          float gy = h.p[1], s = x < 10 ? -1 : 1;
+          for (float up = 0.1f; up < 0.4f; up += 0.2f)
+            for (int a = 0; a <= 30; a += 30) {
+              float p[3] = {x, gy + up, z}, d[3] = {s * cosf(a * DEG), 0, sinf(a * DEG)};
+              n++;
+              if (!ray_cast(p, d, 12, L_OBSTACLE | L_SURFACE, &h)) out++, out_snow += pf == SNOWBALL_SIDE;
+            }
+        }
+    }
+  }
+  CHECK(out * 25 < n && out_snow < 30, "rays out of the slope: %d of %d, %d by the snowballs", out, n, out_snow);
 }
 
 static void test_jump(const char *dir) {
@@ -191,8 +238,10 @@ static void test_random(const char *dir) {
 
 static int test(const char *dir) {
   test_slope();
+  test_balls();
   test_ride(dir);
   test_walls(dir);
+  test_sides();
   test_jump(dir);
   test_saves(dir);
   test_random(dir);
@@ -239,7 +288,8 @@ static int shots(const char *out, const char *script) {
       char p[512];
       snprintf(p, sizeof p, "%s/%s.ppm", out, shot);
       host_shot(p);
-      printf("%s: mode %d screen %d score %d z %.1f x %.1f, %d polygons\n", shot, mode, screen, score, sled.z, sled.x, r_count());
+      extern int r_dropped;
+      printf("%s: mode %d screen %d score %d z %.1f x %.1f, %d polygons (%d left out)\n", shot, mode, screen, score, sled.z, sled.x, r_count(), r_dropped);
       shot[0] = 0;
     }
     if (!more && t > until + 3000) break;

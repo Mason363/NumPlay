@@ -16,15 +16,16 @@ enum { C_BOX, C_SPHERE, C_CAPSULE, C_MESH };
 enum { L_SURFACE = 1, L_OBSTACLE = 2, L_BREAK = 4, L_GIFT = 8 };
 typedef struct { uint8_t kind, layer, trigger, dir_or_mesh; float m[12]; float r, h; } Coll;
 #define COLL_MESH(c) ((c)->dir_or_mesh)
-/* flags: 1 gift, 2 breaks into pieces (chunks[pieces]), 4 a physics body, 16 a snowball spawner at spawner */
-enum { PF_GIFT = 1, PF_BREAK = 2, PF_BODY = 4, PF_SPAWNER = 16 };
+/* flags: 1 gift, 2 breaks into pieces (chunks[pieces]), 4 a physics body, 8 snowballs meeting it go (SnowballDestroy),
+ * 16 a snowball spawner at spawner */
+enum { PF_GIFT = 1, PF_BREAK = 2, PF_BODY = 4, PF_BALL_END = 8, PF_SPAWNER = 16 };
 typedef struct { const Part *parts; const Coll *colls; uint8_t nparts, ncolls, flags; int16_t pieces, rand; float spawner[3]; } Prefab;
 typedef struct { uint16_t prefab; float pos[3], rot[4], scale[3]; } Obj;
 typedef struct { const Obj *obj; uint16_t n; } Chunk;
 /* modifiers: tunnel (list: tunnels put in chunk 1 and 2), crack start (a ramp chunk, b side ramp chunk), next (the
  * structure after it is next), snowballs (a start chunk, b end chunk, a spawner rolling ball) */
 enum { MOD_NONE, MOD_TUNNEL, MOD_CRACKSTART, MOD_NEXT, MOD_SNOWBALLS };
-typedef struct { uint16_t prefab; float interval, speed, randomness, min_size, max_size; } Balls;
+typedef struct { uint16_t prefab; float interval, speed, randomness, min_size, max_size, force; } Balls;
 typedef struct { int32_t min_score, max_score; float prob; uint8_t min_len, max_len, mod; int16_t next, a, b;
   const uint16_t *mid; uint8_t nmid; const uint16_t *side; uint8_t nside; const uint16_t *list; uint8_t nlist; Balls balls; } Struct;
 typedef struct { uint8_t min_len, max_len; const uint16_t *structs; uint8_t n; } Biome;
@@ -63,9 +64,10 @@ extern const uint8_t palette888[][3];
 #define SLED_JUMPSPEED 3.5f
 /* the scene */
 #define GRAVITY_ACC 6.0f
+#define PHYS_GRAVITY 3.0f
 #define POINT_POS {0, -0.009f, 0.36f}
-#define NRAYS 4
-#define RAYS {{0, 0.2f, 0.6f}, {0.2f, 0.2f, 0.6f}, {-0.2f, 0.2f, 0.6f}, {0, 0.05f, 0.6f}}
+#define NRAYS 3
+#define RAYS {{0, 0.2f, 0.6f}, {0.2f, 0.2f, 0.6f}, {-0.2f, 0.2f, 0.6f}}
 #define RAY_LEN 1.0f
 #define CAM_ROT_AMPLIFY {-0.2f, 0.15f, 0.25f}
 #define CAM_OFFSET {0, 0.5f, -0.8f}

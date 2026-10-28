@@ -1,7 +1,7 @@
 /* Snow Rider 3D: the sled, the camera and the game's moments, as the game's scripts have them.
  *
  * PlayerControl steers (left and right turn the sled up to 120 degrees, held jump jumps whenever it lands),
- * drives it ahead at a speed growing with the score, and ends the run when one of its four collision rays meets
+ * drives it ahead at a speed growing with the score, and ends the run when one of its three collision rays meets
  * an obstacle or it falls. SledgePoint keeps the sled's point on the snow, with its gravity and its jump.
  * CameraControlC follows the sled's camera point from behind, leaning with the turns and the slopes. A crash
  * breaks the sled into its pieces, slows time down (SlowMotion) and turns the camera around them. */
@@ -61,6 +61,9 @@ static void shake_step(float unscaled) {
   cam_offset[0] = (noise1(n) * 2 - 1) * 0.1f * (1 - fade);
   cam_offset[1] = (noise1(n + 517.3f) * 2 - 1) * 0.1f * (1 - fade);
 }
+
+/* ---------------------------------------------------------------- the screen from black (TransitionControl) */
+float fade = 1;   /* black over the picture (draw.c): from 1 at the start and on the way to the menu, to 0 in 1 s */
 
 /* ---------------------------------------------------------------- slow motion */
 static float slow_from, slow_to = 1, slow_time, slow_p = 1;
@@ -165,7 +168,7 @@ static void control(uint32_t keys, float dt) {
 
 static void end_run(void);
 
-/* the four rays ahead of the sled, swept as far as it goes in a step */
+/* the three rays ahead of the sled (the game switches its fourth, low one off), swept as far as it goes in a step */
 static bool collision(float dt) {
   float m[12], sweep = sled.speed * dt > RAY_LEN ? sled.speed * dt : RAY_LEN, f0[3] = {0, 0, 1}, f[3];
   sled_model_matrix(m);
@@ -182,14 +185,16 @@ static bool collision(float dt) {
 
 static void touched(Inst *in, const Coll *c) {
   const Prefab *pf = &prefabs[in->prefab];
-  float at[3] = {in->m[3], in->m[7], in->m[11]}, push[3] = {0, 0, 0};
-  /* (its turn, without its size) */
-  float sx = sqrtf(in->m[0] * in->m[0] + in->m[4] * in->m[4] + in->m[8] * in->m[8]);
-  float sy = sqrtf(in->m[1] * in->m[1] + in->m[5] * in->m[5] + in->m[9] * in->m[9]);
-  float sz = sqrtf(in->m[2] * in->m[2] + in->m[6] * in->m[6] + in->m[10] * in->m[10]);
-  float r00 = in->m[0] / sx, r11 = in->m[5] / sy, r22 = in->m[10] / sz;
+  float at[3] = {in->m[3], in->m[7], in->m[11]}, push[3] = {0, 0, 0}, im[12];
+  /* (its turn, without its size: Transform.rotation, which a mirrored chunk's -1 does not turn, so that undone) */
+  float mirror = m_det(in->m) < 0 ? -1 : 1;
+  for (int i = 0; i < 12; i++) im[i] = i < 3 ? in->m[i] * mirror : in->m[i];
+  float sx = sqrtf(im[0] * im[0] + im[4] * im[4] + im[8] * im[8]);
+  float sy = sqrtf(im[1] * im[1] + im[5] * im[5] + im[9] * im[9]);
+  float sz = sqrtf(im[2] * im[2] + im[6] * im[6] + im[10] * im[10]);
+  float r00 = im[0] / sx, r11 = im[5] / sy, r22 = im[10] / sz;
   float w = sqrtf(fmaxf(0, 1 + r00 + r11 + r22)) / 2, k = w > 1e-4f ? 1 / (4 * w) : 0;
-  Quat q = {(in->m[9] / sy - in->m[6] / sz) * k, (in->m[2] / sz - in->m[8] / sx) * k, (in->m[4] / sx - in->m[1] / sy) * k, w};
+  Quat q = {(im[9] / sy - im[6] / sz) * k, (im[2] / sz - im[8] / sx) * k, (im[4] / sx - im[1] / sy) * k, w};
   if (w <= 1e-4f) q = (Quat){0, 0, 0, 1};
   if (c->layer & L_BREAK) shake(6);
   if (c->layer & L_GIFT) gifts++, gifts_game++;
@@ -313,9 +318,8 @@ static void pieces_step(float dt) {
 /* ---------------------------------------------------------------- the camera (CameraControlC) */
 static float pivot[3], start_pos[3], cam_local[3];
 static Quat pivot_rot, start_rot, cam_local_rot = {0, 0, 0, 1};
-static float start_time, end_rx, end_ry, end_dir;
+static float start_time, end_rx, end_ry, end_dir, end_pivot[3];
 static bool locked;
-static int end_piece;
 
 static void cam_intro(void) {
   pivot[0] = 2.5f, pivot[1] = 10, pivot[2] = 10;
@@ -324,11 +328,21 @@ static void cam_intro(void) {
   cam_local_rot = (Quat){0, 0, 0, 1};
 }
 
+/* OnMain: the pivot at the camp's CameraPoint, turned as it is, the camera 2 m ahead of it */
 static void cam_main(void) {
+  const float p[3] = CAMP_CAM_POINT, q[4] = CAMP_CAM_ROT;
+  for (int k = 0; k < 3; k++) pivot[k] = p[k];
+  pivot_rot = (Quat){q[0], q[1], q[2], q[3]};
+  cam_local[0] = 0, cam_local[1] = 0, cam_local[2] = 2;
+  cam_local_rot = (Quat){0, 0, 0, 1};
+}
+
+/* MainControl: it turns smoothly to the menu's angle, the sleds' (OnSleds: (1 - 1) * 72 - 6); (back from the
+ * sleds' own camera, the pivot and camera go back too) */
+static void cam_main_step(void) {
   const float p[3] = CAMP_CAM_POINT;
   for (int k = 0; k < 3; k++) pivot[k] = p[k];
-  /* MainControl turns the pivot to the menu's angle: (1 - 1) * 72 - 6 */
-  pivot_rot = q_euler(0, -6, 0);
+  pivot_rot = q_lerp(pivot_rot, q_euler(0, -6, 0), blend(0.1f));
   cam_local[0] = 0, cam_local[1] = 0, cam_local[2] = 2;
   cam_local_rot = (Quat){0, 0, 0, 1};
 }
@@ -375,15 +389,27 @@ static void choose_angle(void) {
   end_dir = end_ry < 0 ? 1 : -1;
 }
 
+/* EndRoutine: the camera turns around the broken sled's PhysicsBody (its pieces' empty PlayerCameraPivot, which
+ * stays where it was left: it has no body). The camera's place is its own way ahead at the crash, backwards twice,
+ * and its turn the PhysicsBody's, both taken in the turning pivot: it looks at the pivot from where it came. */
+static void cam_end_start(void) {
+  const Chunk *c = &chunks[skins[skin].pieces];
+  const Obj *o = &c->obj[0];
+  for (int i = 0; i < c->n; i++)
+    if (!prefabs[c->obj[i].prefab].nparts && !prefabs[c->obj[i].prefab].ncolls) o = &c->obj[i];
+  float m[12];
+  sled_model_matrix(m);
+  for (int k = 0; k < 3; k++) end_pivot[k] = m[k * 4 + 3] + o->pos[k], cam_local[k] = cam_rot[6 + k] * -2;
+  cam_local_rot = q_mul(q_mul(sled.yaw, sled.pitch), (Quat){o->rot[0], o->rot[1], o->rot[2], o->rot[3]});
+  choose_angle();
+}
+
+/* EndControl */
 static void cam_end(float dt) {
-  Piece *p = &pieces[end_piece];
   if (end_ry > -70 && end_ry < 70) end_ry += 30 * end_dir * dt;
   else choose_angle();
   pivot_rot = q_euler(end_rx, end_ry, 0);
-  if (p->alive)
-    for (int k = 0; k < 3; k++) pivot[k] = p->p[k];
-  cam_local[0] = 0, cam_local[1] = 0, cam_local[2] = -2;
-  cam_local_rot = (Quat){0, 0, 0, 1};
+  for (int k = 0; k < 3; k++) pivot[k] = end_pivot[k];
 }
 
 /* the sleds: turning slowly around the sled shown (as the shop's stand turns its sleds) */
@@ -422,6 +448,7 @@ static void go_main(void) {
   sled.prev_h = sled.py;
   cam_main();
   slow(0, 1);
+  fade = 1;
 }
 
 static void go_play(void) {
@@ -444,11 +471,8 @@ static void end_run(void) {
   float m[12];
   sled_model_matrix(m);
   float at[3] = {m[3], m[7], m[11]}, push[3] = {0, 0, 0};
-  int first = 0;
-  while (first < MAXP_PIECES && pieces[first].alive) first++;
   pieces_spawn(skins[skin].pieces, at, q_mul(sled.yaw, sled.pitch), push);
-  end_piece = first < MAXP_PIECES ? first : 0;
-  choose_angle();
+  cam_end_start();
   shake(3);
   slow(0.3f, 0.05f);
   end_wait = 0;
@@ -476,7 +500,7 @@ void game_step(uint32_t keys, uint32_t hit) {
     if (up) sel = (sel + n - 1) % n;
     if (down) sel = (sel + 1) % n;
     if (screen == S_PAUSE && (ok || back)) {
-      if (back || sel == 0) screen = S_NONE;
+      if (back || sel == 0) screen = S_NONE, time_scale = 0.02f, slow(1, 1);   /* (GUIControl: time comes back in 1 s) */
       else if (sel == 1) go_main(), go_play();
       else screen = S_ASK, sel = 0;
     } else if (screen == S_ASK && (ok || back)) {
@@ -528,6 +552,7 @@ void game_step(uint32_t keys, uint32_t hit) {
   float dt = DT_REF * time_scale;
   game_time += dt;
   shake_step(DT_REF);
+  fade = fade > DT_REF ? fade - DT_REF : 0;
   if (mode == M_END) {
     if (end_wait < 1.2f && end_wait + DT_REF >= 1.2f) sel = 0;
     end_wait += DT_REF;
@@ -550,6 +575,6 @@ void game_step(uint32_t keys, uint32_t hit) {
   if (mode == M_PLAY) cam_play();
   else if (mode == M_END) cam_end(dt);
   else if (mode == M_MAIN && screen == S_SLEDS) cam_show();
-  else if (mode == M_MAIN) cam_main();
+  else if (mode == M_MAIN) cam_main_step();
   cam_apply();
 }

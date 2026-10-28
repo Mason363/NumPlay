@@ -106,7 +106,7 @@ def budget(name, n):
                            ('camp_main', 1000, 1000), ('Cylinder', 160, 160), ('campBillboard', 70, 70),
                            ('floating', 110, 50), ('snowball', 40, 20), ('gift', 40, 16), ('fence', 60, 24),
                            ('skull', 60, 24), ('stump', 40, 16), ('root', 40, 16)):
-        if key in name:
+        if key in name and not name.startswith('Ground'):   # (Ground_WW_RV1_snowball is a wall, not a ball)
             return min(n, near), min(n, far)
     if name.startswith('Ground'):
         return min(n, max(40, int(n * 0.36))), min(n, max(24, int(n * 0.16)))
@@ -197,10 +197,9 @@ def coll_mesh(ref):
         return cmesh_key[key]
     pos, nrm, uv, tris = unity.mesh(P, ref)
     name = mesh_name(ref)
-    target = len(tris) if len(tris) <= 260 else max(260, int(len(tris) * 0.4))
-    faces = tris if target >= len(tris) else [tuple(f) for f in decimate(pos, None, None, tris, target)]
+    # (all of its triangles: fewer move the walls and ramps by up to 3 m, and leave holes the sled goes through)
     pts, remap, out = [], {}, []
-    for f in faces:
+    for f in tris:
         t = []
         for i in f:
             k = tuple(round(x, 4) for x in pos[i])
@@ -268,6 +267,8 @@ def prefab(ref):
                     pf['colls'].append((3, lay, trig, coll_mesh(b['m_Mesh']), n.m, 0, 0))
         if n.tag == 'Spawner':
             pf['spawner'] = [n.m[i][3] for i in range(3)]
+        if n.tag == 'SnowballDestroy':
+            pf['flags'] |= 8
         for c in n.children:
             rec(c)
 
@@ -343,7 +344,7 @@ def struct(ref):
             ball = unity.prefab(P, spb['snowballBigPrefab'])
             sb = ball.comps['SnowBall'][0]
             st['ball'] = (prefab(spb['snowballBigPrefab']), float(spb['interval']), float(spb['speed']), float(spb['randomness']),
-                          float(sb['minSize']), float(sb['maxSize']))
+                          float(sb['minSize']), float(sb['maxSize']), float(sb['force']))
     return struct_key[key]
 
 
@@ -401,6 +402,9 @@ rays = []
 for gid, (c, b, s) in scene.items():
     if c == 114 and 'rayLenght' in b:
         t = scene[b['m_GameObject']['fileID']]
+        # (an inactive one never woke: its layer mask stays empty and its ray meets nothing)
+        if t[1].get('m_IsActive', '1') != '1':
+            continue
         tr = [scene[x['component']['fileID']][1] for x in t[1]['m_Component'] if scene.get(x['component']['fileID'], (0,))[0] == 4][0]
         rays.append((unity.v3(tr['m_LocalPosition']), float(b['rayLenght'])))
 cp = [scene[x['component']['fileID']][1] for x in scene_obj('Collision Point')[0]['m_Component'] if scene[x['component']['fileID']][0] == 4][0]
@@ -408,6 +412,7 @@ sled = asset('MonoBehaviour/BasicSleds.asset')
 floats = P.asset({'guid': GUID['Material/World.mat'], 'fileID': '2100000'})['m_SavedProperties']['m_Floats']
 curv = float((floats if isinstance(floats, dict) else {k: v for e in floats for k, v in e.items()}).get('_Curvature', 0.004))
 rs = [b for gid, (c, b, s) in scene.items() if c == 104][0]
+phys_g = float(re.search(r'm_Gravity:\s*x: \S+\s*y: (\S+)', open(os.path.join(ROOT, '..', 'ProjectSettings', 'DynamicsManager.asset')).read()).group(1))
 amb = rs['m_AmbientSkyColor']
 sky = P.asset({'guid': GUID['Material/SkyBox.mat'], 'fileID': '2100000'})['m_SavedProperties']['m_Colors']
 sky = sky if isinstance(sky, dict) else {k: v for e in sky for k, v in e.items()}
@@ -481,10 +486,10 @@ for i, st in enumerate(structs):
     c.append('static const uint16_t sl%d[] = {%s};' % (i, ','.join(map(str, st['list'] or [0]))))
 c.append('const Struct structs[] = {')
 for i, st in enumerate(structs):
-    ball = st.get('ball', (0, 0, 0, 0, 0, 0))
-    c.append('  {%d, %d, %s, %d, %d, %d, %d, %d, %d, sm%d, %d, ss%d, %d, sl%d, %d, {%d, %s, %s, %s, %s, %s}}, /* %s */' % (
+    ball = st.get('ball', (0, 0, 0, 0, 0, 0, 0))
+    c.append('  {%d, %d, %s, %d, %d, %d, %d, %d, %d, sm%d, %d, ss%d, %d, sl%d, %d, {%d, %s}}, /* %s */' % (
         st['min'], st['max'], F(st['p']), st['lmin'], st['lmax'], st['mod'], st['next'], st['a'], st['b'], i, len(st['mid']), i,
-        len(st['side']), i, len(st['list']), ball[0], F(ball[1]), F(ball[2]), F(ball[3]), F(ball[4]), F(ball[5]), st['name']))
+        len(st['side']), i, len(st['list']), ball[0], ', '.join(F(x) for x in ball[1:]), st['name']))
 c.append('};')
 for i, (name, lo, hi, ss) in enumerate(biomes):
     c.append('static const uint16_t bs%d[] = {%s};' % (i, ','.join(map(str, ss))))
@@ -524,15 +529,16 @@ h = ['/* Made by tools/gen.py from Snow Rider 3D\'s Unity project: do not edit. 
      'enum { L_SURFACE = 1, L_OBSTACLE = 2, L_BREAK = 4, L_GIFT = 8 };',
      'typedef struct { uint8_t kind, layer, trigger, dir_or_mesh; float m[12]; float r, h; } Coll;',
      '#define COLL_MESH(c) ((c)->dir_or_mesh)',
-     '/* flags: 1 gift, 2 breaks into pieces (chunks[pieces]), 4 a physics body, 16 a snowball spawner at spawner */',
-     'enum { PF_GIFT = 1, PF_BREAK = 2, PF_BODY = 4, PF_SPAWNER = 16 };',
+     '/* flags: 1 gift, 2 breaks into pieces (chunks[pieces]), 4 a physics body, 8 snowballs meeting it go (SnowballDestroy),',
+     ' * 16 a snowball spawner at spawner */',
+     'enum { PF_GIFT = 1, PF_BREAK = 2, PF_BODY = 4, PF_BALL_END = 8, PF_SPAWNER = 16 };',
      'typedef struct { const Part *parts; const Coll *colls; uint8_t nparts, ncolls, flags; int16_t pieces, rand; float spawner[3]; } Prefab;',
      'typedef struct { uint16_t prefab; float pos[3], rot[4], scale[3]; } Obj;',
      'typedef struct { const Obj *obj; uint16_t n; } Chunk;',
      '/* modifiers: tunnel (list: tunnels put in chunk 1 and 2), crack start (a ramp chunk, b side ramp chunk), next (the',
      ' * structure after it is next), snowballs (a start chunk, b end chunk, a spawner rolling ball) */',
      'enum { MOD_NONE, MOD_TUNNEL, MOD_CRACKSTART, MOD_NEXT, MOD_SNOWBALLS };',
-     'typedef struct { uint16_t prefab; float interval, speed, randomness, min_size, max_size; } Balls;',
+     'typedef struct { uint16_t prefab; float interval, speed, randomness, min_size, max_size, force; } Balls;',
      'typedef struct { int32_t min_score, max_score; float prob; uint8_t min_len, max_len, mod; int16_t next, a, b;',
      '  const uint16_t *mid; uint8_t nmid; const uint16_t *side; uint8_t nside; const uint16_t *list; uint8_t nlist; Balls balls; } Struct;',
      'typedef struct { uint8_t min_len, max_len; const uint16_t *structs; uint8_t n; } Biome;',
@@ -552,6 +558,7 @@ h = ['/* Made by tools/gen.py from Snow Rider 3D\'s Unity project: do not edit. 
      ('baseMoveSpeed', 'speedAcceleration', 'speedAccelerationAmplitude', 'rotationSpeed', 'rotationSmoothness', 'modelRotationSmoothness', 'jumpSpeed')] + [
      '/* the scene */',
      '#define GRAVITY_ACC %s' % F(float(point['gravityAcc'])),
+     '#define PHYS_GRAVITY %s' % F(-phys_g),
      '#define POINT_POS {%s}' % V(unity.v3(cp['m_LocalPosition'])),
      '#define NRAYS %d' % len(rays), '#define RAYS {%s}' % ', '.join('{%s}' % V(p) for p, l in rays), '#define RAY_LEN %s' % F(rays[0][1]),
      '#define CAM_ROT_AMPLIFY {%s}' % V(fl(cam_mb['rotationAmplify'])), '#define CAM_OFFSET {%s}' % V(fl(cam_mb['positionOffset'])),

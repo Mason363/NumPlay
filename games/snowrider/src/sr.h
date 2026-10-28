@@ -64,13 +64,14 @@ void world_start(void);                 /* GGen.GenerateStartLevel */
 bool world_update(float target_z);      /* GGen.Update: true when a structure was made (OnGenChunk) */
 void world_camp(bool on);               /* CampControl */
 void world_balls(float dt);             /* the snowballs rolling */
-/* snowballs: drawn like the rest */
+/* snowballs (x, y their middle, r their collider's radius, k the ground's slope under them): drawn like the rest */
 typedef struct {
-  float x, y, z, r, vx, spin;
+  float x, y, z, r, vx, vy, k, spin;
   int8_t dir;
-  bool alive;
+  uint8_t slot;
+  bool alive, ground;
 } Ball;
-#define MAXB 14
+#define MAXB 24
 extern Ball balls[MAXB];
 extern uint16_t ball_prefab;
 extern Inst ball_inst[MAXB];
@@ -97,6 +98,7 @@ enum { S_NONE, S_PAUSE, S_ASK, S_SLEDS, S_END, S_GUIDE };
 extern bool guide_read;
 extern float score_pop, end_wait;
 extern float time_scale;
+extern float fade;
 typedef struct {
   float x, y, z;              /* the Sledge's place (y stays) */
   float hrot, vrot;           /* where it is steered, and the slope's angle */

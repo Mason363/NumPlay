@@ -22,14 +22,15 @@ uint16_t ball_prefab;
 static struct {
   int index, first, n;
   bool used;
-  float spawner[3];
-  bool has_spawner;
+  float spawner[3], end_lo[3], end_hi[3];   /* the snowballs' spawner, the box where they go (SnowballDestroy) */
+  bool has_spawner, has_end;
   int balls_dir;
-  float ball_timer, ball_interval, ball_speed, ball_random, ball_min, ball_max;
+  float ball_timer;
+  const Balls *bp;
 } slots[NSLOTS];
 
-/* GGen's state (currentStruct and currentStructLength stay from a run to the next, as there) */
-static int gift_chunk, cur_biome = -1, biome_len, cur_struct, struct_len;
+/* GGen's state (giftChunk, currentStruct and currentStructLength stay from a run to the next, as there) */
+static int gift_chunk = -1, cur_biome = -1, biome_len, cur_struct, struct_len;
 int struct_index;
 float generate_distance;
 static int chunk_data[STRUCT_W];
@@ -76,19 +77,22 @@ static Inst *place(Inst *in, int prefab, const float m[12]) {
   return in;
 }
 
+static void drop_balls(int s) {
+  for (int b = 0; b < MAXB; b++)
+    if (balls[b].slot == s) balls[b].alive = false, ball_inst[b].alive = 0;
+  slots[s].balls_dir = 0;
+}
+
 static void drop_slot(int s) {
   slots[s].used = false;
   for (int i = slots[s].first; i < slots[s].first + slots[s].n; i++) insts[i % MAXI].alive = 0;
-  float z0 = slots[s].index * CHUNK_Z;
-  for (int b = 0; b < MAXB; b++)
-    if (balls[b].alive && balls[b].z >= z0 - 1 && balls[b].z < z0 + CHUNK_Z + 1) balls[b].alive = false;
-  slots[s].balls_dir = 0;
+  drop_balls(s);
 }
 
 void world_clear(void) {
   for (int s = 0; s < NSLOTS; s++) slots[s].used = false;
   for (int i = 0; i < MAXI; i++) insts[i].alive = 0;
-  for (int b = 0; b < MAXB; b++) balls[b].alive = false;
+  for (int b = 0; b < MAXB; b++) balls[b].alive = false, ball_inst[b].alive = 0;
   ninsts = 0;
 }
 
@@ -157,8 +161,10 @@ static void before_apply(void) {
     if (score < 31) {
       chunk_data[1] = s->list[rnd_int(0, s->nlist)];
       chunk_data[2] = s->list[rnd_int(0, s->nlist)];
-    } else
-      chunk_data[rnd_int(1, 3)] = s->list[rnd_int(0, s->nlist)];
+    } else {
+      int i = rnd_int(1, 3);   /* (the place drawn before the tunnel, as C# does) */
+      chunk_data[i] = s->list[rnd_int(0, s->nlist)];
+    }
   } else if (s->mod == MOD_CRACKSTART) {
     int i = rnd_int(0, STRUCT_W);
     chunk_data[i] = i < 1 || i >= STRUCT_W - 1 ? s->b : s->a;
@@ -208,19 +214,23 @@ static void generate_chunk(int j, int chunk_index, float zs) {
       m_point(m, prefabs[pre].spawner, slots[slot_now].spawner);
       slots[slot_now].has_spawner = true;
     }
+    if (prefabs[pre].flags & PF_BALL_END) {
+      for (int k = 0; k < 3; k++) slots[slot_now].end_lo[k] = insts[idx].lo[k], slots[slot_now].end_hi[k] = insts[idx].hi[k];
+      slots[slot_now].has_end = true;
+    }
   }
 }
 
+/* SnowBallSpawner.SpawnBall: at rest, dx along the way it rolls from the spawner, its size random (SnowBall.Start) */
 static void spawn_ball(int s, float dx) {
-  for (int b = 0; b < MAXB; b++)
-    if (!balls[b].alive) {
-      Ball *bl = &balls[b];
-      bl->alive = true, bl->dir = (int8_t)slots[s].balls_dir;
-      bl->x = slots[s].spawner[0] + dx * bl->dir, bl->y = slots[s].spawner[1], bl->z = slots[s].spawner[2];
-      bl->r = rnd_range(slots[s].ball_min, slots[s].ball_max);
-      bl->vx = dx > 0 ? slots[s].ball_speed : 0, bl->spin = 0;
-      return;
-    }
+  int b = 0;
+  while (b < MAXB && balls[b].alive) b++;
+  if (b == MAXB) return;
+  Ball *bl = &balls[b];
+  bl->alive = true, bl->ground = false, bl->slot = (uint8_t)s, bl->dir = (int8_t)slots[s].balls_dir;
+  bl->x = slots[s].spawner[0] + dx * bl->dir, bl->y = slots[s].spawner[1], bl->z = slots[s].spawner[2];
+  bl->r = rnd_range(slots[s].bp->min_size, slots[s].bp->max_size) * prefabs[slots[s].bp->prefab].colls[0].m[0];
+  bl->vx = bl->vy = bl->k = bl->spin = 0;
 }
 
 static void generate_struct(void) {
@@ -235,7 +245,7 @@ static void generate_struct(void) {
     s = old;
   }
   slot_now = s;
-  slots[s].used = true, slots[s].index = struct_index, slots[s].first = ninsts, slots[s].n = 0, slots[s].has_spawner = false, slots[s].balls_dir = 0;
+  slots[s].used = true, slots[s].index = struct_index, slots[s].first = ninsts, slots[s].n = 0, slots[s].has_spawner = false, slots[s].has_end = false, slots[s].balls_dir = 0;
   choose_struct();
   for (int i = 0; i < STRUCT_W; i++) choose_chunk(i);
   const Struct *st = &structs[cur_struct];
@@ -254,8 +264,7 @@ static void generate_struct(void) {
     if (st->mod == MOD_SNOWBALLS && slots[s].has_spawner) {
       const Balls *b = &st->balls;
       ball_prefab = b->prefab;
-      slots[s].balls_dir = snow_dir, slots[s].ball_interval = b->interval, slots[s].ball_speed = b->speed;
-      slots[s].ball_random = b->randomness, slots[s].ball_min = b->min_size, slots[s].ball_max = b->max_size;
+      slots[s].balls_dir = snow_dir, slots[s].bp = b;
       slots[s].ball_timer = b->interval * rnd_range(1 - b->randomness, 1 + b->randomness);
       for (float d = 0; d < STRUCT_W * CHUNK_X; d += b->speed * b->interval) spawn_ball(s, d);
     } else if (st->next >= 0)
@@ -267,7 +276,7 @@ static void generate_struct(void) {
 
 void world_start(void) {
   world_clear();
-  gift_chunk = rnd_int(0, STRUCT_W - 1);
+  if (gift_chunk < 0) gift_chunk = rnd_int(0, STRUCT_W - 1);   /* (GGen.Awake: once) */
   struct_index = 0;
   generate_distance = 10;
   cur_biome = 0;
@@ -285,30 +294,60 @@ bool world_update(float target_z) {
   return false;
 }
 
-/* the snowballs: pushed sideways up to 5 m/s, rolling on the ground (Snowball Big has a rigidbody) */
+/* the snowballs: Snowball Big's rigidbody (its z held), falling with Unity's gravity, pushed sideways while slower
+ * than 5 m/s (SnowBall.Update: a force for the frame, so force * dt * fixedDeltaTime a step), rolling on the ground
+ * (a ball rolling gets 5/7 of a push or of the slope's pull, and keeps 5/7 of its speed when it lands), until it
+ * meets its structure's SnowballDestroy */
 void world_balls(float dt) {
   for (int s = 0; s < NSLOTS; s++)
     if (slots[s].used && slots[s].balls_dir) {
+      /* (behind the structures kept in sight, before the camera's: its balls are not seen again) */
+      if (slots[s].index < struct_index - VISIBLE_STRUCTS - 1) {
+        drop_balls(s);
+        continue;
+      }
+      const Balls *bp = slots[s].bp;
       slots[s].ball_timer -= dt;
       if (slots[s].ball_timer <= 0) {
-        slots[s].ball_timer += slots[s].ball_interval * rnd_range(1 - slots[s].ball_random, 1 + slots[s].ball_random);
+        slots[s].ball_timer += bp->interval * rnd_range(1 - bp->randomness, 1 + bp->randomness);
         spawn_ball(s, 0);
       }
     }
+  float fdt = 0.02f * dt / DT_REF;   /* (SlowMotion: Time.fixedDeltaTime is 0.02 s times the time scale) */
   for (int b = 0; b < MAXB; b++) {
     Ball *bl = &balls[b];
     if (!bl->alive) continue;
-    if (bl->vx < 5) bl->vx += 100 * dt * 0.02f * 60 * dt;
-    bl->x += bl->vx * bl->dir * dt;
-    bl->spin += bl->vx * dt / bl->r;
-    float o[3] = {bl->x, bl->y + 2, bl->z}, d[3] = {0, -1, 0};
-    Hit h;
-    if (ray_cast(o, d, 6, L_SURFACE, &h)) bl->y = h.p[1];
-    if (bl->x < -3 || bl->x > STRUCT_W * CHUNK_X + 3) bl->alive = false;
+    const Balls *bp = slots[bl->slot].bp;
+    float k = bl->k, sp = bl->ground ? fabsf(bl->vx) * sqrtf(1 + k * k) : sqrtf(bl->vx * bl->vx + bl->vy * bl->vy);
+    float push = sp < 5 ? bp->force * dt * fdt * bl->dir : 0;
+    if (bl->ground) bl->vx += (push - PHYS_GRAVITY * k / (1 + k * k) * dt) * 5 / 7;
+    else bl->vx += push, bl->vy -= PHYS_GRAVITY * dt;
+    float x0 = bl->x;
+    bl->x += bl->vx * dt;
+    /* the ground under it */
+    float o[3] = {bl->x, bl->y + bl->r, bl->z}, d[3] = {0, -1, 0}, h = -1e9f;
+    Hit hit;
+    if (ray_cast(o, d, 10, L_SURFACE, &hit)) h = hit.p[1];
+    if (bl->ground && h > bl->y - bl->r - 0.3f) {
+      if (bl->x != x0) bl->k = (h + bl->r - bl->y) / (bl->x - x0);
+      bl->y = h + bl->r;
+    } else {
+      if (bl->ground) bl->ground = false, bl->vy = bl->vx * k;
+      bl->y += bl->vy * dt;
+      if (bl->y - bl->r <= h) bl->y = h + bl->r, bl->vy = 0, bl->vx *= 5.0f / 7, bl->k = 0, bl->ground = true;
+    }
+    bl->spin += (bl->x - x0) / bl->r;
+    /* SnowBall.OnCollisionEnter: SnowballDestroy (or fallen off the world) */
+    const float *lo = slots[bl->slot].end_lo, *hi = slots[bl->slot].end_hi;
     float r = bl->r;
-    float sc[3] = {r, r, r}, t[3] = {bl->x, bl->y + r * 0.9f, bl->z};
-    float m[12];
-    m_trs(m, t, q_euler(0, 0, -bl->spin * bl->dir / DEG), sc);
+    if ((slots[bl->slot].has_end && bl->x > lo[0] - r && bl->x < hi[0] + r && bl->y > lo[1] - r && bl->y < hi[1] + r &&
+         bl->z > lo[2] - r && bl->z < hi[2] + r) || bl->y < -20 || fabsf(bl->x - STRUCT_W * CHUNK_X / 2) > 60) {
+      bl->alive = false, ball_inst[b].alive = 0;
+      continue;
+    }
+    float sc[3] = {r / prefabs[ball_prefab].colls[0].m[0], 0, 0}, t[3] = {bl->x, bl->y, bl->z}, m[12];
+    sc[1] = sc[2] = sc[0];
+    m_trs(m, t, q_euler(0, 0, -bl->spin / DEG), sc);
     place(&ball_inst[b], ball_prefab, m);
   }
 }

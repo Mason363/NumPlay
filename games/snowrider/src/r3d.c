@@ -88,15 +88,18 @@ bool r_project(V3 p, float *sx, float *sy) {
 }
 
 #ifdef HOST
+int r_dropped;   /* (polygons left out this frame: the list was full) */
 uint16_t r_heat[SCREEN_W * SCREEN_H];   /* (pixels tried at each place, this frame) */
 #endif
 void r_begin(void) {
   npolys = nverts = nattr = nuv = nalpha = 0;
 #ifdef HOST
+  r_dropped = 0;
   for (int i = 0; i < SCREEN_W * SCREEN_H; i++) r_heat[i] = 0;
 #endif
 }
 int r_count(void) { return npolys; }
+bool r_full(void) { return npolys >= MAXP * 19 / 20; }
 
 uint32_t r_mix888(uint32_t a, uint32_t b, int t) {
   uint32_t rb = (a & 0xFF00FF) * (uint32_t)(256 - t) + (b & 0xFF00FF) * (uint32_t)t;
@@ -145,6 +148,9 @@ static bool fit(const float *x, const float *y, const float *w, float *a, float 
 
 /* projects, checks and keeps a polygon in camera space */
 static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, uint16_t avg) {
+#ifdef HOST
+  r_dropped += npolys >= MAXP;
+#endif
   if (npolys >= MAXP || nverts + MAXN > MAXV || ((kind == K_SHADE || kind == K_TEX) && nattr + MAXN > MAXA)) return;
   CV b1[MAXN], b2[MAXN];
   int behind = 0;

@@ -11,10 +11,11 @@
 #include "../../common/np_text.h"
 
 #define VIEW 62.0f     /* metres ahead drawn */
-#define LOD_FAR 22.0f  /* the far meshes past this */
+#define LOD_FAR 22.0f  /* the far meshes past this, at most */
 #define SHADES 32
 
 static uint16_t shade_lut[NCOLOURS][SHADES];
+static float lod = LOD_FAR;   /* (nearer when the polygons did not all fit last frame) */
 static uint16_t sky_lut[64];
 static float focal;
 static const float light[3] = LIGHT_DIR;
@@ -74,8 +75,14 @@ static void sky(void) {
     if ((int)(e0 * 64) == (int)(e1 * 64)) {
       uint16_t c = sky_at(e0);
       for (int x = 0; x < SCREEN_W; x++) row[x] = c;
-    } else
-      for (int x = 0; x < SCREEN_W; x++) row[x] = sky_at(e0 + (e1 - e0) * (float)x / SCREEN_W);
+    } else {
+      /* (a leaning camera: the height steps along the row, in 1/65536 of the table's) */
+      int32_t i = (int32_t)((e0 * 64 + 16) * 65536), di = (int32_t)((e1 - e0) * 64 * 65536 / SCREEN_W);
+      for (int x = 0; x < SCREEN_W; x++, i += di) {
+        int k = i >> 16;
+        row[x] = sky_lut[k < 0 ? 0 : k > 63 ? 63 : k];
+      }
+    }
   }
 }
 
@@ -133,7 +140,7 @@ static void draw_prefab(int prefab, const float m[12]) {
     if (vz + r < 0.1f || vz - r > VIEW) continue;
     if (fabsf(vx) - r * 1.5f > (vz + r) * (SCREEN_W / 2 + 8) / focal) continue;
     if (fabsf(vy) - r * 1.5f > (vz + r) * (SCREEN_H / 2 + 8) / focal) continue;
-    draw_mesh(&rmeshes[vz - r > LOD_FAR ? pt->far : pt->near], W);
+    draw_mesh(&rmeshes[vz - r > lod ? pt->far : pt->near], W);
   }
 }
 
@@ -143,20 +150,22 @@ static V3 to_cam(float x, float y, float z) {
   return (V3){R[0] * dx + R[1] * dy + R[2] * dz, R[3] * dx + R[4] * dy + R[5] * dz, R[6] * dx + R[7] * dy + R[8] * dz};
 }
 
-/* the sled's shadow: its box laid on the snow under it, pushed away from the sun by its height over the snow */
+/* the sled's shadow (the sun's): the bottom of its box, each corner cast along the sun's light onto the snow under it */
 static void sled_shadow(int k) {
   const Skin *sk = &skins[k];
   float m[12];
   sled_model_matrix(m);
-  float ground = sled.py + 0.02f, lift = (sled.y + sled.model_y + sk->box_c[1]) - ground;
-  if (lift < 0) lift = 0;
-  float sx = -light[0] / light[1] * lift, sz = -light[2] / light[1] * lift;
   V3 p[4];
   for (int i = 0; i < 4; i++) {
-    float c[3] = {sk->box_c[0] + (i == 1 || i == 2 ? sk->box_h[0] : -sk->box_h[0]) * 0.9f, sk->box_c[1],
-                  sk->box_c[2] + (i >= 2 ? -sk->box_h[2] : sk->box_h[2]) * 0.9f}, w[3];
+    float c[3] = {sk->box_c[0] + (i == 1 || i == 2 ? sk->box_h[0] : -sk->box_h[0]) * 0.9f, sk->box_c[1] - sk->box_h[1],
+                  sk->box_c[2] + (i >= 2 ? -sk->box_h[2] : sk->box_h[2]) * 0.9f}, w[3], dn[3] = {0, -1, 0};
     m_point(m, c, w);
-    p[i] = to_cam(w[0] + sx, ground, w[2] + sz);
+    float o[3] = {w[0], w[1] + 0.3f, w[2]};
+    Hit h;
+    if (!ray_cast(o, dn, 6, L_SURFACE, &h)) return;   /* (over a hole: no snow to fall on) */
+    float lift = w[1] - h.p[1];
+    lift = lift < 0 ? 0 : lift;
+    p[i] = to_cam(w[0] - light[0] / light[1] * lift, h.p[1] + 0.02f, w[2] - light[2] / light[1] * lift);
   }
   r_poly_cam(p, 4, 0x2945, P_ALPHA | P_TWOSIDED, 70);
 }
@@ -173,7 +182,7 @@ static void draw_world(void) {
     sled_model_matrix(m);
     int k = screen == S_SLEDS ? shop_skin : skin;
     draw_prefab(skins[k].prefab, m);
-    if (sled.pgrounded || sled.py > sled.y - 3) sled_shadow(k);
+    sled_shadow(k);
   }
   for (int i = 0; i < MAXP_PIECES; i++)
     if (pieces[i].alive) {
@@ -183,15 +192,18 @@ static void draw_world(void) {
     }
   for (int i = 0; i < MAXB; i++)
     if (balls[i].alive) draw_prefab(ball_inst[i].prefab, ball_inst[i].m);
-  /* the slope, nearest structures first */
+  /* the slope, nearest first 5 m at a time: when the polygons do not all fit, the farthest are left out */
   float z = cam_pos[2];
-  for (int pass = 0; pass < 2; pass++)
+  for (int band = 0; band * 5 < VIEW + 20; band++)
     for (int i = 0; i < MAXI; i++) {
       const Inst *in = &insts[i];
       if (!in->alive) continue;
-      bool near = in->lo[2] < z + 25 && in->hi[2] > z - 10;
-      if (near == (pass == 0)) draw_prefab(in->prefab, in->m);
+      float d = fmaxf(fmaxf(in->lo[2] - z, z - in->hi[2]), 0);
+      if ((int)(d / 5) == band) draw_prefab(in->prefab, in->m);
     }
+  /* (the far meshes come nearer while it is full, and go back out as room comes back) */
+  if (r_full()) lod = fmaxf(lod - 1, 4);
+  else if (r_count() < 1300) lod = fminf(lod + 0.25f, LOD_FAR);
 }
 
 /* ---------------------------------------------------------------- over the picture */
@@ -345,18 +357,24 @@ static void overlay(void) {
       number(s, score);
       outlined(&np_font_title, SCREEN_W / 2, score_pop > 0 ? 44 : 40, s, WHITE);
     }
-    gifts_counter(mode == M_PLAY ? gifts_game : gifts);
+    /* (the play screen's gifts are all of them; the end screen has the run's) */
+    if (mode == M_PLAY) gifts_counter(gifts);
     if (mode == M_END && end_wait > 1.2f) {
       gfx_fill_alpha(0, 0, SCREEN_W, SCREEN_H, 0, 80);
-      panel(70, 40, 180, 172);
-      gfx_text_center(&np_font_body, 160, 66, best_now ? T("New best!") : T("Score"), best_now ? GOLD : WHITE, 256);
+      panel(70, 34, 180, 186);
+      gfx_text_center(&np_font_body, 160, 58, best_now ? T("New best!") : T("Score"), best_now ? GOLD : WHITE, 256);
       number(s, score);
-      gfx_text_center(&np_font_title, 160, 102, s, WHITE, 256);
+      gfx_text_center(&np_font_title, 160, 92, s, WHITE, 256);
       number(s, best);
-      gfx_text(&np_font_body, 92, 130, T("Best"), WHITE, 200);
-      gfx_text_right(&np_font_body, 228, 130, s, GOLD, 256);
-      choice(160, 166, 140, T("Play again"), sel == 0);
-      choice(160, 196, 140, T("Menu"), sel == 1);
+      gfx_text(&np_font_body, 92, 118, T("Best"), WHITE, 200);
+      gfx_text_right(&np_font_body, 228, 118, s, GOLD, 256);
+      s[0] = '+';
+      number(s + 1, gifts_game);
+      int w = gfx_text_width(&np_font_body, s);
+      gift_icon(160 - (w + 22) / 2, 128, 16);
+      gfx_text(&np_font_body, 160 - (w + 22) / 2 + 22, 144, s, WHITE, 256);
+      choice(160, 178, 140, T("Play again"), sel == 0);
+      choice(160, 206, 140, T("Menu"), sel == 1);
     }
   }
   if (screen == S_GUIDE) {
@@ -377,6 +395,7 @@ static void overlay(void) {
     else
       choice(160, 132, 130, T("No"), sel == 0), choice(160, 162, 130, T("Yes"), sel == 1);
   }
+  if (fade > 0) gfx_fill_alpha(0, 0, SCREEN_W, SCREEN_H, 0, (int)(fade * 256));   /* (over everything) */
 }
 
 void draw_frame(void) {
