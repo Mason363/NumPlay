@@ -647,6 +647,20 @@ Drive each track as fast as you can, through its checkpoints in order to the fin
 
 <br clear="right">
 
+## Snow Rider 3D
+
+<img src="../games/snowrider/docs/shot.png" width="320" align="right" alt="Snow Rider 3D">
+
+| Key | What it does |
+| --- | --- |
+| **Left, Right** | Steer |
+| **Up, OK** | Jump (held, again on landing) |
+| **Back** | Pause (with Restart and Quit game) |
+
+The sled slides down the endless slope by itself, faster and faster. Steer around the trees, rocks, snowmen, stumps and walls: one hit and it breaks. Fences and signs break as you ride through them. Every 10 metres is a point. Past 10 points come tunnels, cracks to jump and floating islands, and giant snowballs roll across. Gifts on the slope buy new sleds at the camp. Your best score, gifts and sleds are saved.
+
+<br clear="right">
+
 ## Portal Returns
 
 <img src="media/portal.gif" width="320" align="right" alt="Portal Returns: falling through a portal and flying across a test chamber">
