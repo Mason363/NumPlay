@@ -112,7 +112,8 @@ static inline const BuildingLinks *building_links(int i) { return RES(BuildingLi
 static inline const Threshold *bank_achiev(int i) { return RES(Threshold, OFF_BANK_ACHIEVS) + i; }
 static inline const Threshold *cps_achiev(int i) { return RES(Threshold, OFF_CPS_ACHIEVS) + i; }
 static inline const UnlockAtRec *unlock_at(int i) { return RES(UnlockAtRec, OFF_UNLOCK_AT) + i; }
-static inline const char *res_text(uint32_t off) { return (const char *)cc_data + OFF_TEXT + off; }
+/* CC_CCK2_TEXT_BPE_V1: bit 31 means text expanded into a rotating RAM slot. */
+const char *res_text(uint32_t off);
 /* the picture of icon (x, y) of the game's sheet, -1 if it is empty */
 static inline int icon_image(int x, int y) {
   if ((unsigned)x >= ICON_COLS || (unsigned)y >= ICON_ROWS) return -1;
