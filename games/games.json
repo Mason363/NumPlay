@@ -677,7 +677,7 @@
   },
   {
     "id": "championisland",
-    "rank": 23,
+    "rank": 24,
     "title": "Champion Island",
     "tagline": "Seven sports, one island",
     "credit": "Based on Google's Champion Island Games",
@@ -699,7 +699,7 @@
   },
   {
     "id": "finalearth2",
-    "rank": 24,
+    "rank": 25,
     "title": "The Final Earth 2",
     "tagline": "Build a city in space",
     "credit": "Based on the game by Florian van Strien",
@@ -923,7 +923,7 @@
   },
   {
     "id": "cookieclicker",
-    "rank": 26,
+    "rank": 27,
     "title": "Cookie Clicker",
     "tagline": "Bake billions of cookies",
     "credit": "Based on Cookie Clicker by Orteil",
@@ -944,7 +944,7 @@
   },
   {
     "id": "leveldevil",
-    "rank": 25,
+    "rank": 26,
     "title": "Level Devil",
     "tagline": "Run to the door",
     "credit": "Based on Level Devil by Unept",
@@ -1212,6 +1212,27 @@
       "docs/shot.png"
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/polytrack",
+    "default": false,
+    "xl": true
+  },
+  {
+    "id": "snowrider",
+    "rank": 23,
+    "title": "Snow Rider 3D",
+    "tagline": "Sled down the endless slope",
+    "credit": "Based on Snow Rider 3D",
+    "top": "0x8CC8F0",
+    "bottom": "0x2A4A6E",
+    "accent": "0xD8343A",
+    "colors": 16,
+    "records": [
+      "snowrider.sav",
+      "snowrider_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/snowrider",
     "default": false,
     "xl": true
   }

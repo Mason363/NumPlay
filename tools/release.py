@@ -53,6 +53,7 @@ ALONE = {
     "turborush": ("Turbo Rush", "an arcade racer by Bobydeluxe: six circuits, a Grand Prix, single races and Free Ride"),
     "angrybirds": ("Angry Birds", "the 429 levels of the Chrome edition, its seven birds and the Mighty Eagle"),
     "polytrack": ("PolyTrack", "Kodub's low-poly time trial racer: its 17 tracks, loops, wall rides and jumps, against your ghost"),
+    "snowrider": ("Snow Rider 3D", "the endless sled run: its slope, sleds, gifts and crashes, read from the game's own Unity project"),
 }
 VARIANTS = [
     ("NumPlay-Invisible.nwa", "The same app, hidden: a blank icon with no name"),
