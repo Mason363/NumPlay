@@ -245,6 +245,136 @@ def picture(im, ppm, pivot, opaque=False, colors=256):
     return out
 
 
+# HC_LOSSLESS_CROP_V1: compact only transparent margins; terrain stays direct.
+def _hc_crop_picture_blob(blob, name):
+    if name.startswith(('GROUND_', 'SURF_', 'PIT_', 'SKY', 'DIRT',
+                        'SNOW', 'GRASS', 'SLIME', 'FIRE')):
+        return blob
+    w, h, n, flags, ppm4, px4, py4, pad = struct.unpack_from('<HHHHHhhH', blob)
+    if flags or pad or not w or not h or n > 256:
+        return blob
+    pal = blob[16:16 + 4*n]
+    clear = [i for i in range(n) if pal[i*4 + 3] == 0]
+    if not clear or any(pal[i*4:i*4+3] != b'\0\0\0' for i in clear):
+        return blob
+    visible = {i for i in range(n) if pal[i*4+3] != 0}
+    px = blob[16+4*n:16+4*n+w*h]
+    if len(px) != w*h:
+        raise ValueError('Hill Climb image pixel data truncated')
+    x0, y0, x1, y1 = w, h, -1, -1
+    for y in range(h):
+        row = px[y*w:(y+1)*w]
+        for x, idx in enumerate(row):
+            if idx in visible:
+                x0 = min(x0, x); y0 = min(y0, y)
+                x1 = max(x1, x); y1 = max(y1, y)
+    if x1 < x0:
+        return blob
+    cw, ch = x1-x0+1, y1-y0+1
+    if max(x0, y0, cw, ch) > 255:
+        return blob
+    hdr = bytearray(blob[:16])
+    struct.pack_into('<H', hdr, 6, flags | 2)
+    struct.pack_into('<H', hdr, 14, clear[0])
+    out = hdr + pal + bytes((x0, y0, cw, ch))
+    for y in range(y0, y0+ch):
+        out += px[y*w+x0:y*w+x0+cw]
+    while len(out) % 4:
+        out.append(0)
+    return out if len(out) < len(blob) else blob
+
+
+# HC_PALETTE_COMPACT_V1: preserve exact premultiplied RGBA/RGB565.
+def _hc_compact_palette_blob(blob):
+    """Drop unused/duplicate colour entries in one already-cropped HCRD record.
+
+    Works on both ordinary and HC_LOSSLESS_CROP_V1 records; the latter's
+    outside-transparent index is remapped too. Never alters logical pixels.
+    """
+    w, h, n, flags, ppm4, px4, py4, pad = struct.unpack_from('<HHHHHhhH', blob)
+    assert flags & ~3 == 0 and 1 <= n <= 256
+    rgba = [blob[16 + 4*i:20 + 4*i] for i in range(n)]
+    pal_end = 16 + 4*n
+    rgb565 = [blob[pal_end + 2*i:pal_end + 2*i + 2] for i in range(n)] if flags & 1 else None
+    at = pal_end + (2*n if flags & 1 else 0)
+    if flags & 2:
+        x0, y0, cw, ch = blob[at:at + 4]
+        at += 4
+    else:
+        cw, ch = w, h
+    px = blob[at:at + cw*ch]
+    keep = set(px)
+    if flags & 2:
+        keep.add(pad)  # original transparent colour outside crop bounds
+    unique, remap, colors = {}, {}, []
+    for old in sorted(keep):
+        key = rgba[old] + (rgb565[old] if rgb565 is not None else b'')
+        if key not in unique:
+            unique[key] = len(colors)
+            colors.append(old)
+        remap[old] = unique[key]
+    hdr = bytearray(blob[:16])
+    struct.pack_into('<H', hdr, 4, len(colors))
+    if flags & 2:
+        struct.pack_into('<H', hdr, 14, remap[pad])
+    out = hdr + b''.join(rgba[i] for i in colors)
+    if rgb565 is not None:
+        out += b''.join(rgb565[i] for i in colors)
+    if flags & 2:
+        out += bytes((x0, y0, cw, ch))
+    out += bytes(remap[i] for i in px)
+    out += bytes((-len(out)) % 4)
+    return bytes(out) if len(out) < len(blob) else bytes(blob)
+
+# HC_MENU_TILES_EXPERIMENT_V1: lossless local-palette 8x8 menu images (16-bit tile offsets).
+def _hc_menu_tile_blob(blob, name):
+    if not (name in {'MENU_BG', 'LOGO', 'LOCK', 'START'} or
+            name.startswith(('STAGE_', 'ICON_', 'UP_', 'THUMB_V', 'THUMB_S'))):
+        return blob
+    w, h, n, flags, _, _, _, _ = struct.unpack_from('<HHHHHhhH', blob)
+    if flags & 4:
+        raise ValueError('tile encoding applied twice')
+    p = 16 + n*4 + (2*n if flags&1 else 0)
+    if flags&2:
+        cx, cy, cw, ch=blob[p:p+4]
+        p+=4
+    else:
+        cw, ch=w,h
+    pixels=blob[p:p+cw*ch]
+    if len(pixels)!=cw*ch:
+        raise ValueError('truncated input for menu tiling')
+    cols=(cw+7)//8;rows=(ch+7)//8
+    offsets=[];tiles=[];length=0
+    for ty in range(rows):
+        for tx in range(cols):
+            tw=min(8,cw-8*tx);th=min(8,ch-8*ty)
+            raw=b''.join(pixels[(8*ty+dy)*cw+8*tx:(8*ty+dy)*cw+8*tx+tw] for dy in range(th))
+            cmap={}; pal=[]; codes=[]
+            for val in raw:
+                if val not in cmap:
+                    cmap[val]=len(pal);pal.append(val)
+                codes.append(cmap[val])
+            count=len(pal)
+            if count<=16:
+                bits=0 if count==1 else 1 if count==2 else 2 if count<=4 else 4
+                t=bytearray((count,))+bytearray(pal)
+                if bits:
+                    for k in range(0,len(codes),8//bits):
+                        v=0
+                        for j,c in enumerate(codes[k:k+8//bits]):
+                            v|=c<<(8-bits*(j+1))
+                        t.append(v)
+                if len(t)>=1+len(raw):t=b'\0'+raw
+            else:
+                t=b'\0'+raw
+            offsets.append(length);tiles.append(bytes(t));length+=len(t)
+    if length>=65536:return blob
+    data=b''.join(struct.pack('<H',o) for o in offsets)+b''.join(tiles)
+    out=bytearray(blob[:p])+data
+    struct.pack_into('<H',out,6,flags|4)
+    while len(out)%4:out.append(0)
+    return bytes(out) if len(blob)-len(out)>=96 and len(out)*100<=len(blob)*96 else blob
+
 def sized(im, how, crop):
     if crop == "trim":
         im = im.crop(im.getbbox())
@@ -399,6 +529,64 @@ def font_data(ttf, cap, weight, outline):
     out += data
     while len(out) % 4:
         out.append(0)
+    return _hc_pack_font_blob(out)
+
+
+# HC_FONT_ROW_RLE_V1: lossless per-glyph row PackBits, direct row offsets.
+def _hc_rle_font_row(raw):
+    out = bytearray()
+    i = 0
+    while i < len(raw):
+        j = i + 1
+        while j < len(raw) and raw[j] == raw[i] and j - i < 128:
+            j += 1
+        if j - i >= 3:
+            out += bytes((0x80 | (j-i-1), raw[i]))
+            i = j
+            continue
+        start = i
+        i += j - i
+        while i < len(raw) and i - start < 128:
+            j = i + 1
+            while j < len(raw) and raw[j] == raw[i] and j - i < 128:
+                j += 1
+            if j - i >= 3:
+                break
+            i += min(j-i, 128-(i-start))
+        out.append(i-start-1)
+        out += raw[start:i]
+    return bytes(out)
+
+
+def _hc_pack_font_blob(blob):
+    """Existing font/glyph structs, except pad[0]=1 marks compressed glyphs.
+
+    Each compressed glyph payload starts with h+1 little-endian uint16 row
+    offsets, followed by the PackBits streams; other glyphs stay direct.
+    """
+    first, count, height, ascent = struct.unpack_from('<BBBB', blob)
+    base = 4 + 12*count
+    out = bytearray(blob[:base])
+    for j in range(count):
+        p = 4 + 12*j
+        w, h = struct.unpack_from('<BB', blob, p)
+        oldoff = struct.unpack_from('<I', blob, p+8)[0]
+        raw = bytes(blob[base+oldoff:base+oldoff+w*h])
+        assert len(raw) == w*h and not any(blob[p+5:p+8])
+        struct.pack_into('<I', out, p+8, len(out)-base)
+        if w and h:
+            rows = [_hc_rle_font_row(raw[y*w:(y+1)*w]) for y in range(h)]
+            starts = [0]
+            for row in rows:
+                starts.append(starts[-1] + len(row))
+            if starts[-1] <= 65535:
+                candidate = struct.pack('<'+'H'*(h+1), *starts) + b''.join(rows)
+                if len(candidate) < len(raw):
+                    out[p+5] = 1
+                    out += candidate
+                    continue
+        out += raw
+    out += bytes((-len(out)) % 4)
     return out
 
 
@@ -442,7 +630,8 @@ def main():
             colors[name] = more[0]
     vp, art_lines = vehicle_pictures(ref)
     pics += vp
-    blobs = [picture(im, ppm, pv, opaque, colors.get(name, 256)) for name, im, ppm, pv, opaque in pics]
+    blobs = [_hc_menu_tile_blob(_hc_compact_palette_blob(_hc_crop_picture_blob(picture(im, ppm, pv, opaque, colors.get(name, 256)), name)), name)
+             for name, im, ppm, pv, opaque in pics]
     ttf = os.path.join(ref, "fonts", "Teko.ttf")
     fonts = [font_data(ttf, cap, wt, ol) for _, cap, wt, ol in FONTS]
     head = 16 + 4 * (len(blobs) + len(fonts))
