@@ -1,0 +1,33 @@
+# Meowdoku in Chinese: the English text as in the source, a tab, the translation (see tools/lang.py).
+A cat goes in this cell: take the X off.	这一格有猫：把 X 去掉。
+A cat here would leave a row, column or color with no room.	猫放在这里，会让某一行、列或颜色没有位置。
+Back  close	Back  关闭
+Clear!	过关！
+Hard	困难
+How to play	玩法
+Level 	关卡 
+Level	关卡
+Next level	下一关
+OK  X      OK OK  cat      DEL  undo      Back  menu	OK  X      OK OK  放猫      DEL  撤销      Back  菜单
+OK  apply	OK  执行
+OK again to quit	再按 OK 退出
+OK marks an X. OK twice (or EXE) places a cat. A wrong cat costs a fish; with all 3 gone, try again.	OK 画一个 X。按两次 OK（或 EXE）放猫。放错猫会失去一条鱼，3 条都没了就重来。
+One cat in each row, each column and each color. Cats can't touch, not even at the corners.	每行、每列、每种颜色各放一只猫。猫不能相邻，斜角也不行。
+Only one cell in this column can take a cat.	这一列只剩一格能放猫。
+Only one cell in this row can take a cat.	这一行只剩一格能放猫。
+Only one cell of this color can take a cat.	这种颜色只剩一格能放猫。
+Out of fish	小鱼用完了
+Paused	暂停
+Perfect!	完美！
+Play	开始
+Quit game	退出游戏
+Resume	继续
+These colors fill these lines between them, so nothing else in the lines can have a cat.	这些颜色占满了这些线，所以这些线上的其他格子没有猫。
+This cat rules out its row, its column and the cells around it.	这只猫排除了它所在的行、列和周围的格子。
+This color's cat must be in this line, so the rest of the line can't have one.	这种颜色的猫一定在这条线上，所以这条线的其他格子没有猫。
+This line's cat must be in this color, so the rest of the color can't have one.	这条线的猫一定在这种颜色里，所以这种颜色的其他格子没有猫。
+Try again	再试一次
+alpha	alpha
+find	找猫
+hint	提示
+shift	shift

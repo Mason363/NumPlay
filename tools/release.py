@@ -41,6 +41,7 @@ ALONE = {
     "leveldevil": ("Level Devil", "Unept's troll platformer, all sixteen worlds"),
     "sonic": ("Sonic the Hedgehog", "the whole 1991 game, Green Hill to the Final Zone"),
     "numvisuals": ("NumVisuals", "moving backgrounds with a clock, a stopwatch, a timer, a counter or your own words"),
+    "meowdoku": ("Meowdoku", "one cat per row, column and color, with the game's own puzzles, in its order"),
     "cookieclicker": ("Cookie Clicker", "the whole game, to the grandmapocalypse, ascension and the dragon"),
     "jetpackjoyride": ("Jetpack Joyride", "Barry's run through the lab, with five vehicles and the Final Spin"),
     "stickmanhook": ("Stickman Hook", "swing from hook to hook: 39 levels made by hand, then endless ones"),
@@ -55,6 +56,8 @@ ALONE = {
     "polytrack": ("PolyTrack", "Kodub's low-poly time trial racer: its 17 tracks, loops, wall rides and jumps, against your ghost"),
     "paperclips": ("Universal Paperclips", "Frank Lantz's game of an AI making paperclips: business, the Earth, then the universe"),
     "badtime": ("Bad Time Simulator", "the Sans fight: 24 attacks of bones, Gaster Blasters and the blue heart, after jcw87's Bad Time Simulator"),
+    "mahjong": ("Mahjong", "Mahjong solitaire: 144 tiles in the Turtle, the Dragon, the Crab and the Spider, every deal winnable"),
+    "rider": ("Rider", "Ketchapp's neon motorbike game: the endless run, 48 levels and 55 bikes, one button to ride and flip"),
     "snowrider": ("Snow Rider 3D", "the endless sled run: its slope, sleds, gifts and crashes, read from the game's own Unity project"),
 }
 VARIANTS = [

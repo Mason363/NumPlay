@@ -96,6 +96,8 @@ jobs:
           make -C games/polytrack host test
           make -C games/paperclips host test
           make -C games/badtime host test
+          make -C games/mahjong host test
+          make -C games/rider host test
           make -C games/snowrider host test
 
 
