@@ -300,8 +300,9 @@ void board_start(int level) {
   /* (the zombies wait for the first plant, the first time through the Adventure) */
   if (progress.finished) B.started = 1;
   if (B.mode == MODE_BOWLING) {
+    /* (Challenge::StartLevel: a wall-nut on the belt, the next in 400 ticks, the zombies in 200) */
     B.npackets = 1, B.packets[0].kind = P_WALLNUT, B.packets[0].x = 0;
-    B.started = 1, B.wave_in = 200;
+    B.started = 1, B.wave_in = 200, B.conveyor_in = 400;
   }
   if (B.mode == MODE_CONVEYOR) B.started = 1, B.conveyor_in = 1;
   if (B.mode == MODE_WHACK) {
@@ -789,7 +790,8 @@ void board_tick(void) {
   /* the effects */
   for (int i = 0; i < B.nfx; i++)
     if (++B.fx[i].t >= B.fx[i].life) B.fx[i--] = B.fx[--B.nfx];
-  if (!B.started) return;
+  /* (nothing moves before the first plant, the first time through, nor in 1-5's shovel lesson) */
+  if (!B.started || B.tutorial == 4) return;
   if (has_conveyor()) conveyor_tick();
 
   plants_tick();
@@ -827,7 +829,11 @@ void board_tick(void) {
         n->x = 1000;
         break;
       }
-      damage_zombie(z, z->armor > 0 ? 900 : 1800, false);
+      /* (Plant::UpdateBowling: a paper or a door takes 400, a cone or a bucket 900, and the blow stops there;
+       * a door hit by a nut already bouncing, and a bare zombie, take 1800) */
+      if (z->shield > 0 && !(z->kind == Z_DOOR && n->dir)) damage_zombie(z, z->shield < 400 ? z->shield : 400, false);
+      else if (z->shield <= 0 && z->armor > 0) damage_zombie(z, z->armor < 900 ? z->armor : 900, false);
+      else damage_zombie(z, 1800, false);
       z->hit_at = B.ticks;
       if (z->health <= 0) kill_zombie(z, DIE_NORMAL);
       n->dir = n->row == 0 ? 1 : n->row == 4 ? -1 : n->dir == 0 ? (frand() < 0.5f ? -1 : 1) : -n->dir;

@@ -40,6 +40,7 @@ ITEM_BURNT_PAN, ITEM_INSTANT_NOODLES, ITEM_HOT_DOG, ITEM_STAINED_APRON = 28, 29,
 ITEM_NICE_CREAM = 13
 ITEM_STARFAIT, ITEM_GLAMBURGER = 32, 33
 ITEM_WORN_DAGGER, ITEM_HEART_LOCKET = 41, 42
+ITEM_ANNOYING_DOG, ITEM_DOG_RESIDUE = 43, 44
 
 
 def run(args, frames, saves=None, what=""):
@@ -222,14 +223,38 @@ if not QUICK:
     if s:
         for name, v in (("WF_MK", 1), ("GRILLBYS", 1), ("WF_TUTU", 1), ("WF_UNDYNE1", 1), ("SEEDS1", 1), ("SEEDS2", 1),
                         ("SEEDS3", 1), ("WF_QUICHE", 1), ("CHASE1", 1), ("WF_TELESCOPE", 1), ("WF_PUNCH", 1), ("WF_BALLET", 1),
-                        ("WF_ONION", 2), ("PIANO", 1), ("WF_ARTIFACT", 1), ("SHYREN", 1),
+                        ("WF_ONION", 2), ("PIANO", 1), ("WF_ARTIFACT", 3), ("SHYREN", 1),
                         ("UMBRELLA", 3), ("MK_RAIN", 2), ("WF_BRIDGE", 1), ("WF_DUMP", 1), ("WF_COOLER", 2),
                         ("MAD_DUMMY", 1), ("NAPSTA_HOME", 2), ("TEM_VILLAGE", 1), ("DEADEND", 1), ("MK_CHASM", 2),
                         ("UNDYNE", 4), ("WATER_CUP", 2), ("PAP_NEON", 1)):
             check(flag(s, name) == v, f"Waterfall: F_{name} is {flag(s, name)}, not {v}")
         check(s["kills"] == 0, f"Waterfall: {s['kills']} killed on the friendly way")
-        for item in (ITEM_OLD_TUTU, ITEM_BALLET_SHOES, ITEM_QUICHE, ITEM_PUNCH_CARD, ITEM_ARTIFACT, ITEM_ASTRONAUT_FOOD):
+        for item in (ITEM_OLD_TUTU, ITEM_BALLET_SHOES, ITEM_QUICHE, ITEM_PUNCH_CARD, ITEM_DOG_RESIDUE, ITEM_ASTRONAUT_FOOD):
             check(item in s["items"], f"Waterfall: item {item} not picked up: {s['items']}")
+
+# the Legendary Artifact (issue #216): the first try fills the inventory with Annoying Dogs; one deployed there absorbs
+# the artifact and leaves Dog Residue; with the dogs gone (out of the room), the artifact is taken
+art = ["--name", "Frisk", "--noenc", "--god", "--room", str(ROOMS["WF_PIANO"]), "--at", "10140,240",
+       "--flag", "%d=1" % FLAGS["F_PIANO"]]
+s = run(art + ["--path", "go:10150,162;u;z;talk"], 1500, what="the artifact, the first try")
+check(s and s["items"] == [ITEM_ANNOYING_DOG] * 8 and flag(s, "WF_ARTIFACT") == 2, f"the artifact: no dogs: {s and s['items']}")
+s = run(art + ["--path", "go:10150,162;u;z;talk;c;z;z;z;talk;u;z;talk"], 2500, what="the artifact, a dog deployed")
+check(s and s["items"] == [ITEM_DOG_RESIDUE] + [0] * 7 and flag(s, "WF_ARTIFACT") == 3,
+      f"the artifact: the dog did not absorb it: {s and s['items']}")
+s = run(art + ["--flag", "%d=2" % FLAGS["F_WF_ARTIFACT"], "--path", "go:10150,162;u;z;talk"], 1500,
+        what="the artifact, the dogs gone")
+check(s and s["items"][0] == ITEM_ARTIFACT and flag(s, "WF_ARTIFACT") == 1, f"the artifact not taken: {s and s['items']}")
+
+# every room: all there is to talk to (signs, glyphs on the walls, the townsfolk) reached from a floor Frisk walks on,
+# facing it (issue #216: Waterfall's lore panels and signs out of reach)
+with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
+    f.write("".join("room %d\n" % r for r in sorted(ROOMS.values())))
+p = subprocess.run([PLAY, "--saves", tempfile.mkdtemp(prefix="undertale_check_"), "--name", "Frisk", "--rooms", f.name],
+                   capture_output=True, text=True, env=ENV, timeout=900)
+os.remove(f.name)
+m = re.search(r"ROOMS (\d+) checked, (\d+) failed", p.stdout)
+check(m and int(m.group(1)) == len(ROOMS) and m.group(2) == "0",
+      "rooms: " + "\n".join(l for l in p.stdout.splitlines() if l.startswith("ROOMS")) + p.stderr[-1000:])
 
 # Hotland's first floor: Alphys and the quiz, the noodles, the belts, the vents, the lasers, both shooting puzzles, the
 # cooking show, up the elevator to the second floor

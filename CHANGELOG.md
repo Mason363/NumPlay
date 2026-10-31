@@ -2,6 +2,24 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.19.0: Universal Paperclips
+
+- **New on its own:** Universal Paperclips, the whole game from the first clip to the last bit of matter in the universe.
+- **NumBlocks:** in the End, triangles point to the Ender Dragon and to the pillars whose crystals are whole, and the dragon no longer comes through the island. Explosions stop at walls, and panes, bars and fences draw faster.
+- **Undertale:** Waterfall's walls and floors are told apart and its signs are in reach, the Legendary Artifact brings its Annoying Dogs, and Monster Kid and Undyne keep up when you walk fast.
+- **Hollow Knight:** the enemies the game brings back after a rest, a death or a load at a bench come back.
+- **Cookie Clicker:** 0.8 MB smaller, drawn the same.
+- **NumPlay Studio:** big Game Boy games in Retro-Go, like the 2 MB ones, with Epsilon 26 or Nwagra.
+- **Fixed:** Plants vs. Zombies' Wall-nut Bowling plays to its end, Jetpack Joyride always leaves a way past its zappers, and Cookie Clicker's upgrades for baking while closed say they do nothing on the calculator.
+
+## 1.18.0: PolyTrack
+
+- **New on its own:** PolyTrack, all 17 tracks with their loops, wall rides and tubes, on an engine from Boris-TH's PolyGT 3D.
+- **Balatro:** rearrange your cards and Jokers with Alpha.
+- **Jetpack Joyride:** the bullets, zappers, scientists, Barry's fall and the rooms work as in the game.
+- **Celeste:** the Celestial Resort's busiest rooms run at full speed.
+- **Fixed:** Hollow Knight's soul orb fills, its first tablet's lesson fits, the Snail Shaman talks after the Elder Baldur, a first charm no longer freezes the Knight and lifeblood cocoons come back after a rest, Celeste no longer shows a hidden passage, and Monkey Mart's cashier stands behind a tall pile of money.
+
 ## 1.17.0: Angry Birds, Friday Night Funkin', UNO and Turbo Rush
 
 - **New on their own:** Angry Birds, Friday Night Funkin', UNO and Turbo Rush, by Bobydeluxe.

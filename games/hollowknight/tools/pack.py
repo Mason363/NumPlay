@@ -811,6 +811,9 @@ def main():
             f.write("#define VMOP_%s %d\n" % (name.upper(), code))
         for i, e in enumerate(vm.EVENTS.list[:vm.FIXED_EVENTS]):
             f.write("#define VMEV_%s %d\n" % (e.upper().replace(" ", "_"), i))
+        for e in vm.NAMED_EVENTS:   # (each room's number for it; 255: its scripts don't know it)
+            ids = [vm.BUILT[r].named_events.get(e, 255) if r in vm.BUILT else 255 for r in ROOMS]
+            f.write("#define VMEV_%s {%s}\n" % (e.upper().replace(" ", "_"), ", ".join(str(i) for i in ids)))
         for name in ("NPC Title", "Visited", "Display Right", "Hornet Saver", "Item"):
             f.write("#define VMSTR_%s %d\n" % (name.upper().replace(" ", "_"), vm.STR.index[name]))
         for name, i in str_ids.items():

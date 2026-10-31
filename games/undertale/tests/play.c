@@ -8,7 +8,16 @@
  * keys don't hold anything.
  * Keys: left right up down z x c home. "a-b:key" holds the key from frame a to b, "a:key" for one frame.
  * --room starts a new game in room N (its ROOM_* number) with Frisk's top-left at (X, Y), past the title.
- * Screenshots are DIR/shot_<frame>.ppm. */
+ * Screenshots are DIR/shot_<frame>.ppm.
+ * --rooms FILE checks rooms: for each "room N" line, the floor Frisk walks to from its first "floor X,Y" line (his
+ * feet), each "floor X,Y" reached and each "wall X,Y" not walked on (points from the original game), and all there is
+ * to talk to reached from a floor, facing it. A room with no points: its whole floor, and what there is to talk to.
+ *
+ * --rooms FILE checks rooms against the original's maps (tests/check.py writes FILE from tests/waterfall.rooms): for each
+ * "room N" (and its "flag F=V"s, a new game each), every "floor X,Y" (where the original's floor is: Frisk's feet
+ * there) is walked to from the first, every "wall X,Y" (the original's wall) can't be walked on, and everything
+ * there is to talk to (a sign, a SAVE Point, an echo flower...) is talked to from somewhere Frisk can walk to.
+ * It prints "ROOMS FAIL ..." for each that isn't so, then "ROOMS n checked". */
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -335,6 +344,135 @@ static uint32_t path_keys(int f) {
   return k;
 }
 
+/* ---------------------------------------------------------------- --rooms: the rooms against the original */
+#define RC_STEP 2   /* Frisk's top-left on a 2-pixel grid */
+static int rooms_failed;
+static void room_fail(int room, const char *what, int x, int y) {
+  printf("ROOMS FAIL room %d: %s at %d,%d\n", room, what, x, y);
+  rooms_failed++;
+}
+typedef struct { int kind, x, y; } Probe;   /* kind: 'f' floor, 'w' wall */
+
+static void room_check(int room, const int (*fl)[2], int nfl, const Probe *pr, int npr) {
+  game_new("Frisk");
+  for (int i = 0; i < nfl; i++) set_flag(fl[i][0], fl[i][1]);
+  int sx = -1, sy = -1;
+  for (int i = 0; i < npr && sx < 0; i++)
+    if (pr[i].kind == 'f') sx = pr[i].x - 10, sy = pr[i].y - 24;   /* (feet's middle -> top-left) */
+  RoomInfo ri;
+  room_info(room, &ri);
+  if (sx >= 0) world_enter(room, sx, sy, DIR_DOWN);
+  else {
+    /* (no floor given: the room's own floor nearest its middle) */
+    world_enter(room, ri.x + ri.w / 2 - 10, ri.y + ri.h / 2 - 24, DIR_DOWN);
+    for (int r = 0; sx < 0 && r < (ri.w > ri.h ? ri.w : ri.h); r += RC_STEP)
+      for (int y = ri.y + ri.h / 2 - r; sx < 0 && y <= ri.y + ri.h / 2 + r; y += RC_STEP)
+        for (int x = ri.x + ri.w / 2 - r; sx < 0 && x <= ri.x + ri.w / 2 + r; x += RC_STEP)
+          if (world_walkable(x - 7, y - 4, 14, 9, WALK_FLOOR_ONLY)) sx = x - 10, sy = y - 24;
+    if (sx < 0) {
+      room_fail(room, "no floor to start on", 0, 0);
+      return;
+    }
+    pl.x = (int16_t)sx, pl.y = (int16_t)sy;
+  }
+  /* every place Frisk walks to from the first floor point (the floor alone: what stands about can move), his feet
+   * in the room */
+  int x0 = ri.x - 24, y0 = ri.y - 32, gw = (ri.w + 48) / RC_STEP + 1, gh = (ri.h + 48) / RC_STEP + 1;
+  uint8_t *seen = calloc((size_t)gw * (size_t)gh, 1);
+  int *queue = malloc(sizeof(int) * (size_t)gw * (size_t)gh);
+  int qh = 0, qt = 0;
+  int s0 = ((pl.y - y0) / RC_STEP) * gw + (pl.x - x0) / RC_STEP;
+  if (s0 >= 0 && s0 < gw * gh) seen[s0] = 1, queue[qt++] = s0;
+  if (!npr)   /* (no floor given: every floor of the room) */
+    for (int c = 0; c < gw * gh; c++) {
+      int px = x0 + c % gw * RC_STEP, py = y0 + c / gw * RC_STEP, fx = px + 10, fy = py + 24;
+      if (seen[c] || fx < ri.x || fy < ri.y || fx >= ri.x + ri.w || fy >= ri.y + ri.h) continue;
+      if (world_walkable(px + 3, py + 20, 14, 9, WALK_FLOOR_ONLY)) seen[c] = 1, queue[qt++] = c;
+    }
+  while (qh < qt) {
+    int c = queue[qh++], cx = c % gw, cy = c / gw;
+    static const int dx[4] = {1, -1, 0, 0}, dy[4] = {0, 0, 1, -1};
+    for (int k = 0; k < 4; k++) {
+      int nx = cx + dx[k], ny = cy + dy[k];
+      if (nx < 0 || ny < 0 || nx >= gw || ny >= gh || seen[ny * gw + nx]) continue;
+      int px = x0 + nx * RC_STEP, py = y0 + ny * RC_STEP, fx = px + 10, fy = py + 24;
+      if (fx < ri.x || fy < ri.y || fx >= ri.x + ri.w || fy >= ri.y + ri.h) continue;
+      if (!world_walkable(px + 3, py + 20, 14, 9, WALK_FLOOR_ONLY)) continue;
+      seen[ny * gw + nx] = 1, queue[qt++] = ny * gw + nx;
+    }
+  }
+  for (int i = 0; i < npr; i++) {
+    if (pr[i].kind == 'w') {
+      if (world_walkable(pr[i].x, pr[i].y, 1, 1, WALK_FLOOR_ONLY)) room_fail(room, "the original's wall is walked on", pr[i].x, pr[i].y);
+      continue;
+    }
+    if (!world_walkable(pr[i].x - 7, pr[i].y - 4, 14, 9, WALK_FLOOR_ONLY)) {
+      room_fail(room, "the original's floor can't be stood on", pr[i].x, pr[i].y);
+      continue;
+    }
+    /* reached: a place walked to within a step of it */
+    bool ok = false;
+    for (int j = 0; j < qt && !ok; j++) {
+      int px = x0 + queue[j] % gw * RC_STEP, py = y0 + queue[j] / gw * RC_STEP;
+      ok = abs(px + 10 - pr[i].x) <= RC_STEP && abs(py + 24 - pr[i].y) <= RC_STEP;
+    }
+    if (!ok) room_fail(room, "the original's floor isn't reached", pr[i].x, pr[i].y);
+  }
+  /* everything to talk to: from a place walked to (with nothing solid on it), facing some way, Z talks to it */
+  int16_t px0 = pl.x, py0 = pl.y;
+  uint8_t d0 = pl.dir;
+  for (int i = 0; i < MAX_OBJS; i++) {
+    Obj *o = &objs[i];
+    if (o->kind == OBJ_NONE || !(o->flags & OF_TALK)) continue;
+    bool ok = false;
+    for (int j = 0; j < qt && !ok; j++) {
+      int px = x0 + queue[j] % gw * RC_STEP, py = y0 + queue[j] / gw * RC_STEP;
+      if (abs(px + 10 - (o->x + o->bx + o->bw / 2)) > o->bw / 2 + 80 || abs(py + 24 - (o->y + o->by + o->bh / 2)) > o->bh / 2 + 80)
+        continue;
+      if (!world_walkable(px + 3, py + 20, 14, 9, -1)) continue;
+      pl.x = (int16_t)px, pl.y = (int16_t)py;
+      for (int d = 0; d < 4 && !ok; d++) {
+        pl.dir = (uint8_t)d;
+        ok = world_talk_target() == o;
+      }
+    }
+    if (!ok) {
+      char what[96];
+      snprintf(what, sizeof what, "nothing reaches the thing to talk to (event %d, %dx%d)", o->event, o->bw, o->bh);
+      room_fail(room, what, o->x + o->bx, o->y + o->by);
+    }
+  }
+  pl.x = px0, pl.y = py0, pl.dir = d0;
+  free(seen);
+  free(queue);
+}
+
+static int rooms_check(const char *path) {
+  FILE *f = fopen(path, "r");
+  if (!f) fprintf(stderr, "no %s\n", path), exit(2);
+  static Probe pr[512];
+  int fl[32][2], nfl = 0, npr = 0, room = -1, nrooms = 0;
+  char line[256];
+  for (;;) {
+    bool eof = !fgets(line, sizeof line, f);
+    int a, b;
+    if (eof || sscanf(line, "room %d", &a) == 1) {
+      if (room >= 0) room_check(room, (const int (*)[2])fl, nfl, pr, npr), nrooms++;
+      if (eof) break;
+      room = a, nfl = 0, npr = 0;
+    } else if (sscanf(line, "flag %d=%d", &a, &b) == 2 && nfl < 32) {
+      fl[nfl][0] = a, fl[nfl][1] = b, nfl++;
+    } else if (sscanf(line, "floor %d,%d", &a, &b) == 2 && npr < 512) {
+      pr[npr++] = (Probe){'f', a, b};
+    } else if (sscanf(line, "wall %d,%d", &a, &b) == 2 && npr < 512) {
+      pr[npr++] = (Probe){'w', a, b};
+    }
+  }
+  fclose(f);
+  printf("ROOMS %d checked, %d failed\n", nrooms, rooms_failed);
+  return 0;
+}
+
 static uint32_t key_bit(const char *s) {
   static const struct { const char *n; uint32_t k; } keys[] = {
     {"left", K_LEFT}, {"right", K_RIGHT}, {"up", K_UP}, {"down", K_DOWN}, {"z", K_Z}, {"x", K_X}, {"c", K_C},
@@ -363,6 +501,7 @@ int main(int argc, char **argv) {
   const char *name = NULL;
   int nflags = 0, fl[64][2], gold = -1, nitems_ = 0, items_[8];
   bool trace = false, coll = false, god = false;
+  const char *rooms_file = NULL;
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--keys") && i + 1 < argc) parse_keys(argv[++i]);
@@ -401,6 +540,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[i], "--gold") && i + 1 < argc) gold = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--item") && i + 1 < argc && nitems_ < 8) items_[nitems_++] = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--coll")) coll = true;
+    else if (!strcmp(argv[i], "--rooms") && i + 1 < argc) rooms_file = argv[++i];
     else fprintf(stderr, "unknown option %s\n", argv[i]), exit(2);
   }
   mkdir(out, 0755);
@@ -411,6 +551,7 @@ int main(int argc, char **argv) {
   host_save_dir(saves);
   ut_bin = ut_data;
   game_init();
+  if (rooms_file) return rooms_check(rooms_file);
   if (room >= 0 || name || battle >= 0) {
     game_new(name ? name : "Frisk");
     for (int i = 0; i < nflags; i++) set_flag(fl[i][0], fl[i][1]);   /* (before the room is set up) */

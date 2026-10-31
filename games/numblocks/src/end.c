@@ -95,6 +95,28 @@ static bool through(float x0, float y0, float z0, float x1, float y1, float z1) 
   return hard;
 }
 
+/* the blocks it can't break in its body (5 wide) or head (3 wide), both 3 high, there (part: their places
+ * from the dragon's): obsidian, end stone, bedrock; without mob griefing, anything solid */
+static bool hard_in(float x0, float y0, float z0, float x1, float y1, float z1) {
+  if (!rule(GR_MOB_GRIEFING)) {
+    float a[6] = {x0, y0, z0, x1, y1, z1};
+    return !phys_free(a);
+  }
+  for (int y = ifl(y0); y <= ifl(y1); y++)
+    for (int z = ifl(z0); z <= ifl(z1); z++)
+      for (int x = ifl(x0); x <= ifl(x1); x++) {
+        if (!world_loaded(x, y, z)) continue;
+        int b = world_get(x, y, z);
+        if (b == B_OBSIDIAN || b == B_END_STONE || b == B_BEDROCK) return true;
+      }
+  return false;
+}
+static bool stopped(float x, float y, float z, const float (*part)[3]) {
+  float bx = x + part[0][0], bz = z + part[0][2], hx = x + part[1][0], hy = y + part[1][1], hz = z + part[1][2];
+  return hard_in(bx - 2.5f, y, bz - 2.5f, bx + 2.5f, y + 3, bz + 2.5f) ||
+         hard_in(hx - 1.5f, hy, hz - 1.5f, hx + 1.5f, hy + 3, hz + 1.5f);
+}
+
 /* EntityDragon.generatePortal: the exit portal (bedrock round it and under it), the pillar with its
  * four torches and the egg */
 static void exit_portal(int px, int py, int pz) {
@@ -209,13 +231,6 @@ void dragon_tick(Entity *e) {
   /* moveFlying(0, -1): head first */
   yr = dg.yaw * 0.017453292f;
   e->vx += fr * sinf(yr), e->vz -= fr * cosf(yr);
-  float k = dg.slowed ? 0.8f : 1;
-  e->x += e->vx * k, e->y += e->vy * k, e->z += e->vz * k;   /* (noClip) */
-  float mx = e->vx, my = e->vy, mz = e->vz, ml = sqrtf(mx * mx + my * my + mz * mz);
-  if (ml > 0) mx /= ml, my /= ml, mz /= ml;
-  float f9 = 0.8f + 0.15f * (((mx * lx + my * ly + mz * lz) + 1) / 2);
-  e->vx *= f9, e->vz *= f9, e->vy *= 0.91f;
-  e->yaw = dg.yaw + 180;
   /* its parts: the body, the wings out at 4.5, the head 5.5 ahead (as the neck lifts it) */
   float o5y, o10y, o0y, oy;
   dragon_offsets(5, 1, &oy, &o5y);
@@ -223,9 +238,27 @@ void dragon_tick(Entity *e) {
   dragon_offsets(0, 1, &oy, &o0y);
   float f1 = (o5y - o10y) * 10 / 180 * 3.1415927f, f2 = cosf(f1), f15 = -sinf(f1);
   float f16 = sinf(yr), f4 = cosf(yr);
-  float bx = e->x + f16 * 0.5f, bz = e->z - f4 * 0.5f;
   float f17 = sinf(yr - dg.yaw_v * 0.01f), f18 = cosf(yr - dg.yaw_v * 0.01f);
-  float hx = e->x + f17 * 5.5f * f2, hy = e->y + (o0y - o5y) + f15 * 5.5f, hz = e->z - f18 * 5.5f * f2;
+  const float part[2][3] = {{f16 * 0.5f, 0, -f4 * 0.5f}, {f17 * 5.5f * f2, (o0y - o5y) + f15 * 5.5f, -f18 * 5.5f * f2}};
+  /* the move: 1.8.8's dragon goes through everything (noClip); here what it can't break stops it, so it
+   * doesn't come at the player through the island: it slides along it and climbs (free once inside) */
+  float k = dg.slowed ? 0.8f : 1, dx = e->vx * k, dy = e->vy * k, dz = e->vz * k;
+  if (stopped(e->x, e->y, e->z, part)) e->x += dx, e->y += dy, e->z += dz, e->vy += 0.05f;
+  else {
+    if (stopped(e->x, e->y + dy, e->z, part)) e->vy = dy > 0 ? 0 : 0.1f, dy = 0;
+    e->y += dy;
+    if (stopped(e->x + dx, e->y, e->z, part)) e->vx = 0, e->vy += 0.1f, dx = 0;
+    e->x += dx;
+    if (stopped(e->x, e->y, e->z + dz, part)) e->vz = 0, e->vy += 0.1f, dz = 0;
+    e->z += dz;
+  }
+  float mx = e->vx, my = e->vy, mz = e->vz, ml = sqrtf(mx * mx + my * my + mz * mz);
+  if (ml > 0) mx /= ml, my /= ml, mz /= ml;
+  float f9 = 0.8f + 0.15f * (((mx * lx + my * ly + mz * lz) + 1) / 2);
+  e->vx *= f9, e->vz *= f9, e->vy *= 0.91f;
+  e->yaw = dg.yaw + 180;
+  float bx = e->x + part[0][0], bz = e->z + part[0][2];
+  float hx = e->x + part[1][0], hy = e->y + part[1][1], hz = e->z + part[1][2];
   if (e->hurt == 0 && !pl.dead && dim == DIM_END) {
     /* the wings knock the player away; the head bites (10) */
     for (int w = -1; w <= 1; w += 2) {
@@ -326,6 +359,18 @@ float dragon_bar(void) {
   float dx = e->x - pl.x, dz = e->z - pl.z;
   if (dx * dx + dz * dz > 160 * 160) return -1;
   return e->health / 200.0f;
+}
+/* what the HUD points to in the End while the dragon lives: the dragon (kind 0) and the tops of the pillars
+ * whose crystals are whole (kind 1) */
+int end_marks(float (*at)[3], uint8_t *kind, int max) {
+  Entity *e = dragon();
+  if (!e || dim != DIM_END || dg.death || dst.dragon_dead) return 0;
+  int n = 0, ns;
+  at[n][0] = e->x, at[n][1] = e->y + 2, at[n][2] = e->z, kind[n++] = 0;
+  const EndSpike *s = gen_spikes(&ns);
+  for (int i = 0; i < ns && n < max; i++)
+    if (crystal_alive(i)) at[n][0] = s[i].x + 0.5f, at[n][1] = s[i].y + s[i].h + 1.0f, at[n][2] = s[i].z + 0.5f, kind[n++] = 1;
+  return n;
 }
 /* the beam to the dragon from the crystal healing it: the crystal's place, false if none */
 bool dragon_beam(float *from, float *to) {

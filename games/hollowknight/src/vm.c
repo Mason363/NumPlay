@@ -447,10 +447,13 @@ static int transition(const Fsm *f, int ev) {
   return -1;
 }
 
+/* (one whose object went off or was destroyed stops: its Fsm takes no more events (Stop), FINISHED neither; so the
+ * Snail Shaman's first self, gone once the Knight has his spell, doesn't go on to set him back to 2) */
 static void run_switches(Fsm *f) {
   while (f->next != 255 && vm.depth < 48) {
     int s = f->next;
     f->next = 255;
+    if (!f->on) break;
     vm.depth++;
     enter_state(f, s);
     vm.depth--;
@@ -1713,7 +1716,7 @@ static void enter_state(Fsm *f, int s) {
     if (f->epoch != epoch || f->next != 255) break;
   }
   vm.executing = prev;
-  if (f->epoch == epoch && f->next == 255 && f->done == (st[1] >= 64 ? ~0ull : ((uint64_t)1 << st[1]) - 1)) {
+  if (f->on && f->epoch == epoch && f->next == 255 && f->done == (st[1] >= 64 ? ~0ull : ((uint64_t)1 << st[1]) - 1)) {
     f->finished = true;
     f->next = 255;
     int t = transition(f, VMEV_FINISHED);
@@ -1748,7 +1751,7 @@ static void fsm_step(Fsm *f, int mode) {
     if (f->epoch != epoch) break;
   }
   vm.executing = prev;
-  if (f->epoch == epoch && f->next == 255 && f->done == (st[1] >= 64 ? ~0ull : ((uint64_t)1 << st[1]) - 1)) {
+  if (f->on && f->epoch == epoch && f->next == 255 && f->done == (st[1] >= 64 ? ~0ull : ((uint64_t)1 << st[1]) - 1)) {
     f->finished = true;
     int t = transition(f, VMEV_FINISHED);
     if (t >= 0) f->next = (uint8_t)t;

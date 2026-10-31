@@ -285,6 +285,33 @@ int main(void) {
   SAY("%d of %d broken", broken, nsk);
   CHECK(broken == nsk);
 
+  printf("the dragon at a player on the island\n");
+  /* (it comes at the player, but no more through the end stone: its body never in it) */
+  {
+    int gy = 90;
+    while (gy > 10 && gen_end_block(0, gy - 1, 20) != B_END_STONE) gy--;
+    fly_to(0.5f, (float)gy, 20.5f);
+    pl.flying = false;
+    Entity *d = find_ent(E_DRAGON);
+    int inside = 0;
+    float nearest = 1e9f;
+    for (int t = 0; t < 2000 && d; t++) {
+      pl.x = 0.5f, pl.z = 20.5f, pl.y = (float)gy, pl.vx = pl.vy = pl.vz = 0, pl.health = 20;
+      frames(1);
+      d = find_ent(E_DRAGON);
+      if (!d) break;
+      nearest = fminf(nearest, hypotf(d->x - pl.x, d->z - pl.z) + fabsf(d->y - pl.y));
+      bool in = false;
+      for (int y = (int)floorf(d->y + 0.2f); y <= (int)floorf(d->y + 2.8f) && !in; y++)
+        for (int z = (int)floorf(d->z - 1.5f); z <= (int)floorf(d->z + 1.5f) && !in; z++)
+          for (int x = (int)floorf(d->x - 1.5f); x <= (int)floorf(d->x + 1.5f) && !in; x++)
+            in = world_get(x, y, z) == B_END_STONE;
+      inside += in;
+    }
+    SAY("standing at y %d: it came within %.1f, %d ticks in the end stone", gy, nearest, inside);
+    CHECK(nearest < 16 && inside == 0);
+  }
+
   printf("the dragon\n");
   fly_to(0.5f, 80, 20.5f);
   Entity *dr = find_ent(E_DRAGON);

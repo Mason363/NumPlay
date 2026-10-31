@@ -268,6 +268,17 @@ GAMES = {
     "polytrack": ("PolyTrack.nwa", "polytrack.sav",
                   presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "ok"), (4300, "ok"), (9500, "back"))
                   + [(5000, 9000, K["up"])], 11000, presses((1500, "ok"), (2200, "ok")) + [(3000, 6500, K["up"])], 7500),
+    # how to play (the first time: OK starts), then Make Paperclip held, Back to pause (that saves); Home keeps the
+    # clips. Next time, from the copy, no guide: a clip more, quit with On/Off
+    "paperclips": ("UniversalPaperclips.nwa", "paperclips.sav",
+                   presses((1500, "ok"), (4500, "back")) + [(2200, 4000, K["ok"])], 6000,
+                   presses((1500, "ok"), (2000, "ok")), 4000),
+    # the title's Normal, how to play (the first time: three pages, OK starts), then the fight: the Judge's first
+    # words read; Home keeps the guide read and the first attack reached. Next time, from the copy, Normal starts at
+    # once, quit with On/Off
+    "badtime": ("BadTimeSimulator.nwa", "badtime.sav",
+                presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "ok"), (5000, "ok")), 6500,
+                presses((1500, "ok")), 4000),
     # the title, Play, how to play (the first time), then the ride: steering, Back to pause, Home. Next time, from
     # the copy, Play straight into the ride (the guide was read), quit with On/Off
     "snowrider": ("SnowRider3D.nwa", "snowrider.sav", presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (6500, "back"))
@@ -339,8 +350,29 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "donkeykong": "donkeykong_saves.py", "dune": "dune_saves.py", "monkeymart": "monkeymart_saves.py",
           "tombofthemask": "tombofthemask_saves.py", "uno": "uno_saves.py",
           "fnf": "fnf_saves.py", "turborush": "turborush_saves.py",
-          "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py",
+          "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
+          "badtime": "badtime_saves.py",
           "snowrider": "snowrider_saves.py"}
+
+
+def paperclips_ok(v):
+    """Universal Paperclips' save: "UPC1", version 1, 3400 bytes, an FNV-1a sum of the rest at the end"""
+    if len(v) != 3400 or v[:4] != b"UPC1" or struct.unpack_from("<HH", v, 4) != (1, 3400):
+        return False
+    h = 2166136261
+    for x in v[:-4]:
+        h = (h ^ x) * 16777619 & 0xFFFFFFFF
+    return struct.unpack_from("<I", v, len(v) - 4)[0] == h
+
+
+def badtime_ok(v):
+    """Bad Time Simulator's save: "BTS1", version 1, 24 bytes, an FNV-1a sum of the rest at the end"""
+    if len(v) != 24 or v[:4] != b"BTS1" or struct.unpack_from("<HH", v, 4) != (1, 24):
+        return False
+    h = 2166136261
+    for x in v[:-4]:
+        h = (h ^ x) * 16777619 & 0xFFFFFFFF
+    return struct.unpack_from("<I", v, 20)[0] == h
 
 
 def polytrack_ok(v):
@@ -519,6 +551,13 @@ CHECKS = {
     # after the reinstall, from the copy, the same
     "polytrack": (lambda v: polytrack_ok(v) and v[763] == 1 and v[760] == 0,
                   lambda v: polytrack_ok(v) and v[763] == 1),
+    # "UPC1", version 1, its size (3400): how to play shown (guide at 8), clips made (the first number, at 12); after the
+    # reinstall, from the copy, one more
+    "paperclips": (lambda v: paperclips_ok(v) and v[8] == 1 and struct.unpack_from("<d", v, 12)[0] >= 10,
+                   lambda v: paperclips_ok(v) and v[8] == 1 and struct.unpack_from("<d", v, 12)[0] >= 11),
+    # "BTS1", version 1, its size (24): how to play read (guide at 9), the first attack reached (best at 8); after the
+    # reinstall, from the copy, the same
+    "badtime": (lambda v: badtime_ok(v) and v[9] == 1 and v[8] >= 1,) * 2,
     # "SNR1", version 1, its size (32): how to play read (23), one run (16), the Toboggan only (owned at 20, skin at
     # 22); after the reinstall, from the copy, a second run
     "snowrider": (lambda v: len(v) == 32 and v[:4] == b"SNR1" and struct.unpack_from("<HH", v, 4) == (1, 32)

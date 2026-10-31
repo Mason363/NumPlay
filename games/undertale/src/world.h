@@ -68,6 +68,8 @@ void world_update(uint32_t keys, uint32_t pressed);
 void world_draw(void);
 #define WALK_FLOOR_ONLY (-2)   /* (world_walkable's ignore: the floor alone, nothing solid standing on it) */
 bool world_walkable(int x, int y, int w, int h, int ignore);   /* a box on the map, objects too (not `ignore`) */
+void world_reach(int *x, int *y, int *w, int *h);              /* the box Z reaches, in front of Frisk */
+Obj *world_talk_target(void);                                  /* what Z there would talk to, NULL nothing */
 void world_camera(void);       /* follows Frisk, inside the room */
 Obj *obj_new(int kind, int x, int y);
 Obj *obj_find(int name);

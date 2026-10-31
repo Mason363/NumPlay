@@ -44,6 +44,8 @@ void dragon_enter(void);   /* (end.c) */
 void end_tick(void);
 float dragon_bar(void);
 bool dragon_beam(float *from, float *to);
+int end_marks(float (*at)[3], uint8_t *kind, int max);   /* (end.c) the dragon and its whole crystals: kind 0, 1 */
+bool view_mark(float x, float y, float z, float far, float *sx, float *sy, float *ux, float *uy);   /* (render.c) */
 void dragon_offsets(int i, float pt, float *yaw, float *y);
 float dragon_anim(float pt);
 void throw_eye(int tx, int ty, int tz);   /* (mob.c) an eye of ender towards there */

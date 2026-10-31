@@ -127,6 +127,78 @@ static int pick(jj_run *r, const uint16_t *sched_of, int first, int count, uint3
   return first + count - 1;
 }
 
+/* the heights Barry's middle can pass a zapper at (up to two ranges, lo to hi): the room but the zapper, its orbs
+   (9 points) and half of Barry (15); a rotating one takes its whole turn */
+static int zap_free(const jj_zapper *z, float *lo, float *hi) {
+  int ext = z->spin ? z->len : (abs(jj_sin(z->ang)) * z->len) >> 10, n = 0;
+  float top = z->y - ext / 2.0f - 24, bottom = z->y + ext / 2.0f + 24;
+  if (top > JJ_CEIL + 15) lo[n] = JJ_CEIL + 15, hi[n++] = top;
+  if (bottom < JJ_FLOOR - 15) lo[n] = bottom, hi[n++] = JJ_FLOOR - 15;
+  return n;
+}
+/* how far Barry gets in t frames from still, on foot: down letting go, up holding (his own fall and boost; worked
+   out once, up to 10 seconds) */
+#define REACH_T 600
+static float reach(int t, bool up) {
+  static float table[2][REACH_T + 1];
+  static bool made;
+  if (!made) {
+    for (int u = 0; u < 2; u++) {
+      float y = 0, v = 0;
+      for (int i = 1; i <= REACH_T; i++) {
+        v += JJ_GRAVITY;
+        if (u) v -= JJ_BOOST;
+        v *= JJ_FRICTION;
+        y += v;
+        table[u][i] = u ? -y : y;
+      }
+    }
+    made = true;
+  }
+  return table[up][t < REACH_T ? t : REACH_T];
+}
+/* where Barry's middle can be as he passes zapper z, t frames after he could be anywhere in [lo, hi]: false if
+   nowhere (the ranges kept in lo, hi) */
+static bool zap_pass(const jj_zapper *z, int t, float *lo, float *hi) {
+  float flo[2], fhi[2], a = 1e9f, b = -1e9f;
+  int n = zap_free(z, flo, fhi);
+  t -= 14;   /* (a moment to react) */
+  float up = t > 0 ? reach(t, true) : 0, down = t > 0 ? reach(t, false) : 0;
+  for (int i = 0; i < n; i++) {
+    float l = flo[i] > *lo - up ? flo[i] : *lo - up, h = fhi[i] < *hi + down ? fhi[i] : *hi + down;
+    if (l <= h) a = a < l ? a : l, b = b > h ? b : h;
+  }
+  if (a > b) return false;
+  *lo = a, *hi = b;
+  return true;
+}
+/* zapper s, coming in: can Barry get past it, from where he is, past every zapper before it (in order), at the
+   speed he goes (dxf points a frame)? (one range kept for each: a little more than he can reach) */
+static bool zap_ok(const jj_run *r, const jj_zapper *s, float dxf) {
+  float lo = r->y - 15, hi = r->y - 15, x = JJ_BX;
+  const jj_zapper *done[JJ_ZAPPERS];
+  int nd = 0;
+  for (;;) {
+    const jj_zapper *next = NULL;
+    for (int k = 0; k < JJ_ZAPPERS; k++) {
+      const jj_zapper *z = &r->zap[k];
+      int e = z->spin ? z->len : (abs(jj_cos(z->ang)) * z->len) >> 10, seen = 0;
+      for (int d = 0; d < nd; d++) seen |= done[d] == z;
+      if (!z->on || z == s || seen || z->x + e / 2.0f < JJ_BX || z->x > s->x) continue;
+      if (!next || z->x < next->x) next = z;
+    }
+    const jj_zapper *z = next ? next : s;
+    int e = z->spin ? z->len : (abs(jj_cos(z->ang)) * z->len) >> 10;
+    float at = z->x - e / 2.0f;
+    if (!zap_pass(z, at > x ? (int)((at - x) / dxf) : 0, &lo, &hi)) {
+      if (!next) return false;
+      lo = JJ_CEIL + 15, hi = JJ_FLOOR - 15;   /* (no way past one already there: nothing to keep to) */
+    }
+    if (!next) return true;
+    x = z->x + e / 2.0f, done[nd++] = z;
+  }
+}
+
 static float spawn_zapper(jj_run *r, int file, uint32_t m) {
   const jj_file_t *f = &jj_zap_files[file];
   int total = 0, i;
@@ -162,7 +234,12 @@ static float spawn_zapper(jj_run *r, int file, uint32_t m) {
     }
     s->y = place(r, lo, hi, f);
     s->x = JJ_SPAWN_X + ext_x / 2.0f;
-    return (float)ext_x + 28;
+    /* (the files don't keep two zappers from closing every way between them: a long one pushed to the floor, then
+       one leaving only the bottom free, too soon for Barry to get there; the next comes in later then) */
+    float extra = 0, dxf = jj_speed(r) / 60.0f;
+    if (r->ride == JJ_FOOT && dxf > 0)
+      while (!zap_ok(r, s, dxf) && extra < 600 * dxf) extra += 4 * dxf, s->x += 4 * dxf;
+    return (float)ext_x + 28 + extra;
   }
   return 0;
 }

@@ -613,7 +613,8 @@ def generate(jar, dims):
     for n, im in sprites:
         bs, pal, alpha = pack_sprite(im)
         spans.append(bs)
-        spals.append(pal)
+        used = max(max(b & 15, b >> 4) for b in bs) if bs else 0   # (index 0 is never drawn: see-through)
+        spals.append([rgb565(*c) for c in pal[1:used + 1]])
         sizes_.append(im.size)
         flags2.append(1 if alpha else 0)
     # the furnace's flame, full, is drawn from the row above its own (Minecraft's
@@ -627,10 +628,12 @@ def generate(jar, dims):
     out.append(f'const uint8_t spr_w[{len(sprites)}] = {{' + ','.join(str(w) for w, h in sizes_) + '};')
     out.append(f'const uint8_t spr_h[{len(sprites)}] = {{' + ','.join(str(h) for w, h in sizes_) + '};')
     out.append(f'const uint8_t spr_alpha[{len(sprites)}] = {{' + ','.join(str(v) for v in flags2) + '};')
-    out.append(f'const uint16_t spr_pal[{len(sprites)}][16] = {{')
-    for pal in spals:
-        out.append('  {' + ','.join(f'0x{rgb565(*c):04X}' for c in pal) + '},')
-    out.append('};')
+    # the colours each sprite draws (its palette from index 1 on), in one table where they can share:
+    # sprite i's colour k is spr_pals[spr_po[i] + k]
+    pool, poffs = share(spals, words=True)
+    pool = [0] + pool
+    out.append(f'const uint16_t spr_pals[{len(pool)}] = {{' + ','.join(f'0x{c:04X}' for c in pool) + '};')
+    out.append(f'const uint16_t spr_po[{len(sprites)}] = {{' + ','.join(str(v) for v in poffs) + '};')
     icon_of = []
     k = len(SPRITES)
     for st in blocks.S:
@@ -917,7 +920,7 @@ def main():
     for i, n in enumerate(names):
         h.append(f'#define TX_{n.upper().replace("@", "")} {i}')
     h += ['', 'extern const uint8_t spr_px[], spr_w[], spr_h[], spr_alpha[];', 'extern const uint16_t spr_off[];',
-          'extern const uint16_t spr_pal[][16];', 'extern const uint16_t blk_icon[B_N];   /* sprite of its icon */']
+          'extern const uint16_t spr_pals[], spr_po[];', '#define SPR_PAL(i) (spr_pals + spr_po[i])   /* sprite i\'s colours, from 1 (0 is see-through) */', 'extern const uint16_t blk_icon[B_N];   /* sprite of its icon */']
     for i, sp in enumerate(SPRITES):
         h.append(f'#define SP_{sp[0].upper()} {i}')
     for i, n in enumerate(extra):

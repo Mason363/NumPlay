@@ -191,9 +191,74 @@ def alpha_levels(arr):
     return np.where(al < 0.25, 0, np.where(al < 0.75, 1, 2))
 
 
+# PVZ_OPTIMAL_4BIT_RLE_V1: byte-minimal runs, unchanged decoder/pixel values.
+def _pvz_optimal_row4(idx, alpha):
+    """Minimum-byte encoding of one 4-bit row. Ties use fewer instructions."""
+    px = [(int(alpha[i]), int(idx[i]) if int(alpha[i]) else 0)
+          for i in range(len(alpha))]
+    end = len(px)
+    while end and px[end - 1][0] == 0:
+        end -= 1
+    best = [(10**9, 10**9)] * (end + 1)
+    best[end] = (0, 0)
+    choice = [None] * end
+    for x in range(end - 1, -1, -1):
+        vis, v = px[x]
+        score = (10**9, 10**9)
+        picked = None
+
+        def consider(n, size, kind):
+            nonlocal score, picked
+            rest = best[x + n]
+            candidate = (size + rest[0], 1 + rest[1])
+            if candidate < score or (candidate == score and picked is not None and n > picked[0]):
+                score, picked = candidate, (n, kind)
+
+        if vis == 0:
+            for n in range(1, min(64, end - x) + 1):
+                if px[x + n - 1][0] != 0:
+                    break
+                consider(n, 1, 'skip')
+        else:
+            for n in range(1, min(64, end - x) + 1):
+                if px[x + n - 1][0] != vis:
+                    break
+                consider(n, 1 + (n + 1) // 2, 'literal')
+            if vis == 2:
+                for n in range(2, min(5, end - x) + 1):
+                    if px[x + n - 1] != (2, v):
+                        break
+                    consider(n, 1, 'repeat')
+        if picked is None:
+            raise ValueError('4-bit RLE encoder could not represent a row')
+        best[x], choice[x] = score, picked
+    out = bytearray()
+    x = 0
+    while x < end:
+        n, kind = choice[x]
+        if kind == 'skip':
+            out.append(n - 1)
+        elif kind == 'repeat':
+            out.append(0xC0 | ((n - 2) << 4) | px[x][1])
+        else:
+            out.append((0x40 if px[x][0] == 2 else 0x80) + n - 1)
+            for j in range(0, n, 2):
+                lo = px[x + j][1]
+                hi = px[x + j + 1][1] if j + 1 < n else 0
+                out.append(lo | (hi << 4))
+        x += n
+    if len(out) != best[0][0] or len(out) > 255:
+        raise ValueError("optimal row exceeds one-byte length limit")
+    return bytes(out)
+
+
 def encode_rows(idx, alpha, bpp):
     """idx: (h, w) colour indices, alpha: (h, w) 0 transparent, 1 half, 2 opaque -> the frame's rows"""
     h, w = idx.shape
+    if bpp == 4:
+        # PVZ_OPTIMAL_4BIT_RLE_V1: use the existing graphics opcodes optimally.
+        rows = [_pvz_optimal_row4(idx[y], alpha[y]) for y in range(h)]
+        return bytes(len(r) for r in rows) + b''.join(rows)
     rows = []
     maxrun = 5 if bpp == 4 else 65
 
@@ -382,11 +447,63 @@ class Pack:
         tables.append(len(out))
         frame_at = len(out)
         out += bytes(12 * len(self.frames))
+        # PVZ_LOSSLESS_FRAME_SHARING_V1: share identical 4-bit frame payloads.
+        # Frame positions and palettes remain independent; no pixel data changes.
+        frame_bpp = [0] * len(self.frames)
+        for _, first, count, _, _, _, bits in self.anims:
+            for fi in range(first, first + count):
+                if frame_bpp[fi] not in (0, bits):
+                    raise ValueError("frame used with different pixel formats")
+                frame_bpp[fi] = bits
+        if any(bits not in (4, 8) for bits in frame_bpp):
+            raise ValueError("frame pixel format missing")
+        # PVZ_SHARED_RLE_ROWS_V1: rows deduplicated from earlier physical frames.
+        # High bit of a 4-bit frame's offset flags 255 row-length markers.
+        row_bank = {}
+        shared_4bit = {}
         for i, (x, y, w, h, data) in enumerate(self.frames):
-            if len(out) % 2:
-                out.append(0)
-            struct.pack_into("<hhHHI", out, frame_at + 12 * i, x, y, w, h, len(out))
-            out += data
+            key = (w, h, data) if frame_bpp[i] == 4 else None
+            # The 8-bit decoder can scan a frame's final row up to the next
+            # payload. Do not change the physical successor of an 8-bit frame.
+            after_8bit = i > 0 and frame_bpp[i - 1] == 8
+            if key is not None and key in shared_4bit and not after_8bit:
+                frame_off = shared_4bit[key]
+            else:
+                if len(out) % 2:
+                    out.append(0)
+                frame_off = len(out)
+                if frame_bpp[i] == 4:
+                    if len(data) < h or h + sum(data[:h]) != len(data):
+                        raise ValueError("bad 4-bit frame row lengths")
+                    sizes = data[:h]
+                    can_share_rows = not after_8bit and all(n < 255 for n in sizes)
+                    lengths = bytearray()
+                    bodies = bytearray()
+                    src = h
+                    has_refs = False
+                    for n in sizes:
+                        row = data[src:src + n]
+                        src += n
+                        if can_share_rows and n > 4 and row in row_bank:
+                            ptr = row_bank[row]
+                            if ptr >= (1 << 24):
+                                raise ValueError("row reference offset exceeds 24 bits")
+                            lengths.append(255)
+                            bodies += struct.pack("<I", (n << 24) | ptr)
+                            has_refs = True
+                        else:
+                            lengths.append(n)
+                            if n > 4:
+                                row_bank.setdefault(row, frame_off + h + len(bodies))
+                            bodies += row
+                    out += lengths + bodies
+                    if has_refs:
+                        frame_off |= 0x80000000
+                else:
+                    out += data
+                if key is not None:
+                    shared_4bit.setdefault(key, frame_off)
+            struct.pack_into("<hhHHI", out, frame_at + 12 * i, x, y, w, h, frame_off)
         align()
         tables.append(len(out))
         pal_at = len(out)

@@ -169,7 +169,7 @@ static bool give(const Item *it) {
       g_pd.charms_owned++;
       if (!pd_flag(PDF_HAS_CHARM)) {
         pd_set_flag(PDF_HAS_CHARM, true);
-        charm_tute();
+        charm_tute_input();
         return true;
       }
       return false;

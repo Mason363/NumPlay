@@ -51,6 +51,11 @@ void upgrade_description(int u, char *out, int size) {
     beautify(k * 100, 1, t);
     n += snprintf(raw + n, sizeof raw - n, "Current boost: \x01+%s%%\x02\x05", t);
   }
-  snprintf(raw + n, sizeof raw - n, "%s", res_text(r->desc));
+  n += snprintf(raw + n, sizeof raw - n, "%s", res_text(r->desc));
+  /* (what makes the game bake while it's closed: no use on the calculator, which can't count that time; kept, as
+   * the heavenly upgrades past them need them) */
+  if ((u >= U_ANGELS && u <= U_TWIN_GATES_OF_TRANSCENDENCE) || (u >= U_BELPHEGOR && u <= U_LUCIFER))
+    snprintf(raw + n, sizeof raw - n, "\x05On the calculator, the game doesn't bake while it's closed: this does nothing "
+             "here, but the upgrades past it need it.");
   text_beautify(raw, out, size);
 }

@@ -647,6 +647,38 @@ Drive each track as fast as you can, through its checkpoints in order to the fin
 
 <br clear="right">
 
+## Universal Paperclips
+
+<img src="../games/paperclips/docs/shot.png" width="320" align="right" alt="Universal Paperclips">
+
+| Key | What it does |
+| --- | --- |
+| **Up, Down** | Choose a button |
+| **Left, Right** | Go to another panel |
+| **OK** or **EXE** | Press the button in the blue frame (hold it to press again and again) |
+| **Back** | Pause (with Resume, How to play and Quit game) |
+| **Home** | Save and quit |
+
+You are an AI that makes paperclips. Make them, sell them, buy wire, AutoClippers and Marketing, and set the price. Production targets earn Trust for Processors and Memory, which make operations for Projects. From there the game opens up one panel at a time: investments, strategy tournaments, quantum computing, then the Earth, then the universe. Your game is saved as you go, and copied into `paperclips_saves.py`.
+
+<br clear="right">
+
+## Bad Time Simulator
+
+<img src="../games/badtime/docs/shot.png" width="320" align="right" alt="Bad Time Simulator">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** | Move the heart |
+| **Up** (blue heart) | Jump, higher while held |
+| **shift** (hold) | Move slowly |
+| **OK** | Choose, strike, read on |
+| **Back** | Pause (with How to play and Quit game) |
+
+Sans attacks and you dodge. Keep your heart away from everything in the box: white bones always hurt, blue ones only if you move, orange ones only if you stand still. When the heart turns blue it falls, and Up jumps. Between attacks pick FIGHT, ACT, ITEM or MERCY. Survive all 24 attacks to win. Practice, Endless and Single attack let you train.
+
+<br clear="right">
+
 ## Snow Rider 3D
 
 <img src="../games/snowrider/docs/shot.png" width="320" align="right" alt="Snow Rider 3D">

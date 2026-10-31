@@ -38,6 +38,9 @@ static void pickup(int x, int y, int w, int h, int item, int fl, uint16_t spr) {
   if (o) o->flags = OF_TALK | OF_BACK, o->arg = (int16_t)item, o->arg2 = (int16_t)fl, o->spr[0] = spr;
 }
 
+/* the Legendary Artifact still on its pedestal (F_WF_ARTIFACT: 1 taken, 2 the dogs came, 3 a dog absorbed it) */
+static bool artifact_there(void) { return flag(F_WF_ARTIFACT) == 0 || flag(F_WF_ARTIFACT) == 2; }
+
 /* ---------------------------------------------------------------- the bridge seeds */
 /* each puzzle: where its water is (the seeds bloom on it) and where its seeds start; solved, the blooms that
  * stay */
@@ -192,15 +195,16 @@ static void spears_update(void) {
     if (u && g_room == ROOM_WF_CHASE1 && pl.x >= ch->from_x) u->x = (int16_t)(pl.x - 40);
     return;
   }
-  /* she keeps up along the ledge above */
+  /* she keeps up along the ledge above (as fast as Frisk walks: twice, walking fast) */
   if (u && g_room == ROOM_WF_CHASE1) {
-    int want = pl.x - 40;
-    u->x = (int16_t)(u->x + (want > u->x ? min_i(3, want - u->x) : -min_i(3, u->x - want)));
+    int want = pl.x - 40, sp = 3 * (1 + g_walk_fast);
+    u->x = (int16_t)(u->x + (want > u->x ? min_i(sp, want - u->x) : -min_i(sp, u->x - want)));
   }
   if (hurt_t) hurt_t--;
   int every = g_room == ROOM_WF_BRIDGE ? 26 : 40;
   if (++spear_t % every == 0) {
-    int lead = pl.moving ? (pl.dir == DIR_RIGHT ? 30 : pl.dir == DIR_LEFT ? -30 : 0) : 0;
+    /* (where he'll be when it's out: twice as far ahead, walking fast) */
+    int lead = pl.moving ? (pl.dir == DIR_RIGHT ? 30 : pl.dir == DIR_LEFT ? -30 : 0) * (1 + g_walk_fast) : 0;
     Obj *s = obj_deco(SPR_SPEAR, pl.x + 10 + lead, pl.y + 34, false);
     if (s) s->name = ACTOR_SPEAR, s->arg = 0, s->alpha = 90, obj_set_box(s, -3, -36, 6, 34);
   }
@@ -236,7 +240,8 @@ static void mk_update(void) {
     trail_at++;
   }
   if (trail_at < TRAIL) return;
-  const int16_t *p = trail[(trail_at - TRAIL + 4) % TRAIL];
+  /* (as far behind walking fast: half as many of Frisk's steps back) */
+  const int16_t *p = trail[(trail_at - ((TRAIL - 4) >> g_walk_fast)) % TRAIL];
   int nx = p[0] + 10, ny = p[1] + 29;
   mk->dir = (uint8_t)(nx < mk->x ? DIR_LEFT : nx > mk->x ? DIR_RIGHT : mk->dir);
   mk->x = (int16_t)nx, mk->y = (int16_t)ny;
@@ -247,14 +252,27 @@ static void onion_update(void) {
   if (g_room != ROOM_WF_ONION || flag(F_WF_ONION) != 1) return;
   Obj *o = obj_find(ACTOR_ONION);
   if (o && !event_running()) {
+    /* (alongside, as fast as Frisk walks) */
     int want = pl.x + 60;
-    if (o->x < want) o->x = (int16_t)(o->x + 1);
+    if (o->x < want) o->x = (int16_t)(o->x + min_i(3 * (1 + g_walk_fast), want - o->x));
   }
   if (!event_running() && pl.x > 9500) event_start(EV_WF_ONION, NULL);
 }
 
+/* ---------------------------------------------------------------- the statue's song */
+/* under the umbrella, its music box plays; a while later the song shows over it (the piano's answer) */
+static int statue_t;
+static void statue_update(void) {
+  if (g_room != ROOM_WF_STATUE || flag(F_UMBRELLA) < 2 || statue_t > 90) return;
+  if (++statue_t == 90) {
+    Obj *o = obj_deco(SPR_MELODY, 10705, 554, false);
+    if (o) o->flags |= OF_FRONT;
+  }
+}
+
 void wf1_update(void) {
   if (world_room_info()->area != AREA_WATERFALL) return;
+  statue_update();
   seeds_watch();
   stream_update();
   spears_update();
@@ -273,8 +291,12 @@ static void echo(int x, int y, const char *says) {
 
 void wf1_setup(int room, int from) {
   (void)from;
+  /* the Annoying Dogs keep to the artifact's room */
+  if (room != ROOM_WF_PIANO)
+    for (int i = NUM_ITEMS - 1; i >= 0; i--)
+      if (sv.items[i] == ITEM_ANNOYING_DOG) item_remove_at(i);
   if (room < ROOM_WF1 || room > ROOM_WF_BRIDGE) return;
-  mk_follows = false, trail_at = 0, spear_t = 0, hurt_t = 0;
+  mk_follows = false, trail_at = 0, spear_t = 0, hurt_t = 0, statue_t = 0;
   switch (room) {
     case ROOM_WF1:
       set_flag(F_SNOW_EXIT, 1);   /* (out of Snowdin) */
@@ -313,7 +335,8 @@ void wf1_setup(int room, int from) {
       seeds_setup(&seed_puzzles[0]);
       break;
     case ROOM_WF_SEEDS2:
-      obj_sign(2840, 1540, 20, 22, "* (Ring the bell to call the seeds back.)");
+      /* (below the planks' end, read from them) */
+      obj_sign(2840, 1522, 20, 40, "* (Ring the bell to call the seeds back.)");
       {
         Obj *b = obj_trigger(3018, 1188, 24, 26, EV_BELL, ACTOR_ITEM);
         if (b) b->flags = OF_TALK | OF_SOLID;
@@ -400,7 +423,11 @@ void wf1_setup(int room, int from) {
         Obj *d = obj_trigger(10118, 330, 64, 50, 0, ACTOR_BLOCK);
         if (d) d->flags = OF_SOLID;
       }
-      pickup(10156, 150, 12, 30, ITEM_ARTIFACT, F_WF_ARTIFACT, SPR_ARTIFACT);
+      {
+        /* the Legendary Artifact on its pedestal */
+        Obj *a = obj_trigger(10156, 150, 12, 30, EV_WF_ARTIFACT, ACTOR_ORB);
+        if (a) a->flags = OF_TALK | OF_BACK, a->spr[0] = artifact_there() ? SPR_ARTIFACT : 0;
+      }
       obj_sign(10194, 572, 30, 16, "* (Monsters fear humans... yet some wish to meet one.)");
       obj_sign(10374, 610, 30, 22, "* (The barrier can't be crossed by anything with a SOUL... except a human.)");
       obj_sign(10484, 610, 30, 22, "* (A human SOUL and a monster SOUL together: that would be enough.)");
@@ -428,8 +455,8 @@ void wf1_setup(int room, int from) {
       if (flag(F_MK_RAIN) == 1) {
         obj_mk(pl.x + 10, pl.y + 29, DIR_DOWN);
         mk_follows = true;
-        if (room == ROOM_WF_RAIN2) obj_trigger(12740, 1300, 60, 20, EV_MK_TALK, ACTOR_TRIGGER2);
-        else obj_trigger(13600, 1660, 20, 70, EV_MK_TALK, ACTOR_TRIGGER3);
+        if (room == ROOM_WF_RAIN2) obj_trigger(12800, 1300, 60, 20, EV_MK_TALK, ACTOR_TRIGGER2);
+        else obj_trigger(13600, 1700, 20, 80, EV_MK_TALK, ACTOR_TRIGGER3);
       }
       break;
     case ROOM_WF_AARON:
@@ -617,6 +644,58 @@ static int ev_wf_onion(Ev *c) {
   EV_END;
 }
 
+/* the Legendary Artifact: the first try fills the inventory with Annoying Dogs, and none can be taken while they're
+ * carried (they stay in the room: out of it, they're gone, and the artifact can be taken). One of them, used or
+ * dropped, runs in, absorbs the artifact and runs off through the wall, and leaves Dog Residue behind */
+static bool dogs_carried(void) {
+  for (int i = 0; i < NUM_ITEMS; i++)
+    if (sv.items[i] == ITEM_ANNOYING_DOG) return true;
+  return false;
+}
+static int ev_wf_artifact(Ev *c) {
+  EV_BEGIN;
+  if (!artifact_there()) return 1;
+  if (!dogs_carried()) {
+    if (item_count() == NUM_ITEMS) {
+      NARRATE("* (You're carrying too much.)");
+      return 1;
+    }
+    if (flag(F_WF_ARTIFACT) == 2) {
+      item_add(ITEM_ARTIFACT);
+      set_flag(F_WF_ARTIFACT, 1);
+      if (c->self) c->self->spr[0] = 0;
+      NARRATE("* (You got the Legendary Artifact.)");
+      return 1;
+    }
+    while (item_add(ITEM_ANNOYING_DOG)) {}
+    set_flag(F_WF_ARTIFACT, 2);
+  }
+  NARRATE("* (You're carrying too many dogs.)");
+  EV_END;
+}
+static int ev_wf_dog(Ev *c) {   /* (v[0]: the dog's slot) */
+  Obj *d = obj_find(ACTOR_DOG), *a = obj_find(ACTOR_ORB);
+  EV_BEGIN;
+  NARRATE("* You deployed the dog.");
+  if (!a || !artifact_there()) return 1;   /* (anywhere else, nothing happens) */
+  {
+    static const uint16_t s[4] = {SPR_DOG_OW, SPR_DOG_OW, SPR_DOG_OW, SPR_DOG_OW};
+    d = obj_npc(ACTOR_DOG, s, cam_x - 10, 174, DIR_RIGHT, 0);
+    if (!d) return 1;
+    d->flags = (uint16_t)(d->flags & ~OF_SOLID);
+  }
+  WALK(d, a->x + 6, 174, 3);
+  a->spr[0] = 0;
+  set_flag(F_WF_ARTIFACT, 3);
+  WAIT(30);
+  WALK(d, cam_x + 340, 174, 3);
+  gone(d);
+  if (sv.items[c->v[0]] == ITEM_ANNOYING_DOG) sv.items[c->v[0]] = ITEM_DOG_RESIDUE;
+  for (int i = NUM_ITEMS - 1; i >= 0; i--)
+    if (sv.items[i] == ITEM_ANNOYING_DOG) item_remove_at(i);
+  EV_END;
+}
+
 /* the piano: the rain's song (on the statue's sign: middle, up, right, middle, down, down, right) */
 static const char *const notes[] = {"Up", "Down", "Left", "Right", "Middle", "Stop"};
 static const uint8_t song[7] = {4, 0, 3, 4, 1, 1, 3};
@@ -755,6 +834,8 @@ int wf1_event(Ev *c) {
     case EV_MK_RAIN: return ev_mk_rain(c);
     case EV_MK_TALK: return ev_mk_talk(c);
     case EV_WF_BRIDGE_END: return ev_bridge_end(c);
+    case EV_WF_ARTIFACT: return ev_wf_artifact(c);
+    case EV_WF_DOG: return ev_wf_dog(c);
   }
   return -1;
 }

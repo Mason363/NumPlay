@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Checks of Plants vs. Zombies on a computer (make test): the host build, with AddressSanitizer and UBSan,
 through the first start, a level kept by Home and continued, the saves coming back from pvz_saves.py, every
-screen pressed through, a level lost, and every level of the Adventure played by a robot (tests/play.c --sim).
+screen pressed through, a level lost, Wall-nut Bowling (1-5) played with the keys to the end, the conveyor-belt
+levels and the mini-games started through their screens, and every level of the Adventure played by a robot
+(tests/play.c --bot and --sim).
 
     python3 tests/check.py build/play [--quick]
 
@@ -100,6 +102,60 @@ try:
         s = play(tour, ",".join(keys), 30000, f"keys pressed at random from level {prog}",
                  ["--progress", str(prog), "--money", "60000"])
         shutil.rmtree(tour, ignore_errors=True)
+
+    # Wall-nut Bowling, played with the keys through its screens (issue #248: after the shovel lesson the zombies
+    # never came and the nuts didn't roll). The first time, from a save at 1-5 and from 1-1 through 1-4: Crazy Dave
+    # with three peashooters on the lawn, the shovel lesson (no red line, no belt yet), "We're going BOWLING!", the
+    # zombies 2 seconds in, the belt, nuts rolling and bouncing, a cone knocked off (no more), the explode-o-nut, the
+    # huge wave, its flag, the final wave, won and the potato mine found. Then 1-5 again from Choose a Level
+    def bot(saves_dir, what, args, frames=150000):
+        out = run(["--saves", saves_dir, "--out", saves_dir, "--frames", str(frames)] + args, what)
+        m = re.search(r"^bot (\w+) (.*)$", out or "", re.M)
+        if not m:
+            failures.append(f"{what}: no bot line\n{(out or '')[-500:]}")
+            return None, None
+        f = m.group(2).split()
+        return m.group(1), dict(zip(f[::2], map(int, f[1::2]))) | {"end": end_state(out, what)}
+
+    def bowled(b, what, first):
+        want = dict(dave=1, line_dave=0 if first else 1, lesson=int(first), line_lesson=0, belt_lesson=0, line_play=1,
+                    explodenuts=1, cones=1, flag=1)
+        for k, v in want.items():
+            check(b[k] == v, f"{what}: {k} {b[k]}, not {v}: {b}")
+        check(0 < b["first_zombie"] <= 250, f"{what}: the first zombie came {b['first_zombie']} ticks in: {b}")
+        check(b["rolled"] >= 20 and b["bounced"] >= 5 and b["exploded"] >= 1, f"{what}: the nuts: {b}")
+        check(b["huge"] >= 1 and b["final"] >= 1, f"{what}: no huge wave or final wave: {b}")
+        e = b["end"]
+        check(e and e["progress"] == 6 and e["wave"] == e["waves"] == 8, f"{what}: not all 8 waves, or 1-6 not open: {e}")
+
+    for prog, extra, what in ((5, [], "1-5 from a save at it"), (1, [], "1-1 to 1-5 played"),
+                              (6, ["--replay"], "1-5 from Choose a Level")):
+        d = tempfile.mkdtemp(prefix="pvz_bowl_")
+        how, b = bot(d, what, ["--progress", str(prog), "--bot", "5"] + extra)
+        if b:
+            check(how == "won", f"{what}: {how} {b}")
+            if how == "won":
+                bowled(b, what, prog != 6)
+        shutil.rmtree(d, ignore_errors=True)
+
+    # 1-5 kept by Home as NumPlay 1.17.0 left it, standing still after the lesson: Continue brings it back going
+    d = tempfile.mkdtemp(prefix="pvz_stall_")
+    how, b = bot(d, "1-5 kept standing", ["--progress", "5", "--bot", "5", "--stall-home"])
+    if b:
+        check(b["stalled"] == 1 and b["end"] and b["end"]["running"] == 0, f"1-5 kept standing: not kept {b}")
+        how, b = bot(d, "1-5 kept standing, continued", ["--bot", "5"], 60000)
+        if b:
+            check(how == "won" and b["came"] == 1, f"1-5 kept standing, continued: {how} {b}")
+    shutil.rmtree(d, ignore_errors=True)
+
+    # the conveyor-belt levels and the mini-games, the first time through their screens (Crazy Dave, the street,
+    # "Ready... Set... PLANT!"): the zombies come and the level ends, won or lost (the robot loses a few)
+    for level in (10, 15, 20, 25, 30, 35, 40, 45, 50) if not QUICK else (10, 15, 35):
+        d = tempfile.mkdtemp(prefix="pvz_kind_")
+        how, b = bot(d, f"level {level} through its screens", ["--progress", str(level), "--bot", str(level)], 200000)
+        if b:
+            check(how in ("won", "lost") and b["came"] == 1, f"level {level} through its screens: {how} {b}")
+        shutil.rmtree(d, ignore_errors=True)
 
     # every level, a robot planting (with all the sun it wants): it must not crash, and win nearly all of them
     levels = [1, 5, 10, 15, 20, 25, 30, 35, 41, 45, 49, 50] if QUICK else range(1, 51)

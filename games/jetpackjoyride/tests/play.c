@@ -325,6 +325,50 @@ static void bots(void) {
   printf("bot: 24 runs, %u m in all, %d tokens\n", total_m, tokens);
 }
 
+/* ---------------------------------------------------------------- a way past every zapper (issue #271)
+ * Where the bot dies on a zapper on foot, every way of holding and letting go from a second and a half before is
+ * tried (as many as differ in Barry's height and speed): in the runs of 60 seeds, at most 2 of those deaths may have
+ * had no way through (from a spot the bot got into for other things: a missile, coins). */
+#define BEAM 600
+static jj_run beam_now[BEAM], beam_next[2 * BEAM];
+static bool way_through(const jj_run *from, int frames) {
+  int n = 1;
+  beam_now[0] = *from;
+  for (int f = 0; f < frames; f++) {
+    int m = 0;
+    for (int i = 0; i < n; i++)
+      for (int h = 0; h < 2; h++) {
+        jj_run t = beam_now[i];
+        jj_step(&t, h);
+        if (t.state != JJ_ALIVE) continue;
+        bool same = false;
+        for (int j = 0; j < m && !same; j++)
+          same = fabsf(beam_next[j].y - t.y) < 0.75f && fabsf(beam_next[j].vy - t.vy) < 0.15f && beam_next[j].ride == t.ride;
+        if (!same && m < 2 * BEAM) beam_next[m++] = t;
+      }
+    if (!m) return false;
+    n = m > BEAM ? BEAM : m;
+    for (int j = 0; j < n; j++) beam_now[j] = beam_next[m > BEAM ? (long)j * m / BEAM : j];
+  }
+  return true;
+}
+static void zapper_ways(void) {
+  static jj_run hist[128];
+  int deaths = 0, none = 0;
+  for (int s = 1; s <= 60; s++) {
+    jj_run r;
+    jj_start(&r, (uint32_t)s * 2654435761u, 0, 0);
+    bot_left = 0;
+    unsigned k = 0;
+    while (r.state == JJ_ALIVE && jj_metres(&r) < 6000) hist[k++ & 127] = r, jj_step(&r, bot(&r));
+    if (r.state == JJ_ALIVE || r.by != JJ_BY_ZAPPER || k < 100 || hist[(k - 90) & 127].ride != JJ_FOOT) continue;
+    deaths++;
+    none += !way_through(&hist[(k - 90) & 127], 150);
+  }
+  CHECK(none <= 2, "zappers with no way past: %d of %d deaths on them", none, deaths);
+  printf("zappers: %d deaths on them in 60 runs, %d with no way past\n", deaths, none);
+}
+
 /* ---------------------------------------------------------------- saves */
 static void saves(void) {
   jj_run r, back;
@@ -611,6 +655,7 @@ int main(int argc, char **argv) {
     units();
     reported();
     bots();
+    zapper_ways();
     clock_t c1 = clock();
     saves();
     spins();

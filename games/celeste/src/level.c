@@ -110,6 +110,21 @@ static void tiles_unpack(uint8_t *dst, const uint8_t *src, int tw, int th) {
   }
 }
 
+/* a room's decals' x and y (in columns), stored as differences from the one before, zigzagged (tools/pack.py
+ * zigzag_decals): back as they are */
+static void decals_unzigzag(uint8_t *d) {
+  int n = rd16(d);
+  uint8_t *p = d + 4 + 2 * d[2];
+  for (int col = 0; col < 2; col++) {
+    uint16_t v = 0;
+    for (int i = 0; i < n; i++, p += 2) {
+      unsigned z = rd16(p);
+      v = (uint16_t)(v + ((z >> 1) ^ -(z & 1)));
+      p[0] = (uint8_t)v, p[1] = (uint8_t)(v >> 8);
+    }
+  }
+}
+
 static void session_enter(int index, int intro);
 static bool room_load(int slot, int index, int intro) {
   Room *rm = &g_level.rooms[slot];
@@ -148,6 +163,8 @@ static bool room_load(int slot, int index, int intro) {
   tiles_unpack(mem + hdr[RB_FG], blob + rd16(blob + 2 * RB_FG), rm->tw, rm->th);
   tiles_unpack(mem + hdr[RB_BG], blob + rd16(blob + 2 * RB_BG), rm->tw, rm->th);
   memcpy(mem + hdr[RB_EXTRAS], blob + from, keep - hdr[RB_EXTRAS]);
+  decals_unzigzag(mem + hdr[RB_DFG]);
+  decals_unzigzag(mem + hdr[RB_DBG]);
   setup_layer(&rm->layer[0], mem + rd16(mem + 2 * RB_FG), rm->th);
   setup_layer(&rm->layer[1], mem + rd16(mem + 2 * RB_BG), rm->th);
   /* extras: objtiles, then scenery over fg and bg */

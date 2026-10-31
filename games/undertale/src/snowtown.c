@@ -22,6 +22,8 @@ static void folk(int x, int y, const char *text) {
   Obj *o = obj_sign(x - 12, y - 18, 24, 26, text);
   (void)o;
 }
+/* (one behind a table or a counter: talked to across it) */
+static void folk_across(int x, int y, int reach, const char *text) { obj_sign(x - 12, y - 18, 24, 26 + reach, text); }
 
 void town_setup(int room, int from) {
   (void)from;
@@ -75,7 +77,7 @@ void town_setup(int room, int from) {
       folk(1246, 770, "* (Grillby is silently cleaning a glass.)");
       folk(1214, 792, "* Cheep cheep!\n* (The dogs here are the Royal Guard's Snowdin squad.)");
       folk(1194, 786, "* I'm fishing for a date.\n* Literally.");
-      folk(1156, 782, "* (Lesser Dog is playing poker against itself.)");
+      folk_across(1156, 782, 24, "* (Lesser Dog is playing poker against itself.)");
       folk(1174, 834, "* (Bark!)");
       folk(1134, 860, "* I'm thinking of getting a collar...\n* Then maybe someone would take me for a walk.");
       folk(1316, 903, "* I want new drinks...\n* And hot guys!");
@@ -93,7 +95,8 @@ void town_setup(int room, int from) {
       obj_sign(1962, 506, 30, 40, "* (A book about magic and the SOUL.)|* (A monster who won't fight\n  grows weaker...)|* (...and cruel intent hurts\n  them most.)\n* (The chapter stops there.)");
       obj_sign(2006, 506, 30, 40, "* (A history book. Monsters left their first city and crossed cold, swamp and heat.)|* (They named the new capital \"New Home.\" The book sighs about the King's naming.)");
       obj_sign(2050, 506, 30, 40, "* (A book on what a SOUL is made of.)|* (Nobody knows for sure.)");
-      folk(1896, 640, "* Yes, the sign outside says \"Librarby.\"\n* We made a typo when we were making it.");
+      /* (behind the counter: talked to from its end) */
+      obj_sign(1884, 622, 40, 26, "* Yes, the sign outside says \"Librarby.\"\n* We made a typo when we were making it.");
       folk(2031, 655, flag(F_WORDSEARCH) == 2 ? "* I can see it in your eyes...\n* You think Junior Jumble is harder." : "* I can see it in your eyes...\n* You think crosswords are harder.");
       folk(2002, 589, "* There's no news around here, so the newspaper is mostly comics and puzzles.");
       folk(2044, 590, "* I make the word searches.\n* Number one in the underground!");

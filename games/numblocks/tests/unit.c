@@ -1,5 +1,7 @@
 /* Checks of the item rules: crafting, stacking, smelting, drops. */
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include <unistd.h>
 #include "nb.h"
@@ -162,6 +164,49 @@ int main(void) {
     while (t < 400000 && world_get(9, y, 8) == B_TNT) ticks_run++, world_tick(), t++;
     CHECK(world_get(9, y, 8) != B_TNT);
     plat_remove_prefix("ut5");
+  }
+  /* explosions as Explosion's rays: TNT walled in bedrock leaves what is past it, obsidian takes a blast that
+   * takes stone, a wall keeps the player behind it from harm (getBlockDensity) */
+  {
+    world_new(0, "ut6");
+    world_follow(8, 70, 8);
+    int y = 70;
+    for (int z = 0; z <= 16; z++)
+      for (int x = 0; x <= 16; x++)
+        for (int k = -3; k <= 5; k++) world_set(x, y + k, z, k < 0 ? B_STONE : B_AIR);
+    for (int dz = -2; dz <= 2; dz++)
+      for (int dy = -2; dy <= 2; dy++)
+        for (int dx = -2; dx <= 2; dx++)
+          world_set(8 + dx, y + 1 + dy, 8 + dz, abs(dx) == 2 || abs(dy) == 2 || abs(dz) == 2 ? B_STONE : B_BEDROCK);
+    world_set(8, y + 1, 8, B_AIR);
+    explode(8.5f, y + 1.06125f, 8.5f, 4, true);
+    int left = 0;
+    for (int dz = -2; dz <= 2; dz++)
+      for (int dy = -2; dy <= 2; dy++)
+        for (int dx = -2; dx <= 2; dx++) left += world_get(8 + dx, y + 1 + dy, 8 + dz) != B_AIR;
+    CHECK(left == 5 * 5 * 5 - 1);
+    /* in the open: stone next to it goes, obsidian stays, and a wall of obsidian shields stone behind it */
+    for (int z = 0; z <= 16; z++)
+      for (int x = 0; x <= 16; x++)
+        for (int k = -3; k <= 5; k++) world_set(x, y + k, z, k < 0 ? B_STONE : B_AIR);
+    world_set(9, y, 8, B_OBSIDIAN);
+    world_set(7, y, 8, B_STONE);
+    for (int k = 0; k <= 3; k++)
+      for (int dz = -3; dz <= 3; dz++) world_set(5, y + k, 8 + dz, B_OBSIDIAN);
+    world_set(4, y, 8, B_DIRT);
+    explode(8.5f, y + 0.06125f, 8.5f, 4, true);
+    CHECK(world_get(8, y - 1, 8) == B_AIR && world_get(7, y, 8) == B_AIR);
+    CHECK(world_get(9, y, 8) == B_OBSIDIAN && world_get(5, y, 8) == B_OBSIDIAN && world_get(4, y, 8) == B_DIRT);
+    CHECK(world_get(8, y - 3, 1) == B_STONE && world_get(15, y - 1, 15) == B_STONE);
+    /* the player: behind the wall only the 1 every blast in reach does, in the open hurt and pushed away */
+    pl.mode = 0, pl.dead = false, pl.invuln = 0, pl.health = 20, opt.difficulty = 2;
+    pl.x = 3.5f, pl.y = (float)y, pl.z = 8.5f, pl.vx = pl.vy = pl.vz = 0;
+    explode(8.5f, y + 0.06125f, 8.5f, 4, false);
+    CHECK(pl.health == 19 && pl.vx == 0);
+    pl.x = 8.5f, pl.z = 11.5f, pl.y = (float)y;
+    explode(8.5f, y + 0.06125f, 8.5f, 4, false);
+    CHECK(pl.health <= 0 && pl.vz > 0.5f);
+    plat_remove_prefix("ut6");
   }
   /* two cows fed wheat make a calf (EntityAIMate) */
   {
@@ -659,6 +704,40 @@ int main(void) {
     CHECK(opt.keys[A_ATTACK] == 5 && opt.keys[A_USE] == 4);
     keys_reset();
   }
+#if NB_DIMS
+  {
+    /* (issue #219) each stronghold's portal room whole, caves or not: its 12 frames and the lava under them,
+     * whichever rows of the chunks are made (the world's slabs of 24, from any height) */
+    static uint8_t slab[256 * 24], hi[256 * 24 / 8];
+    int rooms = 0, whole = 0;
+    for (int64_t seed = 1; seed <= 12; seed++) {
+      gen_init(seed);
+      for (int s = 0; s < 3; s++) {
+        int g[6] = {0};
+        if (!gen_stronghold_find(s, g)) continue;
+        for (int off = 0; off < 24; off += 11) {
+          int fr = 0, lava = 0;
+          for (int dz = -2; dz <= 2; dz++)
+            for (int dx = -2; dx <= 3; dx++) {
+              int x = g[2] + (dx < 3 ? dx : 0), y = dx < 3 ? g[3] : g[3] - 2, z = g[4] + (dx < 3 ? dz : 0);
+              int y0 = y - off, h = 24;
+              if (y0 < 0) h += y0, y0 = 0;
+              memset(hi, 0, sizeof hi);
+              gen_hi = hi;
+              gen_slab(x >> 4, z >> 4, y0, h, slab);
+              gen_hi = NULL;
+              int c = (y - y0) * 256 + (z & 15) * 16 + (x & 15), b = slab[c] | (hi[c >> 3] >> (c & 7) & 1) << 8;
+              if (dx < 3) fr += b == B_END_PORTAL_FRAME || b == B_END_PORTAL_FRAME_EYE;
+              else lava += dz == 0 && b == B_LAVA;
+            }
+          rooms++, whole += fr == 12 && lava == 1;
+        }
+      }
+    }
+    printf("strongholds: %d of %d portal rooms whole\n", whole, rooms);
+    CHECK(rooms == 12 * 3 * 3 && whole == rooms);
+  }
+#endif
   printf("%s (%d recipes)\n", fails ? "FAILED" : "all good", N_RECIPES);
   return fails != 0;
 }

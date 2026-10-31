@@ -275,6 +275,7 @@ bool bench_respawn(const char *name) {
     hero_gravity(false);
     hero_max_health();
     pd_set_flag(PDF_AT_BENCH, true);
+    persist_reset_semi();   /* (Init Resting: ResetSemiPersistentItems) */
     anim_play(&h->anim, CLIP_KNIGHT_SIT_FALL_ASLEEP);
     h->body.vx = h->body.vy = 0;
     b->sleeping = false, b->get_off_wake = false;   /* (sleeping: here, once moved up) */

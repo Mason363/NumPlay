@@ -204,6 +204,8 @@ bool board_load(void) {
   memcpy(B.coins, p, c[4] * sizeof(Coin)), p += c[4] * sizeof(Coin);
   memcpy(B.rollers, p, c[6] * sizeof(Roller)), p += c[6] * sizeof(Roller);
   if (B.has_boss) memcpy(&boss, p, sizeof boss);
+  /* (1-5 kept by an earlier version, standing still after the shovel lesson: the bowling goes on) */
+  if (B.mode == MODE_BOWLING && B.tutorial != 4) B.started = 1;
   board_forget();
   return true;
 }

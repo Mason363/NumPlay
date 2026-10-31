@@ -200,7 +200,9 @@ static struct {
   uint8_t kind;
   int16_t icon, text, next_icon;
   float t, t_down;   /* (time up; time since it went down: -1 not yet) */
-} nt = {NT_OFF, -1, -1, -1, 0, -1};
+  bool input;        /* (the tutorial's Input: a key sends it down, then the Knight's control back, as a shop's) */
+  uint32_t prev_keys;
+} nt = {NT_OFF, -1, -1, -1, 0, -1, false, 0};
 
 static void notices_off(void) { nt.kind = NT_OFF; }
 void notices_close(void) { notices_off(); }
@@ -209,7 +211,7 @@ void notice_icon(int k) { nt.next_icon = k >= 0 && k < (int)(sizeof notice_icons
 
 static void notice_start(int kind, int icon, int text) {
   m.st = MS_OFF;   /* (the item message: gone, as a new one shows) */
-  nt.kind = (uint8_t)kind, nt.icon = (int16_t)icon, nt.text = (int16_t)text, nt.t = 0, nt.t_down = -1;
+  nt.kind = (uint8_t)kind, nt.icon = (int16_t)icon, nt.text = (int16_t)text, nt.t = 0, nt.t_down = -1, nt.input = false;
 }
 
 void notice_show(int text) { notice_start(NT_RELIC, nt.next_icon, text); }
@@ -223,19 +225,42 @@ void charm_notice(int id) {
 
 void charm_tute(void) { notice_start(NT_TUTE, -1, -1); }
 
+/* (a shop's: Input on; the shop region off until it is gone, SHOP REGION INACTIVE, then ACTIVE) */
+void charm_tute_input(void) {
+  static const uint8_t inactive[NUM_ROOMS] = VMEV_SHOP_REGION_INACTIVE;
+  notice_start(NT_TUTE, -1, -1);
+  nt.input = true, nt.prev_keys = g_hero.keys;
+  if (inactive[g_room.id] != 255) vm_broadcast(inactive[g_room.id]);
+}
+
 void charm_tute_close(void) {
   if (nt.kind == NT_TUTE && nt.t_down < 0) nt.t_down = 0;
 }
 
 static void notices_tick(void) {
   if (nt.kind == NT_OFF) return;
+  uint32_t pressed = g_hero.keys & ~nt.prev_keys;
+  nt.prev_keys = g_hero.keys;
   nt.t += DT;
   if (nt.t_down >= 0) nt.t_down += DT;
   if (nt.kind != NT_TUTE) {
     if (nt.t >= 4.25f && nt.t_down < 0) nt.t_down = 0;
     if (nt.t_down >= 1) nt.kind = NT_OFF;
-  } else if (nt.t_down >= 1)
+    return;
+  }
+  /* (Stop, Wait For Input: the inventory, a spell, the nail or a jump sends it Down) */
+  if (nt.input && nt.t >= 5 && nt.t_down < 0 && (pressed & (K_INV | K_SPELL | K_ATTACK | K_JUMP))) nt.t_down = 0;
+  if (nt.t_down >= 1) {
     nt.kind = NT_OFF;
+    if (nt.input) {
+      /* (Regain Control?, Destroy: SHOP REGION ACTIVE) */
+      static const uint8_t active[NUM_ROOMS] = VMEV_SHOP_REGION_ACTIVE;
+      hero_regain_control();
+      g_pd.disable_pause = false;
+      hero_start_anim_control();
+      if (active[g_room.id] != 255) vm_broadcast(active[g_room.id]);
+    }
+  }
 }
 
 /* a part's alpha: up over `up` after `delay`, down over `down` once it went down */

@@ -538,6 +538,7 @@ SPRITES = [
     ("artifact", "map:Waterfall_map.png:10156,150,12,11",
      {"keep": True, "clear": [(27, 21, 72), (27, 33, 90), (54, 47, 121), (99, 102, 135)]}),
     ("echo_ow", "wiki:Echo_Flower_overworld.png", {"feet": True}),
+    ("melody", "map:Waterfall_map.png:10705,554,158,18", {"keep": True, "only": [(255, 255, 255)]}),
     # Hotland: Alphys, Mettaton (his box), the Royal Guards at the elevator (cut from the map), the steam vents'
     # grates each way (cut from the map: the turning ones are drawn over theirs), the burnt pan; its monsters
     ("alphys_ow", "wiki:Alphys_overworld.png", {"feet": True}),

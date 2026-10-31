@@ -15,6 +15,7 @@ void draw_plant_at(int kind, int x, int y, int alpha);
 void draw_sun(float x, float y, int value, int alpha);
 void draw_street(const uint8_t *kinds, int n);
 int left_fog_column(void);
+bool bowling_line(void);       /* (screens.c) */
 
 /* hud.c: the seed bank, the progress meter, the cursor and the screen's messages */
 typedef struct {
@@ -29,6 +30,7 @@ void hud_draw(bool cursor);
 void hud_cursor_draw(void);
 void hud_bank_draw(int x, int y, bool costs);
 int bank_width(void);
+/* cooldown_full < 0: a packet on the conveyor belt (free: no cost on it) */
 void packet_draw(int kind, int x, int y, int cooldown, int cooldown_full, bool dim, bool selected, int key);
 void draw_ready(int t);
 void draw_message_band(const char *s);

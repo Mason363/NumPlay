@@ -7,14 +7,18 @@ blob, as short as this finds, each string still read the same:
   overlap first).
 
 Only for strings whose readers stay inside them. glue: (a, b) pairs where b
-must come right after a's bytes (a reader looks just before b).
+must come right after a's bytes (a reader looks just before b). words: the
+strings are of 16-bit words (lists of ints), the blob and offsets in words.
 
     blob, offsets = share(strings, glue)
 """
 
 
-def share(spans, glue=()):
-    spans = [bytes(s) for s in spans]
+def share(spans, glue=(), words=False):
+    if words:
+        blob, offs = share([''.join(chr(0x10000 + w) for w in s) for s in spans], glue, None)
+        return [ord(c) - 0x10000 for c in blob], offs
+    spans = [s if words is None else bytes(s) for s in spans]
     after = dict((b, a) for a, b in glue)
     units, where, seen = [], [None] * len(spans), {}   # where: string -> (unit, offset in it)
     for i, s in enumerate(spans):
@@ -62,7 +66,7 @@ def share(spans, glue=()):
             if o != a:
                 laps[(a, o)] = lap(units[a], units[o])
                 laps[(o, a)] = lap(units[o], units[a])
-    blob, start = b'', {}
+    blob, start = '' if words is None else b'', {}
     for u in live:
         start[u] = len(blob)
         blob += units[u]

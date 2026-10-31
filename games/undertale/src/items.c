@@ -77,12 +77,30 @@ static const ItemInfo items[ITEM_COUNT] = {
                        "* You eat the Hush Puppy.\n* Dog-magic is neutralized.", 150},
   [ITEM_WORN_DAGGER] = {"Worn Dagger", "WornDG", IT_WEAPON, 0, 15, 0, "Good for cutting plants and\n  vines.", "", 250},
   [ITEM_HEART_LOCKET] = {"Heart Locket", "H.Locket", IT_ARMOR, 0, 0, 15, "It says \"Best Friends\n  Forever.\"", "", 250},
+  [ITEM_ANNOYING_DOG] = {"Annoying Dog", "Annoy Dog", IT_SPECIAL, 0, 0, 0, "A little white dog.\n* It's fast asleep...",
+                         "* You deployed the dog.", 999},
+  [ITEM_DOG_RESIDUE] = {"Dog Residue", "DogResidu", IT_SPECIAL, 0, 0, 0, "Shiny trail left behind by\n  a dog.",
+                        "* You used the Dog Residue.", 1},
+  [ITEM_DOG_SALAD] = {"Dog Salad", "Dog Salad", IT_FOOD, 0, 0, 0, "Recovers HP. (Hit Poodles.)", "* You ate the Dog Salad.", 8},
 };
+
+/* the Dog Residue's other looks (the game's six kinds of it) */
+static const char *const residue[] = {"Shiny trail left behind by\n  a dog.", "Dog-shaped husk shed from\n  a dog's carapace.",
+                                      "Dirty dishes left unwashed\n  by a dog.", "Glowing crystals secreted\n  by a dog.",
+                                      "Jigsaw puzzle left\n  unfinished by a dog.", "Web spun by a dog to\n  ensnare prey."};
 
 const ItemInfo *item_info(int id) { return &items[id >= 0 && id < ITEM_COUNT ? id : 0]; }
 
 void item_info_text(int id, char *out, int cap) {
   const ItemInfo *it = item_info(id);
+  if (id == ITEM_DOG_RESIDUE) {
+    snprintf(out, (size_t)cap, "* \"%s\"\n* %s", it->name, residue[rnd_n(6)]);
+    return;
+  }
+  if (id == ITEM_DOG_SALAD) {
+    snprintf(out, (size_t)cap, "* \"%s\" - Heals ?? HP\n* %s", it->name, it->info);
+    return;
+  }
   switch (it->type) {
     case IT_WEAPON: snprintf(out, (size_t)cap, "* \"%s\" - Weapon AT %d\n* %s", it->name, it->at, it->info); break;
     case IT_ARMOR:
@@ -137,6 +155,15 @@ void item_use(int slot, char *out, int cap, int in_battle) {
         return;
       }
     case IT_SPECIAL:   /* looked at, kept */
+      if (id == ITEM_DOG_RESIDUE) {
+        /* the rest of the inventory fills up with it (now and then a Dog Salad) */
+        int n = 0;
+        for (int i = 0; i < NUM_ITEMS; i++)
+          if (!sv.items[i]) sv.items[i] = (uint8_t)(rnd_n(7) ? ITEM_DOG_RESIDUE : ITEM_DOG_SALAD), n++;
+        if (n) snprintf(out, (size_t)cap, "%s\n* The rest of your inventory\n  filled up with Dog Residue.", it->use);
+        else snprintf(out, (size_t)cap, "%s|* ...|* You finished using it.\n* An uneasy atmosphere fills\n  the room.", it->use);
+        return;
+      }
       snprintf(out, (size_t)cap, "%s", it->use);
       return;
     default: {
@@ -149,6 +176,20 @@ void item_use(int slot, char *out, int cap, int in_battle) {
       /* half a Bisicle is a Unisicle */
       if (id == ITEM_BISICLE) sv.items[slot] = ITEM_UNISICLE;
       else item_remove_at(slot);
+      if (id == ITEM_DOG_SALAD) {   /* what it turns out to be, and so what it heals */
+        static const char *const what[] = {"Oh. There are bones...", "Oh. Fried tennis ball...", "Oh. Tastes yappy...",
+                                           "It's literally garbage???"};
+        static const int16_t heals[] = {2, 10, 30, 999};
+        int k = rnd_n(4);
+        n += snprintf(out + n, (size_t)(cap - n), "\n* %s", what[k]);
+        if (heals[k] >= 999) {
+          sv.hp = sv.maxhp;
+          snprintf(out + n, (size_t)(cap - n), "\n* Your HP was maxed out.");
+        } else {
+          heal(heals[k] + (sv.weapon == ITEM_BURNT_PAN ? 4 : 0), out + n, cap - n);
+        }
+        return;
+      }
       if (it->heal >= 999) {
         sv.hp = sv.maxhp;
         snprintf(out + n, (size_t)(cap - n), "\n* Your HP was maxed out.");

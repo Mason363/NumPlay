@@ -347,11 +347,23 @@
       const bytes = new Uint8Array(await f.arrayBuffer());
       const r = { key: ++romKey, sys, bytes, name: romName(f.name) };
       const over = total(ordered(), st.roms.concat([r])) - capacity();
-      if (over > 0) { bump($('#drop'), 'shake'); overflow(over); continue; }
+      if (over > 0) { bump($('#drop'), 'shake'); tooBig(r) || overflow(over); continue; }
       st.roms.push(r);
       fetchObj(objPath(rg.id)).catch(() => {});
     }
     render();
+  }
+  // a game too big for this space even with nothing else in NumPlay: the space it needs, plainly
+  function tooBig(r) {
+    const alone = total([], [r]);
+    if (alone <= capacity()) return false;
+    const fit = (id) => spaces().some((s) => s.id === id && s.size >= alone);
+    const needs = st.cap === 'std' && fit('e26') ? 'Epsilon 26 or Nwagra' : !nwagra() && fit(st.cap === 'e26' ? 'xl26' : 'xl') ? 'Nwagra'
+      : st.cap === 'xl' && fit('xl26') ? SPACES.xl26 : '';
+    toast(r.name + ' is ' + mb(r.bytes.length) + (needs ? ': a game that big needs ' + needs : ', too big for the calculator'));
+    $('#screen').classList.add('over');
+    setTimeout(() => render(), 500);
+    return true;
   }
   function romName(file) {  // (its name without the extension, at most 40 bytes of UTF-8, no letter cut)
     const enc = new TextEncoder();

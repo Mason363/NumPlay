@@ -1,7 +1,8 @@
 /* Cookie Clicker: data.bin (tools/pack.py), read where it lies in flash.
  *
- * Pictures (IM_*) are a byte or half a byte a pixel with a palette of colours and
- * opacities, or RGB565; the icons are the game's icon sheet at 24 pixels; fonts (F_*)
+ * Pictures (IM_*) are the part of them that isn't clear, a byte, half a byte or nothing a
+ * pixel, with a palette of colours and opacities; most are packed, and unpacked by gfx.c
+ * when drawn (tools/pictures.py); the icons are the game's icon sheet at 24 pixels; fonts (F_*)
  * are 4-bit glyphs; texts are the game's own, in a small markup (see text.c); and
  * the game's tables: buildings, tiers, upgrades, achievements, milks. */
 #ifndef CC_RES_H
@@ -13,12 +14,13 @@
 extern const uint8_t cc_data[];
 
 typedef struct {
-  uint16_t w, h;
-  uint8_t fmt, ncolors_1;   /* fmt: 0 RGB565, 1 a byte a pixel, 2 half a byte a pixel; colours - 1 */
-  uint16_t pad;
-  uint32_t px, pal;         /* offsets: the pixels, the palette (colours RGB565, then their opacities) */
+  uint8_t w, h;
+  uint8_t x, y, cw, ch;     /* the part kept (outside it, clear) */
+  uint8_t bits, ncolors_1;  /* bits a pixel (FMT_*), | IM_PACKED, | IM_REF; colours - 1 */
+  uint32_t px, pal;         /* offsets: the part's pixels (each row a whole number of bytes, the first pixel
+                               lowest) or its packed data, the palette (colours RGB565, then their opacities) */
 } ImageRec;
-enum { FMT_RGB, FMT_P8, FMT_P4 };
+enum { FMT_P0 = 0, FMT_P4 = 4, FMT_P8 = 8, IM_PACKED = 0x80, IM_REF = 0x40 };   /* (P0: all of one colour) */
 
 typedef struct {
   double price, cps;

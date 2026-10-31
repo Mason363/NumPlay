@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>29 free games for your NumWorks calculator, in one app.</b><br>
-  Plus 27 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.
+  Plus 29 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.
 </p>
 
 <p align="center">
@@ -137,10 +137,14 @@ These are too big to fit next to NumPlay, so each one is its own app. Install it
   <tr>
     <td align="center"><a href="games/angrybirds/README.md"><img src="docs/media/thumb_angrybirds.png" width="200" alt="Angry Birds"><br><b>Angry Birds</b></a><br><sub>The Chrome edition: 429 levels, seven birds and the Mighty Eagle</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/AngryBirds.nwa">Download</a></td>
     <td align="center"><a href="games/polytrack/README.md"><img src="docs/media/thumb_polytrack.png" width="200" alt="PolyTrack"><br><b>PolyTrack</b></a><br><sub>Time trials on all 17 tracks, loops and wall rides included</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/PolyTrack.nwa">Download</a></td>
-    <td align="center"><a href="games/snowrider/README.md"><img src="docs/media/thumb_snowrider.png" width="200" alt="Snow Rider 3D"><br><b>Snow Rider 3D</b></a><br><sub>The endless sled run: its slope, 11 sleds and gifts to buy them</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/SnowRider3D.nwa">Download</a></td>
+    <td align="center"><a href="games/paperclips/README.md"><img src="docs/media/thumb_paperclips.png" width="200" alt="Universal Paperclips"><br><b>Universal Paperclips</b></a><br><sub>An AI making paperclips, from the first clip to the whole universe</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/UniversalPaperclips.nwa">Download</a></td>
   </tr>
   <tr>
+    <td align="center"><a href="games/badtime/README.md"><img src="docs/media/thumb_badtime.png" width="200" alt="Bad Time Simulator"><br><b>Bad Time Simulator</b></a><br><sub>The Sans fight: all 24 attacks, KR and the blue heart</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/BadTimeSimulator.nwa">Download</a></td>
+    <td align="center"><a href="games/snowrider/README.md"><img src="docs/media/thumb_snowrider.png" width="200" alt="Snow Rider 3D"><br><b>Snow Rider 3D</b></a><br><sub>The endless sled run: its slope, 11 sleds and gifts to buy them</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/SnowRider3D.nwa">Download</a></td>
     <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-64"><b>Super Mario 64</b></a><br><sub>In a repository of its own: NumWorks-Super-Mario-64</sub></td>
+  </tr>
+  <tr>
     <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-Bros"><b>Super Mario Bros.</b></a><br><sub>All 32 stages, in a repository of its own: NumWorks-Super-Mario-Bros</sub></td>
     <td align="center"><a href="#roadmap"><b>More on the way</b></a><br><sub>Minecraft 1.18.2 and more: see the roadmap</sub></td>
   </tr>
@@ -154,7 +158,7 @@ These are too big to fit next to NumPlay, so each one is its own app. Install it
   </tr>
 </table>
 
-Retro-Go plays the Game Boy, Game Boy Color, NES, Master System and Game Gear games you choose: games you own, or free ones like homebrew games. It isn't in NumPlay.nwa. Drop your games on [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) and you get a NumPlay with Retro-Go and your games inside.
+Retro-Go plays the Game Boy, Game Boy Color, NES, Master System and Game Gear games you choose: games you own, or free ones like homebrew games. It isn't in NumPlay.nwa. Drop your games on [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) and you get a NumPlay with Retro-Go and your games inside. Big games, like the 2 MB Game Boy Color ones, need the extra space of Epsilon 26 or Nwagra: pick it in NumPlay Studio.
 
 ## How to install
 
@@ -287,6 +291,8 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] UNO
 - [x] Friday Night Funkin'
 - [x] [NumPlay Studio](https://mason363.github.io/NumPlay/customize/), the website where you pick the games in your NumPlay, with Enlarged Extra Apps to fit several big games
+- [x] Universal Paperclips
+- [x] Bad Time Simulator: the Sans fight
 - [ ] Full Minecraft 1.18.2 as a standalone app
 - [ ] Among Us, against bots
 - [ ] Cat Ninja
@@ -294,7 +300,6 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Into the Breach
 - [ ] A racing game: F1 or GT3
 - [ ] Ori and the Blind Forest
-- [ ] Bad Time Simulator: the Sans fight
 - [ ] A PICO-8 emulator: add your own .p8 games on the website
 - [ ] Hades
 - [ ] Super Smash Bros
@@ -317,8 +322,16 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Papers, Please, with the story and Endless
 - [ ] Mario Kart
 - [ ] Mahjong
-- [ ] Universal Paperclips
 - [ ] OMORI
+- [ ] The Legend of Zelda: Ocarina of Time
+- [ ] Clash Royale, against bots
+- [ ] florr.io
+- [ ] Rider and Rider Worlds
+- [ ] Hollow Knight: Godhome, its boss fights in an app of their own
+- [ ] Animal Well
+- [ ] Rider.io
+- [ ] Getting Over It
+- [ ] Crossy Road: the characters and the prize machine
 
 ## Credits
 
@@ -358,6 +371,8 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 - **[Turbo Rush](https://jeux.w-production.fr/#/jeu/turborush)** by W Production inspired NumPlay's Turbo Rush, an arcade racer of its own written in C for NumPlay, with circuits, cars and landscapes made for it. **Bobydeluxe** brought it to NumPlay. Not affiliated with W Production.
 - **Angry Birds** by Rovio Entertainment inspired NumPlay's Angry Birds, which plays the Chrome edition's 429 levels with its own pictures, read from its web build, and follows its rules and numbers. Its physics is **Box2D 2.2.1** by Erin Catto (zlib license, [license](games/angrybirds/src/box2d/License.txt)), the engine the game runs on. **Bobydeluxe** brought it to NumPlay. Not affiliated with Rovio.
 - **[PolyTrack](https://www.kodub.com/apps/polytrack)** by Kodub inspired NumPlay's PolyTrack, which drives the game's 17 tracks with its own physics numbers, models, colours and logo, read from its web build. Its 3D engine grew out of **Boris-TH**'s PolyGT 3D. Not affiliated with Kodub.
+- **[Universal Paperclips](https://www.decisionproblem.com/paperclips/)** by Frank Lantz (Everybody House Games), with combat programming by Bennett Foddy, inspired NumPlay's Universal Paperclips, which plays the whole game with its rules, numbers, projects and messages, read from its web build. Not affiliated with them.
+- **[Bad Time Simulator](https://github.com/jcw87/c2-sans-fight)** by jcw87, Undertale's Sans fight remade, inspired NumPlay's Bad Time Simulator, which plays its 24 attack scripts with its sprites (Undertale's, by Toby Fox), words and numbers, read from its project, and the **Pixel Operator** font. Not affiliated with jcw87 or Toby Fox.
 - **Snow Rider 3D** inspired NumPlay's Snow Rider 3D, which makes its slope, sleds, gifts and camera the way the game does, with its models, colours, numbers and logo read from its Unity project ([q8j-dev/snow-rider-3d](https://github.com/q8j-dev/snow-rider-3d)). Not affiliated with its makers.
 - **[Level Devil](https://store.steampowered.com/app/3242750/)** by Unept: NumPlay's Level Devil is written in C with no code from the game, but its 80 rooms (their tiles, traps and timing) are the game's own, taken from its web build by games/leveldevil/tools/fetch.py, and its runner is drawn from the game's sprites.
 
@@ -387,7 +402,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 
 NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyright (c) 2026 Mason Chen. Code and fonts from others keep their own licenses: the `UNLICENSE` files in the games' folders and the [LICENSES](LICENSES) folder. The names, artwork and music of the games NumPlay is inspired by belong to their makers and are not covered by it.
 
-<sub>Unofficial fan games, not affiliated with NumWorks, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), the makers of Snow Rider 3D, Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's), SEGA (Sonic the Hedgehog, Master System, Game Gear), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), W Production (Turbo Rush), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go). Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System and Game Gear of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
+<sub>Unofficial fan games, not affiliated with NumWorks, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale), jcw87 (Bad Time Simulator), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's), SEGA (Sonic the Hedgehog, Master System, Game Gear), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), W Production (Turbo Rush), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), the makers of Snow Rider 3D, Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go). Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System and Game Gear of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
 
 ## Gallery
 
@@ -484,6 +499,10 @@ NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyri
   </tr>
   <tr>
     <td align="center"><img src="docs/media/gallery/polytrack.gif" alt="PolyTrack: Desert 4, through the tube and on to the finish"><br><a href="games/polytrack/README.md"><b>PolyTrack</b></a></td>
+    <td align="center"><img src="docs/media/gallery/paperclips.gif" alt="Universal Paperclips: the first clips, a strategy tournament, the HypnoDrones, a battle against the drifters and the last clips"><br><a href="games/paperclips/README.md"><b>Universal Paperclips</b></a></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/media/gallery/badtime.gif" alt="Bad Time Simulator: Sans slams the blue heart into bones, then Gaster Blasters fire across the box"><br><a href="games/badtime/README.md"><b>Bad Time Simulator</b></a></td>
     <td align="center"><img src="docs/media/gallery/snowrider.gif" alt="Snow Rider 3D: sledding through the snowmen and stumps"><br><a href="games/snowrider/README.md"><b>Snow Rider 3D</b></a></td>
   </tr>
 </table>

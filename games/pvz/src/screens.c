@@ -149,6 +149,11 @@ static const Line talks[] = {
 
 static int talk_at;            /* the line being said (its index), -1 none */
 static int talk_after;         /* what follows: TA_* */
+/* Wall-nut Bowling's red line: the first time, from "We're going BOWLING!" on */
+bool bowling_line(void) {
+  if (B.mode != MODE_BOWLING || B.tutorial == 4) return false;
+  return g_state != ST_DAVE || talk_at < 0 || talks[talk_at].id < 2400 || talks[talk_at].id > 2410;
+}
 enum { TA_PAN, TA_SHOVEL, TA_BOWL, TA_SLOT_ASK, TA_SLOT_ASK8, TA_MENU, TA_SHOP };
 static int talk_bit(int id) {
   switch (id / 100) {
@@ -239,6 +244,11 @@ static void begin_level(int level) {
     }
   } else if (level == 5)
     talk = 2411, after = TA_PAN;
+  if (talk == 2400) {
+    /* 1-5 the first time: three peashooters on the lawn for Crazy Dave's shovel lesson */
+    static const uint8_t at[3][2] = {{5, 1}, {7, 2}, {6, 3}};
+    for (int i = 0; i < 3; i++) plant_new(&B.plants[B.nplants++], P_PEASHOOTER, at[i][0], at[i][1]);
+  }
   if (talk) say(talk, after);
   else start_pan(0, 380, needs_choice() ? ST_CHOOSE : ST_READY);
 }
@@ -257,14 +267,11 @@ static void start_play(void) {
   go(ST_PLAY);
 }
 
-/* the shovel lesson of level 1-5: three peashooters to dig up */
+/* the shovel lesson of level 1-5: the three peashooters to dig up, the lawn still till then (board_tick) */
 static void shovel_lesson(void) {
-  static const uint8_t at[3][2] = {{5, 1}, {7, 2}, {6, 3}};
   progress.items |= ITEM_SHOVEL;
-  for (int i = 0; i < 3; i++) plant_new(&B.plants[B.nplants++], P_PEASHOOTER, at[i][0], at[i][1]);
   B.tutorial = 4;
   B.phase = PH_PLAY;
-  B.started = 0;
   hud.shovel = true;
   go(ST_PLAY);
 }
@@ -299,7 +306,7 @@ static void play_input(void) {
   if (board_collect(cx, cy, 52)) {
     if (B.tutorial == 1 && B.level == 1) {}
   }
-  for (int n = 1; n <= 10; n++) {
+  for (int n = 1; n <= 10 && B.tutorial != 4; n++) {
     if (!hit(K_DIGIT(n))) continue;
     int slot = n - 1;
     hud.shovel = false;
@@ -579,7 +586,8 @@ void game_frame(uint32_t keys) {
       bool left = false;
       for (int i = 0; i < B.nplants; i++) left |= B.plants[i].health > 0;
       if (!left) {
-        B.tutorial = 0, B.nplants = 0, hud.shovel = false;
+        /* (the bowling starts from its first tick: zombies, the belt, the rolling nuts) */
+        B.tutorial = 0, B.nplants = 0, B.started = 1, B.ticks = 0, hud.shovel = false;
         say(2410, TA_BOWL);
       }
       break;
@@ -921,8 +929,18 @@ static void draw_award(void) {
   }
   gfx_text(F_HEAD, 160, 22, head, rgb565(0xF2C94C), GFX_CENTER | GFX_OUTLINE);
   draw_reward(160, 82, true);
-  gfx_text(F_HEAD, 160, 152, name, rgb565(0x3A2410), GFX_CENTER);
-  gfx_paragraph(F_BODY, 160, 172, 200, text, rgb565(0x3A2410), 0);
+  /* the words in the card's panel, under the name: the body's letters if they fit, else the small ones, in its
+   * middle; the longest (the Potato Mine's, the trophy's) a little closer, the name a little higher */
+  int top = 154, bottom = 189, width = 114, font = F_BODY, tight = 0;
+  int h = gfx_paragraph(font, 160, 0, width, text, 0, GFX_MEASURE) - 1;
+  if (h > bottom - top) font = F_SMALL, h = gfx_paragraph(font, 160, 0, width, text, 0, GFX_MEASURE) - 1;
+  if (h > bottom - top) {
+    top = 152, width = 118, tight = GFX_TIGHT;
+    h = gfx_paragraph(font, 160, 0, width, text, 0, GFX_MEASURE | tight) - 1;
+  }
+  gfx_text(F_HEAD, 160, top - 2, name, rgb565(0x3A2410), GFX_CENTER);
+  int y = h < bottom - top ? top + (bottom - top - h) / 2 : top;
+  gfx_paragraph(font, 160, y + font_info(font).ascent, width, text, rgb565(0x3A2410), tight);
   draw_button(110, 214, 100, B.level == N_LEVELS ? "Main Menu" : "Next Level", true);
 }
 
@@ -1043,7 +1061,7 @@ static void draw_shop(void) {
 
 static void draw_help(void) {
   show_back(BG_ALMANAC);
-  gfx_text(F_BIG, 160, 34, "How to Play", rgb565(0x5A3A1E), GFX_CENTER);
+  gfx_text(F_BIG, 160, 25, "How to Play", rgb565(0x5A3A1E), GFX_CENTER);   /* (in the middle of the stone) */
   static const char *const keys[][2] = {
     {"Arrows", "Move over the lawn"},
     {"1 2 3 ... 0", "Pick a seed packet"},
@@ -1089,7 +1107,8 @@ void game_draw(void) {
   case ST_READY:
     draw_lawn(true);
     hud_draw(false);
-    draw_ready(state_t);
+    /* (Wall-nut Bowling starts as Crazy Dave leaves, without "Ready... Set... PLANT!") */
+    if (B.mode != MODE_BOWLING) draw_ready(state_t);
     break;
   case ST_PLAY:
     draw_lawn(true);

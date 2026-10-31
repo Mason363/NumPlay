@@ -7,9 +7,7 @@
 The game's left column (about 384 pixels wide in a browser) is drawn at 0.37 of its size, its store at about half.
 
 data.bin, read where it lies in flash (offsets from its start; data.h names them):
-- IMAGES: 16 bytes each (IM_*): w, h (u16), format (u8: 0 RGB565, 1 a byte a pixel, 2 half a byte a pixel, the
-  first pixel lowest), colours - 1 (u8), 0 (u16), the pixels' offset, the palette's (u32): its colours (RGB565),
-  then their opacities (u8 each)
+- IMAGES: 16 bytes each (IM_*), and the pictures' palettes and pixels: see tools/pictures.py
 - ICONS: the game's icon sheet (icons.png, 36 x 37 icons of 48 pixels) at 24 pixels: an image index (u16, 0xFFFF
   none) for each icon, row by row
 - FONTS: the offset (u32) of each (F_*): first character, count, ascent, line height (u8 x 4), then 8 bytes a glyph
@@ -30,6 +28,9 @@ import sys
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pictures  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_BIN = os.path.join(HERE, "..", "src", "data.bin")
@@ -86,11 +87,12 @@ def quantize(img, n):
 
 class Pack:
     def __init__(self):
-        self.blob = bytearray(b"CCK1")
-        self.images = []          # (name, w, h, fmt, ncolors, px_off, pal_off)
+        self.blob = bytearray(pictures.MAGIC)
+        self.images = []          # the pictures, as drawn (pictures.plane)
+        self.labels = []          # their names, the icons' "icon <x> <y>" (pictures.lay_out)
         self.names = {}
+        self.recs = self.priors = None
         self.defines = []
-        self.sizes = {}           # bytes by group of pictures, for the report
 
     def align(self, n=4):
         while len(self.blob) % n:
@@ -102,37 +104,28 @@ class Pack:
         self.blob += data
         return off
 
-    def image(self, name, img, fmt="p8", ncolors=256):
-        """adds a picture; returns its index"""
+    def image(self, name, img, fmt="p8", ncolors=256, place=None):
+        """adds a picture (RGB565, or quantized to a palette of ncolors, 16 for p4); returns its index"""
         w, h = img.size
-        start = len(self.blob)
         if fmt == "rgb":
             arr = np.asarray(img.convert("RGB")).astype(np.uint16)
-            px = ((arr[..., 0] >> 3) << 11 | (arr[..., 1] >> 2) << 5 | arr[..., 2] >> 3).astype("<u2")
-            off = self.put(px.tobytes())
-            rec = (name, w, h, 0, 1, off, 0)
+            px = (arr[..., 0] >> 3) << 11 | (arr[..., 1] >> 2) << 5 | arr[..., 2] >> 3
+            self.images.append(pictures.plane(px, np.full((h, w), 255)))
         else:
-            n = 16 if fmt == "p4" else ncolors
-            pal, idx = quantize(img, n)
-            pal_bytes = b"".join(struct.pack("<H", rgb565(*c[:3])) for c in pal) + bytes(c[3] for c in pal)
-            pal_off = self.put(pal_bytes)
-            if fmt == "p4":
-                if w % 2:
-                    idx = np.concatenate([idx, np.zeros((h, 1), np.uint8)], 1)
-                packed = (idx[:, 0::2] | idx[:, 1::2] << 4).astype(np.uint8)
-                off = self.put(packed.tobytes())
-                rec = (name, w, h, 2, len(pal), off, pal_off)
-            else:
-                off = self.put(idx.astype(np.uint8).tobytes())
-                rec = (name, w, h, 1, len(pal), off, pal_off)
+            pal, idx = quantize(img, 16 if fmt == "p4" else ncolors)
+            cols = np.array([rgb565(*c[:3]) for c in pal])
+            opas = np.array([c[3] for c in pal])
+            self.images.append(pictures.plane(cols[idx], opas[idx]))
         if name:
             if name in self.names:
                 raise SystemExit(f"pack: two pictures named {name}")
-            self.names[name] = len(self.images)
-        group = re.sub(r"(_.*|\d+)$", "", name) if name else "ICONS"
-        self.sizes[group] = self.sizes.get(group, 0) + len(self.blob) - start
-        self.images.append(rec)
+            self.names[name] = len(self.images) - 1
+        self.labels.append(name or "icon %d %d" % place)
         return len(self.images) - 1
+
+    def lay_out(self):
+        """the pictures into data.bin"""
+        self.recs, self.priors = pictures.lay_out(self.images, self.labels, self.put)
 
 
 def load(ref, rel):
@@ -765,9 +758,11 @@ def main(ref, game_json):
             if np.asarray(cell)[..., 3].max() < 8:
                 icon_index.append(0xFFFF)
                 continue
-            icon_index.append(P.image(None, premul_resize(cell, (24, 24)), "p4"))
+            icon_index.append(P.image(None, premul_resize(cell, (24, 24)), "p4", place=(x, y)))
+    P.lay_out()
     icons_off = P.put(struct.pack(f"<{len(icon_index)}H", *icon_index))
-    defs += [f"#define ICON_COLS {cols}", f"#define ICON_ROWS {rows}", f"#define OFF_ICONS {icons_off}"]
+    defs += [f"#define ICON_COLS {cols}", f"#define ICON_ROWS {rows}", f"#define OFF_ICONS {icons_off}",
+             f"#define OFF_PRIORS {P.priors}"]
 
     # ---- fonts
     F = os.path.join(ref, "fonts")
@@ -943,11 +938,7 @@ def main(ref, game_json):
     # ---- the texts, the pictures' table
     text_off = P.put(bytes(T.blob))
     defs.append(f"#define OFF_TEXT {text_off}")
-    P.align(4)
-    table = bytearray()
-    for name, w, h, fmt, n, px, pal in P.images:
-        table += struct.pack("<HHBBHII", w, h, fmt, n - 1, 0, px, pal)
-    img_off = P.put(bytes(table))
+    img_off = P.put(pictures.records(P.recs))
     defs.append(f"#define OFF_IMAGES {img_off}")
     defs.append(f"#define N_IMAGES {len(P.images)}")
     for name, i in P.names.items():
@@ -977,9 +968,8 @@ def main(ref, game_json):
         f.write("\n".join(lines))
     if UNKNOWN:
         print("pack: characters left out:", "".join(sorted(UNKNOWN)))
-    sizes = {}
-    print(f"data.bin: {len(P.blob)} bytes, {len(P.images)} pictures, texts {len(T.blob)}")
-    print("  " + ", ".join(f"{k} {v // 1024} KB" for k, v in sorted(P.sizes.items(), key=lambda kv: -kv[1])))
+    pictures.check(P.images, bytes(P.blob), dict(N_IMAGES=len(P.images), OFF_IMAGES=img_off, OFF_PRIORS=P.priors))
+    print(f"data.bin: {len(P.blob)} bytes, {len(P.images)} pictures ({icons_off} bytes), texts {len(T.blob)}")
 
 
 if __name__ == "__main__":

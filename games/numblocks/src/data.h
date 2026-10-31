@@ -251,7 +251,8 @@ extern const uint8_t rain_run[][4], snow_run[][4], rain_idx[257], snow_idx[257];
 
 extern const uint8_t spr_px[], spr_w[], spr_h[], spr_alpha[];
 extern const uint16_t spr_off[];
-extern const uint16_t spr_pal[][16];
+extern const uint16_t spr_pals[], spr_po[];
+#define SPR_PAL(i) (spr_pals + spr_po[i])   /* sprite i's colours, from 1 (0 is see-through) */
 extern const uint16_t blk_icon[B_N];   /* sprite of its icon */
 #define SP_HOTBAR 0
 #define SP_HOTBAR_SEL 1

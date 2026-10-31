@@ -15,8 +15,10 @@ static const uint16_t C_DARK = 0x0000;
 
 void packet_draw(int kind, int x, int y, int cooldown, int full, bool dim, bool selected, int key) {
   gfx_image(I_PACKET, x, y);
-  gfx_image(I_PACKET_PEASHOOTER + kind, x + 10, y + 12);
-  if (kind < N_SEEDS && plant_defs[kind].cost)
+  /* (the explode-o-nut: the wall-nut's picture in red, as the game colours it) */
+  if (kind == P_EXPLODENUT) gfx_anim(I_PACKET_WALLNUT, 0, x + 10, y + 12, 0, TINT_RED, 32);
+  else gfx_image(I_PACKET_PEASHOOTER + kind, x + 10, y + 12);
+  if (full >= 0 && kind < N_SEEDS && plant_defs[kind].cost)
     gfx_text(F_SMALL, x + 10, y + 26, gfx_fmt("%d", plant_defs[kind].cost), C_DARK, GFX_CENTER);
   if (full > 0 && cooldown > 0) {
     int h = 28 * cooldown / full;
@@ -56,7 +58,7 @@ static void conveyor_draw(void) {
   for (int i = 0; i < B.npackets; i++) {
     int x = 6 + (int)(B.packets[i].x * 0.4f);
     if (x > 190) continue;
-    packet_draw(B.packets[i].kind, x, 4, 0, 0, false, hud.selected == i, i + 1 <= 10 ? i + 1 : 0);
+    packet_draw(B.packets[i].kind, x, 4, 0, -1, false, hud.selected == i, i + 1 <= 10 ? i + 1 : 0);
   }
 }
 
@@ -124,8 +126,9 @@ static const char *tutorial_hint(void) {
 }
 
 void hud_draw(bool cursor) {
-  if (has_conveyor()) conveyor_draw();
-  else if (B.mode != MODE_VASE && B.mode != MODE_WHACK) {
+  if (has_conveyor()) {
+    if (B.tutorial != 4) conveyor_draw();   /* (1-5's belt comes after the shovel lesson) */
+  } else if (B.mode != MODE_VASE && B.mode != MODE_WHACK) {
     hud_bank_draw(0, 0, true);
     for (int i = 0; i < B.nseeds; i++) {
       int kind = B.seeds[i];

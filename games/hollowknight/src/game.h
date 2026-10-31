@@ -178,6 +178,7 @@ void persist_clear(int bit);
 void obj_enter(void);
 void obj_tick(void);
 void obj_draw(void);
+void obj_keep_cocoons(void);
 void obj_swing_start(void);                                  /* a slash's hit shape on: what it hits, once */
 int obj_nail(const float *pts, int npts, float direction);   /* -> HB_* of what it touches */
 float rand_range(float lo, float hi);   /* Random.Range (floats) */
@@ -400,6 +401,7 @@ void notice_icon(int k);     /* (the next notice's icon: the scripts' NOTICE_ICO
 void notice_show(int text);  /* a relic's notice: its icon, its name */
 void charm_notice(int id);   /* a charm's (in the tutorial, as it is made: its charm) */
 void charm_tute(void);
+void charm_tute_input(void);
 void charm_tute_close(void);
 void notices_close(void);   /* (DESTROY JOURNAL MSG: the inventory opens)*/
 bool bench_respawn(const char *name);   /* RESPAWN: the Knight asleep on the bench so named */

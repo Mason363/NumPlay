@@ -7,7 +7,7 @@ Play your own Game Boy, Game Boy Color, NES, Master System and Game Gear games o
 You pick the games on NumPlay's customizer website: it puts them inside your NumPlay (or inside Retro-Go on its own), and they stay in the calculator's memory for apps. Only games you own or that are free to share, like the homebrew games in the pictures here.
 
 - **Retro-Go's launcher:** a tab for each system with its own colours, the game list, and for each game Resume game, New game, Delete save and Properties.
-- **Game Boy and Game Boy Color** with gnuboy, the emulator Retro-Go started from: the cartridges with MBC1, MBC2, MBC3 (with its clock), MBC5, HuC1 and HuC3 bank controllers, up to 32 KB of cartridge RAM.
+- **Game Boy and Game Boy Color** with gnuboy, the emulator Retro-Go started from: the cartridges with MBC1, MBC2, MBC3 (with its clock), MBC5, HuC1 and HuC3 bank controllers, up to 32 KB of cartridge RAM. Big games fit too, like the 2 MB Game Boy Color ones, in a NumPlay made for Epsilon 26 or Nwagra (NumPlay Studio says when a game needs it).
 - **NES** with nofrendo, Retro-Go's NES emulator at its start: 34 mappers, among them NROM, MMC1, UNROM, CNROM, MMC3, MMC5, AxROM, MMC2, Namco 163 and the Konami VRC chips.
 - **Master System and Game Gear** with a machine written for NumPlay around superzazu's Z80: Sega's, Codemasters' and the Korean mappers, the cartridges' RAM, the 224-line pictures, the European games that need 50 Hz, and the Game Gear games made for the Master System's mode.
 - **Full speed** on every calculator: as Retro-Go does, a frame is drawn, then at least one is skipped, more when the calculator can't keep up, so the game always runs at its own speed.

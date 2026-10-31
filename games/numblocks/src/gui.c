@@ -25,7 +25,7 @@ static inline uint16_t *row_at(int y) { return clip_buf + (y - clip_y0) * SCREEN
 static void sprite_part(int id, int x, int y, int sx, int sy, int w, int h) {
   int stride = (spr_w[id] + 1) / 2;
   const uint8_t *px = spr_px + spr_off[id];
-  const uint16_t *pal = spr_pal[id];
+  const uint16_t *pal = SPR_PAL(id);
   /* (the rows in the strip, the columns on the screen) */
   int r0 = clip_y0 - y > 0 ? clip_y0 - y : 0, r1 = clip_y1 - y < h ? clip_y1 - y : h;
   int c0 = x < 0 ? -x : 0, c1 = x + w > SCREEN_W ? SCREEN_W - x : w;
@@ -436,7 +436,7 @@ static void credits_screen(void) {
   if (f3 > 1) f3 = 1;
   int lum = (int)(f3 * f3 * 96 / 64 * 256);   /* (the tiles' palette has 64 / 255) */
   const uint8_t *px = spr_px + spr_off[SP_DIRT_BG];
-  const uint16_t *pal = spr_pal[SP_DIRT_BG];
+  const uint16_t *pal = SPR_PAL(SP_DIRT_BG);
   int scroll = (int)(tk * 0.25f);
   for (int y = clip_y0; y < clip_y1; y++) {
     uint16_t *d = row_at(y);
@@ -484,6 +484,49 @@ static void hud_portal(void) {
     }
   }
 }
+/* a triangle, its tip at (x, y), pointing (ux, uy): len long, 2 w wide, outlined in black */
+static void mark(float x, float y, float ux, float uy, float len, float w, uint16_t k) {
+  for (int pass = 0; pass < 2; pass++) {
+    float g = pass ? 0 : 1.5f, bx = x - ux * len, by = y - uy * len;
+    float p[3][2] = {{x + ux * g, y + uy * g}, {bx - uy * (w + g) - ux * g, by + ux * (w + g) - uy * g},
+                     {bx + uy * (w + g) - ux * g, by - ux * (w + g) - uy * g}};
+    int y0 = (int)floorf(fminf(p[0][1], fminf(p[1][1], p[2][1]))), y1 = (int)ceilf(fmaxf(p[0][1], fmaxf(p[1][1], p[2][1])));
+    int x0 = (int)floorf(fminf(p[0][0], fminf(p[1][0], p[2][0]))), x1 = (int)ceilf(fmaxf(p[0][0], fmaxf(p[1][0], p[2][0])));
+    if (y0 < clip_y0) y0 = clip_y0;
+    if (y1 >= clip_y1) y1 = clip_y1 - 1;
+    if (x0 < 0) x0 = 0;
+    if (x1 >= SCREEN_W) x1 = SCREEN_W - 1;
+    for (int py = y0; py <= y1; py++) {
+      uint16_t *d = row_at(py);
+      for (int px = x0; px <= x1; px++) {
+        float cx = px + 0.5f, cy = py + 0.5f;
+        bool in = true;
+        for (int e = 0; e < 3 && in; e++) {
+          const float *a = p[e], *b = p[(e + 1) % 3];
+          in = (b[0] - a[0]) * (cy - a[1]) - (b[1] - a[1]) * (cx - a[0]) >= 0;
+        }
+        if (!in) {   /* (either winding) */
+          in = true;
+          for (int e = 0; e < 3 && in; e++) {
+            const float *a = p[e], *b = p[(e + 1) % 3];
+            in = (b[0] - a[0]) * (cy - a[1]) - (b[1] - a[1]) * (cx - a[0]) <= 0;
+          }
+        }
+        if (in) d[px] = pass ? k : 0;
+      }
+    }
+  }
+}
+/* the End: triangles to the Ender Dragon (big, purple) and to the pillars whose crystals are whole (pink), when
+ * they are out of sight (the drawing reaches 19 blocks, the dragon 31) */
+static void hud_marks(void) {
+  float at[12][3], x, y, ux, uy;
+  uint8_t kind[12];
+  int n = end_marks(at, kind, 12);
+  for (int i = n - 1; i >= 0; i--)
+    if (view_mark(at[i][0], at[i][1], at[i][2], kind[i] ? 19 : 31, &x, &y, &ux, &uy))
+      mark(x, y, ux, uy, kind[i] ? 8 : 13, kind[i] ? 4 : 7, kind[i] ? 0xFC1F : 0x901F);
+}
 /* GuiIngame.renderBossHealth: the dragon's bar and name at the top */
 static void hud_boss(void) {
   float hp = dragon_bar();
@@ -515,6 +558,7 @@ static void hud(void) {
     }
   }
 #if NB_DIMS
+  if (gui == GUI_NONE || gui == GUI_CHAT) hud_marks();
   hud_boss();
 #endif
   if (clip_y1 <= SCREEN_H - 60) return;
@@ -1760,7 +1804,7 @@ static void dirt_background(void) {
   /* GuiScreen.drawBackground: the options background, 32 pixel tiles, darkened */
   int id = SP_DIRT_BG;
   const uint8_t *px = spr_px + spr_off[id];
-  const uint16_t *pal = spr_pal[id];
+  const uint16_t *pal = SPR_PAL(id);
   for (int y = clip_y0; y < clip_y1; y++) {
     uint16_t *d = row_at(y);
     const uint8_t *s = px + ((y / 2) & 15) * 8;

@@ -1,6 +1,7 @@
 # NumDrive: a Drive Mad inspired game for the NumWorks calculator
 #   make                      -> output/device/numdrive.nwa
 #   make PLATFORM=simulator   -> output/simulator/numdrive.nwb (for the Epsilon simulator)
+#   make host test            -> host/nd, a build for this computer, and its checks (host/check.py)
 Q ?= @
 PLATFORM ?= device
 NWLINK ?= npx --yes -- nwlink
@@ -55,6 +56,14 @@ $(BUILD_DIR):
 
 clean:
 	$(Q) rm -rf output
+	$(Q) $(MAKE) -C host clean
+
+# Host checks (make host test): the game built for a computer drives First Gear, and Mobile Home to its finish
+.PHONY: host test
+host:
+	$(Q) $(MAKE) -C host nd
+test: host
+	python3 host/check.py host/nd
 
 # NumPlay launcher: the game as a module (see ../../tools/npmodule.py) for the
 # calculator, and as a relocatable object for the simulator build.

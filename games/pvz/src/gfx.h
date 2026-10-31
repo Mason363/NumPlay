@@ -23,7 +23,7 @@ static inline uint16_t mix565(uint16_t f, uint16_t b, int a) {
   return (uint16_t)(y | y >> 16);
 }
 
-enum { GFX_FLIP = 1, GFX_OUTLINE = 2, GFX_CENTER = 4, GFX_RIGHT = 8, GFX_SHADOW = 16 };
+enum { GFX_FLIP = 1, GFX_OUTLINE = 2, GFX_CENTER = 4, GFX_RIGHT = 8, GFX_SHADOW = 16, GFX_MEASURE = 32, GFX_TIGHT = 64 };
 /* colourings of a sprite (its palette, changed) */
 enum { TINT_NONE, TINT_HIT, TINT_CHILL, TINT_FROZEN, TINT_HYPNO, TINT_SLEEP, TINT_DARK, TINT_WHITE, TINT_BLACK,
        TINT_RED, TINT_GRAY, TINT_N };
@@ -67,7 +67,8 @@ void anim_box(int a, int f, int *x, int *y, int *w, int *h);
 int gfx_text(int font, int x, int y, const char *s, uint16_t color, int flags);
 int gfx_text_width(int font, const char *s);
 int font_line(int font);       /* the height of a line */
-/* text wrapped to width, centred on x (flags as gfx_text); returns the baseline after its last line */
+/* text wrapped to width, centred on x (flags as gfx_text; GFX_MEASURE: nothing drawn; GFX_TIGHT: its lines a pixel
+ * closer); returns the baseline after its last line */
 int gfx_paragraph(int font, int x, int y, int width, const char *s, uint16_t color, int flags);
 /* copies text into the frame's pool (text kept until gfx_end), printf-like */
 const char *gfx_fmt(const char *fmt, ...);

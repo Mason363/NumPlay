@@ -382,17 +382,39 @@ static void front_box(int *x, int *y, int *w, int *h) {
   *x = fx, *y = fy, *w = fw, *h = fh;
 }
 
-static void interact(void) {
+/* a 4-pixel row of floor across (x .. x + w) at y? */
+static bool row_floor(int x, int y, int w) {
+  for (int xx = x;; xx += 4) {
+    if (xx > x + w - 1) xx = x + w - 1;
+    if (cell_walkable(xx, y) || on_floor_obj(xx, y)) return true;
+    if (xx == x + w - 1) return false;
+  }
+}
+
+/* what Z reaches: the box in front, and facing a wall, up the wall to what's drawn on it (a sign, a glyph, a bell:
+ * the game reads them from the wall's foot), never past it to the floor beyond */
+void world_reach(int *x, int *y, int *w, int *h) {
+  front_box(x, y, w, h);
+  if (pl.dir != DIR_UP) return;
+  int top = *y;
+  for (int k = 0; k < 10 && !row_floor(*x, top - 4, *w); k++) top -= 4;
+  *h += *y - top, *y = top;
+}
+
+Obj *world_talk_target(void) {
   int x, y, w, h;
-  front_box(&x, &y, &w, &h);
+  world_reach(&x, &y, &w, &h);
   for (int i = 0; i < MAX_OBJS; i++) {
     Obj *o = &objs[i];
     if (o->kind == OBJ_NONE || !(o->flags & OF_TALK)) continue;
-    if (boxes_meet(x, y, w, h, o->x + o->bx, o->y + o->by, o->bw, o->bh)) {
-      event_start(o->event, o);
-      return;
-    }
+    if (boxes_meet(x, y, w, h, o->x + o->bx, o->y + o->by, o->bw, o->bh)) return o;
   }
+  return NULL;
+}
+
+static void interact(void) {
+  Obj *o = world_talk_target();
+  if (o) event_start(o->event, o);
 }
 
 static void touches(void) {

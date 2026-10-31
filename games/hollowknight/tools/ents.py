@@ -606,12 +606,17 @@ def _enemy(o, by_id, persist, name, d=None, strings=None, owners=None):
         c0, cn = _subcols(d, owners, o["id"])
         if cn:
             out.append(rec(ENT_BOX, ET_TERRAIN, a=c0, group=cn))
-    persistent = any(c.get("class") == "PersistentBoolItem" for c in o["c"])
     head = rec(ENT_OBJ, OK_ENEMY, (o["pos"][0], o["pos"][1], o["pos"][2], sx),
                (hm.get("hp", 1), dh.get("damageDealt", 0), hm.get("smallGeoDrops", 0), hm.get("mediumGeoDrops", 0)),
-               a=kind, group=hm.get("largeGeoDrops", 0), persist=persist.id(name, o["path"]) if persistent else NO_PERSIST,
-               s0=len(out), s1=fl)
+               a=kind, group=hm.get("largeGeoDrops", 0), persist=_persist(persist, name, o), s0=len(out), s1=fl)
     return [head] + out
+
+
+def _persist(persist, name, o):
+    """An object's PersistentBoolItem -> its bit in the save (NO_PERSIST: none). Semi persistent: cleared as the Knight
+    rests at a bench, dies or is loaded at one (ResetSemiPersistentItems)."""
+    pbi = next((c.get("v") or {} for c in o["c"] if c.get("class") == "PersistentBoolItem"), None)
+    return persist.id(name, o["path"], semi=bool(pbi.get("semiPersistent"))) if pbi is not None else NO_PERSIST
 
 
 COL_BASE = [0]   # (a scene loaded with another: its colliders numbered after that one's)
@@ -999,10 +1004,10 @@ def room(d, rooms, strings, persist, name, sprites=None, owners=None, rec_base=0
                 lib = _ref_file(d, ean["library"])
                 eclip = CLIP_INDEX.get(actors.clip_id("fx", unity.S(tk2d.animation(*lib)["clips"][ean["defaultClipId"]]["name"])), -1)
             layer, order = _sorting(splat) if splat else (0, 0)
-            persistent = any(c.get("class") == "PersistentBoolItem" for c in o["c"])
+            # (semi persistent: whole again once the Knight rests at a bench or dies, unless in its room then)
             recs.append(rec(ENT_OBJ, OK_COCOON, (o["pos"][0], o["pos"][1], o["pos"][2], 0),
                             (hc.get("waitMin", 2), hc.get("waitMax", 6), 0, 0), a=c0, group=cn, group2=g_hide,
-                            persist=persist.id(name, o["path"]) if persistent else NO_PERSIST, s0=len(pieces), s1=len(hits)))
+                            persist=_persist(persist, name, o), s0=len(pieces), s1=len(hits)))
             recs += [rec(ENT_BOX, fl, box=b) for b, fl in hits]
             recs += pieces
             recs.append(rec(ENT_BOX, 0, (splat["lpos"][0] if splat else 0, splat["lpos"][1] if splat else 0,

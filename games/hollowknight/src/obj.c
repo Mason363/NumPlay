@@ -704,6 +704,13 @@ static void cocoon_tick(Obj *o, const Ent *e) {
   }
 }
 
+/* (ResetSemiPersistentItems: a cocoon broken in the room the Knight is in saves its own state again with the room's
+ * save, so it stays broken) */
+void obj_keep_cocoons(void) {
+  for (int k = 0; k < nobjs; k++)
+    if (objs[k].kind == OK_COCOON && objs[k].state == CO_BROKEN) persist_set(ent_at(objs[k].ent)->persist);
+}
+
 static void cocoon_draw(const Obj *o, const Ent *e) {
   Inst in;
   const Ent *sp = cocoon_splat(e);

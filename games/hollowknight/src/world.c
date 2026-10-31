@@ -52,6 +52,7 @@ bool persist_get(int i) { return i != NO_PERSIST && (g_pd.persist[i >> 3] >> (i 
 void persist_reset_semi(void) {
   static const uint16_t semi[] = SEMI_PERSIST;
   for (unsigned k = 0; k < sizeof semi / sizeof semi[0]; k++) persist_clear(semi[k]);
+  obj_keep_cocoons();
   vm_reset_semi();
 }
 

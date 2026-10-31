@@ -251,6 +251,9 @@ for e in ("FINISHED", "CONVO_FINISH", "CONVO START", "CONVO END", "BIG TITLE STA
           "FK RAGE COMPLETE"):
     EVENTS.id(e)
 FIXED_EVENTS = len(EVENTS.list)   # (src/data.h: VMEV_*)
+# events the game's code sends that only some rooms' scripts know, numbered as each room numbers its own (src/data.h:
+# VMEV_*, by room): the Elder Baldur's corpse's, a shop's charm lesson's
+NAMED_EVENTS = ("UPDATE SHAMAN", "SHOP REGION INACTIVE", "SHOP REGION ACTIVE")
 
 # ---------------------------------------------------------------- the actions it runs: name -> (opcode, operands)
 # operand kinds: f i b s o value slots (u16), F I B S O V output variables (u8: 255 none), e event (u8), t event target,
@@ -1650,6 +1653,7 @@ def prepare(rooms, sprites, texts):
                      any(c.get("class") in ("WaveEffectControl", "SimpleSpriteFade") for c in o["c"]))
         assert len(rm.objs) <= MAX_OBJS and len(rm.fsms) <= MAX_FSMS and nvars <= MAX_VARS and nanims <= MAX_ANIMS, \
             (name, len(rm.objs), len(rm.fsms), nvars, nanims)
+        rm.named_events = {e: EVENTS.index[e] for e in NAMED_EVENTS if e in EVENTS.index}
         BUILT[name] = rm
     # Unity Animators (a sprite swapped each frame): their clips as actors'
     for rm in BUILT.values():
