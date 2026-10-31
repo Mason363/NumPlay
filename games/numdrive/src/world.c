@@ -353,24 +353,30 @@ static void shape_finish(Shape *s) {
     s->occ[i] = m;
   }
   /* mass: the volume of the parts' voxel bounds (Fancade's colliders); com: the centre of the cells
-     holding colliders (a hinged plank balances over a pivot in its column, as in the original); bounds */
+     holding colliders (a hinged plank balances over a pivot in its column, as in the original), but a
+     block of the Physics type counts its collider instead of its cell (Fancade's wiki: a Normal block's
+     centre of mass is its cell's centre, a Physics block's is its collider's; the 7x7 wheels, 7 voxels
+     wide in a cell of 8, turn about their middle instead of bobbing like cams); bounds */
   float v = 0;
   float bx0 = 1e9f, by0 = 1e9f, bz0 = 1e9f, bx1 = -1e9f, by1 = -1e9f, bz1 = -1e9f;
-  int clo[2][3] = {{1 << 20, 1 << 20, 1 << 20}, {1 << 20, 1 << 20, 1 << 20}}, chi[2][3] = {{-1, -1, -1}, {-1, -1, -1}};
+  int clo[2][3] = {{1 << 28, 1 << 28, 1 << 28}, {1 << 28, 1 << 28, 1 << 28}}, chi[2][3] = {{-1, -1, -1}, {-1, -1, -1}};
   uint8_t coll = 0;
   for (int i = 0; i < s->np; i++) {
     Block *b = blocks[s->blk[i]];
     uint32_t k = s->key[i];
     int c = PK_C(k);
     int cell[3] = {PK_X(k), PK_Y(k), PK_Z(k)};
+    const uint8_t *bb = b->bb + c * 6;
+    bool own = (b->flags & 4) && (b->flags & 3) && bb[0] <= bb[3];
     for (int t = 0; t < 2; t++)
       if (t == 0 || (b->flags & 3))
         for (int a = 0; a < 3; a++) {
-          if (cell[a] < clo[t][a]) clo[t][a] = cell[a];
-          if (cell[a] > chi[t][a]) chi[t][a] = cell[a];
+          /* in voxels */
+          int l = cell[a] * 8 + (own ? bb[a] : 0), h = cell[a] * 8 + (own ? bb[a + 3] + 1 : 8);
+          if (l < clo[t][a]) clo[t][a] = l;
+          if (h > chi[t][a]) chi[t][a] = h;
         }
     float cx = cell[0] * 8.0f, cy = cell[1] * 8.0f, cz = cell[2] * 8.0f;
-    const uint8_t *bb = b->bb + c * 6;
     if (bb[0] <= bb[3]) v += (bb[3] - bb[0] + 1) * (bb[4] - bb[1] + 1) * (bb[5] - bb[2] + 1);
     if (cx + bb[0] < bx0) bx0 = cx + bb[0];
     if (cy + bb[1] < by0) by0 = cy + bb[1];
@@ -383,7 +389,7 @@ static void shape_finish(Shape *s) {
   s->mass = v / 512.0f;
   {
     int t = chi[1][0] >= 0 ? 1 : 0;
-    s->com = s->np ? v3((clo[t][0] + chi[t][0] + 1) * 0.5f, (clo[t][1] + chi[t][1] + 1) * 0.5f, (clo[t][2] + chi[t][2] + 1) * 0.5f)
+    s->com = s->np ? v3((clo[t][0] + chi[t][0]) / 16.0f, (clo[t][1] + chi[t][1]) / 16.0f, (clo[t][2] + chi[t][2]) / 16.0f)
                    : v3(0, 0, 0);
   }
   {
@@ -404,10 +410,11 @@ static void shape_finish(Shape *s) {
       }
     }
     s->origin = s->np ? v3((lo[0] + hi[0]) * 0.5f, (lo[1] + hi[1]) * 0.5f, (lo[2] + hi[2]) * 0.5f) : s->com;
-    /* an object of one block sits at the centre of its cell */
+    /* an object of one block sits at its centre of mass: its cell's centre, or a Physics block's collider's
+       (Get Position gives the centre of mass, and a wheel's axle goes there) */
     bool one = true;
     for (int i = 1; i < s->np && one; i++) one = (s->key[i] & ~7u) == (s->key[0] & ~7u);
-    if (s->np && one) s->origin = v3(PK_X(s->key[0]) + 0.5f, PK_Y(s->key[0]) + 0.5f, PK_Z(s->key[0]) + 0.5f);
+    if (s->np && one) s->origin = s->com;
   }
   s->bmin = v3(bx0 / 8, by0 / 8, bz0 / 8);
   s->bmax = v3(bx1 / 8, by1 / 8, bz1 / 8);

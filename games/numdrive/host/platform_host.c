@@ -1,17 +1,22 @@
 /* Headless host platform for automated testing.
  * Env vars: ND_FRAMES (stop after N frames), ND_SHOTS ("1,20,50" or "all"), ND_OUT (dir),
- * ND_KEYS ("RIGHT:0:120,LEFT:200:260,OK:5:6") key holds by frame range. */
+ * ND_KEYS ("RIGHT:0:120,LEFT:200:260,OK:5:6") key holds by frame range, ND_BOT (a driver, below),
+ * ND_OUTCOME (print "WIN at frame N" or "LOSE at frame N"). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "../src/platform.h"
 #include "../src/render.h"
+#include "../src/world.h"
+#include "../src/physics.h"
 #ifndef ARMTEST
 #include <sys/mman.h>
 #include <unistd.h>
 #include <signal.h>
+#ifdef __linux__
 #include <sys/prctl.h>
-#include <math.h>
+#endif
 #include <semaphore.h>
 #endif
 
@@ -40,6 +45,9 @@ static int s_seg, s_beam, s_frames, s_id = -1, s_act, s_outcome;
 static void s_checkpoint(void);
 #endif
 void host_outcome(int won) {
+  static int told;
+  if (!told && getenv("ND_OUTCOME")) printf("%s at frame %d\n", won == 1 ? "WIN" : "LOSE", frame), fflush(stdout);
+  told = 1;
 #ifndef ARMTEST
   if (!s_outcome) s_outcome = won;
 #else
@@ -98,8 +106,41 @@ static int keycode(const char *n) {
   return -1;
 }
 
+/* ND_BOT="lean,dip,speed,brake,ahead": a driver that keeps a tall car on its wheels the way a player would.
+   It gives gas, up to `speed` units a second, unless the body (object ND_BOTOBJ, 0 by default) leans back
+   more than `lean` degrees from the ground under it, when it lets go, or brakes if `brake` is not 0; leaning
+   forward more than `dip` degrees, it gives gas. The lean is taken `ahead` seconds ahead at its turning speed. */
+static uint64_t bot_keys(void) {
+  static float lean, dip, speed, brake, ahead, pa, px;
+  static int body = -1;
+  if (body < 0) {
+    lean = 45, dip = 25, speed = 6, brake = 1, ahead = 0;
+    sscanf(getenv("ND_BOT"), "%f,%f,%f,%f,%f", &lean, &dip, &speed, &brake, &ahead);
+    body = getenv("ND_BOTOBJ") ? atoi(getenv("ND_BOTOBJ")) : 0;
+  }
+  if (body >= nobj) return 0;
+  const Obj *o = &objs[body];
+  float a = 2 * atan2f(o->rot.z, o->rot.w) * RAD2DEG;
+  while (a > 180) a -= 360;
+  while (a < -180) a += 360;
+  float w = frame ? (a - pa) * 60 : 0, v = frame ? (o->pos.x - px) * 60 : 0;
+  pa = a, px = o->pos.x;
+  /* the ground's slope: rays straight down either side of the body */
+  float slope = 0;
+  vec3 h0, h1;
+  int ho;
+  if (phys_raycast_ex(v3(o->pos.x - 1.6f, o->pos.y, o->pos.z), v3(o->pos.x - 1.6f, o->pos.y - 8, o->pos.z), &h0, &ho, body) &&
+      phys_raycast_ex(v3(o->pos.x + 1.6f, o->pos.y, o->pos.z), v3(o->pos.x + 1.6f, o->pos.y - 8, o->pos.z), &h1, &ho, body))
+    slope = atan2f(h1.y - h0.y, h1.x - h0.x) * RAD2DEG;
+  float l = a - slope + w * ahead;
+  if (l > lean) return brake != 0 ? KEY(K_LEFT) : 0;
+  if (l < -dip) return KEY(K_RIGHT);
+  return v < speed ? KEY(K_RIGHT) : 0;
+}
+
 uint64_t plat_keys(void) {
   init();
+  if (getenv("ND_BOT")) return bot_keys();
 #ifndef ARMTEST
   if (sr) {
     if (s_id < 0) s_checkpoint(); /* frame 0: become the coordinator and the first worker */
@@ -249,7 +290,9 @@ static void s_checkpoint(void) {
   if (s_id < 0) {
     /* orphaned workers are adopted and reaped here */
     signal(SIGCHLD, SIG_IGN);
+#ifdef __linux__
     prctl(PR_SET_CHILD_SUBREAPER, 1);
+#endif
     s_id = 0;
     if (fork() != 0) s_coordinate();
     s_act = 0;
