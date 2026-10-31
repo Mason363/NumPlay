@@ -110,6 +110,24 @@ static void tiles_unpack(uint8_t *dst, const uint8_t *src, int tw, int th) {
   }
 }
 
+/* CELESTE_DECAL_ZIGZAG_XY_V1: restore x/y arrays in the existing room buffer.
+ * No heap or extra persistent RAM, and no per-frame decoding. */
+static void cel_decals_unzigzag(uint8_t *part) {
+  unsigned n = rd16(part), nt = part[2];
+  uint8_t *xs = part + 4 + 2 * nt;
+  for (unsigned axis = 0; axis < 2; axis++) {
+    uint8_t *p = xs + (axis ? 2 * n : 0);
+    uint32_t prev = 0;
+    for (unsigned i = 0; i < n; i++) {
+      unsigned z = rd16(p + 2 * i);
+      int32_t d = (int32_t)(z >> 1) ^ -(int32_t)(z & 1u);
+      prev = (prev + d) & 65535u;
+      p[2 * i] = (uint8_t)prev;
+      p[2 * i + 1] = (uint8_t)(prev >> 8);
+    }
+  }
+}
+
 static void session_enter(int index, int intro);
 static bool room_load(int slot, int index, int intro) {
   Room *rm = &g_level.rooms[slot];
@@ -148,6 +166,9 @@ static bool room_load(int slot, int index, int intro) {
   tiles_unpack(mem + hdr[RB_FG], blob + rd16(blob + 2 * RB_FG), rm->tw, rm->th);
   tiles_unpack(mem + hdr[RB_BG], blob + rd16(blob + 2 * RB_BG), rm->tw, rm->th);
   memcpy(mem + hdr[RB_EXTRAS], blob + from, keep - hdr[RB_EXTRAS]);
+  /* CELESTE_DECAL_ZIGZAG_XY_V1: restore decoded coordinates before exposing decal pointers. */
+  cel_decals_unzigzag(mem + hdr[RB_DFG]);
+  cel_decals_unzigzag(mem + hdr[RB_DBG]);
   setup_layer(&rm->layer[0], mem + rd16(mem + 2 * RB_FG), rm->th);
   setup_layer(&rm->layer[1], mem + rd16(mem + 2 * RB_BG), rm->th);
   /* extras: objtiles, then scenery over fg and bg */
