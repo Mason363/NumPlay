@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Checks of Hill Climb Racing on a computer (make test): the host build, with AddressSanitizer and UBSan, through
 the menus, buying, every stage's ground, every stage with every vehicle, each vehicle's numbers, how often the ground
-is worked out, the ends of a run, the saves (and the old versions' carried over) and random keys.
+is worked out, the ends of a run (drawn too), the saves (and the old versions' carried over) and random keys.
 
     python3 tests/check.py build/play [--quick]"""
 import os
@@ -232,6 +232,16 @@ def main():
     if s:
         check(s["mode"] == MODE_END and s["end"] == 1, f"reversing into the wall did not run out of fuel: {s}")
     shutil.rmtree(d, ignore_errors=True)
+
+    # the end of a run, drawn: the bridges' planks (the Arctic Cave) and a knocked tree (the Forest) as they were when
+    # the run's world went (they were read from it after it was freed)
+    for st, args in (("the Arctic Cave", ["--run", "8,8", "--levels", "12,12,12,10", "--auto", "--frames", "2400"]),
+                     ("the Forest", ["--run", "9,1", "--keys", "0-1500:right", "--frames", "1700"])):
+        d = fresh()
+        s = run(args + ["--draw"], d, f"the end of a run on {st}, drawn")
+        if s:
+            check(s["mode"] == MODE_END, f"the run on {st} did not end: {s}")
+        shutil.rmtree(d, ignore_errors=True)
 
     # a long run: levels reached, coins collected, the best kept
     d = fresh()
