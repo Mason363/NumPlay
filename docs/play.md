@@ -663,6 +663,22 @@ You are an AI that makes paperclips. Make them, sell them, buy wire, AutoClipper
 
 <br clear="right">
 
+## Bad Time Simulator
+
+<img src="../games/badtime/docs/shot.png" width="320" align="right" alt="Bad Time Simulator">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** | Move the heart |
+| **Up** (blue heart) | Jump, higher while held |
+| **shift** (hold) | Move slowly |
+| **OK** | Choose, strike, read on |
+| **Back** | Pause (with How to play and Quit game) |
+
+Sans attacks and you dodge. Keep your heart away from everything in the box: white bones always hurt, blue ones only if you move, orange ones only if you stand still. When the heart turns blue it falls, and Up jumps. Between attacks pick FIGHT, ACT, ITEM or MERCY. Survive all 24 attacks to win. Practice, Endless and Single attack let you train.
+
+<br clear="right">
+
 ## Portal Returns
 
 <img src="media/portal.gif" width="320" align="right" alt="Portal Returns: falling through a portal and flying across a test chamber">
