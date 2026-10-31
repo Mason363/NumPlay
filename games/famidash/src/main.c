@@ -988,10 +988,10 @@ static const char *const help_lines[2][7] = {
     {"Jump over the spikes and reach the end.", "OK, EXE or Up: jump. Hold it to keep jumping,",
      "to fly the ship and to go up with the wave.", "Tap it on a ring (an orb) to jump in the air.",
      "Pads and portals act on their own:", "they change your gravity, speed, size and mode.", "Three coins hide in every level."},
-    {"Back pauses: Resume, Practice, Quit game.", "Practice mode puts checkpoints down for you.",
-     "In practice: Down places one, backspace removes", "the last one. Coins don't count there.",
-     "Play has the 27 main levels, the button on its right", "the 18 community levels. In the tower levels,",
-     "walk with Left and Right. Beat the first 13 levels for the fun settings."}};
+    {"Back pauses: Resume, Practice, Quit game.", "Practice puts checkpoints down as you play.",
+     "Down places one, backspace removes the last.", "Coins don't count in practice.",
+     "Play: the 27 main levels. Next to it: 18 more.", "In the tower levels, Left and Right walk.",
+     "Beat the first 13 for the fun settings."}};
 
 static void scene(void *ctx) {
   (void)ctx;
