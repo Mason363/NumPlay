@@ -1319,5 +1319,26 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/rider",
     "default": false,
     "xl": true
+  },
+  {
+    "id": "snowrider",
+    "rank": 31,
+    "title": "Snow Rider 3D",
+    "tagline": "Sled down the endless slope",
+    "credit": "Based on Snow Rider 3D",
+    "top": "0x8CC8F0",
+    "bottom": "0x2A4A6E",
+    "accent": "0xD8343A",
+    "colors": 16,
+    "records": [
+      "snowrider.sav",
+      "snowrider_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/snowrider",
+    "default": false,
+    "xl": true
   }
 ]

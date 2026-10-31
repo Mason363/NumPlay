@@ -707,6 +707,17 @@ Sans attacks and you dodge. Keep your heart away from everything in the box: whi
 | **Home** | Save and quit |
 
 Hold the button and the bike speeds up. In the air, holding it turns the bike backwards: a flip. Let go so that it lands on both wheels, or it breaks. In the endless run each landed flip is a point and gems win new bikes. In the 48 levels, reach the end fast for three stars: each flip takes half a second off.
+## Snow Rider 3D
+
+<img src="../games/snowrider/docs/shot.png" width="320" align="right" alt="Snow Rider 3D">
+
+| Key | What it does |
+| --- | --- |
+| **Left, Right** | Steer |
+| **Up, OK** | Jump (held, again on landing) |
+| **Back** | Pause (with Restart and Quit game) |
+
+The sled slides down the endless slope by itself, faster and faster. Steer around the trees, rocks, snowmen, stumps and walls: one hit and it breaks. Fences and signs break as you ride through them. Every 10 metres is a point. Past 10 points come tunnels, cracks to jump and floating islands, and giant snowballs roll across. Gifts on the slope buy new sleds at the camp. Your best score, gifts and sleds are saved.
 
 <br clear="right">
 
