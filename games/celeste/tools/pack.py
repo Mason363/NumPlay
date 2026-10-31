@@ -351,6 +351,46 @@ def direct_rows(rows, at, pool):
     return bytes(lens + ops)
 
 
+def shortest_row(row, nib):
+    """A row's ops (rle_direct_rows') the fewest bytes they go: of every way to cut the row into clear pixels, runs of a
+    colour and literals, the shortest (the first found of the shortest)."""
+    end = len(row)
+    while end and row[end - 1] == 0:
+        end -= 1
+    size = [10 ** 9] * (end + 1)   # the bytes from x on
+    size[end] = 0
+    op = [None] * end              # and the op at x for them: (0 clear, 1 run, 2 literals; pixels)
+    for x in range(end - 1, -1, -1):
+        v = row[x]
+        best = (10 ** 9, None)
+        kinds = ((0, 64, 1),) if v == 0 else ((1, 64, 2), (2, 128, None))
+        for kind, most, cost in kinds:
+            n = 0
+            while n < most and x + n < end and (row[x + n] != 0 if kind == 2 else row[x + n] == v):
+                n += 1
+                total = (cost or 1 + ((n + 1) // 2 if nib else n)) + size[x + n]
+                if total < best[0]:
+                    best = (total, (kind, n))
+        size[x], op[x] = best
+    out = bytearray()
+    x = 0
+    while x < end:
+        kind, n = op[x]
+        if kind == 0:
+            out.append(n - 1)
+        elif kind == 1:
+            out += bytes((0x40 + n - 1, int(row[x])))
+        else:
+            out.append(0x80 + n - 1)
+            lits = [int(c) for c in row[x:x + n]]
+            if nib:
+                out += bytes(lits[i] | (lits[i + 1] << 4 if i + 1 < n else 0) for i in range(0, n, 2))
+            else:
+                out += bytes(lits)
+        x += n
+    return bytes(out)
+
+
 def rle_direct_rows(idx):
     """rle_direct_parts' (format flags, local palette, ops of each row)."""
     flat = idx.ravel()
@@ -413,6 +453,7 @@ def rle_direct_rows(idx):
         flags |= 8
         colors = bytes([len(uniq)] + uniq)
     if all(len(r) < ROW8_MAX for r in rows):
+        rows = [shortest_row(idx[y], nib) for y in range(h)]   # (shorter still: as short as they go)
         flags |= 4
     return flags, colors, rows
 
@@ -987,6 +1028,25 @@ BLOB_BYTES = {}
 ROOM_POOL_FULL = 19092
 
 
+def zigzag_decals(blob):
+    """The room's blob with its decals' x and y (in columns) each as its difference from the one before, zigzagged
+    (0, -1, 1, -2 as 0, 1, 2, 3): smaller packed. level.c room_load turns them back."""
+    out = bytearray(blob)
+    for part in (3, 4):   # RB_DFG, RB_DBG
+        at = struct.unpack_from("<H", blob, 2 * part)[0]
+        n, textures = struct.unpack_from("<HB", blob, at)
+        at += 4 + 2 * textures
+        for col in (at, at + 2 * n):
+            last = 0
+            for i in range(n):
+                v = struct.unpack_from("<H", blob, col + 2 * i)[0]
+                d = (v - last) & 65535
+                d -= 65536 if d >= 32768 else 0
+                struct.pack_into("<H", out, col + 2 * i, (d << 1 ^ d >> 15) & 65535)
+                last = v
+    return bytes(out)
+
+
 def room_blob(ch, r):
     """Everything a room needs; the first part (up to RB_ENTS) stays in RAM while the room is loaded
     (level.c room_load), the entities and triggers are read once."""
@@ -1024,7 +1084,7 @@ def room_blob(ch, r):
             w.u16(x)
             w.u16(y)
             w.u16(v)
-    # decals: u16 n, u8 textures, u16 ids[textures], (align 2), then in columns: s16 x[n], s16 y[n],
+    # decals: u16 n, u8 textures, u16 ids[textures], (align 2), then in columns: s16 x[n], s16 y[n] (zigzag_decals),
     # u8 texture index | flip x << 6 | flip y << 7 [n]; in the map's order (it is the drawing order)
     for layer in ("fgdecals", "bgdecals"):
         offs.append(len(w))
@@ -1101,7 +1161,7 @@ def room_blob(ch, r):
         name = ("fg", "bg", "extras", "dfg", "dbg", "spin", "need", "ents", "trigs")[k]
         BLOB_PARTS[name] += b - a
         BLOB_BYTES.setdefault(name, bytearray()).extend(w.b[a:b])
-    return bytes(w.b)
+    return zigzag_decals(w.b)
 
 
 def room_pool_size(chapters):
