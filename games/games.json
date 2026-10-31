@@ -1360,5 +1360,27 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/templerun",
     "default": false,
     "xl": true
+  },
+  {
+    "id": "fnaf2",
+    "rank": 33,
+    "title": "Five Nights at Freddy's 2",
+    "tagline": "Survive the new pizzeria",
+    "credit": "Based on the game by Scott Cawthon",
+    "top": "0x3A2C46",
+    "bottom": "0x0A0610",
+    "accent": "0xE04A3A",
+    "colors": 16,
+    "records": [
+      "fnaf2.sav",
+      "fnaf2res.sav",
+      "fnaf2_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/fnaf2",
+    "default": false,
+    "xl": true
   }
 ]

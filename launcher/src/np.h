@@ -68,7 +68,7 @@ typedef struct {
 } np_game_t;
 
 /* every game of games.json, the kit's too, can be in one NumPlay (tools/gen_games.py checks it) */
-#define NP_MAX_GAMES 64
+#define NP_MAX_GAMES 96
 #if NP_SIMULATOR
 extern const np_game_t np_games[];
 extern const int np_game_count;
