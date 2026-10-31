@@ -1901,7 +1901,12 @@ static void solve_joints(bool first) {
         if (e < j->lo[k]) jt->pass |= 1 << k;
         if (e > j->hi[k]) jt->pass |= 8 << k;
       }
-    for (int k = 0; k < 3; k++) {
+    /* the angle first, then x and y, as Bullet's 6DofSpring2 orders a joint's rows ("for stability better to
+       solve angular limits first"). Solved last, a joint's angle limit had the last say in every pass and
+       held like a weld: Mobile Home's rope bridge kept its end planks rigid at their stops, a step the
+       house's wheels could not climb, where Bullet's give a little under its weight */
+    for (int kk = 0; kk < 3; kk++) {
+      int k = kk ? kk - 1 : 2;
       float nx = 0, ny = 0;
       float m = fr->m[k];
       if (k < 2) {
