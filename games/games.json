@@ -677,7 +677,7 @@
   },
   {
     "id": "championisland",
-    "rank": 23,
+    "rank": 24,
     "title": "Champion Island",
     "tagline": "Seven sports, one island",
     "credit": "Based on Google's Champion Island Games",
@@ -699,7 +699,7 @@
   },
   {
     "id": "finalearth2",
-    "rank": 24,
+    "rank": 25,
     "title": "The Final Earth 2",
     "tagline": "Build a city in space",
     "credit": "Based on the game by Florian van Strien",
@@ -721,7 +721,7 @@
   },
   {
     "id": "numpowder",
-    "rank": 17,
+    "rank": 18,
     "title": "NumPowder",
     "tagline": "Sand, water, fire and more",
     "credit": "Inspired by The Powder Toy",
@@ -775,7 +775,7 @@
   },
   {
     "id": "fnaf",
-    "rank": 15,
+    "rank": 16,
     "title": "Five Nights at Freddy's",
     "tagline": "Survive five nights",
     "credit": "Based on the game by Scott Cawthon",
@@ -836,7 +836,7 @@
   },
   {
     "id": "isaac",
-    "rank": 19,
+    "rank": 20,
     "title": "The Binding of Isaac",
     "tagline": "Cry through the basement",
     "credit": "Based on the game by Edmund McMillen",
@@ -858,7 +858,7 @@
   },
   {
     "id": "hillclimb",
-    "rank": 20,
+    "rank": 21,
     "title": "Hill Climb Racing",
     "tagline": "Drive up, don't flip",
     "credit": "Based on Hill Climb Racing by Fingersoft",
@@ -902,7 +902,7 @@
   },
   {
     "id": "sonic",
-    "rank": 18,
+    "rank": 19,
     "title": "Sonic the Hedgehog",
     "tagline": "Run through six zones",
     "credit": "Based on the game by Sonic Team",
@@ -923,7 +923,7 @@
   },
   {
     "id": "cookieclicker",
-    "rank": 26,
+    "rank": 27,
     "title": "Cookie Clicker",
     "tagline": "Bake billions of cookies",
     "credit": "Based on Cookie Clicker by Orteil",
@@ -944,7 +944,7 @@
   },
   {
     "id": "leveldevil",
-    "rank": 25,
+    "rank": 26,
     "title": "Level Devil",
     "tagline": "Run to the door",
     "credit": "Based on Level Devil by Unept",
@@ -1007,7 +1007,7 @@
   },
   {
     "id": "donkeykong",
-    "rank": 16,
+    "rank": 17,
     "title": "Donkey Kong",
     "tagline": "Climb the girders and save Pauline",
     "credit": "Based on Donkey Kong by Nintendo",
@@ -1133,7 +1133,7 @@
   },
   {
     "id": "turborush",
-    "rank": 21,
+    "rank": 22,
     "title": "Turbo Rush",
     "tagline": "Race seven rivals on six circuits",
     "credit": "A game by Bobydeluxe",
@@ -1195,7 +1195,7 @@
   },
   {
     "id": "polytrack",
-    "rank": 22,
+    "rank": 23,
     "title": "PolyTrack",
     "tagline": "Time trials on 17 low-poly tracks",
     "credit": "Based on PolyTrack by Kodub",
@@ -1217,7 +1217,7 @@
   },
   {
     "id": "paperclips",
-    "rank": 27,
+    "rank": 28,
     "title": "Universal Paperclips",
     "tagline": "Turn everything into paperclips",
     "credit": "Based on Universal Paperclips by Frank Lantz",
@@ -1238,7 +1238,7 @@
   },
   {
     "id": "badtime",
-    "rank": 28,
+    "rank": 29,
     "title": "Bad Time Simulator",
     "tagline": "Dodge the Judge's 24 attacks",
     "credit": "Inspired by Bad Time Simulator by jcw87 and Undertale by Toby Fox",
@@ -1254,6 +1254,27 @@
       "docs/shot.png"
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/badtime",
+    "default": false,
+    "xl": true
+  },
+  {
+    "id": "mahjong",
+    "rank": 15,
+    "title": "Mahjong",
+    "tagline": "Match free tiles, clear the board",
+    "credit": "Layouts from KMahjongg",
+    "top": "0x23774D",
+    "bottom": "0x0E3524",
+    "accent": "0xFFC93C",
+    "colors": 16,
+    "records": [
+      "mahjong.sav",
+      "mahjong_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/mahjong",
     "default": false,
     "xl": true
   }
