@@ -60,6 +60,7 @@ jobs:
           python3 tests/test_upsilon.py build/compiled/NumPlay-Upsilon.nwa
           python3 tests/test_small_ram.py build/compiled/NumPlay.nwa
           make -C games/numblocks host test
+          make -C games/numdrive host test
           make -C games/championisland host test
           make -C games/undertale host test
           make -C games/doom host test
