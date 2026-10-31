@@ -41,6 +41,7 @@ ALONE = {
     "leveldevil": ("Level Devil", "Unept's troll platformer, all sixteen worlds"),
     "sonic": ("Sonic the Hedgehog", "the whole 1991 game, Green Hill to the Final Zone"),
     "numvisuals": ("NumVisuals", "moving backgrounds with a clock, a stopwatch, a timer, a counter or your own words"),
+    "meowdoku": ("Meowdoku", "one cat per row, column and color, with the game's own puzzles, in its order"),
     "cookieclicker": ("Cookie Clicker", "the whole game, to the grandmapocalypse, ascension and the dragon"),
     "jetpackjoyride": ("Jetpack Joyride", "Barry's run through the lab, with five vehicles and the Final Spin"),
     "stickmanhook": ("Stickman Hook", "swing from hook to hook: 39 levels made by hand, then endless ones"),

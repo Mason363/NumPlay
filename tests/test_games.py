@@ -146,6 +146,10 @@ GAMES = {
     # past how to play, the first level and a few steps; next time the second level, picked in the list
     "sokoban": ("Sokoban.nwa", "sokoban.sav", presses((1500, "ok"), (2000, "ok"), (2600, "right"), (2900, "right")), 4000,
                 presses((1500, "right"), (1900, "ok"), (2500, "up")), 4000),
+    # past how to play, a hint on level 1 (the X's its cat rules out) done with OK; next time the game goes on: the
+    # winking cat finds one more cat
+    "meowdoku": ("Meowdoku.nwa", "meowdoku.sav", presses((1500, "ok"), (2000, "shift"), (2500, "ok")), 3500,
+                 presses((1500, "alpha")), 2500),
     # the intro film is skipped (seen), Lucky walks up the dock and talks to the
     # guardians; next time the game starts where it was left
     "championisland": ("ChampionIsland.nwa", "champion.sav",
@@ -497,6 +501,9 @@ CHECKS = {
              lambda v: v[5] == 3 and v[34] == 2),
     # how to play seen and the first level played last; then the second
     "sokoban": (lambda v: len(v) == 314 and v[:4] == b"S\1\1\0", lambda v: len(v) == 314 and v[:4] == b"S\1\1\1"),
+    # "M", version 1, the guide read, level 1 (at 4) in play: X's put by the hint (1s in the cells, at 26); then two cats
+    "meowdoku": (lambda v: len(v) == 212 and v[:2] == b"M\1" and v[2] == 3 and v[4] == 1 and v[26:147].count(1) >= 3,
+                 lambda v: len(v) == 212 and v[2] == 3 and v[26:147].count(2) == 2),
     # the bakery kept ("CCK1", the cookies at 8, the clicks at 48): 3 clicks; after the reinstall, from the copy, 5
     "cookieclicker": (lambda v: v[:4] == b"CCK1" and struct.unpack_from("<d", v, 48)[0] == 3
                       and struct.unpack_from("<d", v, 8)[0] >= 3,
