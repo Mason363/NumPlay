@@ -1256,5 +1256,26 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/badtime",
     "default": false,
     "xl": true
+  },
+  {
+    "id": "rider",
+    "rank": 29,
+    "title": "Rider",
+    "tagline": "Ride, flip, land on both wheels",
+    "credit": "Inspired by Rider by Ketchapp",
+    "top": "0x1E3436",
+    "bottom": "0x0C1517",
+    "accent": "0x00E8EB",
+    "colors": 16,
+    "records": [
+      "rider.sav",
+      "rider_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/rider",
+    "default": false,
+    "xl": true
   }
 ]
