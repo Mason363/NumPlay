@@ -54,6 +54,7 @@ ALONE = {
     "angrybirds": ("Angry Birds", "the 429 levels of the Chrome edition, its seven birds and the Mighty Eagle"),
     "polytrack": ("PolyTrack", "Kodub's low-poly time trial racer: its 17 tracks, loops, wall rides and jumps, against your ghost"),
     "paperclips": ("Universal Paperclips", "Frank Lantz's game of an AI making paperclips: business, the Earth, then the universe"),
+    "badtime": ("Bad Time Simulator", "the Judge's fight: 24 attacks of bones, gavels and the blue heart, after jcw87's Bad Time Simulator"),
 }
 VARIANTS = [
     ("NumPlay-Invisible.nwa", "The same app, hidden: a blank icon with no name"),
