@@ -292,6 +292,14 @@ GAMES = {
     "rider": ("Rider.nwa", "rider.sav",
               presses((1500, "ok"), (2200, "ok"), (6000, "back")) + [(2800, 5500, K["ok"])], 7000,
               presses((1500, "ok")) + [(2000, 3500, K["ok"])], 4500),
+    # the title, Play, how to play (the first time), then the ride: steering, Back to pause, Home. Next time, from
+    # the copy, Play straight into the ride (the guide was read), quit with On/Off
+    "snowrider": ("SnowRider3D.nwa", "snowrider.sav", presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (6500, "back"))
+                  + [(4200, 4500, K["left"])], 8000, presses((1500, "ok"), (2200, "ok")), 5000),
+    # how to play (the first time), the title's Run: a run with no one playing, until it ends; Home keeps it. Next
+    # time, from the copy, straight from the title into another run, quit with On/Off
+    "templerun": ("TempleRun.nwa", "templerun.sav", presses((1500, "ok"), (2200, "ok")), 9000,
+                  presses((1500, "ok")), 4000),
     # how to play (the first time: two pages), Play, Stereo Madness, OK held to jump, Back to pause; Home keeps the
     # guide read and the time played. Next time, from the copy, Play straight away, quit with On/Off
     "famidash": ("Famidash.nwa", "famidash.sav",
@@ -367,7 +375,8 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "fnf": "fnf_saves.py", "turborush": "turborush_saves.py",
           "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
           "badtime": "badtime_saves.py", "mahjong": "mahjong_saves.py",
-          "rider": "rider_saves.py", "famidash": "famidash_saves.py"}
+          "rider": "rider_saves.py", "snowrider": "snowrider_saves.py", "templerun": "templerun_saves.py",
+          "famidash": "famidash_saves.py"}
 
 
 def paperclips_ok(v):
@@ -613,6 +622,15 @@ CHECKS = {
     # 0x52445231, version 1: how to play read (flags at 6), time played (16); after the reinstall, from the copy, more
     "rider": (lambda v: rider_ok(v) and v[6] & 1 and struct.unpack_from("<I", v, 16)[0] >= 4000,
               lambda v: rider_ok(v) and v[6] & 1 and struct.unpack_from("<I", v, 16)[0] >= 7000),
+    # "SNR1", version 1, its size (32): how to play read (23), one run (16), the Toboggan only (owned at 20, skin at
+    # 22); after the reinstall, from the copy, a second run
+    "snowrider": (lambda v: len(v) == 32 and v[:4] == b"SNR1" and struct.unpack_from("<HH", v, 4) == (1, 32)
+                  and v[23] == 1 and struct.unpack_from("<I", v, 16)[0] == 1 and v[20:23] == b"\1\0\0",
+                  lambda v: len(v) == 32 and v[:4] == b"SNR1" and v[23] == 1 and struct.unpack_from("<I", v, 16)[0] == 2),
+    # "TNR1", version 1, its size (48): a run played (runs at 24), a best score (16); then a second run
+    "templerun": (lambda v: v[:4] == b"TNR1" and struct.unpack_from("<2I", v, 4) == (1, 48)
+                  and struct.unpack_from("<I", v, 24)[0] == 1 and struct.unpack_from("<I", v, 16)[0] > 0,
+                  lambda v: v[:4] == b"TNR1" and struct.unpack_from("<I", v, 24)[0] == 2),
     # "FMD1", version 1: how to play read (flags at 5), time played (564); after the reinstall, from the copy, more
     "famidash": (lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 564)[0] >= 7000,
                  lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 564)[0] >= 12000),
