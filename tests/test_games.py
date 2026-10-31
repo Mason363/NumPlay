@@ -273,6 +273,12 @@ GAMES = {
     "paperclips": ("UniversalPaperclips.nwa", "paperclips.sav",
                    presses((1500, "ok"), (4500, "back")) + [(2200, 4000, K["ok"])], 6000,
                    presses((1500, "ok"), (2000, "ok")), 4000),
+    # the title's Normal, how to play (the first time: three pages, OK starts), then the fight: the Judge's first
+    # words read; Home keeps the guide read and the first attack reached. Next time, from the copy, Normal starts at
+    # once, quit with On/Off
+    "badtime": ("BadTimeSimulator.nwa", "badtime.sav",
+                presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "ok"), (5000, "ok")), 6500,
+                presses((1500, "ok")), 4000),
     # a level, its message, then play; then back to the level select
     "portal": ("PortalReturns.nwa", "portal.sav",
                presses((1500, "ok"), (2500, "ok"), (3500, "ok")) + every(4000, 7000, 400, "right", 300), 8000,
@@ -340,7 +346,8 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "donkeykong": "donkeykong_saves.py", "dune": "dune_saves.py", "monkeymart": "monkeymart_saves.py",
           "tombofthemask": "tombofthemask_saves.py", "uno": "uno_saves.py",
           "fnf": "fnf_saves.py", "turborush": "turborush_saves.py",
-          "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py"}
+          "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
+          "badtime": "badtime_saves.py"}
 
 
 def paperclips_ok(v):
@@ -351,6 +358,16 @@ def paperclips_ok(v):
     for x in v[:-4]:
         h = (h ^ x) * 16777619 & 0xFFFFFFFF
     return struct.unpack_from("<I", v, len(v) - 4)[0] == h
+
+
+def badtime_ok(v):
+    """Bad Time Simulator's save: "BTS1", version 1, 24 bytes, an FNV-1a sum of the rest at the end"""
+    if len(v) != 24 or v[:4] != b"BTS1" or struct.unpack_from("<HH", v, 4) != (1, 24):
+        return False
+    h = 2166136261
+    for x in v[:-4]:
+        h = (h ^ x) * 16777619 & 0xFFFFFFFF
+    return struct.unpack_from("<I", v, 20)[0] == h
 
 
 def polytrack_ok(v):
@@ -533,6 +550,9 @@ CHECKS = {
     # reinstall, from the copy, one more
     "paperclips": (lambda v: paperclips_ok(v) and v[8] == 1 and struct.unpack_from("<d", v, 12)[0] >= 10,
                    lambda v: paperclips_ok(v) and v[8] == 1 and struct.unpack_from("<d", v, 12)[0] >= 11),
+    # "BTS1", version 1, its size (24): how to play read (guide at 9), the first attack reached (best at 8); after the
+    # reinstall, from the copy, the same
+    "badtime": (lambda v: badtime_ok(v) and v[9] == 1 and v[8] >= 1,) * 2,
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept

@@ -1235,5 +1235,26 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/paperclips",
     "default": false,
     "xl": true
+  },
+  {
+    "id": "badtime",
+    "rank": 28,
+    "title": "Bad Time Simulator",
+    "tagline": "Dodge the Judge's 24 attacks",
+    "credit": "Inspired by Bad Time Simulator by jcw87 and Undertale by Toby Fox",
+    "top": "0x2A1018",
+    "bottom": "0x050306",
+    "accent": "0xFF2020",
+    "colors": 16,
+    "records": [
+      "badtime.sav",
+      "badtime_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/badtime",
+    "default": false,
+    "xl": true
   }
 ]
