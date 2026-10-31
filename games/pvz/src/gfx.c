@@ -248,11 +248,23 @@ static void decode_row(const uint8_t *p, const uint8_t *e, int bpp, uint8_t *idx
   }
 }
 
-/* the start of row r of a frame, and its end */
+/* PVZ_SHARED_RLE_ROWS_V1: a marked length 255 carries a 4-byte descriptor.
+ * Bits 0..23: absolute offset of an earlier encoded row; bits 24..31: size.
+ * Legacy 4-bit frames and all 8-bit frames retain their previous format. */
 static const uint8_t *row_at(const Frame *f, int bpp, int r, const uint8_t **end) {
   if (bpp == 4) {
     const uint8_t *p = f->rows + f->h;
-    for (int i = 0; i < r; i++) p += f->rows[i];
+    if (f->shared_rows) {
+      for (int i = 0; i < r; i++) p += f->rows[i] == 255 ? 4 : f->rows[i];
+      if (f->rows[r] == 255) {
+        uint32_t ref = rd32(p);
+        const uint8_t *shared = pvz_bin + (ref & 0x00ffffffu);
+        *end = shared + (ref >> 24);
+        return shared;
+      }
+    } else {
+      for (int i = 0; i < r; i++) p += f->rows[i];
+    }
     *end = p + f->rows[r];
     return p;
   }
@@ -302,10 +314,29 @@ static void blit_frame(const Item *it, int fi, const uint16_t *pal, int bpp, int
   int ya = imax(y0, oy), yb = imin(y1, oy + f.h);
   if (ya >= yb) return;
   const uint8_t *e, *p = row_at(&f, bpp, ya - oy, &e);
+  /* PVZ_SHARED_RLE_ROWS_V1: streaming cursor avoids quadratic row rescans. */
+  const uint8_t *cursor = NULL;
+  if (bpp == 4 && f.shared_rows) {
+    cursor = f.rows + f.h;
+    for (int r = 0; r < ya - oy; r++) cursor += f.rows[r] == 255 ? 4 : f.rows[r];
+  }
   for (int y = ya; y < yb; y++) {
     int r = y - oy;
-    if (bpp == 4) e = p + f.rows[r];
-    else {
+    if (bpp == 4) {
+      if (f.shared_rows) {
+        int length = f.rows[r];
+        if (length == 255) {
+          uint32_t ref = rd32(cursor);
+          p = pvz_bin + (ref & 0x00ffffffu);
+          e = p + (ref >> 24);
+          cursor += 4;
+        } else {
+          p = cursor;
+          e = p + length;
+          cursor += length;
+        }
+      } else e = p + f.rows[r];
+    } else {
       p = f.rows + rd16(f.rows + 2 * r);
       e = r + 1 < f.h ? f.rows + rd16(f.rows + 2 * r + 2) : f.end;   /* (the last row: up to the next frame) */
     }
@@ -341,7 +372,7 @@ static void blit_frame(const Item *it, int fi, const uint16_t *pal, int bpp, int
         out[dx] = alpha >= 32 ? col : mix565(col, out[dx], alpha);
       }
     }
-    if (bpp == 4) p = e;
+    if (bpp == 4 && !f.shared_rows) p = e;
   }
 }
 

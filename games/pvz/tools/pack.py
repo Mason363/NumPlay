@@ -457,6 +457,9 @@ class Pack:
                 frame_bpp[fi] = bits
         if any(bits not in (4, 8) for bits in frame_bpp):
             raise ValueError("frame pixel format missing")
+        # PVZ_SHARED_RLE_ROWS_V1: rows deduplicated from earlier physical frames.
+        # High bit of a 4-bit frame's offset flags 255 row-length markers.
+        row_bank = {}
         shared_4bit = {}
         for i, (x, y, w, h, data) in enumerate(self.frames):
             key = (w, h, data) if frame_bpp[i] == 4 else None
@@ -469,7 +472,35 @@ class Pack:
                 if len(out) % 2:
                     out.append(0)
                 frame_off = len(out)
-                out += data
+                if frame_bpp[i] == 4:
+                    if len(data) < h or h + sum(data[:h]) != len(data):
+                        raise ValueError("bad 4-bit frame row lengths")
+                    sizes = data[:h]
+                    can_share_rows = not after_8bit and all(n < 255 for n in sizes)
+                    lengths = bytearray()
+                    bodies = bytearray()
+                    src = h
+                    has_refs = False
+                    for n in sizes:
+                        row = data[src:src + n]
+                        src += n
+                        if can_share_rows and n > 4 and row in row_bank:
+                            ptr = row_bank[row]
+                            if ptr >= (1 << 24):
+                                raise ValueError("row reference offset exceeds 24 bits")
+                            lengths.append(255)
+                            bodies += struct.pack("<I", (n << 24) | ptr)
+                            has_refs = True
+                        else:
+                            lengths.append(n)
+                            if n > 4:
+                                row_bank.setdefault(row, frame_off + h + len(bodies))
+                            bodies += row
+                    out += lengths + bodies
+                    if has_refs:
+                        frame_off |= 0x80000000
+                else:
+                    out += data
                 if key is not None:
                     shared_4bit.setdefault(key, frame_off)
             struct.pack_into("<hhHHI", out, frame_at + 12 * i, x, y, w, h, frame_off)
