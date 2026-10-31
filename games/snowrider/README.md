@@ -75,7 +75,7 @@ In the menus, the arrows choose, **OK** picks and **Back** goes back. 8, 4, 6, 2
 
 ## Credits
 
-Made for NumPlay, inspired by **Snow Rider 3D**. Not affiliated with its makers.
+Made by [dennisimoo](https://github.com/dennisimoo) for NumPlay, inspired by **Snow Rider 3D**. Not affiliated with its makers.
 
 * Read from the game's Unity project ([q8j-dev/snow-rider-3d](https://github.com/q8j-dev/snow-rider-3d)) by `tools/gen.py`: the slope's generator settings, biomes, structures and chunks, the prefabs' models (simplified for the calculator) and colliders, their colours, the sleds and their pieces, the camp, the sled's and the camera's numbers, the light and the sky. The logo and the icon are the game's.
 * The rules of the sled, the slope and the camera are its scripts (`PlayerControl`, `SledgePoint`, `CollisionRay`, `GGen`, `CameraControlC`) written again in C.
