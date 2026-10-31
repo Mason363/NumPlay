@@ -63,7 +63,7 @@
 ## Good to know
 
 * **One app at a time:** Temple Run is too big to sit next to NumPlay or the other big games. Installing it from the NumWorks website swaps them out, and installing them again swaps it out. Your saves in each one are kept.
-* **Plain models for now:** the runner, the pursuers and the path's pieces are simple block models in the game's colours, each piece shaped like the ground the game gives it.
+* **The game's own models:** Guy Dangerous, the demon monkeys, the path's pieces, the coins and the scenery are the game's, with fewer triangles for the calculator. The power-ups and the fire are drawn by the port.
 * **Left out:** the other characters and wallpapers, the permanent wings, the tutorial run, the online leaderboards, ads and purchases.
 * **No music or sound:** the calculator has no speaker.
 
@@ -72,13 +72,13 @@
 Temple Run is a game by Imangi Studios. This port is not affiliated with or endorsed by them.
 
 * The rules and numbers (the path, its pieces and their ground and obstacles, its pacing, speeds, jumps, slides, stumbles, turns, coins, power-ups, upgrades and their prices, objectives) are Imangi's, read from the game's Android package (version 1.0.8).
-* The models are plain stand-ins made for this port (`tools/models.py`).
+* Guy Dangerous, the demon monkeys, the path's pieces, the coins and the scenery are Imangi's own models, read from the game's Android package by `tools/apk.py`, with fewer triangles for the calculator. The power-ups and the fire are drawn by the port (`tools/models.py`).
 * The lettering is **Lilita One** by Juan Montoreano (SIL Open Font License 1.1, [license](../../LICENSES/OFL-1.1-LilitaOne.txt)).
 
 Made by Mason Chen as part of NumPlay.
 
-Build: `make` (needs `arm-none-eabi-gcc` and Node.js for nwlink); `make test` plays it on a computer. `make models` makes `src/data.c` again: every model is a mesh in one table there, by number (the path's pieces named after the game's prefabs), so the art can be made again without touching the game. `make floor DATA=DIR` makes `src/floor.c` again, the ground and obstacles of each piece, from the game's package unzipped (`DIR` is its `assets/bin/Data`).
+Build: `make` (needs `arm-none-eabi-gcc` and Node.js for nwlink); `make test` plays it on a computer. `make data DATA=DIR` makes `src/data.c` again from the game's package unzipped (`DIR` is its `assets/bin/Data`; `tools/apk.py` reads it with UnityPy, nothing in it is run): every model is a mesh in one table there, by number, the path's pieces and the scenery named after the game's prefabs. `make models` makes the port's stand-ins instead (`tools/models.py`). `make floor DATA=DIR` makes `src/floor.c` again, the ground and obstacles of each piece, from the game's package unzipped (`DIR` is its `assets/bin/Data`).
 
 ## License
 
-The port's code is licensed under the GNU General Public License v3.0: see the `LICENSE` file at the root of the repository. Temple Run's rules and numbers are Imangi Studios', and the font keeps its own terms (see Credits).
+The port's code is licensed under the GNU General Public License v3.0: see the `LICENSE` file at the root of the repository. Temple Run's models, rules and numbers are Imangi Studios', and the font keeps its own terms (see Credits).
