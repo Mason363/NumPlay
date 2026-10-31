@@ -51,7 +51,7 @@ $(BUILD_DIR):
 	$(Q) mkdir -p $@
 
 # on a computer: tests/play.c plays it with scripted keys and saves pictures
-HOST_FLAGS = -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -Isrc -I$(L) -DHOST
+HOST_FLAGS = -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -ffp-contract=off -Isrc -I$(L) -DHOST
 HOST_SAN = -fsanitize=address,undefined -fno-sanitize-recover=undefined
 HOST_SRC = $(filter-out src/plat_eadk.c,$(wildcard src/*.c)) $(L)/gfx.c $(L)/font_data.c $(L)/xfont.c
 host: build/play

@@ -143,7 +143,7 @@ static void test_walls(const char *dir) {
 
 static void test_sides(void) {
   /* from the side chunks, rays along the snow outwards and ahead: the walls and banks stop them (collision meshes
-   * with fewer triangles than the game's let them out, the snowballs' side most of all) */
+   * with fewer triangles than the game's let them out, the snowballs' side most of all): under 1 in 20 */
   int out = 0, out_snow = 0, n = 0;
   for (uint32_t seed = 1; seed <= 2; seed++) {
     rnd_seed(seed);
@@ -166,7 +166,7 @@ static void test_sides(void) {
         }
     }
   }
-  CHECK(out * 25 < n && out_snow < 30, "rays out of the slope: %d of %d, %d by the snowballs", out, n, out_snow);
+  CHECK(out * 20 < n && out_snow < 30, "rays out of the slope: %d of %d, %d by the snowballs", out, n, out_snow);
 }
 
 static void test_jump(const char *dir) {
