@@ -36,7 +36,7 @@ static uint64_t hash_state(void) {
 }
 
 #define MAXF 9000
-#define HSIZE (1 << 24)
+#define HSIZE (1 << 25)
 static uint64_t *seen;
 static uint8_t hold[MAXF];
 static long nodes;

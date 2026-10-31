@@ -2807,6 +2807,13 @@ static void draw_margin_objects(void) {
 void game_draw(void) {
   oam_clear();
   build_tables();
+  /* the columns this wider screen shows past the NES's right edge (the decoder runs ahead; the
+   * collision map still takes them in at the NES's pace) */
+  if (!(scroll_x & 0x80000000u)) {
+    int32_t want = (int32_t)((scroll_x + NES_X0 + 256 + 15) >> 4) + 1;
+    if (want > coll_cols + 15) want = coll_cols + 15;
+    decode_to(want);
+  }
   if (!(invisible | player_invis)) {
     playerSpriteFirst = process_player_sprite(0);
     if (dual) {
