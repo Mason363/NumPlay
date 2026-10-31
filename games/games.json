@@ -571,6 +571,26 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/sokoban"
   },
   {
+    "id": "meowdoku",
+    "rank": 28,
+    "title": "Meowdoku",
+    "tagline": "One cat per row, column and color",
+    "credit": "Based on Meowdoku by Oakever Games",
+    "top": "0xF7A23B",
+    "bottom": "0x6B3E1E",
+    "accent": "0xFFD43B",
+    "colors": 16,
+    "records": [
+      "meowdoku.sav"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "app": "Meowdoku.nwa",
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/meowdoku",
+    "default": false
+  },
+  {
     "id": "retrogo",
     "rank": 30,
     "title": "Retro-Go",

@@ -1004,6 +1004,24 @@ Push every crate onto a goal: the keeper pushes one at a time and can't pull, so
 
 <br clear="right">
 
+## Meowdoku
+
+<img src="media/meowdoku.gif" width="320" align="right" alt="Meowdoku: level 1 won with the keys, then a 10×10 level: a wrong cat costs a fish, the lamp crosses out what a cat rules out, the winking cat finds one more">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** | Move on the board |
+| **OK** | Put an X, or take it off; hold OK and move to put X's along the way |
+| **OK twice** or **EXE** | Place a cat |
+| **shift** | Hint: shows the next step, OK does it |
+| **alpha** | Find a cat |
+| **⌫** | Take back X's |
+| **Back** | Pause: Resume, How to play, Quit game |
+
+Put one cat in every row, every column and every color, and never two cats touching, not even at a corner. A cat in the wrong cell turns into an X and costs a fish; with all three fish gone the level starts over. The boards grow from 4×4 to 10×10, every tenth level is hard, and the game gets harder while you win without hints or mistakes. Add it in NumPlay Studio, or get Meowdoku.nwa.
+
+<br clear="right">
+
 ## NumVisuals
 
 <img src="media/numvisuals.gif" width="320" align="right" alt="NumVisuals: picking a background, then a clock">

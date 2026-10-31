@@ -18,7 +18,7 @@ PY ?= python3
 CARGO ?= cargo
 B = build/data
 # Conventional games honor a configurable output directory; special layouts are kept local.
-GAMES_REDIRECT = angrybirds badtime balatro blockblast breakout buckshot celeste championisland chess connectfour cookieclicker coreball dinorun donkeykong doodlejump doom dune finalearth2 flappybird flappydunk fnaf fnf g2048 hillclimb hollowknight invaders isaac jetpackjoyride leveldevil mahjong minesweeper monkeymart numblocks numpowder numvisuals pacman paperclips polytrack portal pvz snake sokoban solitaire sonic stickmanhook subway sudoku suika tombofthemask towerblock turborush twoplayer undertale uno uttt
+GAMES_REDIRECT = angrybirds badtime balatro blockblast breakout buckshot celeste championisland chess connectfour cookieclicker coreball dinorun donkeykong doodlejump doom dune finalearth2 flappybird flappydunk fnaf fnf g2048 hillclimb hollowknight invaders isaac jetpackjoyride leveldevil mahjong meowdoku minesweeper monkeymart numblocks numpowder numvisuals pacman paperclips polytrack portal pvz snake sokoban solitaire sonic stickmanhook subway sudoku suika tombofthemask towerblock turborush twoplayer undertale uno uttt
 GAMES_OUT = dinorun
 GAME_REDIRECT_ARG = $(if $(filter $(1),$(GAMES_OUT)),OUT=../../$(B)/games/$(1),BUILD_DIR=../../$(B)/games/$(1))
 # the RAM the oldest calculator software that runs apps gives them (23.2: 148928 bytes; 25.2 gives 153676).

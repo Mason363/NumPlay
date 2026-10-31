@@ -89,6 +89,8 @@ Want just one game? Each one also comes as its own file on the [downloads page](
 
 **NumVisuals**, moving backgrounds with a clock, a stopwatch, a timer or a counter on top, comes on its own: [download NumVisuals.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumVisuals.nwa), or add it to NumPlay in [NumPlay Studio](https://mason363.github.io/NumPlay/customize/). Its backgrounds are also in NumPlay: press ⌫ on the home screen.
 
+**Meowdoku**, Oakever Games' cat puzzle (one cat in every row, column and color), comes on its own too: [download Meowdoku.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/Meowdoku.nwa), or add it to NumPlay in [NumPlay Studio](https://mason363.github.io/NumPlay/customize/).
+
 ## Big games, installed on their own
 
 These are too big to fit next to NumPlay, so each one is its own app. Install it without NumPlay.
@@ -296,6 +298,7 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] Universal Paperclips
 - [x] Bad Time Simulator: the Sans fight
 - [x] Mahjong
+- [x] Meowdoku
 - [ ] Full Minecraft 1.18.2 as a standalone app
 - [ ] Among Us, against bots
 - [ ] Cat Ninja
@@ -318,7 +321,6 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Hungry Shark Evolution and Hungry Shark World
 - [ ] Castle Crashers
 - [ ] Hotline Miami
-- [ ] Meowdoku
 - [ ] More of Retro-Go: Game & Watch, SNES, Mega Drive, SG-1000 and ColecoVision
 - [ ] Five Nights at Freddy's 2, 3, 4 and FNAF World
 - [ ] Brawl Stars, against bots
@@ -382,6 +384,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 - **[Cookie Clicker](https://orteil.dashnet.org/cookieclicker/)** by Orteil and Opti (DashNet) inspired NumPlay's Cookie Clicker, which uses the game's own pictures, texts and numbers (version 2.058, from its public mirror [ozh/cookieclicker](https://github.com/ozh/cookieclicker)) and the **Merriweather**, **Kavoon** and **Noto Sans** fonts (SIL Open Font License: [Merriweather](LICENSES/OFL-1.1-Merriweather.txt), [Kavoon](LICENSES/OFL-1.1-Kavoon.txt), [Noto Sans](LICENSES/OFL-1.1-NotoSans.txt)). Not affiliated with Orteil or DashNet.
 - **Space Invaders** by Tomohiro Nishikado and Taito (1978, Midway in America) inspired NumPlay's Space Invaders, written in C for NumPlay from the arcade's rules with its pictures redrawn from the arcade's, under the Midway cabinet's coloured film.
 - **Sokoban** by Hiroyuki Imabayashi (Thinking Rabbit, 1982) inspired NumPlay's Sokoban, written in C for NumPlay with no code or art from any Sokoban. Its levels are **Microban** by David W. Skinner (2000), used with credit to him.
+- **Meowdoku** by [Oakever Games](https://play.google.com/store/apps/details?id=com.oakever.meowdoku) inspired NumPlay's Meowdoku, which uses the game's own puzzles, cats, fish, lamp and colors from its Android package (version 1.23.0), and the **Nunito** font. Not affiliated with Oakever Games.
 - **Sudoku**, the number place puzzle (Dell Magazines, 1979; named by Nikoli), is written in C for NumPlay: its puzzles are made on the calculator, and its look and controls follow the phone apps.
 - **Ultimate tic-tac-toe** is a folk game, made widely known by [Ben Orlin's 2013 article](https://mathwithbaddrawings.com/2013/06/16/ultimate-tic-tac-toe/); NumPlay's is written in C for it.
 
@@ -404,7 +407,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 
 NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyright (c) 2026 Mason Chen. Code and fonts from others keep their own licenses: the `UNLICENSE` files in the games' folders and the [LICENSES](LICENSES) folder. The names, artwork and music of the games NumPlay is inspired by belong to their makers and are not covered by it.
 
-<sub>Unofficial fan games, not affiliated with NumWorks, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale), jcw87 (Bad Time Simulator), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's), SEGA (Sonic the Hedgehog, Master System, Game Gear), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), W Production (Turbo Rush), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), Brodie Lockard or Activision (Shanghai), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go). Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System and Game Gear of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
+<sub>Unofficial fan games, not affiliated with NumWorks, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale), jcw87 (Bad Time Simulator), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's), SEGA (Sonic the Hedgehog, Master System, Game Gear), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), W Production (Turbo Rush), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), Brodie Lockard or Activision (Shanghai), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Oakever Games (Meowdoku), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go). Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System and Game Gear of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
 
 ## Gallery
 
@@ -475,36 +478,37 @@ NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyri
     <td align="center"><img src="docs/media/gallery/sokoban.gif" alt="Sokoban: Microban's ninth level, pushed through to its goals"><br><a href="games/sokoban/README.md"><b>Sokoban</b></a></td>
   </tr>
   <tr>
+    <td align="center"><img src="docs/media/gallery/meowdoku.gif" alt="Meowdoku: a wrong cat costs a fish, the lamp crosses out what a cat rules out, the winking cat finds one more"><br><a href="games/meowdoku/README.md"><b>Meowdoku</b></a></td>
     <td align="center"><img src="docs/media/gallery/retrogo.gif" alt="Retro-Go: from the Game Boy tab to the NES list, then Thwaite, a homebrew game, starts and fireworks stop the missiles"><br><a href="games/retrogo/README.md"><b>Retro-Go</b></a></td>
     <td align="center"><img src="docs/media/gallery/flappydunk.gif" alt="Flappy Dunk: swishes in a row, the ball on fire"><br><a href="games/flappydunk/README.md"><b>Flappy Dunk</b></a></td>
-    <td align="center"><img src="docs/media/gallery/towerblock.gif" alt="Tower Blocks: blocks dropped on the tower, the overhangs falling away"><br><a href="games/towerblock/README.md"><b>Tower Blocks</b></a></td>
   </tr>
   <tr>
+    <td align="center"><img src="docs/media/gallery/towerblock.gif" alt="Tower Blocks: blocks dropped on the tower, the overhangs falling away"><br><a href="games/towerblock/README.md"><b>Tower Blocks</b></a></td>
     <td align="center"><img src="docs/media/gallery/coreball.gif" alt="Core Ball: every ball shot onto the spinning core, level 3 and level 4 cleared"><br><a href="games/coreball/README.md"><b>Core Ball</b></a></td>
     <td align="center"><img src="docs/media/gallery/doodlejump.gif" alt="Doodle Jump: the doodler climbs past blue platforms and a monster"><br><a href="games/doodlejump/README.md"><b>Doodle Jump</b></a></td>
-    <td align="center"><img src="docs/media/jetpackjoyride.gif" alt="Jetpack Joyride: Barry grabs coins and rides the Profit Bird until it hits a zapper, then flies on past a missile"><br><a href="games/jetpackjoyride/README.md"><b>Jetpack Joyride</b></a></td>
   </tr>
   <tr>
+    <td align="center"><img src="docs/media/jetpackjoyride.gif" alt="Jetpack Joyride: Barry grabs coins and rides the Profit Bird until it hits a zapper, then flies on past a missile"><br><a href="games/jetpackjoyride/README.md"><b>Jetpack Joyride</b></a></td>
     <td align="center"><img src="docs/media/stickmanhook.gif" alt="Stickman Hook: two levels swung from hook to hook, each over the finish line"><br><a href="games/stickmanhook/README.md"><b>Stickman Hook</b></a></td>
     <td align="center"><img src="docs/media/donkeykong.gif" alt="Donkey Kong: Mario climbs the 25m girders past rolling barrels to Pauline"><br><a href="games/donkeykong/README.md"><b>Donkey Kong</b></a></td>
-    <td align="center"><img src="docs/media/dune.gif" alt="Dune: the ball rolls down the dunes, flies over the line for coins and lands Perfect Slides"><br><a href="games/dune/README.md"><b>Dune</b></a></td>
   </tr>
   <tr>
+    <td align="center"><img src="docs/media/dune.gif" alt="Dune: the ball rolls down the dunes, flies over the line for coins and lands Perfect Slides"><br><a href="games/dune/README.md"><b>Dune</b></a></td>
     <td align="center"><img src="docs/media/monkeymart.gif" alt="Monkey Mart: the monkey carries bananas and milk to the shelves while the customers shop"><br><a href="games/monkeymart/README.md"><b>Monkey Mart</b></a></td>
     <td align="center"><img src="docs/media/tombofthemask.gif" alt="Tomb of the Mask: dashing up the tomb ahead of the rising flood"><br><a href="games/tombofthemask/README.md"><b>Tomb of the Mask</b></a></td>
-    <td align="center"><img src="docs/media/uno.gif" alt="UNO: a hand against three bots, a Draw Two and a colour called"><br><a href="games/uno/README.md"><b>UNO</b></a></td>
   </tr>
   <tr>
+    <td align="center"><img src="docs/media/uno.gif" alt="UNO: a hand against three bots, a Draw Two and a colour called"><br><a href="games/uno/README.md"><b>UNO</b></a></td>
     <td align="center"><img src="docs/media/fnf.gif" alt="Friday Night Funkin': Ready, Set, Go, then the first notes of a song"><br><a href="games/fnf/README.md"><b>Friday Night Funkin'</b></a></td>
     <td align="center"><img src="docs/media/turborush.gif" alt="Turbo Rush: racing along Sunset Coast, passing rivals before a bend"><br><a href="games/turborush/README.md"><b>Turbo Rush</b></a></td>
-    <td align="center"><img src="docs/media/angrybirds.gif" alt="Angry Birds: the first level, aimed, fired and knocked down with one bird"><br><a href="games/angrybirds/README.md"><b>Angry Birds</b></a></td>
   </tr>
   <tr>
+    <td align="center"><img src="docs/media/angrybirds.gif" alt="Angry Birds: the first level, aimed, fired and knocked down with one bird"><br><a href="games/angrybirds/README.md"><b>Angry Birds</b></a></td>
     <td align="center"><img src="docs/media/gallery/polytrack.gif" alt="PolyTrack: Desert 4, through the tube and on to the finish"><br><a href="games/polytrack/README.md"><b>PolyTrack</b></a></td>
     <td align="center"><img src="docs/media/gallery/paperclips.gif" alt="Universal Paperclips: the first clips, a strategy tournament, the HypnoDrones, a battle against the drifters and the last clips"><br><a href="games/paperclips/README.md"><b>Universal Paperclips</b></a></td>
-    <td align="center"><img src="docs/media/gallery/badtime.gif" alt="Bad Time Simulator: Sans slams the blue heart into bones, then Gaster Blasters fire across the box"><br><a href="games/badtime/README.md"><b>Bad Time Simulator</b></a></td>
   </tr>
   <tr>
+    <td align="center"><img src="docs/media/gallery/badtime.gif" alt="Bad Time Simulator: Sans slams the blue heart into bones, then Gaster Blasters fire across the box"><br><a href="games/badtime/README.md"><b>Bad Time Simulator</b></a></td>
     <td align="center"><img src="docs/media/gallery/mahjong.gif" alt="Mahjong: pairs taken from the Turtle, a hint lights up two tiles, then a pair is undone"><br><a href="games/mahjong/README.md"><b>Mahjong</b></a></td>
   </tr>
 </table>
