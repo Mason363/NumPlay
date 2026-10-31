@@ -1,4 +1,4 @@
-/* Temple Run: the mesh numbers (data.c, made by tools/models.py). */
+/* Temple Run: the mesh numbers (data.c, made by tools/apk.py). */
 #ifndef TR_DATA_H
 #define TR_DATA_H
 #include "models.h"

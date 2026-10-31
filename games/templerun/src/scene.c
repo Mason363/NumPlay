@@ -7,6 +7,7 @@
 #include "scene.h"
 
 #define S 0.19f              /* metres a game unit (the runner: 9.6 units, 1.8 m) */
+#define SMALL_FAR 350.0f     /* rocks, heads and ground patches seen this far */
 #define VIEW 1000.0f         /* units seen ahead (the renderer's far plane is 190 m) */
 #define PI 3.14159265f
 
@@ -58,14 +59,14 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
   if (me->far >= 0 && z0 > MESH_FAR) me = &meshes[me->far];
   float s, c;
   r_sincos(yaw - cyaw, &s, &c);
-  static V3 v[256];
+  static V3 v[MESH_CORNERS];
   int nv = 0;
   for (int i = 0; i < me->nf; i++) {
     int e = me->f[i].first + me->f[i].n;
     for (int k = me->f[i].first; k < e; k++)
       if (me->idx[k] >= nv) nv = me->idx[k] + 1;
   }
-  if (nv > 256) nv = 256;
+  if (nv > MESH_CORNERS) nv = MESH_CORNERS;
   for (int i = 0; i < nv; i++) {
     float mx = me->v[i].x * 0.25f, my = me->v[i].y * 0.25f, mz = me->v[i].z * 0.25f;
     v[i] = (V3){(x0 + mx * c + mz * s) * S, (dy + my) * S, (z0 - mx * s + mz * c) * S};
@@ -74,7 +75,7 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
     const MFace *f = &me->f[i];
     V3 p[12];
     int n = f->n > 12 ? 12 : f->n;
-    for (int k = 0; k < n; k++) p[k] = v[me->idx[f->first + k] < 256 ? me->idx[f->first + k] : 0];
+    for (int k = 0; k < n; k++) p[k] = v[me->idx[f->first + k] < MESH_CORNERS ? me->idx[f->first + k] : 0];
     float nx = f->nx * (1.0f / 127), ny = f->ny * (1.0f / 127), nz = f->nz * (1.0f / 127);
     V3 nn = {nx * c + nz * s, ny, -nx * s + nz * c};
     int flags = (f->flags & 1 ? P_TWOSIDED : 0) | (alpha < 255 ? P_ALPHA : 0);
@@ -151,7 +152,11 @@ static void draw_scenery(void) {
       uint32_t k = (h >> 10) % 21, v = h >> 15;
       int m = k <= 10 ? trees[v % 4] : k <= 14 ? rocks[v % 3] : k <= 16 ? cliffs[v % 3] : k <= 18 ? M_overgrowthTrees : k == 19 ? M_templeHead : M_groundPatchTemple;
       float ox = (float)((int)((h >> 20) % 21) - 10), oz = (float)((int)((h >> 25) % 21) - 10);
-      scene_mesh(m, (float)cx * TILE + ox, 0, (float)cz * TILE + oz, 0, 255);
+      float wx = (float)cx * TILE + ox, wz = (float)cz * TILE + oz, dx = wx - cx_, dz = wz - cz_;
+      /* (the small ones, a few pixels in the haze past SMALL_FAR, aren't drawn there: the renderer keeps 1600 polygons) */
+      if (k >= 11 && k <= 14 && dx * dx + dz * dz > SMALL_FAR * SMALL_FAR) continue;
+      if (k >= 19 && dx * dx + dz * dz > SMALL_FAR * SMALL_FAR) continue;
+      scene_mesh(m, wx, 0, wz, 0, 255);
     }
 }
 
@@ -210,7 +215,6 @@ void scene_draw(r_band_fn overlay, bool on_title) {
       (void)a;
       draw_tile(t);
     }
-  draw_scenery();
   for (int f = 0; f < NFLY; f++)
     if (fly[f].on) scene_mesh(fly[f].kind == 3 ? M_COIN_B : fly[f].kind == 2 ? M_COIN_R : M_COIN_Y, fly[f].x, fly[f].y - 3, fly[f].z, t_anim * 6, 255);
   /* the runner's shadow on the floor */
@@ -234,5 +238,7 @@ void scene_draw(r_band_fn overlay, bool on_title) {
       const Pursuer *p = &pursuers[i];
       scene_mesh(M_PURSUER_RUN0 + (((int)(p->phase * 4) + i) & 3), p->x, p->y, p->z, p->yaw, 255);
     }
+  /* the scenery last: on a frame with more than the renderer keeps, what goes is a tree far off, not the runner */
+  draw_scenery();
   r_render(bg, overlay);
 }

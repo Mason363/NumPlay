@@ -33,6 +33,7 @@ typedef struct {
   float r;            /* the radius round its origin everything lies in (units) */
 } Mesh;
 
-#define MESH_FAR 330.0f
+#define MESH_FAR 170.0f
+#define MESH_CORNERS 512   /* the most corners a mesh has (tools/apk.py checks it) */
 extern const Mesh meshes[];
 #endif
