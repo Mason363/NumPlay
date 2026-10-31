@@ -65,14 +65,16 @@ static int pick_attack(fight_t *f) {
   return a;
 }
 
-/* what he says before an attack (Normal) */
-static const char *turn_line(const fight_t *f, int attack) {
+/* what he says before an attack (Normal): a line for each attack of the fixed order (n: its place in it, -1 for
+ * a random one), the break's and the final's */
+static const char *turn_line(const fight_t *f, int attack, int n) {
   if (f->mode != MODE_NORMAL) return 0;
-  int h = f->hit_attempts, n = f->next_attack - 1;   /* (already counted) */
+  int h = f->hit_attempts;
   if (attack == A_FINAL) return TALK_FINAL;
-  if (h < 13) return n >= 1 && n < 14 ? TALK_FIRST[n] : 0;
   if (h == 13) return TALK_BREAK;
-  return n >= 0 && n < 10 ? TALK_SECOND[n] : 0;
+  if (n < 0) return 0;
+  if (h < 13) return n < 14 ? TALK_FIRST[n] : 0;
+  return n < 9 ? TALK_SECOND[n] : 0;
 }
 
 static void start_turn(fight_t *f) {
@@ -81,13 +83,16 @@ static void start_turn(fight_t *f) {
     int p = fight_progress_of(f->hit_attempts, f->next_attack);
     if (p > f->progress) f->progress = (uint8_t)p;
   }
+  int before = f->next_attack;
   int a = pick_attack(f);
+  int fixed = f->next_attack != before ? before : -1;   /* (a random one doesn't move it on) */
   f->last_attack = (uint8_t)a;
   sim_start_attack(w, a);
+  w->heart_on = 0;   /* (until the attack puts it in the box) */
   if (f->mode == MODE_PRACTICE) w->hp = MAX_HP, w->kr = 0, f->failed = 0;
   if (f->mode == MODE_SINGLE) w->anim = ANIM_IDLE, w->head = HEAD_DEFAULT;
   quiet(f);
-  const char *line = turn_line(f, a);
+  const char *line = turn_line(f, a, fixed);
   if (line) {
     w->sc.running = 0, w->sc.talk = 1, w->sc.talk_line = -1;
     say(f, line, TXT_BUBBLE, 0);

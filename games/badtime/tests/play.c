@@ -574,6 +574,12 @@ static void make_shots(const char *dir) {
   snap_single(A_BONESTAB1, 40, "bonestab");
   snap_single(A_MULTI2, 120, "multi");
   snap_single(A_RANDOMBLASTER1, 70, "random");
+  snap_single(A_PLATFORMBLASTER, 95, "platblast");
+  snap_single(A_PLATFORMBLASTER, 130, "platblast2");
+  snap_single(A_INTRO, 100, "intro2");
+  snap_single(A_INTRO, 82, "sine");
+  snap_single(A_MULTI1, 60, "multi1");
+  snap_single(A_BONEGAP2, 120, "bonegap2");
   snap_single(A_FINAL, 300, "final");
   snap_single(A_FINAL, 880, "spiral");
   snap_single(A_FINAL, 1300, "final2");
@@ -599,7 +605,7 @@ static void make_shots(const char *dir) {
   F.sel = 0;
   fight_tick(&F, 0, 0);
   fight_tick(&F, BK_OK, BK_OK), fight_tick(&F, 0, 0), fight_tick(&F, BK_OK, BK_OK);
-  for (int i = 0; i < 40 && F.state == FS_TARGET; i++) fight_tick(&F, 0, 0);
+  for (int i = 0; i < 18 && F.state == FS_TARGET; i++) fight_tick(&F, 0, 0);
   snap_fight("target", 0);
   fight_tick(&F, BK_OK, BK_OK);
   for (int i = 0; i < 26; i++) fight_tick(&F, 0, 0);
@@ -617,6 +623,7 @@ static void make_shots(const char *dir) {
   /* pause, how to play, the end */
   fight_start(&F, MODE_NORMAL, 0, 3);
   for (int i = 0; i < 60; i++) fight_tick(&F, 0, 0);
+  memcpy(&fight, &F, sizeof F);
   view = V_PAUSE, sel = 2;
   draw();
   shot(dir, "pause");
@@ -641,6 +648,7 @@ static void film(const char *dir, uint32_t n, int attack) {
     fight_tick(&F, k, k & ~bot_prev);
     bot_prev = k;
     if (F.w.hp < 30) F.w.hp = 30;
+    if (t % 2) continue;   /* (15 pictures a second) */
     draw_fight(&F, 0);
     snprintf(path, sizeof path, "%s/%06u_%06u.raw", dir, t, t * 100 / 3);
     FILE *f = fopen(path, "wb");

@@ -91,7 +91,7 @@ static void title_screen(screen_t *s) {
 static void help_screen(screen_t *s) {
   static char t[24];
   char *p = cat(t, "How to play  ");
-  p = num(p, page + 1u), p = cat(p, "/3");
+  p = num(p, page + 1u), p = cat(p, "/"), p = num(p, HELP_PAGES);
   s->title = t, s->title_y = 44;
   s->body = HELP[page], s->body_x = 14, s->body_y = 84;
   s->keys = first_run ? "Left Right page   OK start" : "Left Right page   Back done";
@@ -198,7 +198,7 @@ static bool screen_key(uint32_t hit) {
       else if (hit & BK_OK) start(MODE_SINGLE, sel);
       break;
     case V_HELP:
-      if ((hit & BK_RIGHT) && page < 2) page++;
+      if ((hit & BK_RIGHT) && page < HELP_PAGES - 1) page++;
       else if ((hit & BK_LEFT) && page > 0) page--;
       else if ((hit & BK_OK) && first_run && page < 2) page++;
       else if (hit & (BK_BACK | BK_OK)) {
@@ -276,6 +276,9 @@ int main(void) {
       bool ran = false;
       uint32_t w0 = plat_millis();
       while (ticks < due) {
+#ifdef PERF
+        if (perf_go == 2 && (ticks & 1)) pending |= BK_OK;   /* (its words read at once) */
+#endif
         fight_tick(&fight, live, pending);
         pending = 0, ticks++, ran = true;
 #ifdef PERF

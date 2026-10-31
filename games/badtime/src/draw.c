@@ -196,14 +196,14 @@ static void draw_heart(const world_t *w) {
 /* ---------------------------------------------------------------- the Judge */
 typedef struct {
   int8_t x0, y0, x1, y1;   /* two eyes: x, y of each (-1: none) */
-  uint8_t kind;           /* 0 dots, 1 left dot right line, 2 lines, 3 the blue eye, 4 low lines, 5 half dots */
+  uint8_t kind;           /* 0 dots, 1 left dot right line, 2 lines, 3 the blue eye, 4 low lines, 5 half dots, 6 none */
 } eyes_t;
 static const eyes_t EYES[8] = {
   {12, 13, 20, 13, 0},   /* default */
   {11, 13, 19, 13, 0},   /* looking left */
   {12, 13, 20, 14, 1},   /* wink */
   {11, 14, 20, 14, 2},   /* eyes closed */
-  {-1, -1, -1, -1, 0},   /* no eyes */
+  {-1, -1, -1, -1, 6},   /* no eyes */
   {11, 12, -1, -1, 3},   /* the blue eye */
   {12, 14, 20, 14, 5},   /* tired */
   {11, 15, 20, 15, 4},   /* very tired */

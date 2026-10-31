@@ -66,10 +66,11 @@ int fight_progress_of(int hit_attempts, int next_attack);
 void fight_item_pos(int i, float *x, float *y);   /* a list's line i: where the heart goes (the original's pixels) */
 
 /* text.c */
-extern const char *const TALK_SCRIPT[2], *const TALK_FIRST[14], *const TALK_BREAK, *const TALK_SECOND[10],
+extern const char *const TALK_SCRIPT[2], *const TALK_FIRST[14], *const TALK_BREAK, *const TALK_SECOND[9],
     *const TALK_FINAL, *const TALK_WIN[2];
 extern const char *const INFO_DEFAULT, *const INFO_FIRST, *const INFO_KARMA, *const INFO_BREAK, *const INFO_15,
     *const INFO_19, *const INFO_20, *const INFO_21, *const INFO_22, *const CHECK_TEXT, *const CHECK_TEXT2;
 extern const item_t ITEMS[4];
-extern const char *const HELP[3];
+#define HELP_PAGES 4
+extern const char *const HELP[HELP_PAGES];
 #endif

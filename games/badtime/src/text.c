@@ -26,7 +26,7 @@ const char *const TALK_FIRST[14] = {
 };
 const char *const TALK_BREAK = "I'm calling a recess. Put it down and we both walk out of here.";
 /* the second half */
-const char *const TALK_SECOND[10] = {
+const char *const TALK_SECOND[9] = {
   "Recess is over. No more warnings.",
   "Each time you come back, you look a little less sorry.",
   "I've seen how this ends. I've seen it a lot.",
@@ -34,11 +34,10 @@ const char *const TALK_SECOND[10] = {
   "...",
   "Getting heavy, isn't it? The weight.",
   "I'm not tired. I'm saving my strength.",
-  "Alright. Here's my last ruling.",
-  "Still here.",
-  0,
+  "You really won't stop, will you?",
+  "Then neither will I.",
 };
-const char *const TALK_FINAL = "Case closed.";
+const char *const TALK_FINAL = "Alright. Here's my last ruling.";
 const char *const TALK_WIN[2] = {
   "...can't keep my eyes open.",
   "Fine. You win. Go on.",
@@ -64,7 +63,7 @@ const item_t ITEMS[4] = {
   {"Hero", "Hero sandwich", 40},
 };
 
-const char *const HELP[3] = {
+const char *const HELP[HELP_PAGES] = {
   "Dodge everything. The arrows move your heart.\n"
   "Red heart: it goes where you push it.\n"
   "Blue heart: it falls. Up jumps, higher while held.\n"
@@ -77,4 +76,8 @@ const char *const HELP[3] = {
   "(eat to heal) or MERCY. Survive all 24 attacks.\n"
   "Practice: retry each attack until you pass it.\n"
   "Back pauses. Home saves and quits.",
+  "Inspired by Undertale by Toby Fox and Bad Time\n"
+  "Simulator by jcw87. Not affiliated with them.\n"
+  "Pictures drawn for this game. Font: Nunito.\n"
+  "Made by Mason Chen as part of NumPlay.",
 };
