@@ -282,7 +282,8 @@ def colours(pkg, tri_uv0, tri_uv1, texs):
     if light and tri_uv1 is not None:
         lm = pkg.sample(light, np.einsum("pj,kjc->kpc", BARY, tri_uv1).reshape(-1, 2))[:, :3].reshape(k, m, 3).mean(1)
         col = col * np.clip(lm * LIGHT, 0, 1.6)
-    return np.clip(col, 0, 1), there
+    # (the doorway's inside is painted black, for the temple's dark hall, which the port has nothing behind: dark stone)
+    return np.clip(np.maximum(col, 0.14), 0, 1), there
 
 
 def cluster(p, tris, target):
