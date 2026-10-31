@@ -1,5 +1,5 @@
-/* The Sega Master System and Game Gear (sms.c and superzazu's Z80), as Retro-Go's screens drive
- * them. */
+/* The Sega Master System, Game Gear and SG-1000 (sms.c and superzazu's Z80), as Retro-Go's
+ * screens drive them. */
 #ifndef SMS_H
 #define SMS_H
 #include "../rg.h"
@@ -7,10 +7,11 @@
 #define SMS_WIDTH 256
 #define SMS_HEIGHT 240 /* (the tallest picture; most games show 192 lines) */
 
-/* Loads a ROM read in place, a Game Gear's (gg) or a Master System's; crc is its CRC32, for the
-   few games that need something of their own (the mapper, 50 Hz, Master System mode on the Game
-   Gear). RG_OK or an RG_ERR_ code. */
-int sms_load(const uint8_t *data, uint32_t size, uint32_t crc, bool gg);
+/* Loads a ROM read in place, for a Master System, a Game Gear or an SG-1000 (machine); crc is its
+   CRC32, for the few games that need something of their own (the mapper, 50 Hz, Master System
+   mode on the Game Gear). RG_OK or an RG_ERR_ code. */
+enum { SMS_SMS, SMS_GG, SMS_SG };
+int sms_load(const uint8_t *data, uint32_t size, uint32_t crc, int machine);
 void sms_reset(bool hard);
 void sms_run_frame(bool draw);
 void sms_set_pad(int rg_pad);
@@ -20,6 +21,7 @@ void sms_view(int *x, int *y, int *w, int *h);
 /* a frame's length in microseconds: 60 frames a second, 50 for the European games that need it */
 uint32_t sms_frame_us(void);
 bool sms_is_gg(void);
+bool sms_is_sg(void);
 /* the last frame drawn, line by line through rg_line again (under the menus) */
 void sms_redraw(void);
 

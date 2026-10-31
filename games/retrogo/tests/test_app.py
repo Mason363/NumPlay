@@ -178,8 +178,8 @@ def keys_test(out, problems):
         keys += [f"{t + 500}-{t + 1100}:7", f"{t + 1500}-{t + 2100}:8"]
         recs, _ = session(nwa, storage, ",".join(keys), t + 2600, "home", problems, "Keys")
         cfg = recs.get("retrogo.cfg", b"")
-        if cfg[19:27] != bytes([31, 43, 36, 38, 30, 5, 12, 52]):
-            problems.append(f"Keys: retrogo.cfg holds the keys {list(cfg[19:27])}")
+        if cfg[21:29] != bytes([31, 43, 36, 38, 30, 5, 12, 52]):
+            problems.append(f"Keys: retrogo.cfg holds the keys {list(cfg[21:29])}")
         srm = [n for n in recs if n.endswith(".srm")]
         seen = battery(recs, srm[0]) if srm else -1
         if seen != 0x0401:

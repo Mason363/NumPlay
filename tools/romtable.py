@@ -13,7 +13,7 @@ All numbers are little-endian. To be the same byte for byte as the website's for
   each next one at the end of the one before rounded up to a multiple of 4, zeros in between;
 - the table ends with the last ROM's bytes, then zeros up to a multiple of 4 (no ROMs: the 12-byte
   header with count 0);
-- the system comes from the file's extension, in any case: .gb 1, .gbc 2, .nes 3, .sms 4, .gg 5;
+- the system comes from the file's extension, in any case: .gb 1, .gbc 2, .nes 3, .sms 4, .gg 5, .sg 6;
 - the name is the file's name without its last extension, its UTF-8 bytes cut to the longest
   start of at most 40 bytes that ends on a whole letter, zero-padded to 40 (no ending zero when it
   takes all 40).
@@ -29,7 +29,7 @@ import struct
 import sys
 
 MAGIC, VERSION, ENTRY, NAME = 0x4D52504E, 1, 52, 40
-SYSTEMS = {".gb": 1, ".gbc": 2, ".nes": 3, ".sms": 4, ".gg": 5}
+SYSTEMS = {".gb": 1, ".gbc": 2, ".nes": 3, ".sms": 4, ".gg": 5, ".sg": 6}
 
 
 def entry_name(path):
@@ -45,7 +45,7 @@ def table(paths):
     for p in paths:
         ext = os.path.splitext(p)[1].lower()
         if ext not in SYSTEMS:
-            sys.exit(f"romtable: {p}: not a .gb, .gbc, .nes, .sms or .gg file")
+            sys.exit(f"romtable: {p}: not a .gb, .gbc, .nes, .sms, .gg or .sg file")
         roms.append((open(p, "rb").read(), SYSTEMS[ext], entry_name(p)))
     out = bytearray(struct.pack("<III", MAGIC, VERSION, len(roms)))
     out += bytes(ENTRY * len(roms))

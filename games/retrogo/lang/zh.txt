@@ -86,7 +86,7 @@ Welcome to Retro-Go!	欢迎使用 Retro-Go！
 Add games on NumPlay's	请在 NumPlay 的
 customizer website:	定制网站上添加
 Game Boy, Game Boy Color, NES,	Game Boy、Game Boy Color、NES、
-Master System and Game Gear.	Master System 和 Game Gear 游戏。
+Master System, Game Gear, SG-1000.	Master System、Game Gear 和 SG-1000 游戏。
 Home: quit	主页：退出
 Left/Right: system    OK: games    Home: quit	左/右：主机    OK：游戏    主页：退出
 OK: play    Back: systems    Left/Right: system	OK：开始    返回：主机    左/右：切换主机

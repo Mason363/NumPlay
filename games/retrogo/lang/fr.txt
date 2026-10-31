@@ -86,7 +86,7 @@ Welcome to Retro-Go!	Bienvenue dans Retro-Go !
 Add games on NumPlay's	Ajoute des jeux sur le site
 customizer website:	de personnalisation de NumPlay :
 Game Boy, Game Boy Color, NES,	des jeux Game Boy, Game Boy Color, NES,
-Master System and Game Gear.	Master System et Game Gear.
+Master System, Game Gear, SG-1000.	Master System, Game Gear et SG-1000.
 Home: quit	Accueil : quitter
 Left/Right: system    OK: games    Home: quit	Gauche/Droite : console    OK : jeux    Accueil : quitter
 OK: play    Back: systems    Left/Right: system	OK : jouer    Retour : consoles    Gauche/Droite : console
