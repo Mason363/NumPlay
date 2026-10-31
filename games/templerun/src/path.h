@@ -38,7 +38,6 @@ typedef struct {
   uint8_t since_turn, since_obstacle, back_to_back, since_coins, coin_count, since_bonus;
   uint8_t coin, coin_kind, coins;   /* how its coins lie (COIN_*), which (1 yellow, 2 red, 3 blue), those still there */
   uint8_t item, skipped_item;
-  uint8_t scenery;         /* 1 a jungle tree left, 2 right, 4 a tall one, 8 a pillar */
   uint8_t turned;
   float y;                 /* its level's height */
 } Tile;

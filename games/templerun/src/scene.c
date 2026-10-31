@@ -1,3 +1,4 @@
+#include <string.h>
 /* The world on the screen (scene.h): the path, its jungle, the runner and the pursuers, coins and power-ups,
  * every one a mesh of data.c by number, placed and turned in the game's units, then drawn by r3d.c in metres
  * through a camera that follows the runner round the corners. */
@@ -12,6 +13,7 @@
 static float cx_, cy_, cz_, cyaw, cc, cs;   /* the camera (game units) and its yaw's cosine and sine */
 static float run_yaw, cam_yaw, cam_h;       /* smoothed */
 static float t_anim;
+static uint32_t scenery_seed;   /* (the scenery of this run: draw_scenery) */
 static bool title;
 static uint16_t rowc[SCREEN_H];             /* the sky and the depths, row by row */
 static int horizon = -1000;
@@ -40,6 +42,7 @@ void scene_follow(void) {
 }
 
 void scene_reset(void) {
+  scenery_seed = plat_random();
   run_yaw = cam_yaw = dir_yaw(pl.dir);
   cam_h = pl.ground;
 }
@@ -79,20 +82,12 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
   }
 }
 
-static void draw_tile(const Tile *t, bool ahead) {
-  float x = path_cx(t), z = path_cz(t), yaw = dir_yaw(t->dir);
+static void draw_tile(const Tile *t) {
+  float x = path_cx(t), z = path_cz(t);
   float dx = x - cx_, dz = z - cz_;
   if (dx * cs + dz * cc < -60 || dx * dx + dz * dz > (VIEW + 60) * (VIEW + 60)) return;
   /* the piece: the game's prefab, laid unturned (its far version: data.c's next block) */
   if (t->mesh >= 0) scene_mesh(t->mesh, x, 0, z, 0, 255);
-  /* the cliffs' rock wall: only along the way the runner goes (it would stand in the camera's way) */
-  if (t->level == TH_CLIFF && path_is_straight(t) && ahead && t->dir == pl.dir) scene_mesh(M_CLIFF_WALL, x, t->y, z, yaw, 255);
-  int d = t->dir;
-  float rx = (float)(d == 0 ? 1 : d == 2 ? -1 : 0), rz = (float)(d == 1 ? -1 : d == 3 ? 1 : 0);
-  float fx = -rz, fz = rx;
-  if (t->scenery & 1) scene_mesh(t->scenery & 4 ? M_JUNGLE_TALL : M_JUNGLE_TREE, x - rx * 27 + fx * 8, t->y, z - rz * 27 + fz * 8, yaw, 255);
-  if (t->scenery & 2) scene_mesh(t->scenery & 4 ? M_JUNGLE_TREE : M_JUNGLE_TALL, x + rx * 27 - fx * 10, t->y, z + rz * 27 - fz * 10, yaw, 255);
-  if (t->scenery & 8) scene_mesh(M_PILLAR, x - rx * 15 + fx * 18, t->y, z - rz * 15 + fz * 18, yaw, 255);
   if (t->obst == OB_FLAME) {
     /* the fire across the flame tower (a vertical piece's runs along x) */
     bool v = t->type == PT_FLAME_V;
@@ -122,6 +117,42 @@ static int runner_mesh(void) {
   if (pl.jumping || !pl.on_ground) return M_RUNNER_JUMP;
   if (pl.stumbling) return M_RUNNER_STUMBLE;
   return M_RUNNER_RUN0 + (((int)(pl.anim * 4)) & 3);
+}
+
+/* ---------------------------------------------------------------- the scenery (the game's SceneryManager) */
+/* A grid of 19 x 19 squares of 60 around the camera's square: those the path is in are left out (FillMask), and
+ * so is the start, in front of the temple; each other one has a piece of scenery, the game's odds of each kind,
+ * seen one time in four (ObjectDensity), 10 or less off the square's middle, at y 0. What each square has is
+ * worked out from where it is (and the run), so it stays the same while it is seen. */
+#define SGRID 19
+static uint32_t mix(uint32_t h) {
+  h ^= h >> 16, h *= 0x7FEB352Du, h ^= h >> 15, h *= 0x846CA68Bu, h ^= h >> 16;
+  return h;
+}
+
+static void draw_scenery(void) {
+  static const uint8_t trees[4] = {M_treeAlone, M_treeAlone2, M_treeAlone3, M_treeAlone4};
+  static const uint8_t rocks[3] = {M_rock, M_rock2, M_rock3}, cliffs[3] = {M_cliff, M_cliff2, M_cliff3};
+  int gx = (int)(cx_ / TILE), gz = (int)(cz_ / TILE);   /* (the game's: truncated) */
+  int x0 = gx - SGRID / 2, z0 = gz - SGRID / 2;
+  static uint8_t mask[SGRID][SGRID];
+  memset(mask, 0, sizeof mask);
+  for (int i = 0; i < NTILES; i++)
+    if (tiles[i].alive) {
+      int a = tiles[i].gx - x0, b = tiles[i].gz - z0;
+      if (a >= 0 && b >= 0 && a < SGRID && b < SGRID) mask[a][b] = 1;
+    }
+  for (int a = 0; a < SGRID; a++)
+    for (int b = 0; b < SGRID; b++) {
+      int cx = x0 + a, cz = z0 + b;
+      if (mask[a][b] || (cx >= -1 && cx <= 1 && cz >= 0 && cz <= 4)) continue;
+      uint32_t h = mix((uint32_t)cx * 0x9E3779B1u ^ mix((uint32_t)cz + scenery_seed));
+      if (h % 1000 >= 250) continue;   /* (ObjectDensity 0.25) */
+      uint32_t k = (h >> 10) % 21, v = h >> 15;
+      int m = k <= 10 ? trees[v % 4] : k <= 14 ? rocks[v % 3] : k <= 16 ? cliffs[v % 3] : k <= 18 ? M_overgrowthTrees : k == 19 ? M_templeHead : M_groundPatchTemple;
+      float ox = (float)((int)((h >> 20) % 21) - 10), oz = (float)((int)((h >> 25) % 21) - 10);
+      scene_mesh(m, (float)cx * TILE + ox, 0, (float)cz * TILE + oz, 0, 255);
+    }
 }
 
 /* ---------------------------------------------------------------- the sky and the depths */
@@ -176,8 +207,10 @@ void scene_draw(r_band_fn overlay, bool on_title) {
     if (tiles[i].alive) {
       const Tile *t = &tiles[i];
       float a = (path_cx(t) - pl.x) * (float)(pl.dir == 1 ? 1 : pl.dir == 3 ? -1 : 0) + (path_cz(t) - pl.z) * (float)(pl.dir == 0 ? 1 : pl.dir == 2 ? -1 : 0);
-      draw_tile(t, a > -30);
+      (void)a;
+      draw_tile(t);
     }
+  draw_scenery();
   for (int f = 0; f < NFLY; f++)
     if (fly[f].on) scene_mesh(fly[f].kind == 3 ? M_COIN_B : fly[f].kind == 2 ? M_COIN_R : M_COIN_Y, fly[f].x, fly[f].y - 3, fly[f].z, t_anim * 6, 255);
   /* the runner's shadow on the floor */

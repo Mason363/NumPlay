@@ -250,7 +250,7 @@ static bool sides_have_obstacles(const Tile *t) {
   return false;
 }
 
-/* ---------------------------------------------------------------- coins, power-ups, scenery */
+/* ---------------------------------------------------------------- coins, power-ups */
 static void coins_for(Tile *t, const Tile *p) {
   if (t->mesh < 0 || t->obst == OB_SLIDE || t->obst == OB_NARROW || t->obst == OB_LEVEL) return;
   if (!p->coin_count && p->since_coins < ps.gap_coins) return;
@@ -283,15 +283,6 @@ static void bonus_for(Tile *t, const Tile *p) {
   if (pg.up[UP_BOOST]) items[m++] = IT_BOOST;
   if (m && half()) t->item = items[rnd(m)];
   else t->skipped_item = 1;
-}
-
-static void scenery(Tile *t) {
-  t->scenery = 0;
-  if (!path_is_straight(t) && t->obst != OB_HOLE) return;
-  if (t->level != TH_CLIFF && rnd(10) < 3) t->scenery |= 1;
-  if (rnd(10) < 3) t->scenery |= 2;
-  if (rnd(3) == 0) t->scenery |= 4;
-  if (t->level == TH_TEMPLE && rnd(6) == 0) t->scenery |= 8;
 }
 
 static uint8_t inc(uint8_t v) { return v < 255 ? (uint8_t)(v + 1) : v; }
@@ -417,7 +408,6 @@ static int lay(int pi, int d) {
     bonus_for(t, p);
   }
   describe(t, p);
-  scenery(t);
   p->next[d] = (int8_t)ni;
   t->next[OPP(d)] = (int8_t)pi;
   return ni;

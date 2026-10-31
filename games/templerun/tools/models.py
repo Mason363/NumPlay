@@ -2,7 +2,7 @@
 """Makes src/data.c and src/data.h: every model Temple Run draws, as a table of meshes (src/models.h).
 
 These are plain stand-in models: boxes and wedges in the game's colours for the runner, the pursuers, the
-coins and power-ups and the jungle beside the path. The path pieces are named after the game's prefabs
+coins and power-ups and the scenery (named after the game's scenery prefabs: treeAlone, rock, cliff...). The path pieces are named after the game's prefabs
 (tools/pieces.py: M_templeStraightVert...), and their stand-ins are made from where each one has ground and
 obstacles (src/floor.c, tools/floor.py): flat tops, sides going down, a box for each obstacle. Each model is a
 mesh by number (data.h), its far version a second, simpler mesh. The game only draws meshes by number, so the
@@ -298,13 +298,6 @@ def path_piece(name, cells, obstacles, far=False):
     return [([[q[0], q[1] + level, q[2]] for q in pts], rgb, n, two) for pts, rgb, n, two in out]
 
 
-def cliff_face():
-    """the rock wall rising on the cliff path's left"""
-    out = [face([[-11, 0, -30], [-11, 0, 30], [-15, 20, 30], [-15, 20, -30]], 0x8A8274, [1, 0, 0])]
-    out.append(face([[-15, 20, -30], [-15, 20, 30], [-30, 20, 30], [-30, 20, -30]], 0x56743A, [0, 1, 0]))
-    return out
-
-
 # ---------------------------------------------------------------- obstacles, coins, power-ups, scenery
 def fire(t):
     """the fire across a flame tower piece (jump over it or slide under it): tongues between the towers, at the
@@ -358,30 +351,45 @@ def boost():
     return out
 
 
-def jungle_tree(tall):
-    """a jungle tree rising from below the path, its leaves above"""
-    out = box(-2.2, -70, -2.2, 2.2, tall, 2.2, TRUNK, skip="b")
-    out += box(-9, tall - 2, -9, 9, tall + 6, 9, LEAF, top=0x447A34)
-    out += box(-6, tall + 6, -6, 6, tall + 10, 6, LEAF2, top=0x4F8A3C)
-    return out
-
-
-def jungle_far(tall):
-    return box(-9, tall - 2, -9, 9, tall + 6, 9, LEAF, top=0x447A34, skip="b") + box(-2.2, -40, -2.2, 2.2, tall - 2, 2.2, TRUNK, skip="btfk")
-
-
-def pillar():
-    """a broken temple pillar beside the path"""
-    out = box(-3, -50, -3, 3, 14, 3, 0x8E7F66, top=0x9E8F74, skip="b")
-    out += box(-4, 14, -4, 4, 16.5, 4, 0x9E8F74, skip="")
-    return out
-
-
 def temple():
     """the temple the run starts from: a stone block with a dark doorway (behind the start)"""
     out = box(-34, -40, -50, 34, 46, -30, 0x8A7A5E, top=0x6F7F4A, skip="b")
     out.append(face([[-9, 0, -29.9], [9, 0, -29.9], [9, 20, -29.9], [-9, 20, -29.9]], 0x221C16, [0, 0, 1]))
     out += box(-26, 46, -46, 26, 58, -34, 0x7C6C52, skip="b")
+    return out
+
+
+def scenery():
+    """stand-ins for the game's scenery prefabs, about their size: trees about 150 tall rising from below the
+    path, rocks, cliffs, a stone head of the temple, a patch of temple ground (laid at y 0, around their cell)"""
+    out = []
+    for i, (h, w, col) in enumerate(((150, 44, LEAF), (140, 40, LEAF2), (160, 48, 0x447A34), (130, 38, 0x3E7030))):
+        near = box(-3.5, -90, -3.5, 3.5, h - 30, 3.5, TRUNK, skip="b")
+        near += box(-w / 2, h - 34, -w / 2, w / 2, h - 8, w / 2, col, top=0x4F8A3C)
+        near += box(-w / 3, h - 8, -w / 3, w / 3, h, w / 3, LEAF2, top=0x5A9444, skip="b")
+        far = box(-w / 2, h - 34, -w / 2, w / 2, h, w / 2, col, top=0x4F8A3C, skip="b") + box(-3.5, -60, -3.5, 3.5, h - 34, 3.5, TRUNK, skip="btfk")
+        out.append((f"treeAlone{i + 1 if i else ''}", near, far))
+    for i, (w, h, d) in enumerate(((40, 26, 34), (30, 18, 28), (50, 34, 40))):
+        near = box(-w / 2, -40, -d / 2, w / 2, h, d / 2, 0x6C665C, top=0x847E72, skip="b")
+        near += box(-w / 3, h, -d / 3, w / 4, h + 8, d / 4, 0x787266, top=0x8E887C, skip="b")
+        out.append((f"rock{i + 1 if i else ''}", near, box(-w / 2, -30, -d / 2, w / 2, h, d / 2, 0x6C665C, top=0x847E72, skip="b")))
+    for i, (w, h, d) in enumerate(((56, 90, 44), (48, 110, 40), (64, 80, 52))):
+        near = box(-w / 2, -90, -d / 2, w / 2, h, d / 2, 0x7A7266, top=0x56743A, skip="b")
+        near += box(-w / 3, h, -d / 3, w / 3, h + 14, d / 3, 0x847C70, top=0x5E7E40, skip="b")
+        out.append((f"cliff{i + 1 if i else ''}", near, box(-w / 2, -60, -d / 2, w / 2, h, d / 2, 0x7A7266, top=0x56743A, skip="b")))
+    near, far = [], []
+    for dx, dz, h in ((-14, -8, 140), (12, -4, 125), (0, 14, 150)):
+        near += box(dx - 3, -90, dz - 3, dx + 3, h - 30, dz + 3, TRUNK, skip="b")
+        near += box(dx - 18, h - 32, dz - 18, dx + 18, h, dz + 18, LEAF, top=0x4F8A3C, skip="b")
+        far += box(dx - 18, h - 32, dz - 18, dx + 18, h, dz + 18, LEAF, top=0x4F8A3C, skip="b")
+    out.append(("overgrowthTrees", near, far))
+    near = box(-16, -40, -14, 16, 30, 14, 0x8C7C62, top=0x6F7F4A, skip="b")
+    near += box(-12, 30, -12, 12, 40, 12, 0x9A8A70, top=0x6F7F4A, skip="b")
+    near.append(face([[-8, 6, 14.1], [8, 6, 14.1], [8, 20, 14.1], [-8, 20, 14.1]], 0x3A3026, [0, 0, 1]))
+    out.append(("templeHead", near, box(-16, -30, -14, 16, 40, 14, 0x8C7C62, top=0x6F7F4A, skip="b")))
+    near = box(-26, -6, -26, 26, 0, 26, 0x8E7E64, top=0x9C8B6F, skip="b")
+    near += box(-20, 0, 8, -6, 6, 18, 0x8C7C62, skip="b") + box(10, 0, -16, 18, 4, -4, 0x8C7C62, skip="b")
+    out.append(("groundPatchTemple", near, box(-26, -6, -26, 26, 0, 26, 0x8E7E64, top=0x9C8B6F, skip="b")))
     return out
 
 
@@ -411,21 +419,24 @@ def build(src):
     add("INVISIBILITY", diamond(0x9FE8FF, 0x6CC4E8))
     add("BOOST", boost())
     add("COIN_BONUS", diamond(0xFFD21E, 0xE0A818, y=4.2, r=2.2, h=2.2))
-    add("JUNGLE_TREE", jungle_tree(26), "JUNGLE_TREE_FAR")
-    add("JUNGLE_TREE_FAR", jungle_far(26))
-    add("JUNGLE_TALL", jungle_tree(44), "JUNGLE_TALL_FAR")
-    add("JUNGLE_TALL_FAR", jungle_far(44))
-    add("PILLAR", pillar())
-    add("CLIFF_WALL", cliff_face())
+    # the game's scenery (SceneryManager: Trees/...), and their far versions
+    for name, faces, far in scenery():
+        add(name, faces, name + "_far")
+        add(name + "_far", far)
 
 
 def write(src):
     build(src)
+    emit(src)
+
+
+def emit(src, made_by="tools/models.py", what="Temple Run's stand-in models (boxes and wedges)"):
+    """MODELS as src/data.c and src/data.h"""
     names = [m[0] for m in MODELS]
-    h = ["/* Temple Run: the mesh numbers (data.c, made by tools/models.py). */", "#ifndef TR_DATA_H", "#define TR_DATA_H",
+    h = [f"/* Temple Run: the mesh numbers (data.c, made by {made_by}). */", "#ifndef TR_DATA_H", "#define TR_DATA_H",
          '#include "models.h"', '#include "r3d.h"', "", "enum {"]
     h += [f"  M_{n}," for n in names] + ["  M_COUNT,", f"  M_PIECES = {len(pieces.PREFABS)}   /* (the path pieces: floor.c's, in its order) */", "};", "#endif", ""]
-    c = ["/* Made by tools/models.py: Temple Run's stand-in models (boxes and wedges), as a mesh table. */",
+    c = [f"/* Made by {made_by}: {what}, as a mesh table. */",
          '#include "data.h"', "", "const Texture *const r_tex[1] = {0};", ""]
     table = []
     for name, faces, far in MODELS:
