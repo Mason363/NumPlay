@@ -581,6 +581,22 @@ Match the top card by colour or number, or play a Wild. Skip, Reverse, Draw Two 
 
 <br clear="right">
 
+## Mahjong
+
+<img src="../games/mahjong/docs/shot.png" width="320" align="right" alt="Mahjong">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** (or **8, 4, 6, 2**) | Jump to the nearest free tile that way |
+| **OK** or **EXE** | Pick a tile, or take it with the one you picked |
+| **shift** | Hint: two free tiles that match |
+| **⌫** (backspace) | Undo the last pair |
+| **Back** | Pause (with New game, How to play and Quit game) |
+
+Take the tiles away in pairs that match: the same tile, or any flower with any flower, any season with any season. A tile is free when nothing lies on it and its left or right side is open. Clear the board to win. Every deal can be won, and when no two free tiles match the game offers to shuffle the rest. Your game and your best time on each layout are saved.
+
+<br clear="right">
+
 ## Friday Night Funkin'
 
 <img src="../games/fnf/docs/shot.png" width="320" align="right" alt="Friday Night Funkin'">
