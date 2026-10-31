@@ -39,6 +39,17 @@ Options	选项
 Menu	菜单
 Quit	退出
 Home (saves)	主页（会保存）
+left	左
+up	上
+down	下
+right	右
+toolbox	工具箱
+Up	上
+Down	下
+Left	左
+Right	右
+Press its new key	请按它的新按键
+Default keys	默认按键
 Controls	按键
 Retro-Go	Retro-Go
 Port	移植

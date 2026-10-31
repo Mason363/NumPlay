@@ -605,8 +605,9 @@ CHECKS = {
     # a game kept (Easy, the guide read) with the two digits the hints wrote (the digits at 109); then three
     "sudoku": (lambda v: len(v) == 352 and v[:4] == b"S\1\3\0" and sum(1 <= b <= 9 for b in v[109:190]) == 2,
                lambda v: v[2] & 1 and sum(1 <= b <= 9 for b in v[109:190]) == 3),
-    # the scaling (third byte): Full, then 1x
-    "retrogo": (lambda v: len(v) == 19 and v[:2] == b"R\1" and v[2] == 2, lambda v: v[2] == 0),
+    # the scaling (third byte): Full, then 1x; the keys (at 19) the first ones
+    "retrogo": (lambda v: len(v) == 27 and v[:2] == b"R\2" and v[2] == 2 and v[19:27] == bytes([1, 2, 0, 3, 4, 5, 12, 52]),
+                lambda v: v[2] == 0),
 }
 
 

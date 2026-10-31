@@ -39,6 +39,17 @@ Options	Options
 Menu	Menu
 Quit	Quitter
 Home (saves)	Accueil (sauve)
+left	gauche
+up	haut
+down	bas
+right	droite
+toolbox	boîte à outils
+Up	Haut
+Down	Bas
+Left	Gauche
+Right	Droite
+Press its new key	Appuyez sur sa nouvelle touche
+Default keys	Touches par défaut
 Controls	Touches
 Retro-Go	Retro-Go
 Port	Portage

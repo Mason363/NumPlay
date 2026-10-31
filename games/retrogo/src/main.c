@@ -88,23 +88,59 @@ static struct {
   uint8_t flags;                   /* 1: the controls were shown */
   uint8_t tab, browse;
   uint8_t cursor[RG_SYS_COUNT];
+  uint8_t keys[8];                 /* the calculator's key for each of the pad's buttons, in pad_bits' order */
 } cfg;
 #define CFG_NAME "retrogo.cfg"
 
+/* ------------------------------------------------------------ the keys */
+/* the pad's buttons: the D-pad, then A, B, Select and Start */
+static const uint8_t pad_bits[8] = {RG_PAD_UP, RG_PAD_DOWN, RG_PAD_LEFT, RG_PAD_RIGHT,
+                                    RG_PAD_A,  RG_PAD_B,    RG_PAD_SELECT, RG_PAD_START};
+static const uint8_t default_keys[8] = {eadk_key_up, eadk_key_down, eadk_key_left, eadk_key_right,
+                                        eadk_key_ok, eadk_key_back, eadk_key_shift, eadk_key_exe};
+/* the calculator's keys by name; NULL for those a button can't have (Home, On/Off and Backspace, Retro-Go's menu) */
+static const char *const key_names[eadk_key_exe + 1] = {
+  [eadk_key_left] = T("left"), [eadk_key_up] = T("up"), [eadk_key_down] = T("down"), [eadk_key_right] = T("right"),
+  [eadk_key_ok] = "OK", [eadk_key_back] = T("Back"), [eadk_key_shift] = T("shift"), [eadk_key_alpha] = "alpha",
+  [eadk_key_xnt] = "x,n,t", [eadk_key_var] = "var", [eadk_key_toolbox] = T("toolbox"), [eadk_key_exp] = "e^x",
+  [eadk_key_ln] = "ln", [eadk_key_log] = "log", [eadk_key_imaginary] = "i", [eadk_key_comma] = ",",
+  [eadk_key_power] = "x^y", [eadk_key_sine] = "sin", [eadk_key_cosine] = "cos", [eadk_key_tangent] = "tan",
+  [eadk_key_pi] = "pi", [eadk_key_sqrt] = "sqrt", [eadk_key_square] = "x^2", [eadk_key_seven] = "7",
+  [eadk_key_eight] = "8", [eadk_key_nine] = "9", [eadk_key_left_parenthesis] = "(",
+  [eadk_key_right_parenthesis] = ")", [eadk_key_four] = "4", [eadk_key_five] = "5", [eadk_key_six] = "6",
+  [eadk_key_multiplication] = "*", [eadk_key_division] = "/", [eadk_key_one] = "1", [eadk_key_two] = "2",
+  [eadk_key_three] = "3", [eadk_key_plus] = "+", [eadk_key_minus] = "-", [eadk_key_zero] = "0", [eadk_key_dot] = ".",
+  [eadk_key_ee] = "x10^x", [eadk_key_ans] = "ans", [eadk_key_exe] = "EXE"};
+
+/* the keys are for buttons, one each */
+static bool keys_ok(const uint8_t *k) {
+  for (int i = 0; i < 8; i++) {
+    if (k[i] > eadk_key_exe || !key_names[k[i]]) return false;
+    for (int j = 0; j < i; j++)
+      if (k[j] == k[i]) return false;
+  }
+  return true;
+}
+
 static void cfg_defaults(void) {
   memset(&cfg, 0, sizeof cfg);
-  cfg.magic = 'R', cfg.version = 1;
+  cfg.magic = 'R', cfg.version = 2;
   cfg.scaling = SCALE_FIT, cfg.speed = 1;
   cfg.gb_palette = GB_PAL_DMG, cfg.nes_palette = NES_PAL_NTSC;
   cfg.overscan = 1, cfg.crop_sides = 0, cfg.sprite_limit = 1, cfg.autosave = 10;
+  memcpy(cfg.keys, default_keys, sizeof cfg.keys);
 }
 
 static void cfg_load(void) {
   uint32_t len = 0;
   const uint8_t *d = np_file_read(CFG_NAME, &len);
   cfg_defaults();
-  if (!d || len != sizeof cfg || d[0] != 'R' || d[1] != 1) return;
-  memcpy(&cfg, d, sizeof cfg);
+  /* (version 1: the same, before the keys) */
+  if (!d || d[0] != 'R' || (!(len == sizeof cfg && d[1] == 2) && !(len == sizeof cfg - sizeof cfg.keys && d[1] == 1)))
+    return;
+  memcpy(&cfg, d, len);
+  cfg.version = 2;
+  if (!keys_ok(cfg.keys)) memcpy(cfg.keys, default_keys, sizeof cfg.keys);
   /* whatever it holds, settings Retro-Go has */
   if (cfg.scaling >= SCALE_COUNT) cfg.scaling = SCALE_FIT;
   if (cfg.speed > 4) cfg.speed = 1;
@@ -835,7 +871,16 @@ static const char *button_name(int k) {
   static const char *const sms[] = {T("D-pad"), "2", "1", NULL, T("Pause")};
   return k == 4 && sys_now == RG_SYS_GG ? T("Start") : sms[k];
 }
-static const char *const button_keys[] = {T("arrows"), T("OK"), T("Back"), T("shift"), T("EXE")};
+/* the D-pad's keys: "arrows", else the four (up, down, left, right) */
+static char *dpad_keys(char *b) {
+  if (!memcmp(cfg.keys, default_keys, 4)) return strcpy(b, T("arrows"));
+  b[0] = 0;
+  for (int i = 0; i < 4; i++) {
+    if (i) strcat(b, " ");
+    strcat(b, key_names[cfg.keys[i]]);
+  }
+  return b;
+}
 
 /* the game's picture again, with what is around it */
 static void borders_scene(void *ctx) {
@@ -844,9 +889,10 @@ static void borders_scene(void *ctx) {
   if (view.x < 72) return;
   /* (room on the sides: the keys) */
   const char *keys[7][2];
+  char dpad[42];
   int n = 0;
   for (int k = 0; k < 5; k++)
-    if (button_name(k)) keys[n][0] = button_keys[k], keys[n][1] = button_name(k), n++;
+    if (button_name(k)) keys[n][0] = k ? key_names[cfg.keys[k + 3]] : dpad_keys(dpad), keys[n][1] = button_name(k), n++;
   keys[n][0] = T("Backspace"), keys[n++][1] = T("menu");
   keys[n][0] = T("Home"), keys[n++][1] = T("quit");
   for (int i = 0; i < n; i++) {
@@ -1005,17 +1051,51 @@ static int options_menu(void) {
   return r;
 }
 
-static int controls(void) {
-  item_t items[8];
-  static const char *const keys[] = {T("arrows"), "OK", T("Back"), T("shift"), "EXE", T("Backspace"),
-                                     T("Home (saves)")};
-  for (int i = 0; i < 7; i++) {
-    const char *label = i < 5 ? button_name(i) : i == 5 ? T("Menu") : T("Quit");
-    items[i] = (item_t){0, label ? label : "", "", label ? IT_MESSAGE : IT_HIDDEN, 1, NULL, 0};
-    strcpy(items[i].value, keys[i]);
+/* a button's new key, pressed; false when Backspace, Home or On/Off is (nothing changed) */
+static bool ask_key(const char *title, int b) {
+  message_box(title, T("Press its new key"));
+  wait_release();
+  uint64_t k;
+  while (!(k = eadk_keyboard_scan())) eadk_timing_msleep(10);
+  int key = 0;
+  while (!(k >> key & 1)) key++;
+  wait_release();
+  if (key > eadk_key_exe || !key_names[key]) return false;
+  for (int j = 0; j < 8; j++) /* (a key another button had: that one takes this one's) */
+    if (j != b && cfg.keys[j] == key) cfg.keys[j] = cfg.keys[b];
+  cfg.keys[b] = (uint8_t)key;
+  return true;
+}
+static int key_cb(item_t *it, int ev) {
+  int b = (int)it->arg;
+  if (ev == EV_ENTER) {
+    static const char *const dirs[] = {T("Up"), T("Down"), T("Left"), T("Right")};
+    if (b) ask_key(it->label, b);
+    else
+      for (int i = 0; i < 4 && ask_key(dirs[i], i); i++) {}
   }
-  items[7] = (item_t)ITEM(1, T("OK"));
-  return dialog_run(T("Controls"), items, 8, 7);
+  if (b) strcpy(it->value, key_names[cfg.keys[b]]);
+  else dpad_keys(it->value);
+  return CB_NONE;
+}
+static int default_keys_cb(item_t *it, int ev) {
+  (void)it;
+  if (ev == EV_ENTER) memcpy(cfg.keys, default_keys, sizeof cfg.keys);
+  return CB_NONE;
+}
+static int controls(void) {
+  item_t items[9];
+  for (int i = 0; i < 5; i++) {
+    const char *label = button_name(i);
+    items[i] = (item_t){0, label ? label : "", "", label ? IT_NORMAL : IT_HIDDEN, 1, key_cb, i ? i + 3 : 0};
+  }
+  items[5] = (item_t){0, T("Menu"), "", IT_MESSAGE, 1, NULL, 0}, strcpy(items[5].value, T("Backspace"));
+  items[6] = (item_t){0, T("Quit"), "", IT_MESSAGE, 1, NULL, 0}, strcpy(items[6].value, T("Home (saves)"));
+  items[7] = (item_t){0, T("Default keys"), "", IT_NORMAL, 0, default_keys_cb, 0};
+  items[8] = (item_t)ITEM(1, T("OK"));
+  int r = dialog_run(T("Controls"), items, 9, 8);
+  cfg_save();
+  return r;
 }
 
 static int about(void) {
@@ -1176,14 +1256,8 @@ static int play(const rg_rom_t *r, int slot) {
       continue;
     }
     int pad = 0;
-    if (k & KEY(eadk_key_up)) pad |= RG_PAD_UP;
-    if (k & KEY(eadk_key_down)) pad |= RG_PAD_DOWN;
-    if (k & KEY(eadk_key_left)) pad |= RG_PAD_LEFT;
-    if (k & KEY(eadk_key_right)) pad |= RG_PAD_RIGHT;
-    if (k & KEY(eadk_key_ok)) pad |= RG_PAD_A;
-    if (k & KEY(eadk_key_back)) pad |= RG_PAD_B;
-    if (k & KEY(eadk_key_shift)) pad |= RG_PAD_SELECT;
-    if (k & KEY(eadk_key_exe)) pad |= RG_PAD_START;
+    for (int i = 0; i < 8; i++)
+      if (k & KEY(cfg.keys[i])) pad |= pad_bits[i];
 
     uint32_t t0 = millis();
     bool draw = skip == 0;

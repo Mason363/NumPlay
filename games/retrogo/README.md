@@ -42,7 +42,7 @@ You pick the games on NumPlay's customizer website: it puts them inside your Num
 | Backspace | Options, Controls, About | Retro-Go's menu |
 | Home | Quit | Save and quit |
 
-In 1x on the Game Boy and the Game Gear, the keys are written on the side of the screen. The first time you play, Retro-Go shows them, and Controls in its menu shows them again.
+In 1x on the Game Boy and the Game Gear, the keys are written on the side of the screen. The first time you play, Retro-Go shows them, and Controls in its menu shows them again and changes them: pick a button, press OK, then the key you want for it (the D-pad asks for its four). Default keys puts them back.
 
 ## Good to know
 
