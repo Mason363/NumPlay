@@ -299,6 +299,15 @@ body.dragging .drop-hint { display: flex; }
 .drop:hover .c1, body.dragging .c1 { transform: rotate(-20deg) translate(-3px, -4px); }
 .drop:hover .c2, body.dragging .c2 { transform: translateY(-9px); }
 .drop:hover .c3, body.dragging .c3 { transform: rotate(20deg) translate(3px, -4px); }
+/* ...and for your own apps, three of the calculator's app icons, fanned the same way */
+.drop-art.apps i { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(#f2f2f5, #d6d6dc); }
+.drop-art.apps i::before { display: none; }
+.drop-art.apps i::after { left: 7px; right: 7px; top: 7px; bottom: 7px; border-radius: 6px; }
+.drop-art.apps .c1::after { background: linear-gradient(#ffcc4d, #f0a020); }
+.drop-art.apps .c2 { left: 26px; background: linear-gradient(#5a5a60, #3f3f45); }
+.drop-art.apps .c2::after { background: linear-gradient(#3fc76b, #23a04c); }
+.drop-art.apps .c3 { background: linear-gradient(#2c2c30, #18181b); }
+.drop-art.apps .c3::after { background: linear-gradient(#b06ae0, #8040c0); }
 .drop-text { font-size: 15px; font-weight: 700; }
 .drop-sub { font-size: 12px; color: var(--mute); font-weight: 600; letter-spacing: 0.02em; }
 .carts { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -319,6 +328,8 @@ body.dragging .drop-hint { display: flex; }
 .cart:hover { transform: translateY(-3px) rotate(-2deg); }
 .cart:active { transform: scale(0.92); transition-duration: 90ms; }
 .cart.enter { animation: slot 420ms var(--spring); }
+/* an app of your own: its icon, as on the calculator's home screen */
+.cart.app { width: 48px; height: 48px; border-radius: 12px; background: center / cover no-repeat; image-rendering: pixelated; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16); }
 @keyframes slot { 0% { transform: translateY(-22px) scale(0.8); opacity: 0; } 100% { transform: none; opacity: 1; } }
 
 /* ---- tooltip, toast and the install sheet */

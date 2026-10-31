@@ -56,6 +56,7 @@ ALONE = {
     "polytrack": ("PolyTrack", "Kodub's low-poly time trial racer: its 17 tracks, loops, wall rides and jumps, against your ghost"),
     "paperclips": ("Universal Paperclips", "Frank Lantz's game of an AI making paperclips: business, the Earth, then the universe"),
     "badtime": ("Bad Time Simulator", "the Judge's fight: 24 attacks of bones, gavels and the blue heart, after jcw87's Bad Time Simulator"),
+    "mahjong": ("Mahjong", "Mahjong solitaire: 144 tiles in the Turtle, the Dragon, the Crab and the Spider, every deal winnable"),
 }
 VARIANTS = [
     ("NumPlay-Invisible.nwa", "The same app, hidden: a blank icon with no name"),

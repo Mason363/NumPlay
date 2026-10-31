@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>29 free games for your NumWorks calculator, in one app.</b><br>
-  Plus 28 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.
+  Plus 29 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.
 </p>
 
 <p align="center">
@@ -143,10 +143,11 @@ These are too big to fit next to NumPlay, so each one is its own app. Install it
   </tr>
   <tr>
     <td align="center"><a href="games/badtime/README.md"><img src="docs/media/thumb_badtime.png" width="200" alt="Bad Time Simulator"><br><b>Bad Time Simulator</b></a><br><sub>The Sans fight: all 24 attacks, KR and the blue heart</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/BadTimeSimulator.nwa">Download</a></td>
+    <td align="center"><a href="games/mahjong/README.md"><img src="docs/media/thumb_mahjong.png" width="200" alt="Mahjong"><br><b>Mahjong</b></a><br><sub>Mahjong solitaire: 144 tiles, four layouts, every deal winnable</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Mahjong.nwa">Download</a></td>
     <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-64"><b>Super Mario 64</b></a><br><sub>In a repository of its own: NumWorks-Super-Mario-64</sub></td>
-    <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-Bros"><b>Super Mario Bros.</b></a><br><sub>All 32 stages, in a repository of its own: NumWorks-Super-Mario-Bros</sub></td>
   </tr>
   <tr>
+    <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-Bros"><b>Super Mario Bros.</b></a><br><sub>All 32 stages, in a repository of its own: NumWorks-Super-Mario-Bros</sub></td>
     <td align="center"><a href="#roadmap"><b>More on the way</b></a><br><sub>Minecraft 1.18.2 and more: see the roadmap</sub></td>
   </tr>
 </table>
@@ -160,6 +161,8 @@ These are too big to fit next to NumPlay, so each one is its own app. Install it
 </table>
 
 Retro-Go plays the Game Boy, Game Boy Color, NES, Master System and Game Gear games you choose: games you own, or free ones like homebrew games. It isn't in NumPlay.nwa. Drop your games on [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) and you get a NumPlay with Retro-Go and your games inside. Big games, like the 2 MB Game Boy Color ones, need the extra space of Epsilon 26 or Nwagra: pick it in NumPlay Studio.
+
+Other apps for your calculator go in too: drop their .nwa files on [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) and each one gets its own card in your NumPlay.
 
 ## How to install
 
@@ -294,6 +297,7 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] [NumPlay Studio](https://mason363.github.io/NumPlay/customize/), the website where you pick the games in your NumPlay, with Enlarged Extra Apps to fit several big games
 - [x] Universal Paperclips
 - [x] Bad Time Simulator: the Sans fight
+- [x] Mahjong
 - [x] Meowdoku
 - [ ] Full Minecraft 1.18.2 as a standalone app
 - [ ] Among Us, against bots
@@ -322,7 +326,6 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Brawl Stars, against bots
 - [ ] Papers, Please, with the story and Endless
 - [ ] Mario Kart
-- [ ] Mahjong
 - [ ] OMORI
 - [ ] The Legend of Zelda: Ocarina of Time
 - [ ] Clash Royale, against bots
@@ -374,6 +377,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 - **[PolyTrack](https://www.kodub.com/apps/polytrack)** by Kodub inspired NumPlay's PolyTrack, which drives the game's 17 tracks with its own physics numbers, models, colours and logo, read from its web build. Its 3D engine grew out of **Boris-TH**'s PolyGT 3D. Not affiliated with Kodub.
 - **[Universal Paperclips](https://www.decisionproblem.com/paperclips/)** by Frank Lantz (Everybody House Games), with combat programming by Bennett Foddy, inspired NumPlay's Universal Paperclips, which plays the whole game with its rules, numbers, projects and messages, read from its web build. Not affiliated with them.
 - **[Bad Time Simulator](https://github.com/jcw87/c2-sans-fight)** by jcw87, Undertale's Sans fight remade, inspired NumPlay's Bad Time Simulator, which plays its 24 attack scripts with its sprites (Undertale's, by Toby Fox), words and numbers, read from its project, and the **Pixel Operator** font. Not affiliated with jcw87 or Toby Fox.
+- **Mahjong solitaire**, first made by Brodie Lockard (Mah-Jongg, 1981) and made famous by Activision's **Shanghai** (1986), inspired NumPlay's Mahjong, written in C for NumPlay with its tiles drawn from scratch. Its layouts are [KMahjongg](https://apps.kde.org/kmahjongg/)'s, by the KDE Games team, and the characters on its tiles come from the **Fusion Pixel** font by TakWolf (SIL Open Font License, [license](LICENSES/OFL-1.1-Fusion-Pixel.txt)). Not affiliated with them.
 - **[Level Devil](https://store.steampowered.com/app/3242750/)** by Unept: NumPlay's Level Devil is written in C with no code from the game, but its 80 rooms (their tiles, traps and timing) are the game's own, taken from its web build by games/leveldevil/tools/fetch.py, and its runner is drawn from the game's sprites.
 
 - **Pong** by Atari (1972) inspired NumPlay's 2 Players, with air hockey, tanks in a maze in the spirit of Tank Trouble and the light cycles of Tron. All four are written in C for NumPlay and drawn from shapes, with no code or art from them.
@@ -396,14 +400,14 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 - **[Gabriel](https://github.com/tomcalif9-stack)**, who made the home screen's moving backgrounds, translated NumPlay into French first, and tests it on Upsilon and an N0115.
 - **[LanoCodes17](https://github.com/LanoCodes17)**, whose idea the Konami code is: one of the secret ways into NumPlay from Matrices.
 - **[Retro-Go](https://github.com/ducalex/retro-go)** by ducalex inspired NumPlay's Retro-Go, whose launcher, menus and frame skipping are written again for NumPlay with no code copied from it. Its emulators are **[gnuboy](https://github.com/rofl0r/gnuboy)** by Laguna and Gilgamesh (GNU GPL v2 or later) for the Game Boy and **nofrendo** by Matthew Conte (GNU LGPL v2, used under the GPL) for the NES; the Master System and Game Gear are NumPlay's own, around **[superzazu's z80](https://github.com/superzazu/z80)** by Nicolas Allemand (MIT License). Its tests use Blargg's test ROMs, Matt Currie's dmg-acid2 and cgb-acid2, kevtris's nestest and Frank Cringle's zexdoc and zexall. Not affiliated with them.
-- **NumPlay Studio** builds your NumPlay right in the browser with **GNU ld and objcopy** from [binutils](https://www.gnu.org/software/binutils/) (GNU GPL v3), compiled to WebAssembly with [emscripten](https://emscripten.org).
+- **NumPlay Studio** builds your NumPlay right in the browser with **GNU ld and objcopy** from [binutils](https://www.gnu.org/software/binutils/) (GNU GPL v3), compiled to WebAssembly with [emscripten](https://emscripten.org). Your own .nwa apps in it come from **[Banane-3000](https://github.com/Banane-3000)**'s idea and fork.
 - Everyone who reported a bug: **NEE** ([reversallava63](https://github.com/reversallava63)), **Gabriel**, **[briac134](https://github.com/briac134)**, **[Raphanobie](https://github.com/Raphanobie)**, **[zbigzo](https://github.com/zbigzo)**, **Yacine**, **PelicanMan75**, **[Spykube](https://github.com/Spykube)** and **[axio-m](https://github.com/axio-m)**. Thank you!
 
 ## License
 
 NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyright (c) 2026 Mason Chen. Code and fonts from others keep their own licenses: the `UNLICENSE` files in the games' folders and the [LICENSES](LICENSES) folder. The names, artwork and music of the games NumPlay is inspired by belong to their makers and are not covered by it.
 
-<sub>Unofficial fan games, not affiliated with NumWorks, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale), jcw87 (Bad Time Simulator), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's), SEGA (Sonic the Hedgehog, Master System, Game Gear), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), W Production (Turbo Rush), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Oakever Games (Meowdoku), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go). Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System and Game Gear of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
+<sub>Unofficial fan games, not affiliated with NumWorks, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale), jcw87 (Bad Time Simulator), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's), SEGA (Sonic the Hedgehog, Master System, Game Gear), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), W Production (Turbo Rush), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), Brodie Lockard or Activision (Shanghai), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Oakever Games (Meowdoku), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go). Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System and Game Gear of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
 
 ## Gallery
 
@@ -505,5 +509,6 @@ NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyri
   </tr>
   <tr>
     <td align="center"><img src="docs/media/gallery/badtime.gif" alt="Bad Time Simulator: Sans slams the blue heart into bones, then Gaster Blasters fire across the box"><br><a href="games/badtime/README.md"><b>Bad Time Simulator</b></a></td>
+    <td align="center"><img src="docs/media/gallery/mahjong.gif" alt="Mahjong: pairs taken from the Turtle, a hint lights up two tiles, then a pair is undone"><br><a href="games/mahjong/README.md"><b>Mahjong</b></a></td>
   </tr>
 </table>

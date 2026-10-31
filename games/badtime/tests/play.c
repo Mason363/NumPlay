@@ -570,7 +570,7 @@ static void make_shots(const char *dir) {
   shot(dir, "title");
   /* the fight: the intro's blue eye, the menu, the attacks */
   snap_single(A_INTRO, 30, "intro");
-  snap_single(A_INTRO, 140, "gavels");
+  snap_single(A_INTRO, 140, "blasters");
   snap_single(A_PLATFORMS2, 150, "platforms");
   snap_single(A_BONEGAP1, 70, "bonegap");
   snap_single(A_BLUEBONE, 40, "bluebone");
