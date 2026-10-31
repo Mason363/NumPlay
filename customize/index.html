@@ -69,7 +69,7 @@
     <section id="small" class="grid small" aria-label="Games in NumPlay, best first"></section>
   </div>
 
-  <aside class="side" aria-label="Big games, and your own Game Boy, NES and Sega games">
+  <aside class="side" aria-label="Big games, your own Game Boy, NES and Sega games, and your own apps">
     <div class="row-head">
       <h2>Big games</h2>
       <button id="space-chip" type="button" class="space-chip" aria-haspopup="dialog" aria-expanded="false" aria-label="Your calculator's space for apps">
@@ -87,6 +87,16 @@
       </label>
       <input id="rom-file" type="file" multiple accept=".gb,.gbc,.nes,.sms,.gg">
       <div id="carts" class="carts" aria-label="Your games"></div>
+    </section>
+    <section id="own" class="retro" aria-label="Your own apps">
+      <div class="row-head"><h2>Your own apps</h2></div>
+      <label id="app-drop" class="drop" for="app-file">
+        <span class="drop-art apps" aria-hidden="true"><i class="c1"></i><i class="c2"></i><i class="c3"></i></span>
+        <span class="drop-text">Add apps</span>
+        <span class="drop-sub">.nwa</span>
+      </label>
+      <input id="app-file" type="file" multiple accept=".nwa">
+      <div id="app-carts" class="carts" aria-label="Your apps"></div>
     </section>
     <footer class="foot">
       <a href="https://github.com/Mason363/NumPlay">Made by Mason Chen as part of NumPlay</a>
@@ -203,6 +213,7 @@
 
 <div id="tip" class="tip" role="tooltip"></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="apps.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

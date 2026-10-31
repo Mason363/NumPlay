@@ -191,7 +191,18 @@ class Calculator:
                    str(EXT_RAM_LEN), "--trampoline-start", hex(TRAMPOLINE)]
             if external_data:
                 cmd += ["--external-data", external_data]
-            subprocess.run(cmd, check=True)
+            p = subprocess.run(cmd, capture_output=True, text=True)
+            if p.returncode and APPS_END != XL_APPS_END:
+                # bigger than the app area (NumPlay.nwa with a stale or larger game in it): run it as
+                # Enlarged Extra Apps would, up to 6 MB
+                cmd[cmd.index("--flash-length") + 1] = hex(XL_APPS_END - flash_start)
+                if not subprocess.run(cmd, capture_output=True, text=True).returncode:
+                    print(f"{os.path.basename(nwa)} is bigger than the app area: run as with Enlarged Extra Apps",
+                          file=sys.stderr)
+                    p = None
+            if p and p.returncode:
+                raise RuntimeError(f"nwlink could not link {os.path.basename(nwa)}: "
+                                   f"{(p.stderr or p.stdout).strip() or 'exit status %d' % p.returncode}")
             e = ELFFile(open(elf, "rb"))
             self.segments = [(s["p_paddr"], s.data()) for s in e.iter_segments()
                              if s["p_type"] == "PT_LOAD" and s["p_filesz"]]

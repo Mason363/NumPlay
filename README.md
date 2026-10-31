@@ -160,6 +160,8 @@ These are too big to fit next to NumPlay, so each one is its own app. Install it
 
 Retro-Go plays the Game Boy, Game Boy Color, NES, Master System and Game Gear games you choose: games you own, or free ones like homebrew games. It isn't in NumPlay.nwa. Drop your games on [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) and you get a NumPlay with Retro-Go and your games inside. Big games, like the 2 MB Game Boy Color ones, need the extra space of Epsilon 26 or Nwagra: pick it in NumPlay Studio.
 
+Other apps for your calculator go in too: drop their .nwa files on [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) and each one gets its own card in your NumPlay.
+
 ## How to install
 
 You need your calculator, its USB cable, and a computer with **Google Chrome** or **Microsoft Edge**. It takes about 2 minutes.
@@ -395,7 +397,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 - **[Gabriel](https://github.com/tomcalif9-stack)**, who made the home screen's moving backgrounds, translated NumPlay into French first, and tests it on Upsilon and an N0115.
 - **[LanoCodes17](https://github.com/LanoCodes17)**, whose idea the Konami code is: one of the secret ways into NumPlay from Matrices.
 - **[Retro-Go](https://github.com/ducalex/retro-go)** by ducalex inspired NumPlay's Retro-Go, whose launcher, menus and frame skipping are written again for NumPlay with no code copied from it. Its emulators are **[gnuboy](https://github.com/rofl0r/gnuboy)** by Laguna and Gilgamesh (GNU GPL v2 or later) for the Game Boy and **nofrendo** by Matthew Conte (GNU LGPL v2, used under the GPL) for the NES; the Master System and Game Gear are NumPlay's own, around **[superzazu's z80](https://github.com/superzazu/z80)** by Nicolas Allemand (MIT License). Its tests use Blargg's test ROMs, Matt Currie's dmg-acid2 and cgb-acid2, kevtris's nestest and Frank Cringle's zexdoc and zexall. Not affiliated with them.
-- **NumPlay Studio** builds your NumPlay right in the browser with **GNU ld and objcopy** from [binutils](https://www.gnu.org/software/binutils/) (GNU GPL v3), compiled to WebAssembly with [emscripten](https://emscripten.org).
+- **NumPlay Studio** builds your NumPlay right in the browser with **GNU ld and objcopy** from [binutils](https://www.gnu.org/software/binutils/) (GNU GPL v3), compiled to WebAssembly with [emscripten](https://emscripten.org). Your own .nwa apps in it come from **[Banane-3000](https://github.com/Banane-3000)**'s idea and fork.
 - Everyone who reported a bug: **NEE** ([reversallava63](https://github.com/reversallava63)), **Gabriel**, **[briac134](https://github.com/briac134)**, **[Raphanobie](https://github.com/Raphanobie)**, **[zbigzo](https://github.com/zbigzo)**, **Yacine**, **PelicanMan75**, **[Spykube](https://github.com/Spykube)** and **[axio-m](https://github.com/axio-m)**. Thank you!
 
 ## License

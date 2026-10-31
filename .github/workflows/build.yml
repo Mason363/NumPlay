@@ -59,6 +59,7 @@ jobs:
           python3 tests/test_numblocks_progress.py build/compiled/games/NumBlocks.nwa
           python3 tests/test_upsilon.py build/compiled/NumPlay-Upsilon.nwa
           python3 tests/test_small_ram.py build/compiled/NumPlay.nwa
+          python3 tests/test_apps.py build/data
           make -C games/numblocks host test
           make -C games/numdrive host test
           make -C games/championisland host test
