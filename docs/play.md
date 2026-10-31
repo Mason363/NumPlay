@@ -693,7 +693,7 @@ Sans attacks and you dodge. Keep your heart away from everything in the box: whi
 | **1 / 3** | Head start, mega head start (at the start) |
 | **Back** | Pause (with How to play and Quit game) |
 
-Temple Run comes as its own app, `TempleRun.nwa`. Run from the temple and don't stop: turn at every corner, jump gaps, roots, fallen trees and fire, slide under branches and lean along narrow paths. Trip once and your pursuers catch up; trip again soon and they get you. Coins buy upgrades for the four power-ups in the store, and each objective done raises your score multiplier.
+Temple Run comes as its own app, `TempleRun.nwa`. Run from the temple and don't stop: turn at every corner, jump gaps, roots and fallen trees, slide under branches, jump or slide past the fire, and lean along narrow paths. Jump up to the cliffs. Trip once and your pursuers catch up; trip again soon and they get you. Coins buy upgrades for the four power-ups in the store, and each objective done raises your score multiplier.
 
 <br clear="right">
 

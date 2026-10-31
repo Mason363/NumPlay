@@ -4,6 +4,9 @@
 #   make host       build/play: the game on a computer, for tests and screenshots
 #   make test       the game played on a computer (tests/check.py, with the sanitizers)
 #   make models     src/data.c and src/data.h again: the mesh table (tools/models.py: Python)
+#   make floor DATA=DIR   src/floor.c and src/floor.h again: each path piece's ground and obstacles, from the game's
+#                   Android package (DIR: its assets/bin/Data; tools/floor.py with tools/apk.py: UnityPy, NumPy;
+#                   the package is only read). Then make models (the pieces' stand-ins follow their ground).
 Q ?= @
 # the ARM toolchain on the PATH, or in TOOLCHAIN=<its bin folder>
 TOOLCHAIN ?=
@@ -26,7 +29,7 @@ LDFLAGS = -Wl,--relocatable -nostartfiles --specs=nano.specs
 LDFLAGS += -Wl,-e,main -Wl,-u,eadk_app_name -Wl,-u,eadk_app_icon -Wl,-u,eadk_api_level
 LDFLAGS += -Wl,--gc-sections -flinker-output=nolto-rel
 
-.PHONY: build check clean host test models
+.PHONY: build check clean host test models floor
 build: $(BUILD_DIR)/templerun.nwa
 
 # apps get 133652 bytes of RAM on custom builds of Epsilon 25.2 (148928 or more on official ones)
@@ -62,6 +65,9 @@ test: build/play
 
 models:
 	python3 tools/models.py src
+
+floor:
+	python3 -I tools/floor.py $(DATA) src
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build

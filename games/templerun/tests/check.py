@@ -2,7 +2,8 @@
 """Plays Temple Run on a computer (tests/play.c, built with the sanitizers) and checks it:
 
 - a first start shows how to play, then the title; Home saves (templerun.sav and its copy, templerun_saves.py);
-- runs played by the bot on many seeds: corners turned, obstacles jumped and slid under, the score adds up;
+- runs played by the bot on many seeds, on the game's own path: corners turned, gaps jumped, steps up a level jumped,
+  roots and trunks jumped, branches and fire slid under, narrow paths leaned along; the score adds up;
 - a missed corner is a fall; a stumble in the first seconds, or two close together, and they catch you;
 - long runs where nothing hurts, with every power-up: minutes of path, no fault;
 - the store: upgrades and things to use bought, coins taken, all kept, the upgrade objectives met;
@@ -24,7 +25,7 @@ PLAY = sys.argv[1] if len(sys.argv) > 1 else "build/play"
 FMT = "<3I" + "6I" + "5BBBx" + "3HH" + "2I"
 FIELDS = ["magic", "version", "size", "coins", "best", "best_dist", "runs", "life_coins", "life_dist",
           "u0", "u1", "u2", "u3", "u4", "help", "mult", "wings", "headstarts", "megas", "pad", "done0", "done1"]
-FALL, TREE, BRANCH, FIRE, CAUGHT = 1, 2, 3, 4, 5
+FALL, TREE, BRANCH, FIRE, CAUGHT, LEDGE, TANGLE = 1, 2, 3, 4, 5, 6, 7
 failed = []
 
 
@@ -90,10 +91,10 @@ def bot_runs(d):
 
 
 def missed_corner(d):
-    # nothing pressed and nothing hurts but the path's edge: the first corner (or gap) is a fall
+    # nothing pressed, plain pieces up to the first corner: the runner runs off it and falls
     for seed in (1, 2, 3):
         fresh(d)
-        st = play(d, "--seed", str(seed), "--invis", "--frames", "2400", "--keys", "30:ok,90:ok")
+        st = play(d, "--seed", str(seed), "--plain", "100", "--frames", "2400", "--keys", "30:ok,90:ok")
         assert st["dead"] == 1 and st["death"] == FALL and st["turns"] == 0, (seed, st)
 
 

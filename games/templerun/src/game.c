@@ -11,10 +11,6 @@
 Progress pg;
 Runner pl;
 RunStats run;
-Tile path[NTILES];
-int path_first, path_count;
-Tile stub[2][NSTUB];
-bool stub_on;
 Fly fly[NFLY];
 Pursuer pursuers[NPURSUERS];
 bool pursuers_on;
@@ -23,12 +19,9 @@ bool pursuers_on;
 #define START_V 100.0f
 #define MAX_V 210.0f
 #define GRAVITY 250.0f
-#define AHEAD 16                 /* tiles laid ahead of the runner */
-#define BEHIND 4
 #define BOX 1.75f                /* the runner's half width; it is 9.59 tall (sliding: 4) */
 
 static const int8_t DX[4] = {0, 1, 0, -1}, DZ[4] = {1, 0, -1, 0};
-static const float LEVEL_Y[TH_COUNT] = {0, -15, 15};
 
 static inline float fabsf_(float x) { return x < 0 ? -x : x; }
 static inline float minf(float a, float b) { return a < b ? a : b; }
@@ -39,279 +32,6 @@ static float sqrtf_(float x) {
   float r = x > 1 ? x : 1;
   for (int i = 0; i < 12; i++) r = 0.5f * (r + x / r);
   return r;
-}
-
-/* ---------------------------------------------------------------- laying the path */
-static struct {
-  int main_dir;                       /* the path never heads back against this */
-  int since_turn, since_obstacle, back_to_back, since_coins, since_bonus;
-  int theme, want_theme;
-  int coin_left, coin_layout, coin_kind;
-  float since_level, since_section;
-  bool fast;
-  /* by distance (the game's pacing) */
-  int gap_coins, gap_turns, gap_obs;
-  float dbl;
-  bool branches, fire, narrows;
-  float level_temple, level_other, turn_section;
-  float red_at, blue_at;
-} gen;
-
-float game_tile_cx(const Tile *t) { return t->gx * TILE; }
-float game_tile_cz(const Tile *t) { return t->gz * TILE; }
-
-static int exit_dir(const Tile *t) {
-  if (t->kind == PK_CORNER_L) return (t->dir + 3) & 3;
-  if (t->kind == PK_CORNER_R) return (t->dir + 1) & 3;
-  return t->dir;
-}
-
-static float exit_y(const Tile *t) {
-  return t->y + (t->kind == PK_STEP_UP ? 15.0f : t->kind == PK_STEP_DOWN ? -15.0f : 0.0f);
-}
-
-static bool is_turn(const Tile *t) { return t->kind == PK_CORNER_L || t->kind == PK_CORNER_R || t->kind == PK_T; }
-
-static void push_tile(const Tile *t) {
-  if (path_count == NTILES) {
-    path_first = (path_first + 1) % NTILES;
-    path_count--;
-    pl.tile--;
-  }
-  path[(path_first + path_count) % NTILES] = *t;
-  path_count++;
-}
-
-static void pacing(void) {
-  float d = run.dist;
-  if (d < 250) gen.gap_coins = 12, gen.gap_turns = 12, gen.gap_obs = 6, gen.dbl = 0;
-  else if (d < 500) gen.gap_coins = 10, gen.gap_turns = 10, gen.gap_obs = 5, gen.dbl = 0;
-  else if (d < 1000) gen.gap_coins = 9, gen.gap_turns = 8, gen.gap_obs = 4, gen.dbl = 0.05f;
-  else if (d < 1500) gen.gap_coins = 8, gen.gap_turns = 6, gen.gap_obs = 4, gen.dbl = 0.05f;
-  else if (d < 2000) gen.gap_coins = 7, gen.gap_turns = 5, gen.gap_obs = 3, gen.dbl = 0.1f;
-  else if (d < 3250) gen.gap_coins = 6, gen.gap_turns = 4, gen.gap_obs = 3, gen.dbl = 0.15f;
-  else if (d < 4500) gen.gap_coins = 6, gen.gap_turns = 3, gen.gap_obs = 3, gen.dbl = 0.175f;
-  else gen.gap_coins = 6, gen.gap_turns = 2, gen.gap_obs = 2, gen.dbl = 0.2f;
-  gen.branches = gen.fire = d >= 500;
-  gen.narrows = d >= 1500;
-  if (d >= 3250) gen.level_temple = 375, gen.level_other = 300, gen.turn_section = 750;
-  else if (d >= 1000) gen.level_temple = 450, gen.level_other = 250, gen.turn_section = 850;
-  else gen.level_temple = 500, gen.level_other = 200, gen.turn_section = 1000;
-  if (gen.fast) {
-    gen.gap_turns = (int)(gen.gap_turns * 0.65f);
-    if (gen.gap_turns < 2) gen.gap_turns = 2;
-    gen.gap_coins = 0;
-  }
-}
-
-static void coin_value_level(void) {
-  static const float red[6] = {1e9f, 1500, 1000, 1000, 1000, 1000}, blue[6] = {1e9f, 1e9f, 1e9f, 3000, 2500, 2000};
-  int l = pg.up[UP_COIN_VALUE] > 5 ? 5 : pg.up[UP_COIN_VALUE];
-  gen.red_at = red[l], gen.blue_at = blue[l];
-}
-
-static void change_level(void) {
-  if (gen.theme == TH_PLANK) gen.want_theme = TH_TEMPLE;
-  else if (gen.theme == TH_TEMPLE) gen.want_theme = rnd(2) == 0 ? TH_PLANK : TH_CLIFF;
-  else gen.want_theme = rnd(2) != 0 ? TH_PLANK : TH_TEMPLE;
-}
-
-static void scenery(Tile *t) {
-  t->scenery = 0;
-  if (t->kind != PK_STRAIGHT && t->kind != PK_HOLE && t->kind != PK_HOLE_LONG) return;
-  if (t->theme != TH_CLIFF && rnd(10) < 3) t->scenery |= 1;
-  if (rnd(10) < 3) t->scenery |= 2;
-  if (rnd(3) == 0) t->scenery |= 4;
-  if (t->theme == TH_TEMPLE && rnd(6) == 0) t->scenery |= 8;
-}
-
-static void coins_for(Tile *t) {
-  t->coin = COIN_NONE, t->coins = 0;
-  if (t->kind == PK_STEP_UP || t->kind == PK_STEP_DOWN || t->item) return;
-  if (gen.coin_left <= 0) {
-    if (gen.since_coins < gen.gap_coins) return;
-    gen.coin_left = 1 + rnd(3);
-    static const uint8_t layouts[6] = {COIN_CENTRE, COIN_CENTRE, COIN_LEFT, COIN_RIGHT, COIN_SLANT_L, COIN_SLANT_R};
-    gen.coin_layout = layouts[rnd(6)];
-    uint8_t kinds[3] = {1, 0, 0};
-    int n = 1;
-    if (run.dist >= gen.red_at) kinds[n++] = 2;
-    if (run.dist >= gen.blue_at) kinds[n++] = 3;
-    gen.coin_kind = kinds[rnd(n)];
-  }
-  gen.coin_left--;
-  gen.since_coins = 0;
-  if (t->ob == OB_BRANCH || t->kind == PK_NARROW_L || t->kind == PK_NARROW_R) return;
-  t->coin_kind = (uint8_t)gen.coin_kind;
-  if (t->ob != OB_NONE || t->kind == PK_HOLE || t->kind == PK_HOLE_LONG) t->coin = COIN_ARC;
-  else if (is_turn(t)) t->coin = COIN_CENTRE;
-  else t->coin = (uint8_t)gen.coin_layout;
-  t->coins = t->kind == PK_T ? 0x07 : 0x1F;
-}
-
-/* the next tile after the last (false: the last is a junction not yet taken) */
-static bool lay(void) {
-  const Tile *last = tile_at(path_count - 1);
-  if (last->kind == PK_T) return false;
-  int dir = exit_dir(last);
-  Tile t;
-  memset(&t, 0, sizeof t);
-  t.gx = (int16_t)(last->gx + DX[dir]), t.gz = (int16_t)(last->gz + DZ[dir]);
-  t.dir = (uint8_t)dir, t.y = exit_y(last), t.kind = PK_STRAIGHT, t.theme = (uint8_t)gen.theme;
-  gen.since_turn++, gen.since_obstacle++, gen.since_coins++, gen.since_bonus++;
-  if (gen.want_theme != gen.theme) {
-    /* a change of place: up or down the steps between them, on a quiet stretch */
-    if (gen.since_turn > 2 && gen.since_obstacle > 2) {
-      float wy = LEVEL_Y[gen.want_theme];
-      if (wy > t.y + 1) t.kind = PK_STEP_UP;
-      else if (wy < t.y - 1) t.kind = PK_STEP_DOWN;
-      if (fabsf_(exit_y(&t) - wy) < 1) gen.theme = gen.want_theme;
-    }
-    scenery(&t);
-    push_tile(&t);
-    gen.back_to_back = 0;
-    return true;
-  }
-  bool can_turn = gen.since_turn >= gen.gap_turns;
-  bool can_obs = gen.since_turn != 1 && gen.back_to_back < 2 &&
-                 (gen.since_obstacle >= gen.gap_obs || (float)rnd(1000) < 1000.0f * gen.dbl);
-  uint8_t cand[8];
-  int n = 0;
-  cand[n++] = PK_STRAIGHT;
-  if (can_turn) {
-    int rel = (dir - gen.main_dir) & 3;
-    if (rel == 0) cand[n++] = PK_CORNER_L, cand[n++] = PK_CORNER_R, cand[n++] = PK_T;
-    else if (rel == 1) cand[n++] = PK_CORNER_L;
-    else cand[n++] = PK_CORNER_R;
-  }
-  if (can_obs) {
-    if (rnd(2)) cand[n++] = run.dist >= 500 && rnd(2) ? PK_HOLE_LONG : PK_HOLE;
-    if (gen.fire && gen.theme != TH_CLIFF && rnd(2)) cand[n++] = 100;   /* (fire) */
-    if (gen.narrows && gen.theme == TH_TEMPLE && gen.since_turn >= 2 && rnd(2)) cand[n++] = rnd(2) ? PK_NARROW_L : PK_NARROW_R;
-  }
-  int k = cand[rnd(n)];
-  if (k == 100) t.kind = PK_STRAIGHT, t.ob = OB_FIRE;
-  else t.kind = (uint8_t)k;
-  if (t.kind == PK_STRAIGHT && t.ob == OB_NONE && can_obs && rnd(2)) {
-    uint8_t obs[3];
-    int m = 0;
-    if (gen.theme == TH_TEMPLE) obs[m++] = OB_ROOT, obs[m++] = OB_TREE;
-    if (gen.branches && gen.theme != TH_PLANK) obs[m++] = OB_BRANCH;
-    if (m) t.ob = obs[rnd(m)];
-  }
-  bool obstacle = t.ob != OB_NONE || t.kind == PK_HOLE || t.kind == PK_HOLE_LONG || t.kind == PK_NARROW_L ||
-                  t.kind == PK_NARROW_R;
-  if (is_turn(&t)) gen.since_turn = 0;
-  if (obstacle) gen.since_obstacle = 0, gen.back_to_back++;
-  else gen.back_to_back = 0;
-  /* a power-up, now and then, where nothing else is */
-  if (!obstacle && t.kind == PK_STRAIGHT && gen.since_bonus >= 50 && pl.since_power >= 15 && rnd(2)) {
-    uint8_t items[4];
-    int m = 0;
-    if (pg.up[UP_COIN_BONUS]) items[m++] = IT_COIN_BONUS;
-    if (pg.up[UP_INVISIBILITY]) items[m++] = IT_INVISIBILITY;
-    if (pg.up[UP_MAGNET]) items[m++] = IT_MAGNET;
-    if (pg.up[UP_BOOST]) items[m++] = IT_BOOST;
-    if (m) t.item = items[rnd(m)], gen.since_bonus = 0;
-  }
-  coins_for(&t);
-  scenery(&t);
-  push_tile(&t);
-  if (t.kind == PK_T) {
-    /* its two ways, plain, until one is taken */
-    for (int s = 0; s < 2; s++) {
-      int d = (dir + (s ? 1 : 3)) & 3;
-      for (int i = 0; i < NSTUB; i++) {
-        Tile *u = &stub[s][i];
-        memset(u, 0, sizeof *u);
-        u->gx = (int16_t)(t.gx + DX[d] * (i + 1)), u->gz = (int16_t)(t.gz + DZ[d] * (i + 1));
-        u->dir = (uint8_t)d, u->kind = PK_STRAIGHT, u->theme = t.theme, u->y = t.y;
-        scenery(u);
-      }
-    }
-    stub_on = true;
-  }
-  return true;
-}
-
-static void lay_ahead(void) {
-  while (path_count - 1 - pl.tile < AHEAD && lay()) {
-  }
-}
-
-/* ---------------------------------------------------------------- the floor */
-static bool on_floor(const Tile *t, float a, float s, float *h) {
-  float as = fabsf_(s), aa = fabsf_(a);
-  *h = t->y;
-  switch (t->kind) {
-  case PK_HOLE: return as <= HALF_W && aa >= 10;
-  case PK_HOLE_LONG: return as <= HALF_W && aa >= 17;
-  case PK_NARROW_L: return (s >= -HALF_W && s <= -2) || (as <= HALF_W && aa >= 26);
-  case PK_NARROW_R: return (s >= 2 && s <= HALF_W) || (as <= HALF_W && aa >= 26);
-  case PK_CORNER_R: return (as <= HALF_W && a <= HALF_W) || (s >= HALF_W && s <= 30 && aa <= HALF_W);
-  case PK_CORNER_L: return (as <= HALF_W && a <= HALF_W) || (s <= -HALF_W && s >= -30 && aa <= HALF_W);
-  case PK_T: return (as <= HALF_W && a <= -HALF_W) || (aa <= HALF_W && as <= 30);
-  case PK_STEP_UP:
-  case PK_STEP_DOWN: {
-    int i = (int)((a + 30) / 12);
-    if (i < 0) i = 0;
-    if (i > 4) i = 4;
-    *h = t->y + (t->kind == PK_STEP_UP ? 3.0f * (float)(i + 1) : -3.0f * (float)i);
-    return as <= HALF_W;
-  }
-  default: return as <= HALF_W;
-  }
-}
-
-static void local(const Tile *t, float x, float z, float *a, float *s) {
-  float dx = x - game_tile_cx(t), dz = z - game_tile_cz(t);
-  *a = dx * DX[t->dir] + dz * DZ[t->dir];
-  *s = dx * DZ[t->dir] - dz * DX[t->dir];
-}
-
-static const Tile *find_tile(int gx, int gz) {
-  for (int i = path_count - 1; i >= 0; i--) {
-    const Tile *t = tile_at(i);
-    if (t->gx == gx && t->gz == gz) return t;
-  }
-  if (stub_on)
-    for (int s = 0; s < 2; s++)
-      for (int i = 0; i < NSTUB; i++)
-        if (stub[s][i].gx == gx && stub[s][i].gz == gz) return &stub[s][i];
-  return NULL;
-}
-
-static int round_(float v) { return (int)(v >= 0 ? v + 0.5f : v - 0.5f); }
-
-bool game_floor(float x, float z, float *y, const Tile **found) {
-  const Tile *t = find_tile(round_(x / TILE), round_(z / TILE));
-  if (found) *found = t;
-  if (!t) return false;
-  float a, s;
-  local(t, x, z, &a, &s);
-  return on_floor(t, a, s, y);
-}
-
-bool game_coin_pos(const Tile *t, int k, float *x, float *y, float *z) {
-  if (t->coin == COIN_NONE || !(t->coins >> k & 1)) return false;
-  float a = -25 + 12.5f * (float)k, s = 0, h = 0;
-  switch (t->coin) {
-  case COIN_LEFT: s = -6; break;
-  case COIN_RIGHT: s = 6; break;
-  case COIN_SLANT_L: s = 6 - 3.0f * (float)k; break;
-  case COIN_SLANT_R: s = -6 + 3.0f * (float)k; break;
-  case COIN_ARC: h = 10 * (1 - (a / 30) * (a / 30)); break;
-  default: break;
-  }
-  if (is_turn(t) && k >= 3) {
-    a = 0;
-    s = (t->kind == PK_CORNER_L ? -12.5f : 12.5f) * (float)(k - 2);
-  }
-  int d = t->dir;
-  *x = game_tile_cx(t) + a * DX[d] + s * DZ[d];
-  *z = game_tile_cz(t) + a * DZ[d] - s * DX[d];
-  *y = t->y + h;
-  return true;
 }
 
 /* ---------------------------------------------------------------- the pursuers' trail */
@@ -443,22 +163,29 @@ static void slide(void) {
   pl.slide_len = minf(pl.v * 0.007f, 0.75f);
 }
 
-/* the wings bring it back on the next quiet tile ahead (false: none near) */
+/* ResurrectPlayer: the wings bring it back on the next quiet piece ahead (false: none near) */
 static bool resurrect(void) {
-  for (int i = pl.tile + 1; i < path_count && i <= pl.tile + 10; i++) {
-    const Tile *t = tile_at(i);
-    if (t->kind != PK_STRAIGHT || t->ob != OB_NONE) continue;
-    pl.x = game_tile_cx(t) - 20 * DX[t->dir], pl.z = game_tile_cz(t) - 20 * DZ[t->dir];
-    pl.y = pl.ground = t->y, pl.vy = 0, pl.dir = t->dir, pl.tile = i;
-    pl.death_v = pl.v > START_V ? pl.v : 0;
-    pl.v = START_V;
-    pl.jumping = pl.falling = pl.sliding = pl.stumbling = false;
-    pl.on_ground = pl.over = true;
-    pl.wings = 0, pl.wings_recharge = 45, pl.stumble_timer = 10;
-    run.saved++;
-    trail_n = 0;
-    used_powers();
-    return true;
+  int i = path_root, chain[12], n = 0;
+  for (int k = 0; k < 10 && i >= 0; k++) {
+    const Tile *t = &tiles[i];
+    if (k && !t->has_obstacles && !path_is_turn(t) && t->mesh >= 0) {
+      for (int j = 0; j < n; j++) path_advance(chain[j]);
+      path_advance(i);
+      pl.x = path_cx(t) - 20 * DX[t->dir], pl.z = path_cz(t) - 20 * DZ[t->dir];
+      pl.y = pl.ground = t->y, pl.vy = 0, pl.dir = t->dir;
+      pl.death_v = pl.v > START_V ? pl.v : 0;
+      pl.v = START_V;
+      pl.jumping = pl.falling = pl.sliding = pl.stumbling = pl.higher = false;
+      pl.on_ground = pl.over = true;
+      pl.wings = 0, pl.wings_recharge = 45, pl.stumble_timer = 10;
+      run.saved++;
+      trail_n = 0;
+      used_powers();
+      return true;
+    }
+    if (k) chain[n++] = i;
+    if (path_is_turn(t) && k) break;
+    i = path_next(i, pl.dir);
   }
   return false;
 }
@@ -475,71 +202,36 @@ static void die(int how) {
   if (how != DEATH_FALL) pl.vy = 0;
 }
 
-/* pressed Left or Right: turn at the next corner (if it is reached within a second) */
+/* pressed Left or Right: turn at the next corner (if it is reached within a second), where the piece opens that way */
 static void try_turn(void) {
-  const Tile *t = tile_at(pl.tile);
-  if (!is_turn(t) || (t->hit & 2) || t->dir != pl.dir) return;
-  float dx = pl.x - game_tile_cx(t), dz = pl.z - game_tile_cz(t);
+  Tile *t = &tiles[path_root];
+  if (!path_is_turn(t) || t->turned) return;
+  float dx = pl.x - path_cx(t), dz = pl.z - path_cz(t);
   float r = pl.ground > 7.5f ? 6.5f : 10.0f;
   if (dx * dx + dz * dz > r * r) return;
+  int left = (pl.dir + 3) & 3, right = (pl.dir + 1) & 3;
+  bool can_l = path_opens(t, left), can_r = path_opens(t, right);
   int want = pl.turn_wish;
 #ifdef TR_PERF
   if (true)
 #else
   if (pl.boost)
 #endif
-    want = t->kind == PK_CORNER_L ? -1 : t->kind == PK_CORNER_R ? 1 : (rnd(2) ? 1 : -1);
-  if (!want) return;
-  if ((want < 0 && t->kind == PK_CORNER_R) || (want > 0 && t->kind == PK_CORNER_L)) return;
-  pl.dir = (uint8_t)((pl.dir + (want > 0 ? 1 : 3)) & 3);
+    want = can_l && can_r ? (rnd(2) ? 1 : -1) : can_l ? -1 : can_r ? 1 : 0;
+  if (!want || (want < 0 && !can_l) || (want > 0 && !can_r)) return;
+  pl.dir = (uint8_t)(want > 0 ? right : left);
   pl.turn_wish = 0;
   run.turns++;
-  tile_at(pl.tile)->hit |= 2;
-  if (t->kind == PK_T) {
-    for (int i = 0; i < NSTUB; i++) push_tile(&stub[want > 0][i]);
-    stub_on = false;
-    gen.since_turn = 0;
-    lay_ahead();
-  }
+  t->turned = 1;
 }
 
-static void follow_tile(void) {
-  for (int i = pl.tile - 1; i <= pl.tile + 2 && i < path_count; i++) {
-    if (i < 0) continue;
-    const Tile *t = tile_at(i);
-    if (t->gx == round_(pl.x / TILE) && t->gz == round_(pl.z / TILE)) {
-      pl.tile = i;
-      break;
-    }
-  }
-  while (pl.tile > BEHIND) {
-    path_first = (path_first + 1) % NTILES;
-    path_count--;
-    pl.tile--;
-  }
-  lay_ahead();
-}
-
-static void obstacles(float a0, float a1) {
-  Tile *t = tile_at(pl.tile);
-  if (t->ob == OB_NONE || (t->hit & 1)) return;
-  float lo = minf(a0, a1), hi = maxf(a0, a1);
-  static const float depth[5] = {0, 0.9f, 1.8f, 1.3f, 1.4f};
-  float d = depth[t->ob] + BOX;
-  if (hi < -d || lo > d) return;
-  float feet = pl.y - t->y, top = feet + (pl.sliding ? 4.0f : 9.59f);
-  bool hit = false;
-  switch (t->ob) {
-  case OB_ROOT: hit = feet < 1.9f; break;
-  case OB_TREE: hit = feet < 4.2f; break;
-  case OB_BRANCH: hit = top > 5.2f && feet < 7.4f; break;
-  case OB_FIRE: hit = feet < 4.0f; break;
-  default: break;
-  }
-  if (!hit || pl.invis > 0 || pl.boost) return;
-  t->hit |= 1;
-  if (t->ob == OB_ROOT) stumble();
-  else die(t->ob == OB_TREE ? DEATH_TREE : t->ob == OB_BRANCH ? DEATH_BRANCH : DEATH_FIRE);
+/* the obstacles of the piece under it: what the step from (x0, z0) ran into */
+static void obstacles(const Tile *t, float x0, float z0) {
+  int h = path_hit(t, x0, z0, pl.x, pl.z, pl.y, pl.sliding);
+  if (!h || pl.invis > 0) return;
+  if (!(h & FO_KILL)) stumble();
+  else if ((h & FO_JUMP) && (h & FO_SLIDE)) die(t->level == TH_PLANK ? DEATH_TANGLE : DEATH_FIRE);
+  else die(h & FO_JUMP ? DEATH_TREE : DEATH_BRANCH);
 }
 
 static bool box_hits(float x, float y, float z, float r) {
@@ -556,12 +248,14 @@ static void collect(void) {
     mult = m[pg.up[UP_MAGNET] > 5 ? 5 : pg.up[UP_MAGNET]];
   }
   float cy = pl.y + 4.8f;
-  for (int i = pl.tile - 1; i <= pl.tile + 3 && i < path_count; i++) {
-    if (i < 0) continue;
-    Tile *t = tile_at(i);
+  for (int i = 0; i < NTILES; i++) {
+    Tile *t = &tiles[i];
+    if (!t->alive || (!t->coins && !t->item)) continue;
+    float tx = path_cx(t) - pl.x, tz = path_cz(t) - pl.z;
+    if (tx * tx + tz * tz > 150.0f * 150.0f) continue;
     for (int k = 0; k < 5; k++) {
       float x, y, z;
-      if (!game_coin_pos(t, k, &x, &y, &z)) continue;
+      if (!path_coin_pos(t, k, &x, &y, &z)) continue;
       y += 3;
       if (box_hits(x, y, z, t->coin_kind == 1 ? 3.0f : 2.25f)) {
         t->coins &= (uint8_t)~(1 << k);
@@ -582,7 +276,7 @@ static void collect(void) {
       }
     }
     if (t->item) {
-      float x = game_tile_cx(t), z = game_tile_cz(t);
+      float x = path_cx(t), z = path_cz(t);
       float r = t->item == IT_INVISIBILITY || t->item == IT_MAGNET ? 3.0f : 2.25f;
       if (box_hits(x, t->y + 4.2f, z, r)) {
         int it = t->item, l = pg.up[it == IT_COIN_BONUS ? UP_COIN_BONUS : it == IT_INVISIBILITY ? UP_INVISIBILITY : it == IT_MAGNET ? UP_MAGNET : UP_BOOST];
@@ -629,24 +323,14 @@ static void collect(void) {
 void game_new_run(void) {
   memset(&pl, 0, sizeof pl);
   memset(&run, 0, sizeof run);
-  memset(&gen, 0, sizeof gen);
   memset(fly, 0, sizeof fly);
   memset(power_len, 0, sizeof power_len);
   if (pg.multiplier < 10) pg.multiplier = 10;
-  path_first = path_count = 0;
-  stub_on = false;
-  gen.theme = gen.want_theme = TH_TEMPLE;
-  coin_value_level();
-  pacing();
-  Tile t;
-  memset(&t, 0, sizeof t);
-  t.kind = PK_STRAIGHT;
-  push_tile(&t);
-  pl.tile = 0;
+  path_start();
+  pl.dir = D_N;
   pl.v = START_V, pl.z = -20, pl.on_ground = pl.over = true;
   pl.stumble_timer = 7;
   pl.since_power = 15;
-  lay_ahead();
   trail_n = 0, trail_head = 0, trail_gap = 0;
   for (int i = 0; i < 40; i++) {
     trail_add();
@@ -703,49 +387,65 @@ void game_step(uint32_t in) {
     if (acc > 0 && pl.v > maxv) pl.v = maxv;
   }
   try_turn();
-  /* along, and across toward the path's middle (and the lean) */
-  const Tile *t = tile_at(pl.tile);
-  float a0, s0;
-  local(t, pl.x, pl.z, &a0, &s0);
+  /* along, and across toward the middle of the piece under it (and the lean) */
+  const Tile *t = &tiles[path_root];
+  float x0 = pl.x, z0 = pl.z;
   float fx = (float)DX[pl.dir], fz = (float)DZ[pl.dir], rx = fz, rz = -fx;
   pl.x += fx * pl.v * DT, pl.z += fz * pl.v * DT;
   if (!pl.falling) {
-    float side = (pl.x - game_tile_cx(t)) * rx + (pl.z - game_tile_cz(t)) * rz;
+    float side = (pl.x - path_cx(t)) * rx + (pl.z - path_cz(t)) * rz;
     float move = (pl.lean - side) * 0.1f * 50 * 1.125f * DT;
     pl.x += rx * move, pl.z += rz * move;
   }
   pl.vy -= GRAVITY * DT;
   pl.y += pl.vy * DT;
-  follow_tile();
-  t = tile_at(pl.tile);
-  float a1, s1;
-  local(t, pl.x, pl.z, &a1, &s1);
-  if (a1 - a0 > 20 || a0 - a1 > 20) a0 = a1;   /* (a new tile) */
-  /* the floor */
-  float fy;
-  bool over = game_floor(pl.x, pl.z, &fy, NULL);
+  /* the piece under it (the root moves on, what is behind and the ways not taken pruned, the path laid on) */
+  int ni = path_at(pl.x, pl.z);
+  if (ni >= 0 && ni != path_root) path_advance(ni), ni = path_root;
+  t = ni >= 0 ? &tiles[ni] : NULL;
+  /* over ground: inside the piece's ground, or invisible (then over everything) */
+  bool inv = pl.invis > 0, over = inv || (t && path_ground(t, pl.x, pl.z));
 #ifdef TR_PERF
-  if (!over) over = true, fy = pl.ground;
+  over = true;
 #endif
-  if (!over && pl.boost && !pl.falling) over = true, fy = pl.ground;   /* (the boost carries it over gaps) */
+  if (over) {
+    float g = t ? t->y : pl.ground;
+    if (inv && t) {
+      /* (the game's safety net: over gaps and level changes the ground goes from one level to the next) */
+      int f = t->next[pl.dir];
+      const Tile *n = f >= 0 ? &tiles[f] : NULL;
+      if (t->obst == OB_HOLE || t->obst == OB_NARROW || t->obst == OB_LEVEL || (n && n->obst == OB_LEVEL && t->level != TH_CLIFF)) {
+        float a = (pl.x - path_cx(t)) * fx + (pl.z - path_cz(t)) * fz;
+        g = t->y + (a / TILE + 0.5f) * ((n ? n->y : t->y) - t->y);
+      }
+    }
+    if ((pl.ground < g || !pl.over) && pl.y < g - 6 && !inv) {
+      die(DEATH_LEDGE);   /* (into the side of the higher ground) */
+      if (pl.dead) {
+        pursue();
+        return;
+      }
+    }
+    if (g > pl.ground) pl.higher = true;
+    pl.ground = g;
+  }
   pl.over = over;
-  if (over && pl.y <= fy + 0.001f && pl.y >= fy - 4) {
-    pl.y = fy, pl.vy = 0;
-    pl.on_ground = true, pl.jumping = false, pl.falling = false;
-    pl.ground = fy;
-  } else {
+  float g = pl.ground;
+  if (over && ((!pl.falling && pl.y <= g) || (pl.falling && pl.y <= g && pl.y >= g - 6))) {
+    pl.jumping = false;
+    if (pl.falling && pl.y < g - 2 && !inv) stumble();   /* (caught the edge) */
+    if (pl.higher && pl.y >= g - 6 && pl.y < g - 2 && !inv && !pl.dead) stumble();   /* (up onto a step) */
+    pl.y = g, pl.vy = 0;
+    pl.on_ground = true, pl.higher = false;
+  } else
     pl.on_ground = false;
-    if (!over || pl.y < fy - 4) {
-      if (!pl.falling) pl.falling = true, pl.t_fall = 0, pl.sliding = false;
-      pl.t_fall += DT;
-    } else if (over && !pl.jumping)
-      pl.ground = fy;
-  }
-  if (pl.y < pl.ground - 40) {
-    die(DEATH_FALL);
-    if (pl.dead) return;
-  }
-  obstacles(a0, a1);
+  if (pl.y < g) {
+    if (!pl.falling) pl.falling = true, pl.t_fall = 0, pl.sliding = false;
+    pl.t_fall += DT;
+  } else
+    pl.falling = false;
+  if (!pl.dead && pl.y < -35) die(DEATH_FALL);
+  if (!pl.dead && t) obstacles(t, x0, z0);
   if (pl.dead) {
     pursue();
     return;
@@ -764,16 +464,7 @@ void game_step(uint32_t in) {
     if (run.coins == 0) run.dist_no_coins = run.dist;
     run.since_trip += d;
     if (run.since_trip > run.dist_no_trip) run.dist_no_trip = run.since_trip;
-    gen.since_level += d, gen.since_section += d;
-    if (gen.since_level > (gen.theme == TH_TEMPLE ? gen.level_temple : gen.level_other)) {
-      gen.since_level = 0;
-      if (rnd(4) <= 2 && gen.want_theme == gen.theme) change_level();
-    }
-    if ((!gen.fast && gen.since_section > gen.turn_section) || (gen.fast && gen.since_section > 100)) {
-      gen.since_section = 0;
-      if (rnd(4) <= 2) gen.fast = !gen.fast;
-    }
-    pacing();
+    path_pace(run.dist, pl.since_power, d);
   }
   collect();
   pl.anim += DT * pl.v / 22.0f;

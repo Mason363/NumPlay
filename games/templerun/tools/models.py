@@ -2,15 +2,21 @@
 """Makes src/data.c and src/data.h: every model Temple Run draws, as a table of meshes (src/models.h).
 
 These are plain stand-in models: boxes and wedges in the game's colours for the runner, the pursuers, the
-path pieces of its three places (the temple, the plank bridges, the cliffs), the roots, trees, branches and
-fire, the coins and power-ups, the jungle beside the path. Each model is a mesh by number (data.h), its
-far version a second, simpler mesh. The game only draws meshes by number, so the art can be made again by
-another tool writing the same table, without touching the game.
+coins and power-ups and the jungle beside the path. The path pieces are named after the game's prefabs
+(tools/pieces.py: M_templeStraightVert...), and their stand-ins are made from where each one has ground and
+obstacles (src/floor.c, tools/floor.py): flat tops, sides going down, a box for each obstacle. Each model is a
+mesh by number (data.h), its far version a second, simpler mesh. The game only draws meshes by number, so the
+art can be made again by another tool writing the same table, without touching the game.
 
 Units are the game's (a path tile is 60 across), stored x 4. Usage: models.py src"""
 import math
+import os
+import re
 import sys
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pieces  # noqa: E402
 
 Q = 4             # stored units a game unit
 MODELS = []       # (name, faces, far name or None)
@@ -19,7 +25,6 @@ MODELS = []       # (name, faces, far name or None)
 STONE = dict(top=0xA8977A, top2=0x9C8B6F, side=0x76684F, curb=0x8B7B60, base=0x5F5545)
 PLANK = dict(top=0x8D5E35, top2=0x7B5030, side=0x5A3B20, curb=0x6E4A2A, base=0x4A321C)
 CLIFF = dict(top=0x928A7C, top2=0x857D70, side=0x6C655A, curb=0x7B7366, base=0x585248)
-THEMES = [("TEMPLE", STONE), ("PLANK", PLANK), ("CLIFF", CLIFF)]
 SHIRT, TROUSERS, SKIN, HAIR, BOOTS, BELT = 0x5B7F99, 0x6F5B42, 0xD8A476, 0x3B2A1C, 0x3A2E24, 0x2E2620
 FUR, FUR2, FACE, EYE = 0x3E3631, 0x2F2925, 0x8C7262, 0xF0482A
 ROOT, TRUNK, BARK, LEAF, LEAF2 = 0x5B3F24, 0x6A4A2D, 0x55391F, 0x3A6B2C, 0x2F5A26
@@ -180,170 +185,137 @@ def pursuer(phase):
 
 # ---------------------------------------------------------------- path pieces
 W = 10.0          # half the walkway's width
-DEPTH = -42.0     # how far the stone goes down into the haze
+LEVEL = {"temple": 0.0, "plank": -15.0, "cliff": 15.0}   # (the game's GetPathHeight; prefabs are built at it)
 
 
-def floor(x0, z0, x1, z1, c, stripes=True, y=0.0):
-    """a walkway's top, in stripes across the run (they show the speed)"""
+def read_floor(src):
+    """src/floor.c (tools/floor.py): each prefab's ground cells (30 rows of 30 bits, or None) and its obstacles
+    (flags, height, polygon)"""
+    text = Path(src, "floor.c").read_text()
+    tables = {m.group(1): [int(v, 16) for v in m.group(2).split(",")]
+              for m in re.finditer(r"static const uint32_t (g\d+)\[FLOOR_CELLS\] = \{([^}]*)\};", text)}
+    cells = {}
+    for m in re.finditer(r"^  (NULL|g\d+),   /\* (\w+) \*/", text, re.M):
+        cells[m.group(2)] = None if m.group(1) == "NULL" else tables[m.group(1)]
+    obstacles = {}
+    for m in re.finditer(r"^  \{(\d+), (\d+), (\d+), 0, (-?[\d.]+)f, \{(.*)\}\},   /\* (\w+) \*/", text, re.M):
+        pts = [(int(x) / 4, int(z) / 4) for x, z in re.findall(r"\{(-?\d+), (-?\d+)\}", m.group(5))]
+        obstacles.setdefault(m.group(6), []).append((int(m.group(2)), float(m.group(4)), pts))
+    return cells, obstacles
+
+
+def theme_of(name):
+    for t, c in (("plank", PLANK), ("cliff", CLIFF)):
+        if name.startswith(t):
+            return t, c
+    return "temple", STONE
+
+
+def ground(rows, c, depth, stripes=True):
+    """a stand-in for a piece's ground: the cells' tops (in stripes 10 units deep, to show the speed) and the sides
+    going down where the ground ends inside the tile"""
+    on = lambda r, k: 0 <= r < 30 and 0 <= k < 30 and rows[r] >> k & 1
     out = []
-    if not stripes:
-        return [face([[x0, y, z0], [x1, y, z0], [x1, y, z1], [x0, y, z1]], c["top"], [0, 1, 0])]
-    n = max(1, round(abs(z1 - z0) / 10)) if abs(z1 - z0) >= abs(x1 - x0) else max(1, round(abs(x1 - x0) / 10))
-    along_z = abs(z1 - z0) >= abs(x1 - x0)
-    for i in range(n):
-        if along_z:
-            a, b = z0 + (z1 - z0) * i / n, z0 + (z1 - z0) * (i + 1) / n
-            pts = [[x0, y, a], [x1, y, a], [x1, y, b], [x0, y, b]]
-        else:
-            a, b = x0 + (x1 - x0) * i / n, x0 + (x1 - x0) * (i + 1) / n
-            pts = [[a, y, z0], [b, y, z0], [b, y, z1], [a, y, z1]]
-        out.append(face(pts, c["top"] if i % 2 == 0 else c["top2"], [0, 1, 0]))
+    band = 5 if stripes else 30
+    for b0 in range(0, 30, band):
+        # runs in each row of the band, merged down the band where they are the same
+        open_ = {}
+        for r in list(range(b0, min(30, b0 + band))) + [None]:
+            runs = set()
+            if r is not None:
+                k = 0
+                while k < 30:
+                    if on(r, k):
+                        k0 = k
+                        while k < 30 and on(r, k):
+                            k += 1
+                        runs.add((k0, k))
+                    k += 1
+            for run in list(open_):
+                if run not in runs:
+                    r0 = open_.pop(run)
+                    x0, x1, z0, z1 = -30 + 2 * run[0], -30 + 2 * run[1], -30 + 2 * r0, -30 + 2 * (r if r is not None else min(30, b0 + band))
+                    col = c["top"] if (b0 // band) % 2 == 0 else c["top2"]
+                    out.append(face([[x0, 0, z0], [x1, 0, z0], [x1, 0, z1], [x0, 0, z1]], col, [0, 1, 0]))
+            for run in runs:
+                open_.setdefault(run, r)
+    # the sides: along x where a row's ground ends, along z where a column's does (merged along the edge)
+    def sides(edge, n_out, horiz):
+        k = 0
+        while k < 30:
+            if edge(k):
+                k0 = k
+                while k < 30 and edge(k):
+                    k += 1
+                yield k0, k
+            else:
+                k += 1
+    for j in range(30):
+        for side in (-1, 1):
+            # x edges: between columns j and j+side, along z
+            e = lambda r, j=j, side=side: on(r, j) and not on(r, j + side) and 0 <= j + side < 30
+            for r0, r1 in sides(e, None, False):
+                x = -30 + 2 * j + (2 if side > 0 else 0)
+                z0, z1 = -30 + 2 * r0, -30 + 2 * r1
+                out.append(face([[x, 0, z0], [x, 0, z1], [x, depth, z1], [x, depth, z0]], c["side"], [side, 0, 0]))
+            # z edges: between rows j and j+side, along x
+            e = lambda k, j=j, side=side: on(j, k) and not on(j + side, k) and 0 <= j + side < 30
+            for k0, k1 in sides(e, None, True):
+                z = -30 + 2 * j + (2 if side > 0 else 0)
+                x0, x1 = -30 + 2 * k0, -30 + 2 * k1
+                out.append(face([[x0, 0, z], [x1, 0, z], [x1, depth, z], [x0, depth, z]], c["side"], [0, 0, side]))
     return out
 
 
-def wall(p0, p1, normal, c, y0=DEPTH, y1=0.0, rgb=None):
-    """a side of the walkway going down from its edge, from p0 to p1 (x, z)"""
-    pts = [[p0[0], y1, p0[1]], [p1[0], y1, p1[1]], [p1[0], y0, p1[1]], [p0[0], y0, p0[1]]]
-    return [face(pts, rgb if rgb is not None else c["side"], [normal[0], 0, normal[1]])]
+def obstacle_shapes(flags, h, pts):
+    """a stand-in for an obstacle region: roots and trunks to jump up to its height, a branch to slide under"""
+    xs, zs = [p[0] for p in pts], [p[1] for p in pts]
+    x0, x1, z0, z1 = min(xs), max(xs), min(zs), max(zs)
+    if flags & 1 and flags & 2:
+        return box(x0, 0.0, z0, x0 + 1.5, 9.0, z1, VENT) + box(x1 - 1.5, 0.0, z0, x1, 9.0, z1, VENT)   # (the fire: scene.c)
+    if flags & 2:   # slide under it
+        out = box(x0, 5.2, z0, x1, 7.6, z1, TRUNK, top=0x7B5A38)
+        return out + box(x0, 7.4, z0, x1, 9.8, z1, LEAF, top=LEAF2, skip="b")
+    if h <= 0:
+        return []
+    col, top = (ROOT, 0x6E4E2E) if h < 3 else (TRUNK, 0x7B5A38)
+    return box(x0, 0.0, z0, x1, max(h, 1.6), z1, col, top=top, skip="b")
 
 
-def curb(p0, p1, inward, c, theme):
-    """the low border along an edge: stone blocks in the temple, rails on the bridges, rock on the cliffs"""
-    (x0, z0), (x1, z1) = p0, p1
-    ix, iz = inward
-    t = 1.6
-    lo, hi = (min(x0, x1, x0 + ix * t), max(x0, x1, x0 + ix * t)), (min(z0, z1, z0 + iz * t), max(z0, z1, z0 + iz * t))
-    if theme == "PLANK":
-        out = []
-        along = (x1 - x0, z1 - z0)
-        n = 3
-        for i in range(n + 1):
-            px, pz = x0 + along[0] * i / n + ix * 0.6, z0 + along[1] * i / n + iz * 0.6
-            out += box(px - 0.5, 0.0, pz - 0.5, px + 0.5, 4.5, pz + 0.5, c["curb"], skip="b")
-        out += box(lo[0] + (0.3 if ix else 0), 3.6, lo[1] + (0.3 if iz else 0), hi[0] - (0.3 if ix else 0) if ix else hi[0],
-                   4.0, hi[1] - (0.3 if iz else 0) if iz else hi[1], c["curb"], skip="b")
-        return out
-    h = 1.6 if theme == "TEMPLE" else 2.4
-    return box(lo[0], 0.0, lo[1], hi[0], h, hi[1], c["curb"], skip="b")
-
-
-def piece(kind, c, theme):
-    """the faces of one path tile (the run comes from -z)"""
+def path_piece(name, cells, obstacles, far=False):
+    theme, c = theme_of(name)
     out = []
-    if kind == "STRAIGHT":
-        out += floor(-W, -30, W, 30, c)
-        out += wall((-W, 30), (-W, -30), (-1, 0), c) + wall((W, -30), (W, 30), (1, 0), c)
-        out += curb((-W, -30), (-W, 30), (1, 0), c, theme) + curb((W, -30), (W, 30), (-1, 0), c, theme)
-    elif kind in ("HOLE", "HOLE_LONG"):
-        g = 10 if kind == "HOLE" else 17
-        for z0, z1 in ((-30, -g), (g, 30)):
-            out += floor(-W, z0, W, z1, c, stripes=False)
-            out += wall((-W, z1), (-W, z0), (-1, 0), c) + wall((W, z0), (W, z1), (1, 0), c)
-            out += curb((-W, z0), (-W, z1), (1, 0), c, theme) + curb((W, z0), (W, z1), (-1, 0), c, theme)
-        out += wall((-W, -g), (W, -g), (0, 1), c) + wall((W, g), (-W, g), (0, -1), c)
-    elif kind in ("NARROW_L", "NARROW_R"):
-        s = -1 if kind == "NARROW_L" else 1
-        a, b = sorted((s * W, s * 2.0))
-        out += floor(a, -30, b, 30, c)
-        out += wall((a, 30), (a, -30), (-1, 0), c) + wall((b, -30), (b, 30), (1, 0), c)
-        out += curb((s * W, -30), (s * W, 30), (-s, 0), c, theme)
-        # the broken edge where the walkway fell away
-        out += floor(-W, -30, W, -26, c, stripes=False) + floor(-W, 26, W, 30, c, stripes=False)
-        out += wall((-s * W, -26), (s * 2.0, -26), (0, 1), c) + wall((s * 2.0, 26), (-s * W, 26), (0, -1), c)
-    elif kind in ("CORNER_L", "CORNER_R"):
-        s = 1 if kind == "CORNER_R" else -1
-        out += floor(-W, -30, W, W, c)
-        out += floor(min(s * W, s * 30), -W, max(s * W, s * 30), W, c)
-        out += wall((-s * W, -30), (-s * W, W), (-s, 0), c) + wall((-s * W, W), (s * 30, W), (0, 1), c)
-        out += wall((s * W, W - 2 * W), (s * W, -30), (s, 0), c) + wall((s * 30, -W), (s * W, -W), (0, -1), c)
-        out += curb((-s * W, -30), (-s * W, W), (s, 0), c, theme) + curb((-s * W, W), (s * 30, W), (0, -1), c, theme)
-        out += curb((s * W, -30), (s * W, -W), (-s, 0), c, theme) + curb((s * W, -W), (s * 30, -W), (0, 1), c, theme)
-    elif kind == "T":
-        out += floor(-W, -30, W, -W, c)
-        out += floor(-30, -W, 30, W, c)
-        out += wall((-30, W), (30, W), (0, 1), c)
-        out += wall((-W, -W), (-W, -30), (-1, 0), c) + wall((W, -30), (W, -W), (1, 0), c)
-        out += wall((-W, -W), (-30, -W), (0, -1), c) + wall((30, -W), (W, -W), (0, -1), c)
-        out += curb((-30, W), (30, W), (0, -1), c, theme)
-        out += curb((-W, -30), (-W, -W), (1, 0), c, theme) + curb((W, -30), (W, -W), (-1, 0), c, theme)
-        out += curb((-30, -W), (-W, -W), (0, 1), c, theme) + curb((W, -W), (30, -W), (0, 1), c, theme)
-    elif kind in ("STEP_UP", "STEP_DOWN"):
-        # 15 units up or down over the tile, in five steps of 3 (the game's floor: game.c)
-        up = kind == "STEP_UP"
-        hs = [3.0 * (i + 1) if up else -3.0 * i for i in range(5)]
-        for i in range(5):
-            z0, z1, y = -30 + 12 * i, -18 + 12 * i, hs[i]
-            out.append(face([[-W, y, z0], [W, y, z0], [W, y, z1], [-W, y, z1]], c["top"] if i % 2 == 0 else c["top2"], [0, 1, 0]))
-            out += wall((-W, z1), (-W, z0), (-1, 0), c, y1=y) + wall((W, z0), (W, z1), (1, 0), c, y1=y)
-            py = hs[i - 1] if i else (0.0 if up else None)
-            if py is not None and y > py:
-                out.append(face([[-W, py, z0], [W, py, z0], [W, y, z0], [-W, y, z0]], c["side"], [0, 0, -1]))
-    return out
+    rows = cells.get(name)
+    level = LEVEL[theme]
+    if rows:
+        out = ground(rows, c, -40.0 if theme != "cliff" else -55.0, stripes=not far)
+    if not far:
+        for flags, h, pts in obstacles.get(name, []):
+            out += obstacle_shapes(flags, h - level, pts)
+        if name == "temple":
+            out += temple()
+    # (the game's prefabs are built at their level's height, and laid at 0)
+    return [([[q[0], q[1] + level, q[2]] for q in pts], rgb, n, two) for pts, rgb, n, two in out]
 
 
 def cliff_face():
     """the rock wall rising on the cliff path's left"""
-    out = [face([[-W - 5, 0, -30], [-W - 5, 0, 30], [-W - 9, 20, 30], [-W - 9, 20, -30]], 0x8A8274, [1, 0, 0])]
-    out.append(face([[-W - 9, 20, -30], [-W - 9, 20, 30], [-W - 24, 20, 30], [-W - 24, 20, -30]], 0x56743A, [0, 1, 0]))
-    return out
-
-
-def far_piece(kind, c):
-    """far off: only the walkway's top and its sides"""
-    full = {"STRAIGHT": [(-W, -30, W, 30)], "HOLE": [(-W, -30, W, -10), (-W, 10, W, 30)],
-            "HOLE_LONG": [(-W, -30, W, -17), (-W, 17, W, 30)], "NARROW_L": [(-W, -30, -2, 30)],
-            "NARROW_R": [(2, -30, W, 30)], "CORNER_L": [(-W, -30, W, W), (-30, -W, -W, W)],
-            "CORNER_R": [(-W, -30, W, W), (W, -W, 30, W)], "T": [(-W, -30, W, -W), (-30, -W, 30, W)]}
-    out = []
-    for x0, z0, x1, z1 in full.get(kind, []):
-        out += floor(x0, z0, x1, z1, c, stripes=False)
-    if kind in ("STRAIGHT", "HOLE", "HOLE_LONG"):
-        out += wall((-W, 30), (-W, -30), (-1, 0), c, y0=-24) + wall((W, -30), (W, 30), (1, 0), c, y0=-24)
-    if kind in ("STEP_UP", "STEP_DOWN"):
-        a, b = (3, 15) if kind == "STEP_UP" else (0, -12)
-        out.append(face([[-W, a, -30], [W, a, -30], [W, b, 30], [-W, b, 30]], c["top"], [0, 1, 0]))
+    out = [face([[-11, 0, -30], [-11, 0, 30], [-15, 20, 30], [-15, 20, -30]], 0x8A8274, [1, 0, 0])]
+    out.append(face([[-15, 20, -30], [-15, 20, 30], [-30, 20, 30], [-30, 20, -30]], 0x56743A, [0, 1, 0]))
     return out
 
 
 # ---------------------------------------------------------------- obstacles, coins, power-ups, scenery
-def root_low():
-    """a root across the path, low enough to run into and stumble (jump it)"""
-    out = []
-    for i, (x0, x1) in enumerate(((-W, -4), (-4.5, 3.5), (3, W))):
-        h = 1.6 + 0.5 * (i % 2)
-        out += box(x0, 0.0, -0.9, x1, h, 0.9, ROOT, top=0x6E4E2E, skip="b")
-    return out
-
-
-def tree_jump():
-    """a fallen trunk across the path: jump it"""
-    out = box(-W - 3, 0.0, -1.8, W + 3, 4.2, 1.8, TRUNK, top=0x7B5A38, skip="b")
-    out += box(-W - 4, -3.0, -2.2, -W - 1, 5.0, 2.2, BARK, skip="b")
-    out += box(W + 1, -3.0, -2.2, W + 4, 5.0, 2.2, BARK, skip="b")
-    return out
-
-
-def branch_slide():
-    """a branch across the path at head height: slide under it"""
-    out = box(-W - 3, 5.2, -1.3, W + 3, 7.4, 1.3, TRUNK, top=0x7B5A38)
-    for x in (-6.0, 1.0, 6.5):
-        out += box(x, 7.2, -2.6, x + 3.4, 9.6, 2.6, LEAF, top=LEAF2)
-    out += box(-W - 3.5, 0.0, -1.6, -W - 1.0, 7.6, 1.6, BARK, skip="b")
-    out += box(W + 1.0, 0.0, -1.6, W + 3.5, 7.6, 1.6, BARK, skip="b")
-    return out
-
-
 def fire(t):
-    """fire jets across the path from vents in the floor: jump them"""
+    """the fire across a flame tower piece (jump over it or slide under it): tongues between the towers, at the
+    height the game's obstacle has (from 3.5 up to 8 above the floor)"""
     out = []
-    for i, x in enumerate((-7.0, -2.0, 3.0)):
-        out += box(x, 0.0, -1.4, x + 4.0, 0.6, 1.4, VENT, skip="b")
-        h = 4.6 + 1.3 * math.sin(t * 2.1 + i * 1.7)
-        cx = x + 2.0
-        for k, (wd, hh, col) in enumerate(((1.7, h, FIRE), (0.9, h * 0.7, FIRE2))):
-            for zs in (-1, 1):
-                pts = [[cx - wd, 0.6, zs * 0.25 * (k + 1)], [cx + wd, 0.6, zs * 0.25 * (k + 1)], [cx, 0.6 + hh, 0]]
-                out.append(face(pts, col, [0, 0, -1 if zs < 0 else 1], two=True))
+    for i, x in enumerate((-8.5, -4.0, 0.5, 5.0)):
+        w = 2.4 + 0.5 * math.sin(t * 2.1 + i * 1.7)
+        y0, y1 = 3.6, 7.8 + 0.5 * math.sin(t * 1.3 + i)
+        for k, (inset, col) in enumerate(((0.0, FIRE), (0.8, FIRE2))):
+            pts = [[x + inset, y0 + inset, 0.1 * k], [x + w + 1.5 - inset, (y0 + y1) / 2, 0.1 * k], [x + inset, y1 - inset, 0.1 * k]]
+            out.append(face(pts, col, [0, 0, -1], two=True))
     return out
 
 
@@ -413,7 +385,13 @@ def temple():
     return out
 
 
-def build():
+def build(src):
+    # the game's path pieces first, in floor.c's order (their numbers are the same), then their far versions
+    cells, obstacles = read_floor(src)
+    for name in pieces.PREFABS:
+        add(name, path_piece(name, cells, obstacles), name + "_far")
+    for name in pieces.PREFABS:
+        add(name + "_far", path_piece(name, cells, obstacles, far=True))
     for i in range(4):
         add(f"RUNNER_RUN{i}", person(i * math.pi / 2), None)
     add("RUNNER_JUMP", person(0, "jump"))
@@ -425,14 +403,6 @@ def build():
     add("PURSUER_RUN1", pursuer(math.pi / 2))
     add("PURSUER_RUN2", pursuer(math.pi))
     add("PURSUER_RUN3", pursuer(3 * math.pi / 2))
-    kinds = ["STRAIGHT", "HOLE", "HOLE_LONG", "NARROW_L", "NARROW_R", "CORNER_L", "CORNER_R", "T", "STEP_UP", "STEP_DOWN"]
-    for theme, c in THEMES:
-        for k in kinds:
-            add(f"{theme}_{k}", piece(k, c, theme), f"{theme}_{k}_FAR")
-            add(f"{theme}_{k}_FAR", far_piece(k, c))
-    add("ROOT_LOW", root_low())
-    add("TREE_JUMP", tree_jump())
-    add("BRANCH_SLIDE", branch_slide())
     for i in range(4):
         add(f"FIRE{i}", fire(i * math.pi / 2))
     for k, rgb in COIN_RGB.items():
@@ -447,15 +417,14 @@ def build():
     add("JUNGLE_TALL_FAR", jungle_far(44))
     add("PILLAR", pillar())
     add("CLIFF_WALL", cliff_face())
-    add("TEMPLE", temple())
 
 
 def write(src):
-    build()
+    build(src)
     names = [m[0] for m in MODELS]
     h = ["/* Temple Run: the mesh numbers (data.c, made by tools/models.py). */", "#ifndef TR_DATA_H", "#define TR_DATA_H",
          '#include "models.h"', '#include "r3d.h"', "", "enum {"]
-    h += [f"  M_{n}," for n in names] + ["  M_COUNT", "};", "#endif", ""]
+    h += [f"  M_{n}," for n in names] + ["  M_COUNT,", f"  M_PIECES = {len(pieces.PREFABS)}   /* (the path pieces: floor.c's, in its order) */", "};", "#endif", ""]
     c = ["/* Made by tools/models.py: Temple Run's stand-in models (boxes and wedges), as a mesh table. */",
          '#include "data.h"', "", "const Texture *const r_tex[1] = {0};", ""]
     table = []

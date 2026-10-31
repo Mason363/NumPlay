@@ -10,13 +10,15 @@
  * (Home never). --god: nothing hurts (invisible, and the wings always on). --up N: every upgrade at level N;
  * --use N: N of each thing to use. Screenshots are DIR/shot_<frame>.ppm; --raw keeps frames FROM..TO as raw
  * RGB565 files for tools/record.py --frames. --invis: always invisible (obstacles pass, gaps and corners don't).
- * --root F: at frame F the next tiles are plain (up to a corner) and the next one has a root across it; --calm F:
- * at frame F the last stumble is long ago. */
+ * --root F: at frame F the next pieces are plain (up to a corner) and the next one has a root across it; --calm F:
+ * at frame F the last stumble is long ago; --plain F: from frame F on, the pieces ahead are plain (up to a corner).
+ * --trace F prints the runner and the pieces under and ahead of it from frame F on. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include "../src/app.h"
+#include "../src/data.h"
 #include "../src/game.h"
 #include "../src/r3d.h"
 #include "../src/save.h"
@@ -58,59 +60,114 @@ static void parse_keys(const char *spec) {
 /* ---------------------------------------------------------------- the bot */
 static const int DX[4] = {0, 1, 0, -1}, DZ[4] = {1, 0, -1, 0};
 
+/* ground at a point, on any piece laid */
+static bool ground_at(float x, float z) {
+  int gx = (int)(x / TILE + (x >= 0 ? 0.5f : -0.5f)), gz = (int)(z / TILE + (z >= 0 ? 0.5f : -0.5f));
+  for (int i = 0; i < NTILES; i++)
+    if (tiles[i].alive && tiles[i].gx == gx && tiles[i].gz == gz && path_ground(&tiles[i], x, z)) return true;
+  return false;
+}
+
+/* how far ahead the ground goes on, at lean l */
+static float ground_ahead(float l, float upto) {
+  int d = pl.dir;
+  float fx = (float)DX[d], fz = (float)DZ[d], rx = fz, rz = -fx;
+  const Tile *t = &tiles[path_root];
+  float s = (pl.x - path_cx(t)) * rx + (pl.z - path_cz(t)) * rz;
+  for (float a = 1; a <= upto; a += 2)
+    if (!ground_at(pl.x + fx * a + rx * (l - s), pl.z + fz * a + rz * (l - s))) return a;
+  return upto + 1;
+}
+
 static uint32_t bot(void) {
-  static int wait, side;
+  static int wait, at_gx = 1 << 20, at_gz, side;
   if (pl.dead) return 0;
   uint32_t k = 0;
-  float fx = (float)DX[pl.dir], fz = (float)DZ[pl.dir];
-  /* lean along narrow paths (and toward coins off the middle) */
-  for (int i = pl.tile; i < path_count && i <= pl.tile + 1; i++) {
-    const Tile *t = tile_at(i);
-    if (t->dir != pl.dir) break;
-    if (t->kind == PK_NARROW_L) k |= K_LEAN_L;
-    if (t->kind == PK_NARROW_R) k |= K_LEAN_R;
-    if (!k && i == pl.tile && t->coins && (t->coin == COIN_LEFT || t->coin == COIN_RIGHT)) k |= t->coin == COIN_LEFT ? K_LEAN_L : K_LEAN_R;
+  int d = pl.dir;
+  float fx = (float)DX[d], fz = (float)DZ[d];
+  /* lean where the ground goes on farthest (narrow paths) */
+  bool narrow = tiles[path_root].obst == OB_NARROW || (path_next(path_root, d) >= 0 && tiles[path_next(path_root, d)].obst == OB_NARROW);
+  if (narrow) {
+    float g0 = ground_ahead(0, 60), gl = ground_ahead(-6, 60), gr = ground_ahead(6, 60);
+    if (g0 < 50 && (gl > g0 + 4 || gr > g0 + 4)) k |= gl >= gr ? K_LEAN_L : K_LEAN_R;
   }
   if (wait > 0) {
     wait--;
     return k;
   }
-  for (int i = pl.tile; i < path_count && i <= pl.tile + 3; i++) {
-    const Tile *t = tile_at(i);
-    float d = (game_tile_cx(t) - pl.x) * fx + (game_tile_cz(t) - pl.z) * fz;
-    if (t->dir != pl.dir || d < -4) continue;
-    if (t->kind == PK_CORNER_L || t->kind == PK_CORNER_R || t->kind == PK_T) {
-      if (d < pl.v * 0.4f && !(t->hit & 2)) {
-        side = t->kind == PK_CORNER_L ? -1 : t->kind == PK_CORNER_R ? 1 : (side ? side : 1);
-        wait = 10;
-        return k | (side < 0 ? K_LEFT : K_RIGHT);
+  /* corners and junctions: turn where the path goes on (straight on, if it does) */
+  for (int i = path_root, n = 0; i >= 0 && n < 3; i = path_next(i, d), n++) {
+    const Tile *t = &tiles[i];
+    if (!path_is_turn(t) || t->turned) continue;
+    float a = (path_cx(t) - pl.x) * fx + (path_cz(t) - pl.z) * fz;
+    if (a > pl.v * 0.4f || a < -6) break;
+    if (path_opens(t, d)) break;
+    bool l = path_opens(t, (d + 3) & 3), r = path_opens(t, (d + 1) & 3);
+    if (at_gx != t->gx || at_gz != t->gz) at_gx = t->gx, at_gz = t->gz, side = l && r ? (rand() & 1 ? 1 : -1) : l ? -1 : 1;
+    wait = 10;
+    return k | (side < 0 ? K_LEFT : K_RIGHT);
+  }
+  /* obstacles: jump the roots and trunks, slide under branches and fire */
+  for (int i = path_root, n = 0; i >= 0 && n < 2; i = path_next(i, d), n++) {
+    const Tile *t = &tiles[i];
+    for (int o = 0; o < floor_nobstacles; o++) {
+      const FloorObstacle *ob = &floor_obstacles[o];
+      if (ob->piece != t->mesh || ob->height <= t->y + 0.01f) continue;
+      float lo = 1e9f, hi = -1e9f;
+      for (int p = 0; p < ob->n; p++) {
+        float a = (path_cx(t) + ob->p[p][0] * 0.25f - pl.x) * fx + (path_cz(t) + ob->p[p][1] * 0.25f - pl.z) * fz;
+        lo = a < lo ? a : lo, hi = a > hi ? a : hi;
       }
-      break;
-    }
-    /* a jump just before it: in the air long enough for two in a row */
-    float edge = t->kind == PK_HOLE ? 10 : t->kind == PK_HOLE_LONG ? 17 : t->ob == OB_TREE ? 3.6f : 3.2f;
-    bool jumpy = t->ob == OB_ROOT || t->ob == OB_TREE || t->ob == OB_FIRE || t->kind == PK_HOLE || t->kind == PK_HOLE_LONG;
-    if (jumpy && d - edge < 4 + pl.v * 0.06f && d - edge > -2 && pl.on_ground && !pl.stumbling) {
-      wait = 12;
-      return k | K_UP;
-    }
-    if (t->ob == OB_BRANCH && !pl.sliding) {
-      float len = pl.v * 0.007f;
-      if (len > 0.75f) len = 0.75f;
-      if (d < pl.v * len * 0.5f + 3 && d > 4) {
-        wait = 6;
-        return k | K_DOWN;
+      if (hi < 0) continue;
+      if (ob->flags & FO_SLIDE) {
+        float len = pl.v * 0.007f > 0.75f ? 0.75f : pl.v * 0.007f;
+        if (lo < pl.v * len * 0.5f && !pl.sliding && !pl.jumping) {
+          wait = 6;
+          return k | K_DOWN;
+        }
+      } else if (lo < 4 + pl.v * 0.06f && pl.on_ground && !pl.stumbling) {
+        wait = 12;
+        return k | K_UP;
       }
     }
   }
+  /* gaps, and steps up: jump at the edge */
+  float lean = (k & K_LEAN_L) ? -6 : (k & K_LEAN_R) ? 6 : 0;
+  float edge = ground_ahead(lean, 40);
+  if (edge < 4 + pl.v * 0.05f && pl.on_ground && !pl.stumbling) {
+    int next = path_next(path_root, d);
+    const Tile *t = &tiles[path_root];
+    bool corner = path_is_turn(t) && !path_opens(t, d);
+    if (!corner && !(next >= 0 && tiles[next].y < t->y - 1 && tiles[next].obst != OB_HOLE)) {
+      wait = 12;
+      return k | K_UP;
+    }
+  }
   return k;
+}
+
+/* the test's own path: plain straight pieces ahead (up to a corner), and a root across the next one */
+static void plain_ahead(bool root) {
+  int d = pl.dir, i = path_next(path_root, d);
+  for (int n = 0; i >= 0 && n < 8; i = path_next(i, d), n++) {
+    Tile *t = &tiles[i];
+    if (path_is_turn(t) || t->obst == OB_LEVEL || t->level != TH_TEMPLE) break;
+    bool v = d == D_N || d == D_S;
+    t->type = v ? PT_STRAIGHT_V : PT_STRAIGHT_H;
+    t->mesh = v ? M_templeStraightVert : M_templeStraightHorz;
+    t->obst = OB_NONE, t->has_obstacles = 0;
+    if (root && n == 0) {
+      t->mesh = v ? M_templeStraightTreeTripLeftVert : M_templeStraightTreeTripUpHorz;
+      t->obst = OB_STUMBLE, t->has_obstacles = 1;
+    }
+  }
 }
 
 int main(int argc, char **argv) {
   int frames = 600, draw_every = 1, bot_from = -1, fuzz_from = -1, coins = -1, up = -1, use = -1, raw_from = 0, raw_to = -1;
   const char *shots = "", *out = "build/shots", *saves = "build/host-saves", *raw = NULL;
   bool stats = false, all = false, god = false, invis = false;
-  int roots[8], nroots = 0, calm = -1;
+  int roots[8], nroots = 0, calm = -1, trace = -1, plain = -1;
   static char rawdir[512];
   for (int i = 1; i < argc; i++) {
     const char *a = argv[i], *v = i + 1 < argc ? argv[i + 1] : "";
@@ -135,6 +192,8 @@ int main(int argc, char **argv) {
     else if (!strcmp(a, "--invis")) invis = true;
     else if (!strcmp(a, "--root") && nroots < 8) roots[nroots++] = atoi(v), i++;
     else if (!strcmp(a, "--calm")) calm = atoi(v), i++;
+    else if (!strcmp(a, "--trace")) trace = atoi(v), i++;
+    else if (!strcmp(a, "--plain")) plain = atoi(v), i++;
     else if (!strcmp(a, "--stats")) stats = true;
   }
   if (draw_every < 1) draw_every = 1;
@@ -171,26 +230,26 @@ int main(int argc, char **argv) {
     }
     if (f == calm) pl.stumble_timer = 10;
     for (int i = 0; i < nroots; i++)
-      if (f == roots[i]) {
-        for (int j = pl.tile + 1; j < path_count && j <= pl.tile + 8; j++) {
-          Tile *t = tile_at(j);
-          if (t->kind == PK_CORNER_L || t->kind == PK_CORNER_R || t->kind == PK_T) break;
-          if (t->kind != PK_STEP_UP && t->kind != PK_STEP_DOWN) t->kind = PK_STRAIGHT;
-          t->ob = OB_NONE, t->hit = 0;
-        }
-        tile_at(pl.tile + 1)->ob = OB_ROOT;
-      }
+      if (f == roots[i]) plain_ahead(true);
+    if (plain >= 0 && f >= plain && f % 20 == 0) plain_ahead(false);
     if (invis && pl.invis < 1) pl.invis = 1;
     if (god) {
       if (pl.invis < 1) pl.invis = 1;
       pl.wings = 30;
+    }
+    if (trace >= 0 && f >= trace && f % 3 == 0) {
+      const Tile *t = &tiles[path_root];
+      int n = path_next(path_root, pl.dir);
+      printf("%d: wish %d dir %d x %.1f z %.1f y %.1f ground %.1f over %d fall %d jump %d v %.0f | root %d type %d level %d mesh %d (%d,%d) | next type %d level %d mesh %d\n", f, pl.turn_wish, pl.dir, pl.x, pl.z, pl.y,
+             pl.ground, pl.over, pl.falling, pl.jumping, pl.v, path_root, t->type, t->level, t->mesh, t->gx, t->gz, n >= 0 ? tiles[n].type : -1,
+             n >= 0 ? tiles[n].level : -1, n >= 0 ? tiles[n].mesh : -1);
     }
     bool was_dead = pl.dead;
     app_step(k, k & ~prev);
     prev = k;
     if (pl.dead && !was_dead) {
       deaths++, last_death = pl.death;
-      if (stats) printf("dead at frame %d: death %d dist %.0f tile kind %d ob %d feet %.1f v %.0f vy %.0f jumping %d ground %d\n", f, pl.death, run.dist, tile_at(pl.tile)->kind, tile_at(pl.tile)->ob, pl.y - tile_at(pl.tile)->y, pl.v, pl.vy, pl.jumping, pl.on_ground);
+      if (stats) printf("dead at frame %d: death %d dist %.0f piece %d type %d obstacle %d feet %.1f v %.0f jumping %d\n", f, pl.death, run.dist, tiles[path_root].mesh, tiles[path_root].type, tiles[path_root].obst, pl.y - pl.ground, pl.v, pl.jumping);
     }
     host_time += (f % 3 == 2) ? 17 : 16;
     char name[64], list[8192];

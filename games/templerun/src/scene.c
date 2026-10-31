@@ -79,34 +79,29 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
   }
 }
 
-static int path_mesh(const Tile *t) {
-  static const uint8_t base[TH_COUNT] = {M_TEMPLE_STRAIGHT, M_PLANK_STRAIGHT, M_CLIFF_STRAIGHT};
-  return base[t->theme] + 2 * t->kind;   /* (data.c: each kind, then its far version) */
-}
-
 static void draw_tile(const Tile *t, bool ahead) {
-  float x = game_tile_cx(t), z = game_tile_cz(t), yaw = dir_yaw(t->dir);
+  float x = path_cx(t), z = path_cz(t), yaw = dir_yaw(t->dir);
   float dx = x - cx_, dz = z - cz_;
   if (dx * cs + dz * cc < -60 || dx * dx + dz * dz > (VIEW + 60) * (VIEW + 60)) return;
-  scene_mesh(path_mesh(t), x, t->y, z, yaw, 255);
+  /* the piece: the game's prefab, laid unturned (its far version: data.c's next block) */
+  if (t->mesh >= 0) scene_mesh(t->mesh, x, 0, z, 0, 255);
   /* the cliffs' rock wall: only along the way the runner goes (it would stand in the camera's way) */
-  if (t->theme == TH_CLIFF && t->kind <= PK_HOLE_LONG && ahead && t->dir == pl.dir) scene_mesh(M_CLIFF_WALL, x, t->y, z, yaw, 255);
+  if (t->level == TH_CLIFF && path_is_straight(t) && ahead && t->dir == pl.dir) scene_mesh(M_CLIFF_WALL, x, t->y, z, yaw, 255);
   int d = t->dir;
   float rx = (float)(d == 0 ? 1 : d == 2 ? -1 : 0), rz = (float)(d == 1 ? -1 : d == 3 ? 1 : 0);
   float fx = -rz, fz = rx;
   if (t->scenery & 1) scene_mesh(t->scenery & 4 ? M_JUNGLE_TALL : M_JUNGLE_TREE, x - rx * 27 + fx * 8, t->y, z - rz * 27 + fz * 8, yaw, 255);
   if (t->scenery & 2) scene_mesh(t->scenery & 4 ? M_JUNGLE_TREE : M_JUNGLE_TALL, x + rx * 27 - fx * 10, t->y, z + rz * 27 - fz * 10, yaw, 255);
   if (t->scenery & 8) scene_mesh(M_PILLAR, x - rx * 15 + fx * 18, t->y, z - rz * 15 + fz * 18, yaw, 255);
-  if (t->ob) {
-    static const uint8_t ob[5] = {0, M_ROOT_LOW, M_TREE_JUMP, M_BRANCH_SLIDE, M_FIRE0};
-    int m = ob[t->ob];
-    if (t->ob == OB_FIRE) m += ((int)(t_anim * 8)) & 3;
-    scene_mesh(m, x, t->y, z, yaw, 255);
+  if (t->obst == OB_FLAME) {
+    /* the fire across the flame tower (a vertical piece's runs along x) */
+    bool v = t->type == PT_FLAME_V;
+    scene_mesh(M_FIRE0 + (((int)(t_anim * 8)) & 3), x, t->y, z, v ? 0 : PI / 2, 255);
   }
   static const uint8_t coin[4] = {M_COIN_Y, M_COIN_Y, M_COIN_R, M_COIN_B};
   for (int k = 0; k < 5; k++) {
     float px, py, pz;
-    if (game_coin_pos(t, k, &px, &py, &pz)) scene_mesh(coin[t->coin_kind & 3], px, py, pz, t_anim * 4.5f + (float)k, 255);
+    if (path_coin_pos(t, k, &px, &py, &pz)) scene_mesh(coin[t->coin_kind & 3], px, py, pz, t_anim * 4.5f + (float)k, 255);
   }
   if (t->item) {
     static const uint8_t item[5] = {0, M_COIN_BONUS, M_INVISIBILITY, M_MAGNET, M_BOOST};
@@ -176,11 +171,13 @@ void scene_draw(r_band_fn overlay, bool on_title) {
   r_camera(0, 0, 0, pitch, 205, 160, 120);
   float sx, sy;
   sky_rows(r_project((V3){0, 0, 600}, &sx, &sy) ? (int)sy : 0);
-  for (int i = 0; i < path_count; i++) draw_tile(tile_at(i), i >= pl.tile);
-  if (stub_on)
-    for (int s = 0; s < 2; s++)
-      for (int i = 0; i < NSTUB; i++) draw_tile(&stub[s][i], false);
-  scene_mesh(M_TEMPLE, 0, 0, 0, 0, 255);
+  /* the pieces: the one under the runner and those ahead (the one behind it too, for the camera) */
+  for (int i = 0; i < NTILES; i++)
+    if (tiles[i].alive) {
+      const Tile *t = &tiles[i];
+      float a = (path_cx(t) - pl.x) * (float)(pl.dir == 1 ? 1 : pl.dir == 3 ? -1 : 0) + (path_cz(t) - pl.z) * (float)(pl.dir == 0 ? 1 : pl.dir == 2 ? -1 : 0);
+      draw_tile(t, a > -30);
+    }
   for (int f = 0; f < NFLY; f++)
     if (fly[f].on) scene_mesh(fly[f].kind == 3 ? M_COIN_B : fly[f].kind == 2 ? M_COIN_R : M_COIN_Y, fly[f].x, fly[f].y - 3, fly[f].z, t_anim * 6, 255);
   /* the runner's shadow on the floor */
