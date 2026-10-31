@@ -48,7 +48,7 @@ typedef struct {
 void car_init(Car *c, int veh, const uint8_t levels[4]);
 /* one 1/60 s: gas (1), brake (-1) or neither (0); engine: there is fuel and Bill is alive */
 void car_step(Car *c, int pedal, bool engine);
-/* the world's memory back (a run ends) */
+/* the world's memory back (a run ends): car_planks and car_trees then give the planks and trees as they last were */
 void car_free(void);
 /* a picture frame point (meters, the chassis' frame) in the world */
 void car_point(const Car *c, float lx, float ly, float *wx, float *wy);

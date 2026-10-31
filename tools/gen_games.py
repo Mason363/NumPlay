@@ -180,20 +180,19 @@ def main():
             "    KEEP(*(SORT_BY_NAME(.rodata.np_games.*)))",
             "    np_games_end = .;",
             "  }"]
-    blocks = {}
-    for g in manifest:
-        i, n = g["id"], index[g["id"]]
+    def block(i, n, roms=False):
         p = f".rodata.np.{n}.{i}"
-        blocks[i] = [f"  {p} : {{",
-                     f"    np_{i}_begin = .;",
-                     f"    KEEP(*({p}.0head))",
-                     f"    *({p})",
-                     f"    *({p}.init)"] + (
-                    ["    *(.rodata.np_roms)"] if g.get("roms") else []) + [
-                     f"    KEEP(*({p}.shots))",
-                     f"    KEEP(*({p}.zztail))",
-                     f"    np_{i}_end = .;",
-                     "  }"]
+        return [f"  {p} : {{",
+                f"    np_{i}_begin = .;",
+                f"    KEEP(*({p}.0head))",
+                f"    *({p})",
+                f"    *({p}.init)"] + (
+               ["    *(.rodata.np_roms)"] if roms else []) + [
+                f"    KEEP(*({p}.shots))",
+                f"    KEEP(*({p}.zztail))",
+                f"    np_{i}_end = .;",
+                "  }"]
+    blocks = {g["id"]: block(g["id"], index[g["id"]], g.get("roms")) for g in manifest}
     tail = ["  .text : { *(.text .text.*) }",
             "  .rodata : { *(.rodata .rodata.*) }",
             "  .data : { *(.data .data.*) }",
@@ -202,8 +201,12 @@ def main():
             "}"]
     D = head + [x for g in games for x in blocks[g["id"]]] + tail
     open(os.path.join(a.out, "numplay.ld"), "w").write("\n".join(D) + "\n")
+    # (for the website's own .nwa apps: an app's block, its id @ID@ and index @N@, and the script that makes a big
+    # game's .nwa a module's first step, tools/module.ld)
+    module_ld = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "module.ld")).read()
     json.dump({"head": "\n".join(head) + "\n", "tail": "\n".join(tail) + "\n",
-               "blocks": {i: "\n".join(b) + "\n" for i, b in blocks.items()}},
+               "blocks": {i: "\n".join(b) + "\n" for i, b in blocks.items()},
+               "app": "\n".join(block("@ID@", "@N@")) + "\n", "module": module_ld},
               open(os.path.join(a.out, "script.json"), "w"), indent=1)
     print(f"games: {len(games)}, arena {arena} bytes, the hungriest game {need}")
 

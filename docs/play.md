@@ -581,6 +581,22 @@ Match the top card by colour or number, or play a Wild. Skip, Reverse, Draw Two 
 
 <br clear="right">
 
+## Mahjong
+
+<img src="../games/mahjong/docs/shot.png" width="320" align="right" alt="Mahjong">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** (or **8, 4, 6, 2**) | Jump to the nearest free tile that way |
+| **OK** or **EXE** | Pick a tile, or take it with the one you picked |
+| **shift** | Hint: two free tiles that match |
+| **⌫** (backspace) | Undo the last pair |
+| **Back** | Pause (with New game, How to play and Quit game) |
+
+Take the tiles away in pairs that match: the same tile, or any flower with any flower, any season with any season. A tile is free when nothing lies on it and its left or right side is open. Clear the board to win. Every deal can be won, and when no two free tiles match the game offers to shuffle the rest. Your game and your best time on each layout are saved.
+
+<br clear="right">
+
 ## Friday Night Funkin'
 
 <img src="../games/fnf/docs/shot.png" width="320" align="right" alt="Friday Night Funkin'">
@@ -1000,6 +1016,24 @@ Nine small boards make a big one. The cell you take sends the other player to th
 | **Back** | Pause: Resume, Restart, Levels, How to play, Quit game |
 
 Push every crate onto a goal: the keeper pushes one at a time and can't pull, so a crate in a corner stays there. Microban's 155 levels by David W. Skinner, the first 35 inside NumPlay and all of them in Sokoban.nwa; solved levels turn dark on the level list, and the fewest moves for each are kept.
+
+<br clear="right">
+
+## Meowdoku
+
+<img src="media/meowdoku.gif" width="320" align="right" alt="Meowdoku: level 1 won with the keys, then a 10×10 level: a wrong cat costs a fish, the lamp crosses out what a cat rules out, the winking cat finds one more">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** | Move on the board |
+| **OK** | Put an X, or take it off; hold OK and move to put X's along the way |
+| **OK twice** or **EXE** | Place a cat |
+| **shift** | Hint: shows the next step, OK does it |
+| **alpha** | Find a cat |
+| **⌫** | Take back X's |
+| **Back** | Pause: Resume, How to play, Quit game |
+
+Put one cat in every row, every column and every color, and never two cats touching, not even at a corner. A cat in the wrong cell turns into an X and costs a fish; with all three fish gone the level starts over. The boards grow from 4×4 to 10×10, every tenth level is hard, and the game gets harder while you win without hints or mistakes. Add it in NumPlay Studio, or get Meowdoku.nwa.
 
 <br clear="right">
 

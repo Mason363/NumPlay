@@ -146,6 +146,10 @@ GAMES = {
     # past how to play, the first level and a few steps; next time the second level, picked in the list
     "sokoban": ("Sokoban.nwa", "sokoban.sav", presses((1500, "ok"), (2000, "ok"), (2600, "right"), (2900, "right")), 4000,
                 presses((1500, "right"), (1900, "ok"), (2500, "up")), 4000),
+    # past how to play, a hint on level 1 (the X's its cat rules out) done with OK; next time the game goes on: the
+    # winking cat finds one more cat
+    "meowdoku": ("Meowdoku.nwa", "meowdoku.sav", presses((1500, "ok"), (2000, "shift"), (2500, "ok")), 3500,
+                 presses((1500, "alpha")), 2500),
     # the intro film is skipped (seen), Lucky walks up the dock and talks to the
     # guardians; next time the game starts where it was left
     "championisland": ("ChampionIsland.nwa", "champion.sav",
@@ -273,12 +277,16 @@ GAMES = {
     "paperclips": ("UniversalPaperclips.nwa", "paperclips.sav",
                    presses((1500, "ok"), (4500, "back")) + [(2200, 4000, K["ok"])], 6000,
                    presses((1500, "ok"), (2000, "ok")), 4000),
-    # the title's Normal, how to play (the first time: three pages, OK starts), then the fight: the Judge's first
+    # the title's Normal, how to play (the first time: three pages, OK starts), then the fight: Sans' first
     # words read; Home keeps the guide read and the first attack reached. Next time, from the copy, Normal starts at
     # once, quit with On/Off
     "badtime": ("BadTimeSimulator.nwa", "badtime.sav",
                 presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "ok"), (5000, "ok")), 6500,
                 presses((1500, "ok")), 4000),
+    # how to play read, the Turtle dealt, a tile picked; Home keeps the game. Next time, from the copy, it goes on: the
+    # cursor moved, quit with On/Off
+    "mahjong": ("Mahjong.nwa", "mahjong.sav", presses((1500, "ok"), (2200, "ok"), (3000, "ok")), 4000,
+                presses((1500, "right"), (2000, "ok")), 3000),
     # how to play (the first time: OK closes it), the menu's Play, then OK held to ride and flip, Back to pause;
     # Home keeps the guide read and the time played. Next time, from the copy, Play straight away, quit with On/Off
     "rider": ("Rider.nwa", "rider.sav",
@@ -352,7 +360,8 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "tombofthemask": "tombofthemask_saves.py", "uno": "uno_saves.py",
           "fnf": "fnf_saves.py", "turborush": "turborush_saves.py",
           "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
-          "badtime": "badtime_saves.py", "rider": "rider_saves.py"}
+          "badtime": "badtime_saves.py", "mahjong": "mahjong_saves.py",
+          "rider": "rider_saves.py"}
 
 
 def paperclips_ok(v):
@@ -383,6 +392,16 @@ def badtime_ok(v):
     for x in v[:-4]:
         h = (h ^ x) * 16777619 & 0xFFFFFFFF
     return struct.unpack_from("<I", v, 20)[0] == h
+
+
+def mahjong_ok(v):
+    """Mahjong's save: "M", version 1, 328 bytes, an FNV-1a sum of the rest at the end"""
+    if len(v) != 328 or v[:2] != b"M\1":
+        return False
+    h = 2166136261
+    for x in v[:-4]:
+        h = (h ^ x) * 16777619 & 0xFFFFFFFF
+    return struct.unpack_from("<I", v, 324)[0] == h
 
 
 def polytrack_ok(v):
@@ -512,6 +531,9 @@ CHECKS = {
              lambda v: v[5] == 3 and v[34] == 2),
     # how to play seen and the first level played last; then the second
     "sokoban": (lambda v: len(v) == 314 and v[:4] == b"S\1\1\0", lambda v: len(v) == 314 and v[:4] == b"S\1\1\1"),
+    # "M", version 1, the guide read, level 1 (at 4) in play: X's put by the hint (1s in the cells, at 26); then two cats
+    "meowdoku": (lambda v: len(v) == 212 and v[:2] == b"M\1" and v[2] == 3 and v[4] == 1 and v[26:147].count(1) >= 3,
+                 lambda v: len(v) == 212 and v[2] == 3 and v[26:147].count(2) == 2),
     # the bakery kept ("CCK1", the cookies at 8, the clicks at 48): 3 clicks; after the reinstall, from the copy, 5
     "cookieclicker": (lambda v: v[:4] == b"CCK1" and struct.unpack_from("<d", v, 48)[0] == 3
                       and struct.unpack_from("<d", v, 8)[0] >= 3,
@@ -568,6 +590,10 @@ CHECKS = {
     # "BTS1", version 1, its size (24): how to play read (guide at 9), the first attack reached (best at 8); after the
     # reinstall, from the copy, the same
     "badtime": (lambda v: badtime_ok(v) and v[9] == 1 and v[8] >= 1,) * 2,
+    # "M", version 1: how to play read and a Turtle being played (flags 3 at 2, the layout at 3), its time at 8; after
+    # the reinstall, from the copy, it goes on
+    "mahjong": (lambda v: mahjong_ok(v) and v[2] == 3 and v[3] == 0 and struct.unpack_from("<I", v, 8)[0] > 0,
+                lambda v: mahjong_ok(v) and v[2] == 3 and struct.unpack_from("<I", v, 8)[0] > 1000),
     # 0x52445231, version 1: how to play read (flags at 6), time played (16); after the reinstall, from the copy, more
     "rider": (lambda v: rider_ok(v) and v[6] & 1 and struct.unpack_from("<I", v, 16)[0] >= 4000,
               lambda v: rider_ok(v) and v[6] & 1 and struct.unpack_from("<I", v, 16)[0] >= 7000),
