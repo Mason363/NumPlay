@@ -273,7 +273,7 @@ GAMES = {
     "paperclips": ("UniversalPaperclips.nwa", "paperclips.sav",
                    presses((1500, "ok"), (4500, "back")) + [(2200, 4000, K["ok"])], 6000,
                    presses((1500, "ok"), (2000, "ok")), 4000),
-    # the title's Normal, how to play (the first time: three pages, OK starts), then the fight: the Judge's first
+    # the title's Normal, how to play (the first time: three pages, OK starts), then the fight: Sans' first
     # words read; Home keeps the guide read and the first attack reached. Next time, from the copy, Normal starts at
     # once, quit with On/Off
     "badtime": ("BadTimeSimulator.nwa", "badtime.sav",
