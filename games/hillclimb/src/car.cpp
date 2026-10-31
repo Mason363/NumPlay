@@ -1173,8 +1173,16 @@ extern "C" void car_init(Car *c, int veh, const uint8_t levels[4]) {
   snapshot(c, FLIP_NONE);
 }
 
+/* the bridges' planks and the trees as they were when the world went (run_finish): the end of a run still draws them */
+static CarBody kept_planks[2 * MAXPLANK], kept_trees[MAXTREE];
+static int kept_which[MAXTREE], nkept_planks, nkept_trees;
+
 extern "C" void car_free(void) {
-  if (W) W->~b2World();
+  if (W) {
+    nkept_planks = car_planks(kept_planks, 2 * MAXPLANK);
+    nkept_trees = car_trees(kept_trees, kept_which, MAXTREE);
+    W->~b2World();
+  }
   W = NULL;
 }
 
@@ -1264,6 +1272,10 @@ extern "C" void car_numbers(float out[12]) {
 
 extern "C" int car_planks(CarBody *out, int most) {
   int n = 0;
+  if (!W) {   /* (the world gone: as they were) */
+    for (; n < nkept_planks && n < most; n++) out[n] = kept_planks[n];
+    return n;
+  }
   for (int i = 0; i < 2; i++)
     for (int j = 0; j < bridges[i].n && n < most; j++, n++) {
       b2Body *p = bridges[i].plank[j];
@@ -1274,6 +1286,10 @@ extern "C" int car_planks(CarBody *out, int most) {
 
 extern "C" int car_trees(CarBody *out, int *which, int most) {
   int n = 0;
+  if (!W) {
+    for (; n < nkept_trees && n < most; n++) out[n] = kept_trees[n], which[n] = kept_which[n];
+    return n;
+  }
   for (int i = 0; i < MAXTREE && n < most; i++) {
     if (trees[i].k < 0) continue;
     which[n] = trees[i].k;

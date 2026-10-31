@@ -1,0 +1,33 @@
+# Meowdoku in French: the English text as in the source, a tab, the translation (see tools/lang.py).
+A cat goes in this cell: take the X off.	Un chat va dans cette case : enlevez le X.
+A cat here would leave a row, column or color with no room.	Un chat ici laisserait une ligne, une colonne ou une couleur sans place.
+Back  close	Back  fermer
+Clear!	Réussi !
+Hard	Difficile
+How to play	Comment jouer
+Level 	Niveau 
+Level	Niveau
+Next level	Niveau suivant
+OK  X      OK OK  cat      DEL  undo      Back  menu	OK  X      OK OK  chat      DEL  annuler      Back  menu
+OK  apply	OK  appliquer
+OK again to quit	OK encore pour quitter
+OK marks an X. OK twice (or EXE) places a cat. A wrong cat costs a fish; with all 3 gone, try again.	OK met un X. OK deux fois (ou EXE) place un chat. Un mauvais chat coûte un poisson ; sans les 3, on recommence.
+One cat in each row, each column and each color. Cats can't touch, not even at the corners.	Un chat dans chaque ligne, chaque colonne et chaque couleur. Les chats ne se touchent pas, même par un coin.
+Only one cell in this column can take a cat.	Une seule case de cette colonne peut recevoir un chat.
+Only one cell in this row can take a cat.	Une seule case de cette ligne peut recevoir un chat.
+Only one cell of this color can take a cat.	Une seule case de cette couleur peut recevoir un chat.
+Out of fish	Plus de poissons
+Paused	Pause
+Perfect!	Parfait !
+Play	Jouer
+Quit game	Quitter la partie
+Resume	Reprendre
+These colors fill these lines between them, so nothing else in the lines can have a cat.	Ces couleurs remplissent ces rangées à elles seules : rien d'autre dans ces rangées n'a de chat.
+This cat rules out its row, its column and the cells around it.	Ce chat exclut sa ligne, sa colonne et les cases autour.
+This color's cat must be in this line, so the rest of the line can't have one.	Le chat de cette couleur est dans cette rangée : le reste de la rangée n'en a pas.
+This line's cat must be in this color, so the rest of the color can't have one.	Le chat de cette rangée est dans cette couleur : le reste de la couleur n'en a pas.
+Try again	Réessayer
+alpha	alpha
+find	trouver
+hint	indice
+shift	shift

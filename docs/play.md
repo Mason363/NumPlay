@@ -581,6 +581,22 @@ Match the top card by colour or number, or play a Wild. Skip, Reverse, Draw Two 
 
 <br clear="right">
 
+## Mahjong
+
+<img src="../games/mahjong/docs/shot.png" width="320" align="right" alt="Mahjong">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** (or **8, 4, 6, 2**) | Jump to the nearest free tile that way |
+| **OK** or **EXE** | Pick a tile, or take it with the one you picked |
+| **shift** | Hint: two free tiles that match |
+| **⌫** (backspace) | Undo the last pair |
+| **Back** | Pause (with New game, How to play and Quit game) |
+
+Take the tiles away in pairs that match: the same tile, or any flower with any flower, any season with any season. A tile is free when nothing lies on it and its left or right side is open. Clear the board to win. Every deal can be won, and when no two free tiles match the game offers to shuffle the rest. Your game and your best time on each layout are saved.
+
+<br clear="right">
+
 ## Friday Night Funkin'
 
 <img src="../games/fnf/docs/shot.png" width="320" align="right" alt="Friday Night Funkin'">
@@ -679,6 +695,29 @@ Sans attacks and you dodge. Keep your heart away from everything in the box: whi
 
 <br clear="right">
 
+## Rider
+
+<img src="../games/rider/docs/shot.png" width="320" align="right" alt="Rider">
+
+| Key | What it does |
+| --- | --- |
+| **OK**, **EXE** or **Up** (hold) | Ride, and flip in the air |
+| **Arrows** | Choose in the menus |
+| **Back** | Pause (with Resume, How to play and Quit game) |
+| **Home** | Save and quit |
+
+Hold the button and the bike speeds up. In the air, holding it turns the bike backwards: a flip. Let go so that it lands on both wheels, or it breaks. In the endless run each landed flip is a point and gems win new bikes. In the 48 levels, reach the end fast for three stars: each flip takes half a second off.
+## Snow Rider 3D
+
+<img src="../games/snowrider/docs/shot.png" width="320" align="right" alt="Snow Rider 3D">
+
+| Key | What it does |
+| --- | --- |
+| **Left, Right** | Steer |
+| **Up, OK** | Jump (held, again on landing) |
+| **Back** | Pause (with Restart and Quit game) |
+
+The sled slides down the endless slope by itself, faster and faster. Steer around the trees, rocks, snowmen, stumps and walls: one hit and it breaks. Fences and signs break as you ride through them. Every 10 metres is a point. Past 10 points come tunnels, cracks to jump and floating islands, and giant snowballs roll across. Gifts on the slope buy new sleds at the camp. Your best score, gifts and sleds are saved.
 ## Temple Run
 
 <img src="../games/templerun/docs/shot.png" width="320" align="right" alt="Temple Run: running along the temple path">
@@ -1003,6 +1042,24 @@ Nine small boards make a big one. The cell you take sends the other player to th
 | **Back** | Pause: Resume, Restart, Levels, How to play, Quit game |
 
 Push every crate onto a goal: the keeper pushes one at a time and can't pull, so a crate in a corner stays there. Microban's 155 levels by David W. Skinner, the first 35 inside NumPlay and all of them in Sokoban.nwa; solved levels turn dark on the level list, and the fewest moves for each are kept.
+
+<br clear="right">
+
+## Meowdoku
+
+<img src="media/meowdoku.gif" width="320" align="right" alt="Meowdoku: level 1 won with the keys, then a 10×10 level: a wrong cat costs a fish, the lamp crosses out what a cat rules out, the winking cat finds one more">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** | Move on the board |
+| **OK** | Put an X, or take it off; hold OK and move to put X's along the way |
+| **OK twice** or **EXE** | Place a cat |
+| **shift** | Hint: shows the next step, OK does it |
+| **alpha** | Find a cat |
+| **⌫** | Take back X's |
+| **Back** | Pause: Resume, How to play, Quit game |
+
+Put one cat in every row, every column and every color, and never two cats touching, not even at a corner. A cat in the wrong cell turns into an X and costs a fish; with all three fish gone the level starts over. The boards grow from 4×4 to 10×10, every tenth level is hard, and the game gets harder while you win without hints or mistakes. Add it in NumPlay Studio, or get Meowdoku.nwa.
 
 <br clear="right">
 

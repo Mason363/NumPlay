@@ -47,11 +47,11 @@
   const kits = {};         // the kit of each language, loaded when picked
   const byId = {};
   const st = {
-    picked: new Set(), order: [], roms: [], cap: 'std', lang: 'en',
+    picked: new Set(), order: [], roms: [], apps: [], cap: 'std', lang: 'en',
     app: { icon: 'NumPlay', name: 'NumPlay', open: 'numplay', secret: 0, hint: true },
   };
   let custom = null;       // an icon of your own: { url, obj }
-  let romKey = 0;
+  let romKey = 0, appKey = 0;
 
   // ------------------------------------------------------------------ sizes
   const spaces = () => kit.spaces && kit.spaces.length ? kit.spaces :
@@ -72,12 +72,12 @@
     const k = langKit();
     return ids.some((id) => !byId[id].xl) || (rg && roms.length) ? k.base : k.baseAlone || k.base;
   };
-  // what a NumPlay of these games (and Game Boy, NES and Sega games) takes
-  function total(ids, roms = st.roms) {
+  // what a NumPlay of these games (and Game Boy, NES and Sega games, and your own apps) takes
+  function total(ids, roms = st.roms, apps = st.apps) {
     let n = own(ids, roms);
     for (const id of ids) n += flash(id);
     if (rg && roms.length) n += flash(rg.id) + ROM_HEAD + roms.reduce((a, r) => a + romBytes(r), 0);
-    return n;
+    return n + apps.reduce((a, x) => a + x.flash, 0);
   }
   // a big game too big to go beside the launcher in this space (kit.json "alone") goes on its own there,
   // as its own app: as if you installed just that game
@@ -100,6 +100,7 @@
       for (const r of st.roms)
         out.push({ key: 'rom' + r.key, rom: r, name: r.name, bytes: romBytes(r), color: SYS[r.sys].color, tag: SYS[r.sys].tag });
     }
+    for (const a of st.apps) out.push({ key: 'app' + a.key, app: a, name: a.title, bytes: a.flash, color: hex(a.accent.toString(16)), icon: a.url });
     return out;
   }
   const usedBytes = () => items().reduce((s, it) => s + it.bytes, 0);
@@ -160,14 +161,14 @@
         if (t.tag) e.appendChild(el('b')).textContent = t.tag;
         map.appendChild(e);
         tiles.set(t.key, e);
-        if (t.id || t.rom) e.addEventListener('click', () => (t.rom ? removeRom(t.rom) : toggle(t.id)));
+        if (t.id || t.rom || t.app) e.addEventListener('click', () => (t.rom ? removeRom(t.rom) : t.app ? removeApp(t.app) : toggle(t.id)));
       }
       e.classList.toggle('free', !!t.free);
       e.style.left = (100 * t.x / W) + '%';
       e.style.top = (100 * t.y / H) + '%';
       e.style.width = (100 * t.w / W) + '%';
       e.style.height = (100 * t.h / H) + '%';
-      e.style.cursor = t.id || t.rom ? 'pointer' : '';
+      e.style.cursor = t.id || t.rom || t.app ? 'pointer' : '';
       if (!t.free)
         e.style.background = 'radial-gradient(130% 130% at 30% 25%, ' + mix(t.color, 0.45) + ' 0%, ' + t.color + ' 45%, ' + mix(t.color, -0.55) + ' 100%)';
       const s = Math.min(t.w, t.h);
@@ -271,6 +272,20 @@
       box.appendChild(c);
     }
     for (const c of box.querySelectorAll('.cart[data-k]')) if (!have.has(c.dataset.k)) c.remove();
+    const apps = $('#app-carts'), mine = new Set();
+    for (const a of st.apps) {
+      mine.add('a' + a.key);
+      if (apps.querySelector('[data-k="a' + a.key + '"]')) continue;
+      const c = el('button', 'cart app enter', { type: 'button', 'data-k': 'a' + a.key, 'aria-label': 'Remove ' + a.title });
+      c.addEventListener('animationend', () => c.classList.remove('enter'), { once: true });
+      c.style.backgroundImage = 'url(' + a.url + ')';
+      c.dataset.tip = a.title + '|' + a.file + ', ' + size(a.flash);
+      c.appendChild(el('span', 'x')).innerHTML =
+        '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+      c.addEventListener('click', () => removeApp(a));
+      apps.appendChild(c);
+    }
+    for (const c of apps.querySelectorAll('.cart[data-k]')) if (!mine.has(c.dataset.k)) c.remove();
   }
 
   // ------------------------------------------------------------------ the game on the screen
@@ -376,6 +391,63 @@
   }
   function removeRom(r) {
     st.roms = st.roms.filter((x) => x !== r);
+    render();
+  }
+
+  // ------------------------------------------------------------------ your own apps
+  // An app's .nwa becomes a game of NumPlay the way a big game's does (apps.js). It may only leave undefined what
+  // the calculator's installer gives an app (tools/kit.py's check) and what the launcher gives a big game (KIT_API)
+  const LOOSE = /^(eadk_|_heap_end$|_data_section_|_bss_section_|np_keyboard_scan$|np_event_get$|np_display_draw_string$|np_sbrk$|numplay_launcher$|__sf$|_printf_float$)/;
+  const MAX_GAMES = 64;  // (launcher/src/np.h's NP_MAX_GAMES: games, Retro-Go and apps)
+  const entries = () => ordered().length + (rg && st.roms.length ? 1 : 0) + st.apps.length;
+  const ascii = (t) => (t || '').replace(/[^\x20-\x7e]/g, '').trim().slice(0, 24);
+  const allocBytes = (obj) => npApps.readElf(obj).secs.reduce((n, x) => n + (x.flags & 2 && x.type !== 8 ? align4(x.size) : 0), 0);
+  function iconUrlOf(icon) {
+    const c = document.createElement('canvas');
+    c.width = npApps.ICON_W; c.height = npApps.ICON_H;
+    const g = c.getContext('2d'), img = g.createImageData(c.width, c.height);
+    icon.forEach((v, p) => img.data.set([(v >> 11) * 255 / 31, (v >> 5 & 63) * 255 / 63, (v & 31) * 255 / 31, 255], 4 * p));
+    g.putImageData(img, 0, 0);
+    return c.toDataURL('image/png');
+  }
+  async function appFrom(f, key) {
+    const A = npApps, bytes = new Uint8Array(await f.arrayBuffer());
+    const id = 'app' + key, index = 200 + key, info = A.appInfo(bytes);
+    if (!kit.script.module) throw new Error("can't come in until NumPlay Studio's next update");
+    const t = await loadTools();
+    const l = await run(t.ld, ['-r', '-d', '-z', 'noexecstack', '--force-group-allocation', '-T', 'module.ld', 'app.nwa', '-o', '1.o'],
+      { 'module.ld': kit.script.module, 'app.nwa': bytes });
+    if (l.code) throw new Error("isn't an app NumPlay can take");
+    const o = await run(t.oc, ['--keep-global-symbol=main', '--redefine-sym', 'eadk_keyboard_scan=np_keyboard_scan',
+      '--redefine-sym', 'eadk_event_get=np_event_get', '--redefine-sym', 'eadk_display_draw_string=np_display_draw_string',
+      '--redefine-sym', '_heap_start=np_' + id + '_heap', '--redefine-sym', '_sbrk=np_sbrk', '1.o', '2.o'], { '1.o': l.m.FS.readFile('1.o') });
+    if (o.code) throw new Error("isn't an app NumPlay can take");
+    const m = A.npmodule(o.m.FS.readFile('2.o'), id, index);
+    const loose = m.undefined.filter((u) => u !== 'np_' + id + '_heap' && !LOOSE.test(u));
+    if (loose.length) throw new Error("needs " + loose[0] + ", which NumPlay doesn't have");
+    if (((m.data + 7) & ~7) + m.bss + kit.launcherRam > kit.ramLimit) throw new Error('needs more RAM than NumPlay can give it');
+    const c = A.colors(info.icon), cd = A.card(info.icon, c.bottom);
+    const z = new Uint8Array(await new Response(new Blob([cd.indices]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+    const file = ascii(f.name) || 'app.nwa', title = ascii(info.name) || ascii(f.name.replace(/\.nwa$/i, '')) || 'App';
+    const entry = A.entryObject({ id, index, title, tagline: file, ...c, data: m.data, bss: m.bss, palette: cd.palette, z });
+    return { key, id, index, title, file, obj: m.obj, entry, data: m.data, bss: m.bss, accent: c.accent,
+             flash: allocBytes(m.obj) + allocBytes(entry) + 8, url: info.icon ? iconUrlOf(info.icon) : KIT + 'variants/NumPlay.png' };
+  }
+  async function addApps(files) {
+    const drop = $('#app-drop');
+    if (solo()) { bump(drop, 'shake'); toast(byId[solo()].title + " takes the whole calculator, so there's no room for apps"); return; }
+    for (const f of files) {
+      if (entries() >= MAX_GAMES) { bump(drop, 'shake'); toast('NumPlay holds ' + MAX_GAMES + ' games and apps at most'); break; }
+      let a;
+      try { a = await appFrom(f, ++appKey); } catch (e) { console.error(e); bump(drop, 'shake'); toast(f.name + ' ' + e.message); continue; }
+      const over = total(ordered(), st.roms, st.apps.concat([a])) - capacity();
+      if (over > 0) { bump(drop, 'shake'); overflow(over); continue; }
+      st.apps.push(a);
+    }
+    render();
+  }
+  function removeApp(a) {
+    st.apps = st.apps.filter((x) => x !== a);
     render();
   }
 
@@ -708,18 +780,36 @@
     const files = { 'base.o': base, 'arena.o': arena, 'app.o': appObject(), 'icon.o': icon };
     sel.forEach((id, i) => { files[id + '.o'] = objs[i]; });
     const args = k.link.concat(['-T', 'numplay.ld', 'base.o', 'arena.o', 'app.o', 'icon.o'], sel.map((id) => id + '.o'));
+    if (entries() > MAX_GAMES) throw new Error("That's more than the " + MAX_GAMES + ' games and apps NumPlay holds');
+    for (const a of st.apps) {
+      files[a.id + '.o'] = a.obj;
+      files[a.id + '-entry.o'] = a.entry;
+      args.push(a.id + '.o', a.id + '-entry.o');
+    }
     if (roms) {
       files['roms.o'] = romObject(romTable(st.roms));
       args.push('roms.o');
     }
     // the launcher shows the games in the order of their entries: yours, not the kit's
-    const entries = sel.map((id) => 'KEEP(*(.rodata.np_games.' + String((k.byId[id] || byId[id]).index).padStart(2, '0') + '))').join('\n    ');
-    const head = k.script.head.replace('KEEP(*(SORT_BY_NAME(.rodata.np_games.*)))', entries);
+    const keep = sel.map((id) => 'KEEP(*(.rodata.np_games.' + String((k.byId[id] || byId[id]).index).padStart(2, '0') + '))')
+      .concat(st.apps.map((a) => 'KEEP(*(.rodata.np_games.' + a.id + '))')).join('\n    ');
+    const head = k.script.head.replace('KEEP(*(SORT_BY_NAME(.rodata.np_games.*)))', keep);
     // ...and the games' blocks in the kit's order: NumPlay's own games first, in the app area, then the big ones,
     // which find the calculator's files past it too (Enlarged Extra Apps)
     const block = (id) => k.script.blocks[id] || kit.script.blocks[id];
     const index = (id) => (k.byId[id] || byId[id]).index;
-    files['numplay.ld'] = head + sel.slice().sort((a, b) => index(a) - index(b)).map(block).join('') + k.script.tail;
+    // (your apps go before the big games, in the app area: they look for the calculator's files there; each one's RAM
+    // is at the start of the arena, as a game's is, tools/gen_games.py's arena.s)
+    const ids = sel.slice().sort((a, b) => index(a) - index(b)), firstXl = ids.findIndex((id) => byId[id].xl);
+    const parts = ids.map(block);
+    parts.splice(firstXl < 0 ? parts.length : firstXl, 0, ...st.apps.map((a) => kit.script.app.replace(/@ID@/g, a.id).replace(/@N@/g, a.index)));
+    const ram = st.apps.map((a) => {
+      const bss = (a.data + 7) & ~7, heap = (bss + a.bss + 7) & ~7;
+      return '    np_' + a.id + '_data = np_arena;\n    np_' + a.id + '_bss = np_arena + ' + bss + ';\n    np_' + a.id + '_heap = np_arena + ' + heap + ';\n';
+    }).join('');
+    const tail = k.script.tail.replace('*(.np_arena) }', '*(.np_arena)\n' + ram + '  }');
+    if (ram && tail === k.script.tail) throw new Error('no arena in the script');
+    files['numplay.ld'] = head + parts.join('') + tail;
     const l = await run(t.ld, args.concat(['-o', 'out.nwa']), files);
     if (l.code) throw new Error(l.log || 'ld ' + l.code);
     const s = await run(t.oc, ['--strip-unneeded', 'in.nwa', 'out.nwa'], { 'in.nwa': l.m.FS.readFile('out.nwa') });
@@ -1707,19 +1797,23 @@
       $('#rom-file').accept = exts.map((x) => '.' + x).join(',');
       $('#drop-sub').textContent = exts.map((x) => '.' + x).join(' ');
       $('#rom-file').addEventListener('change', (e) => { addRoms([...e.target.files]); e.target.value = ''; });
-      let depth = 0;
-      const files = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
-      addEventListener('dragenter', (e) => { if (files(e)) { depth++; document.body.classList.add('dragging'); e.preventDefault(); } });
-      addEventListener('dragover', (e) => { if (files(e)) e.preventDefault(); });
-      addEventListener('dragleave', () => { if (--depth <= 0) { depth = 0; document.body.classList.remove('dragging'); } });
-      addEventListener('drop', (e) => {
-        if (!files(e)) return;
-        e.preventDefault();
-        depth = 0;
-        document.body.classList.remove('dragging');
-        addRoms([...e.dataTransfer.files]);
-      });
     }
+    $('#app-file').addEventListener('change', (e) => { addApps([...e.target.files]); e.target.value = ''; });
+    // files dropped anywhere: apps (.nwa) to your apps, the rest to Retro-Go
+    let depth = 0;
+    const files = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+    addEventListener('dragenter', (e) => { if (files(e)) { depth++; document.body.classList.add('dragging'); e.preventDefault(); } });
+    addEventListener('dragover', (e) => { if (files(e)) e.preventDefault(); });
+    addEventListener('dragleave', () => { if (--depth <= 0) { depth = 0; document.body.classList.remove('dragging'); } });
+    addEventListener('drop', async (e) => {
+      if (!files(e)) return;
+      e.preventDefault();
+      depth = 0;
+      document.body.classList.remove('dragging');
+      const all = [...e.dataTransfer.files], nwa = all.filter((f) => /\.nwa$/i.test(f.name)), rest = all.filter((f) => !nwa.includes(f));
+      if (nwa.length) await addApps(nwa);
+      if (rest.length && rg) addRoms(rest);
+    });
     tips();
     if (lightFromStart()) buildFlat();
     else { build3d(); depth(); watchFrames(); }
