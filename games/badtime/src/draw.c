@@ -33,18 +33,15 @@ static inline int S(float v) { return bt_ifloor(v * 0.5f); }
 static inline color_t *px(int x, int y) { return strip + (y - gfx_y0) * SCREEN_W + x; }
 
 /* ---------------------------------------------------------------- pictures */
-static color_t pal_cache[3][16];
-static const uint32_t *pal_src[3];
+/* a picture's palette in the screen's colours (each picture has its own: converted when it changes) */
 static const color_t *pal_of(const art_t *a) {
-  for (int i = 0; i < 3; i++) {
-    if (pal_src[i] == a->pal) return pal_cache[i];
-    if (!pal_src[i]) {
-      pal_src[i] = a->pal;
-      for (int k = 0; k < 16; k++) pal_cache[i][k] = gfx_rgb(a->pal[k]);
-      return pal_cache[i];
-    }
+  static color_t cache[16];
+  static const uint32_t *src;
+  if (src != a->pal) {
+    src = a->pal;
+    for (int k = 0; k < 16; k++) cache[k] = gfx_rgb(a->pal[k]);
   }
-  return pal_cache[0];
+  return cache;
 }
 static inline int art_px(const art_t *a, int x, int y) {
   int i = y * a->w + x;
@@ -178,7 +175,7 @@ static void draw_heart(const world_t *w) {
   color_t c = w->heart_mode == HEART_BLUE ? SOUL_BLUE : RED;
   int dir = w->heart_mode == HEART_BLUE ? w->heart_dir : DIR_DOWN;
   /* turned with its gravity: its point towards the floor it falls to */
-  const art_t *a = &ART_HEART;
+  const art_t *a = &ART_HEART[0];
   for (int yy = 0; yy < 8; yy++) {
     int sy = y - 4 + yy;
     if (sy < gfx_y0 || sy >= gfx_y1) continue;
@@ -193,27 +190,10 @@ static void draw_heart(const world_t *w) {
   }
 }
 
-/* ---------------------------------------------------------------- the Judge */
-typedef struct {
-  int8_t x0, y0, x1, y1;   /* two eyes: x, y of each (-1: none) */
-  uint8_t kind;           /* 0 dots, 1 left dot right line, 2 lines, 3 the blue eye, 4 low lines, 5 half dots, 6 none */
-} eyes_t;
-static const eyes_t EYES[8] = {
-  {12, 13, 20, 13, 0},   /* default */
-  {11, 13, 19, 13, 0},   /* looking left */
-  {12, 13, 20, 14, 1},   /* wink */
-  {11, 14, 20, 14, 2},   /* eyes closed */
-  {-1, -1, -1, -1, 6},   /* no eyes */
-  {11, 12, -1, -1, 3},   /* the blue eye */
-  {12, 14, 20, 14, 5},   /* tired */
-  {11, 15, 20, 15, 4},   /* very tired */
-};
-
-static void eye_rect(int hx0, int hy0, int x, int y, int w, int h, color_t c) {
-  gfx_fill(hx0 + x, hy0 + y, w, h, c);
-}
-
-static void draw_judge(const world_t *w, int feet_x, int feet_y, uint32_t tick) {
+/* ---------------------------------------------------------------- Sans */
+/* his parts as jcw87's Bad Time Simulator stacks them: the legs at his feet, the torso (or, slamming, the whole
+ * body: 15 frames a second) on the legs' attach point, the head on the torso's, the sweat on the head's */
+static void draw_sans(const world_t *w, int feet_x, int feet_y, uint32_t tick) {
   float t = (float)w->anim_t / 30.0f;
   float tx = 0, ty = 0, hx = 0, hy = 0;
   if (w->body == BODY_NONE) {
@@ -232,58 +212,29 @@ static void draw_judge(const world_t *w, int feet_x, int feet_y, uint32_t tick) 
   /* (offsets in the original's pixels: rounded to the screen's) */
   int itx = bt_ifloor(tx * 0.5f + 0.5f), ity = bt_ifloor(ty * 0.5f + 0.5f);
   int ihx = itx + bt_ifloor(hx * 0.5f + 0.5f), ihy = ity + bt_ifloor(hy * 0.5f + 0.5f);
-  blit(&ART_LEGS, feet_x, feet_y, false, 0, false);
-  int tbx = feet_x + itx, tby = feet_y - ART_LEGS.h + ity;   /* the torso's bottom-middle */
-  int tlx = tbx - ART_TORSO.ax, tty = tby - ART_TORSO.h;     /* its top-left */
-  int pose = w->body;
-  bool shrug = pose == BODY_NONE && w->torso == TORSO_SHRUG;
-  /* the arm behind first, then the body, then the arm in front */
-  blit(&ART_TORSO, tbx, tby, false, 0, false);
-  int lsx = tlx + 2, rsx = tlx + ART_TORSO.w - 3, sy = tty + 2;
-  if (shrug) {
-    blit(&ART_ARM_SHRUG, lsx - 4, sy + 4, true, 0, false);
-    blit(&ART_ARM_SHRUG, rsx + 4, sy + 4, false, 0, false);
+  const art_t *legs = &ART_LEGS[0];
+  blit(legs, feet_x, feet_y, false, 0, false);
+  int tbx = feet_x - legs->ax + legs->jx + itx, tby = feet_y - legs->ay + legs->jy + ity;
+  const art_t *torso;
+  if (w->body != BODY_NONE) {
+    static const art_t *const SET[4] = {ART_BODY_UP, ART_BODY_DOWN, ART_BODY_LEFT, ART_BODY_RIGHT};
+    static const uint8_t COUNT[4] = {5, 4, 5, 5};
+    int n = w->body & 3, k = w->anim_t / 2;
+    torso = &SET[n][k < COUNT[n] ? k : COUNT[n] - 1];
   } else {
-    if (pose == BODY_LEFT) blit(&ART_ARM_OUT, lsx + 1, sy + 1, true, 0, false);
-    else blit(&ART_ARM_SIDE, lsx, sy, false, 0, false);
-    if (pose == BODY_UP) blit(&ART_ARM_UP, rsx, sy + 1, true, 0, false);
-    else if (pose == BODY_DOWN) blit(&ART_ARM_DOWN, rsx, sy, true, 0, false);
-    else if (pose == BODY_RIGHT) blit(&ART_ARM_OUT, rsx - 1, sy + 1, false, 0, false);
-    else blit(&ART_ARM_SIDE, rsx, sy, true, 0, false);
+    torso = &ART_TORSO[w->torso == TORSO_SHRUG];
   }
-  /* the head */
-  int hbx = tbx + (ihx - itx), hby = tty + 2 + (ihy - ity);
-  blit(&ART_HEAD, hbx, hby, false, 0, false);
-  int hx0 = hbx - ART_HEAD.ax, hy0 = hby - ART_HEAD.ay;
-  const eyes_t *e = &EYES[w->head & 7];
-  color_t ew = HEX(0xF4F2EE);
-  switch (e->kind) {
-    case 0:
-      eye_rect(hx0, hy0, e->x0, e->y0, 2, 2, ew), eye_rect(hx0, hy0, e->x1, e->y1, 2, 2, ew);
-      break;
-    case 1: eye_rect(hx0, hy0, e->x0, e->y0, 2, 2, ew), eye_rect(hx0, hy0, e->x1, e->y1, 3, 1, ew); break;
-    case 2:
-    case 4: eye_rect(hx0, hy0, e->x0, e->y0, 3, 1, ew), eye_rect(hx0, hy0, e->x1, e->y1, 3, 1, ew); break;
-    case 5: eye_rect(hx0, hy0, e->x0, e->y0, 2, 1, ew), eye_rect(hx0, hy0, e->x1, e->y1, 2, 1, ew); break;
-    case 3: {
-      bool glow = (tick / 2) & 1;
-      eye_rect(hx0, hy0, e->x0, e->y0, 3, 3, HEX(0x3EC8FF));
-      eye_rect(hx0, hy0, e->x0 + 1, e->y0 + 1, 1, 1, HEX(0xE8FBFF));
-      if (glow) eye_rect(hx0, hy0, e->x0 - 1, e->y0 + 1, 5, 1, HEX(0x1F7FB0)), eye_rect(hx0, hy0, e->x0 + 1, e->y0 - 1, 1, 5, HEX(0x1F7FB0)),
-          eye_rect(hx0, hy0, e->x0, e->y0, 3, 3, HEX(0x3EC8FF)), eye_rect(hx0, hy0, e->x0 + 1, e->y0 + 1, 1, 1, HEX(0xE8FBFF));
-      break;
-    }
-  }
-  /* sweat: drops off the brim */
-  static const int8_t DROP[3][2] = {{28, 11}, {5, 11}, {30, 14}};
-  for (int i = 0; i < w->sweat && i < 3; i++) {
-    gfx_fill(hx0 + DROP[i][0], hy0 + DROP[i][1], 1, 2, HEX(0x9FD8FF));
-    gfx_fill(hx0 + DROP[i][0], hy0 + DROP[i][1] + 2, 1, 1, HEX(0x5FA8DF));
-  }
+  blit(torso, tbx, tby, false, 0, false);
+  int hbx = tbx - torso->ax + torso->jx + (ihx - itx), hby = tby - torso->ay + torso->jy + (ihy - ity);
+  const art_t *head = w->head == HEAD_BLUEEYE && ((tick / 2) & 1) ? ART_HEAD_BLUE2 : &ART_HEAD[w->head & 7];
+  blit(head, hbx, hby, false, 0, false);
+  if (w->sweat > 0)
+    blit(&ART_SWEAT[w->sweat < 3 ? w->sweat - 1 : 2], hbx - head->ax + head->jx, hby - head->ay + head->jy, false, 0,
+         false);
 }
 
 /* ---------------------------------------------------------------- words */
-static const np_font_t *const BODY_FONT = &np_font_body;
+static const np_font_t *const BODY_FONT = &BT_FONT_BOX;
 static const np_font_t *const SMALL = &np_font_small;
 
 /* the first n letters of s, line by line, from (x, baseline) */
@@ -333,19 +284,17 @@ static void key_line(const char *s) {
 }
 
 /* ---------------------------------------------------------------- the fight */
-static const char *const BUTTONS[4] = {"FIGHT", "ACT", "ITEM", "MERCY"};
-
 static void draw_ui(const fight_t *f) {
   const world_t *w = &f->w;
   gfx_text(BODY_FONT, 16, 210, "YOU   LV 19", WHITE, 256);
-  gfx_text(SMALL, 110, 209, "HP", WHITE, 256);
+  blit(&ART_LABEL[0], 112 + ART_LABEL[0].ax, 203 + ART_LABEL[0].ay, false, 0, false);
   int bw = 55, hpw = w->hp * bw / MAX_HP, krx = (w->hp - w->kr) * bw / MAX_HP;
   if (hpw < 0) hpw = 0;
   if (krx < 0) krx = 0;
   gfx_fill(128, 200, bw, 11, HP_RED);
   gfx_fill(128, 200, hpw, 11, YELLOW);
   if (w->kr > 0) gfx_fill(128 + krx, 200, hpw - krx > 1 ? hpw - krx : 1, 11, MAGENTA);
-  gfx_text(SMALL, 188, 209, "KR", WHITE, 256);
+  blit(&ART_LABEL[1], 188 + ART_LABEL[1].ax, 203 + ART_LABEL[1].ay, false, 0, false);
   char num[16];
   int hp = w->hp < 0 ? 0 : w->hp, k = 0;
   num[k++] = (char)('0' + hp / 10 % 10), num[k++] = (char)('0' + hp % 10);
@@ -354,11 +303,8 @@ static void draw_ui(const fight_t *f) {
   for (int i = 0; i < 4; i++) {
     static const int BX[4] = {16, 92, 172, 248};
     bool on = (f->state == FS_MENU || f->state == FS_SUB) && f->sel == i;
-    color_t c = on ? YELLOW : ORANGE;
-    int x = BX[i], y = 216;
-    gfx_fill(x, y, 55, 1, c), gfx_fill(x, y + 20, 55, 1, c), gfx_fill(x, y, 1, 21, c), gfx_fill(x + 54, y, 1, 21, c);
-    gfx_fill(x + 1, y + 1, 53, 1, c), gfx_fill(x + 1, y + 19, 53, 1, c), gfx_fill(x + 1, y + 1, 1, 19, c), gfx_fill(x + 53, y + 1, 1, 19, c);
-    gfx_text_center(SMALL, x + 35, y + 14, BUTTONS[i], c, 256);
+    const art_t *a = on ? &ART_BUTTON_ON[i] : &ART_BUTTON[i];
+    blit(a, BX[i] + a->ax, 216 + a->ay, false, 0, false);
   }
 }
 
@@ -381,7 +327,7 @@ static void draw_box_words(const fight_t *f) {
       gfx_text(BODY_FONT, 192, 182, pg, WHITE, 256);
       return;
     }
-    const char *item = f->sub == SUB_ENEMY ? "* Judge" : f->sub == SUB_ACT ? "* Check" : "* Spare";
+    const char *item = f->sub == SUB_ENEMY ? "* Sans" : f->sub == SUB_ACT ? "* Check" : "* Spare";
     float hx, hy;
     fight_item_pos(0, &hx, &hy);
     gfx_text(BODY_FONT, S(hx) + 8, S(hy) + 5, item, f->sub == SUB_MERCY ? YELLOW : WHITE, 256);
@@ -392,21 +338,19 @@ static void draw_box_words(const fight_t *f) {
 
 static void draw_bubble(const fight_t *f) {
   const world_t *w = &f->w;
+  const art_t *b = ART_BUBBLE;
   float feet_y = (w->ox_speed != 0 ? w->zt : w->tt) - 16;
   int bx = S(w->ox + 64), by = S(feet_y - 128);
-  static char wrapped[TEXT_MAX + 16];
-  int n = wrap(SMALL, f->text, 112, wrapped, sizeof wrapped);
-  int bw = 124, bh = n * 11 + 10;
-  if (bx + bw > SCREEN_W - 2) bx = SCREEN_W - 2 - bw;
+  if (bx + b->w > SCREEN_W - 2) bx = SCREEN_W - 2 - b->w;
   if (by < 16) by = 16;
-  gfx_rrect(bx, by, bw, bh, 4, WHITE, 256);
-  /* the tail, towards his head */
-  for (int i = 0; i < 6; i++) gfx_fill(bx - 6 + i, by + 12 + i / 2, 6 - i, 1, WHITE);
-  /* only the letters typed so far (the line breaks are where they'll end up) */
+  blit(b, bx + b->ax, by + b->ay, false, 0, false);
+  /* only the letters typed so far (the line breaks are where they'll end up), right of the tail */
+  static char wrapped[TEXT_MAX + 16];
+  wrap(&BT_FONT_BUBBLE, f->text, b->w - 26, wrapped, sizeof wrapped);
   int shown = f->text_shown, k = 0, out = 0;
   for (; wrapped[k] && out < shown; k++)
     if (wrapped[k] != '\n') out++;
-  lines(SMALL, bx + 6, by + 13, 11, wrapped, k, BLACK);
+  lines(&BT_FONT_BUBBLE, bx + 18, by + 17, 12, wrapped, k, BLACK);
 }
 
 static void draw_target(const fight_t *f, const clip_t *k) {
@@ -464,10 +408,10 @@ static void fight_scene(void *ctx) {
   const world_t *w = &f->w;
   memset(strip, 0, sizeof strip);
   if (!w->black) {
-    /* the Judge */
+    /* Sans */
     float feet = (w->ox_speed != 0 ? w->zt : w->tt) - 16;
     int fx = S(w->ox) + ox_, fy = S(feet) + oy_;
-    draw_judge(w, fx, fy, w->tick);
+    draw_sans(w, fx, fy, w->tick);
     draw_slash(f, fx, fy - 30);
     if (f->miss_t > 0) gfx_text_center(&np_font_title, 150, 46, "MISS", HEX(0xC0C0C0), 256);
     /* the zone */
@@ -500,7 +444,7 @@ static void fight_scene(void *ctx) {
       for (int i = 0; i < w->nstabs; i++) draw_stab(&w->stabs[i], &k);
       if (f->state == FS_TARGET || f->bar_fade > 0) draw_target(f, &k);
     }
-    /* the gavels' beams, then the gavels */
+    /* the blasters' beams, then the blasters */
     for (int i = 0; i < w->nblasters; i++) {
       const blaster_t *b = &w->blasters[i];
       if (b->state != BL_LEAVE || b->base <= 0) continue;
@@ -517,8 +461,9 @@ static void fight_scene(void *ctx) {
     }
     for (int i = 0; i < w->nblasters; i++) {
       const blaster_t *b = &w->blasters[i];
-      const art_t *a = b->state >= BL_FIRE ? &ART_GAVEL_OPEN : &ART_GAVEL_SHUT;
-      blit_turned(a, b->x * 0.5f + (float)ox_, b->y * 0.5f + (float)oy_, b->ang, b->sy, b->sx, 32);
+      int k = b->state == BL_FIRE ? 3 - b->timer : b->state == BL_LEAVE ? 3 + b->beam_t : -1;
+      const art_t *a = &ART_BLASTER[k < 0 ? 0 : 1 + (k < 5 ? k : 3 + (k - 3) % 2)];
+      blit_turned(a, b->x * 0.5f + (float)ox_, b->y * 0.5f + (float)oy_, b->ang, b->sy * 0.5f, b->sx * 0.5f, 32);
     }
     /* the menu's bones */
     for (int i = 0; i < w->nmbones; i++) {
@@ -540,7 +485,7 @@ static void fight_scene(void *ctx) {
         gfx_fill(x, y, 2, t ? 2 : 1, RED), gfx_fill(x + (t ? 0 : 1), y + 1, 1, 1, RED);
       }
     } else if (f->state == FS_DEATH && f->death_t >= 20) {
-      blit(&ART_HEART_BROKEN, S(w->hx), S(w->hy), false, RED, true);
+      blit(&ART_HEART[1], S(w->hx), S(w->hy), false, RED, true);
     } else draw_heart(w);
   }
   if (f->banner_t > 0 && f->banner)
@@ -568,19 +513,19 @@ typedef struct {
 } screen_ctx_t;
 
 static void heart_cursor(int x, int y) {
-  for (int yy = 0; yy < ART_HEART.h; yy++)
-    for (int xx = 0; xx < ART_HEART.w; xx++)
-      if (art_px(&ART_HEART, xx, yy)) gfx_fill(x + xx, y + yy, 1, 1, RED);
+  for (int yy = 0; yy < ART_HEART[0].h; yy++)
+    for (int xx = 0; xx < ART_HEART[0].w; xx++)
+      if (art_px(&ART_HEART[0], xx, yy)) gfx_fill(x + xx, y + yy, 1, 1, RED);
 }
 
 static void screen_scene(void *ctx) {
   const screen_t *s = ((const screen_ctx_t *)ctx)->s;
   memset(strip, 0, sizeof strip);
-  if (s->judge) {
+  if (s->sans) {
     world_t w;
     memset(&w, 0, sizeof w);
-    w.anim = ANIM_IDLE, w.body = BODY_NONE, w.head = s->judge_head, w.anim_t = (int16_t)(s->tick % 3600);
-    draw_judge(&w, 160, s->judge_y, s->tick);
+    w.anim = ANIM_IDLE, w.body = BODY_NONE, w.head = s->sans_head, w.anim_t = (int16_t)(s->tick % 3600);
+    draw_sans(&w, 160, s->sans_y, s->tick);
   }
   if (s->title) gfx_text_center(&np_font_title, SCREEN_W / 2, s->title_y, s->title, WHITE, 256);
   for (int i = 0; i < s->n; i++) {

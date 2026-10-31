@@ -382,7 +382,7 @@ static int bot_fight(int mode, int arg, uint32_t seed, uint32_t *hash, uint32_t 
 }
 
 #define RUN_SEED 0xB0B0B0u
-#define RUN_HASH 0xC53F43E5u
+#define RUN_HASH 0xA1958315u
 static void test_bot(void) {
   uint32_t h;
   int low;

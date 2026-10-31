@@ -65,45 +65,25 @@ static int pick_attack(fight_t *f) {
   return a;
 }
 
-/* what he says before an attack (Normal): a line for each attack of the fixed order (n: its place in it, -1 for
- * a random one), the break's and the final's */
-static const char *turn_line(const fight_t *f, int attack, int n) {
-  if (f->mode != MODE_NORMAL) return 0;
-  int h = f->hit_attempts;
-  if (attack == A_FINAL) return TALK_FINAL;
-  if (h == 13) return TALK_BREAK;
-  if (n < 0) return 0;
-  if (h < 13) return n < 14 ? TALK_FIRST[n] : 0;
-  return n < 9 ? TALK_SECOND[n] : 0;
-}
-
 static void start_turn(fight_t *f) {
   world_t *w = &f->w;
   if (f->mode == MODE_NORMAL) {
     int p = fight_progress_of(f->hit_attempts, f->next_attack);
     if (p > f->progress) f->progress = (uint8_t)p;
   }
-  int before = f->next_attack;
   int a = pick_attack(f);
-  int fixed = f->next_attack != before ? before : -1;   /* (a random one doesn't move it on) */
   f->last_attack = (uint8_t)a;
   sim_start_attack(w, a);
   w->heart_on = 0;   /* (until the attack puts it in the box) */
   if (f->mode == MODE_PRACTICE) w->hp = MAX_HP, w->kr = 0, f->failed = 0;
   if (f->mode == MODE_SINGLE) w->anim = ANIM_IDLE, w->head = HEAD_DEFAULT;
   quiet(f);
-  const char *line = turn_line(f, a, fixed);
-  if (line) {
-    w->sc.running = 0, w->sc.talk = 1, w->sc.talk_line = -1;
-    say(f, line, TXT_BUBBLE, 0);
-  }
   f->state = FS_ATTACK;
 }
 
 static const char *info_line(const fight_t *f) {
-  const char *s = f->info ? f->info : INFO_DEFAULT;
-  int h = f->hit_attempts;
-  if (f->w.kr > 0) s = INFO_KARMA;
+  int h = f->hit_attempts, kr = f->w.kr;
+  const char *s = f->info ? f->info : INFO_KR[kr >= 20 ? 2 : kr >= 10 ? 1 : 0];
   if (h < 13 && f->next_attack == 1) s = INFO_FIRST;
   if (h == 13) s = INFO_BREAK;
   if (h == 15) s = INFO_15;
@@ -220,25 +200,19 @@ static void use_item(fight_t *f) {
   const item_t *it = &ITEMS[f->items[slot]];
   world_t *w = &f->w;
   w->hp = (int16_t)(w->hp + it->heal);
-  bool maxed = w->hp >= MAX_HP;
   if (w->hp > MAX_HP) w->hp = MAX_HP;
   if (w->kr >= w->hp) w->kr = (int16_t)(w->hp - 1);
   memmove(f->items + slot, f->items + slot + 1, (size_t)(f->nitems - slot - 1));
   f->nitems--;
   char buf[TEXT_MAX], *p = buf;
-  const char *a = "* You ate the ", *b = ".\n* ";
+  const char *a = "* You eat the ", *b = ".\n* You recovered ";
   while (*a) *p++ = *a++;
   for (const char *s = it->full; *s; s++) *p++ = *s;
   while (*b) *p++ = *b++;
-  if (maxed) {
-    for (const char *s = "Your HP was maxed out."; *s; s++) *p++ = *s;
-  } else {
-    for (const char *s = "You got "; *s; s++) *p++ = *s;
-    int v = it->heal;
-    if (v >= 10) *p++ = (char)('0' + v / 10);
-    *p++ = (char)('0' + v % 10);
-    for (const char *s = " HP back."; *s; s++) *p++ = *s;
-  }
+  int v = it->heal;   /* (the item's HP, even past the most: as the simulator says it) */
+  if (v >= 10) *p++ = (char)('0' + v / 10);
+  *p++ = (char)('0' + v % 10);
+  for (const char *s = " HP!"; *s; s++) *p++ = *s;
   *p = 0;
   f->state = FS_INFO, f->w.heart_on = 0;
   say(f, buf, TXT_BOX, 0);

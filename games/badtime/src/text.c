@@ -1,66 +1,36 @@
-/* Bad Time Simulator: the words (the game's own: the Judge's lines, the box's text, the items, the help). */
+/* Bad Time Simulator: the words, as jcw87's Bad Time Simulator has them (Undertale's, by Toby Fox), and the help.
+ * Sans says nothing between attacks there (its readme: left out on purpose), only what the attack scripts and
+ * the win give him. */
 #include "fight.h"
 
-/* what the Judge says where the scripts speak (tools/attacks.py: "ready?", "here we go.") */
-const char *const TALK_SCRIPT[2] = {
-  "Court is in session.",
-  "That was the opening statement.",
-};
+/* what the attack scripts make him say (tools/attacks.py) */
+const char *const TALK_SCRIPT[2] = {"ready?", "here we go."};
+/* when he falls asleep and you win */
+const char *const TALK_WIN[2] = {"huff... puff...", "alright, i guess\nyou win."};
 
-/* before each attack of the first half (by the attack's number in the fight) */
-const char *const TALK_FIRST[14] = {
-  0,
-  "Not bad. Most don't get past that.",
-  "Watch the blue ones. Stand still and they pass.",
-  "You've been busy down here, haven't you?",
-  "Every name on that list. I read them all.",
-  "Keep your feet under you.",
-  "I don't like doing this. You made it a job.",
-  "Still standing? Huh.",
-  "You know why I wear this hat? Neither do I.",
-  "Do you even remember why you started?",
-  "It's not too late to stop. Just very, very late.",
-  "You're good at this. That's the problem.",
-  "My arm's getting tired. My patience isn't.",
-  "One more round. Then we'll see.",
+/* the box between attacks: by KARMA, at least 0, 10 and 20 */
+const char *const INFO_KR[3] = {
+  "* You felt your sins crawling\n  on your back.",
+  "* You felt your sins weighing\n  on your neck.",
+  "* KARMA coursing through your\n  veins.",
 };
-const char *const TALK_BREAK = "I'm calling a recess. Put it down and we both walk out of here.";
-/* the second half */
-const char *const TALK_SECOND[9] = {
-  "Recess is over. No more warnings.",
-  "Each time you come back, you look a little less sorry.",
-  "I've seen how this ends. I've seen it a lot.",
-  "Hold still. It's easier for both of us.",
-  "...",
-  "Getting heavy, isn't it? The weight.",
-  "I'm not tired. I'm saving my strength.",
-  "You really won't stop, will you?",
-  "Then neither will I.",
-};
-const char *const TALK_FINAL = "Alright. Here's my last ruling.";
-const char *const TALK_WIN[2] = {
-  "...can't keep my eyes open.",
-  "Fine. You win. Go on.",
-};
+/* or, before the first attack and at these hit attempts (13, 15, 19, 20, 21, 22) */
+const char *const INFO_FIRST = "* You feel like you're going to\n  have a bad time.";
+const char *const INFO_BREAK = "* Sans is taking a break.";
+const char *const INFO_15 = "* The REAL battle finally begins.";
+const char *const INFO_19 = "* Reading this doesn't seem\n  like the best use of time.";
+const char *const INFO_20 = "* Sans is starting to look\n  really tired.";
+const char *const INFO_21 = "* Sans is preparing something.";
+const char *const INFO_22 = "* Sans is getting ready to\n  use his special attack.";
+const char *const CHECK_TEXT = "* SANS 1 ATK 1 DEF\n* The easiest enemy.\n* Can only deal 1 damage.";
+const char *const CHECK_TEXT2 = "* Can't keep dodging forever.\n* Keep attacking.";
 
-/* the box, between attacks */
-const char *const INFO_DEFAULT = "* The JUDGE taps his gavel.";
-const char *const INFO_FIRST = "* You feel this won't go well.";
-const char *const INFO_KARMA = "* Something heavy clings to you.";
-const char *const INFO_BREAK = "* The JUDGE calls a recess.";
-const char *const INFO_15 = "* The real trial begins.";
-const char *const INFO_19 = "* Reading this won't help you.";
-const char *const INFO_20 = "* The JUDGE looks worn out.";
-const char *const INFO_21 = "* The JUDGE is preparing\n  something.";
-const char *const INFO_22 = "* The JUDGE is getting ready\n  for his final ruling.";
-const char *const CHECK_TEXT = "* JUDGE  ATK 1  DEF 1\n* Never been hit.\n* Every hit takes 1 HP.";
-const char *const CHECK_TEXT2 = "* He can't dodge forever.\n* Keep swinging.";
-
+/* name in the menu, full name, HP it heals */
 const item_t ITEMS[4] = {
-  {"Pie", "Pie", 99},
-  {"Noodles", "Noodles", 90},
-  {"Steak", "Steak", 60},
-  {"Hero", "Hero sandwich", 40},
+  {"Pie", "Butterscotch Pie", 99},
+  {"I.Noodles", "Instant Noodles", 90},
+  {"Steak", "Face Steak", 60},
+  {"L. Hero", "Legendary Hero", 40},
 };
 
 const char *const HELP[HELP_PAGES] = {
@@ -76,8 +46,8 @@ const char *const HELP[HELP_PAGES] = {
   "(eat to heal) or MERCY. Survive all 24 attacks.\n"
   "Practice: retry each attack until you pass it.\n"
   "Back pauses. Home saves and quits.",
-  "Inspired by Undertale by Toby Fox and Bad Time\n"
-  "Simulator by jcw87. Not affiliated with them.\n"
-  "Pictures drawn for this game. Font: Nunito.\n"
+  "Undertale by Toby Fox: Sans, his attacks, the\n"
+  "pictures and words, as in jcw87's Bad Time\n"
+  "Simulator. Not affiliated. Pixel Operator font.\n"
   "Made by Mason Chen as part of NumPlay.",
 };

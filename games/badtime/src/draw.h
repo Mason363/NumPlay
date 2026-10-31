@@ -13,9 +13,9 @@ typedef struct {
   const char *body;
   int body_x, body_y;
   const char *foot, *keys;
-  bool judge;                /* the Judge in the middle, his feet at judge_y */
-  int judge_y;
-  uint8_t judge_head;
+  bool sans;                /* Sans in the middle, his feet at sans_y */
+  int sans_y;
+  uint8_t sans_head;
   uint32_t tick;
 } screen_t;
 

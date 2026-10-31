@@ -1,299 +1,214 @@
 #!/usr/bin/env python3
-"""Bad Time Simulator's pictures, drawn here pixel by pixel (the game's own: the Judge, the gavels, the heart):
-writes src/art.c and src/art.h, and with --preview DIR a picture of each at 4x (Pillow).
+"""Bad Time Simulator's pictures and letters -> src/art.c and src/art.h.
 
-Each picture is rows of letters, a letter a pixel ('.' is see-through), in one of two palettes."""
+The pictures are the ones jcw87's Bad Time Simulator draws (Undertale's own sprites, by Toby Fox), from its
+project folder REF (not committed: ~/Documents/Assets/gamesrc/badtime/ref, a clone of jcw87/c2-sans-fight), with
+the hot spots and attach points its .caproj gives each frame. Sans is drawn there at twice his size on a 640 x 480
+screen, so here at his own; what is drawn there at its own size (the blasters, the heart, the buttons, the HP and
+KR labels, the speech bubble) is halved as games/undertale halves the game's battle art: each 2 x 2 block becomes
+its most common opaque colour. The letters are Pixel Operator (CC0, by Jayvee Enaguas, the font Undertale credits),
+as games/undertale draws them: Mono Bold for the box, Bold for the speech bubble.
+
+Usage: art.py [REF] [--fonts DIR] [--preview DIR]   (DIR: Pixel Operator's .ttf files, gamesrc/undertale/fonts)"""
+import html
 import os
+import re
 import sys
+
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "src")
+REF = os.path.expanduser("~/Documents/Assets/gamesrc/badtime/ref")
+FONTS = os.path.expanduser("~/Documents/Assets/gamesrc/undertale/fonts")
 
-JUDGE = {  # the Judge: robe, gold, hat, the shadow under it, white gloves and bands
-    "k": 0x1C1418, "R": 0x7D2433, "r": 0x521826, "L": 0xA83D4F, "g": 0xE0B84C, "G": 0xA27D2A, "H": 0x2D2D38,
-    "h": 0x55556A, "f": 0x0B0B10, "w": 0xF4F2EE, "W": 0xBDB8AE, "B": 0x4A3324, "b": 0x3EC8FF, "c": 0xA8ECFF,
-    "s": 0x9FD8FF,
-}
-GAVEL = {  # the gavels: wood, gold bands, the striking face that lights up
-    "k": 0x1A120C, "D": 0x5C3A20, "M": 0x8A5A34, "l": 0xB07A48, "g": 0xE0B84C, "G": 0xA27D2A, "f": 0x2A1E16,
-    "w": 0xFFFFFF, "c": 0xBFF2FF, "b": 0x3EC8FF, "y": 0xFFF3B0,
-}
-
-HEAD = """
-..........kkkkkkkkkkkkkk..........
-.........kHhhhhhhhhhhhhHk.........
-.........kHhHHHHHHHHHHHHk.........
-.........kHHHHHHHHHHHHHHk.........
-.........kHHHHHHHHHHHHHHk.........
-.........kggggggggggggggk.........
-.........kGGGGGGGGGGGGGGk.........
-...kkkkkkkHHHHHHHHHHHHHHkkkkkkk...
-.kkhhhhhhhhhhhhhhhhhhhhhhhhhhhhkk.
-kHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHk
-.kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk.
-........kffffffffffffffffk........
-........kffffffffffffffffk........
-........kffffffffffffffffk........
-........kffffffffffffffffk........
-.........kffffffffffffffk.........
-..........kffffffffffffk..........
-...........kkffffffffkk...........
-"""
-
-TORSO = """
-.......kkkkkkkkkkkkkk.......
-....kkkLLLLLwwwwLLLLLkkk....
-..kkLLLRRRRRwwwwRRRRRLLLkk..
-.kLLRRRRRRRRkwwkRRRRRRRRLLk.
-kLRRRRRRRRRRRwwRRRRRRRRRRRLk
-kRRRRRRRRRRRRggRRRRRRRRRRRRk
-kRRRRRRRRRgGRggRGgRRRRRRRRRk
-kRRRRRRRRRRgGggGgRRRRRRRRRRk
-kRRRRRRRRRRRggggRRRRRRRRRRRk
-kRRRRRRRRRRRgGGgRRRRRRRRRRRk
-kRRRRRRRRRRRRggRRRRRRRRRRRRk
-kRRRRRRRRRRRRggRRRRRRRRRRRRk
-krRRRRRRRRRRRggRRRRRRRRRRRrk
-krRRRRRRRRRRRggRRRRRRRRRRRrk
-krrRRRRRRRRRRggRRRRRRRRRRrrk
-krrrRRRRRRRRRggRRRRRRRRRrrrk
-"""
-
-LEGS = """
-..krrRRRRRRRRRRggRRRRRRRRRRrrk..
-..krrRRRRRRRRRRggRRRRRRRRRRrrk..
-.krrrRRRRRRRRRRggRRRRRRRRRRrrrk.
-.krrrRRRRRRRRRRggRRRRRRRRRRrrrk.
-.krrrrRRRRRRRRRggRRRRRRRRRrrrrk.
-krrrrrRRRRRRRRRggRRRRRRRRRrrrrrk
-krrrrrrRRRRRRRRggRRRRRRRRrrrrrrk
-kGggggggggggggggggggggggggggggGk
-.kkkkkkkkkkkkkkkkkkkkkkkkkkkkkk.
-.......kBBBBBk....kBBBBBk.......
-......kBBBBBBk....kBBBBBBk......
-......kkkkkkkk....kkkkkkkk......
-"""
-
-# arms, the left ones (the right ones are mirrored); their shoulder joint is the top-middle
-ARM_SIDE = """
-..kkk.
-.kLRRk
-kLRRRk
-kRRRrk
-kRRRrk
-kRRRrk
-kRRrrk
-kRRrrk
-kRRrrk
-krrrrk
-kGgggk
-kkwwkk
-kwwwWk
-kwwWWk
-.kWWk.
-..kk..
-"""
-ARM_UP = """
-..kk..
-.kwwk.
-kwwwWk
-kwwWWk
-kkwWkk
-kGgggk
-krRRrk
-kRRRrk
-kRRRrk
-kRRRrk
-kRRRLk
-kRRRLk
-kRRLLk
-kRLLLk
-.kLLk.
-..kk..
-"""
-ARM_OUT = """
-..kkkkkkkkkkkk.....
-.kLLLLLLLLLLLLkkkk.
-kLRRRRRRRRRRRkGwwwk
-kRRRRRRRRRRRRkgwwWk
-krrrrrrrrrrrrkgwWWk
-.kkkkkkkkkkkkkkkkk.
-"""
-ARM_DOWN = """
-..kkk...
-.kLRRk..
-kLRRRk..
-kRRRrk..
-kRRRrk..
-.kRRrrk.
-.kRRrrk.
-.kRRrrk.
-..kRrrrk
-..kRrrrk
-..kGgggk
-..kkwwkk
-..kwwwWk
-..kwwWWk
-...kWWk.
-....kk..
-"""
-ARM_SHRUG = """
-.....kk.
-....kwwk
-.kkkkwWk
-kLRRkwWk
-kRRRkGgk
-kRRRrkkk
-kRRrk...
-.krk....
-"""
-
-HEART = """
-.rr..rr.
-rrrrrrrr
-rrrrrrrr
-rrrrrrrr
-.rrrrrr.
-..rrrr..
-...rr...
-"""
-HEART_BROKEN = """
-.rr..rr.
-rrr.rrrr
-rrrr.rrr
-rrr.rrrr
-.rrr.rr.
-..r.rr..
-...rr...
-"""
-
-GAVEL_SHUT = """
-............................
-...kkk..kkkkkkkkkkk..kkkkk..
-..kgGGkkklllllllllkkkfffffk.
-..kgGGkMMlllllllllMkkfffffk.
-.kggGGkMMMMMMMMMMMMkkffffffk
-.kggGGkMMMMMMMMMMMMkkffffffk
-.kggGGkMMMMMMMMMMMMkkffffffk
-.kggGGkMMMMMMMMMMMMkkffffffk
-.kggGGkMMMMMMMMMMMMkkffffffk
-.kggGGkMMMMMMMMMMMMkkffffffk
-..kgGGkDDDDDDDDDDDDkkfffffk.
-..kgGGkDDDDDDDDDDDDkkfffffk.
-...kkk.kkkkkMMkkkkk..kkkkk..
-...........kMMk.............
-...........kMMk.............
-...........kMDk.............
-...........kMDk.............
-...........kMDk.............
-...........kMDk.............
-...........kGgk.............
-...........kGgk.............
-............kk..............
-"""
-GAVEL_OPEN = """
-............................
-...kkk..kkkkkkkkkkk..kkkkk..
-..kgGGkkklllllllllkkkcccwck.
-..kgGGkMMlllllllllMkkcwwwwck
-.kggGGkMMMMMMMMMMMMkkcwwwwwc
-.kggGGkMMMMMMMMMMMMkkcwwwwwc
-.kggGGkMMMMMMMMMMMMkkcwwwwwc
-.kggGGkMMMMMMMMMMMMkkcwwwwwc
-.kggGGkMMMMMMMMMMMMkkcwwwwwc
-.kggGGkMMMMMMMMMMMMkkcwwwwwc
-..kgGGkDDDDDDDDDDDDkkcwwwwck
-..kgGGkDDDDDDDDDDDDkkcccwck.
-...kkk.kkkkkMMkkkkk..kkkkk..
-...........kMMk.............
-...........kMMk.............
-...........kMDk.............
-...........kMDk.............
-...........kMDk.............
-...........kMDk.............
-...........kGgk.............
-...........kGgk.............
-............kk..............
-"""
-
-PICTURES = [  # name, rows, palette, anchor (x, y) from the top-left
-    ("head", HEAD, "judge", (17, 18)),       # bottom-middle: the chin
-    ("torso", TORSO, "judge", (14, 16)),     # bottom-middle
-    ("legs", LEGS, "judge", (16, 12)),       # bottom-middle: the feet
-    ("arm_side", ARM_SIDE, "judge", (3, 0)),
-    ("arm_up", ARM_UP, "judge", (3, 15)),
-    ("arm_out", ARM_OUT, "judge", (0, 1)),
-    ("arm_down", ARM_DOWN, "judge", (3, 0)),
-    ("arm_shrug", ARM_SHRUG, "judge", (1, 4)),
-    ("heart", HEART, "heart", (4, 4)),
-    ("heart_broken", HEART_BROKEN, "heart", (4, 4)),
-    ("gavel_shut", GAVEL_SHUT, "gavel", (14, 7)),   # the head's middle: where it turns, and the beam's axis
-    ("gavel_open", GAVEL_OPEN, "gavel", (14, 7)),
+# name, the reference's object and animation, its frames (None: all), halved
+PICTURES = [
+    ("HEAD", "SansHead", ["Default", "LookLeft", "Wink", "ClosedEyes", "NoEyes", "BlueEye", "Tired1", "Tired2"], 0),
+    ("HEAD_BLUE2", "SansHead", ["BlueEye#1"], 0),
+    ("TORSO", "SansTorso", ["Default", "Shrug"], 0),
+    ("LEGS", "SansLegs", ["Standing", "Sitting"], 0),
+    ("BODY_DOWN", "SansBody", ["HandDown#*"], 0),
+    ("BODY_UP", "SansBody", ["HandUp#*"], 0),
+    ("BODY_RIGHT", "SansBody", ["HandRight#*"], 0),
+    ("BODY_LEFT", "SansBody", ["HandLeft#*"], 0),
+    ("SWEAT", "SansSweat", ["Sweat1", "Sweat2", "Sweat3"], 0),
+    ("BLASTER", "GasterBlaster", ["Default", "Fire#*"], 0),   # (at its own size: the fight scales it)
+    ("HEART", "PlayerHeart", ["Default", "Split"], 1),
+    ("BUTTON", None, ["UIFight", "UIAct", "UIItem", "UIMercy"], 1),
+    ("BUTTON_ON", None, ["UIFight", "UIAct", "UIItem", "UIMercy"], 1),
+    ("LABEL", None, ["HP", "KR"], 1),
+    ("BUBBLE", "SpeechBubble", ["Default"], 1),
 ]
-PALETTES = {"judge": JUDGE, "gavel": GAVEL, "heart": {"r": 0xFFFFFF}}   # (the heart is tinted when drawn)
+# name, file, size, height, ascent, advance (None: the font's own)
+LETTERS = [("BT_FONT_BOX", "PixelOperatorMono-Bold.ttf", 16, 12, 13, 8),
+           ("BT_FONT_BUBBLE", "PixelOperator-Bold.ttf", 16, 12, 13, None)]
 
 
-def rows(text):
-    r = [l for l in text.strip("\n").split("\n")]
-    if len({len(l) for l in r}) != 1:
-        sys.exit("art.py: uneven rows:\n" + "\n".join(f"{len(l):3} {l}" for l in r))
-    return r
+def hotspots(ref):
+    """{object: {animation: [(hot x, hot y, {point: (x, y)}) for each frame]}}, as fractions of the frame"""
+    s = open(os.path.join(ref, "Bad Time Simulator (Sans Fight).caproj"), encoding="utf-8").read()
+    out = {}
+    for om in re.finditer(r'<object-type[^>]*name="([^"]+)"(.*?)</object-type>', s, re.S):
+        anims = {}
+        for am in re.finditer(r'<animation[^>]*name="([^"]+)"[^>]*>(.*?)</animation>', om.group(2), re.S):
+            frames = []
+            for fm in re.finditer(r'<frame [^>]*hotspotX="([^"]+)" hotspotY="([^"]+)"[^>]*?(?:/>|>(.*?)</frame>)',
+                                  am.group(2), re.S):
+                pts = {html.unescape(n): (float(x), float(y)) for n, x, y in
+                       re.findall(r'<image-point name="([^"]+)" x="([^"]+)" y="([^"]+)"', fm.group(3) or "")}
+                frames.append((float(fm.group(1)), float(fm.group(2)), pts))
+            anims[am.group(1)] = frames
+        out[om.group(1)] = anims
+    return out
+
+
+def shrink(img):
+    """art for a 640 x 480 screen -> half its size: each 2 x 2 block becomes its most common opaque colour (or clear,
+    if most of it is), as games/undertale/tools/pack.py does"""
+    a = np.array(img.convert("RGBA"))
+    h, w = a.shape[:2]
+    a = np.pad(a, ((0, h % 2), (0, w % 2), (0, 0)))
+    H, W = a.shape[0] // 2, a.shape[1] // 2
+    out = np.zeros((H, W, 4), np.uint8)
+    for y in range(H):
+        for x in range(W):
+            block = a[2 * y:2 * y + 2, 2 * x:2 * x + 2].reshape(4, 4)
+            op = block[block[:, 3] >= 128]
+            if len(op) < 2:
+                continue
+            cols, counts = np.unique(op[:, :3], axis=0, return_counts=True)
+            out[y, x, :3] = cols[np.argmax(counts)]
+            out[y, x, 3] = 255
+    return Image.fromarray(out, "RGBA")
+
+
+def frames_of(ref, hot, obj, spec):
+    """[(image, hot spot, attach point)] for 'Anim', 'Anim#n' (its frame n) or 'Anim#*' (all its frames)"""
+    anim, _, which = spec.partition("#")
+    if obj is None:   # (a sprite of its own: its Default animation)
+        obj, anim = anim, "Default"
+    d = os.path.join(ref, "Animations", obj, anim)
+    files = sorted(f for f in os.listdir(d) if f.endswith(".png"))
+    idx = range(len(files)) if which == "*" else [int(which)] if which else [0]
+    out = []
+    for i in idx:
+        hx, hy, pts = hot[obj][anim][i]
+        point = next(iter(pts.values()), (hx, hy))
+        out.append((Image.open(os.path.join(d, files[i])).convert("RGBA"), (hx, hy), point))
+    return out
+
+
+def pack(img, hot, point, half):
+    """an art_t's fields: size, anchor, attach point, palette (index 0 clear) and 4-bit pixels"""
+    w0, h0 = img.size
+    if half:
+        img = shrink(img)
+    a = np.array(img)
+    h, w = a.shape[:2]
+    k = 2 if half else 1
+    ax, ay = round(hot[0] * w0 / k), round(hot[1] * h0 / k)
+    jx, jy = round(point[0] * w0 / k), round(point[1] * h0 / k)
+    cols = []
+    idx = np.zeros((h, w), np.uint8)
+    for y in range(h):
+        for x in range(w):
+            if a[y, x, 3] < 128:
+                continue
+            c = (int(a[y, x, 0]) << 16) | (int(a[y, x, 1]) << 8) | int(a[y, x, 2])
+            if c not in cols:
+                cols.append(c)
+            idx[y, x] = cols.index(c) + 1
+    assert len(cols) <= 15, "%d colours" % len(cols)
+    flat = list(idx.reshape(-1)) + [0]
+    px = [flat[i] | flat[i + 1] << 4 for i in range(0, w * h, 2)]
+    return w, h, ax, ay, jx, jy, ([0] + cols + [0] * 15)[:16], px
+
+
+def letters(path, size, height, ascent, advance):
+    """an np_font_t's glyphs (w, h, x, y from the baseline, advance, offset) and 4-bit coverage, ASCII 32 to 126"""
+    font = ImageFont.truetype(path, size)
+    base = size + font.getmetrics()[0]   # (the baseline where the letter is drawn below)
+    glyphs, data = [], []
+    for c in range(32, 127):
+        ch = chr(c)
+        im = Image.new("L", (size * 3, size * 3), 0)
+        d = ImageDraw.Draw(im)
+        d.fontmode = "1"
+        d.text((size, size), ch, font=font, fill=255)
+        adv = advance if advance else int(round(font.getlength(ch)))
+        bb = im.getbbox()
+        if bb is None:
+            glyphs.append((0, 0, 0, 0, adv, 0))
+            continue
+        g = np.array(im.crop(bb)) >= 128
+        gh, gw = g.shape
+        ox, oy = bb[0] - size, bb[1] - base
+        off = len(data)
+        flat = [15 if v else 0 for v in g.reshape(-1)]
+        if len(flat) & 1:
+            flat.append(0)
+        data += [flat[i] | flat[i + 1] << 4 for i in range(0, len(flat), 2)]
+        glyphs.append((gw, gh, ox, oy, adv, off))
+    return glyphs, data, height - ascent if height > ascent else 3
 
 
 def main():
-    preview = sys.argv[sys.argv.index("--preview") + 1] if "--preview" in sys.argv else None
-    pals = {}
-    for pn, pal in PALETTES.items():
-        keys = list(pal)
-        pals[pn] = (keys, [pal[k] for k in keys])
-    out_c = ["/* Generated by tools/art.py: don't edit. The game's own pictures. */", '#include "art.h"', ""]
+    args = sys.argv[1:]
+    preview = args[args.index("--preview") + 1] if "--preview" in args else None
+    fonts = args[args.index("--fonts") + 1] if "--fonts" in args else FONTS
+    pos = [a for i, a in enumerate(args) if not a.startswith("--") and (i == 0 or args[i - 1] not in
+                                                                      ("--preview", "--fonts"))]
+    ref = pos[0] if pos else REF
+    hot = hotspots(ref)
+    out_c = ["/* Generated by tools/art.py: don't edit. Undertale's sprites (Toby Fox) as jcw87's Bad Time Simulator",
+             " * draws them; letters: Pixel Operator by Jayvee Enaguas (CC0). */", '#include "art.h"', ""]
     out_h = ["/* Generated by tools/art.py: don't edit. */", "#ifndef BT_ART_H", "#define BT_ART_H",
-             "#include <stdint.h>", "",
+             "#include <stdint.h>", '#include "font.h"', "",
              "typedef struct {", "  uint8_t w, h, ax, ay;      /* size, anchor */",
+             "  uint8_t jx, jy;            /* where the next part attaches (Sans: the head, the torso; the head: sweat) */",
              "  const uint32_t *pal;        /* 0xRRGGBB; index 0 is see-through */",
              "  const uint8_t *px;          /* 4 bits a pixel, two a byte, the first in the low half */",
              "} art_t;", ""]
-    for pn, (keys, cols) in pals.items():
-        out_c.append(f"static const uint32_t PAL_{pn.upper()}[16] = {{0, " + ", ".join(f"0x{c:06X}" for c in cols) + "};")
-    out_c.append("")
-    imgs = {}
-    for name, text, pn, (ax, ay) in PICTURES:
-        r = rows(text)
-        keys, cols = pals[pn]
-        w, h = len(r[0]), len(r)
-        idx = []
-        for line in r:
-            for ch in line:
-                idx.append(0 if ch == "." else keys.index(ch) + 1)
-        if len(idx) % 2:
-            idx.append(0)
-        data = [idx[i] | idx[i + 1] << 4 for i in range(0, len(idx), 2)]
-        out_c.append(f"static const uint8_t PX_{name.upper()}[{len(data)}] = {{")
-        for i in range(0, len(data), 24):
-            out_c.append("  " + ", ".join(str(b) for b in data[i:i + 24]) + ",")
+    shots = []
+    for name, obj, specs, half in PICTURES:
+        items = []
+        for spec in specs:
+            for img, hs, pt in frames_of(ref, hot, obj, spec):
+                if name == "BUTTON_ON":
+                    img = Image.open(os.path.join(ref, "Animations", spec, "Highlight", "000.png")).convert("RGBA")
+                items.append(pack(img, hs, pt, half))
+                shots.append((name, img if not half else shrink(img)))
+        for i, (w, h, ax, ay, jx, jy, pal, px) in enumerate(items):
+            out_c.append("static const uint32_t %s_pal%d[] = {%s};" % (name, i, ", ".join("0x%06X" % c for c in pal)))
+            out_c.append("static const uint8_t %s_px%d[] = {%s};" % (name, i, ", ".join(str(b) for b in px)))
+        out_c.append("const art_t ART_%s[%d] = {" % (name, len(items)))
+        for i, (w, h, ax, ay, jx, jy, pal, px) in enumerate(items):
+            out_c.append("  {%d, %d, %d, %d, %d, %d, %s_pal%d, %s_px%d}," % (w, h, ax, ay, jx, jy, name, i, name, i))
         out_c.append("};")
-        out_c.append(f"const art_t ART_{name.upper()} = {{{w}, {h}, {ax}, {ay}, PAL_{pn.upper()}, PX_{name.upper()}}};")
-        out_h.append(f"extern const art_t ART_{name.upper()};")
-        imgs[name] = (r, pn)
+        out_c.append("")
+        out_h.append("extern const art_t ART_%s[%d];" % (name, len(items)))
+    out_h.append("")
+    for name, ttf, size, height, ascent, advance in LETTERS:
+        glyphs, data, desc = letters(os.path.join(fonts, ttf), size, height, ascent, advance)
+        lo = name.lower()
+        out_c.append("static const np_glyph_t %s_glyphs[95] = {" % lo)
+        out_c += ["  {%d, %d, %d, %d, %d, %d}," % g for g in glyphs]
+        out_c.append("};")
+        out_c.append("static const uint8_t %s_data[] = {%s};" % (lo, ", ".join(str(b) for b in data)))
+        out_c.append("const np_font_t %s = {32, 95, %d, %d, %s_glyphs, %s_data};" % (name, ascent, desc, lo, lo))
+        out_c.append("")
+        out_h.append("extern const np_font_t %s;" % name)
     out_h += ["#endif", ""]
     with open(os.path.join(SRC, "art.c"), "w") as f:
-        f.write("\n".join(out_c) + "\n")
+        f.write("\n".join(out_c))
     with open(os.path.join(SRC, "art.h"), "w") as f:
         f.write("\n".join(out_h))
     if preview:
-        from PIL import Image
         os.makedirs(preview, exist_ok=True)
-        for name, (r, pn) in imgs.items():
-            pal = PALETTES[pn]
-            im = Image.new("RGB", (len(r[0]) * 6, len(r) * 6), (40, 40, 40))
-            for y, line in enumerate(r):
-                for x, ch in enumerate(line):
-                    if ch != ".":
-                        c = pal[ch]
-                        for dy in range(6):
-                            for dx in range(6):
-                                im.putpixel((x * 6 + dx, y * 6 + dy), (c >> 16, c >> 8 & 255, c & 255))
-            im.save(os.path.join(preview, name + ".png"))
+        for i, (name, img) in enumerate(shots):
+            img.resize((img.width * 4, img.height * 4), Image.NEAREST).save(os.path.join(preview, "%02d_%s.png" % (i, name)))
 
 
 if __name__ == "__main__":

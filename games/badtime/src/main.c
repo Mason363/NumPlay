@@ -1,5 +1,5 @@
-/* Bad Time Simulator on the NumWorks calculator: the Judge's fight, a recreation of the fight in jcw87's Bad Time
- * Simulator (itself Undertale's last fight of its hardest route): 24 attacks of bones, gavels and platforms, the
+/* Bad Time Simulator on the NumWorks calculator: Sans' fight, a recreation of the fight in jcw87's Bad Time
+ * Simulator (itself Undertale's last fight of its hardest route): 24 attacks of bones, Gaster Blasters and platforms, the
  * blue heart, KR, the menu between attacks, the break and the final attack; Practice, Endless and Single attack.
  * The rules are sim.c and fight.c, the screens draw.c, the words text.c.
  *
@@ -83,7 +83,7 @@ static void title_screen(screen_t *s) {
   else p = cat(p, "24 attacks. Survive them all.");
   if (sv.wins) p = cat(p, "     Wins: "), p = num(p, sv.wins);
   s->title = "Bad Time Simulator", s->title_y = 40;
-  s->judge = true, s->judge_y = 112, s->judge_head = HEAD_DEFAULT;
+  s->sans = true, s->sans_y = 112, s->sans_head = HEAD_DEFAULT;
   s->items = TITLE_ITEMS, s->n = T_COUNT, s->sel = sel, s->list_x = 116, s->list_y = 136, s->step = 17, s->rows = T_COUNT;
   s->foot = foot, s->keys = "Up Down choose   OK start   Back quit";
 }
@@ -102,7 +102,7 @@ static void end_screen(screen_t *s) {
   char *p = body;
   bool won = fight.state == FS_WON;
   s->title = won ? "You won" : "You lost", s->title_y = 44;
-  s->judge = true, s->judge_y = 128, s->judge_head = won ? HEAD_TIRED2 : HEAD_WINK;
+  s->sans = true, s->sans_y = 128, s->sans_head = won ? HEAD_TIRED2 : HEAD_WINK;
   if (fight.mode == MODE_NORMAL) {
     if (won) p = cat(p, "All 24 attacks survived.");
     else p = cat(p, "Attack "), p = num(p, fight.progress), p = cat(p, " of 24.");
@@ -156,7 +156,7 @@ static void draw(void) {
       return;
     case V_TITLE: title_screen(&s); break;
     case V_ENDLESS:
-      s.title = "Endless", s.title_y = 40, s.judge = true, s.judge_y = 120, s.judge_head = HEAD_DEFAULT;
+      s.title = "Endless", s.title_y = 40, s.sans = true, s.sans_y = 120, s.sans_head = HEAD_DEFAULT;
       s.items = ENDLESS_ITEMS, s.n = 2, s.sel = sel, s.list_x = 126, s.list_y = 150, s.step = 18, s.rows = 2;
       s.foot = "Attacks back to back, no menu, until you fall.";
       s.keys = "Up Down choose   OK play   Back back";
@@ -315,7 +315,7 @@ int main(void) {
       dirty = true;
     }
     if (view == V_TITLE || view == V_ENDLESS || view == V_END) {
-      /* (the Judge breathes) */
+      /* (Sans breathes) */
       if ((now - t0) / 33 != frame) frame = (now - t0) / 33, dirty = true;
     }
     if (dirty) {

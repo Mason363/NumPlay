@@ -44,7 +44,7 @@ def main():
         for a, o, done in ex.map(one, [(nwa, a) for a in attacks]):
             frames, work, worst, over = o[0], o[1], o[2], o[3]
             print(f"{NAMES[a]:22}: {frames:5} frames, {work / max(frames, 1):5.1f} ms a frame, slowest {worst:3} ms, "
-                  f"{over:3} over 33 ms, up to {o[4]} bones and {o[5]} gavels" + ("" if done else ", NOT done"))
+                  f"{over:3} over 33 ms, up to {o[4]} bones and {o[5]} blasters" + ("" if done else ", NOT done"))
             bad += over > 0 or not done
     sys.exit(1 if bad else 0)
 
