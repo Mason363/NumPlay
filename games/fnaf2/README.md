@@ -17,22 +17,37 @@
 </p>
 
 <p align="center">
-  <img src="../../docs/media/gallery/fnaf2.gif" width="320" alt="Five Nights at Freddy's 2: the music box wound on CAM 11, a light down the hallway, the mask on as someone comes in">
+  <img src="../../docs/media/gallery/fnaf2.gif" width="320" alt="Five Nights at Freddy's 2: the light down the hallway, the music box wound on CAM 11, Toy Bonnie in the right vent and the mask on">
 </p>
 
 ## Highlights
 
 * **The whole game:** nights 1 to 5, the 6th once the 5th is beaten, then the Custom Night with its ten animatronics and its ten modes, from 20/20/20/20 to Golden Freddy. The paycheck, the overtime check and the pink slip, and the stars on the title screen.
 * **The office as you know it:** no doors, a hallway in front and a vent on each side. Look left and right, light the hallway with the flashlight and the vents with their lights, and put on the Freddy mask.
-* **The twelve cameras,** the four party rooms and the two vents dark but for the camera's light, and the music box on CAM 11 to wind.
+* **The twelve cameras,** each room as the game shows it in the camera's light and without it, the wide ones panning, and the music box on CAM 11 to wind.
 * **Everyone, as the game moves them:** the Toys, the Withereds, Mangle, Balloon Boy, the Puppet and Golden Freddy, with the AI levels each night sets at its hours and the game's caps. A movement opportunity every 5 seconds, each on its own path through the building to the hallway or a vent.
 * **The mask, the light and the box:** whoever waits in the hallway or a vent comes in while the monitor is up, and is in the office when it comes down: the mask at once, or they get you. Mangle stays on the ceiling, Balloon Boy takes your lights, Withered Foxy only leaves for the flashlight, and the Puppet comes for anyone who lets the music box run down.
 * **What the game makes you hear, written down:** the vents banging, Balloon Boy's voice, Mangle's radio static, the music box's tune.
 * **Saved like in the game:** the night you reached, your stars and your last Custom Night. Home keeps the night as it is, and the next start puts you back in it, paused. Your saves are also copied into `fnaf2_saves.py`, so installing the app again doesn't erase them.
 
-<p align="center">
-  <img src="docs/shot.png" width="390" alt="The office">
-</p>
+<table>
+  <tr>
+    <td align="center"><img src="docs/shot.png" width="390" alt="Toy Freddy far down the hallway, in the flashlight"><br><sub>The flashlight down the hallway</sub></td>
+    <td align="center"><img src="docs/vent.png" width="390" alt="Toy Bonnie in the right vent's light"><br><sub>The right vent: Toy Bonnie</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/stage.png" width="390" alt="The Show Stage on camera"><br><sub>The Show Stage, on the monitor</sub></td>
+    <td align="center"><img src="docs/musicbox.png" width="390" alt="Winding the music box on CAM 11"><br><sub>Winding the music box</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/partyroom4.png" width="390" alt="Toy Bonnie staring into the dark camera of Party Room 4"><br><sub>Party Room 4, in the dark</sub></td>
+    <td align="center"><img src="docs/jumpscare.png" width="390" alt="Toy Bonnie's jumpscare"><br><sub>Too late</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/title.png" width="390" alt="The title screen"><br><sub>The title screen</sub></td>
+    <td align="center"><img src="docs/custom.png" width="390" alt="The Custom Night"><br><sub>The Custom Night</sub></td>
+  </tr>
+</table>
 
 ## How to play
 
@@ -67,13 +82,13 @@ The vent keys turn you to that side first if you're looking the other way. On th
 * **No calls:** each of the game's calls runs a minute or two. The night's card gives a short tip instead.
 * **Left out:** the minigames after a death and between nights, Shadow Freddy, Shadow Bonnie, the Endo, JJ and the prizes the Custom Night puts on the desk. None of them are part of surviving a night.
 * **A few numbers are the port's own,** where nobody has read them out of the game yet: the music box winds full in about 6 seconds, you get a second to put the mask on, a fooled visitor stays 4 seconds, Mangle in the office attacks 1 time in 3 the monitor comes down, and Withered Foxy leaves after 5 flashes.
-* **The pictures are the game's,** at 240 pixels high: the office turns a little further, as the screen is 4:3.
+* **The pictures are the game's,** at 240 pixels high: the office turns a little further, as the screen is 4:3. The mask is drawn, with its eyes where the game's are.
 
 ## Credits
 
 Inspired by Five Nights at Freddy's 2 by Scott Cawthon, not affiliated with him.
 
-* The pictures come from the game, as VocalNutria9174's fan port [fnaf-2_html5](https://github.com/VocalNutria9174/fnaf-2_html5) keeps them. `tools/fetch.py` gets it, `tools/pack.py` makes them into `src/data.bin`.
+* The pictures come from the game's Clickteam HTML5 build, as VocalNutria9174's fan port [fnaf-2_html5](https://github.com/VocalNutria9174/fnaf-2_html5) keeps it: `tools/fetch.py` reads which picture each of the game's objects shows from its application file, and `tools/pack.py` makes them into `src/data.bin`. Party Room 4's two empty pictures, missing from that build, come from fredtheking's [FNaF2-RaylibCs](https://github.com/fredtheking/FNaF2-RaylibCs).
 * How the animatronics move, their AI levels, the music box, the flashlight and Withered Foxy follow what the game's players read out of its events, as the [Technical FNaF Wiki](https://technicalfnaf.fandom.com) and the [Five Nights at Freddy's Wiki](https://freddy-fazbears-pizza.fandom.com) write them down.
 * The words are drawn in the DejaVu fonts ([license](../../LICENSES/DejaVu.txt)), and the paychecks with them.
 

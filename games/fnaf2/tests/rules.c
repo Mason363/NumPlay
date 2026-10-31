@@ -236,11 +236,26 @@ static void paths(void) {
   for (unsigned i = 0; i < sizeof first / sizeof first[0]; i++) {
     begin(3);
     quiet();
+    /* (the ones that leave the Show Stage or Parts/Service before them are gone) */
+    g.n.step[TB] = 1;
+    if (first[i].who != WB) g.n.step[WB] = 1;
+    if (first[i].who == TF) g.n.step[TC] = 1;
+    if (first[i].who == WF) g.n.step[WC] = 1;
     g.n.ai[first[i].who] = 20;
     for (int k = 0; k < 3; k++) {
       int now = next_place(first[i].who);
       CHECK(now == first[i].at[k], "%s's move %d: %d", BOT_NAMES[first[i].who], k + 1, now);
     }
+  }
+  /* the Show Stage and Parts/Service empty in the game's order: Toy Chica not before Toy Bonnie, Withered Freddy not
+     before Withered Chica, whatever their levels; on the custom night they leave as they like */
+  for (int custom = 0; custom < 2; custom++) {
+    begin(custom ? 7 : 3);
+    quiet();
+    g.n.ai[TC] = g.n.ai[WF] = 20;
+    steps(60 * 60, 0);
+    CHECK((bot_at(TC) == L_STAGE && bot_at(WF) == L_PARTS) == !custom,
+          "night %d: Toy Chica at %d, Withered Freddy at %d", custom ? 7 : 3, bot_at(TC), bot_at(WF));
   }
   /* a move a 5 s opportunity, no sooner */
   begin(3);

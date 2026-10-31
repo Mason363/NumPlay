@@ -186,7 +186,17 @@ static void intro_draw(void) {
   gfx_fill(0, gfx_y0, SCREEN_W, BAND_H, BLACK);
   gfx_text_c(FONT_HUGE, 160, 84, "12:00 AM", WHITE);
   gfx_text_c(FONT_BIG, 160, 116, nth[g.n.night], WHITE);
-  gfx_text_c(FONT_TEXT, 160, 150, hint[g.n.night], RGB(0x9A9A9A));
+  /* (a word too wide for the screen: a line a sentence) */
+  const char *h = hint[g.n.night], *stop = strstr(h, ". ");
+  if (gfx_text_w(FONT_TEXT, h) <= 300 || !stop) {
+    gfx_text_c(FONT_TEXT, 160, 150, h, RGB(0x9A9A9A));
+  } else {
+    char first[64];
+    int n = (int)(stop - h) + 1;
+    memcpy(first, h, (size_t)n), first[n] = 0;
+    gfx_text_c(FONT_TEXT, 160, 146, first, RGB(0x9A9A9A));
+    gfx_text_c(FONT_TEXT, 160, 162, stop + 2, RGB(0x9A9A9A));
+  }
   if (g.t < 0.15f) gfx_static(0, gfx_y0, SCREEN_W, BAND_H, 20, rnd());
   if (g.t > 2.2f) gfx_dim(0, gfx_y0, SCREEN_W, BAND_H, (int)((3.2f - g.t) * 32));
 }

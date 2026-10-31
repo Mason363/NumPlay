@@ -27,7 +27,7 @@ data.bin: "FNF2", the number of sections, their offsets, then the sections (SEC_
 - MAP: the camera map: its width and height (u16), its walls (1 bit a pixel), where the 12 buttons are
 
 The office is the game's 1600 x 768 at 240 high (500 x 240): the calculator shows 320 of it and turns. The
-cameras are its 1024 x 768 at 320 x 240."""
+cameras are its 1024 x 768 at 320 x 240, but CAM 07 to 12, 1600 x 768 as the office, which the camera pans across."""
 import os
 import struct
 import sys
@@ -51,13 +51,14 @@ FONT_DIRS = [os.environ.get("FONTS", ""), "/usr/share/fonts/truetype/dejavu", "/
 OW, OH = 500, 240       # the office on the calculator
 CW, CH = 320, 240       # a camera
 # the parts of the office that change, drawn over it (x, y, w, h in the 500 x 240 office)
+# (where the game's own pictures change: the hallway's light reaches the floor, Toy Freddy stands right of the desk)
 PATCHES = {
-    "HALL": (176, 32, 144, 128),     # the hallway, in the flashlight
-    "LVENT": (0, 112, 96, 80),       # the left vent's blind spot, in its light
-    "RVENT": (404, 112, 96, 80),     # the right one
-    "OCC": (160, 48, 176, 192),      # whoever stands in front of the desk
-    "MANGLE": (192, 0, 128, 64),     # Mangle on the ceiling
-    "BBO": (16, 96, 144, 144),       # Balloon Boy in the office
+    "HALL": (176, 64, 128, 176),     # the hallway, in the flashlight
+    "LVENT": (16, 128, 128, 112),    # the left vent's blind spot, in its light
+    "RVENT": (368, 128, 128, 112),   # the right one
+    "OCC": (80, 0, 336, 240),        # whoever stands in front of the desk
+    "MANGLE": (208, 0, 176, 64),     # Mangle on the ceiling
+    "BBO": (80, 80, 128, 144),       # Balloon Boy in the office
 }
 WHO = {"TF": "Toy Freddy", "TB": "Toy Bonnie", "TC": "Toy Chica", "MANGLE": "Mangle", "BB": "Balloon Boy",
        "WF": "Withered Freddy", "WB": "Withered Bonnie", "WC": "Withered Chica", "FOXY": "Withered Foxy",
@@ -83,19 +84,21 @@ PICTURES += [(f"OCC_{s}", "patch OCC", f"{WHO[s]} in the office, in front of the
              for s in ("TF", "TB", "TC", "WF", "WB", "WC", "GF")]
 PICTURES += [("OFFICE_MANGLE", "patch MANGLE", "Mangle on the office's ceiling"),
              ("OFFICE_BB", "patch BBO", "Balloon Boy standing in the office")]
+# Each camera's states, as its picture shows them; the states starting with D are with the camera's light off (a
+# few of the dark rooms show who stands close: DWC is Withered Chica in the dark, D0 to D7 the Show Stage's).
 CAMS = [
     ("01", "Party Room 1", ["DARK", "LIT", "TC", "WB", "MANGLE", "PUPPET"]),
-    ("02", "Party Room 2", ["DARK", "LIT", "TB", "WC", "MANGLE", "PUPPET"]),
-    ("03", "Party Room 3", ["DARK", "LIT", "TB", "WF", "PUPPET"]),
-    ("04", "Party Room 4", ["DARK", "LIT", "TB", "WC", "PUPPET"]),
+    ("02", "Party Room 2", ["DARK", "DWC", "LIT", "TB", "WC", "MANGLE", "PUPPET"]),
+    ("03", "Party Room 3", ["DARK", "DWF", "LIT", "TB", "WF", "PUPPET"]),
+    ("04", "Party Room 4", ["DARK", "DTB", "LIT", "TB", "WC", "PUPPET"]),
     ("05", "Left Air Vent", ["DARK", "LIT", "TC", "BB", "WB"]),
     ("06", "Right Air Vent", ["DARK", "LIT", "TB", "WC", "MANGLE"]),
-    ("07", "Main Hall", ["EMPTY", "TC", "MANGLE", "WF", "WB", "PUPPET"]),
-    ("08", "Parts/Service", [f"S{m}" for m in range(8)] + ["FOXY"]),
-    ("09", "Show Stage", [f"S{m}" for m in range(8)]),
-    ("10", "Game Area", ["EMPTY", "TF", "BB", "MANGLE"]),
-    ("11", "Prize Corner", ["P0", "P1", "P2", "P3", "EMPTY", "MANGLE"]),
-    ("12", "Kid's Cove", ["MANGLE", "EMPTY"]),
+    ("07", "Main Hall", ["DARK", "EMPTY", "TC", "MANGLE", "WF", "WB", "PUPPET"]),
+    ("08", "Parts/Service", ["DARK"] + [f"S{m}" for m in range(8)] + ["FOXY"]),
+    ("09", "Show Stage", [f"S{m}" for m in range(8)] + [f"D{m}" for m in range(8)]),
+    ("10", "Game Area", ["DARK", "EMPTY", "TF", "BB", "TFBB", "MANGLE"]),
+    ("11", "Prize Corner", ["DARK", "P0", "P1", "P2", "P3", "EMPTY", "MANGLE"]),
+    ("12", "Kid's Cove", ["DARK", "MANGLE", "EMPTY"]),
 ]
 for num, room, states in CAMS:
     for s in states:
@@ -416,15 +419,31 @@ def stand_in_room(num, room, lit, who=(), extra=None):
     return grain(arr(im), 5)
 
 
+WIDE = ("07", "08", "09", "10", "11", "12")   # (the cameras 1600 wide, which pan)
+
+
+def widen(num, a):
+    """a stand-in camera as wide as its camera's picture"""
+    return np.pad(a, ((0, 0), ((OW - CW) // 2, OW - CW - (OW - CW) // 2), (0, 0)), mode="edge") if num in WIDE else a
+
+
 def stand_in_cams():
+    define("CAM_PAN", OW - CW)
     for num, room, states in CAMS:
         base = None
         for s in states:
             name = f"CAM{num}_{s}"
             if s == "DARK":
-                pic(name, stand_in_room(num, room, False))
+                pic(name, widen(num, stand_in_room(num, room, False)))
                 continue
-            if num in ("08", "09") and s.startswith("S"):
+            if s in ("DWC", "DWF", "DTB") or (num == "09" and s.startswith("D")):
+                m = int(s[1:]) if num == "09" else 0
+                who = [["TF", "TB", "TC"][k] for k in range(3) if m >> k & 1] if num == "09" else [s[1:]]
+                pic(name, widen(num, stand_in_room(num, room, False, who)))
+                continue
+            if s == "TFBB":
+                who = ["TF", "BB"]
+            elif num in ("08", "09") and s.startswith("S"):
                 m = int(s[1:])
                 trio = ["WF", "WB", "WC"] if num == "08" else ["TF", "TB", "TC"]
                 who = [trio[k] for k in range(3) if m >> k & 1]
@@ -439,7 +458,7 @@ def stand_in_cams():
                 extra = ["in the box", "partly out", "mostly out", "out of the box"][int(s[1:])]
             if num == "11" and s == "MANGLE":
                 extra = "the music box shut"
-            a = stand_in_room(num, room, True, who, extra)
+            a = widen(num, stand_in_room(num, room, True, who, extra))
             p = pic(name, a, base=base)
             base = base or p
 
@@ -629,6 +648,7 @@ def cover(im, w, h):
 def from_ref():
     office = cover(ref_image("OFFICE"), OW, OH)
     pic("OFFICE", office)
+    define("CAM_PAN", OW - CW)
     bases = {}
     for name, kind, _ in PICTURES:
         if kind.startswith("patch"):
@@ -640,11 +660,12 @@ def from_ref():
                 bases[part] = p
         elif kind == "cam":
             num, state = name[3:5], name[6:]
-            a = cover(ref_image(name), CW, CH)
-            first = bases.get(num)
-            p = pic(name, a, base=first if state not in ("DARK",) else None)
-            if state != "DARK" and not first:
-                bases[num] = p
+            a = cover(ref_image(name), OW if num in WIDE else CW, OH if num in WIDE else CH)
+            group = num + ("D" if state.startswith("D") else "")   # (the dark pictures share with each other)
+            first = bases.get(group)
+            p = pic(name, a, base=first)
+            if not first:
+                bases[group] = p
     for who in SCARES:
         files = ref_files(f"SCARE_{who}")
         first = prev = None
@@ -660,7 +681,7 @@ def from_ref():
         elif kind == "face":
             pic(name, cover(ref_image(name), 48, 48), "face")
     t = ref_image("TITLE_TEXT").convert("RGBA")
-    t = t.resize((190, int(t.height * 190 / t.width)), Image.LANCZOS)
+    t = t.resize((94, int(t.height * 94 / t.width)), Image.LANCZOS)   # (the game's 300 x 280 on its 1024)
     a = np.asarray(t).astype(np.float64)
     img("TITLE", a[..., 3] * a[..., :3].mean(axis=2) / 255)
     s = np.asarray(ref_image("STAR").convert("RGBA").resize((22, 21), Image.LANCZOS)).astype(np.float64)

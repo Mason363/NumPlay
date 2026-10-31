@@ -38,6 +38,10 @@ static const uint8_t PATH[WALKERS][10] = {
 };
 static const uint8_t PATH_LEN[WALKERS] = {4, 6, 6, 9, 4, 4, 5, 4};
 static const uint8_t BACK_TO[WALKERS] = {0, 1, 1, 3, 0, 1, 1, 1};
+/* who leaves the Show Stage or Parts/Service only once the other has: Toy Bonnie, Toy Chica, then Toy Freddy;
+   Withered Bonnie, Chica, then Freddy */
+static const int8_t LEAVES_AFTER[WALKERS] = {[TF] = TC, [TB] = -1, [TC] = TB, [MANGLE] = -1, [BB] = -1,
+                                             [WF] = WC, [WB] = -1, [WC] = WB};
 /* who comes in first when several are waiting */
 static const uint8_t ENTRY_ORDER[WALKERS] = {WF, WB, WC, TF, TB, TC, MANGLE, BB};
 
@@ -206,6 +210,9 @@ static void walkers(void) {
     if (a <= 0 || in_office(who) || roll() > a) continue;
     /* the Withereds stay in Parts/Service while its camera is watched */
     if (who >= WF && N.step[who] == 0 && monitor_up() && N.cam == L_PARTS) continue;
+    /* the Show Stage and Parts/Service empty in the game's order (the custom night, without their cameras, doesn't
+       keep it) */
+    if (N.night < 7 && N.step[who] == 0 && LEAVES_AFTER[who] >= 0 && N.step[LEAVES_AFTER[who]] == 0) continue;
     if (N.stun[who]) N.pending[who] = 1;
     else advance(who);
   }

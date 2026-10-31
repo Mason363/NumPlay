@@ -140,17 +140,16 @@ static int visitor_picture(void) {
   return N.occ < WALKERS ? pics[N.occ] : -1;
 }
 
-/* the Freddy mask: dark but for its eyes, coming down from the top */
+/* the Freddy mask: black but for its eyes (where the game's are), coming up from the bottom */
 static void mask_view(void) {
-  int bottom = (int)(N.mask_anim * SCREEN_H);
-  int y0 = gfx_y0, y1 = gfx_y0 + BAND_H < bottom ? gfx_y0 + BAND_H : bottom;
-  int top = bottom - SCREEN_H;   /* the mask's top row */
+  int top = SCREEN_H - (int)(N.mask_anim * SCREEN_H);   /* the mask's top row */
+  int y0 = gfx_y0 > top ? gfx_y0 : top, y1 = gfx_y0 + BAND_H;
   for (int y = y0; y < y1; y++) {
     int my = y - top;   /* in the mask */
     /* the eyes: two ellipses */
     int spans[2][2], n = 0;
     for (int e = 0; e < 2; e++) {
-      int cx = e ? 214 : 106, cy = 104, rx = 50, ry = 34, dy = my - cy;
+      int cx = e ? 215 : 107, cy = 112, rx = 41, ry = 32, dy = my - cy;
       if (dy * dy >= ry * ry) continue;
       int w = (int)(rx * __builtin_sqrtf(1.0f - (float)(dy * dy) / (float)(ry * ry)));
       spans[n][0] = cx - w, spans[n][1] = cx + w, n++;
@@ -159,11 +158,11 @@ static void mask_view(void) {
     for (int k = 0; k <= n; k++) {
       int end = k < n ? spans[k][0] : SCREEN_W;
       if (end > x) {
-        gfx_dim(x, y, end - x, 1, 3);
-        gfx_blend(x, y, end - x, 1, RGB(0x2A1608), 10);
+        gfx_dim(x, y, end - x, 1, 1);
+        gfx_blend(x, y, end - x, 1, RGB(0x120808), 6);
       }
       if (k < n) {
-        gfx_dim(spans[k][0], y, spans[k][1] - spans[k][0], 1, 22);
+        gfx_dim(spans[k][0], y, spans[k][1] - spans[k][0], 1, 26);
         x = spans[k][1];
       }
     }
@@ -198,7 +197,8 @@ static const char *const cam_names[CAM_COUNT] = {
 static bool at(int who, int loc) { return bot_at(who) == loc; }
 static bool puppet_at(int loc) { return N.puppet >= 4 && N.puppet_at == loc; }
 
-/* the feed: the dark rooms (the party rooms, the vents) show nothing but in the light */
+/* the feed: each room as the game's pictures show it, in the camera's light or not (a few show who stands close
+   in the dark) */
 static int cam_picture(bool lit) {
   switch (N.cam) {
   case L_PR1:
@@ -206,15 +206,15 @@ static int cam_picture(bool lit) {
     return puppet_at(L_PR1) ? PIC_CAM01_PUPPET : at(WB, L_PR1) ? PIC_CAM01_WB : at(TC, L_PR1) ? PIC_CAM01_TC
          : at(MANGLE, L_PR1) ? PIC_CAM01_MANGLE : PIC_CAM01_LIT;
   case L_PR2:
-    if (!lit) return PIC_CAM02_DARK;
+    if (!lit) return at(WC, L_PR2) ? PIC_CAM02_DWC : PIC_CAM02_DARK;
     return puppet_at(L_PR2) ? PIC_CAM02_PUPPET : at(WC, L_PR2) ? PIC_CAM02_WC : at(TB, L_PR2) ? PIC_CAM02_TB
          : at(MANGLE, L_PR2) ? PIC_CAM02_MANGLE : PIC_CAM02_LIT;
   case L_PR3:
-    if (!lit) return PIC_CAM03_DARK;
+    if (!lit) return at(WF, L_PR3) ? PIC_CAM03_DWF : PIC_CAM03_DARK;
     return puppet_at(L_PR3) ? PIC_CAM03_PUPPET : at(WF, L_PR3) ? PIC_CAM03_WF : at(TB, L_PR3) ? PIC_CAM03_TB
          : PIC_CAM03_LIT;
   case L_PR4:
-    if (!lit) return PIC_CAM04_DARK;
+    if (!lit) return at(TB, L_PR4) ? PIC_CAM04_DTB : PIC_CAM04_DARK;
     return puppet_at(L_PR4) ? PIC_CAM04_PUPPET : at(WC, L_PR4) ? PIC_CAM04_WC : at(TB, L_PR4) ? PIC_CAM04_TB
          : PIC_CAM04_LIT;
   case L_LVENT:
@@ -226,21 +226,27 @@ static int cam_picture(bool lit) {
     return at(WC, L_RVENT) ? PIC_CAM06_WC : at(TB, L_RVENT) ? PIC_CAM06_TB : at(MANGLE, L_RVENT) ? PIC_CAM06_MANGLE
          : PIC_CAM06_LIT;
   case L_MAIN:
+    if (!lit) return PIC_CAM07_DARK;
     return puppet_at(L_MAIN) ? PIC_CAM07_PUPPET : at(WF, L_MAIN) ? PIC_CAM07_WF : at(WB, L_MAIN) ? PIC_CAM07_WB
          : at(TC, L_MAIN) ? PIC_CAM07_TC : at(MANGLE, L_MAIN) ? PIC_CAM07_MANGLE : PIC_CAM07_EMPTY;
   case L_PARTS: {
+    if (!lit) return PIC_CAM08_DARK;
     int m = at(WF, L_PARTS) | at(WB, L_PARTS) << 1 | at(WC, L_PARTS) << 2;
     if (!m && N.ai[FOXY] >= 0 && !N.foxy_hall) return PIC_CAM08_FOXY;
     return PIC_CAM08_S0 + m;
   }
-  case L_STAGE: return PIC_CAM09_S0 + (at(TF, L_STAGE) | at(TB, L_STAGE) << 1 | at(TC, L_STAGE) << 2);
+  case L_STAGE:
+    return (lit ? PIC_CAM09_S0 : PIC_CAM09_D0) + (at(TF, L_STAGE) | at(TB, L_STAGE) << 1 | at(TC, L_STAGE) << 2);
   case L_GAME:
+    if (!lit) return PIC_CAM10_DARK;
+    if (at(TF, L_GAME) && at(BB, L_GAME)) return PIC_CAM10_TFBB;
     return at(TF, L_GAME) ? PIC_CAM10_TF : at(BB, L_GAME) ? PIC_CAM10_BB : at(MANGLE, L_GAME) ? PIC_CAM10_MANGLE
          : PIC_CAM10_EMPTY;
   case L_PRIZE:
+    if (!lit) return PIC_CAM11_DARK;
     if (N.puppet < 4) return N.puppet == 0 && at(MANGLE, L_PRIZE) ? PIC_CAM11_MANGLE : PIC_CAM11_P0 + N.puppet;
     return at(MANGLE, L_PRIZE) ? PIC_CAM11_MANGLE : PIC_CAM11_EMPTY;
-  default: return at(MANGLE, L_KIDS) ? PIC_CAM12_MANGLE : PIC_CAM12_EMPTY;
+  default: return !lit ? PIC_CAM12_DARK : at(MANGLE, L_KIDS) ? PIC_CAM12_MANGLE : PIC_CAM12_EMPTY;
   }
 }
 
@@ -293,13 +299,21 @@ static void music_box(void) {
 
 static void cameras(void) {
   bool lit = N.cam_light;
-  if (N.glitch > 0) {
+  /* (the custom night has no CAM 08 and CAM 09, as in the game) */
+  if (N.glitch > 0 || (N.night == 7 && (N.cam == L_PARTS || N.cam == L_STAGE))) {
     gfx_fill(0, gfx_y0, SCREEN_W, BAND_H, BLACK);
     gfx_static(0, gfx_y0, SCREEN_W, BAND_H, 18, f.seed);
   } else {
-    pic_draw(cam_picture(lit), 0, 0);
-    bool dark_room = N.cam <= L_RVENT;
-    if (lit && !dark_room) gfx_dim(0, gfx_y0, SCREEN_W, BAND_H, 46);
+    /* (CAM 07 to 12 are wider than the screen: the camera pans, 5 seconds across, 2 still, 5 back, 2 still) */
+    static float since;
+    static int was = -1;
+    if (N.cam != was || g.t < since) was = N.cam, since = g.t;   /* (a new camera, or the clock started again) */
+    float c = g.t - since;
+    while (c >= 14) c -= 14;
+    float a = c < 5 ? c / 5 : c < 7 ? 1 : c < 12 ? 1 - (c - 7) / 5 : 0;
+    int pan = (int)(a * CAM_PAN);
+    if (N.cam >= L_MAIN) pic_part(cam_picture(lit), 0, 0, pan < 0 ? 0 : pan > CAM_PAN ? CAM_PAN : pan, 0, SCREEN_W, SCREEN_H);
+    else pic_draw(cam_picture(lit), 0, 0);
     gfx_static(0, gfx_y0, SCREEN_W, BAND_H, f.noise + (N.cam == N.puppet_at && N.puppet >= 4 ? 8 : 0), f.seed);
   }
   if (g.blip > 0) gfx_blend(0, gfx_y0, SCREEN_W, BAND_H, WHITE, (int)(g.blip * 120));
