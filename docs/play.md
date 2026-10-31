@@ -679,6 +679,24 @@ Sans attacks and you dodge. Keep your heart away from everything in the box: whi
 
 <br clear="right">
 
+## Temple Run
+
+<img src="../games/templerun/docs/shot.png" width="320" align="right" alt="Temple Run: running along the temple path">
+
+| Key | What it does |
+| --- | --- |
+| **Left / Right** | Turn at a corner |
+| **Up** or **8** | Jump |
+| **Down** or **2** | Slide |
+| **4 / 6** (or **shift** with the arrows) | Lean, held |
+| **OK** | Wings (in a run), choose, buy |
+| **1 / 3** | Head start, mega head start (at the start) |
+| **Back** | Pause (with How to play and Quit game) |
+
+Temple Run comes as its own app, `TempleRun.nwa`. Run from the temple and don't stop: turn at every corner, jump gaps, roots, fallen trees and fire, slide under branches and lean along narrow paths. Trip once and your pursuers catch up; trip again soon and they get you. Coins buy upgrades for the four power-ups in the store, and each objective done raises your score multiplier.
+
+<br clear="right">
+
 ## Portal Returns
 
 <img src="media/portal.gif" width="320" align="right" alt="Portal Returns: falling through a portal and flying across a test chamber">

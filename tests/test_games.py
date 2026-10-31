@@ -279,6 +279,10 @@ GAMES = {
     "badtime": ("BadTimeSimulator.nwa", "badtime.sav",
                 presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "ok"), (5000, "ok")), 6500,
                 presses((1500, "ok")), 4000),
+    # how to play (the first time), the title's Run: a run with no one playing, until it ends; Home keeps it. Next
+    # time, from the copy, straight from the title into another run, quit with On/Off
+    "templerun": ("TempleRun.nwa", "templerun.sav", presses((1500, "ok"), (2200, "ok")), 9000,
+                  presses((1500, "ok")), 4000),
     # a level, its message, then play; then back to the level select
     "portal": ("PortalReturns.nwa", "portal.sav",
                presses((1500, "ok"), (2500, "ok"), (3500, "ok")) + every(4000, 7000, 400, "right", 300), 8000,
@@ -347,7 +351,7 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "tombofthemask": "tombofthemask_saves.py", "uno": "uno_saves.py",
           "fnf": "fnf_saves.py", "turborush": "turborush_saves.py",
           "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
-          "badtime": "badtime_saves.py"}
+          "badtime": "badtime_saves.py", "templerun": "templerun_saves.py"}
 
 
 def paperclips_ok(v):
@@ -553,6 +557,10 @@ CHECKS = {
     # "BTS1", version 1, its size (24): how to play read (guide at 9), the first attack reached (best at 8); after the
     # reinstall, from the copy, the same
     "badtime": (lambda v: badtime_ok(v) and v[9] == 1 and v[8] >= 1,) * 2,
+    # "TNR1", version 1, its size (48): a run played (runs at 24), a best score (16); then a second run
+    "templerun": (lambda v: v[:4] == b"TNR1" and struct.unpack_from("<2I", v, 4) == (1, 48)
+                  and struct.unpack_from("<I", v, 24)[0] == 1 and struct.unpack_from("<I", v, 16)[0] > 0,
+                  lambda v: v[:4] == b"TNR1" and struct.unpack_from("<I", v, 24)[0] == 2),
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept
