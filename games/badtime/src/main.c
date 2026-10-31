@@ -94,7 +94,7 @@ static void help_screen(screen_t *s) {
   p = num(p, page + 1u), p = cat(p, "/"), p = num(p, HELP_PAGES);
   s->title = t, s->title_y = 44;
   s->body = HELP[page], s->body_x = 14, s->body_y = 84;
-  s->keys = first_run ? "Left Right page   OK start" : "Left Right page   Back done";
+  s->keys = first_run ? (page < 2 ? "Left Right page   OK next" : "OK start") : "Left Right page   Back done";
 }
 
 static void end_screen(screen_t *s) {

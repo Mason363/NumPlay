@@ -5,8 +5,11 @@
  *                          win (the same fight to the same hash on every computer), Practice, Endless and Single
  *                          attack, saves (kept, damaged, from the copy, storage full) and 300 sessions of the whole
  *                          app with random keys
+ *   play quick DIR         only the attacks, the numbers and the saves
+ *   play bot DIR           only the bot's fight (BOT_VERBOSE=1: attack by attack)
+ *   play trace N ATTACK    N ticks of the bot in one attack, tick by tick
  *   play shots DIR         pictures of the screens (DIR/<name>.ppm)
- *   play film DIR N SEED   N ticks of the bot's fight from attack SEED's turn (DIR/<frame>_<ms>.raw, for
+ *   play film DIR N ATTACK N ticks of the bot playing an attack (DIR/<frame>_<ms>.raw, every other tick, for
  *                          tools/record.py --frames)
  */
 #define main bt_app_main
@@ -620,6 +623,24 @@ static void make_shots(const char *dir) {
   for (int i = 0; i < 200 && F.state != FS_DEATH; i++) fight_tick(&F, BK_UP, 0);
   for (int i = 0; i < 30; i++) fight_tick(&F, 0, 0);
   snap_fight("death", 0);
+  /* the first words, the last words, a lost fight */
+  fight_start(&F, MODE_NORMAL, 0, 3);
+  for (int i = 0; i < 30; i++) fight_tick(&F, 0, 0);
+  snap_fight("court", 0);
+  fight_start(&F, MODE_NORMAL, 0, RUN_SEED);
+  bot_prev = 0;
+  for (uint32_t t = 0; t < 30 * 60 * 20 && F.state != FS_WIN; t++) {
+    uint32_t k = bot_keys(&F);
+    fight_tick(&F, k, k & ~bot_prev);
+    bot_prev = k;
+  }
+  for (int i = 0; i < 40; i++) fight_tick(&F, 0, 0);
+  snap_fight("tired", 0);
+  F.state = FS_LOST, F.mode = MODE_NORMAL, F.progress = 17;
+  memcpy(&fight, &F, sizeof F);
+  view = V_END;
+  draw();
+  shot(dir, "lost");
   /* pause, how to play, the end */
   fight_start(&F, MODE_NORMAL, 0, 3);
   for (int i = 0; i < 60; i++) fight_tick(&F, 0, 0);
@@ -667,7 +688,7 @@ int main(int argc, char **argv) {
     return fails != 0;
   }
   if (argc > 3 && !strcmp(argv[1], "trace")) {
-    fight_start(&F, MODE_SINGLE, atoi(argv[3]), 42);
+    fight_start(&F, MODE_SINGLE, atoi(argv[3]) % N_ATTACKS, 42);
     bot_prev = 0;
     for (uint32_t t = 0; t < (uint32_t)atoi(argv[2]); t++) {
       uint32_t k = bot_keys(&F);
