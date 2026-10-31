@@ -1,5 +1,5 @@
 title: NumPlay
-description: "29 games for the NumWorks calculator in one app: NumDash, Crossy Road, NumBlocks, NumDrive, Balatro, Buckshot Roulette, Block Blast, Suika Game, Portal Returns, Tetris, Chrome Dino, Chess, Space Invaders, Sudoku and more. And Doom, Sonic, Plants vs. Zombies, Cookie Clicker, Mahjong, Meowdoku, Rider, Snow Rider 3D and more on their own. Free and open source, with a kit to make your own NumWorks games in C."
+description: "29 games for the NumWorks calculator in one app: NumDash, Crossy Road, NumBlocks, NumDrive, Balatro, Buckshot Roulette, Block Blast, Suika Game, Portal Returns, Tetris, Chrome Dino, Chess, Space Invaders, Sudoku and more. And Doom, Sonic, Plants vs. Zombies, Cookie Clicker, Mahjong, Meowdoku, Rider, Snow Rider 3D, Temple Run and more on their own. Free and open source, with a kit to make your own NumWorks games in C."
 url: https://mason363.github.io
 baseurl: /NumPlay
 theme: jekyll-theme-cayman

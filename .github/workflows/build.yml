@@ -99,6 +99,7 @@ jobs:
           make -C games/mahjong host test
           make -C games/rider host test
           make -C games/snowrider host test
+          make -C games/templerun host test
 
 
 

@@ -296,6 +296,10 @@ GAMES = {
     # the copy, Play straight into the ride (the guide was read), quit with On/Off
     "snowrider": ("SnowRider3D.nwa", "snowrider.sav", presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (6500, "back"))
                   + [(4200, 4500, K["left"])], 8000, presses((1500, "ok"), (2200, "ok")), 5000),
+    # how to play (the first time), the title's Run: a run with no one playing, until it ends; Home keeps it. Next
+    # time, from the copy, straight from the title into another run, quit with On/Off
+    "templerun": ("TempleRun.nwa", "templerun.sav", presses((1500, "ok"), (2200, "ok")), 9000,
+                  presses((1500, "ok")), 4000),
     # a level, its message, then play; then back to the level select
     "portal": ("PortalReturns.nwa", "portal.sav",
                presses((1500, "ok"), (2500, "ok"), (3500, "ok")) + every(4000, 7000, 400, "right", 300), 8000,
@@ -365,7 +369,7 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "fnf": "fnf_saves.py", "turborush": "turborush_saves.py",
           "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
           "badtime": "badtime_saves.py", "mahjong": "mahjong_saves.py",
-          "rider": "rider_saves.py", "snowrider": "snowrider_saves.py"}
+          "rider": "rider_saves.py", "snowrider": "snowrider_saves.py", "templerun": "templerun_saves.py"}
 
 
 def paperclips_ok(v):
@@ -606,6 +610,10 @@ CHECKS = {
     "snowrider": (lambda v: len(v) == 32 and v[:4] == b"SNR1" and struct.unpack_from("<HH", v, 4) == (1, 32)
                   and v[23] == 1 and struct.unpack_from("<I", v, 16)[0] == 1 and v[20:23] == b"\1\0\0",
                   lambda v: len(v) == 32 and v[:4] == b"SNR1" and v[23] == 1 and struct.unpack_from("<I", v, 16)[0] == 2),
+    # "TNR1", version 1, its size (48): a run played (runs at 24), a best score (16); then a second run
+    "templerun": (lambda v: v[:4] == b"TNR1" and struct.unpack_from("<2I", v, 4) == (1, 48)
+                  and struct.unpack_from("<I", v, 24)[0] == 1 and struct.unpack_from("<I", v, 16)[0] > 0,
+                  lambda v: v[:4] == b"TNR1" and struct.unpack_from("<I", v, 24)[0] == 2),
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept

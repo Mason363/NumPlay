@@ -1339,5 +1339,26 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/snowrider",
     "default": false,
     "xl": true
+  },
+  {
+    "id": "templerun",
+    "rank": 32,
+    "title": "Temple Run",
+    "tagline": "Run from the temple, turn, jump, slide",
+    "credit": "Based on Temple Run by Imangi Studios",
+    "top": "0x6FA6D2",
+    "bottom": "0x2B4A30",
+    "accent": "0xFFD21E",
+    "colors": 16,
+    "records": [
+      "templerun.sav",
+      "templerun_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/templerun",
+    "default": false,
+    "xl": true
   }
 ]
