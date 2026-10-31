@@ -98,6 +98,7 @@ jobs:
           make -C games/badtime host test
           make -C games/mahjong host test
           make -C games/rider host test
+          make -C games/famidash host test
 
 
 

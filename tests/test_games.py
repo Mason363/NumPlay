@@ -292,6 +292,12 @@ GAMES = {
     "rider": ("Rider.nwa", "rider.sav",
               presses((1500, "ok"), (2200, "ok"), (6000, "back")) + [(2800, 5500, K["ok"])], 7000,
               presses((1500, "ok")) + [(2000, 3500, K["ok"])], 4500),
+    # how to play (the first time: two pages), Play, Stereo Madness, OK held to jump, Back to pause; Home keeps the
+    # guide read and the time played. Next time, from the copy, Play straight away, quit with On/Off
+    "famidash": ("Famidash.nwa", "famidash.sav",
+                 presses((1500, "ok"), (2200, "ok"), (3000, "ok"), (4000, "ok"), (8000, "back"))
+                 + [(5000, 7000, K["ok"])], 9000,
+                 presses((1500, "ok"), (2500, "ok")) + [(3500, 5500, K["ok"])], 6500),
     # a level, its message, then play; then back to the level select
     "portal": ("PortalReturns.nwa", "portal.sav",
                presses((1500, "ok"), (2500, "ok"), (3500, "ok")) + every(4000, 7000, 400, "right", 300), 8000,
@@ -361,7 +367,7 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "fnf": "fnf_saves.py", "turborush": "turborush_saves.py",
           "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
           "badtime": "badtime_saves.py", "mahjong": "mahjong_saves.py",
-          "rider": "rider_saves.py"}
+          "rider": "rider_saves.py", "famidash": "famidash_saves.py"}
 
 
 def paperclips_ok(v):
@@ -377,6 +383,16 @@ def paperclips_ok(v):
 def rider_ok(v):
     """Rider's save: 0x52445231 ("1RDR" as bytes), version 1, an FNV-1a sum of the rest at the end"""
     if len(v) < 200 or struct.unpack_from("<I", v, 0)[0] != 0x52445231 or v[4] != 1:
+        return False
+    h = 2166136261
+    for x in v[:-4]:
+        h = (h ^ x) * 16777619 & 0xFFFFFFFF
+    return struct.unpack_from("<I", v, len(v) - 4)[0] == h
+
+
+def famidash_ok(v):
+    """Famidash's save: "FMD1", version 1, 572 bytes, an FNV-1a sum of the rest at the end"""
+    if len(v) != 572 or v[:4] != b"FMD1" or v[4] != 1:
         return False
     h = 2166136261
     for x in v[:-4]:
@@ -597,6 +613,9 @@ CHECKS = {
     # 0x52445231, version 1: how to play read (flags at 6), time played (16); after the reinstall, from the copy, more
     "rider": (lambda v: rider_ok(v) and v[6] & 1 and struct.unpack_from("<I", v, 16)[0] >= 4000,
               lambda v: rider_ok(v) and v[6] & 1 and struct.unpack_from("<I", v, 16)[0] >= 7000),
+    # "FMD1", version 1: how to play read (flags at 5), time played (564); after the reinstall, from the copy, more
+    "famidash": (lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 564)[0] >= 7000,
+                 lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 564)[0] >= 12000),
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept

@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>29 free games for your NumWorks calculator, in one app.</b><br>
-  Plus 30 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.
+  Plus 31 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.
 </p>
 
 <p align="center">
@@ -147,8 +147,11 @@ These are too big to fit next to NumPlay, so each one is its own app. Install it
     <td align="center"><a href="games/rider/README.md"><img src="docs/media/thumb_rider.png" width="200" alt="Rider"><br><b>Rider</b></a><br><sub>The neon bike game: 48 levels, the endless run and 55 bikes</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Rider.nwa">Download</a></td>
   </tr>
   <tr>
+    <td align="center"><a href="games/famidash/README.md"><img src="docs/media/thumb_famidash.png" width="200" alt="Famidash"><br><b>Famidash</b></a><br><sub>Geometry Dash for the NES: 45 levels, every mode, practice mode</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Famidash.nwa">Download</a></td>
     <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-64"><b>Super Mario 64</b></a><br><sub>In a repository of its own: NumWorks-Super-Mario-64</sub></td>
     <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-Bros"><b>Super Mario Bros.</b></a><br><sub>All 32 stages, in a repository of its own: NumWorks-Super-Mario-Bros</sub></td>
+  </tr>
+  <tr>
     <td align="center"><a href="#roadmap"><b>More on the way</b></a><br><sub>Minecraft 1.18.2 and more: see the roadmap</sub></td>
   </tr>
 </table>
@@ -301,6 +304,7 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] Mahjong
 - [x] Meowdoku
 - [x] Rider
+- [x] Famidash, made for the calculator (not through an emulator)
 - [ ] Full Minecraft 1.18.2 as a standalone app
 - [ ] Among Us, against bots
 - [ ] Cat Ninja
@@ -318,7 +322,6 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Hill Climb Racing: the stages and vehicles added after version 1.10.2
 - [ ] Tower Destiny Survive
 - [ ] My Little Universe
-- [ ] Famidash, made for the calculator (not through an emulator)
 - [ ] Mr. Bullet
 - [ ] Hungry Shark Evolution and Hungry Shark World
 - [ ] Castle Crashers
@@ -381,6 +384,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 - **[Bad Time Simulator](https://github.com/jcw87/c2-sans-fight)** by jcw87, Undertale's Sans fight remade, inspired NumPlay's Bad Time Simulator, which plays its 24 attack scripts with its sprites (Undertale's, by Toby Fox), words and numbers, read from its project, and the **Pixel Operator** font. Not affiliated with jcw87 or Toby Fox.
 - **Mahjong solitaire**, first made by Brodie Lockard (Mah-Jongg, 1981) and made famous by Activision's **Shanghai** (1986), inspired NumPlay's Mahjong, written in C for NumPlay with its tiles drawn from scratch. Its layouts are [KMahjongg](https://apps.kde.org/kmahjongg/)'s, by the KDE Games team, and the characters on its tiles come from the **Fusion Pixel** font by TakWolf (SIL Open Font License, [license](LICENSES/OFL-1.1-Fusion-Pixel.txt)). Not affiliated with them.
 - **Rider** by Ketchapp inspired NumPlay's Rider, which rides the game's own levels, track pieces and collision shapes with its physics numbers, bikes, challenges and colours, read from the game's files, with the bikes drawn again as outlines. Not affiliated with Ketchapp.
+- **[Famidash](https://github.com/tfdsoft/famidash)** by TFDSoft, Geometry Dash made for the NES, inspired NumPlay's Famidash, which turns the game's own code into C and plays its 45 levels with its graphics, menu screens, icons and numbers (MIT License, [license](LICENSES/MIT-Famidash.txt)). Famidash is made by Zephyrside (UserSniper), kandowontu, Ficus mcHousePlant, dajinkosa, ElAngel378, SeaGlowingPro, KawaiiDawn and the rest of its team. Its levels are named after songs by ForeverBound, DJVI, Step, Waterflame, Dj-Nate and OcularNebula, which are not in the app. Not affiliated with TFDSoft or RobTop Games.
 - **[Level Devil](https://store.steampowered.com/app/3242750/)** by Unept: NumPlay's Level Devil is written in C with no code from the game, but its 80 rooms (their tiles, traps and timing) are the game's own, taken from its web build by games/leveldevil/tools/fetch.py, and its runner is drawn from the game's sprites.
 
 - **Pong** by Atari (1972) inspired NumPlay's 2 Players, with air hockey, tanks in a maze in the spirit of Tank Trouble and the light cycles of Tron. All four are written in C for NumPlay and drawn from shapes, with no code or art from them.
@@ -410,7 +414,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 
 NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyright (c) 2026 Mason Chen. Code and fonts from others keep their own licenses: the `UNLICENSE` files in the games' folders and the [LICENSES](LICENSES) folder. The names, artwork and music of the games NumPlay is inspired by belong to their makers and are not covered by it.
 
-<sub>Unofficial fan games, not affiliated with NumWorks, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale), jcw87 (Bad Time Simulator), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's), SEGA (Sonic the Hedgehog, Master System, Game Gear), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), W Production (Turbo Rush), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), Ketchapp (Rider), Brodie Lockard or Activision (Shanghai), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Oakever Games (Meowdoku), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go). Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System and Game Gear of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
+<sub>Unofficial fan games, not affiliated with NumWorks, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale), jcw87 (Bad Time Simulator), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's), SEGA (Sonic the Hedgehog, Master System, Game Gear), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), W Production (Turbo Rush), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), Ketchapp (Rider), TFDSoft (Famidash), Brodie Lockard or Activision (Shanghai), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Oakever Games (Meowdoku), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go). Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System and Game Gear of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
 
 ## Gallery
 
@@ -514,5 +518,8 @@ NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyri
     <td align="center"><img src="docs/media/gallery/badtime.gif" alt="Bad Time Simulator: Sans slams the blue heart into bones, then Gaster Blasters fire across the box"><br><a href="games/badtime/README.md"><b>Bad Time Simulator</b></a></td>
     <td align="center"><img src="docs/media/gallery/mahjong.gif" alt="Mahjong: pairs taken from the Turtle, a hint lights up two tiles, then a pair is undone"><br><a href="games/mahjong/README.md"><b>Mahjong</b></a></td>
     <td align="center"><img src="docs/media/gallery/rider.gif" alt="Rider: the endless run, jumps off glowing ramps with double flips and perfect landings"><br><a href="games/rider/README.md"><b>Rider</b></a></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/media/gallery/famidash.gif" alt="Famidash: in Stereo Madness the cube jumps from pillar to pillar, through a portal and past a coin"><br><a href="games/famidash/README.md"><b>Famidash</b></a></td>
   </tr>
 </table>

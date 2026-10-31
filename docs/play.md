@@ -710,6 +710,23 @@ Hold the button and the bike speeds up. In the air, holding it turns the bike ba
 
 <br clear="right">
 
+## Famidash
+
+<img src="../games/famidash/docs/shot.png" width="320" align="right" alt="Famidash">
+
+| Key | What it does |
+| --- | --- |
+| **OK**, **EXE** or **Up** | Jump, fly, flip (hold where the game holds) |
+| **Back** | Pause (with Resume, Practice and Quit game) |
+| **Down** | In practice mode: place a checkpoint |
+| **⌫** (backspace) | In practice mode: remove the last checkpoint |
+| **Arrows** | Choose in the menus |
+| **Home** | Save and quit |
+
+Your icon moves on by itself: jump over the spikes and reach the end. Hold the button and the cube jumps again as it lands. Portals turn it into a ship (hold to fly up), a ball or a spider (press to flip), a UFO (press to hop), a robot (hold to jump higher) or a wave (hold to go up). Press on a ring to jump in the air. Each level hides three coins, which count when you finish it in one go. Practice mode places checkpoints as you play.
+
+<br clear="right">
+
 ## Portal Returns
 
 <img src="media/portal.gif" width="320" align="right" alt="Portal Returns: falling through a portal and flying across a test chamber">
