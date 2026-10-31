@@ -2,9 +2,9 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
-## 1.20.0: Rider, Temple Run, Snow Rider 3D, Mahjong, Meowdoku and Bad Time Simulator
+## 1.20.0: Famidash, Five Nights at Freddy's 2, Rider, Temple Run and more
 
-- **New on their own:** Rider, with its endless run, 48 levels and 55 bikes; Temple Run, with the game's own path, models and upgrades; Mahjong, with the Turtle, the Dragon, the Crab and the Spider; Meowdoku, with 309 puzzles; Bad Time Simulator, the Sans fight; and Snow Rider 3D, brought by dennisimoo.
+- **New on their own:** Famidash, TFDSoft's Geometry Dash for the NES, all 45 levels of its first set; Five Nights at Freddy's 2, its six nights and the Custom Night with the game's own pictures; Rider, with its endless run, 48 levels and 55 bikes; Temple Run, with the game's own path, models and upgrades; Mahjong, with the Turtle, the Dragon, the Crab and the Spider; Meowdoku, with 309 puzzles; Bad Time Simulator, the Sans fight; and Snow Rider 3D, brought by dennisimoo.
 - **NumPlay Studio:** your own .nwa apps go in your NumPlay, each with its own card, and Meowdoku can go in too.
 - **Retro-Go:** SG-1000 games, and any key for any button in Controls.
 - **Smaller, by Lily:** Hill Climb Racing by 199 KB, Celeste by 15 KB, and Plants vs. Zombies.
