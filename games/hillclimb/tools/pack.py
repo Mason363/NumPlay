@@ -4,12 +4,14 @@
     python3 -I tools/pack.py REF        (REF: the folder tools/fetch.py filled)
 
 data.bin: "HCRD", the number of pictures and fonts, then a table of their offsets (u32), then each one:
-- a picture: w, h, colours, flags (u16 each; flags 1: opaque), its pixels a meter x 4 (0: a picture of the menus),
-  its pivot x 4 (s16, s16), 0; its colours as premultiplied R, G, B, A bytes; for an opaque one also as RGB565;
-  then w x h colour indices, row by row
+- a picture: w, h, colours, flags (u16 each; flags 1: opaque, 2: cropped, 4: tiled), its pixels a meter x 4 (0: a
+  picture of the menus), its pivot x 4 (s16, s16), its clear colour (u16: a cropped one's, else 0); its colours as
+  premultiplied R, G, B, A bytes; for an opaque one also as RGB565; for a cropped one the box around its visible
+  pixels (x, y, w, h: u8 each), the rest of it being the clear colour (cropped); then the colour indices of its pixels
+  (of the box's), row by row, or for a tiled one (tiled) in 8 x 8 tiles
 - a font: first character, count, line height, ascent (u8 each); then a glyph each (w, h, x and y of its top-left
-  from the pen, advance, 3 bytes of 0, offset of its bitmap: u8 u8 s8 s8 u8, u32) and the bitmaps, a byte a pixel: the
-  letter's coverage in the high 4 bits, its dark outline's in the low 4
+  from the pen, advance, packed, 2 bytes of 0, offset of its bitmap: u8 u8 s8 s8 u8 u8, u32) and the bitmaps, a byte
+  a pixel: the letter's coverage in the high 4 bits, its dark outline's in the low 4; packed ones in runs (pack_glyphs)
 
 data.h names them (IMG_*, FONT_*); art.h is tools/art.py's vehicles in meters, for src/run.c.
 icon(REF) drew src/icon.png once (it is kept as it is now, with NumPlay's corners: tools/round_icons.py)."""
@@ -245,135 +247,98 @@ def picture(im, ppm, pivot, opaque=False, colors=256):
     return out
 
 
-# HC_LOSSLESS_CROP_V1: compact only transparent margins; terrain stays direct.
-def _hc_crop_picture_blob(blob, name):
-    if name.startswith(('GROUND_', 'SURF_', 'PIT_', 'SKY', 'DIRT',
-                        'SNOW', 'GRASS', 'SLIME', 'FIRE')):
+def cropped(blob, name):
+    """The picture (not the ground's, sky's or bits') kept as the box around its visible pixels when that is
+    smaller, its first clear colour (the colours with alpha 0 are all 0, premultiplied) all around it."""
+    if name.startswith(("GROUND_", "SURF_", "PIT_", "SKY", "DIRT", "SNOW", "GRASS", "SLIME", "FIRE")):
         return blob
-    w, h, n, flags, ppm4, px4, py4, pad = struct.unpack_from('<HHHHHhhH', blob)
-    if flags or pad or not w or not h or n > 256:
+    w, h, n, flags = struct.unpack_from("<HHHH", blob)
+    if flags:
         return blob
-    pal = blob[16:16 + 4*n]
-    clear = [i for i in range(n) if pal[i*4 + 3] == 0]
-    if not clear or any(pal[i*4:i*4+3] != b'\0\0\0' for i in clear):
+    alpha = np.frombuffer(blob, np.uint8, 4 * n, 16)[3::4]
+    clear = np.nonzero(alpha == 0)[0]
+    px = np.frombuffer(blob, np.uint8, w * h, 16 + 4 * n).reshape(h, w)
+    ys, xs = np.nonzero(alpha[px])
+    if not len(clear) or not len(ys):
         return blob
-    visible = {i for i in range(n) if pal[i*4+3] != 0}
-    px = blob[16+4*n:16+4*n+w*h]
-    if len(px) != w*h:
-        raise ValueError('Hill Climb image pixel data truncated')
-    x0, y0, x1, y1 = w, h, -1, -1
-    for y in range(h):
-        row = px[y*w:(y+1)*w]
-        for x, idx in enumerate(row):
-            if idx in visible:
-                x0 = min(x0, x); y0 = min(y0, y)
-                x1 = max(x1, x); y1 = max(y1, y)
-    if x1 < x0:
-        return blob
-    cw, ch = x1-x0+1, y1-y0+1
+    x0, y0, cw, ch = xs.min(), ys.min(), xs.max() + 1 - xs.min(), ys.max() + 1 - ys.min()
     if max(x0, y0, cw, ch) > 255:
         return blob
-    hdr = bytearray(blob[:16])
-    struct.pack_into('<H', hdr, 6, flags | 2)
-    struct.pack_into('<H', hdr, 14, clear[0])
-    out = hdr + pal + bytes((x0, y0, cw, ch))
-    for y in range(y0, y0+ch):
-        out += px[y*w+x0:y*w+x0+cw]
-    while len(out) % 4:
-        out.append(0)
+    out = bytearray(blob[:16 + 4 * n])
+    struct.pack_into("<H", out, 6, flags | 2)
+    struct.pack_into("<H", out, 14, clear[0])
+    out += bytes((x0, y0, cw, ch)) + px[y0:y0 + ch, x0:x0 + cw].tobytes()
+    out += bytes(-len(out) % 4)
     return out if len(out) < len(blob) else blob
 
 
-# HC_PALETTE_COMPACT_V1: preserve exact premultiplied RGBA/RGB565.
-def _hc_compact_palette_blob(blob):
-    """Drop unused/duplicate colour entries in one already-cropped HCRD record.
-
-    Works on both ordinary and HC_LOSSLESS_CROP_V1 records; the latter's
-    outside-transparent index is remapped too. Never alters logical pixels.
-    """
-    w, h, n, flags, ppm4, px4, py4, pad = struct.unpack_from('<HHHHHhhH', blob)
-    assert flags & ~3 == 0 and 1 <= n <= 256
-    rgba = [blob[16 + 4*i:20 + 4*i] for i in range(n)]
-    pal_end = 16 + 4*n
-    rgb565 = [blob[pal_end + 2*i:pal_end + 2*i + 2] for i in range(n)] if flags & 1 else None
-    at = pal_end + (2*n if flags & 1 else 0)
-    if flags & 2:
-        x0, y0, cw, ch = blob[at:at + 4]
+def compacted(blob):
+    """The picture without the colours its pixels don't use, and each colour once."""
+    blob = bytes(blob)
+    w, h, n, flags = struct.unpack_from("<HHHH", blob)
+    clear = struct.unpack_from("<H", blob, 14)[0]
+    at = 16 + 4 * n + (2 * n if flags & 1 else 0)
+    rgba = [blob[16 + 4 * i:20 + 4 * i] for i in range(n)]
+    c565 = [blob[16 + 4 * n + 2 * i:18 + 4 * n + 2 * i] if flags & 1 else b"" for i in range(n)]
+    box = blob[at:at + 4] if flags & 2 else b""
+    if box:
         at += 4
-    else:
-        cw, ch = w, h
-    px = blob[at:at + cw*ch]
-    keep = set(px)
+        w, h = box[2], box[3]
+    px = blob[at:at + w * h]
+    first, remap, keep = {}, {}, []
+    for i in sorted(set(px) | ({clear} if flags & 2 else set())):
+        key = rgba[i] + c565[i]
+        if key not in first:
+            first[key] = len(keep)
+            keep.append(i)
+        remap[i] = first[key]
+    out = bytearray(blob[:16])
+    struct.pack_into("<H", out, 4, len(keep))
     if flags & 2:
-        keep.add(pad)  # original transparent colour outside crop bounds
-    unique, remap, colors = {}, {}, []
-    for old in sorted(keep):
-        key = rgba[old] + (rgb565[old] if rgb565 is not None else b'')
-        if key not in unique:
-            unique[key] = len(colors)
-            colors.append(old)
-        remap[old] = unique[key]
-    hdr = bytearray(blob[:16])
-    struct.pack_into('<H', hdr, 4, len(colors))
-    if flags & 2:
-        struct.pack_into('<H', hdr, 14, remap[pad])
-    out = hdr + b''.join(rgba[i] for i in colors)
-    if rgb565 is not None:
-        out += b''.join(rgb565[i] for i in colors)
-    if flags & 2:
-        out += bytes((x0, y0, cw, ch))
-    out += bytes(remap[i] for i in px)
-    out += bytes((-len(out)) % 4)
-    return bytes(out) if len(out) < len(blob) else bytes(blob)
+        struct.pack_into("<H", out, 14, remap[clear])
+    out += b"".join(rgba[i] for i in keep) + b"".join(c565[i] for i in keep) + box + bytes(remap[i] for i in px)
+    out += bytes(-len(out) % 4)
+    return bytes(out) if len(out) < len(blob) else blob
 
-# HC_MENU_TILES_EXPERIMENT_V1: lossless local-palette 8x8 menu images (16-bit tile offsets).
-def _hc_menu_tile_blob(blob, name):
-    if not (name in {'MENU_BG', 'LOGO', 'LOCK', 'START'} or
-            name.startswith(('STAGE_', 'ICON_', 'UP_', 'THUMB_V', 'THUMB_S'))):
+
+def tiled(blob, name):
+    """A picture of the menus (not drawn in a run; not the menus' backdrop either, the whole screen every frame) in
+    8 x 8 tiles, when that saves enough: their offsets (u16, from after them), then each tile: its number of colours n
+    and the colours (indices of the picture's), then its pixels as indices of those, 1, 2 or 4 bits each, high bits
+    first (n 1: none; n 0: the picture's indices, as they are, when more than 16 or no smaller)."""
+    if name not in ("LOGO", "LOCK", "START") and not name.startswith(("STAGE_", "ICON_", "UP_", "THUMB_")):
         return blob
-    w, h, n, flags, _, _, _, _ = struct.unpack_from('<HHHHHhhH', blob)
-    if flags & 4:
-        raise ValueError('tile encoding applied twice')
-    p = 16 + n*4 + (2*n if flags&1 else 0)
-    if flags&2:
-        cx, cy, cw, ch=blob[p:p+4]
-        p+=4
-    else:
-        cw, ch=w,h
-    pixels=blob[p:p+cw*ch]
-    if len(pixels)!=cw*ch:
-        raise ValueError('truncated input for menu tiling')
-    cols=(cw+7)//8;rows=(ch+7)//8
-    offsets=[];tiles=[];length=0
-    for ty in range(rows):
-        for tx in range(cols):
-            tw=min(8,cw-8*tx);th=min(8,ch-8*ty)
-            raw=b''.join(pixels[(8*ty+dy)*cw+8*tx:(8*ty+dy)*cw+8*tx+tw] for dy in range(th))
-            cmap={}; pal=[]; codes=[]
-            for val in raw:
-                if val not in cmap:
-                    cmap[val]=len(pal);pal.append(val)
-                codes.append(cmap[val])
-            count=len(pal)
-            if count<=16:
-                bits=0 if count==1 else 1 if count==2 else 2 if count<=4 else 4
-                t=bytearray((count,))+bytearray(pal)
+    w, h, n, flags = struct.unpack_from("<HHHH", blob)
+    assert w <= 320, name   # (gfx.c unpacks a row at a time, the screen's width at most)
+    at = 16 + 4 * n + (2 * n if flags & 1 else 0)
+    if flags & 2:
+        w, h = blob[at + 2], blob[at + 3]
+        at += 4
+    px = np.frombuffer(blob, np.uint8, w * h, at).reshape(h, w)
+    offs, tiles = [], bytearray()
+    for ty in range(0, h, 8):
+        for tx in range(0, w, 8):
+            raw = px[ty:ty + 8, tx:tx + 8].tobytes()
+            cols = list(dict.fromkeys(raw))
+            t = b"\0" + raw
+            if len(cols) <= 16:
+                bits = 0 if len(cols) == 1 else 1 if len(cols) == 2 else 2 if len(cols) <= 4 else 4
+                packed = bytearray((len(cols),)) + bytes(cols)
                 if bits:
-                    for k in range(0,len(codes),8//bits):
-                        v=0
-                        for j,c in enumerate(codes[k:k+8//bits]):
-                            v|=c<<(8-bits*(j+1))
-                        t.append(v)
-                if len(t)>=1+len(raw):t=b'\0'+raw
-            else:
-                t=b'\0'+raw
-            offsets.append(length);tiles.append(bytes(t));length+=len(t)
-    if length>=65536:return blob
-    data=b''.join(struct.pack('<H',o) for o in offsets)+b''.join(tiles)
-    out=bytearray(blob[:p])+data
-    struct.pack_into('<H',out,6,flags|4)
-    while len(out)%4:out.append(0)
-    return bytes(out) if len(blob)-len(out)>=96 and len(out)*100<=len(blob)*96 else blob
+                    k = 8 // bits
+                    for i in range(0, len(raw), k):
+                        packed.append(sum(cols.index(c) << (8 - bits * (j + 1)) for j, c in enumerate(raw[i:i + k])))
+                if len(packed) < len(t):
+                    t = packed
+            offs.append(len(tiles))
+            tiles += t
+    if len(tiles) >= 65536:
+        return blob
+    out = bytearray(blob[:at]) + b"".join(struct.pack("<H", o) for o in offs) + tiles
+    struct.pack_into("<H", out, 6, flags | 4)
+    out += bytes(-len(out) % 4)
+    return bytes(out) if len(blob) - len(out) >= 96 and len(out) * 100 <= len(blob) * 96 else blob
+
 
 def sized(im, how, crop):
     if crop == "trim":
@@ -529,64 +494,56 @@ def font_data(ttf, cap, weight, outline):
     out += data
     while len(out) % 4:
         out.append(0)
-    return _hc_pack_font_blob(out)
+    return pack_glyphs(out)
 
 
-# HC_FONT_ROW_RLE_V1: lossless per-glyph row PackBits, direct row offsets.
-def _hc_rle_font_row(raw):
-    out = bytearray()
-    i = 0
-    while i < len(raw):
+def pack_row(row):
+    """A row of a glyph in runs: a byte n under 128 then n + 1 bytes as they are, or 128 + n then a byte that comes n + 1
+    times (3 times or more)."""
+    def same(i):   # how many times row[i] comes from i on (128 at most)
         j = i + 1
-        while j < len(raw) and raw[j] == raw[i] and j - i < 128:
+        while j < len(row) and row[j] == row[i] and j - i < 128:
             j += 1
-        if j - i >= 3:
-            out += bytes((0x80 | (j-i-1), raw[i]))
-            i = j
+        return j - i
+    out, i = bytearray(), 0
+    while i < len(row):
+        n = same(i)
+        if n >= 3:
+            out += bytes((128 + n - 1, row[i]))
+            i += n
             continue
         start = i
-        i += j - i
-        while i < len(raw) and i - start < 128:
-            j = i + 1
-            while j < len(raw) and raw[j] == raw[i] and j - i < 128:
-                j += 1
-            if j - i >= 3:
+        i += n
+        while i < len(row) and i - start < 128:
+            n = same(i)
+            if n >= 3:
                 break
-            i += min(j-i, 128-(i-start))
-        out.append(i-start-1)
-        out += raw[start:i]
+            i += min(n, 128 - (i - start))
+        out.append(i - start - 1)
+        out += row[start:i]
     return bytes(out)
 
 
-def _hc_pack_font_blob(blob):
-    """Existing font/glyph structs, except pad[0]=1 marks compressed glyphs.
-
-    Each compressed glyph payload starts with h+1 little-endian uint16 row
-    offsets, followed by the PackBits streams; other glyphs stay direct.
-    """
-    first, count, height, ascent = struct.unpack_from('<BBBB', blob)
-    base = 4 + 12*count
-    out = bytearray(blob[:base])
-    for j in range(count):
-        p = 4 + 12*j
-        w, h = struct.unpack_from('<BB', blob, p)
-        oldoff = struct.unpack_from('<I', blob, p+8)[0]
-        raw = bytes(blob[base+oldoff:base+oldoff+w*h])
-        assert len(raw) == w*h and not any(blob[p+5:p+8])
-        struct.pack_into('<I', out, p+8, len(out)-base)
-        if w and h:
-            rows = [_hc_rle_font_row(raw[y*w:(y+1)*w]) for y in range(h)]
-            starts = [0]
-            for row in rows:
-                starts.append(starts[-1] + len(row))
-            if starts[-1] <= 65535:
-                candidate = struct.pack('<'+'H'*(h+1), *starts) + b''.join(rows)
-                if len(candidate) < len(raw):
-                    out[p+5] = 1
-                    out += candidate
-                    continue
-        out += raw
-    out += bytes((-len(out)) % 4)
+def pack_glyphs(font):
+    """The font with its glyphs packed where that is smaller (Glyph.packed): where each row starts (u16, h + 1 of
+    them, from after them), then the rows (pack_row)."""
+    count = font[1]
+    base = 4 + 12 * count
+    out = bytearray(font[:base])
+    for g in range(4, base, 12):
+        w, h = font[g], font[g + 1]
+        at = base + struct.unpack_from("<I", font, g + 8)[0]
+        raw = bytes(font[at:at + w * h])
+        struct.pack_into("<I", out, g + 8, len(out) - base)
+        rows = [pack_row(raw[y * w:(y + 1) * w]) for y in range(h)]
+        starts = [sum(len(r) for r in rows[:y]) for y in range(h + 1)]
+        packed = struct.pack(f"<{h + 1}H", *starts) + b"".join(rows) if starts[-1] < 65536 else raw
+        if w and h and len(packed) < len(raw):
+            out[g + 5] = 1
+            out += packed
+        else:
+            out += raw
+    out += bytes(-len(out) % 4)
     return out
 
 
@@ -630,7 +587,7 @@ def main():
             colors[name] = more[0]
     vp, art_lines = vehicle_pictures(ref)
     pics += vp
-    blobs = [_hc_menu_tile_blob(_hc_compact_palette_blob(_hc_crop_picture_blob(picture(im, ppm, pv, opaque, colors.get(name, 256)), name)), name)
+    blobs = [tiled(compacted(cropped(picture(im, ppm, pv, opaque, colors.get(name, 256)), name)), name)
              for name, im, ppm, pv, opaque in pics]
     ttf = os.path.join(ref, "fonts", "Teko.ttf")
     fonts = [font_data(ttf, cap, wt, ol) for _, cap, wt, ol in FONTS]
