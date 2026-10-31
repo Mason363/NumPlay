@@ -326,6 +326,8 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Hollow Knight: Godhome, its boss fights in an app of their own
 - [ ] Animal Well
 - [ ] Rider.io
+- [ ] Getting Over It
+- [ ] Crossy Road: the characters and the prize machine
 
 ## Credits
 
