@@ -283,10 +283,11 @@ static void draw_screen(void) {
     drawing_frame = drawing_frame == 1 ? 2 : 0;
     return;
   }
-  if ((uint8_t)((scroll_x & 0xFF) >> 4) == rld_column) {
+  /* (rld_column is the count of columns put in the map, mod 16: the decoder may have run ahead of it for
+   * the wider screen) */
+  if ((uint8_t)((scroll_x & 0xFF) >> 4) == (uint8_t)(coll_cols & 0x0F)) {
     decode_to(coll_cols + 1);
     coll_cols++;
-    rld_column = (uint8_t)(coll_cols & 0x0F);
     drawing_frame = 1;
   }
 }
@@ -2535,6 +2536,7 @@ void game_step(void) {
   if (!(high_byte(player_relx[0]) > 0x20)) cube_data[0] = cube_data[1] = 0;
 }
 
+bool game_platformer(void) { return force_platformer || (options & platformer); }
 bool game_dead(void) { return high_byte(player_relx[0]) > 0x20 && (cube_data[0] & 1 || cube_data[1] & 1); }
 
 /* ---------------------------------------------------------------- sprites: draw_sprites and the player */

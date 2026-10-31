@@ -579,7 +579,9 @@ static void attempt_text(void) {
   if (x + 15 * 8 > sx + 256 + 32) text_n = 0;
 }
 
+static uint32_t level_frame; /* when the level was chosen */
 static void play_start(void) {
+  if (attemptCounter[0] + attemptCounter[1] + attemptCounter[2] == 0) level_frame = frame;
   game_start();
   attempt_text();
   phase = P_FADEIN, phase_t = 0;
@@ -988,8 +990,8 @@ static const char *const help_lines[2][7] = {
      "Pads and portals act on their own:", "they change your gravity, speed, size and mode.", "Three coins hide in every level."},
     {"Back pauses: Resume, Practice, Quit game.", "Practice mode puts checkpoints down for you.",
      "In practice: Down places one, backspace removes", "the last one. Coins don't count there.",
-     "On the title screen: Play has the 27 main levels,", "the right button the 18 community levels.",
-     "Beat the first 13 levels for the fun settings."}};
+     "Play has the 27 main levels, the button on its right", "the 18 community levels. In the tower levels,",
+     "walk with Left and Right. Beat the first 13 levels for the fun settings."}};
 
 static void scene(void *ctx) {
   (void)ctx;
@@ -1018,7 +1020,8 @@ static void scene(void *ctx) {
       keyline("Up Down: choose   OK: go   Back: resume");
     } else if (practice_point_count && phase == P_RUN) {
       if (frame < (uint32_t)auto_cp_seen + 240) keyline("Practice: Down places a checkpoint, backspace removes one");
-    } else if (!(sv.flags & 2) && phase == P_RUN) keyline("OK, EXE or Up: jump (hold to keep jumping)   Back: pause");
+    } else if (game_platformer() && frame < level_frame + 300) keyline("Left Right: walk   OK: jump   Back: pause");
+    else if (!(sv.flags & 2) && phase == P_RUN) keyline("OK, EXE or Up: jump (hold to keep jumping)   Back: pause");
     break;
   }
 }

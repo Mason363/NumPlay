@@ -67,6 +67,7 @@ void game_begin(void);           /* level chosen: attempts from 1 */
 void game_start(void);           /* state_game's set up and reset_level */
 void game_step(void);            /* one frame of play (everything_else) */
 bool game_dead(void);            /* cube_data says the player died this frame */
+bool game_platformer(void);      /* Left and Right walk (the tower levels, or the fun setting) */
 void game_death_frame(int f);    /* the 30 frames of the explosion */
 void game_reset(void);           /* reset_level (after the fade) */
 void game_draw(void);            /* draw_sprites into the sprite list */
