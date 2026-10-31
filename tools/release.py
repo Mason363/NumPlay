@@ -57,6 +57,7 @@ ALONE = {
     "paperclips": ("Universal Paperclips", "Frank Lantz's game of an AI making paperclips: business, the Earth, then the universe"),
     "badtime": ("Bad Time Simulator", "the Judge's fight: 24 attacks of bones, gavels and the blue heart, after jcw87's Bad Time Simulator"),
     "mahjong": ("Mahjong", "Mahjong solitaire: 144 tiles in the Turtle, the Dragon, the Crab and the Spider, every deal winnable"),
+    "rider": ("Rider", "Ketchapp's neon motorbike game: the endless run, 48 levels and 55 bikes, one button to ride and flip"),
 }
 VARIANTS = [
     ("NumPlay-Invisible.nwa", "The same app, hidden: a blank icon with no name"),

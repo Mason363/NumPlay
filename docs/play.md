@@ -695,6 +695,21 @@ Sans attacks and you dodge. Keep your heart away from everything in the box: whi
 
 <br clear="right">
 
+## Rider
+
+<img src="../games/rider/docs/shot.png" width="320" align="right" alt="Rider">
+
+| Key | What it does |
+| --- | --- |
+| **OK**, **EXE** or **Up** (hold) | Ride, and flip in the air |
+| **Arrows** | Choose in the menus |
+| **Back** | Pause (with Resume, How to play and Quit game) |
+| **Home** | Save and quit |
+
+Hold the button and the bike speeds up. In the air, holding it turns the bike backwards: a flip. Let go so that it lands on both wheels, or it breaks. In the endless run each landed flip is a point and gems win new bikes. In the 48 levels, reach the end fast for three stars: each flip takes half a second off.
+
+<br clear="right">
+
 ## Portal Returns
 
 <img src="media/portal.gif" width="320" align="right" alt="Portal Returns: falling through a portal and flying across a test chamber">
