@@ -279,6 +279,10 @@ GAMES = {
     "badtime": ("BadTimeSimulator.nwa", "badtime.sav",
                 presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "ok"), (5000, "ok")), 6500,
                 presses((1500, "ok")), 4000),
+    # how to play read, the Turtle dealt, a tile picked; Home keeps the game. Next time, from the copy, it goes on: the
+    # cursor moved, quit with On/Off
+    "mahjong": ("Mahjong.nwa", "mahjong.sav", presses((1500, "ok"), (2200, "ok"), (3000, "ok")), 4000,
+                presses((1500, "right"), (2000, "ok")), 3000),
     # a level, its message, then play; then back to the level select
     "portal": ("PortalReturns.nwa", "portal.sav",
                presses((1500, "ok"), (2500, "ok"), (3500, "ok")) + every(4000, 7000, 400, "right", 300), 8000,
@@ -347,7 +351,7 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "tombofthemask": "tombofthemask_saves.py", "uno": "uno_saves.py",
           "fnf": "fnf_saves.py", "turborush": "turborush_saves.py",
           "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
-          "badtime": "badtime_saves.py"}
+          "badtime": "badtime_saves.py", "mahjong": "mahjong_saves.py"}
 
 
 def paperclips_ok(v):
@@ -368,6 +372,16 @@ def badtime_ok(v):
     for x in v[:-4]:
         h = (h ^ x) * 16777619 & 0xFFFFFFFF
     return struct.unpack_from("<I", v, 20)[0] == h
+
+
+def mahjong_ok(v):
+    """Mahjong's save: "M", version 1, 328 bytes, an FNV-1a sum of the rest at the end"""
+    if len(v) != 328 or v[:2] != b"M\1":
+        return False
+    h = 2166136261
+    for x in v[:-4]:
+        h = (h ^ x) * 16777619 & 0xFFFFFFFF
+    return struct.unpack_from("<I", v, 324)[0] == h
 
 
 def polytrack_ok(v):
@@ -553,6 +567,10 @@ CHECKS = {
     # "BTS1", version 1, its size (24): how to play read (guide at 9), the first attack reached (best at 8); after the
     # reinstall, from the copy, the same
     "badtime": (lambda v: badtime_ok(v) and v[9] == 1 and v[8] >= 1,) * 2,
+    # "M", version 1: how to play read and a Turtle being played (flags 3 at 2, the layout at 3), its time at 8; after
+    # the reinstall, from the copy, it goes on
+    "mahjong": (lambda v: mahjong_ok(v) and v[2] == 3 and v[3] == 0 and struct.unpack_from("<I", v, 8)[0] > 0,
+                lambda v: mahjong_ok(v) and v[2] == 3 and struct.unpack_from("<I", v, 8)[0] > 1000),
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept
