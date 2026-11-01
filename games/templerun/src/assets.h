@@ -18,6 +18,6 @@ typedef struct {
   const uint8_t *outline_data[2];
 } Font;
 
-extern const Font font_big, font_mid, font_small;
+extern const Font font_mid, font_small;
 
 #endif

@@ -110,8 +110,9 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
   if (me->far >= 0 && z0 > MESH_FAR) me = &meshes[me->far];
   float s, c;
   r_sincos(yaw - cyaw, &s, &c);
-  /* the corners in place once each; a mesh with more than MESH_CORNERS (the temple) has its faces' moved as they come */
-  static V3 v[MESH_CORNERS];
+  /* the corners in place once each, in the camera's space and on the screen; a mesh with more than MESH_CORNERS (the
+   * temple) has its faces' moved as they come */
+  static SV v[MESH_CORNERS];
   int nv = 0;
   for (int i = 0; i < me->nf; i++) {
     int e = me->f[i].first + me->f[i].n;
@@ -123,19 +124,22 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
   bool each = nv > MESH_CORNERS;
   for (int i = 0; i < nv && !each; i++) {
     float mx = me->v[i].x * 0.25f, my = me->v[i].y * 0.25f, mz = me->v[i].z * 0.25f;
-    v[i] = (V3){(x0 + mx * c + mz * s) * S, (dy + my) * S, (z0 - mx * s + mz * c) * S};
+    v[i] = r_corner((V3){(x0 + mx * c + mz * s) * S, (dy + my) * S, (z0 - mx * s + mz * c) * S});
   }
-#define CORNER(j) (each ? (V3){(x0 + me->v[j].x * 0.25f * c + me->v[j].z * 0.25f * s) * S, (dy + me->v[j].y * 0.25f) * S, \
-                              (z0 - me->v[j].x * 0.25f * s + me->v[j].z * 0.25f * c) * S} : v[j])
+#define CORNER(j) (each ? r_corner((V3){(x0 + me->v[j].x * 0.25f * c + me->v[j].z * 0.25f * s) * S, (dy + me->v[j].y * 0.25f) * S, \
+                                       (z0 - me->v[j].x * 0.25f * s + me->v[j].z * 0.25f * c) * S}) : v[j])
   int flags = alpha < 255 ? P_ALPHA : 0;
   for (int i = 0; i < me->nf; i++) {
     const MFace *f = &me->f[i];
     V3 p[12];
     int n = f->n > 12 ? 12 : f->n;
-    for (int k = 0; k < n; k++) p[k] = CORNER(me->idx[f->first + k]);
+    for (int k = 0; k < n; k++) {
+      SV q = CORNER(me->idx[f->first + k]);
+      p[k] = (V3){q.x, q.y, q.z};
+    }
     float nx = f->nx * (1.0f / 127), ny = f->ny * (1.0f / 127), nz = f->nz * (1.0f / 127);
     V3 nn = {nx * c + nz * s, ny, -nx * s + nz * c};
-    r_poly(p, n, r_shade(f->rgb, nn), flags | (f->flags & 1 ? P_TWOSIDED : 0), alpha);
+    r_poly_view(p, n, r_shade(f->rgb, nn), flags | (f->flags & 1 ? P_TWOSIDED : 0), alpha);
   }
   /* (a path piece's far version has its faces biggest first: farther off, only those; scenery stays whole, as its
    * leaves and roots would be left in the air) */
@@ -149,9 +153,12 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
     const TFace *t = &me->t[i];
     const uint16_t *ix = me->tidx + 3 * i;
     const int16_t *q = me->uv + 6 * i;
-    V3 p[3] = {CORNER(ix[0]), CORNER(ix[1]), CORNER(ix[2])};
+    SV a = CORNER(ix[0]), b = CORNER(ix[1]), cc3 = CORNER(ix[2]);
     float uv[6] = {q[0] * 0.25f, q[1] * 0.25f, q[2] * 0.25f, q[3] * 0.25f, q[4] * 0.25f, q[5] * 0.25f};
-    r_poly_tex_avg(p, uv, 3, t->tex, t->light + 1, flags, t->avg);
+    /* (all in front of the camera: as it is on the screen, turned away ones left out at once) */
+    if (a.z >= R_NEAR && b.z >= R_NEAR && cc3.z >= R_NEAR && r_tri_tex_screen(&a, &b, &cc3, uv, t->tex, t->light + 1, flags, t->avg)) continue;
+    V3 p[3] = {{a.x, a.y, a.z}, {b.x, b.y, b.z}, {cc3.x, cc3.y, cc3.z}};
+    r_poly_tex_view(p, uv, 3, t->tex, t->light + 1, flags, t->avg);
   }
 #undef CORNER
 }

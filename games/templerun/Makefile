@@ -3,6 +3,7 @@
 #   make check      link it like the calculator does (output/templerun.bin)
 #   make host       build/play: the game on a computer, for tests and screenshots
 #   make test       the game played on a computer (tests/check.py, with the sanitizers)
+#   make bench      how fast it draws a run at an N0110's speed (tools/bench.py, on NumPlay's emulator tools/emu.py)
 #   make data DATA=DIR   src/data.c and src/data.h again: the game's own models, from its Android package (DIR: its
 #                   assets/bin/Data; tools/apk.py: UnityPy, NumPy, Pillow; the package is only read)
 #   make models     src/data.c and src/data.h as the port's stand-ins instead (tools/models.py: Python)
@@ -32,7 +33,7 @@ LDFLAGS = -Wl,--relocatable -nostartfiles --specs=nano.specs
 LDFLAGS += -Wl,-e,main -Wl,-u,eadk_app_name -Wl,-u,eadk_app_icon -Wl,-u,eadk_api_level
 LDFLAGS += -Wl,--gc-sections -flinker-output=nolto-rel
 
-.PHONY: build check clean host test models floor data hud
+.PHONY: build check clean host test bench models floor data hud
 build: $(BUILD_DIR)/templerun.nwa
 
 # apps get 133652 bytes of RAM on custom builds of Epsilon 25.2 (148928 or more on official ones)
@@ -65,6 +66,10 @@ build/play: $(HOST_SRC) tests/play.c $(HEADERS)
 
 test: build/play
 	python3 tests/check.py build/play
+
+bench:
+	$(Q) $(MAKE) --no-print-directory build BUILD_DIR=build/bench EXTRA=-DTR_BENCH NWLINK="$(NWLINK)" TOOLCHAIN="$(TOOLCHAIN)"
+	python3 tools/bench.py build/bench/templerun.nwa
 
 models:
 	python3 tools/models.py src
