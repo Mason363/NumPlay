@@ -4,8 +4,8 @@
 #define NEAR 0.35f
 #define FAR 190.0f
 #define ZK 22000.0f      /* depths are ZK / z: 62857 at the near plane, larger is nearer */
-#define MAXP 1600        /* polygons a frame */
-#define MAXV 5400        /* their corners */
+#define MAXP 1800        /* polygons a frame */
+#define MAXV 6000        /* their corners */
 #define MAXT 760         /* textured faces in perspective */
 #define MAXN 14          /* corners of a polygon once cut */
 #define SUB 8.0f         /* corners are kept in 1/8 pixels */
@@ -17,10 +17,10 @@ typedef struct {
   float a, b, c;         /* its depth at (sx, sy): a sx + b sy + c */
   uint16_t v0;           /* its first corner */
   uint16_t color;        /* RGB565, or the texture's number */
+  uint16_t extra;        /* a textured face in perspective: its planes (uvs) */
   uint8_t n, kind;
   uint8_t y0, y1;        /* the rows it covers */
   uint8_t alpha;         /* see-through (255: not); textured faces: their light 0..32 */
-  uint8_t extra;         /* a textured face in perspective: its planes */
 } Poly;
 typedef struct {
   int16_t x, y;
@@ -245,7 +245,7 @@ static void emit_screen(const CV *p, int n, float *sx, float *sy, int kind, uint
       for (int i = 0; i < 3; i++) wu[i] = c3[i]->u * ZK / c3[i]->z, wv[i] = c3[i]->v * ZK / c3[i]->z;
       UV *u = &uvs[nuv];
       if (!fit(px, py, wu, &u->ua, &u->ub, &u->uc) || !fit(px, py, wv, &u->va, &u->vb, &u->vc)) return;
-      q->extra = (uint8_t)nuv++;
+      q->extra = (uint16_t)nuv++;
     }
   }
   q->color = color;
