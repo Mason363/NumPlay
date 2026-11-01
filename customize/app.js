@@ -17,8 +17,9 @@
     3: { tag: 'NES', name: 'NES', color: '#c43a2f', shell: '#d9d9de' },
     4: { tag: 'SMS', name: 'Master System', color: '#2f62c4', shell: '#cfd6e4' },
     5: { tag: 'GG', name: 'Game Gear', color: '#3b3b3b', shell: '#c8c8cc' },
+    6: { tag: 'SG', name: 'SG-1000', color: '#c0392b', shell: '#2b2b2e' },
   };
-  const EXT = { gb: 1, gbc: 2, nes: 3, sms: 4, gg: 5 };
+  const EXT = { gb: 1, gbc: 2, nes: 3, sms: 4, gg: 5, sg: 6 };
   const ROM_ENTRY = 52, ROM_HEAD = 12;
   const PRESETS = { 'NumPlay': ['NumPlay', 'NumPlay'], 'NumPlay-Invisible': ['Invisible', ' '], 'NumPlay-Matrices': ['Matrices', 'Matrices'] };
   const LANGS = { en: ['EN', 'English'], fr: ['FR', 'Français'], zh: ['中文', '中文'] };

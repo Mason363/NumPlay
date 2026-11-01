@@ -6,6 +6,9 @@ goes on from where it was. All along: what tests/test_games.py checks (Home and 
 RAM handed back clean, no write to flash, so nothing written into a cartridge read in place, no
 unaligned multi-word read of the file system, the firmware's RAM untouched, the stack).
 
+Then the keys: a Game Boy cartridge that keeps the buttons it saw, A given 7 and the D-pad 8 2 4 6 in Controls,
+and 7 and 8 held in the game: it saw A and Up.
+
 usage: test_app.py [--keep DIR]   (builds output/test/retrogo-full.nwa with ROMS set to the three games)"""
 import argparse
 import os
@@ -34,6 +37,28 @@ def gb_rom():
             0xF0, 0x44, 0xFE, 0x90, 0x20, 0xFA,  # wait for LY = 144
             0xF0, 0x44, 0xFE, 0x91, 0x20, 0xFA,  # then 145
             0x18, 0xEA]                    # jr loop
+    rom[0x150:0x150 + len(code)] = bytes(code)
+    return bytes(rom)
+
+
+def pad_rom():
+    """MBC1 + RAM + battery: the buttons seen pressed at $A000 (A 1, B 2, Select 4, Start 8), the D-pad at $A001
+    (Right 1, Left 2, Up 4, Down 8), each frame."""
+    rom = bytearray(0x8000)
+    rom[0x100:0x104] = bytes([0x00, 0xC3, 0x50, 0x01])  # nop; jp $0150
+    rom[0x134:0x13C] = b"PADS\0\0\0\0"
+    rom[0x147], rom[0x148], rom[0x149] = 0x03, 0x00, 0x02
+    code = [0x3E, 0x0A, 0xEA, 0x00, 0x00,  # ld a,$0A; ld ($0000),a: RAM on
+            0xAF, 0xEA, 0x00, 0xA0, 0xEA, 0x01, 0xA0,  # xor a; ld ($A000),a; ld ($A001),a
+            0x21, 0x00, 0xA0, 0x0E, 0x10,  # loop: ld hl,$A000; ld c,$10 (the buttons)
+            0x79, 0xE0, 0x00, 0xF0, 0x00, 0xF0, 0x00,  # read: ld a,c; ldh ($00),a; ldh a,($00) twice
+            0x2F, 0xE6, 0x0F, 0xB6, 0x77,  # cpl; and $0F; or (hl); ld (hl),a
+            0x23, 0x0E, 0x20,              # inc hl; ld c,$20 (the D-pad)
+            0x79, 0xE0, 0x00, 0xF0, 0x00, 0xF0, 0x00,
+            0x2F, 0xE6, 0x0F, 0xB6, 0x77,
+            0xF0, 0x44, 0xFE, 0x90, 0x20, 0xFA,  # wait for LY = 144
+            0xF0, 0x44, 0xFE, 0x91, 0x20, 0xFA,  # then 145
+            0x18, 0xD2]                    # jr loop
     rom[0x150:0x150 + len(code)] = bytes(code)
     return bytes(rom)
 
@@ -134,6 +159,34 @@ def session(nwa, storage, keys, quit_at, quit_key, problems, tag):
     return records(open(storage, "rb").read()), c.stack_used()
 
 
+def keys_test(out, problems):
+    rom = os.path.join(out, "Pads.gb")
+    open(rom, "wb").write(pad_rom())
+    nwa = os.path.join(out, "retrogo-pads.nwa")
+    subprocess.run(["make", "-C", game, "output/retrogo-full.nwa", "ROMS=" + rom,
+                    "NWLINK=" + os.environ.get("NWLINK", "nwlink")], check=True, stdout=subprocess.DEVNULL)
+    os.replace(os.path.join(game, "output", "retrogo-full.nwa"), nwa)
+    with tempfile.TemporaryDirectory() as d:
+        storage = os.path.join(d, "storage.bin")
+        # Backspace, Controls (on OK: five up is A), 7; up to the D-pad, 8 2 4 6; Back. Then the game: its tab, the
+        # game, a new game, the controls the first time; 7 and 8 held
+        t, keys = 600, []
+        for k in ["backspace", "down", "ok"] + ["up"] * 5 + ["ok", "7", "up", "ok", "8", "2", "4", "6", "back",
+                                                              "ok", "ok", "ok", "ok"]:
+            keys.append(f"{t}-{t + 100}:{k}")
+            t += 400
+        keys += [f"{t + 500}-{t + 1100}:7", f"{t + 1500}-{t + 2100}:8"]
+        recs, _ = session(nwa, storage, ",".join(keys), t + 2600, "home", problems, "Keys")
+        cfg = recs.get("retrogo.cfg", b"")
+        if cfg[21:29] != bytes([31, 43, 36, 38, 30, 5, 12, 52]):
+            problems.append(f"Keys: retrogo.cfg holds the keys {list(cfg[21:29])}")
+        srm = [n for n in recs if n.endswith(".srm")]
+        seen = battery(recs, srm[0]) if srm else -1
+        if seen != 0x0401:
+            problems.append(f"Keys: the game saw buttons {seen & 255:#x} and the D-pad {seen >> 8:#x}, not A and Up")
+        print(f"{'ok  ' if not problems else 'FAIL'} Keys: A on 7 and the D-pad on 8 2 4 6, the game saw A and Up")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--keep")
@@ -181,6 +234,7 @@ def main():
                 problems.append(f"{label}: the count went {count1}, then {count2}")
             print(f"{'ok  ' if not problems else 'FAIL'} {label}: counted {count1} frames, then {count2} after Resume")
     print(f"     stack {stack} bytes at most, records {sorted(recs)}")
+    keys_test(out, problems)
     for p in problems:
         print("   ", p)
     sys.exit(1 if problems else 0)
