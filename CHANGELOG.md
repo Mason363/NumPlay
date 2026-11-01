@@ -2,6 +2,16 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.21.0: Temple Run's own look, Crossy Road's characters and faster 3D games
+
+- **Temple Run:** the game's own textures, camera, fog, jungle floor and screens. It draws 15% faster, far path pieces keep more of their shape, far blocks and trunks no longer show scrambled textures, and it's 63 KB smaller.
+- **Crossy Road:** 10 characters to win from the prize machine.
+- **Snow Rider 3D:** the game's own screens, and fuller trees, rocks and slopes at about 40 frames a second instead of 31. 12 KB smaller.
+- **PolyTrack:** sharper and farther while racing: 57% of frames at full resolution instead of 39%, and the track drawn 114 m ahead on average instead of 94.
+- **Subway Surfers:** 6.6 KB smaller, and far textures right on the busiest frames.
+- **Saves:** each game's copy of its save starts with one line instead of three, 3.6 KB less in your scripts with every game installed.
+- **NumPlay Studio:** the space map and bar work again, every icon has round corners, and every game plays its clip when you point at it.
+
 ## 1.20.0: Famidash, Five Nights at Freddy's 2, Rider, Temple Run and more
 
 - **New on their own:** Famidash, TFDSoft's Geometry Dash for the NES, all 45 levels of its first set; Five Nights at Freddy's 2, its six nights and the Custom Night with the game's own pictures; Rider, with its endless run, 48 levels and 55 bikes; Temple Run, with the game's own path, models and upgrades; Mahjong, with the Turtle, the Dragon, the Crab and the Spider; Meowdoku, with 309 puzzles; Bad Time Simulator, the Sans fight; and Snow Rider 3D, brought by dennisimoo.
