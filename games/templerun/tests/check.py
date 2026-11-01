@@ -117,7 +117,7 @@ def long_runs(d):
         st = play(d, "--seed", str(seed), "--god", "--up", "5", "--frames", "21000", "--keys", "30:ok,90:ok",
                   "--bot", "100", "--draw-every", "11")
         assert st["dist"] > 6000 and not st["dead"], (seed, st)
-        assert st["polys"] < 1400, st   # (the renderer keeps 1600)
+        assert st["polys"] < 1700, st   # (the renderer keeps 1800)
         assert st["turns"] > 40, st
 
 

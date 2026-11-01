@@ -42,6 +42,21 @@ static inline V3 r_view(V3 p) {
   float dy = p.y - cam.y, dz = p.z - cam.z;
   return (V3){p.x - cam.x, dy * cam.cp + dz * cam.sp, -dy * cam.sp + dz * cam.cp};
 }
+/* a mesh's corner moved once for all its triangles: camera space, and where it lies on the screen from its middle
+ * (when it is in front of the near plane, R_NEAR) */
+#define R_NEAR 0.35f
+typedef struct {
+  float x, y, z, sx, sy;
+} SV;
+static inline SV r_corner(V3 w) {
+  V3 v = r_view(w);
+  SV s = {v.x, v.y, v.z, 0, 0};
+  if (v.z >= R_NEAR) {
+    float k = cam.f / v.z;
+    s.sx = v.x * k, s.sy = -v.y * k;
+  }
+  return s;
+}
 /* the screen point of a world point; false behind the camera */
 bool r_project(V3 p, float *sx, float *sy);
 
@@ -73,25 +88,16 @@ enum {
 };
 void r_begin(void);
 void r_poly(const V3 *v, int n, uint32_t rgb, int flags, int alpha);
+void r_poly_view(const V3 *v, int n, uint32_t rgb, int flags, int alpha);   /* (corners already in camera space) */
 /* a textured polygon, in perspective: uv gives each corner's place in the picture (in texels, two
  * floats a corner; the picture repeats), light 0..256 */
 void r_poly_tex(const V3 *v, const float *uv, int n, int tex, int light, int flags);
 /* the same, drawn plain in avg (RGB565, 0: never) beyond r_far */
+/* a textured triangle of a mesh, as r_poly_tex_avg, its corners from r_corner and all in front of the near plane:
+ * left out at once when it is turned away; false when it reaches too far off the screen (r_poly_tex_avg then) */
+bool r_tri_tex_screen(const SV *a, const SV *b, const SV *c, const float *uv, int tex, int light, int flags, uint16_t avg);
 void r_poly_tex_avg(const V3 *v, const float *uv, int n, int tex, int light, int flags, uint16_t avg);
-
-/* meshes (people, the dog): corners in camera space with a light level (0..255) and a place in a
- * picture (1/4 texels, below 4096), triangles of three corners and a colour (an index into pal; TEX_COL:
- * the picture tex) */
-typedef struct {
-  float x, y, z;
-  uint16_t u, v;
-  uint8_t s, pad[3];
-} RV;
-typedef struct {
-  uint8_t a, b, c, col;
-} Tri;
-#define TEX_COL 255
-void r_mesh(const RV *v, int nv, const Tri *t, int nt, const uint16_t *pal, int tex);
+void r_poly_tex_view(const V3 *v, const float *uv, int n, int tex, int light, int flags, uint16_t avg);   /* (camera space) */
 
 /* a box: centre, its three half-axes (x, y and z sides), a colour each for the top, sides, front and
  * back, and flags for the faces to leave out (1 top, 2 bottom, 4 -x, 8 +x, 16 front -z, 32 back +z) */

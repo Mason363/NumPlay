@@ -216,12 +216,22 @@ static void blit(const HudPic *p, int x, int y, int a256, int flip, int from_row
   for (int j = y0; j < y1; j++) {
     const uint8_t *src = hud_px + p->off + (j - y) * p->w;
     uint16_t *d = row(j);
-    for (int i = x0; i < x1; i++) {
-      uint8_t k = src[flip ? p->w - 1 - (i - x) : i - x];
-      if (!k) continue;
-      int a = hud_alpha[k] * a256 >> 8;
-      d[i] = a >= 248 ? hud_pal[k] : r_mix565(d[i], hud_pal[k], a >> 3);
-    }
+    /* (the picture's pixel for screen x is src[x - x], or mirrored src[w - 1 - (x - x)]: a step of 1 or -1) */
+    int base = flip ? p->w - 1 + x : -x, ds = flip ? -1 : 1;
+    if (a256 == 256)
+      for (int i = x0; i < x1; i++) {
+        uint8_t k = src[base + ds * i];
+        if (!k) continue;
+        int a = hud_alpha[k];
+        d[i] = a >= 248 ? hud_pal[k] : r_mix565(d[i], hud_pal[k], a >> 3);
+      }
+    else
+      for (int i = x0; i < x1; i++) {
+        uint8_t k = src[base + ds * i];
+        if (!k) continue;
+        int a = hud_alpha[k] * a256 >> 8;
+        d[i] = a >= 248 ? hud_pal[k] : r_mix565(d[i], hud_pal[k], a >> 3);
+      }
   }
 }
 

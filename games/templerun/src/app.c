@@ -14,6 +14,7 @@
 enum { S_HELP, S_TITLE, S_RUN, S_PAUSE, S_QUIT, S_RESULTS, S_STORE, S_OBJECTIVES };
 bool app_running = true;
 static int state, help_back;    /* the screen; where How to play goes back to */
+bool app_in_run(void) { return state == S_RUN; }
 static int sel, top;            /* the button or line in focus, the first line shown */
 static float state_t;
 static bool new_best;
@@ -219,7 +220,7 @@ void app_step(uint32_t keys, uint32_t pressed) {
 
 /* ---------------------------------------------------------------- drawing */
 static void label(const Font *f, int x, int y, const char *s, uint32_t c, int align) {
-  d_label(f, x, y, s, C(c), C(INK), f == &font_big ? 2 : 1, align);
+  d_label(f, x, y, s, C(c), C(INK), 1, align);   /* (a pixel's outline: the big font's thicker one is never drawn) */
 }
 
 /* the key line at the bottom: plain words */
