@@ -1,4 +1,5 @@
-/* Retro-Go: Game Boy, Game Boy Color, NES, Master System and Game Gear games on the calculator.
+/* Retro-Go: Game Boy, Game Boy Color, NES, Master System, Game Gear and SG-1000 games on the
+ * calculator.
  *
  * Retro-Go (ducalex) is a launcher and a set of emulators for ESP32 handhelds whose 320 x 240
  * screen is the calculator's. This is its look and its ways, made again for the keypad: the
@@ -6,7 +7,7 @@
  * Reset, Options...), its scaling (1x, Fit, Full), its frame skipping (a frame drawn, then at
  * least one skipped, more when the calculator can't keep up), save states in 4 slots and the
  * cartridges' battery saves. The emulators are gnuboy (Game Boy, Game Boy Color) and nofrendo
- * (NES), the ones Retro-Go started from, and for the Master System and Game Gear a machine
+ * (NES), the ones Retro-Go started from, and for the Master System, Game Gear and SG-1000 a machine
  * written for NumPlay around superzazu's Z80 (sms/); Retro-Go's own code is GPL-2.0 only, so
  * none of it is here (see README.md).
  *
@@ -87,24 +88,60 @@ static struct {
   uint8_t autosave;                /* the battery save, so many seconds after the game wrote it; 0 off */
   uint8_t flags;                   /* 1: the controls were shown */
   uint8_t tab, browse;
-  uint8_t cursor[RG_SYS_COUNT];
+  uint8_t cursor[8];               /* each system's game chosen (room for the systems to come) */
+  uint8_t keys[8];                 /* the calculator's key for each of the pad's buttons, in pad_bits' order */
 } cfg;
 #define CFG_NAME "retrogo.cfg"
+#define CFG_V1_SIZE 19 /* (version 1: the same up to the five systems' games, without the keys) */
+_Static_assert(RG_SYS_COUNT <= 8, "cfg.cursor");
+
+/* ------------------------------------------------------------ the keys */
+/* the pad's buttons: the D-pad, then A, B, Select and Start */
+static const uint8_t pad_bits[8] = {RG_PAD_UP, RG_PAD_DOWN, RG_PAD_LEFT, RG_PAD_RIGHT,
+                                    RG_PAD_A,  RG_PAD_B,    RG_PAD_SELECT, RG_PAD_START};
+static const uint8_t default_keys[8] = {eadk_key_up, eadk_key_down, eadk_key_left, eadk_key_right,
+                                        eadk_key_ok, eadk_key_back, eadk_key_shift, eadk_key_exe};
+/* the calculator's keys by name; NULL for those a button can't have (Home, On/Off and Backspace, Retro-Go's menu) */
+static const char *const key_names[eadk_key_exe + 1] = {
+  [eadk_key_left] = T("left"), [eadk_key_up] = T("up"), [eadk_key_down] = T("down"), [eadk_key_right] = T("right"),
+  [eadk_key_ok] = "OK", [eadk_key_back] = T("Back"), [eadk_key_shift] = T("shift"), [eadk_key_alpha] = "alpha",
+  [eadk_key_xnt] = "x,n,t", [eadk_key_var] = "var", [eadk_key_toolbox] = T("toolbox"), [eadk_key_exp] = "e^x",
+  [eadk_key_ln] = "ln", [eadk_key_log] = "log", [eadk_key_imaginary] = "i", [eadk_key_comma] = ",",
+  [eadk_key_power] = "x^y", [eadk_key_sine] = "sin", [eadk_key_cosine] = "cos", [eadk_key_tangent] = "tan",
+  [eadk_key_pi] = "pi", [eadk_key_sqrt] = "sqrt", [eadk_key_square] = "x^2", [eadk_key_seven] = "7",
+  [eadk_key_eight] = "8", [eadk_key_nine] = "9", [eadk_key_left_parenthesis] = "(",
+  [eadk_key_right_parenthesis] = ")", [eadk_key_four] = "4", [eadk_key_five] = "5", [eadk_key_six] = "6",
+  [eadk_key_multiplication] = "*", [eadk_key_division] = "/", [eadk_key_one] = "1", [eadk_key_two] = "2",
+  [eadk_key_three] = "3", [eadk_key_plus] = "+", [eadk_key_minus] = "-", [eadk_key_zero] = "0", [eadk_key_dot] = ".",
+  [eadk_key_ee] = "x10^x", [eadk_key_ans] = "ans", [eadk_key_exe] = "EXE"};
+
+/* the keys are for buttons, one each */
+static bool keys_ok(const uint8_t *k) {
+  for (int i = 0; i < 8; i++) {
+    if (k[i] > eadk_key_exe || !key_names[k[i]]) return false;
+    for (int j = 0; j < i; j++)
+      if (k[j] == k[i]) return false;
+  }
+  return true;
+}
 
 static void cfg_defaults(void) {
   memset(&cfg, 0, sizeof cfg);
-  cfg.magic = 'R', cfg.version = 1;
+  cfg.magic = 'R', cfg.version = 2;
   cfg.scaling = SCALE_FIT, cfg.speed = 1;
   cfg.gb_palette = GB_PAL_DMG, cfg.nes_palette = NES_PAL_NTSC;
   cfg.overscan = 1, cfg.crop_sides = 0, cfg.sprite_limit = 1, cfg.autosave = 10;
+  memcpy(cfg.keys, default_keys, sizeof cfg.keys);
 }
 
 static void cfg_load(void) {
   uint32_t len = 0;
   const uint8_t *d = np_file_read(CFG_NAME, &len);
   cfg_defaults();
-  if (!d || len != sizeof cfg || d[0] != 'R' || d[1] != 1) return;
-  memcpy(&cfg, d, sizeof cfg);
+  if (!d || d[0] != 'R' || (!(len == sizeof cfg && d[1] == 2) && !(len == CFG_V1_SIZE && d[1] == 1))) return;
+  memcpy(&cfg, d, len);
+  cfg.version = 2;
+  if (!keys_ok(cfg.keys)) memcpy(cfg.keys, default_keys, sizeof cfg.keys);
   /* whatever it holds, settings Retro-Go has */
   if (cfg.scaling >= SCALE_COUNT) cfg.scaling = SCALE_FIT;
   if (cfg.speed > 4) cfg.speed = 1;
@@ -121,13 +158,14 @@ static void cfg_save(void) { np_file_write(CFG_NAME, &cfg, sizeof cfg); }
 static rg_rom_t roms[RG_MAX_ROMS];
 static int nroms;
 /* Retro-Go's tabs, in its order */
-static const uint8_t tab_order[] = {RG_SYS_NES, RG_SYS_GB, RG_SYS_GBC, RG_SYS_SMS, RG_SYS_GG};
-static uint8_t tabs[5], ntabs;
-static const char *const sys_short[RG_SYS_COUNT] = {"", "GB", "GBC", "NES", "SMS", "GG"};
+static const uint8_t tab_order[] = {RG_SYS_NES, RG_SYS_GB, RG_SYS_GBC, RG_SYS_SMS, RG_SYS_GG, RG_SYS_SG};
+static uint8_t tabs[sizeof tab_order], ntabs;
+static const char *const sys_short[RG_SYS_COUNT] = {"", "GB", "GBC", "NES", "SMS", "GG", "SG"};
 /* the tab's banner: the maker, then the system, as Retro-Go's banners show them */
-static const char *const sys_maker[RG_SYS_COUNT] = {"", "Nintendo", "Nintendo", "Nintendo", "SEGA", "SEGA"};
+static const char *const sys_maker[RG_SYS_COUNT] = {"", "Nintendo", "Nintendo", "Nintendo", "SEGA", "SEGA", "SEGA"};
 static const char *const sys_model[RG_SYS_COUNT] = {"Retro-Go", "Game Boy", "Game Boy Color", "Entertainment System",
-                                                    "Master System", "Game Gear"};
+                                                    "Master System", "Game Gear", "SG-1000"};
+static bool is_sega(int sys) { return sys == RG_SYS_SMS || sys == RG_SYS_GG || sys == RG_SYS_SG; }
 
 static int tab_first(int sys) {
   for (int i = 0; i < nroms; i++)
@@ -267,7 +305,7 @@ static void set_view(void) {
     sy = cfg.overscan ? 8 : 0;
     sx = cfg.crop_sides ? 8 : 0;
     sw = NES_WIDTH - 2 * sx, sh = NES_HEIGHT - 2 * sy;
-  } else if (sys_now == RG_SYS_SMS || sys_now == RG_SYS_GG) {
+  } else if (is_sega(sys_now)) {
     sms_view(&sx, &sy, &sw, &sh); /* (the Game Gear's screen, or the taller pictures of some games) */
   }
   view.src_x = sx, view.src_y = sy, view.src_w = sw, view.src_h = sh;
@@ -304,6 +342,9 @@ static const shape_t nes_shape[] = {
   {6, -2, 32, 8, 4, 1}, {58, -14, 86, 14, 14, 1}, {98, -14, 126, 14, 14, 1}};
 static const shape_t sms_shape[] = {
   {-150, -50, 150, 50, 4, 0}, {-120, -30, -20, 30, 6, 1}, {30, -20, 60, 10, 15, 1}, {75, -20, 105, 10, 15, 1}};
+static const shape_t sg_shape[] = {
+  {-140, -56, 140, 56, 4, 0}, {-110, -40, 10, -20, 3, 1}, {-110, 0, 10, 40, 2, 1}, {40, -30, 70, 0, 4, 1},
+  {85, -30, 115, 0, 4, 1}, {40, 16, 115, 26, 2, 1}};
 static const shape_t gg_shape[] = {
   {-140, -62, 140, 62, 40, 0}, {-56, -46, 56, 40, 6, 1}, {-112, -12, -84, 0, 2, 1}, {-104, -20, -92, 8, 2, 1},
   {84, -8, 100, 8, 8, 1}, {106, -18, 122, -2, 8, 1}};
@@ -314,6 +355,7 @@ static const look_t looks[RG_SYS_COUNT] = {
   {0xE84B39, 0xC23627, "1985", nes_shape, sizeof nes_shape / sizeof nes_shape[0]},
   {0x3199DB, 0x2481BA, "1986", sms_shape, sizeof sms_shape / sizeof sms_shape[0]},
   {0x0EA186, 0x13BC9D, "1990", gg_shape, sizeof gg_shape / sizeof gg_shape[0]},
+  {0xC0392B, 0xA93226, "1983", sg_shape, sizeof sg_shape / sizeof sg_shape[0]},
 };
 
 static bool in_shape(const shape_t *s, int u, int v) {
@@ -358,7 +400,7 @@ static void header(int sys, int y) {
   gfx_rrect(1, y + 1, LOGO_W - 2, HEADER_H - 2, 4, WHITE, 256);
   gfx_rrect_outline(1, y + 1, LOGO_W - 2, HEADER_H - 2, 4, 1, HEX(0x9AA0A6), 256);
   /* a little console: the body, its screen or its pad */
-  if (sys == RG_SYS_NES || sys == RG_SYS_SMS) {
+  if (sys == RG_SYS_NES || sys == RG_SYS_SMS || sys == RG_SYS_SG) {
     gfx_fill(7, y + 11, 32, 15, HEX(0x8C8C8C));
     gfx_fill(7, y + 22, 32, 4, HEX(0x3C3C3C));
     gfx_fill(10, y + 14, 12, 4, HEX(0xD8D8D8));
@@ -692,7 +734,7 @@ static int session_slot = -1;        /* the slot this game was loaded from or sa
 static int frameskip = 1, skip;      /* Retro-Go's frame skipping */
 static uint32_t autosave_at;         /* when the battery save is due, 0 none */
 
-/* the three emulators: gnuboy, nofrendo, and the Master System's (for the Game Gear too) */
+/* the three emulators: gnuboy, nofrendo, and the Master System's (for the Game Gear and the SG-1000 too) */
 enum { CORE_GB, CORE_NES, CORE_SMS };
 static int core;
 static bool is_gb(void) { return core == CORE_GB; }
@@ -824,10 +866,10 @@ static void apply_settings(void) {
    System's pause button is on the console), NULL for none; with no game, every system's. */
 static const char *button_name(int k) {
   static const char *const names[] = {T("D-pad"), "A", "B", T("Select"), T("Start")};
-  bool sega = sys_now == RG_SYS_SMS || sys_now == RG_SYS_GG;
+  bool sega = is_sega(sys_now);
   if (!game) {
     bool any = false;
-    for (int i = 0; i < ntabs; i++) any |= tabs[i] == RG_SYS_SMS || tabs[i] == RG_SYS_GG;
+    for (int i = 0; i < ntabs; i++) any |= is_sega(tabs[i]);
     static const char *const both[] = {NULL, T("A, 2"), T("B, 1"), NULL, T("Start, Pause")};
     return any && both[k] ? both[k] : names[k];
   }
@@ -835,7 +877,16 @@ static const char *button_name(int k) {
   static const char *const sms[] = {T("D-pad"), "2", "1", NULL, T("Pause")};
   return k == 4 && sys_now == RG_SYS_GG ? T("Start") : sms[k];
 }
-static const char *const button_keys[] = {T("arrows"), T("OK"), T("Back"), T("shift"), T("EXE")};
+/* the D-pad's keys: "arrows", else the four (up, down, left, right) */
+static char *dpad_keys(char *b) {
+  if (!memcmp(cfg.keys, default_keys, 4)) return strcpy(b, T("arrows"));
+  b[0] = 0;
+  for (int i = 0; i < 4; i++) {
+    if (i) strcat(b, " ");
+    strcat(b, key_names[cfg.keys[i]]);
+  }
+  return b;
+}
 
 /* the game's picture again, with what is around it */
 static void borders_scene(void *ctx) {
@@ -844,9 +895,10 @@ static void borders_scene(void *ctx) {
   if (view.x < 72) return;
   /* (room on the sides: the keys) */
   const char *keys[7][2];
+  char dpad[42];
   int n = 0;
   for (int k = 0; k < 5; k++)
-    if (button_name(k)) keys[n][0] = button_keys[k], keys[n][1] = button_name(k), n++;
+    if (button_name(k)) keys[n][0] = k ? key_names[cfg.keys[k + 3]] : dpad_keys(dpad), keys[n][1] = button_name(k), n++;
   keys[n][0] = T("Backspace"), keys[n++][1] = T("menu");
   keys[n][0] = T("Home"), keys[n++][1] = T("quit");
   for (int i = 0; i < n; i++) {
@@ -1005,23 +1057,57 @@ static int options_menu(void) {
   return r;
 }
 
-static int controls(void) {
-  item_t items[8];
-  static const char *const keys[] = {T("arrows"), "OK", T("Back"), T("shift"), "EXE", T("Backspace"),
-                                     T("Home (saves)")};
-  for (int i = 0; i < 7; i++) {
-    const char *label = i < 5 ? button_name(i) : i == 5 ? T("Menu") : T("Quit");
-    items[i] = (item_t){0, label ? label : "", "", label ? IT_MESSAGE : IT_HIDDEN, 1, NULL, 0};
-    strcpy(items[i].value, keys[i]);
+/* a button's new key, pressed; false when Backspace, Home or On/Off is (nothing changed) */
+static bool ask_key(const char *title, int b) {
+  message_box(title, T("Press its new key"));
+  wait_release();
+  uint64_t k;
+  while (!(k = eadk_keyboard_scan())) eadk_timing_msleep(10);
+  int key = 0;
+  while (!(k >> key & 1)) key++;
+  wait_release();
+  if (key > eadk_key_exe || !key_names[key]) return false;
+  for (int j = 0; j < 8; j++) /* (a key another button had: that one takes this one's) */
+    if (j != b && cfg.keys[j] == key) cfg.keys[j] = cfg.keys[b];
+  cfg.keys[b] = (uint8_t)key;
+  return true;
+}
+static int key_cb(item_t *it, int ev) {
+  int b = (int)it->arg;
+  if (ev == EV_ENTER) {
+    static const char *const dirs[] = {T("Up"), T("Down"), T("Left"), T("Right")};
+    if (b) ask_key(it->label, b);
+    else
+      for (int i = 0; i < 4 && ask_key(dirs[i], i); i++) {}
   }
-  items[7] = (item_t)ITEM(1, T("OK"));
-  return dialog_run(T("Controls"), items, 8, 7);
+  if (b) strcpy(it->value, key_names[cfg.keys[b]]);
+  else dpad_keys(it->value);
+  return CB_NONE;
+}
+static int default_keys_cb(item_t *it, int ev) {
+  (void)it;
+  if (ev == EV_ENTER) memcpy(cfg.keys, default_keys, sizeof cfg.keys);
+  return CB_NONE;
+}
+static int controls(void) {
+  item_t items[9];
+  for (int i = 0; i < 5; i++) {
+    const char *label = button_name(i);
+    items[i] = (item_t){0, label ? label : "", "", label ? IT_NORMAL : IT_HIDDEN, 1, key_cb, i ? i + 3 : 0};
+  }
+  items[5] = (item_t){0, T("Menu"), "", IT_MESSAGE, 1, NULL, 0}, strcpy(items[5].value, T("Backspace"));
+  items[6] = (item_t){0, T("Quit"), "", IT_MESSAGE, 1, NULL, 0}, strcpy(items[6].value, T("Home (saves)"));
+  items[7] = (item_t){0, T("Default keys"), "", IT_NORMAL, 0, default_keys_cb, 0};
+  items[8] = (item_t)ITEM(1, T("OK"));
+  int r = dialog_run(T("Controls"), items, 9, 8);
+  cfg_save();
+  return r;
 }
 
 static int about(void) {
   item_t items[] = {
     {0, T("Retro-Go"), "ducalex", IT_MESSAGE, 1, NULL, 0}, {0, "Game Boy", "gnuboy", IT_MESSAGE, 1, NULL, 0},
-    {0, "NES", "nofrendo", IT_MESSAGE, 1, NULL, 0},        {0, "SMS, GG", T("z80 by superzazu"), IT_MESSAGE, 1, NULL, 0},
+    {0, "NES", "nofrendo", IT_MESSAGE, 1, NULL, 0},        {0, "SMS, GG, SG", T("z80 by superzazu"), IT_MESSAGE, 1, NULL, 0},
     {0, T("Port"), "NumPlay", IT_MESSAGE, 1, NULL, 0},     MESSAGE(T("Not affiliated with Retro-Go")),
     ITEM(1, T("OK"))};
   return dialog_run(T("About Retro-Go"), items, 7, 6);
@@ -1122,12 +1208,13 @@ uint32_t perf_frames, perf_drawn;
 
 static int play(const rg_rom_t *r, int slot) {
   sys_now = r->system;
-  core = sys_now == RG_SYS_NES ? CORE_NES : sys_now == RG_SYS_SMS || sys_now == RG_SYS_GG ? CORE_SMS : CORE_GB;
+  core = sys_now == RG_SYS_NES ? CORE_NES : is_sega(sys_now) ? CORE_SMS : CORE_GB;
   game = r;
   game_crc = rom_crc(r);
   int err = core == CORE_GB    ? gb_load(r->data, r->size)
             : core == CORE_NES ? nes_load(r->data, r->size)
-                               : sms_load(r->data, r->size, game_crc, sys_now == RG_SYS_GG);
+                               : sms_load(r->data, r->size, game_crc,
+                                          sys_now == RG_SYS_GG ? SMS_GG : sys_now == RG_SYS_SG ? SMS_SG : SMS_SMS);
   if (err != RG_OK) {
     game = NULL;
     const char *why = err == RG_ERR_MAPPER ? T("This cartridge type isn't supported.")
@@ -1176,14 +1263,8 @@ static int play(const rg_rom_t *r, int slot) {
       continue;
     }
     int pad = 0;
-    if (k & KEY(eadk_key_up)) pad |= RG_PAD_UP;
-    if (k & KEY(eadk_key_down)) pad |= RG_PAD_DOWN;
-    if (k & KEY(eadk_key_left)) pad |= RG_PAD_LEFT;
-    if (k & KEY(eadk_key_right)) pad |= RG_PAD_RIGHT;
-    if (k & KEY(eadk_key_ok)) pad |= RG_PAD_A;
-    if (k & KEY(eadk_key_back)) pad |= RG_PAD_B;
-    if (k & KEY(eadk_key_shift)) pad |= RG_PAD_SELECT;
-    if (k & KEY(eadk_key_exe)) pad |= RG_PAD_START;
+    for (int i = 0; i < 8; i++)
+      if (k & KEY(cfg.keys[i])) pad |= pad_bits[i];
 
     uint32_t t0 = millis();
     bool draw = skip == 0;
@@ -1242,7 +1323,7 @@ static void picker_scene(void *ctx) {
   if (!ntabs) { /* (no games: Retro-Go's welcome, and where they come from) */
     header(0, 0);
     static const char *const lines[] = {T("Welcome to Retro-Go!"), "", T("Add games on NumPlay's"),
-                                        T("customizer website:"), T("Game Boy, Game Boy Color, NES,"), T("Master System and Game Gear."),
+                                        T("customizer website:"), T("Game Boy, Game Boy Color, NES,"), T("Master System, Game Gear, SG-1000."),
                                         "", T("Home: quit")};
     for (int i = 0; i < 8; i++) gfx_text(&np_font_body, 8, 80 + 18 * i, lines[i], i ? 0xAD55 : WHITE, 256);
     return;

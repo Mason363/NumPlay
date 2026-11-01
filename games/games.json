@@ -618,7 +618,8 @@
       2,
       3,
       4,
-      5
+      5,
+      6
     ]
   },
   {
@@ -1362,8 +1363,30 @@
     "xl": true
   },
   {
-    "id": "famidash",
+    "id": "fnaf2",
     "rank": 33,
+    "title": "Five Nights at Freddy's 2",
+    "tagline": "Survive the new pizzeria",
+    "credit": "Based on the game by Scott Cawthon",
+    "top": "0x3A2C46",
+    "bottom": "0x0A0610",
+    "accent": "0xE04A3A",
+    "colors": 16,
+    "records": [
+      "fnaf2.sav",
+      "fnaf2res.sav",
+      "fnaf2_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/fnaf2",
+    "default": false,
+    "xl": true
+  },
+  {
+    "id": "famidash",
+    "rank": 34,
     "title": "Famidash",
     "tagline": "Geometry Dash for the NES: 45 levels",
     "credit": "Based on Famidash by TFDSoft",

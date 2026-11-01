@@ -11,7 +11,7 @@
 #define RG_ROMS_NAME 40
 #define RG_MAX_ROMS 96
 
-enum { RG_SYS_GB = 1, RG_SYS_GBC, RG_SYS_NES, RG_SYS_SMS, RG_SYS_GG, RG_SYS_COUNT };
+enum { RG_SYS_GB = 1, RG_SYS_GBC, RG_SYS_NES, RG_SYS_SMS, RG_SYS_GG, RG_SYS_SG, RG_SYS_COUNT };
 
 typedef struct {
   const uint8_t *data;

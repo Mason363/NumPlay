@@ -60,6 +60,7 @@ ALONE = {
     "rider": ("Rider", "Ketchapp's neon motorbike game: the endless run, 48 levels and 55 bikes, one button to ride and flip"),
     "snowrider": ("Snow Rider 3D", "the endless sled run: its slope, sleds, gifts and crashes, read from the game's own Unity project"),
     "templerun": ("Temple Run", "the endless run from the temple: turn, jump, slide and lean, with the game's rules and numbers"),
+    "fnaf2": ("Five Nights at Freddy's 2", "the new pizzeria's six nights and the Custom Night: the mask, the music box, the flashlight"),
     "famidash": ("Famidash", "TFDSoft's Geometry Dash for the NES, made for the calculator: 45 levels, every mode, practice mode"),
 }
 VARIANTS = [

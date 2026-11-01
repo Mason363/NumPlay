@@ -736,6 +736,22 @@ Temple Run comes as its own app, `TempleRun.nwa`. Run from the temple and don't 
 
 <br clear="right">
 
+## Five Nights at Freddy's 2
+
+<img src="../games/fnaf2/docs/shot.png" width="320" align="right" alt="Five Nights at Freddy's 2: the office, the hallway ahead and a vent on each side">
+
+| Key | What it does |
+| --- | --- |
+| **Left / Right** (or 4 / 6) | Look left and right |
+| **5** or **Up**, held | The flashlight, down the hallway |
+| **7** / **9** (or 1 / 3), held | The left / right vent light |
+| **2** or **Down** | The Freddy mask on and off |
+| **OK** or **EXE** | The monitor up and down |
+| **0** to **9**, **Left / Right** | On the monitor: a camera (1 again: CAM 11, then 12) |
+| **Up**, held | On the monitor: the camera's light; on CAM 11, wind the music box |
+| **Back** | Pause (Resume, How to play, Quit night) |
+
+Five Nights at Freddy's 2 comes as its own app, `FiveNightsAtFreddys2.nwa`. Last from 12 to 6 AM. Your office has no doors: a hallway in front and a vent on each side. Keep the music box on CAM 11 wound or the Puppet comes, and nothing stops it. When someone stands in the hallway or a vent, put the mask on; if one is in the office when the monitor comes down, the mask at once. The mask doesn't fool Withered Foxy: flash the hallway at him. Balloon Boy takes your lights, and the flashlight's battery doesn't come back. Night 5 opens the 6th, and the 6th the Custom Night, with its ten modes.
 ## Famidash
 
 <img src="../games/famidash/docs/shot.png" width="320" align="right" alt="Famidash">
@@ -1110,6 +1126,6 @@ NumVisuals comes on its own, as NumVisuals.nwa, or in a NumPlay of your own from
 | **Backspace** | Retro-Go's menu: save, load, reset, options |
 | **Home** | Save and quit |
 
-Game Boy, Game Boy Color, NES, Master System and Game Gear games you pick on NumPlay's customizer website. Open a game for New game, or Resume game from one of its 4 save slots. In a game, Backspace opens Retro-Go's menu: Save & Continue, Save & Quit, Load game, Reset and Options, where the picture can be 1x, Fit or Full screen. The cartridges' own saves are kept as well.
+Game Boy, Game Boy Color, NES, Master System, Game Gear and SG-1000 games you pick on NumPlay's customizer website. Open a game for New game, or Resume game from one of its 4 save slots. In a game, Backspace opens Retro-Go's menu: Save & Continue, Save & Quit, Load game, Reset, Options, where the picture can be 1x, Fit or Full screen, and Controls, where you give any button the key you want: pick it, press **OK**, then its new key. The cartridges' own saves are kept as well.
 
 <br clear="right">

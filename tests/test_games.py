@@ -300,6 +300,10 @@ GAMES = {
     # time, from the copy, straight from the title into another run, quit with On/Off
     "templerun": ("TempleRun.nwa", "templerun.sav", presses((1500, "ok"), (2200, "ok")), 9000,
                   presses((1500, "ok")), 4000),
+    # Continue: the first night's card, then the office; Home keeps the night, and the next start is back in it,
+    # paused: Back, and the night goes on
+    "fnaf2": ("FiveNightsAtFreddys2.nwa", "fnaf2res.sav", presses((1500, "down"), (1800, "ok")), 9000,
+              presses((1500, "back")), 5000),
     # how to play (the first time: two pages), Play, Stereo Madness, OK held to jump, Back to pause; Home keeps the
     # guide read and the time played. Next time, from the copy, Play straight away, quit with On/Off
     "famidash": ("Famidash.nwa", "famidash.sav",
@@ -376,7 +380,7 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
           "badtime": "badtime_saves.py", "mahjong": "mahjong_saves.py",
           "rider": "rider_saves.py", "snowrider": "snowrider_saves.py", "templerun": "templerun_saves.py",
-          "famidash": "famidash_saves.py"}
+          "fnaf2": "fnaf2_saves.py", "famidash": "famidash_saves.py"}
 
 
 def paperclips_ok(v):
@@ -631,6 +635,9 @@ CHECKS = {
     "templerun": (lambda v: v[:4] == b"TNR1" and struct.unpack_from("<2I", v, 4) == (1, 48)
                   and struct.unpack_from("<I", v, 24)[0] == 1 and struct.unpack_from("<I", v, 16)[0] > 0,
                   lambda v: v[:4] == b"TNR1" and struct.unpack_from("<I", v, 24)[0] == 2),
+    # the night kept ("FNF2", its seconds at 96); after the reinstall, from the copy, it goes on
+    "fnaf2": (lambda v: v[:4] == b"FNF2" and struct.unpack_from("<f", v, 96)[0] > 2,
+              lambda v: v[:4] == b"FNF2" and struct.unpack_from("<f", v, 96)[0] > 6.5),
     # "FMD1", version 1: how to play read (flags at 5), time played (564); after the reinstall, from the copy, more
     "famidash": (lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 564)[0] >= 7000,
                  lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 564)[0] >= 12000),
@@ -642,8 +649,9 @@ CHECKS = {
     # a game kept (Easy, the guide read) with the two digits the hints wrote (the digits at 109); then three
     "sudoku": (lambda v: len(v) == 352 and v[:4] == b"S\1\3\0" and sum(1 <= b <= 9 for b in v[109:190]) == 2,
                lambda v: v[2] & 1 and sum(1 <= b <= 9 for b in v[109:190]) == 3),
-    # the scaling (third byte): Full, then 1x
-    "retrogo": (lambda v: len(v) == 19 and v[:2] == b"R\1" and v[2] == 2, lambda v: v[2] == 0),
+    # the scaling (third byte): Full, then 1x; the keys (at 21) the first ones
+    "retrogo": (lambda v: len(v) == 29 and v[:2] == b"R\2" and v[2] == 2 and v[21:29] == bytes([1, 2, 0, 3, 4, 5, 12, 52]),
+                lambda v: v[2] == 0),
 }
 
 

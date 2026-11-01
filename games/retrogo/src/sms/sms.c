@@ -1,11 +1,12 @@
-/* The Sega Master System and Game Gear around superzazu's Z80: the cartridge's mappers (Sega's,
- * Codemasters', the Korean one), the work RAM, the pads, the Game Gear's ports and the video chip
- * (mode 4: the tiles, their scrolling and priorities, the sprites, the line and frame
- * interrupts, the counters), drawn a line at a time. Written for NumPlay from the hardware's
- * public descriptions (Charles MacDonald's notes on the VDP and the Master System, SMS Power's
- * pages); no sound, the calculator has no speaker. The short list of games that need something
- * of their own (their CRC32s) is SMS Plus GX's (GNU GPL v2 or later). The old TMS9918 modes of
- * the SG-1000 are not drawn. */
+/* The Sega Master System, Game Gear and SG-1000 around superzazu's Z80: the cartridge's mappers
+ * (Sega's, Codemasters', the Korean one), the work RAM, the pads, the Game Gear's ports and the
+ * video chip (mode 4: the tiles, their scrolling and priorities, the sprites, the line and frame
+ * interrupts, the counters; and the TMS9918's modes the SG-1000 draws with: Graphics I and II,
+ * Text and Multicolor, with its sprites), drawn a line at a time. Written for NumPlay from the
+ * hardware's public descriptions (Charles MacDonald's notes on the VDP and the Master System,
+ * Texas Instruments' TMS9918A manual, SMS Power's pages); no sound, the calculator has no
+ * speaker. The short list of games that need something of their own (their CRC32s) is SMS Plus
+ * GX's (GNU GPL v2 or later). */
 #include <string.h>
 #include "sms.h"
 #include "z80.h"
@@ -58,7 +59,7 @@ typedef struct {
 } state_t;
 
 /* a line's registers as it was drawn (sms_redraw draws the frame again from them) */
-typedef struct { uint8_t r0, r1, r2, r5, r6, r7, hs, vs; } line_regs_t;
+typedef struct { uint8_t r0, r1, r2, r3, r4, r5, r6, r7, hs, vs; } line_regs_t;
 
 static z80 cpu;
 static state_t st;
@@ -69,11 +70,17 @@ static int snap_lines;
 static const uint8_t *rom;
 static uint32_t rom_size, banks;
 static uint8_t mapper_kind;
-static bool gg, gg_vdp, pal, sram_dirty;
+static bool gg, gg_vdp, sg, pal, sram_dirty;
 static uint8_t pad_bits;
 static bool start_button;
 static uint32_t line_start, line_end;
 static uint16_t pal565[32];
+/* the TMS9918's colours (0 is see-through: the backdrop shows) */
+#define RGB565(c) (uint16_t)(((c) >> 19 & 31) << 11 | ((c) >> 10 & 63) << 5 | ((c) >> 3 & 31))
+static const uint16_t tms565[16] = {
+  RGB565(0x000000), RGB565(0x000000), RGB565(0x21C842), RGB565(0x5EDC78), RGB565(0x5455ED), RGB565(0x7D76FC),
+  RGB565(0xD4524D), RGB565(0x42EBF5), RGB565(0xFC5554), RGB565(0xFF7978), RGB565(0xD4C154), RGB565(0xE6CE80),
+  RGB565(0x21B03B), RGB565(0xC95BBA), RGB565(0xCCCCCC), RGB565(0xFFFFFF)};
 static uint8_t lb[256 + 16];    /* a line: colour index (0-31), 0x40 the tile over the sprites, 0x20 a sprite */
 static uint16_t px[256];
 static const uint8_t open_bus[0x400] = {[0 ... 0x3FF] = 0xFF};
@@ -87,6 +94,14 @@ static const uint8_t *rom_page(uint32_t bank, int k) {
 
 static void map_update(void) {
   sram_slot = NULL;
+  if (sg) { /* the SG-1000: 48 KB of cartridge in a row (the smaller ones with RAM after them), 1 KB of RAM */
+    for (int k = 0; k < 48; k++) {
+      uint32_t at = (uint32_t)k * 0x400;
+      z80_rmap[k] = at + 0x400 <= rom_size ? rom + at : k >= 32 && rom_size <= 0x8000 ? sram + (at & 0x3FFF) : open_bus;
+    }
+    for (int k = 0; k < 16; k++) z80_rmap[48 + k] = ram;
+    return;
+  }
   if (mapper_kind == MAP_SEGA) {
     z80_rmap[0] = rom_page(0, 0); /* (the first 1 KB never moves) */
     for (int k = 1; k < 16; k++) z80_rmap[k] = rom_page(st.mapper[1], k);
@@ -104,6 +119,11 @@ static void map_update(void) {
 }
 
 void z80_bus_write(uint16_t a, uint8_t v) {
+  if (sg) {
+    if (a >= 0xC000) ram[a & 0x3FF] = v;
+    else if (a >= 0x8000 && rom_size <= 0x8000) sram[a & 0x3FFF] = v; /* (The Castle's and Othello's RAM) */
+    return;
+  }
   if (a >= 0xC000) {
     ram[a & 0x1FFF] = v;
     if (a >= 0xFFFC && mapper_kind == MAP_SEGA) {
@@ -134,7 +154,7 @@ static int height_of(uint8_t r0, uint8_t r1) {
 static int height(void) { return height_of(st.reg[0], st.reg[1]); }
 
 static void irq_update(void) {
-  cpu.irq_line = (st.vint && (st.reg[1] & 0x20)) || (st.hint && (st.reg[0] & 0x10));
+  cpu.irq_line = (st.vint && (st.reg[1] & 0x20)) || (st.hint && (st.reg[0] & 0x10) && !sg);
 }
 
 static void palette_update(int i) {
@@ -151,7 +171,7 @@ static void palette_update(int i) {
 }
 
 static uint8_t vdp_status(void) {
-  uint8_t v = st.status | 0x1F;
+  uint8_t v = sg ? st.status : st.status | 0x1F;
   st.status = 0, st.pending = 0, st.vint = 0, st.hint = 0;
   irq_update();
   return v;
@@ -320,6 +340,77 @@ static void sprites(int line, const line_regs_t *r) {
   }
 }
 
+/* ---- the TMS9918's modes: lb gets its colours (0-15, 0 see-through) */
+static void tms_background(int line, const line_regs_t *r) {
+  uint8_t *o = lb + 8, fg, bg;
+  unsigned nt = (r->r2 & 0x0F) << 10, row = (unsigned)line & 7;
+  if (r->r1 & 0x10) { /* Text: 40 columns of 6 pixels, in R7's colours */
+    fg = r->r7 >> 4, bg = r->r7 & 15;
+    memset(o, 0, 256);
+    for (int c = 0; c < 40; c++) {
+      uint8_t bits = vram[((r->r4 & 7) << 11 | vram[(nt + (unsigned)(line >> 3) * 40 + (unsigned)c) & 0x3FFF] << 3 | row) & 0x3FFF];
+      for (int i = 0; i < 6; i++) o[8 + 6 * c + i] = bits & (0x80 >> i) ? fg : bg;
+    }
+    return;
+  }
+  for (int c = 0; c < 32; c++) {
+    unsigned name = vram[nt + (unsigned)(line >> 3) * 32 + (unsigned)c];
+    uint8_t *d = o + 8 * c;
+    if (r->r1 & 0x08) { /* Multicolor: blocks of 4 by 4 */
+      uint8_t v = vram[((r->r4 & 7) << 11 | name << 3 | ((unsigned)(line >> 3) & 3) << 1 | ((unsigned)line >> 2 & 1)) & 0x3FFF];
+      memset(d, v >> 4, 4), memset(d + 4, v & 15, 4);
+      continue;
+    }
+    uint8_t bits, col;
+    if (r->r0 & 0x02) { /* Graphics II: a pattern and colours for each third of the screen */
+      unsigned i = ((unsigned)(line >> 6) << 8 | name) << 3 | row;
+      bits = vram[(r->r4 & 4) << 11 | (i & ((r->r4 & 3) << 11 | 0x7FF))];
+      col = vram[(r->r3 & 0x80) << 6 | (i & ((r->r3 & 0x7F) << 6 | 0x3F))];
+    } else { /* Graphics I: colours for each 8 patterns */
+      bits = vram[((r->r4 & 7) << 11 | name << 3 | row) & 0x3FFF];
+      col = vram[(r->r3 << 6 | name >> 3) & 0x3FFF];
+    }
+    fg = col >> 4, bg = col & 15;
+    for (int i = 0; i < 8; i++) d[i] = bits & (0x80 >> i) ? fg : bg;
+  }
+}
+
+/* its sprites: 32, 4 on a line (the fifth sets the flag and its number), one colour each; two
+   sprites' pixels on each other set the collision flag */
+static void tms_sprites(int line, const line_regs_t *r) {
+  const uint8_t *sat = vram + ((r->r5 & 0x7F) << 7);
+  unsigned pg = (r->r6 & 7) << 11;
+  int size = r->r1 & 2 ? 16 : 8, zoom = r->r1 & 1, span = size << zoom, count = 0;
+  uint8_t taken[256 + 32] = {0};
+  for (int i = 0; i < 32; i++) {
+    int y = sat[4 * i];
+    if (y == 0xD0) break;
+    if (y > 0xE0) y -= 256;
+    int row = line - (y + 1);
+    if (row < 0 || row >= span) continue;
+    if (++count > 4) {
+      if (!(st.status & 0x40)) st.status = (uint8_t)((st.status & 0xA0) | 0x40 | i);
+      break;
+    }
+    int x = sat[4 * i + 1], t = sat[4 * i + 2], c = sat[4 * i + 3] & 15;
+    if (sat[4 * i + 3] & 0x80) x -= 32;
+    row >>= zoom;
+    if (size == 16) t &= 0xFC;
+    unsigned bits = (unsigned)vram[(pg | (unsigned)t << 3) + (unsigned)row] << 8;
+    if (size == 16) bits |= vram[(pg | (unsigned)t << 3) + 16 + (unsigned)row];
+    for (int j = 0; j < size; j++) {
+      if (!(bits & (0x8000u >> j))) continue;
+      for (int s = 0; s <= zoom; s++) {
+        int xx = x + (j << zoom) + s;
+        if (xx < 0) continue;
+        if (xx >= 256) break;
+        if (taken[xx]) st.status |= 0x20;
+        else if (taken[xx] = 1, c) lb[8 + xx] = (uint8_t)c;
+      }
+    }
+  }
+}
+
 /* the picture shown (the Game Gear's screen: 160 x 144 in the middle) */
 void sms_view(int *x, int *y, int *w, int *h) {
   int lines = height();
@@ -328,13 +419,23 @@ void sms_view(int *x, int *y, int *w, int *h) {
 }
 
 static void draw_line(int line, const line_regs_t *r, bool draw) {
-  bool on = (r->r1 & 0x40) && (r->r0 & 0x04);
+  bool on = r->r1 & 0x40, tms = !(r->r0 & 0x04), text = tms && (r->r1 & 0x10);
   int vx, vy, vw, vh;
   sms_view(&vx, &vy, &vw, &vh);
   if (!draw || line < vy || line >= vy + vh) { /* (not seen: only the flags the game can read) */
-    if (!on) return;
+    if (!on || text) return;
     memset(lb + 8, 0, 256);
-    sprites(line, r);
+    tms ? tms_sprites(line, r) : sprites(line, r);
+    return;
+  }
+  if (tms) {
+    uint16_t back = tms565[r->r7 & 15];
+    if (on) {
+      tms_background(line, r);
+      if (!text) tms_sprites(line, r);
+    }
+    for (int x = vx; x < vx + vw; x++) px[x] = on && lb[8 + x] ? tms565[lb[8 + x]] : back;
+    rg_line(line, px);
     return;
   }
   uint8_t backdrop = (uint8_t)(16 | (r->r7 & 15));
@@ -351,7 +452,7 @@ static void draw_line(int line, const line_regs_t *r, bool draw) {
 
 static void snap_line(int line) {
   line_regs_t *r = &snap[line];
-  *r = (line_regs_t){st.reg[0], st.reg[1], st.reg[2], st.reg[5], st.reg[6], st.reg[7],
+  *r = (line_regs_t){st.reg[0], st.reg[1], st.reg[2], st.reg[3], st.reg[4], st.reg[5], st.reg[6], st.reg[7],
                      (uint8_t)((st.reg[0] & 0x40) && line < 16 ? 0 : st.reg[8]), st.vscroll};
 }
 
@@ -411,15 +512,16 @@ void sms_set_pad(int p) {
 
 uint32_t sms_frame_us(void) { return pal ? 20120 : 16688; } /* (313 or 262 lines of 228 clocks) */
 bool sms_is_gg(void) { return gg; }
+bool sms_is_sg(void) { return sg; }
 
 void sms_reset(bool hard) {
   if (hard) {
     memset(ram, 0, 0x2000);
     memset(vram, 0, 0x4000);
     memset(&st, 0, sizeof st);
-    /* the video chip as the BIOS leaves it */
+    /* the video chip as the BIOS leaves it (the SG-1000 has none: all 0) */
     static const uint8_t regs[11] = {0x36, 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFB, 0x00, 0x00, 0x00, 0xFF};
-    memcpy(st.reg, regs, sizeof regs);
+    if (!sg) memcpy(st.reg, regs, sizeof regs);
     st.counter = 0xFF;
     for (int i = 0; i < 32; i++) palette_update(i);
     memset(snap, 0, 240 * sizeof *snap);
@@ -430,12 +532,12 @@ void sms_reset(bool hard) {
   st.line = 0, st.pause = 0;
   map_update();
   z80_init(&cpu);
-  cpu.sp = 0xDFF0; /* (where the BIOS leaves it; a few games count on it) */
+  if (!sg) cpu.sp = 0xDFF0; /* (where the BIOS leaves it; a few games count on it) */
   line_start = line_end = 0;
   irq_update();
 }
 
-int sms_load(const uint8_t *data, uint32_t size, uint32_t crc, bool is_gg) {
+int sms_load(const uint8_t *data, uint32_t size, uint32_t crc, int machine) {
   if ((size & 0x3FFF) == 512 && size > 512) data += 512, size -= 512; /* (a copier's header) */
   if (size < 0x400) return RG_ERR_ROM;
   rg_alloc_reset();
@@ -459,7 +561,8 @@ int sms_load(const uint8_t *data, uint32_t size, uint32_t crc, bool is_gg) {
   }
   mapper_kind = flags & DB_CODIES ? MAP_CODIES : flags & DB_KOREA ? MAP_KOREA : MAP_SEGA;
   pal = flags & DB_PAL;
-  gg = is_gg, gg_vdp = is_gg && !(flags & DB_GGMS);
+  gg = machine == SMS_GG, gg_vdp = gg && !(flags & DB_GGMS), sg = machine == SMS_SG;
+  if (sg) pal = false;
   pad_bits = 0, start_button = false, sram_dirty = false;
   sms_reset(true);
   return RG_OK;

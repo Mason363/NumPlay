@@ -3,7 +3,8 @@
 behaviour sanitizers, the ROM read only like the calculator's flash):
 
 - test ROMs give the pictures they should (Blargg's cpu_instrs and instr_timing, dmg-acid2 and
-  cgb-acid2, nestest, zexdoc for the Master System), when they are in the test ROM folder, and the
+  cgb-acid2, nestest, zexdoc for the Master System, Cheril Perils Classic for the SG-1000), when they are in
+  the test ROM folder, and the
   Master System's Z80 runs the CP/M instruction exercisers (prelim; zexdoc and zexall with ZEX=1)
   to the clock;
 - every ROM there plays a few hundred runs of random keys without a crash;
@@ -33,10 +34,12 @@ EXPECTED = {
     "cgb-acid2.gbc": (120, "", "3e99d1d0cb67"),
     "nestests/nes-test-roms-master/other/nestest.nes": (400, "30=8,35=0", "9c699fb5f8ff"),
     "sega/zexall/x/zexdoc.sms": (3000, "", "e20e5a6fb45d"),
+    # (the SG-1000: the Mojon Twins' homebrew, its title, the menu, then Cheril in the first room)
+    "sg1000/cheril_perils_ntsc.sg": (1500, "900=2,910=0,1000=2,1010=0,1100=128,1300=129,1320=128", "fd4688405166"),
 }
 # the CP/M exercisers and the clocks superzazu's z80 takes for them
 ZEX = [("z80/prelim.com", 8721), ("z80/zexdoc.cim", 46734978649), ("z80/zexall.cim", 46734978649)]
-SYSTEMS = (".gb", ".gbc", ".nes", ".sms", ".gg")
+SYSTEMS = (".gb", ".gbc", ".nes", ".sms", ".gg", ".sg")
 
 
 def run(rom, frames, seed=0, script=""):
