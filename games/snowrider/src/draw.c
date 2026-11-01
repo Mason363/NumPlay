@@ -9,6 +9,7 @@
 #include "r3d.h"
 #include "gfx.h"
 #include "../../common/np_text.h"
+#include "ui.h"
 
 #define VIEW 62.0f     /* metres ahead drawn */
 #define LOD_FAR 22.0f  /* the far meshes past this, at most */
@@ -223,39 +224,10 @@ static void number(char *s, int v) {
   s[n] = 0;
 }
 
-static void outlined(const np_font_t *f, int cx, int y, const char *s, color_t c) {
-  for (int k = 0; k < 4; k++) gfx_text_center(f, cx + (k & 1 ? 1 : -1), y + (k & 2 ? 1 : -1), s, INK, 200);
-  gfx_text_center(f, cx, y, s, c, 256);
-}
 
-static void gift_icon(int x, int y, int s) {
-  gfx_fill(x, y + s / 4, s, s - s / 4, RED);
-  gfx_fill(x - 1, y + s / 4 - 2, s + 2, s / 4, RED);
-  gfx_fill(x + s / 2 - 1, y + s / 4 - 2, 3, s - s / 4 + 2, GOLD);
-  gfx_fill(x - 1, y + s / 2, s + 2, 2, GOLD);
-  gfx_circle(x + s / 2 - 3, y + s / 4 - 4, 3, GOLD, 256);
-  gfx_circle(x + s / 2 + 3, y + s / 4 - 4, 3, GOLD, 256);
-}
 
-static void gifts_counter(int v) {
-  char s[12];
-  number(s, v);
-  int w = gfx_text_width(&np_font_body, s);
-  gfx_rrect(SCREEN_W - w - 40, 6, w + 34, 24, 12, INK, 150);
-  gift_icon(SCREEN_W - w - 33, 9, 16);
-  gfx_text(&np_font_body, SCREEN_W - w - 12, 24, s, WHITE, 256);
-}
 
-static void choice(int cx, int y, int w, const char *s, bool on) {
-  if (on) gfx_rrect(cx - w / 2, y - 18, w, 26, 13, GOLD, 256);
-  gfx_text_center(&np_font_body, cx, y, s, on ? INK : WHITE, 256);
-}
 
-static void panel(int x, int y, int w, int h) {
-  gfx_shadow(x, y, w, h, 14, 6, 90);
-  gfx_rrect(x, y, w, h, 14, PANEL, 235);
-  gfx_rrect_outline(x, y, w, h, 14, 2, WHITE, 120);
-}
 
 /* the game's logo (logo.c), its top left at (x, y), every step-th pixel (1 or 2) */
 extern const uint16_t logo_w, logo_h, logo_pal[64];
@@ -312,6 +284,48 @@ static void snow_project(void) {
   }
 }
 
+/* ---------------------------------------------------------------- the game's own interface (ui.c) */
+#define UI_GREY 0xDEFB      /* (223, 223, 223): its lettering */
+#define UI_YELLOW 0xFE60    /* (255, 206, 0): BUY */
+#define UI_GREEN 0x754B     /* (118, 171, 93): SELECTED */
+#define UI_LIME 0xE7E0      /* (231, 255, 0): TAP TO RESTART */
+static void ui_pic(int pic, int x, int y) {
+  const UiPic *p = &ui_pics[pic];
+  int ya = y > gfx_y0 ? y : gfx_y0, yb = y + p->h < gfx_y1 ? y + p->h : gfx_y1;
+  for (int yy = ya; yy < yb; yy++) {
+    const uint8_t *src = ui_px + p->off + (yy - y) * p->w;
+    uint16_t *dst = gfx_buf + (yy - gfx_y0) * SCREEN_W;
+    for (int xx = 0; xx < p->w; xx++) {
+      int k = src[xx], X = x + xx;
+      if (!k || X < 0 || X >= SCREEN_W) continue;
+      int a = ui_alpha[k];
+      dst[X] = a >= 248 ? ui_pal[k] : r_mix565(dst[X], ui_pal[k], a >> 3);
+    }
+  }
+}
+/* its lettering: light grey with a black outline, as the game's (align: -1 left, 0 centre, 1 right) */
+static void ui_text(const np_font_t *f, int x, int y, const char *s, uint16_t c, bool outline, int align) {
+  int w = gfx_text_width(f, s);
+  x -= align < 0 ? 0 : align == 0 ? w / 2 : w;
+  if (outline)
+    for (int d = 0; d < 8; d++) {
+      static const int8_t o[8][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {1, 1}, {-1, 1}, {1, -1}};
+      gfx_text(f, x + o[d][0], y + o[d][1], s, 0, 256);
+    }
+  gfx_text(f, x, y, s, c, 256);
+}
+static void ui_gifts(int v) {   /* the game's GiftGUI: its gift and the count, at the top left */
+  char s[12];
+  number(s, v);
+  ui_pic(UI_GIFT, 6, 4);
+  ui_text(&sr_font_mid, 32, 21, s, 0xFFFF, true, -1);
+}
+static void ui_sign(int icon, const char *key) {   /* the wooden sign at the bottom left, its icon, the key that opens it */
+  ui_pic(UI_SIGN, 2, SCREEN_H - 44);
+  ui_pic(icon, 6, SCREEN_H - 35);
+  ui_text(&sr_font_small, 46, SCREEN_H - 19, key, UI_GREY, true, -1);
+}
+
 static void overlay(void) {
   gfx_buf = r_col, gfx_y0 = r_y0, gfx_y1 = r_y1;
   for (int i = 0; i < nflakes; i++) {
@@ -321,79 +335,80 @@ static void overlay(void) {
   char s[24];
   if (mode == M_INTRO) {
     logo(60, 18, 1);
-    outlined(&np_font_body, SCREEN_W / 2, 206, T("Press OK"), WHITE);
+    ui_text(&sr_font_mid, SCREEN_W / 2, 220, T("PRESS OK TO START"), 0, false, 0);
   } else if (mode == M_MAIN && screen == S_NONE) {
-    logo(34, 4, 2);
-    panel(20, 92, 128, 106);
-    choice(84, 122, 108, T("Play"), sel == 0);
-    choice(84, 152, 108, T("Sleds"), sel == 1);
-    choice(84, 182, 108, T("Quit"), sel == 2);
-    number(s, best);
-    gfx_rrect(36, 204, 96, 24, 12, INK, 150);
-    gfx_text(&np_font_body, 46, 222, T("Best"), WHITE, 200);
-    gfx_text_right(&np_font_body, 124, 222, s, GOLD, 256);
-    gifts_counter(gifts);
-    outlined(&np_font_small, 236, 222, T("Arrows: steer, Up: jump"), WHITE);
+    ui_text(&sr_font_mid, SCREEN_W / 2, 52, T("PRESS OK TO PLAY !"), 0, false, 0);
+    ui_gifts(gifts);
+    ui_sign(UI_SLED, T("LEFT  SLEDS"));
   } else if (screen == S_SLEDS) {
-    gifts_counter(gifts);
+    ui_gifts(gifts);
     const Skin *sk = &skins[shop_skin];
-    panel(60, 150, 200, 76);
-    gfx_text_center(&np_font_body, SCREEN_W / 2, 174, T(sk->name), WHITE, 256);
-    if (shop_skin == skin) gfx_text_center(&np_font_body, SCREEN_W / 2, 204, T("Selected"), GOLD, 256);
-    else if (owned >> shop_skin & 1) choice(SCREEN_W / 2, 206, 120, T("Select"), true);
+    ui_text(&sr_font_big, SCREEN_W / 2, 176, T(sk->name), UI_GREY, true, 0);
+    if (shop_skin == skin) ui_text(&sr_font_big, SCREEN_W / 2, 212, T("SELECTED"), UI_GREEN, true, 0);
+    else if (owned >> shop_skin & 1) ui_text(&sr_font_big, SCREEN_W / 2, 212, T("SELECT"), UI_YELLOW, true, 0);
     else {
       number(s, sk->price);
-      int w = gfx_text_width(&np_font_body, s);
-      bool can = gifts >= sk->price;
-      gfx_rrect(SCREEN_W / 2 - w / 2 - 22, 188, w + 44, 26, 13, can ? GOLD : INK, 256);
-      gift_icon(SCREEN_W / 2 - w / 2 - 14, 192, 14);
-      gfx_text(&np_font_body, SCREEN_W / 2 - w / 2 + 6, 206, s, can ? INK : WHITE, 256);
+      int w = gfx_text_width(&sr_font_mid, s), bw = gfx_text_width(&sr_font_big, T("BUY"));
+      int x = SCREEN_W / 2 - (bw + 30 + w) / 2;
+      ui_text(&sr_font_big, x, 212, T("BUY"), gifts >= sk->price ? UI_YELLOW : UI_GREY, true, -1);
+      ui_pic(UI_GIFT, x + bw + 6, 192);
+      ui_text(&sr_font_mid, x + bw + 30, 210, s, UI_GREY, true, -1);
     }
-    gfx_text_center(&np_font_title, 40, 196, "<", WHITE, 256);
-    gfx_text_center(&np_font_title, 280, 196, ">", WHITE, 256);
-    gfx_text_center(&np_font_small, SCREEN_W / 2, 236, T("OK: choose   Back: done"), WHITE, 220);
+    ui_pic(UI_ARROW_BUTTON, 20, 108);
+    ui_pic(UI_ARROW_BUTTON, SCREEN_W - 50, 108);
+    ui_text(&sr_font_mid, 35, 130, "<", 0x2104, false, 0);
+    ui_text(&sr_font_mid, SCREEN_W - 35, 130, ">", 0x2104, false, 0);
+    ui_text(&sr_font_small, SCREEN_W / 2, 236, T("OK CHOOSE    BACK DONE"), UI_GREY, true, 0);
   } else if (mode == M_PLAY || mode == M_END) {
     if (mode == M_PLAY && sled.z > WARMUP_LEN * CHUNK_Z) {
       number(s, score);
-      outlined(&np_font_title, SCREEN_W / 2, score_pop > 0 ? 44 : 40, s, WHITE);
+      ui_text(&sr_font_big, SCREEN_W / 2, score_pop > 0 ? 40 : 36, s, 0xFFFF, true, 0);
     }
-    /* (the play screen's gifts are all of them; the end screen has the run's) */
-    if (mode == M_PLAY) gifts_counter(gifts);
+    if (mode == M_PLAY) {
+      ui_gifts(gifts);
+      /* the game's first run: its arrow keys and what they do */
+      if (plays < 3 && sled.z < WARMUP_LEN * CHUNK_Z) {
+        ui_pic(UI_KEYS, SCREEN_W / 2 - 32, SCREEN_H - 48);
+        ui_text(&sr_font_small, SCREEN_W / 2, SCREEN_H - 54, T("UP ARROW TO JUMP"), 0xFFFF, true, 0);
+        ui_text(&sr_font_small, SCREEN_W / 2 - 40, SCREEN_H - 20, T("STEER LEFT"), 0xFFFF, true, 1);
+        ui_text(&sr_font_small, SCREEN_W / 2 + 40, SCREEN_H - 20, T("STEER RIGHT"), 0xFFFF, true, -1);
+      }
+    }
     if (mode == M_END && end_wait > 1.2f) {
-      gfx_fill_alpha(0, 0, SCREEN_W, SCREEN_H, 0, 80);
-      panel(70, 34, 180, 186);
-      gfx_text_center(&np_font_body, 160, 58, best_now ? T("New best!") : T("Score"), best_now ? GOLD : WHITE, 256);
+      gfx_fill_alpha(0, 0, SCREEN_W, SCREEN_H, 0, 70);
+      logo(110, 2, 2);
       number(s, score);
-      gfx_text_center(&np_font_title, 160, 92, s, WHITE, 256);
+      ui_text(&sr_font_big, 70, 132, s, UI_GREY, true, 0);
+      ui_text(&sr_font_mid, 70, 154, best_now ? T("NEW BEST") : T("SCORE"), UI_GREY, true, 0);
       number(s, best);
-      gfx_text(&np_font_body, 92, 118, T("Best"), WHITE, 200);
-      gfx_text_right(&np_font_body, 228, 118, s, GOLD, 256);
+      ui_text(&sr_font_big, 160, 132, s, UI_GREY, true, 0);
+      ui_text(&sr_font_mid, 160, 154, T("BEST"), UI_GREY, true, 0);
       s[0] = '+';
       number(s + 1, gifts_game);
-      int w = gfx_text_width(&np_font_body, s);
-      gift_icon(160 - (w + 22) / 2, 128, 16);
-      gfx_text(&np_font_body, 160 - (w + 22) / 2 + 22, 144, s, WHITE, 256);
-      choice(160, 178, 140, T("Play again"), sel == 0);
-      choice(160, 206, 140, T("Menu"), sel == 1);
+      ui_text(&sr_font_big, 250, 132, s, UI_GREY, true, 0);
+      ui_text(&sr_font_mid, 250, 154, T("GIFTS"), UI_GREY, true, 0);
+      ui_text(&sr_font_mid, SCREEN_W / 2, 196, T("PRESS OK TO RESTART"), UI_LIME, true, 0);
+      ui_text(&sr_font_small, SCREEN_W / 2, 220, T("BACK MENU"), UI_GREY, true, 0);
     }
   }
   if (screen == S_GUIDE) {
-    gfx_fill_alpha(0, 0, SCREEN_W, SCREEN_H, 0, 110);
-    panel(40, 30, 240, 180);
-    gfx_text_center(&np_font_title, 160, 60, T("How to play"), WHITE, 256);
-    gfx_paragraph(&np_font_body, 160, 88, 210, 18,
+    gfx_fill_alpha(0, 0, SCREEN_W, SCREEN_H, 0, 140);
+    ui_text(&sr_font_big, SCREEN_W / 2, 64, T("HOW TO PLAY"), UI_GREY, true, 0);
+    gfx_paragraph(&np_font_body, 160, 92, 230, 18,
                   T("Left and Right steer the sled. Up or OK jumps. Dodge the trees, rocks, snowmen and walls, and pick up gifts to buy new sleds."),
                   WHITE, 256);
-    choice(160, 196, 120, T("Ride!"), true);
+    ui_text(&sr_font_mid, SCREEN_W / 2, 206, T("PRESS OK TO RIDE !"), UI_LIME, true, 0);
   }
   if (screen == S_PAUSE || screen == S_ASK) {
-    gfx_fill_alpha(0, 0, SCREEN_W, SCREEN_H, 0, 110);
-    panel(80, 56, 160, 132);
-    gfx_text_center(&np_font_title, 160, 86, screen == S_PAUSE ? T("Paused") : T("Quit game?"), WHITE, 256);
-    if (screen == S_PAUSE)
-      choice(160, 118, 130, T("Resume"), sel == 0), choice(160, 146, 130, T("Restart"), sel == 1), choice(160, 174, 130, T("Quit game"), sel == 2);
-    else
-      choice(160, 132, 130, T("No"), sel == 0), choice(160, 162, 130, T("Yes"), sel == 1);
+    gfx_fill_alpha(0, 0, SCREEN_W, SCREEN_H, 0, 120);
+    ui_text(&sr_font_big, SCREEN_W / 2, 84, screen == S_PAUSE ? T("PAUSED") : T("QUIT GAME?"), UI_GREY, true, 0);
+    static const char *const pause_items[3] = {"RESUME", "RESTART", "QUIT GAME"}, *const ask_items[2] = {"NO", "YES"};
+    int n = screen == S_PAUSE ? 3 : 2;
+    for (int i = 0; i < n; i++) {
+      const char *t = screen == S_PAUSE ? T(pause_items[i]) : T(ask_items[i]);
+      ui_text(&sr_font_mid, SCREEN_W / 2, 122 + i * 28, t, sel == i ? UI_YELLOW : UI_GREY, true, 0);
+      if (sel == i) ui_text(&sr_font_mid, SCREEN_W / 2 - gfx_text_width(&sr_font_mid, t) / 2 - 12, 122 + i * 28, ">", UI_YELLOW, true, 0);
+    }
   }
   if (fade > 0) gfx_fill_alpha(0, 0, SCREEN_W, SCREEN_H, 0, (int)(fade * 256));   /* (over everything) */
 }

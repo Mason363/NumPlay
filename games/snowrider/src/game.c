@@ -493,7 +493,7 @@ void game_step(uint32_t keys, uint32_t hit) {
     save();
     return;
   }
-  bool ok = hit & SK_OK, back = hit & SK_BACK, up = hit & SK_UP, down = hit & SK_DOWN;
+  bool ok = hit & SK_OK, back = hit & SK_BACK, up = hit & SK_UP, down = hit & SK_DOWN, left = hit & SK_LEFT;
   /* menus */
   if (screen == S_PAUSE || screen == S_ASK) {
     int n = screen == S_PAUSE ? 3 : 2;
@@ -525,13 +525,12 @@ void game_step(uint32_t keys, uint32_t hit) {
   } else if (mode == M_INTRO) {
     if (ok || back) go_main();
   } else if (mode == M_MAIN) {
-    if (up) sel = (sel + 2) % 3;
-    if (down) sel = (sel + 1) % 3;
+    /* the game's menu: tap to play, the sign at the bottom left for the sleds */
     if (ok) {
-      if (sel == 0 && !guide_read) screen = S_GUIDE;
-      else if (sel == 0) go_play();
-      else if (sel == 1) screen = S_SLEDS, shop_skin = skin;
-      else game_running = false, save();
+      if (!guide_read) screen = S_GUIDE;
+      else go_play();
+    } else if (left) {
+      screen = S_SLEDS, shop_skin = skin;
     }
     if (back) go_intro();
   } else if (mode == M_PLAY) {
@@ -540,11 +539,7 @@ void game_step(uint32_t keys, uint32_t hit) {
       return;
     }
   } else if (mode == M_END && end_wait > 1.2f) {
-    if (up || down) sel ^= 1;
-    if (ok) {
-      if (sel == 0) go_main(), go_play();
-      else go_main();
-    }
+    if (ok) go_main(), go_play();
     if (back) go_main();
   }
 

@@ -213,7 +213,7 @@ static void test_saves(const char *dir) {
   /* buying a sled with gifts */
   gifts = 60;
   press(SK_OK);
-  press(SK_DOWN), press(SK_OK);   /* Sleds */
+  press(SK_LEFT);                 /* Sleds: the sign at the bottom left */
   CHECK(screen == S_SLEDS, "the sleds");
   press(SK_RIGHT), press(SK_OK);  /* the Metal Sleigh, 50 gifts */
   CHECK(owned == 3 && skin == 1 && gifts == 10, "bought: owned %d skin %d gifts %d", owned, skin, gifts);

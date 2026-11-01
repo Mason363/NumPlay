@@ -64,7 +64,7 @@ Fences and signs break as you ride through them. Gifts lie in a line that wander
 | Back | Pause (Resume, Restart, Quit game) |
 | Home | Save and quit |
 
-In the menus, the arrows choose, **OK** picks and **Back** goes back. 8, 4, 6, 2 and 5 work as the arrows and OK.
+At the camp, **OK** rides and **Left** opens the sleds (the game's wooden sign at the bottom left); in the sleds, Left and Right look, **OK** buys or picks one and **Back** goes back. After a crash, **OK** rides again and **Back** goes to the camp. 8, 4, 6, 2 and 5 work as the arrows and OK. The screens are the game's own: its Blockletter lettering, its gift and sign pictures and its arrow keys on the first runs.
 
 ## Good to know
 
