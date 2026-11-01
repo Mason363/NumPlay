@@ -2,6 +2,7 @@
 """Makes src/data.c and src/data.h from Temple Run's own Android package (1.0.8, by Imangi Studios): the game's
 models, as the mesh table src/models.h describes, in place of tools/models.py's stand-ins.
 
+- The jungle far below (the game's Water Plane): its picture, terrainTexture, at 128 x 128 (r_tex 2).
 - The path and the scenery: the game's prefabs (its Resources/Prefabs/Temple), each a mesh laid with its texture
   and its light map. They keep the game's pictures (its two in 256 colours, r_tex: the stone walls at 512 x 512, the
   trees, mostly farther off, at 256 x 256), each triangle in its place in them and as light as its light map has it there on average: all
@@ -33,11 +34,11 @@ import unity  # noqa: E402
 import pieces  # noqa: E402
 
 LIGHT = 1.4                       # the light maps: Unity's mobile ones are x 2, a little less here, as the port shades faces too
-FACES_FAR = 70                    # triangles a path piece keeps far off (its biggest)
-TEXTURES = ("wallTexture", "treeTexture")   # r_tex 0 and 1
-TEX_LOG = (9, 8)                  # their sizes: 512 x 512, 256 x 256
+
+TEXTURES = ("wallTexture", "treeTexture", "terrainTexture")   # r_tex 0, 1, 2 (2: the jungle far below, scene.c)
+TEX_LOG = (9, 8, 7)               # their sizes: 512 x 512, 256 x 256, 128 x 128
 BRIGHT = 1.3                      # the pictures are kept this much lighter, the faces' light this much less (light
-                                  # maps go over 1, the renderer's light up to 1)
+                                  # maps go over 1, the renderer's light up to 1); the jungle below isn't light mapped
 FACES_RUNNER, FACES_PURSUER = 180, 80
 # scenery and coins: the port's name (the game's prefab), its triangles and its far version's (None: no far one)
 # (far off, scenery keeps all its triangles, biggest first: scene.c draws fewer, the biggest, farther off; only its
@@ -358,7 +359,8 @@ def textured_faces_of(pkg, name, target=None, turns=0):
             p = np.c_[p[:, 2], p[:, 1], -p[:, 0]]
         nrm = np.cross(p[tris[:, 1]] - p[tris[:, 0]], p[tris[:, 2]] - p[tris[:, 0]])
         ln = np.linalg.norm(nrm, axis=1)
-        tris = tris[(ln > 1e-9) & (nrm[:, 1] > -0.9 * np.maximum(ln, 1e-9))]   # (their undersides: never seen)
+        under = name == "temple" or nrm[:, 1] > -0.9 * np.maximum(ln, 1e-9)   # (undersides: seen only in the temple's hall)
+        tris = tris[(ln > 1e-9) & under]
         keep = tris
         if target is not None:
             want = max(4, round(target * len(tris) / total))
@@ -389,7 +391,9 @@ def textured_faces_of(pkg, name, target=None, turns=0):
             dv = math.floor(min(v for _, v in uv) / size) * size
             uv = [(u - du, v - dv) for u, v in uv]
             out.append((pts, rgb, models.norm(n), False, tex, uv, min(1.0, float(li)), bool(th)))
-    return out
+    # (biggest first: far off, scene.c draws only the first of them)
+    area = lambda f: models.dot(*(lambda c: (c, c))(models.cross(models.sub(f[0][1], f[0][0]), models.sub(f[0][2], f[0][0]))))  # noqa: E731
+    return sorted(out, key=lambda f: -area(f))
 
 
 def texture(pkg, name):
@@ -397,7 +401,14 @@ def texture(pkg, name):
     lg = TEX_LOG[TEXTURES.index(name)]
     size = 1 << lg
     img = pkg.textures[name].image.convert("RGB").resize((size, size), Image.LANCZOS)
-    a = np.clip(np.asarray(img, np.float64) * BRIGHT, 0, 255).astype(np.uint8)
+    a = np.asarray(img, np.float64)
+    if name == "terrainTexture":
+        # (as the game shows it: dim, and near half in its fog even close by, as Unity fogs that plane at the corners
+        # of its 200-unit squares; 0.4 and 0.45 match its screenshots' darkest, middle and brightest)
+        a = 0.4 * a + 0.45 * np.array([0x32, 0x52, 0x56], np.float64)
+    else:
+        a = a * BRIGHT
+    a = np.clip(a, 0, 255).astype(np.uint8)
     q = Image.fromarray(a).quantize(256, method=Image.MEDIANCUT, dither=Image.NONE)
     pal = q.getpalette()[:768]
     pal += [0] * (768 - len(pal))
@@ -432,6 +443,12 @@ def build(data, src):
     models.build(src)
     at = {m[0]: i for i, m in enumerate(models.MODELS)}
 
+    def far_from_near(name):
+        """no far version of its own: far off, scene.c draws the first (the biggest) of its faces"""
+        i, j = at[name], at[name + "_far"]
+        models.MODELS[i] = (name, models.MODELS[i][1], None)
+        models.MODELS[j] = (name + "_far", [], None)
+
     def put(name, faces):
         if not faces:
             print("kept the stand-in for", name)
@@ -441,14 +458,13 @@ def build(data, src):
 
     models.TEXTURES[:] = [texture(pkg, t) for t in TEXTURES]
     for name in pieces.PREFABS:
-        # (the game's runner leaves the temple heading south, away from it; the port's heads north: the temple turns
-        # a half turn, so it stands behind him)
-        turns = 2 if name == "temple" else 0
+        # (as the game has them: the temple's door faces the way the runner goes, and he runs out through it)
+        turns = 0
         put(name, textured_faces_of(pkg, name, None, turns))
-        put(name + "_far", textured_faces_of(pkg, name, FACES_FAR * (4 if name == "temple" else 1), turns))
+        far_from_near(name)
     for name, near, far in SCENERY:
         put(name, textured_faces_of(pkg, name, near))
-        put(name + "_far", textured_faces_of(pkg, name, far))
+        far_from_near(name)
     for name, prefab in COINS:
         put(name, faces_of(pkg, prefab, 12))
     guy = Person(pkg, "Jhony_Export3", "conquis_Export1")   # (Guy Dangerous; every runner's rig plays the same clips)

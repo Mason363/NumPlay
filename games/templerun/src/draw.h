@@ -26,4 +26,11 @@ int d_text_width(const Font *f, const char *s);
 /* white-ish text with a dark outline t pixels thick, the game's lettering; align -1 left, 0 centre,
  * 1 right of x */
 void d_label(const Font *f, int x, int baseline, const char *s, uint16_t fill, uint16_t outline, int t, int align);
+/* the game's interface pictures (hud.h): one at (x, y), a256 how much it shows, flip mirrored; only its rows from
+ * from_row down (a meter filling up) */
+#include "hud.h"
+void d_pic(int pic, int x, int y, int a256, int flip, int from_row);
+/* the game's golden lettering: its line's top at y, align -1 left, 0 centre, 1 right of x; returns its width */
+int d_gold(const HudFont *f, int x, int y, const char *s, int align, int a256);
+int d_gold_width(const HudFont *f, const char *s);
 #endif

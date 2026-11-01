@@ -39,8 +39,13 @@ typedef struct {
 uint16_t *r_col;
 int r_y0, r_y1;
 Camera cam;
-float r_haze0 = 60, r_haze1 = 150, r_far = 40;
-uint32_t r_haze_rgb = 0xD8F0FF;
+float r_fog0 = 19, r_fog1 = 76, r_far = 40;
+uint32_t r_fog_rgb = 0x325256;
+/* the fog by depth: its amount (0..32) for depths d >> 2, below fog_d0 (nearer than r_fog0: none) */
+#define FOG_N 640
+static uint8_t fogtab[FOG_N];
+static uint16_t fog_d0, fog565;
+static float fog_made0, fog_made1;
 
 /* the frame's lists: in the RAM after the game's own (r_init) */
 typedef struct {
@@ -146,9 +151,9 @@ static bool fit(const float *x, const float *y, const float *w, float *a, float 
 static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, uint16_t avg) {
   if (npolys >= MAXP || nverts + MAXN > MAXV || ((kind == K_SHADE || kind == K_TEX) && nattr + MAXN > MAXA)) return;
   CV b1[MAXN], b2[MAXN];
-  int behind = 0;
-  for (int i = 0; i < n; i++) behind += p[i].z < NEAR;
-  if (behind == n) return;
+  int behind = 0, past = 0;
+  for (int i = 0; i < n; i++) behind += p[i].z < NEAR, past += p[i].z > r_fog1;
+  if (behind == n || past == n) return;   /* (wholly in the fog: its colour is the fog's, whatever is behind) */
   if (behind) {
     n = cut(p, n, b1, 0, 0, 1, -NEAR);
     if (n < 3) return;
@@ -213,7 +218,7 @@ static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, u
     /* far off, a picture is only its average colour (color already holds it when kind comes back flat) */
     const Texture *t = r_tex[color];
     if (t->clear && !avg && (nuv >= MAXT || zm > r_far * 1.6f)) return;   /* (a see-through one is only drawn as itself: near) */
-    if ((!t->clear && (zm > r_haze1 * 0.6f || nuv >= MAXT)) || (avg && (zm > r_far || nuv >= MAXT))) {
+    if ((!t->clear && (zm > r_fog1 * 0.6f || nuv >= MAXT)) || (avg && (zm > r_far || nuv >= MAXT))) {
       /* (the palette's first useful colour stands for it: the tool puts the average there; or the face's own) */
       uint16_t c = avg ? avg : t->pal[t->clear ? 1 : 0];
       uint32_t a8 = (uint32_t)(c >> 11) * 255 / 31 << 16 | (uint32_t)((c >> 5) & 63) * 255 / 63 << 8 | (uint32_t)(c & 31) * 255 / 31;
@@ -221,12 +226,6 @@ static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, u
       kind = K_FLAT;
       q->kind = K_FLAT;
       alpha = 255;
-      flags &= ~P_NOHAZE;
-      if (zm > r_haze0) {
-        float h = (zm - r_haze0) / (r_haze1 - r_haze0);
-        uint32_t c8 = (uint32_t)(color >> 11) * 255 / 31 << 16 | (uint32_t)((color >> 5) & 63) * 255 / 63 << 8 | (uint32_t)(color & 31) * 255 / 31;
-        color = r_565(r_mix888(c8, r_haze_rgb, h >= 1 ? 240 : (int)(h * 240)));
-      }
     } else {
       /* u and v over the depth, as planes: the three corners spanning the most */
       int best = 1;
@@ -244,11 +243,6 @@ static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, u
       if (!fit(px, py, wu, &u->ua, &u->ub, &u->uc) || !fit(px, py, wv, &u->va, &u->vb, &u->vc)) return;
       q->extra = (uint8_t)nuv++;
     }
-  }
-  if (kind == K_FLAT && !(flags & P_NOHAZE) && zm > r_haze0) {
-    float h = (zm - r_haze0) / (r_haze1 - r_haze0);
-    uint32_t c8 = (uint32_t)(color >> 11) * 255 / 31 << 16 | (uint32_t)((color >> 5) & 63) * 255 / 63 << 8 | (uint32_t)(color & 31) * 255 / 31;
-    color = r_565(r_mix888(c8, r_haze_rgb, h >= 1 ? 240 : (int)(h * 240)));
   }
   q->color = color;
   q->alpha = (uint8_t)(kind == K_PERSP ? alpha : flags & P_ALPHA ? (alpha > 255 ? 255 : alpha < 0 ? 0 : alpha) : 255);
@@ -581,6 +575,29 @@ static void raster(const Poly *q) {
   }
 }
 
+/* the fog's table for the current r_fog0, r_fog1 and r_fog_rgb */
+static void fog_make(void) {
+  if (fog_made0 == r_fog0 && fog_made1 == r_fog1) return;
+  fog_made0 = r_fog0, fog_made1 = r_fog1;
+  float d0 = ZK / r_fog0;
+  fog_d0 = d0 >= 4 * FOG_N ? 4 * FOG_N - 1 : (uint16_t)d0;
+  for (int i = 0; i < FOG_N; i++) {
+    float z = ZK / ((float)i * 4 + 2), t = (z - r_fog0) / (r_fog1 - r_fog0);
+    fogtab[i] = (uint8_t)(t <= 0 ? 0 : t >= 1 ? 32 : (int)(t * 32 + 0.5f));
+  }
+}
+
+/* a band's pixels toward the fog's colour, each by its depth (the background's too: the sky, depth 0, is all fog) */
+static void fog_band(void) {
+  uint16_t fc = fog565, d0 = fog_d0;
+  for (int i = 0; i < SCREEN_W * BAND_H; i++) {
+    uint16_t d = zbuf[i];
+    if (d >= d0) continue;
+    int t = fogtab[d >> 2];
+    r_col[i] = t >= 32 ? fc : t ? r_mix565(r_col[i], fc, t) : r_col[i];
+  }
+}
+
 uint16_t r_floor_depth(float z) {
   float d = ZK / z;
   d -= d * (1.0f / 256);   /* (a hair farther: a shadow lying on it is drawn, what is under it is not) */
@@ -593,6 +610,8 @@ void r_band_depth(int y, int x0, int x1, uint16_t d) {
 }
 
 void r_render(r_band_fn bg, r_band_fn overlay) {
+  fog_make();
+  fog565 = r_565(r_fog_rgb);
   /* the see-through polygons after the others, in the order they came */
   if (nalpha) {
     int k = 0;
@@ -612,6 +631,7 @@ void r_render(r_band_fn bg, r_band_fn overlay) {
       const Poly *q = &polys[order[i]];
       if (q->y1 > r_y0 && q->y0 < r_y1) raster(q);
     }
+    fog_band();
     if (overlay) overlay();
     plat_push(0, r_y0, SCREEN_W, BAND_H, r_col);
   }

@@ -7,19 +7,28 @@
 #include "scene.h"
 
 #define S 0.19f              /* metres a game unit (the runner: 9.6 units, 1.8 m) */
+/* the game's: its fog (linear, from 100 to 400 units, in its teal), its camera's 50 degrees from top to bottom,
+ * and the jungle below the path (its Water Plane: 30.5 below the temple's floor, its picture 30 times over its
+ * 2000 units) */
+#define FOG0 100.0f
+#define FOG1 400.0f
+#define FOG_RGB 0x325256
+#define FOCAL 257.3f         /* 120 / tan(25 degrees) */
+#define WATER_Y (-30.5f)
+#define WATER_TILE (2000.0f / 30)
 #define SMALL_FAR 350.0f     /* rocks, heads and ground patches seen this far */
-#define TREE_FAR 520.0f      /* the rest of the scenery (into the haze) */
+#define TREE_FAR FOG1        /* the rest of the scenery (past it, all fog) */
 #define SCENERY_POLYS 1080   /* (of the renderer's 1600 a frame) */
-#define VIEW 1000.0f         /* units seen ahead (the renderer's far plane is 190 m) */
+#define VIEW (FOG1 + 20)     /* units seen ahead */
 #define PI 3.14159265f
 
 static float cx_, cy_, cz_, cyaw, cc, cs;   /* the camera (game units) and its yaw's cosine and sine */
-static float run_yaw, cam_yaw, cam_h;       /* smoothed */
+static float run_yaw, cam_h;                /* the run's way, smoothed; the camera's ground height */
+static float camx, camy, camz;              /* the camera's place in a run (the game's GameCamera) */
+static float intro;                         /* seconds the camera still waits where the title had it */
 static float t_anim;
 static uint32_t scenery_seed;   /* (the scenery of this run: draw_scenery) */
 static bool title;
-static uint16_t rowc[SCREEN_H];             /* the sky and the depths, row by row */
-static int horizon = -1000;
 
 static float wrap(float a) {
   while (a > PI) a -= 2 * PI;
@@ -27,27 +36,67 @@ static float wrap(float a) {
   return a;
 }
 
+/* the angle of (y, x) from the x axis, -PI..PI (a short series: no C library) */
+static float atan2_(float y, float x) {
+  float ax = x < 0 ? -x : x, ay = y < 0 ? -y : y, mx = ax > ay ? ax : ay, mn = ax > ay ? ay : ax;
+  if (mx <= 0) return 0;
+  float a = mn / mx, s = a * a;
+  float r = ((-0.0464964749f * s + 0.15931422f) * s - 0.327622764f) * s * a + a;
+  if (ay > ax) r = PI / 2 - r;
+  if (x < 0) r = PI - r;
+  return y < 0 ? -r : r;
+}
+
 static float dir_yaw(int d) { return d == 1 ? PI / 2 : d == 2 ? PI : d == 3 ? -PI / 2 : 0; }
 
 void scene_init(void) {
-  r_haze0 = 70, r_haze1 = 185;
-  r_haze_rgb = 0xBFD3C6;
+  r_fog0 = FOG0 * S, r_fog1 = FOG1 * S, r_fog_rgb = FOG_RGB;
   r_far = 40;
-  if (plat_slow()) r_haze0 = 60, r_haze1 = 170;
 }
 
-/* a 60th of a second: the camera turns after the runner */
+/* the game's camera: 50 behind the runner and 35 above the ground it runs on, looking at 20 above it (sliding under
+ * a branch: 60 behind, 6 and 14 above; jumping: higher and farther by half the jump, the look by a quarter), going
+ * after that place at 1.25 times the run's speed; the ground height it keeps follows the runner's at 50 a second */
+static void cam_want(float *x, float *y, float *z, float *fy) {
+  float h = 35, d = 50, f = 20, j = pl.y - cam_h, s, c;
+  if (pl.sliding && tiles[path_root].obst == OB_SLIDE) h = 6, d = 60, f = 14;
+  else if (pl.jumping && j > 0) h += 0.5f * j, d += 0.5f * j, f += 0.25f * j;
+  r_sincos(run_yaw, &s, &c);
+  *x = pl.x - s * d, *z = pl.z - c * d, *y = cam_h + h, *fy = cam_h + f;
+}
+
+/* a 60th of a second: the camera goes after the runner (when it's caught or falls, the camera stays) */
 void scene_follow(void) {
   float want = dir_yaw(pl.dir);
   run_yaw += wrap(want - run_yaw) * 0.3f;
-  cam_yaw += wrap(want - cam_yaw) * (pl.boost ? 0.16f : 0.1f);
-  if (!pl.falling && !(pl.dead && pl.death == DEATH_FALL)) cam_h += (pl.ground - cam_h) * 0.08f;
+  if (pl.dead) return;
+  if (intro > 0) {
+    intro -= 1.0f / 60;
+    return;
+  }
+  if (!pl.falling) {
+    float g = pl.ground;
+    cam_h = cam_h < g ? (cam_h + 50.0f / 60 > g ? g : cam_h + 50.0f / 60) : (cam_h - 50.0f / 60 < g ? g : cam_h - 50.0f / 60);
+  }
+  float tx, ty, tz, fy;
+  cam_want(&tx, &ty, &tz, &fy);
+  float dx = tx - camx, dy = ty - camy, dz = tz - camz, m2 = dx * dx + dy * dy + dz * dz, step = pl.v * 1.25f / 60;
+  if (step * step >= m2) camx = tx, camy = ty, camz = tz;
+  else {
+    float k = step / __builtin_sqrtf(m2);
+    camx += dx * k, camy += dy * k, camz += dz * k;
+  }
 }
 
 void scene_reset(void) {
   scenery_seed = plat_random();
-  run_yaw = cam_yaw = dir_yaw(pl.dir);
+  run_yaw = dir_yaw(pl.dir);
   cam_h = pl.ground;
+  /* the game's menu camera: 100 before the temple and 10 up, looking at the runner in its door; a run starts with it
+   * there for 3 seconds (the game's intro scene), the runner running out at it, and then it goes after him */
+  const Tile *t = &tiles[path_root];
+  camx = path_cx(t), camz = path_cz(t) + 100, camy = cam_h + 10;
+  intro = 3;
 }
 
 /* ---------------------------------------------------------------- meshes */
@@ -92,8 +141,9 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
    * leaves and roots would be left in the air) */
   int nt = me->nt;
   if (m < 2 * M_PIECES) {
-    if (z0 > 300) nt /= 4;
-    else if (z0 > 160) nt /= 2;
+    if (z0 > 300) nt /= 8;
+    else if (z0 > 160) nt /= 5;
+    else if (z0 > MESH_FAR) nt /= 3;
   }
   for (int i = 0; i < nt; i++) {
     const TFace *t = &me->t[i];
@@ -189,26 +239,32 @@ static void draw_scenery(void) {
 }
 
 /* ---------------------------------------------------------------- the sky and the depths */
+/* the background, row by row: the jungle far below (the game's Water Plane) where the row looks down at it, its
+ * picture fixed on the ground and its depth there; the fog's colour above (r3d.c fogs both by depth) */
 static void bg(void) {
+  const Texture *t = r_tex[2];
+  const uint8_t *px = t->px;
+  const uint16_t *pal = t->pal;
+  uint16_t fog = r_565(FOG_RGB);
+  float hgt = (WATER_Y - cy_) * S, k = (float)(1 << t->wl) / (WATER_TILE * S);   /* (texels a metre) */
+  uint32_t m = (1u << t->wl) - 1;
   for (int y = r_y0; y < r_y1; y++) {
-    uint16_t c = rowc[y], *p = r_col + (y - r_y0) * SCREEN_W;
-    for (int x = 0; x < SCREEN_W; x++) p[x] = c;
-  }
-}
-
-static void sky_rows(int h) {
-  if (h == horizon) return;
-  horizon = h;
-  for (int y = 0; y < SCREEN_H; y++) {
-    uint32_t c;
-    if (y < h) {
-      int t = h <= 0 ? 256 : 256 - (h - y) * 256 / (h + 40);
-      c = r_mix888(0x6FA6D2, 0xBFD3C6, t < 0 ? 0 : t);
-    } else {
-      int t = (y - h) * 256 / 130;
-      c = r_mix888(0xBFD3C6, 0x2B4A30, t > 256 ? 256 : t);
+    uint16_t *p = r_col + (y - r_y0) * SCREEN_W;
+    float vs = ((float)y + 0.5f - cam.cy) / cam.f;
+    float ry = -vs * cam.cp - cam.sp, rz = -vs * cam.sp + cam.cp;   /* (a ray down the row's middle, z ahead 1) */
+    float tz = ry < -1e-4f ? hgt / ry : 1e9f;                       /* its depth where it meets the jungle */
+    if (tz > r_fog1) {
+      for (int x = 0; x < SCREEN_W; x++) p[x] = fog;
+      continue;
     }
-    rowc[y] = r_565(c);
+    /* along the row: the ground's place at x, straight lines in the picture */
+    float ax = (0.5f - cam.cx) / cam.f * tz, az = rz * tz, sx = tz / cam.f;
+    float u0 = ((cx_ * S) + ax * cc + az * cs) * k, v0 = ((cz_ * S) - ax * cs + az * cc) * k;
+    int32_t u = (int32_t)(u0 * 65536.0f), v = (int32_t)(v0 * 65536.0f);
+    int32_t du = (int32_t)(sx * cc * k * 65536.0f), dv = (int32_t)(-sx * cs * k * 65536.0f);
+    for (int x = 0; x < SCREEN_W; x++, u += du, v += dv)
+      p[x] = pal[px[(((uint32_t)v >> 16) & m) << t->wl | (((uint32_t)u >> 16) & m)]];
+    r_band_depth(y, 0, SCREEN_W, r_floor_depth(tz));
   }
 }
 
@@ -217,24 +273,28 @@ void scene_draw(r_band_fn overlay, bool on_title) {
   title = on_title;
   t_anim += 1.0f / 30;
   r_begin();
-  /* the camera: behind the runner and above, turning after it round the corners */
-  float back = 31, up = 19, pitch = 0.27f;
+  /* the camera: the game's, behind the runner and above it, looking at it */
+  float pitch;
   if (on_title) {
-    /* in front of the runner, who stands at the temple's door: the menu on the left, the runner on the right */
-    float b = PI + 0.25f, sb, cb;
-    r_sincos(b, &sb, &cb);
-    cx_ = pl.x - sb * 25, cz_ = pl.z - cb * 25, cy_ = pl.y + 8;
-    cyaw = b - 0.4f, pitch = 0.06f;
+    /* the game's menu camera, looking at the runner in the temple's door; turned a little, so that he stands to the
+     * right of the menu */
+    cx_ = camx, cy_ = camy, cz_ = camz;
+    float dx = pl.x - cx_, dz = pl.z - cz_;
+    cyaw = atan2_(dx, dz) - 0.28f, pitch = atan2_(cy_ - (cam_h + 20), __builtin_sqrtf(dx * dx + dz * dz));
     r_sincos(cyaw, &cs, &cc);
   } else {
-    cyaw = cam_yaw;
+    static float fx, fy, fz;   /* (it looks where it looked when the run ended) */
+    if (!pl.dead) {
+      float tx, ty, tz;
+      cam_want(&tx, &ty, &tz, &fy);
+      fx = pl.x, fz = pl.z;
+    }
+    cx_ = camx, cy_ = camy, cz_ = camz;
+    float dx = fx - cx_, dz = fz - cz_, hd = __builtin_sqrtf(dx * dx + dz * dz);
+    cyaw = atan2_(dx, dz), pitch = atan2_(cy_ - fy, hd);
     r_sincos(cyaw, &cs, &cc);
-    cx_ = pl.x - cs * back, cz_ = pl.z - cc * back, cy_ = cam_h + up;
-    if (pl.y > pl.ground && !pl.falling) cy_ += 0.6f * (pl.y - pl.ground);   /* (a jump stays in sight) */
   }
-  r_camera(0, 0, 0, pitch, 205, 160, 120);
-  float sx, sy;
-  sky_rows(r_project((V3){0, 0, 600}, &sx, &sy) ? (int)sy : 0);
+  r_camera(0, 0, 0, pitch, FOCAL, 160, 120);
   /* the pieces: the one under the runner and those ahead (the one behind it too, for the camera), nearest first:
    * the renderer lays pictures on so many faces a frame, and the near ones need them */
   int ord[NTILES], no = 0;

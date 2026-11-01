@@ -107,6 +107,9 @@ static void add_coins(uint32_t n) {
     add_score(500);
     run.bonus_level++;
     run.bonus_coins -= 100;
+    static const uint16_t pts[4] = {100, 250, 500, 1000};
+    int k = run.bonus_level >= 4 ? 3 : (int)run.bonus_level - 1;   /* (the game's levels start at 1: this is level + 1) */
+    run.totem_pts += pts[k], run.totem_pic = (uint8_t)(k + 1), run.totem_t = 1;
   }
 }
 
@@ -328,7 +331,7 @@ void game_new_run(void) {
   if (pg.multiplier < 10) pg.multiplier = 10;
   path_start();
   pl.dir = D_N;
-  pl.v = START_V, pl.z = -20, pl.on_ground = pl.over = true;
+  pl.v = START_V, pl.z = -10, pl.on_ground = pl.over = true;   /* (the game's: in the temple's dark hall, out through its door) */
   pl.stumble_timer = 7;
   pl.since_power = 15;
   trail_n = 0, trail_head = 0, trail_gap = 0;
@@ -340,6 +343,7 @@ void game_new_run(void) {
 }
 
 void game_step(uint32_t in) {
+  if (run.totem_t > 0 && (run.totem_t -= DT) <= 0) run.totem_t = 0, add_score(run.totem_pts), run.totem_pts = 0;
   run.time += DT;
   if (pl.dead) {
     pl.t_dead += DT;

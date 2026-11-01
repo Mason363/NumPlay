@@ -48,9 +48,6 @@ static void go(int s) {
 
 static void title_world(void) {
   game_new_run();
-  /* (on the title the runner stands out at the temple's mouth, so the camera, before him, is outside the rock; a run
-   * starts from the hall inside, game_new_run's place) */
-  pl.z = 34;
   scene_reset();
 }
 
@@ -242,44 +239,92 @@ static void coin_icon(int x, int y) {
   d_disc((float)x, (float)y, 3.2f, C(0xFFD21E), 255);
 }
 
+/* the run's screen, the game's: the totem on the left with its coin meter (full at 100 coins) and an emblem for
+ * each bonus level, vines along the top, the score and the run's coins on their plates at the top right, the idol
+ * at the bottom right; a board drops with the distance at 250, 500, 750 and 1000 m, then each 500 m */
+#define TX (-2)
+#define TY (-12)
+static int board_dist;
+static float board_t = -1;
+
+static void board(void) {
+  int d = (int)run.dist;
+  if (d < board_dist) board_dist = 0;
+  int next = board_dist < 1000 ? board_dist + 250 : board_dist + 500;
+  if (d >= next) board_dist = next, board_t = 0;
+  if (board_t < 0) return;
+  board_t += 1.0f / 30;
+  float t = board_t, down = t < 0.25f ? t * 4 : t < 2.25f ? 1 : t < 2.5f ? (2.5f - t) * 4 : -1;
+  if (down < 0) {
+    board_t = -1;
+    return;
+  }
+  const HudPic *bp = &hud_pics[HP_BOARD];
+  int y = -bp->h + (int)(down * (bp->h - 34));
+  d_pic(HP_BOARD, (SCREEN_W - bp->w) / 2, y, 255, 0, 0);
+  char b[16];
+  fmt(b, (uint32_t)board_dist);
+  cat(b, "m");
+  d_gold(&hud_gold, SCREEN_W / 2, y + bp->h - 31, b, 0, 255);
+}
+
 static void hud(void) {
   char b[40];
+  /* the totem */
+  d_pic(HP_JUNGLE_A, 34, -4, 255, 0, 0);
+  d_pic(HP_JUNGLE_C, 214, 40, 255, 0, 0);
+  d_pic(HP_TOTEM, TX, TY, 255, 0, 0);
+  const HudPic *bar = &hud_pics[HP_TOTEM_BAR];
+  int full = (int)(run.bonus_coins * (uint32_t)bar->h / 100);
+  d_pic(HP_TOTEM_BAR, TX + 3, TY + 64, 255, 0, bar->h - full);
+  d_pic(HP_TOTEM_CAP, TX - 1, TY + 58, 255, 0, 0);
+  static const int8_t em[4][2] = {{1, 15}, {17, 13}, {16, 29}, {11, 25}};
+  for (int i = 0; i < 4; i++)
+    if ((int)run.bonus_level > i) d_pic(HP_EMBLEM1 + i, TX + 20 + em[i][0], TY + em[i][1], 255, 0, 0);
+  /* the score and the coins */
+  d_pic(HP_SCORE_PLATE, 172, 6, 255, 0, 0);
+  d_pic(HP_COINS_PLATE, 178, 34, 255, 0, 0);
+  d_pic(HP_SCOREBOARD, 279, -3, 255, 0, 0);
   fmt(b, run.score);
-  label(&font_mid, 8, 20, b, 0xFFFFFF, -1);
-  coin_icon(13, 32);
+  d_gold(&hud_gold, 276, 8, b, 1, 255);
+  d_pic(HP_COIN, 188, 37, 255, 0, 0);
   fmt(b, run.coins);
-  label(&font_small, 22, 37, b, GOLD, -1);
-  fmt(b, (uint32_t)run.dist);
-  cat(b, " m");
-  label(&font_small, SCREEN_W - 8, 18, b, 0xFFFFFF, 1);
-  /* the coin meter: every 100 coins, 500 points */
-  if (r_y0 < 150 && r_y1 > 50) {
-    int h = 80, f = (int)(run.bonus_coins * (uint32_t)h / 100);
-    d_fill_a(8, 52, 6, h, C(0x1A1008), 110);
-    d_fill(9, 52 + h - f, 4, f, C(0xFFC020));
-  }
-  int kind;
-  float left = game_power_left(&kind);
-  if (kind) {
-    static const char *const nm[5] = {"", "", "Invisible", "Coin magnet", "Boost"};
-    static const uint32_t col[5] = {0, 0, 0x9FE8FF, 0xE04040, 0x56E070};
-    label(&font_small, SCREEN_W / 2, 18, nm[kind], 0xFFFFFF, 0);
-    d_fill_a(SCREEN_W / 2 - 40, 22, 80, 5, C(0x1A1008), 170);
-    d_fill(SCREEN_W / 2 - 40, 22, (int)(80 * left), 5, C(col[kind]));
-  }
+  d_gold(&hud_gold_small, 276, 38, b, 1, 255);
   if (pl.wings > 0) {
+    d_pic(HP_WINGS_PLATE, 226, 58, 255, 0, 0);
     fmt(b, (uint32_t)pl.wings + 1);
-    char w[24] = "Wings ";
-    cat(w, b);
-    label(&font_small, SCREEN_W - 8, 34, w, 0xFFFFFF, 1);
+    d_gold(&hud_gold_small, 274, 60, b, 1, 255);
   }
+  /* the idol */
+  d_pic(HP_IDOL, SCREEN_W - hud_pics[HP_IDOL].w - 2, SCREEN_H - hud_pics[HP_IDOL].h, 255, 0, 0);
+  d_pic(HP_PAUSE, SCREEN_W - hud_pics[HP_IDOL].w / 2 - 2 - hud_pics[HP_PAUSE].w / 2, SCREEN_H - 20, 255, 0, 0);
+  /* the totem's bonus, flying to the score */
+  if (run.totem_t > 0) {
+    float u = 1 - run.totem_t;
+    int pic = HP_BONUS100 + run.totem_pic - 1;
+    const HudPic *bp = &hud_pics[pic];
+    int x = (int)(30 + u * 180) - bp->w / 2, y = 40 - bp->h / 2;
+    d_pic(pic, x, y, (int)(192 * (1 - u)), 0, 0);
+  }
+  board();
   const char *hint = NULL;
   static char hb[48];
   int hs = game_headstart_ok();
-  if (hs == 3) hint = "1 head start  -  3 mega head start";
-  else if (hs == 1) hint = "1 head start";
-  else if (hs == 2) hint = "3 mega head start";
-  else if (state_t < 4.5f && pg.runs < 5) hint = "Left Right turn  -  Up jump  -  Down slide  -  4 6 lean";
+  if (hs) {
+    /* the game's head start buttons, with their keys */
+    int x = hs == 3 ? 52 : 114;
+    if (hs & 1) {
+      d_pic(HP_HEADSTART, x, 190, 255, 0, 0);
+      d_gold(&hud_gold, x - 4, 194, "1", 1, 255);
+      x += 124;
+    }
+    if (hs & 2) {
+      d_pic(HP_HEADSTART_MEGA, x, 190, 255, 0, 0);
+      d_gold(&hud_gold, x - 4, 194, "3", 1, 255);
+    }
+    return;
+  }
+  if (state_t < 4.5f && pg.runs < 5) hint = "Left Right turn  -  Up jump  -  Down slide  -  4 6 lean";
   else if (game_wings_ok() && state_t < 9) {
     strcpy(hb, "OK wings (");
     fmt(hb + strlen(hb), pg.use[USE_WINGS]);
