@@ -11,7 +11,12 @@ Crossy Road for the NumWorks calculator.
   <img src="screenshots/gameover.png" width="49%" alt="Game over">
 </p>
 
-Hop as far as you can. Dodge cars, trucks and trains, ride logs and lily pads across rivers, grab coins, and keep moving or the eagle will get you.
+Hop as far as you can. Dodge cars, trucks and trains, ride logs and lily pads across rivers, grab coins, and keep moving or the eagle will get you. Spend 100 coins at the prize machine for a new character: ten of the game's own, from the Chicken and the Mallard to the Penguin, the Ghost and Frankenstein, each built from its original model.
+
+<p align="center">
+  <img src="screenshots/characters.png" width="49%" alt="The characters: one not won yet is a black shape">
+  <img src="screenshots/prize.png" width="49%" alt="The prize machine's ball opened: the Mallard">
+</p>
 
 ## Install
 
@@ -28,8 +33,10 @@ Made for the NumWorks N0120.
 | Up, OK or EXE | Hop forward |
 | Left, Right, Down | Hop left, right or back |
 | Back | Pause. On the title or game over screen, quit |
+| Left (game over) | The characters: Left and Right to look, OK to play one you have won |
+| Right (game over) | The prize machine, with 100 coins: OK turns it, OK opens the ball |
 
-Your top score and coins are saved on the calculator.
+Your top score, coins and characters are saved on the calculator. The prize machine never gives one you already have.
 
 ## Build
 

@@ -44,8 +44,10 @@ Twelve levels, from Stereo Madness to Clubstep, Deadlocked and Dash. The **?** b
 | **Up**, **OK** or **EXE** | Hop forward |
 | **Left / Right / Down** | Hop sideways or back |
 | **Back** | Pause (then Quit game) |
+| **Left** (game over) | Characters: pick one you have won |
+| **Right** (game over) | The prize machine: 100 coins for a new character |
 
-Keep moving, or the eagle gets you. Coins add up across every run and stay saved.
+Keep moving, or the eagle gets you. Coins add up across every run and stay saved. Ten of the game's own characters are in the prize machine, a new one each time.
 
 <br clear="right">
 

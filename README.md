@@ -313,6 +313,7 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] SG-1000 games in Retro-Go
 - [x] Five Nights at Freddy's 2
 - [x] Famidash, made for the calculator (not through an emulator)
+- [x] Crossy Road: the characters and the prize machine
 - [ ] Full Minecraft 1.18.2 as a standalone app
 - [ ] Among Us, against bots
 - [ ] Cat Ninja
@@ -347,7 +348,6 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Animal Well
 - [ ] Rider.io
 - [ ] Getting Over It
-- [ ] Crossy Road: the characters and the prize machine
 - [ ] Famidash: its newest and fullest version
 - [ ] Hill Climb Racing 2
 - [ ] Hill Climb Racing in 3D, with a scooter, a BMX, a skateboard and roller skates
@@ -358,6 +358,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 
 - **[Tatone26](https://github.com/Tatone26/Numworks-games)**'s **All the Apps** inspired NumPlay's list of classics. Flappy Bird, Pac-Man, Snake, Connect Four, Solitaire and 2048 are written in C for NumPlay and keep its options, with no code copied from it. Tetris is Tatone26's own, which they released into the public domain, adapted for NumPlay.
 - **[Gabriele Cirulli](https://github.com/gabrielecirulli/2048)** made 2048.
+- **Crossy Road** by Hipster Whale inspired NumPlay's Crossy Road, written in C for NumPlay. Its characters (the Chicken, and the nine more the prize machine gives) are built from the game's own models and named as the game names them, read from its iOS build (1.3.7825). Not affiliated with Hipster Whale.
 - **Block Blast!** by [Hungry Studio](https://www.hungrystudio.com) inspired NumPlay's Block Blast, written in C for NumPlay with no code or art from it. Its blocks, scoring and colours follow measurements of the app by the players behind [blockblast-Self-Improvement-loop](https://github.com/Kucze3205/blockblast-Self-Improvement-loop).
 - **Flappy Dunk** by Voodoo (made with Acid Cousins) inspired NumPlay's Flappy Dunk, written in C for NumPlay with no code or art from it. Its physics and hoops follow the numbers in the game's Android build. **Bobydeluxe** brought it to NumPlay. Not affiliated with Voodoo.
 - **Tower Blocks** by [Steve Gardner](https://codepen.io/ste-vg/pen/ppLQNW) (MIT License) is ported to C for NumPlay from its source: its sizes, speeds, colours, light and camera are the original's. **Bobydeluxe** brought it to NumPlay.
