@@ -59,6 +59,7 @@ ALONE = {
     "mahjong": ("Mahjong", "Mahjong solitaire: 144 tiles in the Turtle, the Dragon, the Crab and the Spider, every deal winnable"),
     "rider": ("Rider", "Ketchapp's neon motorbike game: the endless run, 48 levels and 55 bikes, one button to ride and flip"),
     "snowrider": ("Snow Rider 3D", "the endless sled run: its slope, sleds, gifts and crashes, read from the game's own Unity project"),
+    "templerun": ("Temple Run", "the endless run from the temple: turn, jump, slide and lean, with the game's rules and numbers"),
 }
 VARIANTS = [
     ("NumPlay-Invisible.nwa", "The same app, hidden: a blank icon with no name"),

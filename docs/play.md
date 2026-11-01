@@ -718,6 +718,21 @@ Hold the button and the bike speeds up. In the air, holding it turns the bike ba
 | **Back** | Pause (with Restart and Quit game) |
 
 The sled slides down the endless slope by itself, faster and faster. Steer around the trees, rocks, snowmen, stumps and walls: one hit and it breaks. Fences and signs break as you ride through them. Every 10 metres is a point. Past 10 points come tunnels, cracks to jump and floating islands, and giant snowballs roll across. Gifts on the slope buy new sleds at the camp. Your best score, gifts and sleds are saved.
+## Temple Run
+
+<img src="../games/templerun/docs/shot.png" width="320" align="right" alt="Temple Run: running along the temple path">
+
+| Key | What it does |
+| --- | --- |
+| **Left / Right** | Turn at a corner |
+| **Up** or **8** | Jump |
+| **Down** or **2** | Slide |
+| **4 / 6** (or **shift** with the arrows) | Lean, held |
+| **OK** | Wings (in a run), choose, buy |
+| **1 / 3** | Head start, mega head start (at the start) |
+| **Back** | Pause (with How to play and Quit game) |
+
+Temple Run comes as its own app, `TempleRun.nwa`. Run from the temple and don't stop: turn at every corner, jump gaps, roots and fallen trees, slide under branches, jump or slide past the fire, and lean along narrow paths. Jump up to the cliffs. Trip once and your pursuers catch up; trip again soon and they get you. Coins buy upgrades for the four power-ups in the store, and each objective done raises your score multiplier.
 
 <br clear="right">
 

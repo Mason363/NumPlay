@@ -99,6 +99,7 @@ jobs:
           make -C games/mahjong host test
           make -C games/rider host test
           make -C games/snowrider host test
+          make -C games/templerun host test
 
 
 
@@ -107,15 +108,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         # NumPlay Studio (customize/) links a NumPlay of your own from the kit (make kit): it goes on the
-        # branch "kit", one commit, and the site is deployed again with it
+        # branch "kit", one commit, and the site is deployed again with it. Only from main's newest commit: a run
+        # for an older one can end last and would put an older kit back
         run: |
+          if [ "$(git ls-remote origin refs/heads/main | cut -f1)" != "$GITHUB_SHA" ]; then
+            echo "(main has moved on: its newest commit's run makes the kit)"
+            exit 0
+          fi
           cd build/data/site-kit
           git init -q -b kit
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -q -m "Kit of NumPlay $(tr -d '[:space:]' < ../../../VERSION), from $GITHUB_SHA"
           git push -q -f "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git" kit
-          gh workflow run pages.yml --ref main || echo "(the site was not deployed again)"
+          gh workflow run pages.yml --ref main --repo "$GITHUB_REPOSITORY" || echo "(the site was not deployed again)"
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && github.event_name != 'pull_request')
@@ -135,4 +141,4 @@ jobs:
           gh release create "$tag" "${files[@]}" --target "$GITHUB_SHA" \
             --title "$(cat build/data/release-title.txt)" --notes-file build/data/release-notes.md
           # the README's version and downloads badges come from the site (docs/badges): deploy it again
-          gh workflow run pages.yml --ref main || echo "(the site was not deployed again)"
+          gh workflow run pages.yml --ref main --repo "$GITHUB_REPOSITORY" || echo "(the site was not deployed again)"
