@@ -612,10 +612,10 @@ void rd_shadow(const car_look *c, const car_t *phys) {
    slow (or out of room for triangles), up slowly. rd_ease_for: a frame whose physics took long is drawn simpler */
 void rd_ease_for(uint32_t physics_ms) { rd_ease = physics_ms > 10 ? 2 : physics_ms > 6 ? 1 : 0; }
 #ifndef UP_LO
-#define UP_LO 20
+#define UP_LO 23
 #endif
 #ifndef UP_HI
-#define UP_HI 16
+#define UP_HI 21
 #endif
 void rd_adapt(uint32_t spent_ms) {
   static uint32_t slow, quick;
