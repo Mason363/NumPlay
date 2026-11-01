@@ -45,11 +45,12 @@ static inline V3 r_view(V3 p) {
 /* the screen point of a world point; false behind the camera */
 bool r_project(V3 p, float *sx, float *sy);
 
-/* distance haze: from HAZE0 to HAZE1 metres ahead colours go to the horizon's */
-extern float r_haze0, r_haze1;
+/* fog, as the game's (linear, by depth): from r_fog0 to r_fog1 metres ahead every pixel goes to r_fog_rgb; what
+ * lies wholly past r_fog1 is not drawn (it would be the fog's colour) */
+extern float r_fog0, r_fog1;
 /* beyond r_far (m) a baked face with an average colour is drawn in it, plain */
 extern float r_far;
-extern uint32_t r_haze_rgb;
+extern uint32_t r_fog_rgb;
 
 /* pictures laid on polygons: width and height are powers of two; index 0 can be see-through */
 typedef struct {
@@ -67,7 +68,6 @@ enum {
   P_TWOSIDED = 1,
   P_DECAL = 2,      /* lies on another polygon: drawn over it */
   P_ALPHA = 4,      /* see-through (alpha 0..255): drawn last, no depth written */
-  P_NOHAZE = 8,
   P_DECAL2 = 16,    /* lies on a decal */
   P_DECAL3 = 32,    /* lies on that */
 };

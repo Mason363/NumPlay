@@ -40,6 +40,11 @@ typedef struct {
 
 typedef struct {
   uint32_t score, coins, bonus_coins, bonus_level;
+  /* the totem's bonus (the game's GameGUITotem): at each 100 coins, 100, 250, 500 then 1000 more points a second
+   * later, its picture flying to the score meanwhile */
+  float totem_t;           /* seconds left before it counts (0: none) */
+  uint32_t totem_pts;
+  uint8_t totem_pic;       /* 1..4: bonus100, 250, 500, 1000 */
   float dist, dist_left;   /* distance (the game's meters), and what is not yet in the score */
   float dist_no_coins;     /* distance before the first coin */
   float dist_no_trip;      /* the longest stretch without a stumble */

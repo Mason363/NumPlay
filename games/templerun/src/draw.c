@@ -207,3 +207,45 @@ void d_label(const Font *f, int x, int baseline, const char *s, uint16_t fill, u
   if (t > 0) outline(f, t > 2 ? 2 : t, x, baseline, s, line);
   d_text(f, x, baseline, s, fill, 255);
 }
+
+/* ---------------------------------------------------------------- the game's pictures */
+static void blit(const HudPic *p, int x, int y, int a256, int flip, int from_row) {
+  int y0 = imax(y + from_row, r_y0), y1 = imin(y + p->h, r_y1);
+  int x0 = imax(x, 0), x1 = imin(x + p->w, SCREEN_W);
+  if (y0 >= y1 || x0 >= x1) return;
+  for (int j = y0; j < y1; j++) {
+    const uint8_t *src = hud_px + p->off + (j - y) * p->w;
+    uint16_t *d = row(j);
+    for (int i = x0; i < x1; i++) {
+      uint8_t k = src[flip ? p->w - 1 - (i - x) : i - x];
+      if (!k) continue;
+      int a = hud_alpha[k] * a256 >> 8;
+      d[i] = a >= 248 ? hud_pal[k] : r_mix565(d[i], hud_pal[k], a >> 3);
+    }
+  }
+}
+
+void d_pic(int pic, int x, int y, int a256, int flip, int from_row) { blit(&hud_pics[pic], x, y, a256, flip, from_row); }
+
+static const HudPic *gold_of(const HudFont *f, char ch) {
+  int c = (uint8_t)ch - f->first;
+  return &hud_pics[f->at + (c >= 0 && c < f->count ? c : 0)];
+}
+
+int d_gold_width(const HudFont *f, const char *s) {
+  int w = 0;
+  for (; *s; s++) w += gold_of(f, *s)->advance;
+  return w;
+}
+
+int d_gold(const HudFont *f, int x, int y, const char *s, int align, int a256) {
+  int w = d_gold_width(f, s);
+  x -= align < 0 ? 0 : align == 0 ? w / 2 : w;
+  if (y >= r_y1 || y + f->line < r_y0) return w;
+  for (; *s; s++) {
+    const HudPic *g = gold_of(f, *s);
+    if (g->w > 1) blit(g, x + g->ox, y + g->oy, a256, 0, 0);
+    x += g->advance;
+  }
+  return w;
+}

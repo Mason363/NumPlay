@@ -720,7 +720,7 @@ Hold the button and the bike speeds up. In the air, holding it turns the bike ba
 The sled slides down the endless slope by itself, faster and faster. Steer around the trees, rocks, snowmen, stumps and walls: one hit and it breaks. Fences and signs break as you ride through them. Every 10 metres is a point. Past 10 points come tunnels, cracks to jump and floating islands, and giant snowballs roll across. Gifts on the slope buy new sleds at the camp. Your best score, gifts and sleds are saved.
 ## Temple Run
 
-<img src="../games/templerun/docs/shot.png" width="320" align="right" alt="Temple Run: running along the temple path">
+<img src="../games/templerun/docs/shot.png" width="320" align="right" alt="Temple Run: running between the temple's carved pillars">
 
 | Key | What it does |
 | --- | --- |
