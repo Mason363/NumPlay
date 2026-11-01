@@ -4,6 +4,10 @@
  * triangles with their depth. rd_draw then fills a strip of rows at a time: the sky and the ground, the mountains
  * behind everything, then every triangle crossing the strip with a depth buffer, then the shadow. */
 #include <string.h>
+#if defined(__ARM_FEATURE_SIMD32) && defined(PLATFORM_DEVICE)
+#include <arm_acle.h>
+#define SIMD 1   /* the DSP: two pixels' depths compared and picked at once */
+#endif
 #include "../../../launcher/src/gfx.h"
 #include "data.h"
 #include "render.h"
@@ -155,10 +159,7 @@ void cockpit_camera(camera_t *cam, v3 pos, qt rot, float kmh) {
 
 /* ------------------------------------------------------------------ triangles */
 typedef struct { float x, y, w; } sv;
-static int iceil(float f) {
-  int i = (int)f;
-  return (float)i < f ? i + 1 : i;
-}
+static inline int iceil(float f) { return (int)__builtin_ceilf(f); }   /* (one instruction on the calculator) */
 
 static void store(const sv *a, const sv *b, const sv *c, uint16_t col, int kind) {
   if (ntris >= cap) {
@@ -389,6 +390,10 @@ static void draw_chunk(const vis_t *v) {
   uint32_t mask = p->simple ? pt_masks[W.t->mask + in->mask] : 0xFFFFFFFFu;
   int fade = v->dist > fog0 ? (int)((v->dist - fog0) * 256.0f / (far_d - fog0)) : 0;
   if (fade > 240) fade = 240;
+  /* (a face's light depends here only on its material and its normal: kept for the triangles that share them) */
+  uint32_t lkey[8];
+  uint16_t lcol[8];
+  for (int i = 0; i < 8; i++) lkey[i] = 0xFFFFFFFFu;   /* (no material is 255) */
   const uint8_t *tr = &pt_rtri[lod->tfirst * 7];
   for (int k = 0; k < lod->ntri; k++, tr += 7) {
     if (k < 32 && !(mask & (1u << k))) continue;
@@ -398,25 +403,31 @@ static void draw_chunk(const vis_t *v) {
     float cnx = M[0][0] * nx + M[0][1] * ny + M[0][2] * nz, cny = M[1][0] * nx + M[1][1] * ny + M[1][2] * nz,
           cnz = M[2][0] * nx + M[2][1] * ny + M[2][2] * nz;
     if (cnx * a.x + cny * a.y + cnz * a.z >= 0.0f) continue;
-    v3 wn = vmul(V3((float)o[0] * nx + (float)o[1] * ny + (float)o[2] * nz, (float)o[3] * nx + (float)o[4] * ny + (float)o[5] * nz,
-                    (float)o[6] * nx + (float)o[7] * ny + (float)o[8] * nz), 1.0f / 127.0f);
-    int m = tr[3];
-    const float *base = (custom && m == PT_M_BLOCK_SURFACE) ? custom : matlin[env][m];
     const sv *sa = &cs[tr[0]], *sb = &cs[tr[1]], *sc = &cs[tr[2]];
-    if (sa->w > 0.0f && sb->w > 0.0f && sc->w > 0.0f) {
+    bool past = sa->w > 0.0f && sb->w > 0.0f && sc->w > 0.0f;
+    float x0 = 0, x1 = 0, y0 = 0, y1 = 0;
+    if (past) {
       /* (all past the near plane: off the screen, or as it is, or cut to the guard band) */
-      float x0 = pt_minf(sa->x, pt_minf(sb->x, sc->x)), x1 = pt_maxf(sa->x, pt_maxf(sb->x, sc->x));
-      float y0 = pt_minf(sa->y, pt_minf(sb->y, sc->y)), y1 = pt_maxf(sa->y, pt_maxf(sb->y, sc->y));
+      x0 = pt_minf(sa->x, pt_minf(sb->x, sc->x)), x1 = pt_maxf(sa->x, pt_maxf(sb->x, sc->x));
+      y0 = pt_minf(sa->y, pt_minf(sb->y, sc->y)), y1 = pt_maxf(sa->y, pt_maxf(sb->y, sc->y));
       if (x1 < 0.0f || x0 > 320.0f || y1 < 0.0f || y0 > 240.0f) continue;
-      uint16_t col = lit(base, wn, fade, 1.0f);
-      if (x0 >= -GUARD && x1 <= 320.0f + GUARD && y0 >= -GUARD && y1 <= 240.0f + GUARD) store(sa, sb, sc, col, RK_SOLID);
-      else {
-        sv q[3] = {*sa, *sb, *sc};
-        screen_poly(q, 3, col, RK_SOLID);
-      }
-      continue;
     }
-    cam_tri(a, b, c, lit(base, wn, fade, 1.0f), RK_SOLID);
+    uint32_t key = (uint32_t)tr[3] | (uint32_t)tr[4] << 8 | (uint32_t)tr[5] << 16 | (uint32_t)tr[6] << 24;
+    int h = (int)((key * 2654435761u) >> 29);
+    if (lkey[h] != key) {
+      v3 wn = vmul(V3((float)o[0] * nx + (float)o[1] * ny + (float)o[2] * nz, (float)o[3] * nx + (float)o[4] * ny + (float)o[5] * nz,
+                      (float)o[6] * nx + (float)o[7] * ny + (float)o[8] * nz), 1.0f / 127.0f);
+      int m = tr[3];
+      const float *base = (custom && m == PT_M_BLOCK_SURFACE) ? custom : matlin[env][m];
+      lkey[h] = key, lcol[h] = lit(base, wn, fade, 1.0f);
+    }
+    uint16_t col = lcol[h];
+    if (!past) cam_tri(a, b, c, col, RK_SOLID);
+    else if (x0 >= -GUARD && x1 <= 320.0f + GUARD && y0 >= -GUARD && y1 <= 240.0f + GUARD) store(sa, sb, sc, col, RK_SOLID);
+    else {
+      sv q[3] = {*sa, *sb, *sc};
+      screen_poly(q, 3, col, RK_SOLID);
+    }
   }
 }
 
@@ -600,12 +611,18 @@ void rd_shadow(const car_look *c, const car_t *phys) {
 /* the picture's quality follows the time a frame's work takes (the physics and the picture): down at once when
    slow (or out of room for triangles), up slowly. rd_ease_for: a frame whose physics took long is drawn simpler */
 void rd_ease_for(uint32_t physics_ms) { rd_ease = physics_ms > 10 ? 2 : physics_ms > 6 ? 1 : 0; }
+#ifndef UP_LO
+#define UP_LO 23
+#endif
+#ifndef UP_HI
+#define UP_HI 21
+#endif
 void rd_adapt(uint32_t spent_ms) {
   static uint32_t slow, quick;
   int q = rd_detail;
   /* (up from the lower resolutions on time alone; above them, only with triangles to spare) */
   if (spent_ms > 26 || rd_dropped) slow++, quick = 0;
-  else if (q < 3 ? spent_ms < 20 : spent_ms < 16 && rd_tris < cap * 3 / 4) quick++, slow = 0;
+  else if (q < 3 ? spent_ms < UP_LO : spent_ms < UP_HI && rd_tris < cap * 3 / 4) quick++, slow = 0;
   else slow = quick = 0;
   /* (a frame near 33 ms: down at once, two steps when past it) */
   if (spent_ms > 30) q -= spent_ms > 36 ? 2 : 1, slow = 0;
@@ -624,7 +641,7 @@ __attribute__((noinline)) static void background(int ys, int ye) {
      and the depth buffer cleared */
   float rx = C.right.y / focal, uy = C.up.y / focal, fy = C.fwd.y, ff = 1.0f / (focal * focal);
   uint32_t *zall = (uint32_t *)zbuf;
-  for (int x = 0; x < (ye - ys) * SCREEN_W / 2; x++) zall[x] = 0;
+  for (int x = 0; x < (ye - ys) * SCREEN_W / 2; x += 4) zall[x] = zall[x + 1] = zall[x + 2] = zall[x + 3] = 0;
   int step = rd_half ? 2 : 1;
   for (int y = ys; y < ye; y += step) {
     uint16_t *row = gfx_buf + (y - ys) * SCREEN_W;
@@ -639,8 +656,10 @@ __attribute__((noinline)) static void background(int ys, int ye) {
         int32_t d = (idx - prev) / 32, f = prev;
         uint16_t *o = row + x - 32;
         if ((prev >> 16) == (idx >> 16) && prev >= 0 && prev < (256 << 16)) {
-          uint16_t c = back_lut[prev >> 16];
-          for (int k = 0; k < 32; k++) o[k] = c;
+          uint32_t c = back_lut[prev >> 16] * 0x10001u, *w = (uint32_t *)(void *)o;   /* (two pixels a word) */
+          for (int k = 0; k < 16; k += 4) w[k] = w[k + 1] = w[k + 2] = w[k + 3] = c;
+        } else if (prev >= 0 && prev < (256 << 16) && idx >= 0 && idx < (256 << 16)) {
+          for (int k = 0; k < 32; k++, f += d) o[k] = back_lut[f >> 16];   /* (all of it within the table) */
         } else {
           for (int k = 0; k < 32; k++, f += d) {
             int i = f >> 16;
@@ -650,7 +669,12 @@ __attribute__((noinline)) static void background(int ys, int ye) {
       }
       prev = idx;
     }
-    if (step == 2 && y + 1 < ye) memcpy(row + SCREEN_W, row, SCREEN_W * 2);
+    if (step == 2 && y + 1 < ye) {
+      /* (a word at a time: the C library's copies a byte at a time) */
+      const uint32_t *a = (const uint32_t *)(void *)row;
+      uint32_t *b = (uint32_t *)(void *)(row + SCREEN_W);
+      for (int k = 0; k < SCREEN_W / 2; k += 4) b[k] = a[k], b[k + 1] = a[k + 1], b[k + 2] = a[k + 2], b[k + 3] = a[k + 3];
+    }
   }
 }
 
@@ -699,11 +723,13 @@ __attribute__((noinline)) static void raster(const tri *t, int ys, int ye) {
       int nb = bb - ba;
       int32_t qe = qb + d2 * (nb - 1);
       if (nb > 1 && (qe < 0 || qe > 1073725440)) d2 = ((qe < 0 ? 0 : 1073725440) - qb) / (nb - 1);
-      uint16_t *z = zbuf + (r - ys) * SCREEN_W + 2 * ba, *pp = p + 2 * ba;
-      int dn = two ? SCREEN_W : 0;
-      for (int k = 0; k < nb; k++, qb += d2, z += 2, pp += 2) {
-        uint16_t q = (uint16_t)((uint32_t)qb >> 14);
-        if (q > z[0]) z[0] = z[1] = z[dn] = z[dn + 1] = q, pp[0] = pp[1] = pp[dn] = pp[dn + 1] = col;
+      /* (a block's two pixels always share their depth: a word each, for its depths and its colours) */
+      uint32_t *z = (uint32_t *)(void *)(zbuf + (r - ys) * SCREEN_W + 2 * ba), *pp = (uint32_t *)(void *)(p + 2 * ba);
+      uint32_t cc = col * 0x10001u;
+      int dn = two ? SCREEN_W / 2 : 0;
+      for (int k = 0; k < nb; k++, qb += d2, z++, pp++) {
+        uint32_t q = (uint32_t)qb >> 14;
+        if (q > (*z & 0xFFFF)) z[0] = z[dn] = q * 0x10001u, pp[0] = pp[dn] = cc;
       }
       continue;
     }
@@ -727,13 +753,43 @@ __attribute__((noinline)) static void raster(const tri *t, int ys, int ye) {
     uint16_t *z = zbuf + (r - ys) * SCREEN_W + pa;
     p += pa;
     if (kind == RK_SOLID) {
+      int x = 0;
+#ifdef SIMD
+      /* two pixels a word: each half nearer than what is there takes the depth and the colour (in both rows when
+         half the rows are drawn, as below) */
+      if ((pa & 1) && n) {
+        uint32_t q = (uint32_t)qa >> 14;
+        if (q > z[0]) {
+          z[0] = (uint16_t)q, p[0] = col;
+          if (two) z[SCREEN_W] = (uint16_t)q, p[SCREEN_W] = col;
+        }
+        x = 1, qa += d;
+      }
+      uint32_t cc = col * 0x10001u;
+      uint32_t *zw = (uint32_t *)(void *)(z + x), *pw = (uint32_t *)(void *)(p + x);
+      int nw = (n - x) / 2;
+      if (two)
+        for (int k = 0; k < nw; k++, qa += 2 * d) {
+          uint32_t nz = ((uint32_t)qa >> 14) | (((uint32_t)(qa + d) << 2) & 0xFFFF0000u), oz = zw[k];
+          __usub16(oz, nz);
+          zw[k] = __sel(oz, nz), zw[k + SCREEN_W / 2] = __sel(zw[k + SCREEN_W / 2], nz);
+          pw[k] = __sel(pw[k], cc), pw[k + SCREEN_W / 2] = __sel(pw[k + SCREEN_W / 2], cc);
+        }
+      else
+        for (int k = 0; k < nw; k++, qa += 2 * d) {
+          uint32_t nz = ((uint32_t)qa >> 14) | (((uint32_t)(qa + d) << 2) & 0xFFFF0000u), oz = zw[k];
+          __usub16(oz, nz);
+          zw[k] = __sel(oz, nz), pw[k] = __sel(pw[k], cc);
+        }
+      x += 2 * nw;
+#endif
       if (two) {
-        for (int x = 0; x < n; x++, qa += d) {
+        for (; x < n; x++, qa += d) {
           uint32_t q = (uint32_t)qa >> 14;
           if (q > z[x]) z[x] = z[SCREEN_W + x] = (uint16_t)q, p[x] = p[SCREEN_W + x] = col;
         }
       } else {
-        for (int x = 0; x < n; x++, qa += d) {
+        for (; x < n; x++, qa += d) {
           uint32_t q = (uint32_t)qa >> 14;
           if (q > z[x]) z[x] = (uint16_t)q, p[x] = col;
         }
