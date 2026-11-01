@@ -1,6 +1,6 @@
 // The prize machine's characters, from Crossy Road's own models (tools/chars.py writes it).
-#define NCHARS 12
-#define NCC 42  // colours
+#define NCHARS 10
+#define NCC 31  // colours
 #define CHAR_MAXB 40
 #define CHAR_PAL \
   [C_CHAR + 0] = 0xFFFF, [C_CHAR + 1] = 0x8C71, \
@@ -24,27 +24,16 @@
   [C_CHAR + 36] = 0xAFFB, [C_CHAR + 37] = 0x544E, \
   [C_CHAR + 38] = 0x6B0B, [C_CHAR + 39] = 0x2924, \
   [C_CHAR + 40] = 0x83CE, [C_CHAR + 41] = 0x3185, \
-  [C_CHAR + 42] = 0xF77A, [C_CHAR + 43] = 0x83EE, \
-  [C_CHAR + 44] = 0x8B2B, [C_CHAR + 45] = 0x3924, \
-  [C_CHAR + 46] = 0xA40E, [C_CHAR + 47] = 0x49A5, \
-  [C_CHAR + 48] = 0xFCB2, [C_CHAR + 49] = 0x8228, \
-  [C_CHAR + 50] = 0x7AEB, [C_CHAR + 51] = 0x3103, \
-  [C_CHAR + 52] = 0xD36D, [C_CHAR + 53] = 0x6945, \
-  [C_CHAR + 54] = 0x5ACB, [C_CHAR + 55] = 0x18E3, \
-  [C_CHAR + 56] = 0xF77E, [C_CHAR + 57] = 0x8410, \
-  [C_CHAR + 58] = 0xEEB6, [C_CHAR + 59] = 0x7B6B, \
-  [C_CHAR + 60] = 0x738E, [C_CHAR + 61] = 0x2965, \
-  [C_CHAR + 62] = 0xA555, [C_CHAR + 63] = 0x528A, \
-  [C_CHAR + 64] = 0xD6BA, [C_CHAR + 65] = 0x6B6E, \
-  [C_CHAR + 66] = 0xFFBD, [C_CHAR + 67] = 0x842F, \
-  [C_CHAR + 68] = 0x62CA, [C_CHAR + 69] = 0x20E3, \
-  [C_CHAR + 70] = 0xAB4C, [C_CHAR + 71] = 0x5124, \
-  [C_CHAR + 72] = 0xFFFF, [C_CHAR + 73] = 0x8C71, \
-  [C_CHAR + 74] = 0x5AEB, [C_CHAR + 75] = 0x1904, \
-  [C_CHAR + 76] = 0x52AA, [C_CHAR + 77] = 0x18C3, \
-  [C_CHAR + 78] = 0xC6A8, [C_CHAR + 79] = 0x6381, \
-  [C_CHAR + 80] = 0x7B26, [C_CHAR + 81] = 0x3120, \
-  [C_CHAR + 82] = 0x8C51, [C_CHAR + 83] = 0x39E7, \
+  [C_CHAR + 42] = 0xD36D, [C_CHAR + 43] = 0x6945, \
+  [C_CHAR + 44] = 0x5ACB, [C_CHAR + 45] = 0x18E3, \
+  [C_CHAR + 46] = 0xF77E, [C_CHAR + 47] = 0x8410, \
+  [C_CHAR + 48] = 0xEEB6, [C_CHAR + 49] = 0x7B6B, \
+  [C_CHAR + 50] = 0x738E, [C_CHAR + 51] = 0x2965, \
+  [C_CHAR + 52] = 0x5AEB, [C_CHAR + 53] = 0x1904, \
+  [C_CHAR + 54] = 0x52AA, [C_CHAR + 55] = 0x18C3, \
+  [C_CHAR + 56] = 0xC6A8, [C_CHAR + 57] = 0x6381, \
+  [C_CHAR + 58] = 0x7B26, [C_CHAR + 59] = 0x3120, \
+  [C_CHAR + 60] = 0x8C51, [C_CHAR + 61] = 0x39E7, \
 
 // boxes: x (4 bits), y (5), z (5), width - 1 (4), height - 1 (5), depth - 1 (5), colour (4), in voxels
 static const uint32_t char_box[] = {
@@ -85,34 +74,18 @@ static const uint32_t char_box[] = {
   0x20080818, 0x30081A69, 0x30081E69, 0x20801202, 0x20801204, 0x20801207,
   0x20801209, 0x30001C62, 0x00001C72, 0x30001C82, 0x30001C69, 0x00001C79,
   0x30001C89,
-  // Sheep
-  0x062E8270, 0x12959CC2, 0x02051D23, 0x1085A8E2, 0x1081A912, 0x0180C461,
-  0x0180D261, 0x10941CB1, 0x10884602, 0x10885402, 0x20884632, 0x20885432,
-  0x300C80E4, 0x0180C466, 0x0180D266, 0x10884607, 0x10885407, 0x20884637,
-  0x20885437, 0x10941CB9, 0x1001A8C2, 0x400128D3, 0x00011B33, 0x500820E1,
-  0x500824E1, 0x1080A904, 0x500820E9, 0x500824E9, 0x10802902, 0x10802908,
-  0x500022E1, 0x600022F1, 0x50002301, 0x60002903, 0x60002907, 0x500022E9,
-  0x600022F9, 0x50002309,
   // Vampire
   0x003D8200, 0x11998400, 0x111D8470, 0x20208A72, 0x010184F0, 0x101C4A70,
   0x101C4A75, 0x30848B02, 0x41008922, 0x00018000, 0x00044CE0, 0x00044CE5,
   0x11000CD0, 0x30008CF2, 0x30008902, 0x40008912, 0x11000CD6, 0x308010C0,
   0x00004AF0, 0x00004AF5, 0x308010C6, 0x300012D0, 0x300012D6,
-  // Gray_Rabbit
-  0x019D8410, 0x01959050, 0x02850C31, 0x00899A80, 0x00890C51, 0x001C4210,
-  0x001C4215, 0x001092B0, 0x10188212, 0x001092B4, 0x21085850, 0x200C8062,
-  0x21085855, 0x12004400, 0x12004405, 0x10850C11, 0x000198A0, 0x11005001,
-  0x00845011, 0x30049E82, 0x11005004, 0x00845014, 0x001014B0, 0x001014B2,
-  0x001014B4, 0x001014B6, 0x100C14B1, 0x100C14B5, 0x21009852, 0x21009872,
-  0x00008282, 0x00019880, 0x30019890, 0x40809862, 0x10841013, 0x000014F1,
-  0x50001C63, 0x000014F5,
   // Frank
   0x021DC060, 0x11108210, 0x210CC2E2, 0x11108215, 0x21044CA0, 0x3100C322,
   0x21044CA6, 0x21808200, 0x21808205, 0x11044243, 0x00044AA0, 0x00044AA6,
   0x40800301, 0x40000506,
 };
-static const uint16_t char_at[NCHARS + 1] = {0, 20, 44, 58, 82, 99, 123, 133, 158, 196, 219, 257, 271};
+static const uint16_t char_at[NCHARS + 1] = {0, 20, 44, 58, 82, 99, 123, 133, 158, 181, 195};
 // west and south corner (half voxels), voxel (1/2000 tile)
-static const int8_t char_hdr[NCHARS][3] = {{-10, -14, 100}, {-10, -14, 100}, {-10, -14, 90}, {-13, -13, 90}, {-10, -6, 125}, {-7, -10, 125}, {-12, -8, 110}, {-12, -17, 80}, {-11, -22, 80}, {-7, -10, 120}, {-7, -16, 110}, {-8, -9, 125}};
-static const uint8_t char_cols_at[NCHARS + 1] = {0, 4, 10, 13, 17, 21, 25, 26, 30, 37, 42, 48, 53};
-static const uint8_t char_cols[] = {0, 1, 2, 3, 4, 5, 6, 7, 0, 8, 7, 8, 5, 9, 10, 11, 0, 12, 13, 14, 15, 10, 0, 16, 17, 18, 19, 20, 7, 0, 21, 22, 23, 12, 24, 0, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41};
+static const int8_t char_hdr[NCHARS][3] = {{-10, -14, 100}, {-10, -14, 100}, {-10, -14, 90}, {-13, -13, 90}, {-10, -6, 125}, {-7, -10, 125}, {-12, -8, 110}, {-12, -17, 80}, {-7, -10, 120}, {-8, -9, 125}};
+static const uint8_t char_cols_at[NCHARS + 1] = {0, 4, 10, 13, 17, 21, 25, 26, 30, 35, 40};
+static const uint8_t char_cols[] = {0, 1, 2, 3, 4, 5, 6, 7, 0, 8, 7, 8, 5, 9, 10, 11, 0, 12, 13, 14, 15, 10, 0, 16, 17, 18, 19, 20, 7, 0, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30};

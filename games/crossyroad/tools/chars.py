@@ -21,7 +21,7 @@ import sys
 # (mesh, the original's number for it) in the original's order; the Chicken first, as the one to start with
 # (the ones whose boxes come to more than sort_boxes takes, or that it can't put in an order, are left out)
 CHARS = [("Chicken", 19), ("Duck", 4), ("BabyDuck", 5), ("Penguin", 6), ("Zombie", 8), ("Wizard", 10),
-         ("Ghost", 23), ("Kiwi", 25), ("Sheep", 30), ("Vampire", 34), ("Gray_Rabbit", 40), ("Frank", 49)]
+         ("Ghost", 23), ("Kiwi", 25), ("Vampire", 34), ("Frank", 49)]
 MAXB = 40  # the boxes sort_boxes takes
 
 

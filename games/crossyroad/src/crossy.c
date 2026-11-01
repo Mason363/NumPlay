@@ -164,9 +164,9 @@ struct Rom {
   char save_name[15];
   char s_crossy[7], s_road[5];
 #if NP_TEXT_EXTRA
-  char s_new_top[24], s_quit[24], s_quit_q[24], s_no[8], s_yes[8], s_play[16], s_togo[24], s_names[NCHARS][24];
+  char s_new_top[24], s_quit[24], s_quit_q[24], s_no[8], s_yes[8], s_play[16], s_names[NCHARS][24];
 #else
-  char s_new_top[8], s_quit[10], s_quit_q[11], s_no[3], s_yes[4], s_play[5], s_togo[8], s_names[NCHARS][13];
+  char s_new_top[8], s_quit[10], s_quit_q[11], s_no[3], s_yes[4], s_play[5], s_names[NCHARS][13];
 #endif
 };
 
@@ -506,10 +506,9 @@ static const struct Rom rom_init = {
   .s_no = T("NO"),
   .s_yes = T("YES"),
   .s_play = T("PLAY"),
-  .s_togo = T("# TO GO"),   // (# is the coins still to get)
   // the characters, in chars.h's order: their names in the original
   .s_names = {T("CHICKEN"), T("MALLARD"), T("BABY DUCK"), T("PENGUIN"), T("ZOMBIE"), T("MAD WIZARD"), T("GHOST"),
-              T("KIWI"), T("FLUFFY SHEEP"), T("VAMPIRE"), T("GREY BUNNY"), T("FRANKENSTEIN")},
+              T("KIWI"), T("VAMPIRE"), T("FRANKENSTEIN")},
 };
 #endif
 
@@ -537,7 +536,6 @@ static const struct Rom rom_init = {
 #define str_no G.rom.s_no
 #define str_yes G.rom.s_yes
 #define str_play G.rom.s_play
-#define str_togo G.rom.s_togo
 #define str_names G.rom.s_names
 
 _Static_assert(NCOLORS <= 256, "palette indices are bytes");
@@ -1917,7 +1915,7 @@ static void button_box(int x, int y, int c) {
 }
 
 // Game over: the character played on the left (Left: the characters), the prize machine on the right
-// (Right) once there are 100 coins, the coins still to get before that.
+// (Right) once there are 100 coins.
 static void draw_side_buttons(int y) {
   button_box(48, y, C_BTN);
   draw_at(MD_CHICKEN + 2, 74, y + 36, 1.25f * char_k);
@@ -1927,17 +1925,6 @@ static void draw_side_buttons(int y) {
     button_box(220, y, C_GOLD);
     draw_ball(246, y + 34, 0.7f, 0, 3);
     draw_arrow(292, y + 23, 1);
-  } else {
-    char buf[NP_TEXT_EXTRA ? 40 : 16], *o = buf;
-    for (const char *t = str_togo; *t; t++)
-      if (*t == '#') {
-        itoa_(100 - coins, o);
-        while (*o) o++;
-      } else {
-        *o++ = *t;
-      }
-    *o = 0;
-    text_ol(246 - text_width(buf, 1) / 2, y + 18, buf, 1, C_WHITE);
   }
 }
 
