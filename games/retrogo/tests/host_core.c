@@ -1,7 +1,7 @@
 /* Retro-Go's emulators on a computer: runs a ROM for some frames, with random keys if asked,
  * and writes the last frame as a PPM picture.
  *   host_core ROM FRAMES OUT.ppm [SEED] [SCRIPT]   (SEED: random pad presses; 0 for none)
- * The system comes from the file's extension (.gb .gbc .nes .sms .gg). */
+ * The system comes from the file's extension (.gb .gbc .nes .sms .gg .sg). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -83,9 +83,9 @@ int main(int argc, char **argv) {
   int frames = atoi(argv[2]);
   unsigned seed = argc > 4 ? (unsigned)atoi(argv[4]) : 0;
   const char *ext = strrchr(argv[1], '.');
-  kind = ext && !strcmp(ext, ".nes") ? NES : ext && (!strcmp(ext, ".sms") || !strcmp(ext, ".gg")) ? SMS : GB;
+  kind = ext && !strcmp(ext, ".nes") ? NES : ext && (!strcmp(ext, ".sms") || !strcmp(ext, ".gg") || !strcmp(ext, ".sg")) ? SMS : GB;
   int r = kind == NES ? nes_load(rom, size)
-          : kind == SMS ? sms_load(rom, size, crc32(rom, size), !strcmp(ext, ".gg"))
+          : kind == SMS ? sms_load(rom, size, crc32(rom, size), !strcmp(ext, ".gg") ? SMS_GG : !strcmp(ext, ".sg") ? SMS_SG : SMS_SMS)
                         : gb_load(rom, size);
   if (r != RG_OK) return fprintf(stderr, "load failed: %d\n", r), 1;
   int pad = 0;
