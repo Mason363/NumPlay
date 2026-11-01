@@ -24,7 +24,7 @@
 
 void plat_push(int x, int y, int w, int h, const uint16_t *px);
 void np_push(int x, int y, int w, int h, const color_t *px) { plat_push(x, y, w, h, px); }
-static color_t strip[SCREEN_W * STRIP];
+static color_t strip[SCREEN_W * STRIP] __attribute__((aligned(4)));   /* (render.c fills it a word at a time) */
 
 const char *const pt_env_name[3] = {"Summer", "Winter", "Desert"};
 static const char *const PAINT_NAMES[PT_PAINTS] = {"Red", "Blue", "Green", "Purple", "Orange", "Teal", "Black", "Silver"};
