@@ -1801,15 +1801,15 @@
     }
     $('#app-file').addEventListener('change', (e) => { addApps([...e.target.files]); e.target.value = ''; });
     // files dropped anywhere: apps (.nwa) to your apps, the rest to Retro-Go
-    let depth = 0;
+    let fileDrag = 0;
     const files = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
-    addEventListener('dragenter', (e) => { if (files(e)) { depth++; document.body.classList.add('dragging'); e.preventDefault(); } });
+    addEventListener('dragenter', (e) => { if (files(e)) { fileDrag++; document.body.classList.add('dragging'); e.preventDefault(); } });
     addEventListener('dragover', (e) => { if (files(e)) e.preventDefault(); });
-    addEventListener('dragleave', () => { if (--depth <= 0) { depth = 0; document.body.classList.remove('dragging'); } });
+    addEventListener('dragleave', () => { if (--fileDrag <= 0) { fileDrag = 0; document.body.classList.remove('dragging'); } });
     addEventListener('drop', async (e) => {
       if (!files(e)) return;
       e.preventDefault();
-      depth = 0;
+      fileDrag = 0;
       document.body.classList.remove('dragging');
       const all = [...e.dataTransfer.files], nwa = all.filter((f) => /\.nwa$/i.test(f.name)), rest = all.filter((f) => !nwa.includes(f));
       if (nwa.length) await addApps(nwa);

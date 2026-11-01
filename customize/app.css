@@ -66,8 +66,9 @@ main {
   -webkit-tap-highlight-color: transparent;
   transition: transform 300ms var(--spring), opacity var(--t) var(--ease), translate 200ms var(--ease);
 }
-/* (the icons have their own rounded corners, so their shadow follows them, not a box) */
-.app img { display: block; width: 100%; aspect-ratio: 55 / 56; pointer-events: none; user-select: none; transition: filter var(--t) var(--ease), opacity var(--t) var(--ease); }
+/* (the icons have their own rounded corners, and any that come square get the same ones, 22%: their shadow
+   follows them, not a box) */
+.app img { display: block; width: 100%; aspect-ratio: 55 / 56; border-radius: 22%; pointer-events: none; user-select: none; transition: filter var(--t) var(--ease), opacity var(--t) var(--ease); }
 .app .badge {
   position: absolute; right: -5px; top: -5px; width: 22px; height: 22px; border-radius: 11px;
   display: flex; align-items: center; justify-content: center; transform: scale(0);
@@ -104,7 +105,7 @@ main {
 .app.placeholder { opacity: 0.25 !important; }
 .app.placeholder .badge { display: none; }
 .drag-ghost { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; will-change: transform; }
-.drag-ghost img { display: block; width: 100%; aspect-ratio: 55 / 56; filter: drop-shadow(0 16px 20px rgba(0, 0, 0, 0.28)); }
+.drag-ghost img { display: block; width: 100%; aspect-ratio: 55 / 56; border-radius: 22%; filter: drop-shadow(0 16px 20px rgba(0, 0, 0, 0.28)); }
 /* while dragging, the other icons only slide aside */
 body.dragging-icon .app { pointer-events: none; }
 body.dragging-icon, body.dragging-icon * { cursor: grabbing !important; user-select: none; }
@@ -195,7 +196,7 @@ body.dragging-icon, body.dragging-icon * { cursor: grabbing !important; user-sel
   border: 1px solid rgba(0, 0, 0, 0.45);
   transition: left var(--t) var(--ease), top var(--t) var(--ease), width var(--t) var(--ease), height var(--t) var(--ease);
 }
-.tile img { display: block; height: auto; aspect-ratio: 55 / 56; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45)); }
+.tile img { display: block; height: auto; aspect-ratio: 55 / 56; border-radius: 22%; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45)); }
 .tile b { color: #ffffff; font-size: 4.4cqh; font-weight: 800; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
 .tile.free { background: repeating-linear-gradient(135deg, #15171c 0 4px, #1b1e24 4px 8px); border-color: rgba(0, 0, 0, 0.6); }
 .preview { position: absolute; left: 0; right: 0; top: 7.5%; bottom: 0; z-index: 2; background: #000000; display: none; pointer-events: none; }
@@ -215,7 +216,7 @@ body.dragging .drop-hint { display: flex; }
   display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); white-space: nowrap;
   font-size: 14px; font-weight: 650;
 }
-.chip img { width: 28px; height: 28px; display: block; }
+.chip img { width: 28px; height: 28px; display: block; border-radius: 22%; }
 .chip img.custom { clip-path: inset(0 round 22%); }  /* (a picture of your own: the corners every icon has) */
 .chip.lang { padding: 0 12px 0 14px; font-size: 13px; font-weight: 750; }
 .chip .caret { color: var(--mute); flex-shrink: 0; }
@@ -236,7 +237,7 @@ body.dragging .drop-hint { display: flex; }
 .pop-label { width: 66px; flex-shrink: 0; font-size: 12px; font-weight: 650; color: var(--mute); }
 .icon-pick { display: flex; gap: 8px; }
 .icon-pick button { width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22%; background: transparent; cursor: pointer; position: relative; }
-.icon-pick button img { width: 100%; height: 100%; display: block; }
+.icon-pick button img { width: 100%; height: 100%; display: block; border-radius: 22%; }
 .icon-pick button[aria-checked="true"] { box-shadow: 0 0 0 2.5px var(--card), 0 0 0 4.5px var(--blue); }
 .icon-pick .upload { border: 2px dashed var(--line); color: var(--mute); display: flex; align-items: center; justify-content: center; }
 .icon-pick .custom img { clip-path: inset(0 round 22%); }
@@ -385,7 +386,7 @@ html.flat .sticker canvas { position: absolute; inset: 0; width: 100%; height: 1
 
 /* ---- the intro: the games flying into the calculator */
 .flyer { position: fixed; left: 0; top: 0; z-index: 70; pointer-events: none; will-change: transform, opacity; }
-.flyer img { display: block; width: 100%; aspect-ratio: 55 / 56; filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.22)); }
+.flyer img { display: block; width: 100%; aspect-ratio: 55 / 56; border-radius: 22%; filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.22)); }
 body.intro-on main { pointer-events: none; }
 html.intro-wait main { opacity: 0; }
 
