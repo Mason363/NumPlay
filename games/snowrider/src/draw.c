@@ -12,7 +12,7 @@
 #include "ui.h"
 
 #define VIEW 62.0f     /* metres ahead drawn */
-#define LOD_FAR 22.0f  /* the far meshes past this, at most */
+#define LOD_FAR 30.0f  /* the far meshes past this, at most */
 #define SHADES 32
 
 static uint16_t shade_lut[NCOLOURS][SHADES];
@@ -89,7 +89,8 @@ static void sky(void) {
 
 /* ---------------------------------------------------------------- the world into polygons */
 #define MAXVB 640
-static V3 vb[MAXVB];
+static V3 vb[MAXVB];        /* a mesh's corners: on the screen (r_to_screen) when in front of the camera, else in its space */
+static uint8_t vin[MAXVB];  /* (1: in front) */
 
 static void draw_mesh(const RMesh *rm, const float W[12]) {
   float s = rm->s;
@@ -104,7 +105,10 @@ static void draw_mesh(const RMesh *rm, const float W[12]) {
     float wz = W[8] * x + W[9] * y + W[10] * z + W[11];
     float dz = wz - cz;
     wy -= dz * dz * CURVATURE;
-    vb[i] = (V3){R[0] * wx + R[1] * wy + R[2] * dz, R[3] * wx + R[4] * wy + R[5] * dz, R[6] * wx + R[7] * wy + R[8] * dz};
+    V3 c = {R[0] * wx + R[1] * wy + R[2] * dz, R[3] * wx + R[4] * wy + R[5] * dz, R[6] * wx + R[7] * wy + R[8] * dz};
+    /* (each corner projected once, for all its triangles) */
+    vin[i] = c.z >= 0.1f;
+    vb[i] = vin[i] ? r_to_screen(c) : c;
   }
   float det = m_det(W);
   bool flip = det < 0;
@@ -115,14 +119,19 @@ static void draw_mesh(const RMesh *rm, const float W[12]) {
   float l2 = (W[2] * light[0] + W[6] * light[1] + W[10] * light[2]) * inv;
   /* (a turn times a size s, maybe mirrored: the normal turns with W / s, and n . (W^T L) / s is its light) */
   for (int i = 0; i < rm->nt; i++) {
-    const uint16_t *t = rm->t + i * 3;
-    if (t[0] >= nv || t[1] >= nv || t[2] >= nv) continue;
-    V3 p[3] = {vb[t[0]], flip ? vb[t[2]] : vb[t[1]], flip ? vb[t[1]] : vb[t[2]]};
-    if (p[0].z < 0.1f && p[1].z < 0.1f && p[2].z < 0.1f) continue;
+    int t0 = corner_of(rm->t, rm->nv, i * 3), t1 = corner_of(rm->t, rm->nv, i * 3 + 1), t2 = corner_of(rm->t, rm->nv, i * 3 + 2);
+    if (t0 >= nv || t1 >= nv || t2 >= nv) continue;
+    int a = t0, b = flip ? t2 : t1, c = flip ? t1 : t2;
+    int in = vin[a] + vin[b] + vin[c];
+    if (!in) continue;
     const int8_t *n = rm->n + i * 3;
     float d = n[0] * l0 + n[1] * l1 + n[2] * l2;
     int sh = d <= 0 ? 0 : d >= 1 ? SHADES - 1 : (int)(d * (SHADES - 1) + 0.5f);
-    r_poly_cam(p, 3, shade_lut[rm->c[i]][sh], 0, 255);
+    uint16_t col = shade_lut[rm->c[i]][sh];
+    if (in == 3 && r_tri_screen(&vb[a], &vb[b], &vb[c], col)) continue;
+    /* (crossing the near plane, or reaching far off the screen: cut in camera space) */
+    V3 p[3] = {vin[a] ? r_from_screen(vb[a]) : vb[a], vin[b] ? r_from_screen(vb[b]) : vb[b], vin[c] ? r_from_screen(vb[c]) : vb[c]};
+    r_poly_cam(p, 3, col, 0, 255);
   }
 }
 
@@ -204,7 +213,7 @@ static void draw_world(void) {
     }
   /* (the far meshes come nearer while it is full, and go back out as room comes back) */
   if (r_full()) lod = fmaxf(lod - 1, 4);
-  else if (r_count() < 1300) lod = fminf(lod + 0.25f, LOD_FAR);
+  else if (r_count() < 1750) lod = fminf(lod + 0.25f, LOD_FAR);
 }
 
 /* ---------------------------------------------------------------- over the picture */
@@ -253,10 +262,16 @@ static bool flakes_set;
 static int nflakes;
 static int16_t fx[NFLAKES], fy[NFLAKES];
 static uint8_t fs[NFLAKES];
+/* (their own random numbers, as a particle system's: how often frames are drawn never changes the slope) */
+static uint32_t flake_seed = 0x2545F491;
+static float flake_rnd(float a, float b) {
+  flake_seed ^= flake_seed << 13, flake_seed ^= flake_seed >> 17, flake_seed ^= flake_seed << 5;
+  return a + (b - a) * (float)(flake_seed >> 8) * (1.0f / 16777215);
+}
 
 static void snow_project(void) {
   if (!flakes_set) {
-    for (int i = 0; i < NFLAKES; i++) flake[i][0] = rnd_range(-6, 6), flake[i][1] = rnd_range(-3, 4), flake[i][2] = rnd_range(0.5f, 12);
+    for (int i = 0; i < NFLAKES; i++) flake[i][0] = flake_rnd(-6, 6), flake[i][1] = flake_rnd(-3, 4), flake[i][2] = flake_rnd(0.5f, 12);
     flakes_set = true;
   }
   static float last_t;
@@ -280,7 +295,7 @@ static void snow_project(void) {
   float ahead = mode == M_PLAY ? sled.speed * dt : 0;
   for (int i = 0; i < NFLAKES; i++) {
     flake[i][2] -= ahead;
-    if (flake[i][2] < 0.4f) flake[i][2] += 12, flake[i][0] = rnd_range(-6, 6), flake[i][1] = rnd_range(-3, 4);
+    if (flake[i][2] < 0.4f) flake[i][2] += 12, flake[i][0] = flake_rnd(-6, 6), flake[i][1] = flake_rnd(-3, 4);
   }
 }
 

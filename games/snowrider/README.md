@@ -70,7 +70,7 @@ At the camp, **OK** rides and **Left** opens the sleds (the game's wooden sign a
 
 * **On its own:** Snow Rider 3D is too big to fit next to NumPlay. Installing it from the NumWorks website swaps out NumPlay and the other apps, and installing NumPlay again swaps it back out. Your progress in each one is kept.
 * **Quit game** in the pause menu asks first.
-* The meshes have fewer triangles than the game's, each with a simpler version for far away, so that it runs at about 38 frames a second on the N0110 (31 on the crash). The walls, ramps and rocks the sled meets keep all their triangles. Only the sled casts a shadow.
+* The meshes have fewer triangles than the game's (half for most, a fifth to a third for the trees and rocks), each with a simpler version for far away, so that it runs at about 40 frames a second on the N0110. The walls, ramps and rocks the sled meets keep all their triangles. Only the sled casts a shadow.
 * There is no music or sound: the calculator has no speaker.
 
 ## Credits

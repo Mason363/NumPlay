@@ -3,11 +3,12 @@
 #define SR_DATA_H
 #include <stdint.h>
 
-/* a mesh to draw: corners (int16 times s metres), triangles, a palette colour and a normal (int8, 127 = 1) each,
- * and a sphere around it */
-typedef struct { const int16_t *v; const uint16_t *t; const uint8_t *c; const int8_t *n; uint16_t nv, nt; float s; float ctr[3], rad; } RMesh;
-/* a collision mesh: corners, triangles (their front: clockwise seen from outside), its box */
-typedef struct { const int16_t *v; const uint16_t *t; uint16_t nv, nt; float s; float lo[3], hi[3]; } CMesh;
+/* a mesh to draw: corners (int16 times s metres), triangles (their corners: bytes when there are 256 corners or
+ * fewer, see corner_of), a palette colour and a normal (int8, 127 = 1) each, and a sphere around it */
+typedef struct { const int16_t *v; const void *t; const uint8_t *c; const int8_t *n; uint16_t nv, nt; float s; float ctr[3], rad; } RMesh;
+/* a collision mesh: corners, triangles (as a mesh to draw's; their front: clockwise seen from outside), its box */
+typedef struct { const int16_t *v; const void *t; uint16_t nv, nt; float s; float lo[3], hi[3]; } CMesh;
+static inline int corner_of(const void *t, int nv, int k) { return nv <= 256 ? ((const uint8_t *)t)[k] : ((const uint16_t *)t)[k]; }
 /* a mesh of a prefab, near and far, and where it lies in the prefab (3x4, rows) */
 typedef struct { uint16_t near, far; float m[12]; } Part;
 /* a collider: box (the matrix takes the unit cube to it), sphere (unit sphere), capsule (centre, along axis dir,

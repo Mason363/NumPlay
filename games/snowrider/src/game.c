@@ -236,13 +236,15 @@ static void sled_play(uint32_t keys, float dt) {
   point_update(dt);
 #ifdef HOST
   extern bool host_god;   /* (tests/play.c: the sled goes through everything) */
+#else
+  extern uint32_t host_god;   /* (main.c: tools/bench.py sets it) */
+#endif
   if (host_god) {
     touch();
     land();
     if (sled.py < -10) sled.py = 2, sled.vspeed = 0;
     return;
   }
-#endif
   if (collision(dt)) {
     end_run();
     return;
