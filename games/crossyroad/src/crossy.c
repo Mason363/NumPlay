@@ -44,6 +44,8 @@ const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level")))
 // Helpers used from many places are kept out of line: smaller code.
 #define NOINLINE __attribute__((noinline))
 
+#include "chars.h"
+
 // ---------------------------------------------------------------------------
 // Palette indices (the colors are in the constant data below).
 
@@ -54,7 +56,7 @@ enum {
   C_ROAD, C_ROAD_O, C_ROAD_SH, C_ROAD_OSH, C_ROAD_SIDE, C_DASH, C_DASH_O,
   C_WATER, C_WATER_O, C_WATER_SH, C_WATER_OSH, C_FOAM,
   C_RAIL, C_RAIL_S, C_TIE, C_TIE_S, C_RAIL_SH, C_TIE_SH,
-  C_WHITE, C_GRAY, C_COMB, C_COMB_S, C_BEAK, C_BEAK_S, C_EYE,
+  C_WHITE, C_GRAY,
   C_LEAF, C_LEAF_A, C_LEAF_B, C_TRUNK, C_TRUNK_E,
   C_ROCK, C_ROCK_S,
   C_LOG, C_LOG_BARK, C_LOG_S, C_LOG_END, C_LOG_SH,
@@ -71,8 +73,9 @@ enum {
   C_POLE_R, C_POLE_RS, C_POLE_W, C_POLE_WS, C_LAMP_OFF, C_LAMP_ON, C_SIGNAL, C_SIGNAL_S,
   C_COIN, C_COIN_S, C_COIN_C,
   C_EAGLE, C_EAGLE_S, C_EAGLE_H, C_EAGLE_HS, C_EAGLE_B, C_EAGLE_BS,
-  C_BTN, C_BTN_S, C_GOLD, C_OUTLINE,
-  NCOLORS
+  C_BTN, C_BTN_S, C_GOLD, C_OUTLINE, C_TAN, C_TAN_S,
+  C_CHAR,                       // the characters' colors, top and side (chars.h)
+  NCOLORS = C_CHAR + 2 * NCC
 };
 
 // ---------------------------------------------------------------------------
@@ -81,14 +84,15 @@ enum {
 typedef struct { uint8_t t, s, e; } Mat;  // top, south, east colors
 
 enum {
-  M_WHITE, M_COMB, M_BEAK, M_EYE, M_TRUNK, M_ROCK, M_LOG, M_LOG_BARK, M_LILY,
+  M_WHITE, M_TRUNK, M_ROCK, M_LOG, M_LOG_BARK, M_LILY,
   M_BLACK, M_CABIN, M_UNDER, M_HUB,
   M_BLUE, M_BLUE2, M_GREEN, M_GREEN2, M_YELLOW, M_YELLOW2, M_ORANGE, M_ORANGE2, M_PURPLE, M_PURPLE2,
   M_RED, M_TBLUE, M_TGREEN, M_BOX, M_BOX2,
   M_TRAIN, M_TRAIN2, M_TRAIN_W, M_TRAIN_Y,
   M_POLE_R, M_POLE_W, M_SIGNAL, M_LAMP_OFF, M_LAMP_ON,
-  M_EAGLE, M_EAGLE_H, M_EAGLE_B,
-  NMATS
+  M_EAGLE, M_EAGLE_H, M_EAGLE_B, M_GOLD, M_TAN,
+  M_CHAR,                       // the characters' colors (made by init_palette)
+  NMATS = M_CHAR + NCC
 };
 
 // ---------------------------------------------------------------------------
@@ -109,6 +113,7 @@ enum {
   MD_ROCK,
   MD_SIGNAL,                    // lamps off, left on, right on
   MD_EAGLE = MD_SIGNAL + 3,
+  MD_MACHINE,                   // the prize machine
   NMODELS
 };
 
@@ -146,23 +151,22 @@ struct Rom {
   uint16_t pal[NCOLORS];      // RGB565 of each color
   uint8_t shade_pairs[16][2]; // color, its shadowed version
   Mat mats[NMATS];
-  Box shapes[101];
+  Box shapes[110];
   uint8_t shape_at[13];
-  uint8_t model_def[NMODELS][4];
+  uint8_t model_def[NMODELS - MD_CAR][4];
   uint8_t obstacle_pct[12];
   uint8_t kinds[4];
   int8_t dx[4], dz[4];
-  // (a language build has a V too, for French)
-  char font_chars[NP_TEXT_EXTRA ? 31 : 30];
-  uint8_t font_w[NP_TEXT_EXTRA ? 30 : 29];
-  uint16_t font[NP_TEXT_EXTRA ? 30 : 29][10];
+  char font_chars[36];
+  uint8_t font_w[35];
+  uint16_t font[35][10];
   uint16_t hand_ol[14], hand_in[14];
   char save_name[15];
   char s_crossy[7], s_road[5];
 #if NP_TEXT_EXTRA
-  char s_new_top[24], s_quit[24], s_quit_q[24], s_no[8], s_yes[8];
+  char s_new_top[24], s_quit[24], s_quit_q[24], s_no[8], s_yes[8], s_play[16], s_names[NCHARS][24];
 #else
-  char s_new_top[8], s_quit[10], s_quit_q[11], s_no[3], s_yes[4];
+  char s_new_top[8], s_quit[10], s_quit_q[11], s_no[3], s_yes[4], s_play[5], s_names[NCHARS][13];
 #endif
 };
 
@@ -177,6 +181,9 @@ struct State {
   int pause_sel;            // on the pause screen: 0 the game, 1 Quit game
   int quitting, quit_sel;   // the "QUIT GAME?" question is open; 1 on YES
   int score, top_score, coins;
+  int chr, browse, prize, won, dark;  // the character played, the one shown, the prize machine's step, its prize
+  uint32_t owned;                     // the characters won (bit 0, the Chicken, from the start)
+  float char_k;                       // the character's size (its voxels' in 1/40 tile, over 2)
   int gen_next, set_left, set_type, prev_dir, start_end;
   uint32_t rng_s;
   uint8_t *fs_buf;
@@ -201,7 +208,7 @@ struct State {
   Part parts[NPARTS];
   struct Rom rom;
   Lane lanes[NLANES];
-  Box boxpool[420];
+  Box boxpool[4 * CHAR_MAXB + 420];
   uint16_t strip[SW * STRIP] __attribute__((aligned(4)));
   uint8_t fb[SW * SH] __attribute__((aligned(4)));
 };
@@ -240,6 +247,13 @@ static struct State G;
 #define score G.score
 #define top_score G.top_score
 #define coins G.coins
+#define chr G.chr
+#define browse G.browse
+#define prize G.prize
+#define won G.won
+#define dark G.dark
+#define owned G.owned
+#define char_k G.char_k
 #define gen_next G.gen_next
 #define set_left G.set_left
 #define set_type G.set_type
@@ -264,7 +278,7 @@ static struct State G;
 
 enum { M_V0 = NMATS, M_V1, M_V2 };
 #define NONE 0xFF
-enum { S_CHICKEN, S_CAR, S_TRUCK, S_ENGINE, S_WAGON, S_LOG, S_LILY = S_LOG + 3, S_ROCK, S_SIGNAL, S_EAGLE };
+enum { S_CAR, S_TRUCK, S_ENGINE, S_WAGON, S_LOG, S_LILY = S_LOG + 3, S_ROCK, S_SIGNAL, S_EAGLE, S_MACHINE };
 
 // Per model: shape | quarter turns clockwise << 4 (4: mirrored east-west), variants.
 #define CAR(t, s, sign) {S_CAR, t, s, sign}, {S_CAR | 4 << 4, t, s, sign}
@@ -294,8 +308,6 @@ static const struct Rom rom_init = {
     [C_TIE] = RGB(127, 85, 79), [C_TIE_S] = RGB(54, 33, 29),
     [C_RAIL_SH] = RGB(74, 71, 76), [C_TIE_SH] = RGB(54, 33, 29),
     [C_WHITE] = RGB(255, 255, 255), [C_GRAY] = RGB(144, 144, 144),
-    [C_COMB] = RGB(239, 130, 131), [C_COMB_S] = RGB(117, 55, 53),
-    [C_BEAK] = RGB(240, 146, 107), [C_BEAK_S] = RGB(120, 63, 43), [C_EYE] = RGB(31, 17, 13),
     [C_LEAF] = RGB(208, 234, 90), [C_LEAF_A] = RGB(100, 112, 39), [C_LEAF_B] = RGB(91, 101, 33),
     [C_TRUNK] = RGB(64, 41, 35), [C_TRUNK_E] = RGB(58, 32, 27),
     [C_ROCK] = RGB(252, 239, 254), [C_ROCK_S] = RGB(111, 103, 108),
@@ -325,7 +337,8 @@ static const struct Rom rom_init = {
     [C_EAGLE_H] = RGB(250, 250, 250), [C_EAGLE_HS] = RGB(150, 150, 150),
     [C_EAGLE_B] = RGB(255, 170, 60), [C_EAGLE_BS] = RGB(140, 80, 24),
     [C_BTN] = RGB(86, 196, 248), [C_BTN_S] = RGB(36, 150, 220), [C_GOLD] = RGB(248, 232, 77),
-    [C_OUTLINE] = RGB(0, 0, 0),
+    [C_OUTLINE] = RGB(0, 0, 0), [C_TAN] = RGB(203, 179, 171), [C_TAN_S] = RGB(105, 89, 83),
+    CHAR_PAL
   },
   .shade_pairs = {
       {C_GRASS, C_GRASS_SH}, {C_GRASS2, C_GRASS_SH}, {C_GRASS_O, C_GRASS_OSH}, {C_GRASS2_O, C_GRASS_OSH},
@@ -334,8 +347,7 @@ static const struct Rom rom_init = {
       {C_RAIL, C_RAIL_SH}, {C_TIE, C_TIE_SH}, {C_LOG, C_LOG_SH}, {C_LOG_BARK, C_LOG_SH}, {C_LILY, C_LILY_S},
   },
   .mats = {
-    [M_WHITE] = {C_WHITE, C_GRAY, C_GRAY}, [M_COMB] = {C_COMB, C_COMB_S, C_COMB_S},
-    [M_BEAK] = {C_BEAK, C_BEAK_S, C_BEAK_S}, [M_EYE] = {C_EYE, C_EYE, C_EYE},
+    [M_WHITE] = {C_WHITE, C_GRAY, C_GRAY},
     [M_TRUNK] = {C_TRUNK, C_TRUNK, C_TRUNK_E}, [M_ROCK] = {C_ROCK, C_ROCK_S, C_ROCK_S},
     [M_LOG] = {C_LOG, C_LOG_S, C_LOG_END}, [M_LOG_BARK] = {C_LOG_BARK, C_LOG_S, C_LOG_END},
     [M_LILY] = {C_LILY, C_LILY_S, C_LILY_S},
@@ -356,21 +368,11 @@ static const struct Rom rom_init = {
     [M_LAMP_OFF] = {C_LAMP_OFF, C_LAMP_OFF, C_LAMP_OFF}, [M_LAMP_ON] = {C_LAMP_ON, C_LAMP_ON, C_LAMP_ON},
     [M_EAGLE] = {C_EAGLE, C_EAGLE_S, C_EAGLE_S}, [M_EAGLE_H] = {C_EAGLE_H, C_EAGLE_HS, C_EAGLE_HS},
     [M_EAGLE_B] = {C_EAGLE_B, C_EAGLE_BS, C_EAGLE_BS},
+    [M_GOLD] = {C_COIN, C_COIN_S, C_COIN_S}, [M_TAN] = {C_TAN, C_TAN_S, C_TAN_S},
   },
   // Model shapes, facing north (creatures) or east (vehicles). Materials M_V0..M_V2
   // are filled in per model (colors, lamps); a variant of NONE drops the box.
   .shapes = {
-    // chicken
-    {-6, 0, -2, 3, 6, 3, M_BEAK}, {3, 0, -2, 3, 6, 3, M_BEAK},        // legs
-    {-6, 0, 1, 3, 1, 2, M_BEAK}, {3, 0, 1, 3, 1, 2, M_BEAK},          // toes
-    {-6, 6, -9, 12, 12, 16, M_WHITE},                                 // body
-    {-9, 9, -6, 3, 6, 9, M_WHITE}, {6, 9, -6, 3, 6, 9, M_WHITE},      // wings
-    {-4, 14, -12, 8, 6, 3, M_WHITE},                                  // tail
-    {-6, 18, -3, 12, 14, 10, M_WHITE},                                // head
-    {-2, 32, -1, 5, 4, 7, M_COMB},                                    // comb
-    {-2, 24, 7, 4, 3, 3, M_BEAK},                                     // beak
-    {-2, 21, 7, 4, 3, 1, M_COMB},                                     // wattle
-    {-7, 26, 2, 1, 2, 2, M_EYE}, {6, 26, 2, 1, 2, 2, M_EYE},          // eyes
     // car: wheels, chassis, two-tone body, cabin with windows, taxi sign
     {-21, 0, -18, 12, 10, 4, M_BLACK}, {-21, 0, 14, 12, 10, 4, M_BLACK}, {-17, 3, -19, 4, 4, 1, M_HUB},
     {9, 0, -18, 12, 10, 4, M_BLACK}, {9, 0, 14, 12, 10, 4, M_BLACK}, {13, 3, -19, 4, 4, 1, M_HUB},
@@ -419,17 +421,29 @@ static const struct Rom rom_init = {
     {-30, 10, -6, 22, 3, 14, M_EAGLE}, {8, 10, -6, 22, 3, 14, M_EAGLE}, {-8, 4, -12, 16, 12, 22, M_EAGLE},
     {-6, 7, 10, 12, 4, 9, M_EAGLE_H}, {-6, 10, -21, 12, 10, 9, M_EAGLE_H}, {-2, 12, -25, 4, 4, 4, M_EAGLE_B},
     {-6, 0, -8, 3, 4, 3, M_EAGLE_B}, {3, 0, -8, 3, 4, 3, M_EAGLE_B},
+    // prize machine, after the original's: a red cabinet on a yellow stand, its chute and handle facing
+    // south, a glass case of prize balls, a red roof
+    {-26, 0, -26, 52, 4, 52, M_GOLD}, {-20, 4, -20, 40, 40, 40, M_RED},
+    {-8, 10, -21, 16, 16, 1, M_LOG}, {-10, 8, -24, 20, 2, 4, M_GOLD},
+    {8, 22, -22, 8, 8, 2, M_GOLD}, {10, 24, -26, 4, 4, 4, M_WHITE},
+    {-21, 44, -21, 42, 3, 42, M_TAN}, {-20, 47, -20, 40, 5, 40, M_LOG},
+    {-18, 52, -18, 3, 44, 3, M_WHITE}, {15, 52, -18, 3, 44, 3, M_WHITE},
+    {-18, 52, 15, 3, 44, 3, M_WHITE}, {15, 52, 15, 3, 44, 3, M_WHITE},
+    {-15, 52, -15, 10, 10, 10, M_BLUE}, {-5, 52, -15, 10, 10, 10, M_YELLOW}, {5, 52, -15, 10, 10, 10, M_PURPLE},
+    {5, 52, -5, 10, 10, 10, M_ORANGE}, {-15, 52, -5, 10, 10, 10, M_GREEN},
+    {-12, 62, -13, 10, 10, 10, M_ORANGE}, {1, 62, -13, 10, 10, 10, M_GREEN}, {-5, 62, -1, 10, 10, 10, M_BLUE},
+    {-6, 72, -8, 10, 10, 10, M_RED},
+    {-21, 96, -21, 42, 2, 42, M_TAN}, {-21, 98, -21, 42, 5, 42, M_RED},
   },
-  .shape_at = {0, 14, 29, 44, 51, 56, 61, 68, 77, 80, 82, 93, 101},
+  .shape_at = {0, 15, 30, 37, 42, 47, 54, 63, 66, 68, 79, 87, 110},
   .model_def = {
-    {S_CHICKEN}, {S_CHICKEN | 1 << 4}, {S_CHICKEN | 2 << 4}, {S_CHICKEN | 3 << 4},
     CAR(M_BLUE, M_BLUE2, NONE), CAR(M_GREEN, M_GREEN2, NONE), CAR(M_YELLOW, M_YELLOW2, M_YELLOW),
     CAR(M_ORANGE, M_ORANGE2, NONE), CAR(M_PURPLE, M_PURPLE2, NONE),
     TRUCK(M_RED), TRUCK(M_TBLUE), TRUCK(M_TGREEN),
     {S_ENGINE}, {S_ENGINE | 4 << 4}, {S_WAGON},
     {S_LOG}, {S_LOG + 1}, {S_LOG + 2}, {S_LILY}, {S_ROCK},
     {S_SIGNAL, M_LAMP_OFF, M_LAMP_OFF}, {S_SIGNAL, M_LAMP_ON, M_LAMP_OFF}, {S_SIGNAL, M_LAMP_OFF, M_LAMP_ON},
-    {S_EAGLE},
+    {S_EAGLE}, {S_MACHINE},
   },
   .obstacle_pct = {10, 10, 20, 20, 25, 25, 30, 30, 35, 40, 45, 50},  // tree density by distance (25 rows each)
   .kinds = {L_GRASS, L_ROAD, L_RIVER, L_RAIL},
@@ -437,16 +451,9 @@ static const struct Rom rom_init = {
   .dz = {1, 0, -1, 0},
   // Font: the original's blocky digits (decoded from the game) and matching
   // capitals. 10 rows; bit 11 is the leftmost column.
-#if NP_TEXT_EXTRA
-  .font_chars = "0123456789ACDEGILMNOPQRSTUWY?V",
-#else
-  .font_chars = "0123456789ACDEGILMNOPQRSTUWY?",
-#endif
+  .font_chars = "0123456789ACDEGILMNOPQRSTUWY?VBFHKZ",
   .font_w = {10, 5, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 4, 10, 12, 10, 10, 10, 10, 10, 10, 10, 10, 12, 10, 10,
-#if NP_TEXT_EXTRA
-             10,
-#endif
-  },
+             10, 10, 10, 10, 10, 10},
   .font = {
     GLYPH(0x1FE, 0x3FF, 0x3CF, 0x3CF, 0x3CF, 0x3CF, 0x3CF, 0x3CF, 0x3FF, 0x1FE),  // 0
     GLYPH(0x3C0, 0x3E0, 0x1E0, 0x1E0, 0x1E0, 0x1E0, 0x1E0, 0x1E0, 0x1E0, 0x1E0),  // 1
@@ -477,9 +484,13 @@ static const struct Rom rom_init = {
     {0xF0F, 0xF0F, 0xF0F, 0xF6F, 0xF6F, 0xFFF, 0xFFF, 0xF9F, 0xF0F, 0xF0F},  // W
     GLYPH(0x3CF, 0x3CF, 0x3CF, 0x3CF, 0x3FF, 0x1FE, 0x078, 0x078, 0x078, 0x078),  // Y
     GLYPH(0x1FE, 0x3FF, 0x00F, 0x00F, 0x07E, 0x078, 0x078, 0x000, 0x078, 0x078),  // ?
-#if NP_TEXT_EXTRA
     GLYPH(0x3CF, 0x3CF, 0x3CF, 0x3CF, 0x3CF, 0x1CE, 0x1CE, 0x0FC, 0x0FC, 0x078),  // V
-#endif
+    // (the characters' names)
+    GLYPH(0x3FE, 0x3FF, 0x3CF, 0x3CF, 0x3FE, 0x3FF, 0x3CF, 0x3CF, 0x3FF, 0x3FE),  // B
+    GLYPH(0x1FF, 0x3FF, 0x3C0, 0x3C0, 0x3F8, 0x3F8, 0x3C0, 0x3C0, 0x3C0, 0x3C0),  // F
+    GLYPH(0x3CF, 0x3CF, 0x3CF, 0x3CF, 0x3FF, 0x3FF, 0x3CF, 0x3CF, 0x3CF, 0x3CF),  // H
+    GLYPH(0x3CF, 0x3CF, 0x3DE, 0x3FC, 0x3F8, 0x3F8, 0x3FC, 0x3DE, 0x3CF, 0x3CF),  // K
+    GLYPH(0x3FF, 0x3FF, 0x00F, 0x01E, 0x03C, 0x078, 0x0F0, 0x1E0, 0x3FF, 0x3FF),  // Z
   },
   // Pixel-art pointing hand (tap hint), 12x14: outline and fill masks.
   .hand_ol = {0x0E0, 0x1B0, 0x1B0, 0x1BE, 0x1B5, 0x7B5, 0x9D5, 0x8C1,
@@ -494,6 +505,10 @@ static const struct Rom rom_init = {
   .s_quit_q = T("QUIT GAME?"),
   .s_no = T("NO"),
   .s_yes = T("YES"),
+  .s_play = T("PLAY"),
+  // the characters, in chars.h's order: their names in the original
+  .s_names = {T("CHICKEN"), T("MALLARD"), T("BABY DUCK"), T("PENGUIN"), T("ZOMBIE"), T("MAD WIZARD"), T("GHOST"),
+              T("KIWI"), T("VAMPIRE"), T("FRANKENSTEIN")},
 };
 #endif
 
@@ -520,8 +535,12 @@ static const struct Rom rom_init = {
 #define str_quit_q G.rom.s_quit_q
 #define str_no G.rom.s_no
 #define str_yes G.rom.s_yes
+#define str_play G.rom.s_play
+#define str_names G.rom.s_names
 
+_Static_assert(NCOLORS <= 256, "palette indices are bytes");
 static void init_palette(void) {
+  for (int k = 0; k < NCC; k++) mats[M_CHAR + k] = (Mat){(uint8_t)(C_CHAR + 2 * k), (uint8_t)(C_CHAR + 2 * k + 1), (uint8_t)(C_CHAR + 2 * k + 1)};
   for (int i = 0; i < NCOLORS; i++) shade[i] = i;
   for (unsigned i = 0; i < sizeof(shade_pairs) / sizeof(shade_pairs[0]); i++) shade[shade_pairs[i][0]] = shade_pairs[i][1];
 }
@@ -708,8 +727,8 @@ static NOINLINE int behind(const Box *a, const Box *b) {
 }
 
 static void sort_boxes(Box *bx, int n) {
-  Box out[32];
-  uint32_t used = 0;
+  Box out[CHAR_MAXB];
+  uint64_t used = 0;
   for (int k = 0; k < n; k++)
     for (int i = 0; i < n; i++) {
       if (used >> i & 1) continue;
@@ -718,36 +737,61 @@ static void sort_boxes(Box *bx, int n) {
         if (j != i && !(used >> j & 1) && behind(&bx[j], &bx[i]) && !behind(&bx[i], &bx[j])) ok = 0;
       if (ok) {
         out[k] = bx[i];
-        used |= 1u << i;
+        used |= (uint64_t)1 << i;
         break;
       }
     }
   memcpy(bx, out, n * sizeof(Box));
 }
 
+// Model id at dst: n boxes turned r quarter turns clockwise (4: mirrored east-west), in drawing order.
+static NOINLINE void put_model(int id, Box *dst, const Box *src, int n, int r) {
+  int reach = 0;
+  for (int i = 0; i < n; i++) {
+    Box b = src[i];
+    int x0 = b.x, x1 = b.x + b.w, z0 = b.z, z1 = b.z + b.d;
+    if (r == 1) { b.x = z0; b.w = z1 - z0; b.z = -x1; b.d = x1 - x0; }
+    else if (r == 2) { b.x = -x1; b.z = -z1; }
+    else if (r == 3) { b.x = -z1; b.w = z1 - z0; b.z = x0; b.d = x1 - x0; }
+    else if (r == 4) b.x = -x1;  // mirror east-west
+    dst[i] = b;
+    int e = b.x < 0 ? -b.x : b.x;
+    if (b.x + b.w > e) e = b.x + b.w;
+    if (b.y + b.h > e) e = b.y + b.h;
+    if (-b.z > e) e = -b.z;
+    if (b.z + b.d > e) e = b.z + b.d;
+    if (e > reach) reach = e;
+  }
+  sort_boxes(dst, n);
+  models[id] = (Mdl){(uint16_t)(dst - boxpool), (uint8_t)n, (uint8_t)reach};
+}
+
+// The player's four facings, from character c's boxes (chars.h), in half voxels: drawn char_k times bigger.
+static void build_char(int c) {
+  Box bx[CHAR_MAXB];
+  const int8_t *h = char_hdr[c];
+  int n = 0;
+  for (int i = char_at[c]; i < char_at[c + 1]; i++) {
+    uint32_t v = char_box[i];
+    bx[n++] = (Box){(int8_t)(h[0] + 2 * (v & 15)), (int8_t)(2 * (v >> 4 & 31)), (int8_t)(h[1] + 2 * (v >> 9 & 31)),
+                    (uint8_t)(2 * (v >> 14 & 15) + 2), (uint8_t)(2 * (v >> 18 & 31) + 2), (uint8_t)(2 * (v >> 23 & 31) + 2),
+                    (uint8_t)(M_CHAR + char_cols[char_cols_at[c] + (v >> 28)])};
+  }
+  for (int r = 0; r < 4; r++) put_model(MD_CHICKEN + r, boxpool + r * CHAR_MAXB, bx, n, r);
+  char_k = (uint8_t)h[2] * 0.01f;
+}
+
 static void build_models(void) {
-  Box *dst = boxpool;
-  for (int id = 0; id < NMODELS; id++) {
-    const uint8_t *def = model_def[id];
-    int s = def[0] & 15, r = def[0] >> 4, n = 0, reach = 0;
+  Box *dst = boxpool + 4 * CHAR_MAXB, tmp[CHAR_MAXB];
+  for (int id = MD_CAR; id < NMODELS; id++) {
+    const uint8_t *def = model_def[id - MD_CAR];
+    int s = def[0] & 15, n = 0;
     for (int i = shape_at[s]; i < shape_at[s + 1]; i++) {
       Box b = shapes[i];
       if (b.m >= M_V0 && (b.m = def[1 + b.m - M_V0]) == NONE) continue;
-      int x0 = b.x, x1 = b.x + b.w, z0 = b.z, z1 = b.z + b.d;
-      if (r == 1) { b.x = z0; b.w = z1 - z0; b.z = -x1; b.d = x1 - x0; }
-      else if (r == 2) { b.x = -x1; b.z = -z1; }
-      else if (r == 3) { b.x = -z1; b.w = z1 - z0; b.z = x0; b.d = x1 - x0; }
-      else if (r == 4) b.x = -x1;  // mirror east-west
-      dst[n++] = b;
-      int e = b.x < 0 ? -b.x : b.x;
-      if (b.x + b.w > e) e = b.x + b.w;
-      if (b.y + b.h > e) e = b.y + b.h;
-      if (-b.z > e) e = -b.z;
-      if (b.z + b.d > e) e = b.z + b.d;
-      if (e > reach) reach = e;
+      tmp[n++] = b;
     }
-    sort_boxes(dst, n);
-    models[id] = (Mdl){(uint16_t)(dst - boxpool), (uint8_t)n, (uint8_t)reach};
+    put_model(id, dst, tmp, n, def[0] >> 4);
     dst += n;
   }
 }
@@ -766,7 +810,7 @@ static void draw_model_s(int id, float wx, float wy, float wz, float sx, float s
   const float u = 1.0f / 40.0f;
   const Box *b = boxpool + m->off;
   for (int i = 0; i < m->n; i++, b++) {
-    const Mat *t = &mats[b->m];
+    const Mat *t = &mats[dark ? M_BLACK : b->m];
     draw_cuboid(wx + b->x * u * sx, wy + b->y * u * sy, wz + b->z * u * sz, wx + (b->x + b->w) * u * sx,
                 wy + (b->y + b->h) * u * sy, wz + (b->z + b->d) * u * sz, t->t, t->s, t->e);
   }
@@ -1039,7 +1083,7 @@ static void gen_lane(void) {
 // ---------------------------------------------------------------------------
 // Gameplay
 
-enum { ST_TITLE, ST_PLAY, ST_DEAD, ST_OVER };
+enum { ST_TITLE, ST_PLAY, ST_DEAD, ST_OVER, ST_CHARS, ST_PRIZE };
 enum { D_NONE, D_PANCAKE, D_SPLAT, D_TRAIN, D_DROWN, D_LOG, D_EAGLE };
 
 
@@ -1486,7 +1530,7 @@ static void draw_coin(float x, float g, float z) {
 typedef struct { float key; uint8_t kind, a, md; } Item;
 enum { I_MODEL, I_TREE, I_PAD, I_LOG, I_SIGNAL, I_COIN, I_PLAYER };
 
-static void draw_player(void) { draw_model_s(MD_CHICKEN + P.face, P.x, P.base + P.y, P.z, P.sx, P.sy, P.sz); }
+static void draw_player(void) { draw_model_s(MD_CHICKEN + P.face, P.x, P.base + P.y, P.z, P.sx * char_k, P.sy * char_k, P.sz * char_k); }
 
 static void draw_lane_objects(int row) {
   Lane *L = lane_at(row);
@@ -1540,7 +1584,7 @@ static void draw_lane_objects(int row) {
     } else if (d->kind == I_COIN) {
       shadow_box(x - 0.14f, x + 0.14f, row - 0.05f, row + 0.05f, g + 0.1f, g + 0.54f, g);
     } else if (d->kind == I_PLAYER) {
-      shadow_model_s(MD_CHICKEN + P.face, P.x, P.base + P.y, P.z, g, P.sx, P.sy, P.sz);
+      shadow_model_s(MD_CHICKEN + P.face, P.x, P.base + P.y, P.z, g, P.sx * char_k, P.sy * char_k, P.sz * char_k);
     } else {
       shadow_model(d->md, x, g, row - (d->kind == I_SIGNAL ? 0.43f : 0), g);
     }
@@ -1778,11 +1822,12 @@ static void draw_hand(int x, int y) {
     }
 }
 
-static void draw_tap_hint(void) {
+// The hand tapping at (x, y) from below.
+static void draw_tap_at(int x, int y) {
   float ph = st_time / 0.6f;
   ph -= (int)ph;
   int up = ph > 0.5f ? 4 : 0;
-  int x = (int)(sx_of(P.x, P.z)) + 2, y = (int)(sy_of(P.x, P.base, P.z)) + 14 - up;
+  y -= up;
   draw_hand(x, y);
   if (up) {  // tap marks around the fingertip
     fill_rect(x + 10, y - 9, 2, 5, C_WHITE);
@@ -1792,6 +1837,8 @@ static void draw_tap_hint(void) {
     fill_rect(x + 15, y - 5, 2, 2, C_WHITE);
   }
 }
+
+static void draw_tap_hint(void) { draw_tap_at((int)(sx_of(P.x, P.z)) + 2, (int)(sy_of(P.x, P.base, P.z)) + 14); }
 
 static void draw_play_button(int cx, int y) {
   fill_rect(cx - 33, y + 2, 66, 42, C_OUTLINE);
@@ -1830,7 +1877,109 @@ static void draw_quit_question(void) {
   draw_small_button(200, 132, str_yes, quit_sel);
 }
 
+// ---------------------------------------------------------------------------
+// The characters and the prize machine: 100 coins for one not won yet
+
+static int all_owned(void) { return owned == (1u << NCHARS) - 1; }
+
+static const char *char_name(int c) { return str_names[c]; }
+
+// A model on a screen of its own: the world's origin at (x, y), s times its size.
+static void draw_at(int id, int x, int y, float s) {
+  float sox = ox, soy = oy;
+  ox = (float)x, oy = (float)y;
+  draw_model_s(id, 0, 0, 0, s, s, s);
+  ox = sox, oy = soy;
+}
+
+// A prize ball, s tiles wide, standing on (x, y): its blue half below (halves & 1), its white half above,
+// lift tiles up (halves & 2).
+static void draw_ball(int x, int y, float s, float lift, int halves) {
+  float sox = ox, soy = oy, h = 0.5f * s;
+  ox = (float)x, oy = (float)y;
+  if (halves & 1) draw_cuboid(-h, 0, -h, h, h, h, C_BLUE_T, C_BLUE_S, C_BLUE_S2);
+  if (halves & 2) draw_cuboid(-h, h + lift, -h, h, 2 * h + lift, h, C_WHITE, C_GRAY, C_GRAY);
+  ox = sox, oy = soy;
+}
+
+// A key's way: a white triangle pointing left (dir -1) or right, its tip at x.
+static void draw_arrow(int x, int y, int dir) {
+  for (int i = 0; i <= 10; i++) fill_rect(x - dir * i, y - i, 1, 2 * i + 1, C_OUTLINE);
+  for (int i = 2; i <= 9; i++) fill_rect(x - dir * i, y - i + 2, 1, 2 * i - 3, C_WHITE);
+}
+
+static void button_box(int x, int y, int c) {
+  fill_rect(x, y, 52, 46, C_OUTLINE);
+  fill_rect(x + 2, y + 2, 48, 42, C_WHITE);
+  fill_rect(x + 4, y + 4, 44, 38, c);
+}
+
+// Game over: the character played on the left (Left: the characters), the prize machine on the right
+// (Right) once there are 100 coins.
+static void draw_side_buttons(int y) {
+  button_box(48, y, C_BTN);
+  draw_at(MD_CHICKEN + 2, 74, y + 36, 1.25f * char_k);
+  draw_arrow(28, y + 23, -1);
+  if (all_owned()) return;
+  if (coins >= 100) {
+    button_box(220, y, C_GOLD);
+    draw_ball(246, y + 34, 0.7f, 0, 3);
+    draw_arrow(292, y + 23, 1);
+  }
+}
+
+// The characters, one at a time (Left, Right): a black shape for one not won yet; OK plays one won.
+static void draw_chars(void) {
+  fill_rect(0, 0, SW, SH, C_BTN);
+  int got = owned >> browse & 1;
+  const char *nm = got ? char_name(browse) : "?";
+  text_ol(160 - text_width(nm, 2) / 2, 16, nm, 2, C_WHITE);
+  dark = !got;
+  draw_at(MD_CHICKEN + 2, 160, 184, 4.0f * char_k);
+  dark = 0;
+  draw_arrow(16, 120, -1);
+  draw_arrow(304, 120, 1);
+  if (got) draw_small_button(160, 208, str_play, 1);
+}
+
+// The prize machine: OK turns its handle (100 coins), it shakes and drops a ball; OK opens the ball.
+#define MX 170
+#define MY 150
+static void draw_prize(void) {
+  fill_rect(0, 0, SW, SH, C_BTN);
+  float t = st_time;
+  if (prize <= 1) {
+    int jx = prize == 1 && t < 0.6f ? (((int)(t * 30)) & 1 ? 2 : -2) : 0;
+    draw_at(MD_MACHINE, MX + jx, MY, 2.0f);
+    if (prize == 0) draw_tap_at(MX + 2, MY + 8);
+    else if (t >= 0.6f) {  // out of the chute, down to the floor in front, a bounce
+      float u = (t - 0.6f) * 2.5f;
+      if (u > 1) u = 1;
+      int x = MX - 11 - (int)(u * 13), y = MY + 1 + (int)(u * 45) - (int)(u > 0.7f ? (1 - u) * 30 : 0);
+      draw_ball(x, y, 1.2f, 0, 3);
+    }
+  } else if (prize == 2) {  // the ball, close, waiting to be opened
+    float w = (float)(((int)(t * 6)) & 1);
+    draw_ball(160, 176 - (int)w, 2.4f, 0, 3);
+    draw_tap_at(162, 190);
+  } else {  // open: its top flies off, the new character comes up out of it
+    float g = t * 3.3f;
+    if (g > 1) g = 1;
+    draw_ball(160, 200, 2.4f, 0, 1);
+    draw_at(MD_CHICKEN + 2, 160, 200 + (int)(PYY * 1.2f), 4.0f * char_k * g);
+    if (t < 0.6f) draw_ball(160, 200, 2.4f, t * 14, 2);
+    text_ol(160 - text_width(char_name(won), 2) / 2, 44, char_name(won), 2, C_WHITE);
+    if (t > 0.5f) draw_small_button(160, 214, str_play, 1);
+  }
+  draw_coins_hud();
+}
+
 static void render(void) {
+  if (state == ST_CHARS || state == ST_PRIZE) {
+    if (state == ST_CHARS) draw_chars();
+    else draw_prize();
+    return;
+  }
   draw_world();
   char buf[16];
   if (state == ST_TITLE) {
@@ -1852,6 +2001,7 @@ static void render(void) {
       }
       float u = clampf((st_time - 0.3f) * 5, 0, 1);
       draw_play_button(160, SH + 4 - (int)(u * 66));
+      draw_side_buttons(SH + 4 - (int)(u * 64));
     }
   }
   draw_coins_hud();
@@ -1866,11 +2016,13 @@ static void render(void) {
 #include "../../common/epsilon_app.h"
 
 // The calculator keeps its files in RAM; the userland header of the running
-// firmware slot tells where. Top score and coins go in a tiny record named
-// "crossyroad.sav", written only after the whole file system checks out.
+// firmware slot tells where. Top score, coins, the characters won and the one played go in a
+// tiny record named "crossyroad.sav", written only after the whole file system checks out
+// (one from before the characters, top score and coins, is read and replaced).
 #if (PLATFORM_DEVICE && !defined(HOST)) || defined(SAVE_TEST)
 #define FS_MAGIC 0xEE0BDDBAu
-#define SAVE_LEN 12
+#define SAVE_LEN 20
+#define SAVE_LEN1 12
 
 static uint16_t rd16(const uint8_t *p) { return (uint16_t)(p[0] | p[1] << 8); }
 static void wr16(uint8_t *p, uint32_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); }
@@ -1886,7 +2038,7 @@ static uint8_t *fs_walk(uint8_t **found) {
     if (n < 4 || p + n > end) return 0;
     const char *a = (const char *)p + 2, *b = save_name;
     while (*a && *a == *b) a++, b++;
-    if (!*a && !*b && n == 2 + sizeof(save_name) + SAVE_LEN) *found = p;
+    if (!*a && !*b && (n == 2 + sizeof(save_name) + SAVE_LEN || n == 2 + sizeof(save_name) + SAVE_LEN1)) *found = p;
     p += n;
   }
 }
@@ -1918,9 +2070,17 @@ static void load_save(void) {
   uint8_t *f;
   if (!fs_buf || !fs_walk(&f) || !f) return;
   const uint8_t *d = f + 2 + sizeof(save_name);
-  uint32_t v[3];
-  for (int i = 0; i < 3; i++) v[i] = d[4 * i] | d[4 * i + 1] << 8 | d[4 * i + 2] << 16 | (uint32_t)d[4 * i + 3] << 24;
-  if (save_sum(v[0], v[1]) != v[2] || v[0] > 999999999 || v[1] > 999999999) return;
+  uint32_t v[5];
+  for (int i = 0; i < 5; i++) v[i] = d[4 * i] | d[4 * i + 1] << 8 | d[4 * i + 2] << 16 | (uint32_t)d[4 * i + 3] << 24;
+  if (v[0] > 999999999 || v[1] > 999999999) return;
+  if (rd16(f) == 2 + sizeof(save_name) + SAVE_LEN1) {
+    if (save_sum(v[0], v[1]) != v[2]) return;
+  } else if (save_sum(save_sum(v[0], v[1]), v[2] * 31u + v[3]) != v[4] || v[3] >= NCHARS || !(v[2] >> v[3] & 1)) {
+    return;
+  } else {
+    owned = v[2] | 1;
+    chr = (int)v[3];
+  }
   top_score = (int)v[0];
   coins = (int)v[1];
 }
@@ -1929,6 +2089,12 @@ static NOINLINE void write_save(void) {
   uint8_t *f, *end;
   if (!fs_buf || !(end = fs_walk(&f))) return;
   uint32_t n = 2 + sizeof(save_name) + SAVE_LEN;
+  if (f && rd16(f) != n) {  // (one from before the characters: out, the rest moved down over it)
+    uint32_t old = rd16(f);
+    for (uint8_t *q = f; q + old < end + 2; q++) *q = q[old];
+    end -= old;
+    f = 0;
+  }
   if (!f) {  // append a new record if it fits
     if (end + n + 2 > fs_buf + fs_size) return;
     f = end;
@@ -1936,11 +2102,21 @@ static NOINLINE void write_save(void) {
     memcpy(f + 2, save_name, sizeof(save_name));
     wr16(f, n);
   }
-  uint32_t v[3] = {(uint32_t)top_score, (uint32_t)coins, save_sum((uint32_t)top_score, (uint32_t)coins)};
+  uint32_t v[5] = {(uint32_t)top_score, (uint32_t)coins, owned, (uint32_t)chr, 0};
+  v[4] = save_sum(save_sum(v[0], v[1]), v[2] * 31u + v[3]);
   uint8_t *d = f + 2 + sizeof(save_name);
-  for (int i = 0; i < 3; i++)
+  for (int i = 0; i < 5; i++)
     for (int j = 0; j < 4; j++) d[4 * i + j] = (uint8_t)(v[i] >> (8 * j));
 }
+#elif defined(HOST)
+// (on a computer: coins and characters to start with, for trying the prize machine)
+#include <stdlib.h>
+static void load_save(void) {
+  if (getenv("CROSSY_COINS")) coins = atoi(getenv("CROSSY_COINS"));
+  if (getenv("CROSSY_OWNED")) owned = (uint32_t)strtoul(getenv("CROSSY_OWNED"), 0, 0) | 1;
+  if (getenv("CROSSY_CHR")) chr = atoi(getenv("CROSSY_CHR")) % NCHARS, owned |= 1u << chr;
+}
+static void write_save(void) {}
 #else
 static void load_save(void) {}
 static void write_save(void) {}
@@ -1983,6 +2159,10 @@ static void present(void) {
 static void update(float dt) {
   game_time += dt;
   st_time += dt;
+  if (state == ST_CHARS || state == ST_PRIZE) {
+    if (state == ST_PRIZE && prize == 1 && st_time >= 1.1f) prize = 2, st_time = 0;
+    return;
+  }
   update_lanes(dt);
   update_parts(dt);
   if (state == ST_TITLE || state == ST_PLAY) {
@@ -2054,7 +2234,9 @@ int main(int argc, char *argv[]) {
   np_app_begin();
   init_palette();
   build_models();
+  owned = 1;
   load_save();
+  build_char(chr);
   new_game();
   P.face = 2;
   show_logo = 1;
@@ -2075,6 +2257,36 @@ int main(int argc, char *argv[]) {
       if (PRESSED(eadk_key_back)) quitting = 0;
       else if (ok && quit_sel) break;
       else if (ok) quitting = 0;
+      dir = -1;
+    } else if (state == ST_CHARS || state == ST_PRIZE) {
+      if (PRESSED(eadk_key_back)) {  // back to the game over screen, with the character played
+        build_char(chr);
+        state = ST_OVER;
+        st_time = 1;
+      } else if (restarting) {
+      } else if (state == ST_CHARS && (PRESSED(eadk_key_left) || PRESSED(eadk_key_right))) {
+        browse = (browse + (PRESSED(eadk_key_right) ? 1 : NCHARS - 1)) % NCHARS;
+        build_char(browse);
+      } else if (state == ST_CHARS && ok && (owned >> browse & 1)) {
+        chr = browse;
+        write_save();
+        restarting = 1, restart_t = 0;
+      } else if (ok && prize == 0) {  // 100 coins: one not won yet, at random, played from now on
+        int left = 0, k = 0;
+        for (int c = 0; c < NCHARS; c++) left += !(owned >> c & 1);
+        int r = irand(left);
+        while ((owned >> k & 1) || r--) k++;
+        won = chr = k;
+        owned |= 1u << k;
+        coins -= 100;
+        write_save();
+        prize = 1, st_time = 0;
+      } else if (ok && prize == 2) {
+        build_char(won);
+        prize = 3, st_time = 0;
+      } else if (ok && prize == 3 && st_time > 0.5f) {
+        restarting = 1, restart_t = 0;
+      }
       dir = -1;
     } else if (PRESSED(eadk_key_back)) {
       if (state == ST_PLAY && !paused) paused = 1, pause_sel = 0;
@@ -2102,6 +2314,10 @@ int main(int argc, char *argv[]) {
       } else if (state == ST_OVER && st_time > 0.4f && dir == 0) {
         restarting = 1;
         restart_t = 0;
+      } else if (state == ST_OVER && st_time > 0.4f && dir == 3) {
+        state = ST_CHARS, browse = chr, st_time = 0;
+      } else if (state == ST_OVER && st_time > 0.4f && dir == 1 && coins >= 100 && !all_owned()) {
+        state = ST_PRIZE, prize = 0, st_time = 0;
       }
     }
     uint64_t now = eadk_timing_millis();

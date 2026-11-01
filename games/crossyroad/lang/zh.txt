@@ -6,3 +6,14 @@ QUIT GAME?	退出游戏？
 NO	否
 YES	是
 TOP 	最高分 
+PLAY	开始
+CHICKEN	小鸡
+MALLARD	绿头鸭
+BABY DUCK	鸭宝宝
+PENGUIN	企鹅
+ZOMBIE	僵尸
+MAD WIZARD	疯狂术士
+GHOST	鬼魂
+KIWI	奇异鸟
+VAMPIRE	吸血鬼
+FRANKENSTEIN	科学怪人
