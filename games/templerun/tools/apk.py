@@ -2,9 +2,12 @@
 """Makes src/data.c and src/data.h from Temple Run's own Android package (1.0.8, by Imangi Studios): the game's
 models, as the mesh table src/models.h describes, in place of tools/models.py's stand-ins.
 
-- The path, its obstacles, the coins and the scenery: the game's prefabs (its Resources/Prefabs/Temple), each a
-  mesh laid with its texture and its light map. Each triangle gets one colour, what its texture and light map show
-  over it on average, with fewer triangles for the calculator (games/subway/tools/decimate.py), and a far version.
+- The path and the scenery: the game's prefabs (its Resources/Prefabs/Temple), each a mesh laid with its texture
+  and its light map. They keep the game's pictures (its two in 256 colours, r_tex: the stone walls at 512 x 512, the
+  trees, mostly farther off, at 256 x 256), each triangle in its place in them and as light as its light map has it there on average: all
+  their triangles but the undersides near (the game's meshes have few to spare: taking edges away soon takes walls
+  with them), and their biggest far off, unmoved. Each face also has the colour its picture and light map show over it on average, which
+  is what the renderer draws past r_far. The coins: one colour a face, the same way.
 - Guy Dangerous and the demon monkeys: the game's skinned meshes, posed by its own animation clips (Run, Jump,
   Slide Loop, Stumble) at the moments the game shows, coloured from their textures the same way.
 What the game draws as particles or sprites (the fire, the power-ups) stays tools/models.py's.
@@ -30,13 +33,17 @@ import unity  # noqa: E402
 import pieces  # noqa: E402
 
 LIGHT = 1.4                       # the light maps: Unity's mobile ones are x 2, a little less here, as the port shades faces too
-FACES_NEAR, FACES_FAR = 60, 20   # triangles a path piece keeps, near and far (each of its meshes)
-FACES_TEMPLE = 200                # (the temple the run starts from, seen up close)
+FACES_FAR = 70                    # triangles a path piece keeps far off (its biggest)
+TEXTURES = ("wallTexture", "treeTexture")   # r_tex 0 and 1
+TEX_LOG = (9, 8)                  # their sizes: 512 x 512, 256 x 256
+BRIGHT = 1.3                      # the pictures are kept this much lighter, the faces' light this much less (light
+                                  # maps go over 1, the renderer's light up to 1)
 FACES_RUNNER, FACES_PURSUER = 180, 80
 # scenery and coins: the port's name (the game's prefab), its triangles and its far version's (None: no far one)
-SCENERY = [("treeAlone", 36, 8), ("treeAlone2", 44, 8), ("treeAlone3", 50, 10), ("treeAlone4", 50, 10),
-           ("rock", 30, 6), ("rock2", 30, 6), ("rock3", 26, 6), ("cliff", 56, 10), ("cliff2", 56, 10),
-           ("cliff3", 56, 10), ("overgrowthTrees", 64, 12), ("templeHead", 44, 8), ("groundPatchTemple", 30, 6)]
+# (far off, scenery keeps all its triangles, biggest first: scene.c draws fewer, the biggest, farther off; only its
+# biggest at middle distance left loose leaves and roots in the air)
+SCENERY = [(n, None, 10 ** 6) for n in ("treeAlone", "treeAlone2", "treeAlone3", "treeAlone4", "rock", "rock2", "rock3",
+                                        "cliff", "cliff2", "cliff3", "overgrowthTrees", "templeHead", "groundPatchTemple")]
 COINS = [("COIN_Y", "coinYellow"), ("COIN_R", "coinRed"), ("COIN_B", "coinBlue")]
 
 
@@ -338,6 +345,66 @@ def faces_of(pkg, name, target, turns=0, mirror=False):
     return out
 
 
+def textured_faces_of(pkg, name, target=None, turns=0):
+    """a prefab as faces laid with the game's pictures: (pts, rgb, normal, two-sided, texture, uv, light, solid),
+    those turned straight down left out; with a target, only its biggest triangles, that many over its meshes
+    (shared by their sizes)"""
+    ms = pkg.meshes(name)
+    total = sum(len(m[3]) for m in ms) or 1
+    out = []
+    for pos, uv0, uv1, tris, texs in ms:
+        p = pos.copy()
+        for _ in range(turns % 4):   # (a quarter turn to the right about y)
+            p = np.c_[p[:, 2], p[:, 1], -p[:, 0]]
+        nrm = np.cross(p[tris[:, 1]] - p[tris[:, 0]], p[tris[:, 2]] - p[tris[:, 0]])
+        ln = np.linalg.norm(nrm, axis=1)
+        tris = tris[(ln > 1e-9) & (nrm[:, 1] > -0.9 * np.maximum(ln, 1e-9))]   # (their undersides: never seen)
+        keep = tris
+        if target is not None:
+            want = max(4, round(target * len(tris) / total))
+            ar = np.linalg.norm(np.cross(p[tris[:, 1]] - p[tris[:, 0]], p[tris[:, 2]] - p[tris[:, 0]]), axis=1)
+            keep = tris[np.argsort(-ar)[:want]]   # (biggest first: farther off, scene.c draws only the first)
+        cols, there = colours(pkg, uv0[keep], uv1[keep] if uv1 is not None else None, texs)
+        base = next((t for t in texs if "lightMap" not in t), None)
+        tex = TEXTURES.index(base) if base in TEXTURES and uv0 is not None else None
+        light = np.ones(len(keep))
+        lmap = next((t for t in texs if "lightMap" in t), None)
+        if lmap and uv1 is not None:
+            lm = pkg.sample(lmap, np.einsum("pj,kjc->kpc", BARY, uv1[keep]).reshape(-1, 2))[:, :3]
+            light = lm.reshape(len(keep), len(BARY), 3).mean((1, 2)) * LIGHT / BRIGHT
+        for t, c, th, li in zip(keep, cols, there, light):
+            pts = [list(p[i]) for i in t]
+            n = models.cross(models.sub(pts[1], pts[0]), models.sub(pts[2], pts[0]))
+            if models.dot(n, n) < 1e-9:
+                continue
+            rgb = (int(c[0] * 255) << 16) | (int(c[1] * 255) << 8) | int(c[2] * 255)
+            if tex is None:
+                if th:
+                    out.append((pts, rgb, models.norm(n), False))
+                continue
+            size = 1 << TEX_LOG[tex]
+            uv = [(uv0[i][0] * size, (1 - uv0[i][1]) * size) for i in t]
+            # (the pictures repeat: a face's places move by whole pictures to lie near 0)
+            du = math.floor(min(u for u, _ in uv) / size) * size
+            dv = math.floor(min(v for _, v in uv) / size) * size
+            uv = [(u - du, v - dv) for u, v in uv]
+            out.append((pts, rgb, models.norm(n), False, tex, uv, min(1.0, float(li)), bool(th)))
+    return out
+
+
+def texture(pkg, name):
+    """a picture for r_tex: (log2 width, log2 height, clear, indices, RGB565 palette), BRIGHT times lighter"""
+    lg = TEX_LOG[TEXTURES.index(name)]
+    size = 1 << lg
+    img = pkg.textures[name].image.convert("RGB").resize((size, size), Image.LANCZOS)
+    a = np.clip(np.asarray(img, np.float64) * BRIGHT, 0, 255).astype(np.uint8)
+    q = Image.fromarray(a).quantize(256, method=Image.MEDIANCUT, dither=Image.NONE)
+    pal = q.getpalette()[:768]
+    pal += [0] * (768 - len(pal))
+    rgb565 = [((pal[3 * i] >> 3) << 11) | ((pal[3 * i + 1] >> 2) << 5) | (pal[3 * i + 2] >> 3) for i in range(256)]
+    return (lg, lg, 0, bytes(np.asarray(q, np.uint8).ravel()), rgb565)
+
+
 def top_view(pkg, name, path, turns=0, mirror=False):
     """a picture of a piece from above (x right, z up), to see where it goes"""
     S, R = 4, 64
@@ -372,15 +439,16 @@ def build(data, src):
         i = at[name]
         models.MODELS[i] = (name, faces, models.MODELS[i][2])
 
+    models.TEXTURES[:] = [texture(pkg, t) for t in TEXTURES]
     for name in pieces.PREFABS:
         # (the game's runner leaves the temple heading south, away from it; the port's heads north: the temple turns
         # a half turn, so it stands behind him)
         turns = 2 if name == "temple" else 0
-        put(name, faces_of(pkg, name, FACES_TEMPLE if name == "temple" else FACES_NEAR, turns))
-        put(name + "_far", faces_of(pkg, name, FACES_FAR, turns))
+        put(name, textured_faces_of(pkg, name, None, turns))
+        put(name + "_far", textured_faces_of(pkg, name, FACES_FAR * (4 if name == "temple" else 1), turns))
     for name, near, far in SCENERY:
-        put(name, faces_of(pkg, name, near))
-        put(name + "_far", faces_of(pkg, name, far))
+        put(name, textured_faces_of(pkg, name, near))
+        put(name + "_far", textured_faces_of(pkg, name, far))
     for name, prefab in COINS:
         put(name, faces_of(pkg, prefab, 12))
     guy = Person(pkg, "Jhony_Export3", "conquis_Export1")   # (Guy Dangerous; every runner's rig plays the same clips)
@@ -394,9 +462,6 @@ def build(data, src):
     put("RUNNER_SLIDE", person_faces(pkg, guy, "Slide Loop", 0.0, FACES_RUNNER))
     put("RUNNER_STUMBLE", person_faces(pkg, guy, "Stumble", guy.length("Stumble") * 0.3, FACES_RUNNER))
     put("RUNNER_DOWN", lying(person_faces(pkg, guy, "Stumble", guy.length("Stumble"), FACES_RUNNER)))
-    for name, faces, _ in models.MODELS:   # (scene.c's scene_mesh keeps MESH_CORNERS, 512, of a mesh)
-        corners = {tuple(round(v * models.Q) for v in p) for f in faces for p in f[0]}
-        assert len(corners) <= 512, f"{name}: {len(corners)} corners"
     models.emit(src, "tools/apk.py", "Temple Run's own models (by Imangi Studios, from its Android package)")
 
 

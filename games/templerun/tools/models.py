@@ -20,6 +20,8 @@ import pieces  # noqa: E402
 
 Q = 4             # stored units a game unit
 MODELS = []       # (name, faces, far name or None)
+TEXTURES = []     # r_tex: (log2 width, log2 height, clear, indices, RGB565 palette) (tools/apk.py's)
+MESH_CORNERS = 768   # (models.h's: the most corners a mesh has)
 
 # ---------------------------------------------------------------- colours
 STONE = dict(top=0xA8977A, top2=0x9C8B6F, side=0x76684F, curb=0x8B7B60, base=0x5F5545)
@@ -436,28 +438,56 @@ def emit(src, made_by="tools/models.py", what="Temple Run's stand-in models (box
     h = [f"/* Temple Run: the mesh numbers (data.c, made by {made_by}). */", "#ifndef TR_DATA_H", "#define TR_DATA_H",
          '#include "models.h"', '#include "r3d.h"', "", "enum {"]
     h += [f"  M_{n}," for n in names] + ["  M_COUNT,", f"  M_PIECES = {len(pieces.PREFABS)}   /* (the path pieces: floor.c's, in its order) */", "};", "#endif", ""]
-    c = [f"/* Made by {made_by}: {what}, as a mesh table. */",
-         '#include "data.h"', "", "const Texture *const r_tex[1] = {0};", ""]
+    c = [f"/* Made by {made_by}: {what}, as a mesh table. */", '#include "data.h"', ""]
+    for k, (wl, hl, clear, px, pal) in enumerate(TEXTURES):
+        c.append(f"static const uint8_t tx{k}_px[{len(px)}] = {{" + ",".join(str(b) for b in px) + "};")
+        c.append(f"static const uint16_t tx{k}_pal[256] = {{" + ",".join(str(v) for v in pal) + "};")
+        c.append(f"static const Texture tx{k} = {{{wl}, {hl}, {clear}, 0, tx{k}_px, tx{k}_pal}};")
+    if TEXTURES:
+        c += [f"const Texture *const r_tex[{len(TEXTURES)}] = {{" + ", ".join(f"&tx{k}" for k in range(len(TEXTURES))) + "};", ""]
+    else:
+        c += ["const Texture *const r_tex[1] = {0};", ""]
     table = []
     for name, faces, far in MODELS:
         verts, index, vmap, rows, rmax = [], [], {}, [], 0.0
-        for pts, rgb, n, two in faces:
+        tidx, uvs, trows = [], [], []
+
+        def corner(p):
+            nonlocal rmax
+            key = tuple(round(v * Q) for v in p)
+            rmax = max(rmax, math.sqrt(sum((v / Q) ** 2 for v in key)))
+            if key not in vmap:
+                vmap[key] = len(verts)
+                verts.append(key)
+            return vmap[key]
+        for f in faces:
+            pts, rgb, n, two = f[:4]
+            if len(f) > 4 and len(pts) == 3:
+                # laid with a picture: its corners, their places, its light, and its colour drawn far off (RGB565;
+                # 0, nothing, when it is mostly see-through)
+                tidx += [corner(p) for p in pts]
+                uvs += [round(x * 4) for uv in f[5] for x in uv]
+                c565 = ((rgb >> 19 & 31) << 11 | (rgb >> 10 & 63) << 5 | (rgb >> 3 & 31)) if f[7] else 0
+                trows.append((min(255, round(f[6] * 255)), f[4], c565))
+                continue
             first = len(index)
-            for p in pts:
-                key = tuple(round(v * Q) for v in p)
-                rmax = max(rmax, math.sqrt(sum((v / Q) ** 2 for v in key)))
-                if key not in vmap:
-                    vmap[key] = len(verts)
-                    verts.append(key)
-                index.append(vmap[key])
+            index += [corner(p) for p in pts]
             rows.append((first, len(pts), [max(-127, min(127, round(v * 127))) for v in n], 1 if two else 0, rgb))
+        assert all(-32768 <= v < 32768 for v in uvs), name
         low = name.lower()
         c.append(f"static const MVert v_{low}[] = {{" + ", ".join("{%d,%d,%d}" % v for v in verts) + "};")
-        c.append(f"static const uint16_t i_{low}[] = {{" + ",".join(str(i) for i in index) + "};")
-        c.append(f"static const MFace f_{low}[] = {{" + ", ".join(
-            "{%d,%d,%d,%d,%d,%d,0,0x%06X}" % (f, n, nn[0], nn[1], nn[2], two, rgb) for f, n, nn, two, rgb in rows) + "};")
+        if rows:
+            c.append(f"static const uint16_t i_{low}[] = {{" + ",".join(str(i) for i in index) + "};")
+            c.append(f"static const MFace f_{low}[] = {{" + ", ".join(
+                "{%d,%d,%d,%d,%d,%d,0,0x%06X}" % (f, n, nn[0], nn[1], nn[2], two, rgb) for f, n, nn, two, rgb in rows) + "};")
+        if trows:
+            c.append(f"static const uint16_t ti_{low}[] = {{" + ",".join(str(i) for i in tidx) + "};")
+            c.append(f"static const int16_t u_{low}[] = {{" + ",".join(str(v) for v in uvs) + "};")
+            c.append(f"static const TFace t_{low}[] = {{" + ", ".join("{%d,%d,%d}" % r for r in trows) + "};")
         farv = f"M_{far}" if far else "-1"
-        table.append(f"  {{v_{low}, i_{low}, f_{low}, {len(rows)}, {farv}, {rmax + 0.5:.1f}f}},")
+        r = lambda k, x: f"{k}_{low}" if x else "NULL"  # noqa: E731
+        table.append(f"  {{v_{low}, {r('i', rows)}, {r('f', rows)}, {r('ti', trows)}, {r('u', trows)}, {r('t', trows)}, "
+                     f"{len(rows)}, {len(trows)}, {farv}, {rmax + 0.5:.1f}f}},")
         assert len(verts) < 65536
     c += ["", "const Mesh meshes[M_COUNT] = {"] + table + ["};", ""]
     Path(src, "data.h").write_text("\n".join(h))

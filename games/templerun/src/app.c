@@ -48,6 +48,9 @@ static void go(int s) {
 
 static void title_world(void) {
   game_new_run();
+  /* (on the title the runner stands out at the temple's mouth, so the camera, before him, is outside the rock; a run
+   * starts from the hall inside, game_new_run's place) */
+  pl.z = 34;
   scene_reset();
 }
 

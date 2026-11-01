@@ -6,8 +6,8 @@
 #define ZK 22000.0f      /* depths are ZK / z: 62857 at the near plane, larger is nearer */
 #define MAXP 1600        /* polygons a frame */
 #define MAXV 5400        /* their corners */
-#define MAXA 3600        /* corners with a light level and a place in a picture */
-#define MAXT 480         /* textured faces in perspective */
+#define MAXA 2400        /* corners with a light level and a place in a picture */
+#define MAXT 760         /* textured faces in perspective */
 #define MAXN 14          /* corners of a polygon once cut */
 #define SUB 8.0f         /* corners are kept in 1/8 pixels */
 #define GUARD 1900.0f    /* (so they may lie at most this far from the screen's middle) */
@@ -188,7 +188,7 @@ static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, u
   if (x1 < 0 || x0 >= SCREEN_W || y1 < 0 || y0 >= SCREEN_H) return;
   float area = 0;
   for (int i = 0, j = n - 1; i < n; j = i++) area += sx[j] * sy[i] - sx[i] * sy[j];
-  if (area < 0.01f && !(flags & P_TWOSIDED && area < -0.01f)) return;
+  if (area < 1.0f && !(flags & P_TWOSIDED && area < -1.0f)) return;   /* (turned away, or under half a pixel) */
   /* the depth plane, by Newell's method (good for any convex polygon): depth = ZK (n . (xs, ys, 1)) / d */
   V3 nm = {0, 0, 0};
   for (int i = 0, j = n - 1; i < n; j = i++) {

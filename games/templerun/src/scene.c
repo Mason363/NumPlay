@@ -8,6 +8,8 @@
 
 #define S 0.19f              /* metres a game unit (the runner: 9.6 units, 1.8 m) */
 #define SMALL_FAR 350.0f     /* rocks, heads and ground patches seen this far */
+#define TREE_FAR 520.0f      /* the rest of the scenery (into the haze) */
+#define SCENERY_POLYS 1080   /* (of the renderer's 1600 a frame) */
 #define VIEW 1000.0f         /* units seen ahead (the renderer's far plane is 190 m) */
 #define PI 3.14159265f
 
@@ -30,7 +32,7 @@ static float dir_yaw(int d) { return d == 1 ? PI / 2 : d == 2 ? PI : d == 3 ? -P
 void scene_init(void) {
   r_haze0 = 70, r_haze1 = 185;
   r_haze_rgb = 0xBFD3C6;
-  r_far = 60;
+  r_far = 40;
   if (plat_slow()) r_haze0 = 60, r_haze1 = 170;
 }
 
@@ -59,6 +61,7 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
   if (me->far >= 0 && z0 > MESH_FAR) me = &meshes[me->far];
   float s, c;
   r_sincos(yaw - cyaw, &s, &c);
+  /* the corners in place once each; a mesh with more than MESH_CORNERS (the temple) has its faces' moved as they come */
   static V3 v[MESH_CORNERS];
   int nv = 0;
   for (int i = 0; i < me->nf; i++) {
@@ -66,21 +69,41 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
     for (int k = me->f[i].first; k < e; k++)
       if (me->idx[k] >= nv) nv = me->idx[k] + 1;
   }
-  if (nv > MESH_CORNERS) nv = MESH_CORNERS;
-  for (int i = 0; i < nv; i++) {
+  for (int k = 0; k < 3 * me->nt; k++)
+    if (me->tidx[k] >= nv) nv = me->tidx[k] + 1;
+  bool each = nv > MESH_CORNERS;
+  for (int i = 0; i < nv && !each; i++) {
     float mx = me->v[i].x * 0.25f, my = me->v[i].y * 0.25f, mz = me->v[i].z * 0.25f;
     v[i] = (V3){(x0 + mx * c + mz * s) * S, (dy + my) * S, (z0 - mx * s + mz * c) * S};
   }
+#define CORNER(j) (each ? (V3){(x0 + me->v[j].x * 0.25f * c + me->v[j].z * 0.25f * s) * S, (dy + me->v[j].y * 0.25f) * S, \
+                              (z0 - me->v[j].x * 0.25f * s + me->v[j].z * 0.25f * c) * S} : v[j])
+  int flags = alpha < 255 ? P_ALPHA : 0;
   for (int i = 0; i < me->nf; i++) {
     const MFace *f = &me->f[i];
     V3 p[12];
     int n = f->n > 12 ? 12 : f->n;
-    for (int k = 0; k < n; k++) p[k] = v[me->idx[f->first + k] < MESH_CORNERS ? me->idx[f->first + k] : 0];
+    for (int k = 0; k < n; k++) p[k] = CORNER(me->idx[f->first + k]);
     float nx = f->nx * (1.0f / 127), ny = f->ny * (1.0f / 127), nz = f->nz * (1.0f / 127);
     V3 nn = {nx * c + nz * s, ny, -nx * s + nz * c};
-    int flags = (f->flags & 1 ? P_TWOSIDED : 0) | (alpha < 255 ? P_ALPHA : 0);
-    r_poly(p, n, r_shade(f->rgb, nn), flags, alpha);
+    r_poly(p, n, r_shade(f->rgb, nn), flags | (f->flags & 1 ? P_TWOSIDED : 0), alpha);
   }
+  /* (a path piece's far version has its faces biggest first: farther off, only those; scenery stays whole, as its
+   * leaves and roots would be left in the air) */
+  int nt = me->nt;
+  if (m < 2 * M_PIECES) {
+    if (z0 > 300) nt /= 4;
+    else if (z0 > 160) nt /= 2;
+  }
+  for (int i = 0; i < nt; i++) {
+    const TFace *t = &me->t[i];
+    const uint16_t *ix = me->tidx + 3 * i;
+    const int16_t *q = me->uv + 6 * i;
+    V3 p[3] = {CORNER(ix[0]), CORNER(ix[1]), CORNER(ix[2])};
+    float uv[6] = {q[0] * 0.25f, q[1] * 0.25f, q[2] * 0.25f, q[3] * 0.25f, q[4] * 0.25f, q[5] * 0.25f};
+    r_poly_tex_avg(p, uv, 3, t->tex, t->light + 1, flags, t->avg);
+  }
+#undef CORNER
 }
 
 static void draw_tile(const Tile *t) {
@@ -143,21 +166,26 @@ static void draw_scenery(void) {
       int a = tiles[i].gx - x0, b = tiles[i].gz - z0;
       if (a >= 0 && b >= 0 && a < SGRID && b < SGRID) mask[a][b] = 1;
     }
-  for (int a = 0; a < SGRID; a++)
-    for (int b = 0; b < SGRID; b++) {
-      int cx = x0 + a, cz = z0 + b;
-      if (mask[a][b] || (cx >= -1 && cx <= 1 && cz >= 0 && cz <= 4)) continue;
-      uint32_t h = mix((uint32_t)cx * 0x9E3779B1u ^ mix((uint32_t)cz + scenery_seed));
-      if (h % 1000 >= 250) continue;   /* (ObjectDensity 0.25) */
-      uint32_t k = (h >> 10) % 21, v = h >> 15;
-      int m = k <= 10 ? trees[v % 4] : k <= 14 ? rocks[v % 3] : k <= 16 ? cliffs[v % 3] : k <= 18 ? M_overgrowthTrees : k == 19 ? M_templeHead : M_groundPatchTemple;
-      float ox = (float)((int)((h >> 20) % 21) - 10), oz = (float)((int)((h >> 25) % 21) - 10);
-      float wx = (float)cx * TILE + ox, wz = (float)cz * TILE + oz, dx = wx - cx_, dz = wz - cz_;
-      /* (the small ones, a few pixels in the haze past SMALL_FAR, aren't drawn there: the renderer keeps 1600 polygons) */
-      if (k >= 11 && k <= 14 && dx * dx + dz * dz > SMALL_FAR * SMALL_FAR) continue;
-      if (k >= 19 && dx * dx + dz * dz > SMALL_FAR * SMALL_FAR) continue;
-      scene_mesh(m, wx, 0, wz, 0, 255);
-    }
+  /* nearest first, ring by ring round the camera's square, and no more once the frame has SCENERY_POLYS polygons: on a
+   * busy frame what goes is a tree far off */
+  for (int ring = 0; ring <= SGRID / 2; ring++)
+    for (int a = SGRID / 2 - ring; a <= SGRID / 2 + ring; a++)
+      for (int b = SGRID / 2 - ring; b <= SGRID / 2 + ring; b += (a == SGRID / 2 - ring || a == SGRID / 2 + ring) ? 1 : 2 * ring) {
+        if (r_count() >= SCENERY_POLYS) return;
+        int cx = x0 + a, cz = z0 + b;
+        if (mask[a][b] || (cx >= -1 && cx <= 1 && cz >= 0 && cz <= 4)) continue;
+        uint32_t h = mix((uint32_t)cx * 0x9E3779B1u ^ mix((uint32_t)cz + scenery_seed));
+        if (h % 1000 >= 250) continue;   /* (ObjectDensity 0.25) */
+        uint32_t k = (h >> 10) % 21, v = h >> 15;
+        int m = k <= 10 ? trees[v % 4] : k <= 14 ? rocks[v % 3] : k <= 16 ? cliffs[v % 3] : k <= 18 ? M_overgrowthTrees : k == 19 ? M_templeHead : M_groundPatchTemple;
+        float ox = (float)((int)((h >> 20) % 21) - 10), oz = (float)((int)((h >> 25) % 21) - 10);
+        float wx = (float)cx * TILE + ox, wz = (float)cz * TILE + oz, dx = wx - cx_, dz = wz - cz_;
+        /* (the small ones, a few pixels in the haze past SMALL_FAR, aren't drawn there) */
+        if (k >= 11 && k <= 14 && dx * dx + dz * dz > SMALL_FAR * SMALL_FAR) continue;
+        if (k >= 19 && dx * dx + dz * dz > SMALL_FAR * SMALL_FAR) continue;
+        if (dx * dx + dz * dz > TREE_FAR * TREE_FAR) continue;
+        scene_mesh(m, wx, 0, wz, 0, 255);
+      }
 }
 
 /* ---------------------------------------------------------------- the sky and the depths */
@@ -207,14 +235,18 @@ void scene_draw(r_band_fn overlay, bool on_title) {
   r_camera(0, 0, 0, pitch, 205, 160, 120);
   float sx, sy;
   sky_rows(r_project((V3){0, 0, 600}, &sx, &sy) ? (int)sy : 0);
-  /* the pieces: the one under the runner and those ahead (the one behind it too, for the camera) */
+  /* the pieces: the one under the runner and those ahead (the one behind it too, for the camera), nearest first:
+   * the renderer lays pictures on so many faces a frame, and the near ones need them */
+  int ord[NTILES], no = 0;
+  float dist[NTILES];
   for (int i = 0; i < NTILES; i++)
     if (tiles[i].alive) {
-      const Tile *t = &tiles[i];
-      float a = (path_cx(t) - pl.x) * (float)(pl.dir == 1 ? 1 : pl.dir == 3 ? -1 : 0) + (path_cz(t) - pl.z) * (float)(pl.dir == 0 ? 1 : pl.dir == 2 ? -1 : 0);
-      (void)a;
-      draw_tile(t);
+      float dx = path_cx(&tiles[i]) - cx_, dz = path_cz(&tiles[i]) - cz_, d = dx * dx + dz * dz;
+      int k = no++;
+      for (; k > 0 && dist[k - 1] > d; k--) ord[k] = ord[k - 1], dist[k] = dist[k - 1];
+      ord[k] = i, dist[k] = d;
     }
+  for (int k = 0; k < no; k++) draw_tile(&tiles[ord[k]]);
   for (int f = 0; f < NFLY; f++)
     if (fly[f].on) scene_mesh(fly[f].kind == 3 ? M_COIN_B : fly[f].kind == 2 ? M_COIN_R : M_COIN_Y, fly[f].x, fly[f].y - 3, fly[f].z, t_anim * 6, 255);
   /* the runner's shadow on the floor */
