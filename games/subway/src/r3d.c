@@ -18,11 +18,12 @@ typedef struct {
   float a, b, c;         /* its depth at (sx, sy): a sx + b sy + c */
   uint16_t v0, at;       /* its first corner, and its first corner's light and texture place */
   uint16_t color;        /* RGB565, or the texture's number */
-  uint8_t n, kind;
+  uint16_t extra;        /* a textured face in perspective: its planes (uvs) */
+  uint8_t n : 4, kind : 4;   /* (corners: MAXN at most) */
   uint8_t y0, y1;        /* the rows it covers */
   uint8_t alpha;         /* see-through (255: not); textured faces: their light 0..32 */
-  uint8_t extra;         /* a textured face in perspective: its planes */
 } Poly;
+_Static_assert(sizeof(Poly) == 24, "a polygon in 24 bytes");
 typedef struct {
   int16_t x, y;
 } Pos;
@@ -207,7 +208,7 @@ static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, u
   if (flags & P_DECAL2) q->c += 6;
   if (flags & P_DECAL3) q->c += 9;
   float zm = zsum / (float)n;
-  q->kind = (uint8_t)kind;
+  q->kind = (uint8_t)kind & 15;
   q->extra = 0;
   if (kind == K_PERSP) {
     /* far off, a picture is only its average colour (color already holds it when kind comes back flat) */
@@ -242,7 +243,7 @@ static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, u
       for (int i = 0; i < 3; i++) wu[i] = c3[i]->u * ZK / c3[i]->z, wv[i] = c3[i]->v * ZK / c3[i]->z;
       UV *u = &uvs[nuv];
       if (!fit(px, py, wu, &u->ua, &u->ub, &u->uc) || !fit(px, py, wv, &u->va, &u->vb, &u->vc)) return;
-      q->extra = (uint8_t)nuv++;
+      q->extra = (uint16_t)nuv++;
     }
   }
   if (kind == K_FLAT && !(flags & P_NOHAZE) && zm > r_haze0) {
@@ -252,7 +253,7 @@ static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, u
   }
   q->color = color;
   q->alpha = (uint8_t)(kind == K_PERSP ? alpha : flags & P_ALPHA ? (alpha > 255 ? 255 : alpha < 0 ? 0 : alpha) : 255);
-  q->v0 = (uint16_t)nverts, q->n = (uint8_t)n;
+  q->v0 = (uint16_t)nverts, q->n = (uint8_t)n & 15;
   for (int i = 0; i < n; i++) pos[nverts + i] = (Pos){(int16_t)(sx[i] * SUB + 0.5f), (int16_t)(sy[i] * SUB + 0.5f)};
   if (kind == K_SHADE || kind == K_TEX) {
     q->at = (uint16_t)nattr;
