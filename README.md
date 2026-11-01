@@ -348,6 +348,9 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Rider.io
 - [ ] Getting Over It
 - [ ] Crossy Road: the characters and the prize machine
+- [ ] Famidash: its newest and fullest version
+- [ ] Hill Climb Racing 2
+- [ ] Hill Climb Racing in 3D, with a scooter, a BMX, a skateboard and roller skates
 
 ## Credits
 
