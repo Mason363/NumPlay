@@ -100,17 +100,17 @@ def sample(tex, uv):
 
 # ------------------------------------------------------------------ meshes
 def budget(name, n):
-    """triangles kept near and far"""
+    """triangles kept near and far (MAXVB in draw.c: a mesh's corners at most)"""
     for key, near, far in (('sled', 150, 150), ('santa', 150, 150), ('PLASTIC', 150, 150), ('Old_sleds', 150, 150),
-                           ('tree_snow', 90, 30), ('tree_noLeaves', 80, 30), ('rockP', 70, 26), ('snowman', 60, 24),
+                           ('tree_snow', 200, 60), ('tree_noLeaves', 220, 60), ('rockP', 150, 50), ('snowman', 110, 40),
                            ('camp_main', 1000, 1000), ('Cylinder', 160, 160), ('campBillboard', 70, 70),
-                           ('floating', 110, 50), ('snowball', 40, 20), ('gift', 40, 16), ('fence', 60, 24),
-                           ('skull', 60, 24), ('stump', 40, 16), ('root', 40, 16)):
+                           ('floating', 150, 80), ('snowball', 48, 30), ('gift', 60, 24), ('fence', 90, 40),
+                           ('skull', 110, 40), ('stump', 70, 28), ('root', 70, 28)):
         if key in name and not name.startswith('Ground'):   # (Ground_WW_RV1_snowball is a wall, not a ball)
             return min(n, near), min(n, far)
     if name.startswith('Ground'):
-        return min(n, max(40, int(n * 0.36))), min(n, max(24, int(n * 0.16)))
-    return min(n, max(24, int(n * 0.3))), min(n, max(12, int(n * 0.15)))
+        return min(n, max(60, min(1000, int(n * 0.55)))), min(n, max(30, int(n * 0.25)))
+    return min(n, max(30, int(n * 0.5))), min(n, max(16, int(n * 0.25)))
 
 
 rmeshes, rmesh_key = [], {}
@@ -442,7 +442,7 @@ for i, m in enumerate(rmeshes):
     rad = float(np.max(np.linalg.norm(v - ctr, axis=1))) if len(v) else 0
     m['s'], m['ctr'], m['rad'] = s, ctr, rad
     c.append('static const int16_t rv%d[] = {%s};' % (i, ','.join(str(x) for p in q for x in p)))
-    c.append('static const uint16_t rt%d[] = {%s};' % (i, ','.join(str(x) for t in m['t'] for x in t)))
+    c.append('static const %s rt%d[] = {%s};' % ('uint8_t' if len(m['v']) <= 256 else 'uint16_t', i, ','.join(str(x) for t in m['t'] for x in t)))
     c.append('static const uint8_t rc%d[] = {%s};' % (i, ','.join(str(x) for x in m['c'])))
     c.append('static const int8_t rn%d[] = {%s};' % (i, ','.join(str(x) for n in m['n'] for x in n)))
 c.append('const RMesh rmeshes[] = {')
@@ -455,7 +455,7 @@ for i, m in enumerate(cmeshes):
     v = np.array(m['v'])
     m['s'], m['lo'], m['hi'] = s, v.min(0), v.max(0)
     c.append('static const int16_t cv%d[] = {%s};' % (i, ','.join(str(x) for p in q for x in p)))
-    c.append('static const uint16_t ct%d[] = {%s};' % (i, ','.join(str(x) for t in m['t'] for x in t)))
+    c.append('static const %s ct%d[] = {%s};' % ('uint8_t' if len(m['v']) <= 256 else 'uint16_t', i, ','.join(str(x) for t in m['t'] for x in t)))
 c.append('const CMesh cmeshes[] = {')
 for i, m in enumerate(cmeshes):
     c.append('  {cv%d, ct%d, %d, %d, %s, {%s}, {%s}}, /* %s */' % (i, i, len(m['v']), len(m['t']), F(m['s']),
@@ -516,11 +516,12 @@ cpp, cpq = points['CamPoint']
 fl = lambda d: (float(d['x']), float(d['y']), float(d['z']))
 h = ['/* Made by tools/gen.py from Snow Rider 3D\'s Unity project: do not edit. */',
      '#ifndef SR_DATA_H', '#define SR_DATA_H', '#include <stdint.h>', '',
-     '/* a mesh to draw: corners (int16 times s metres), triangles, a palette colour and a normal (int8, 127 = 1) each,',
-     ' * and a sphere around it */',
-     'typedef struct { const int16_t *v; const uint16_t *t; const uint8_t *c; const int8_t *n; uint16_t nv, nt; float s; float ctr[3], rad; } RMesh;',
-     '/* a collision mesh: corners, triangles (their front: clockwise seen from outside), its box */',
-     'typedef struct { const int16_t *v; const uint16_t *t; uint16_t nv, nt; float s; float lo[3], hi[3]; } CMesh;',
+     '/* a mesh to draw: corners (int16 times s metres), triangles (their corners: bytes when there are 256 corners or',
+     ' * fewer, see corner_of), a palette colour and a normal (int8, 127 = 1) each, and a sphere around it */',
+     'typedef struct { const int16_t *v; const void *t; const uint8_t *c; const int8_t *n; uint16_t nv, nt; float s; float ctr[3], rad; } RMesh;',
+     '/* a collision mesh: corners, triangles (as a mesh to draw\'s; their front: clockwise seen from outside), its box */',
+     'typedef struct { const int16_t *v; const void *t; uint16_t nv, nt; float s; float lo[3], hi[3]; } CMesh;',
+     'static inline int corner_of(const void *t, int nv, int k) { return nv <= 256 ? ((const uint8_t *)t)[k] : ((const uint16_t *)t)[k]; }',
      '/* a mesh of a prefab, near and far, and where it lies in the prefab (3x4, rows) */',
      'typedef struct { uint16_t near, far; float m[12]; } Part;',
      '/* a collider: box (the matrix takes the unit cube to it), sphere (unit sphere), capsule (centre, along axis dir,',

@@ -435,8 +435,8 @@ static bool hit_coll(const Coll *c, const float m[12], const float wo[3], const 
   float best = len + 1, sc = cm->s;
   const int16_t *v = cm->v;
   for (int i = 0; i < cm->nt; i++) {
-    const uint16_t *tr = cm->t + i * 3;
-    const int16_t *A = v + tr[0] * 3, *B = v + tr[1] * 3, *C = v + tr[2] * 3;
+    const int16_t *A = v + corner_of(cm->t, cm->nv, i * 3) * 3, *B = v + corner_of(cm->t, cm->nv, i * 3 + 1) * 3,
+                  *C = v + corner_of(cm->t, cm->nv, i * 3 + 2) * 3;
     float ax = A[0] * sc, ay = A[1] * sc, az = A[2] * sc;
     float e1x = B[0] * sc - ax, e1y = B[1] * sc - ay, e1z = B[2] * sc - az;
     float e2x = C[0] * sc - ax, e2y = C[1] * sc - ay, e2z = C[2] * sc - az;

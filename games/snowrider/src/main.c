@@ -11,12 +11,18 @@ void np_push(int x, int y, int w, int h, const color_t *px) { plat_push(x, y, w,
 void *np_alloc(uint32_t size) { (void)size; return 0; }
 
 #ifndef HOST
+#ifdef SR_BENCH
+#include "../tests/auto.h"
+#endif
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Snow Rider 3D";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
 
 uint32_t perf_frames __attribute__((used));   /* read by tools/emu.py */
 uint32_t perf_max __attribute__((used));
 uint32_t perf_slow __attribute__((used));
+uint32_t perf_draw __attribute__((used));   /* (milliseconds spent drawing) */
+uint32_t perf_step __attribute__((used));   /* (and in the game's steps) */
+uint32_t host_god __attribute__((used));    /* (set by tools/bench.py: the sled goes through everything) */
 
 int main(void) {
   uint16_t band[SCREEN_W * BAND_H];   /* (on the stack, out of the RAM apps get) */
@@ -35,8 +41,16 @@ int main(void) {
   while (game_running) {
     int n = 0;
     uint32_t now = plat_millis() * 3, keys = plat_keys();
+#ifdef SR_BENCH
+    /* (timing: two steps a drawing and the autopilot, the same frames whatever the speed) */
+    while (n < 2 && game_running) {
+      if (mode == M_PLAY) keys = (keys & ~(SK_LEFT | SK_RIGHT | SK_UP)) | autopilot();
+#else
     while ((int32_t)(now - next) >= 0 && n < 4 && game_running) {
+#endif
+      uint32_t s0 = plat_millis();
       game_step(keys, n ? 0 : keys & ~prev);
+      perf_step += plat_millis() - s0;
       next += 50;
       n++;
     }
@@ -47,6 +61,7 @@ int main(void) {
       uint32_t t0 = plat_millis();
       draw_frame();
       uint32_t dt = plat_millis() - t0;
+      perf_draw += dt;
       if (dt > perf_max) perf_max = dt;
       if (dt > 33) perf_slow++;
       perf_frames++;

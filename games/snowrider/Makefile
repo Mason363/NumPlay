@@ -5,6 +5,7 @@
 #   make test       the slope made far ahead, two minutes down it, the walls (and their colliders whole), the
 #                   snowballs' colliders, a jump, saves (kept, from the copy,
 #                   damaged), buying a sled, 300 sessions of random keys (with the sanitizers)
+#   make bench      how fast it draws a ride at an N0110's speed (tools/bench.py, on the emulator: NumPlay's tools/emu.py)
 #   make data UNITY=DIR   src/data.c and src/data.h again, from Snow Rider 3D's Unity project's Assets folder in DIR
 #                   (tools/gen.py: Python 3 with PyYAML, NumPy and Pillow; the project is only read)
 Q ?= @
@@ -29,7 +30,7 @@ LDFLAGS = -Wl,--relocatable -nostartfiles --specs=nano.specs
 LDFLAGS += -Wl,-e,main -Wl,-u,eadk_app_name -Wl,-u,eadk_app_icon -Wl,-u,eadk_api_level
 LDFLAGS += -Wl,--gc-sections -flinker-output=nolto-rel
 
-.PHONY: build check clean host test data
+.PHONY: build check clean host test data bench
 build: $(BUILD_DIR)/snowrider.nwa
 
 # apps get 133652 bytes of RAM on custom builds of Epsilon 25.2 (148928 or more on official ones)
@@ -63,6 +64,10 @@ build/play: $(HOST_SRC) tests/play.c $(HEADERS)
 test: build/play
 	$(Q) mkdir -p build/test
 	build/play test build/test
+
+bench:
+	$(Q) $(MAKE) --no-print-directory build BUILD_DIR=build/bench EXTRA=-DSR_BENCH NWLINK="$(NWLINK)" TOOLCHAIN="$(TOOLCHAIN)"
+	python3 tools/bench.py build/bench/snowrider.nwa
 
 data:
 	python3 -I tools/gen.py $(UNITY) src
