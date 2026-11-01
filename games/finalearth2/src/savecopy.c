@@ -11,10 +11,7 @@
 #define COPY_NAME "finalearth2_saves.py"
 static const char *const kept[] = {"finalearth2.sav", "fe2meta.dat"};
 #define NKEPT (int)(sizeof kept / sizeof kept[0])
-static const char copy_head[] =
-    "# The Final Earth 2 keeps a copy of your city here, so that\n"
-    "# reinstalling it doesn't erase it. If you delete this file,\n"
-    "# the game writes it again: your city stays either way.\n";
+static const char copy_head[] = "# The Final Earth 2's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 void save_copy_drop(void) { plat_remove(COPY_NAME); }

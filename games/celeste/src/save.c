@@ -59,10 +59,7 @@ void save_keep_binds(void) {   /* g_bind into the save (written with the next sa
  * also kept in one, as a comment line "#>celeste.sav:base64" (the way NumPlay keeps its games'
  * saves), and comes back from it when the save itself is gone. */
 #define COPY_NAME "celeste_saves.py"
-static const char copy_head[] =
-    "# Celeste keeps a copy of your progress here, so that\n"
-    "# reinstalling it doesn't erase it. If you delete this file,\n"
-    "# Celeste writes it again: your progress stays either way.\n";
+static const char copy_head[] = "# Celeste's saves: keep this file\n";
 static const char tag[] = "#>" SAVE_NAME ":";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static void save_copy(void) {

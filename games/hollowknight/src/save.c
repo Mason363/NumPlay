@@ -94,10 +94,7 @@ static const uint8_t *checked(int slot, uint32_t *count, uint32_t *pd_size) {
  * a comment line "#>hk1.sav:base64" a slot (the way NumPlay keeps its games' saves), and come back from it when a
  * save itself is gone. */
 #define COPY_NAME "hollowknight_saves.py"
-static const char copy_head[] =
-    "# Hollow Knight keeps a copy of your saves here, so that\n"
-    "# reinstalling it doesn't erase them. If you delete this file,\n"
-    "# Hollow Knight writes it again: your saves stay either way.\n";
+static const char copy_head[] = "# Hollow Knight's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static void save_copy(void) {

@@ -93,8 +93,7 @@ bool dk_file_ok(const uint8_t *d, uint32_t n, dk_profile *p, dk_state *s) {
   return true;
 }
 
-static const char head[] = "# Donkey Kong keeps a copy of your best score and of a game\n"
-                           "# left with Home here, so that installing it again keeps them.\n";
+static const char head[] = "# Donkey Kong's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static uint8_t copy[1 + sizeof head + 2 + sizeof DK_SAVE_NAME + 1 + (DK_SAVE_MAX + 2) / 3 * 4 + 2];
 

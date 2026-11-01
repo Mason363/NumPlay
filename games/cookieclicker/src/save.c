@@ -9,13 +9,9 @@
 #define COPY_NAME "cookieclicker_saves.py"
 #define MAGIC 0x314B4343u   /* "CCK1" */
 
-/* (the line is about 4000 characters: the Python editor doesn't draw a line that long, so the script looks empty
- * there, and the head says so) */
-static const char copy_head[] =
-  "# Cookie Clicker's save: the long line below is a copy of\n"
-  "# your bakery. It is too long for the editor to show, so\n"
-  "# the script looks empty there. Installing the game again\n"
-  "# brings your bakery back from it.\n";
+/* (the line is about 4000 characters: the Python editor doesn't draw a line that long, so the head is all the
+ * script shows there) */
+static const char copy_head[] = "# Cookie Clicker's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static void copy_write(void) {

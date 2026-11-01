@@ -18,8 +18,7 @@ bool tm_file_ok(const tm_file *f) {
   return tm_progress_ok(&f->p);
 }
 
-static const char head[] = "# Tomb of the Mask keeps a copy of your stages, coins and masks\n"
-                           "# here, so that installing it again doesn't erase them.\n";
+static const char head[] = "# Tomb of the Mask's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static uint8_t copy[1 + sizeof head + 2 + sizeof TM_SAVE_NAME + 1 + (sizeof(tm_file) + 2) / 3 * 4 + 2];
 

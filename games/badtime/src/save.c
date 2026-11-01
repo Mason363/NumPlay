@@ -22,8 +22,7 @@ bool bt_file_ok(const bt_file *f) {
   return p->best <= 24 && p->guide <= 1;
 }
 
-static const char head[] = "# Bad Time Simulator keeps a copy of your record here,\n"
-                           "# so that installing it again doesn't erase it.\n";
+static const char head[] = "# Bad Time Simulator's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static uint8_t copy[1 + sizeof head + 2 + sizeof BT_SAVE_NAME + 1 + (sizeof(bt_file) + 2) / 3 * 4 + 2];
 

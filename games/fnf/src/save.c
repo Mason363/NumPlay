@@ -31,8 +31,7 @@ bool fnf_file_ok(const fnf_file_t *f) {
   return true;
 }
 
-static const char head[] = "# Friday Night Funkin' keeps a copy of your scores here,\n"
-                           "# so that installing it again doesn't erase them.\n";
+static const char head[] = "# Friday Night Funkin' saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static uint8_t copy[1 + sizeof head + 2 + sizeof FNF_SAVE_NAME + 1 + (sizeof(fnf_file_t) + 2) / 3 * 4 + 2];
 

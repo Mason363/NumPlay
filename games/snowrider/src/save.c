@@ -31,8 +31,7 @@ bool sr_file_ok(const SaveFile *f) {
   return true;
 }
 
-static const char head[] = "# Snow Rider 3D keeps a copy of your progress here,\n"
-                           "# so that installing it again doesn't erase it.\n";
+static const char head[] = "# Snow Rider 3D's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static bool copy_write(const SaveFile *f) {

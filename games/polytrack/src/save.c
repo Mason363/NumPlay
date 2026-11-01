@@ -33,8 +33,7 @@ bool pt_file_ok(const pt_file *f) {
   return profile_ok(&f->p);
 }
 
-static const char head[] = "# PolyTrack keeps a copy of your progress here,\n"
-                           "# so that installing it again doesn't erase it.\n";
+static const char head[] = "# PolyTrack's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static uint8_t copy[1 + sizeof head + 2 + sizeof PT_SAVE_NAME + 1 + (sizeof(pt_file) + 2) / 3 * 4 + 2];
 

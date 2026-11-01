@@ -43,10 +43,7 @@ static const uint16_t OLD_COST[OLD_V][4] = {{1000, 1000, 1000, 1000}, {1500, 100
                                            {1500, 1200, 1200, 1200}, {1500, 1500, 1500, 2500}, {2000, 2000, 2000, 3000},
                                            {3000, 3000, 3000, 3000}, {3000, 3000, 3000, 3000}};
 
-static const char copy_head[] =
-  "# Hill Climb Racing keeps a copy of your progress here, so\n"
-  "# that reinstalling it doesn't erase it. If you delete this\n"
-  "# file, the game writes it again: your progress stays.\n";
+static const char copy_head[] = "# Hill Climb Racing's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static void copy_write(void) {

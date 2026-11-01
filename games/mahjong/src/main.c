@@ -205,7 +205,8 @@ static uint32_t fnv(const void *p, uint32_t n) {
 
 /* the copy: the save in base 64, in a comment of a script (installing apps keeps only scripts) */
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-static const char head[] = "# Mahjong keeps a copy of your game here,\n# so that installing it again doesn't erase it.\n#>" SAVE_NAME ":";
+#define TAG "#>" SAVE_NAME ":" /* the copy's line (found anywhere: an older copy has a longer head) */
+static const char head[] = "# Mahjong's saves: keep this file\n" TAG;
 static uint8_t copy[1 + sizeof head + (sizeof sv + 2) / 3 * 4 + 1];
 static void save(void) {
   sv.magic = 'M', sv.version = 1, sv.sum = fnv(&sv, SUMMED);
@@ -242,8 +243,11 @@ static void load(void) {
   uint8_t *v = (uint8_t *)&sv;
   for (uint32_t i = 0; i < sizeof sv; i++) v[i] = d && n == sizeof sv ? d[i] : 0;
   if (valid()) return;
-  d = file_read(COPY_NAME, &n); /* the copy, after an install */
-  uint32_t o = 0, at = sizeof head; /* (the 0, then the head without its own 0) */
+  d = file_read(COPY_NAME, &n); /* the copy, after an install: the line after its tag */
+  const char *tag = head + sizeof head - sizeof TAG;
+  uint32_t o = 0, at = 0, m = 0;
+  while (d && m < sizeof TAG - 1 && at + sizeof TAG - 1 <= n) m = d[at + m] == (uint8_t)tag[m] ? m + 1 : (at++, 0u);
+  at += sizeof TAG - 1;
   for (uint32_t i = 0; d && n >= at + (sizeof sv + 2) / 3 * 4 && i < (sizeof sv + 2) / 3 * 4; i += 4) {
     uint32_t w = 0;
     for (int k = 0; k < 4; k++) {

@@ -17,10 +17,7 @@ extern uint8_t item_taken[ITEM_MAX];
 
 static const char *const kept[] = {PROGRESS_NAME, RUN_NAME};
 #define NKEPT (int)(sizeof kept / sizeof kept[0])
-static const char copy_head[] =
-  "# The Binding of Isaac keeps a copy of your run and progress\n"
-  "# here, so that reinstalling it doesn't erase them. If you\n"
-  "# delete this file, the game writes it again.\n";
+static const char copy_head[] = "# The Binding of Isaac's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static void copy_write(void) {

@@ -66,8 +66,7 @@ bool tr_file_ok(const tr_file *f) {
   return r->mode != MODE_GP || (f->gp.on && r->track == f->gp.round);
 }
 
-static const char head[] = "# Turbo Rush keeps a copy of your progress here,\n"
-                           "# so that installing it again doesn't erase it.\n";
+static const char head[] = "# Turbo Rush's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static uint8_t copy[1 + sizeof head + 2 + sizeof TR_SAVE_NAME + 1 + (sizeof(tr_file) + 2) / 3 * 4 + 2];
 

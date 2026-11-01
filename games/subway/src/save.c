@@ -16,10 +16,7 @@ typedef struct {
   Progress p;
 } SaveFile;
 
-static const char copy_head[] =
-  "# Subway Surfers keeps a copy of your coins and progress\n"
-  "# here, so that reinstalling it doesn't erase them. If you\n"
-  "# delete this file, the game writes it again.\n";
+static const char copy_head[] = "# Subway Surfers' saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static void copy_write(const uint8_t *d, uint32_t len) {

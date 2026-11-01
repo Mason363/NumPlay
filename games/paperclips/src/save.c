@@ -79,8 +79,7 @@ void save_pack(const pc_game *s, uint8_t guide, uint8_t tab, uint8_t *out) {
   memcpy(out + PC_FILE_SIZE - 4, &sum, 4);
 }
 
-static const char head[] = "# Universal Paperclips keeps a copy of your game here,\n"
-                           "# so that installing it again doesn't erase it.\n";
+static const char head[] = "# Universal Paperclips' saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static uint8_t file[PC_FILE_SIZE];
 static uint8_t copy[1 + sizeof head + 2 + sizeof PC_SAVE_NAME + 1 + (PC_FILE_SIZE + 2) / 3 * 4 + 2];

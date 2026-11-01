@@ -27,10 +27,7 @@ typedef struct {
 
 static const char *const kept[] = {SAVE_NAME, RESUME_NAME};
 #define NKEPT (int)(sizeof kept / sizeof kept[0])
-static const char copy_head[] =
-  "# Five Nights at Freddy's 2 keeps a copy of your nights\n"
-  "# and stars here, so that reinstalling it doesn't erase\n"
-  "# them. If you delete this file, the game writes it again.\n";
+static const char copy_head[] = "# Five Nights at Freddy's 2's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static void copy_write(void) {

@@ -114,10 +114,7 @@ bool store_dirty(void) { return dirty; }
  * "#>champion.sav:base64" (the way NumPlay keeps its games' saves), and
  * comes back from it when the save itself is gone. */
 #define COPY_NAME "champion_saves.py"
-static const char copy_head[] =
-    "# Champion Island keeps a copy of your progress here, so that\n"
-    "# reinstalling it doesn't erase it. If you delete this file,\n"
-    "# Champion Island writes it again: your progress stays either way.\n";
+static const char copy_head[] = "# Champion Island's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static void save_copy(const uint8_t *d, uint32_t n, uint8_t *o, uint32_t cap) {

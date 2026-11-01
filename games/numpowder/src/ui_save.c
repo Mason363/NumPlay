@@ -16,10 +16,7 @@ static const char *const kept[] = {"numpowder.cfg", "numpowder.sav", "numpowder1
 #define NKEPT (int)(sizeof kept / sizeof kept[0])
 
 /* ---------------------------------------------------------------- the copy in a Python script */
-static const char copy_head[] =
-  "# NumPowder keeps a copy of your simulations here, so that\n"
-  "# reinstalling it doesn't erase them. If you delete this file,\n"
-  "# the game writes it again: your saves stay either way.\n";
+static const char copy_head[] = "# NumPowder's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static void save_copy(void) {
