@@ -26,10 +26,7 @@ static const char *const kept[NW_SLOTS + 1] = {
     "doomres.sav", CFG_NAME
 };
 #define NKEPT (int)(sizeof kept / sizeof kept[0])
-static const char copy_head[] =
-    "# Doom keeps a copy of your saved games here, so that\n"
-    "# reinstalling it doesn't erase them. If you delete this file,\n"
-    "# the game writes it again: your saves stay either way.\n";
+static const char copy_head[] = "# Doom's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static void copy_write(void) {

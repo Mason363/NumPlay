@@ -61,7 +61,8 @@ static bool save_ok(const save_t *s) {
 }
 
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-static const char head[] = "# Rider keeps a copy of your game here,\n# so that installing it again doesn't erase it.\n#>" SAVE_NAME ":";
+#define TAG "#>" SAVE_NAME ":" /* the copy's line (found anywhere: an older copy has a longer head) */
+static const char head[] = "# Rider's saves: keep this file\n" TAG;
 static uint8_t copy[1 + sizeof head + (sizeof(save_t) + 2) / 3 * 4 + 2];
 
 static void save(void) {
@@ -89,9 +90,9 @@ static bool copy_read(save_t *out) {
   uint32_t n;
   const uint8_t *c = plat_load(COPY_NAME, &n);
   if (!c) return false;
-  const uint32_t hl = sizeof head - 1, m = (sizeof(save_t) + 2) / 3 * 4;
+  const uint32_t hl = sizeof TAG - 1, m = (sizeof(save_t) + 2) / 3 * 4;
   for (uint32_t i = 0; i + hl + m <= n; i++) {
-    if (memcmp(c + i, head, hl)) continue;
+    if (memcmp(c + i, head + sizeof head - sizeof TAG, hl)) continue;
     const uint8_t *l = c + i + hl;
     uint8_t buf[(sizeof(save_t) + 2) / 3 * 3];
     for (uint32_t k = 0; k < m; k += 4) {

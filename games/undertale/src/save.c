@@ -25,10 +25,7 @@ typedef struct {
 
 static const char *const kept[] = {SAVE_NAME, RESUME_NAME, CONFIG_NAME};
 #define NKEPT (int)(sizeof kept / sizeof kept[0])
-static const char copy_head[] =
-  "# Undertale keeps a copy of your SAVE and settings here, so that\n"
-  "# reinstalling it doesn't erase it. If you delete this file,\n"
-  "# the game writes it again: your SAVE stays either way.\n";
+static const char copy_head[] = "# Undertale's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static void copy_write(void) {

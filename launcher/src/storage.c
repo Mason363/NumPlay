@@ -116,10 +116,7 @@ bool np_file_write(const char *name, const void *data, uint32_t len) { return ef
  *   "#=name:size:base64"     packed (games/common/np_lz.h), when that is smaller: the file system holds
  *                            42 KB, and a copy that takes less of it leaves more to the saves. */
 #define COPY_NAME "numplay_saves.py"
-static const char copy_head[] =
-    "# NumPlay keeps a copy of your game progress here, so that\n"
-    "# updating NumPlay doesn't erase it. If you delete this file,\n"
-    "# NumPlay writes it again: your progress stays either way.\n";
+static const char copy_head[] = "# NumPlay's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static uint32_t b64_len(uint32_t n) { return (n + 2) / 3 * 4; }

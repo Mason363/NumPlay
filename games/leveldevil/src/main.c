@@ -167,9 +167,8 @@ static char *label(char *o, const char *s, uint32_t v) {
    Python scripts, so the save comes back from the copy when the file itself is gone. The copy is a
    comment line "#>leveldevil.sav:base64" (the way NumPlay and the big games keep theirs). */
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-static const char copy_head[] = "# Level Devil keeps a copy of your progress here, so that\n"
-                                "# reinstalling it doesn't erase it. If you delete this\n"
-                                "# file, the game writes it again.\n#>" SAVE_NAME ":";
+#define TAG "#>" SAVE_NAME ":" /* the copy's line (found anywhere: an older copy has a longer head) */
+static const char copy_head[] = "# Level Devil's saves: keep this file\n" TAG;
 static void save(void) {
   static char copy[sizeof copy_head + 72];
   const uint8_t *d = (const uint8_t *)&sv;
@@ -185,15 +184,16 @@ static void save(void) {
   *p++ = '\n', *p++ = 0;
   ef_write(COPY_NAME, copy, (uint32_t)(p - copy));
 }
-/* the save back from the copy, if only the copy is left */
+/* the save back from the copy, if only the copy is left: the line after its tag */
 static void restore(void) {
-  uint32_t len, n = sizeof copy_head;
-  const uint8_t *c = ef_read(COPY_NAME, &len);
+  const char *tag = copy_head + sizeof copy_head - sizeof TAG;
+  uint32_t len, j = 0, m = 0;
+  const uint8_t *c;
   uint8_t out[sizeof sv];
-  if (ef_read(SAVE_NAME, &len) || !(c = ef_read(COPY_NAME, &len)) || len < n + 64) return;
-  for (uint32_t i = 0; i < n - 1; i++)
-    if (c[1 + i] != (uint8_t)copy_head[i]) return;
-  for (unsigned i = 0, j = n; i < sizeof sv; i += 3, j += 4) {
+  if (ef_read(SAVE_NAME, &len) || !(c = ef_read(COPY_NAME, &len))) return;
+  while (m < sizeof TAG - 1 && j + sizeof TAG - 1 <= len) m = c[j + m] == (uint8_t)tag[m] ? m + 1 : (j++, 0u);
+  if ((j += sizeof TAG - 1) + 64 > len) return;
+  for (unsigned i = 0; i < sizeof sv; i += 3, j += 4) {
     uint32_t v = 0;
     for (int k = 0; k < 4; k++) {
       int x = 0;

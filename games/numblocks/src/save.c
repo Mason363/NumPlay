@@ -326,10 +326,7 @@ void delete_world(int s) {
  * games' saves, and in NumPlay it leaves that to NumPlay), and when none of its saves are left, they
  * come back from it. */
 #define COPY_REC "numblocks_saves.py"
-static const char copy_head[] =
-    "# NumBlocks keeps a copy of your worlds here, so that installing\n"
-    "# it again doesn't erase them. If you delete this file, NumBlocks\n"
-    "# writes it again: your worlds stay either way.\n";
+static const char copy_head[] = "# NumBlocks' saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static bool ours(const char *n) { return !strcmp(n, OPTIONS_REC) || (n[0] == 'n' && n[1] == 'b' && n[2] >= '1' && n[2] <= '9'); }
 

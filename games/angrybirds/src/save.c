@@ -28,8 +28,7 @@ bool save_ok(const SaveFile *f) {
   return true;
 }
 
-static const char head[] = "# Angry Birds keeps a copy of your progress here,\n"
-                           "# so that installing it again doesn't erase it.\n";
+static const char head[] = "# Angry Birds' saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 #define COPY_BYTES (1 + sizeof head + 2 + sizeof AB_SAVE_NAME + 1 + (sizeof(SaveFile) + 2) / 3 * 4 + 2)
 

@@ -22,8 +22,7 @@ bool sh_file_ok(const sh_file *f) {
   return f->sum == sum(f, offsetof(sh_file, sum)) && sh_profile_ok(&f->p);
 }
 
-static const char head[] = "# Stickman Hook keeps a copy of your levels and skin\n"
-                           "# here, so that installing it again doesn't erase them.\n";
+static const char head[] = "# Stickman Hook's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static uint8_t copy[1 + sizeof head + 2 + sizeof SH_SAVE_NAME + 1 + (sizeof(sh_file) + 2) / 3 * 4 + 2];
 

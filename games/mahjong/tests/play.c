@@ -260,6 +260,19 @@ static void check_saves(void) {
   memset(&sv, 0, sizeof sv);
   load();
   CHECK(sv.flags == 2, "how to play read, no game");
+  /* the copy as the game wrote it before, under a longer head: read the same */
+  sv.best[1] = 4321, save(), memcpy(kept, &sv, sizeof sv);
+  static const char old[] = "# Mahjong keeps a copy of your game here,\n# so that installing it again doesn't erase it.\n";
+  uint8_t buf[sizeof files[0].data];
+  const uint8_t *c = files[find(COPY_NAME)].data;
+  uint32_t n = files[find(COPY_NAME)].len, at = 1;
+  while (at + 1 < n && !(c[at] == '#' && c[at + 1] == '>')) at++;
+  buf[0] = 0, memcpy(buf + 1, old, sizeof old - 1), memcpy(buf + sizeof old, c + at, n - at);
+  host_write(COPY_NAME, buf, sizeof old + n - at);
+  files[find(SAVE_NAME)].len = 0;
+  memset(&sv, 0, sizeof sv);
+  load();
+  CHECK(!memcmp(kept, &sv, sizeof sv) && sv.best[1] == 4321, "an older copy read back");
 }
 
 /* the keys that take the cursor from tile c to tile t (the arrows alone), found by trying them */

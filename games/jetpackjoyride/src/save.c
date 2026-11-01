@@ -40,8 +40,7 @@ bool jj_file_v1(const uint8_t *d, uint32_t n, jj_profile *p) {
   return true;
 }
 
-static const char head[] = "# Jetpack Joyride keeps a copy of your best and your coins\n"
-                           "# here, so that installing it again doesn't erase them.\n";
+static const char head[] = "# Jetpack Joyride's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static uint8_t copy[1 + sizeof head + 2 + sizeof JJ_SAVE_NAME + 1 + (sizeof(jj_file) + 2) / 3 * 4 + 2];
 

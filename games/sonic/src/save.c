@@ -23,10 +23,7 @@ static SaveFile sv;
 static bool loaded;
 static uint32_t counted;   /* the frames already added to sv.frames */
 
-static const char copy_head[] =
-  "# Sonic the Hedgehog keeps a copy of your game here, so that\n"
-  "# reinstalling it doesn't erase it. If you delete this file,\n"
-  "# the game writes it again: your game stays either way.\n";
+static const char copy_head[] = "# Sonic the Hedgehog's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static void copy_write(const uint8_t *d, uint32_t len) {

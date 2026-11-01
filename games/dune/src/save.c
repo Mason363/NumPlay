@@ -30,8 +30,7 @@ bool dn_file_ok(const dn_file *f, dn_run *scratch) {
   return dn_valid(scratch) && scratch->ball == p->ball && scratch->land == p->land;
 }
 
-static const char head[] = "# Dune keeps a copy of your best, your coins and what you bought\n"
-                           "# here, so that installing it again doesn't erase them.\n";
+static const char head[] = "# Dune's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static uint8_t copy[1 + sizeof head + 2 + sizeof DN_SAVE_NAME + 1 + (sizeof(dn_file) + 2) / 3 * 4 + 2];
 

@@ -64,6 +64,15 @@ static void forget(const char *name) {
   for (int i = 0; i < 4; i++)
     if (files[i].on && !strcmp(files[i].name, name)) files[i].on = false;
 }
+/* the copy as the game wrote it before, under a longer head */
+static void old_copy(const char *head) {
+  static uint8_t buf[sizeof files[0].data];
+  uint32_t n, at = 1, hl = (uint32_t)strlen(head);
+  const uint8_t *c = file_of(COPY_NAME, &n);
+  while (at + 1 < n && !(c[at] == '#' && c[at + 1] == '>')) at++;
+  buf[0] = 0, memcpy(buf + 1, head, hl), memcpy(buf + 1 + hl, c + at, n - at);
+  plat_save(COPY_NAME, buf, 1 + hl + n - at);
+}
 
 static void ppm(const char *path) {
   FILE *f = fopen(path, "wb");
@@ -305,6 +314,10 @@ static void test_app(void) {
   forget(SAVE_NAME);
   load();
   CHECK(sv.gems == 4321, "a lost save comes back from the copy (%u)", (unsigned)sv.gems);
+  old_copy("# Rider keeps a copy of your game here,\n# so that installing it again doesn't erase it.\n");
+  sv.gems = 0;
+  load();
+  CHECK(sv.gems == 4321, "a lost save comes back from an older copy (%u)", (unsigned)sv.gems);
   forget(COPY_NAME), forget(SAVE_NAME);
   load();
   CHECK(sv.gems == 0 && owned(0), "nothing left: a fresh start");

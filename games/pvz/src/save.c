@@ -16,10 +16,7 @@ Progress progress;
 
 static const char *const kept[] = {SAVE_NAME, LEVEL_NAME};
 #define NKEPT (int)(sizeof kept / sizeof kept[0])
-static const char copy_head[] =
-  "# Plants vs. Zombies keeps a copy of your progress here, so\n"
-  "# that reinstalling it doesn't erase it. If you delete this\n"
-  "# file, the game writes it again: your progress stays.\n";
+static const char copy_head[] = "# Plants vs. Zombies' saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static void copy_write(void) {

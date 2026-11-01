@@ -28,8 +28,7 @@ bool uno_file_ok(const uno_file *f) {
   return !p->has_game || uno_valid(&p->g);
 }
 
-static const char head[] = "# UNO keeps a copy of your game here,\n"
-                           "# so that installing it again doesn't erase it.\n";
+static const char head[] = "# UNO's saves: keep this file\n";
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static uint8_t copy[1 + sizeof head + 2 + sizeof UNO_SAVE_NAME + 1 + (sizeof(uno_file) + 2) / 3 * 4 + 2];
 
