@@ -100,6 +100,7 @@ jobs:
           make -C games/rider host test
           make -C games/snowrider host test
           make -C games/templerun host test
+          make -C games/fnaf2 host test
 
 
 

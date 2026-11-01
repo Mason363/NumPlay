@@ -399,7 +399,7 @@
   // An app's .nwa becomes a game of NumPlay the way a big game's does (apps.js). It may only leave undefined what
   // the calculator's installer gives an app (tools/kit.py's check) and what the launcher gives a big game (KIT_API)
   const LOOSE = /^(eadk_|_heap_end$|_data_section_|_bss_section_|np_keyboard_scan$|np_event_get$|np_display_draw_string$|np_sbrk$|numplay_launcher$|__sf$|_printf_float$)/;
-  const MAX_GAMES = 64;  // (launcher/src/np.h's NP_MAX_GAMES: games, Retro-Go and apps)
+  const MAX_GAMES = 96;  // (launcher/src/np.h's NP_MAX_GAMES: games, Retro-Go and apps)
   const entries = () => ordered().length + (rg && st.roms.length ? 1 : 0) + st.apps.length;
   const ascii = (t) => (t || '').replace(/[^\x20-\x7e]/g, '').trim().slice(0, 24);
   const allocBytes = (obj) => npApps.readElf(obj).secs.reduce((n, x) => n + (x.flags & 2 && x.type !== 8 ? align4(x.size) : 0), 0);
