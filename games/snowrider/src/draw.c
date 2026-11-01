@@ -287,7 +287,7 @@ static void snow_project(void) {
 /* ---------------------------------------------------------------- the game's own interface (ui.c) */
 #define UI_GREY 0xDEFB      /* (223, 223, 223): its lettering */
 #define UI_YELLOW 0xFE60    /* (255, 206, 0): BUY */
-#define UI_GREEN 0x755B     /* (118, 171, 93): SELECTED */
+#define UI_GREEN 0x754B     /* (118, 171, 93): SELECTED */
 #define UI_LIME 0xE7E0      /* (231, 255, 0): TAP TO RESTART */
 static void ui_pic(int pic, int x, int y) {
   const UiPic *p = &ui_pics[pic];
