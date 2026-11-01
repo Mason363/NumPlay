@@ -36,6 +36,32 @@ PICS = [
     ("ARROW_DOWN", "arrowDown.png", 0.3),
     ("HEADSTART", "headstartButton.png", 0.42), ("HEADSTART_MEGA", "headstartMegaButton.png", 0.42),
 ]
+# the menus: (picture, its atlas texture, the sprite, scale)
+MENU = [
+    ("LOGO", "MainMenu2x", "mainMenuLogo@2x.png", 0.27), ("PLAY_IDOL", "MainMenu2x", "mainMenuIdol@2x.png", 0.27),
+    ("M_STORE", "MainMenu2x", "mainMenuStore@2x.png", 0.32), ("M_OBJECTIVES", "MainMenu2x", "mainMenuAchievements@2x.png", 0.32),
+    ("PARCHMENT", "egUI_Buttons2x", "endGameBackground@2x.png", (172, 214)),   # (wider than the game's, for a wide screen)
+    ("B_RUN_AGAIN", "egUI_Buttons2x", "endGamePlayAgainButton@2x.png", 0.3),
+    ("B_MAIN_MENU", "egUI_Buttons2x", "endGameMainMenuButton@2x.png", 0.3),
+    ("B_RESUME", "egUI_Buttons2x", "pausedResumeButton@2x.png", 0.3),
+    ("B_NEW_GAME", "egUI_Buttons2x", "pausedNewGameButton@2x.png", 0.3),
+    ("B_BACK", "egUI_Buttons2x", "storeBackButton@2x.png", 0.3),
+    ("H_SCORE", "egUI_Buttons2x", "endGameScore@2x.png", 0.33), ("H_PAUSED", "egUI_Buttons2x", "pausedHeader@2x.png", 0.33),
+    ("H_STORE", "egUI_Buttons2x", "storeHeader@2x.png", 0.33), ("H_OBJECTIVES", "egUI_Buttons2x", "achievementsHeader@2x.png", 0.33),
+    ("B_STORE", "egUI_Buttons2x", "endGameStoreButton@2x.png", 0.25),
+    ("I_MAGNET", "egUI_Buttons2x", "storeItemVacuum@2x.png", 0.18), ("I_INVIS", "egUI_Buttons2x", "storeItemInvincibility@2x.png", 0.18),
+    ("I_COIN_BONUS", "egUI_Buttons2x", "storeItemCoinBonus@2x.png", 0.18), ("I_COIN_VALUE", "egUI_Buttons2x", "storeItemCoinValue@2x.png", 0.18),
+    ("I_BOOST", "egUI_Buttons2x", "storeItemBoost@2x.png", 0.18), ("I_WINGS", "egUI_Buttons2x", "storeItemAngelWings@2x.png", 0.18),
+    ("I_HEADSTART", "egUI_Buttons2x", "storeItemHeadStart@2x.png", 0.18),
+    ("I_HEADSTART_MEGA", "egUI_Buttons2x", "storeItemHeadStartMega@2x.png", 0.18),
+    ("BAR_EMPTY", "egUI_Buttons2x", "storeUpgradeBarEmpty@2x.png", 0.25),
+    ("BAR_FULL1", "egUI_Buttons2x", "storeUpgradeBarFull1@2x.png", 0.25), ("BAR_FULL2", "egUI_Buttons2x", "storeUpgradeBarFull2@2x.png", 0.25),
+    ("BAR_FULL3", "egUI_Buttons2x", "storeUpgradeBarFull3@2x.png", 0.25), ("BAR_FULL4", "egUI_Buttons2x", "storeUpgradeBarFull4@2x.png", 0.25),
+    ("BAR_FULL5", "egUI_Buttons2x", "storeUpgradeBarFull5@2x.png", 0.25),
+    ("SEPARATOR", "egUI_Buttons2x", "storeItemSeparator@2x.png", 0.33),
+    ("CHECK_EMPTY", "egUI_Buttons2x", "achievementCheckboxEmpty@2x.png", 0.18),
+    ("CHECK_FULL", "egUI_Buttons2x", "achievementCheckboxFull@2x.png", 0.18),
+]
 # lettering: (name, characters, scale)
 FONTS = [("gold", "".join(chr(c) for c in range(32, 127)), 0.30), ("gold_small", " 0123456789,mx", 0.22)]
 
@@ -126,8 +152,9 @@ def texture(env, name):
 
 
 def smaller(img, s):
-    """a picture made s times as big, its colours weighed by how much they show (no dark fringes)"""
-    w, h = max(1, round(img.width * s)), max(1, round(img.height * s))
+    """a picture made s times as big (or s = (width, height)), its colours weighed by how much they show (no dark
+    fringes)"""
+    w, h = s if isinstance(s, tuple) else (max(1, round(img.width * s)), max(1, round(img.height * s)))
     a = np.asarray(img, np.float64) / 255
     pre = np.dstack([a[:, :, :3] * a[:, :, 3:], a[:, :, 3:]])
     small = np.dstack([np.asarray(Image.fromarray(pre[:, :, k].astype(np.float32), "F").resize((w, h), Image.LANCZOS), np.float64)
@@ -177,6 +204,12 @@ def main():
     for name, sprite, s in PICS:
         x, y, w, h = sprites[sprite]
         items.append((f"HP_{name}", smaller(ui.crop((x, y, x + w, y + h)), s), 0, 0, 0))
+    atl, tex = {}, {}
+    for name, t, sprite, s in MENU:
+        if t not in atl:
+            atl[t], tex[t] = atlas_sprites(env, scripts, t), texture(env, t)
+        x, y, w, h = atl[t][sprite]
+        items.append((f"HP_{name}", smaller(tex[t].crop((x, y, x + w, y + h)), s), 0, 0, 0))
     fonts = []
     for fname, chars, s in FONTS:
         first = ord(min(chars))
