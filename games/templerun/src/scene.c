@@ -145,9 +145,9 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
    * leaves and roots would be left in the air) */
   int nt = me->nt;
   if (m < 2 * M_PIECES) {
-    if (z0 > 300) nt /= 8;
-    else if (z0 > 160) nt /= 5;
-    else if (z0 > MESH_FAR) nt /= 3;
+    if (z0 > 300) nt /= 5;
+    else if (z0 > 160) nt /= 3;
+    else if (z0 > MESH_FAR) nt /= 2;
   }
   for (int i = 0; i < nt; i++) {
     const TFace *t = &me->t[i];
