@@ -752,6 +752,20 @@ Temple Run comes as its own app, `TempleRun.nwa`. Run from the temple and don't 
 | **Back** | Pause (Resume, How to play, Quit night) |
 
 Five Nights at Freddy's 2 comes as its own app, `FiveNightsAtFreddys2.nwa`. Last from 12 to 6 AM. Your office has no doors: a hallway in front and a vent on each side. Keep the music box on CAM 11 wound or the Puppet comes, and nothing stops it. When someone stands in the hallway or a vent, put the mask on; if one is in the office when the monitor comes down, the mask at once. The mask doesn't fool Withered Foxy: flash the hallway at him. Balloon Boy takes your lights, and the flashlight's battery doesn't come back. Night 5 opens the 6th, and the 6th the Custom Night, with its ten modes.
+## Famidash
+
+<img src="../games/famidash/docs/shot.png" width="320" align="right" alt="Famidash">
+
+| Key | What it does |
+| --- | --- |
+| **OK**, **EXE** or **Up** | Jump, fly, flip (hold where the game holds) |
+| **Back** | Pause (with Resume, Practice and Quit game) |
+| **Down** | In practice mode: place a checkpoint |
+| **⌫** (backspace) | In practice mode: remove the last checkpoint |
+| **Arrows** | Choose in the menus |
+| **Home** | Save and quit |
+
+Your icon moves on by itself: jump over the spikes and reach the end. Hold the button and the cube jumps again as it lands. Portals turn it into a ship (hold to fly up), a ball or a spider (press to flip), a UFO (press to hop), a robot (hold to jump higher) or a wave (hold to go up). Press on a ring to jump in the air. Each level hides three coins, which count when you finish it in one go. Practice mode places checkpoints as you play.
 
 <br clear="right">
 
