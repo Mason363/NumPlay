@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="../../docs/media/fnf.gif" width="640" alt="Friday Night Funkin': Ready, Set, Go, then Daddy Dearest sings and Boyfriend hits the notes back on the beat">
+  <img src="../../docs/media/gallery/fnf.gif" width="640" alt="Friday Night Funkin': Ready, Set, Go, then Daddy Dearest sings and Boyfriend hits the notes back on the beat">
 </p>
 
 ## Highlights

@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="../../docs/media/angrybirds.gif" width="640" alt="Angry Birds: the first level, aimed, fired and knocked down with one bird">
+  <img src="../../docs/media/gallery/angrybirds.gif" width="640" alt="Angry Birds: the first level, aimed, fired and knocked down with one bird">
 </p>
 
 ## Highlights

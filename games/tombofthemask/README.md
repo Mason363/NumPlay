@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="../../docs/media/tombofthemask.gif" width="640" alt="Tomb of the Mask: the player dashes from wall to wall up the tomb, picking up dots and coins">
+  <img src="../../docs/media/gallery/tombofthemask.gif" width="640" alt="Tomb of the Mask: the player dashes from wall to wall up the tomb, picking up dots and coins">
 </p>
 
 ## Highlights

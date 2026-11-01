@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="../../docs/media/dune.gif" width="640" alt="Dune: the Rainbow Bubble rolls down the Mountains dunes, flies over the line for coins and lands Perfect Slides">
+  <img src="../../docs/media/gallery/dune.gif" width="640" alt="Dune: the Rainbow Bubble rolls down the Mountains dunes, flies over the line for coins and lands Perfect Slides">
 </p>
 
 ## Highlights

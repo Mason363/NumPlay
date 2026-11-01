@@ -5,7 +5,8 @@ The website (site/) runs GNU ld in the browser on the same objects the Makefile 
 NumPlay.nwa from: base.o (the launcher), arena.o (the RAM the games share), an app name and
 icon, and one object per game, with a script made of script.json's parts (tools/gen_games.py).
 This copies them to OUT, gzipped, with kit.json (the games, their sizes, colours and
-limits), each game's icon and thumbnail, and checks that linking the default games from OUT
+limits), each game's icon and thumbnail, and checks that every game has the clip the website plays
+(docs/media/previews/ or gallery/), that linking the default games from OUT
 gives NumPlay.nwa's bytes on the calculator, and that each big game ("xl", for calculators
 with Enlarged Extra Apps: up to xlAppSpace bytes of apps) links with the launcher alone. The
 blocks of the script go in the games' order ("index"), so the big games come last: past the
@@ -92,6 +93,13 @@ def icon_of(gid):
     return None
 
 
+def preview_of(gid):
+    """The clip the website plays on the screen for a game: from the emulator (tools/previews.py), else its
+    gallery GIF (docs/media/previews/ or docs/media/gallery/, as kit.json's "preview" names it)."""
+    return next((f"{d}/{gid}.gif" for d in ("previews", "gallery")
+                 if os.path.exists(os.path.join(ROOT, "docs", "media", d, f"{gid}.gif"))), None)
+
+
 def rounded(src, dst):
     """An app icon as the website shows it: the calculator's white outside its corners made transparent, with
     the corners every game icon has (make_icon.corner_mask), so it sits on the page as they do."""
@@ -130,6 +138,14 @@ def main():
     a = ap.parse_args()
     B, O = a.build, a.out
     manifest = json.load(open(a.manifest))
+    # every game's icon plays its clip on the website, so a game without one stops the kit (a language's
+    # kit has none: its tree has no docs/, and the website plays the English kit's)
+    if not a.english:
+        missing = [g["id"] for g in manifest if not preview_of(g["id"])]
+        if missing:
+            raise SystemExit(f"kit: no preview clip for {', '.join(missing)}. Add docs/media/gallery/<id>.gif "
+                             "(tools/emu.py --frames, then tools/record.py --frames) or docs/media/previews/<id>.gif "
+                             "(tools/previews.py)")
     index = {g["id"]: n for n, g in enumerate(manifest, 1)}
     default, upsilon = a.default.split(), set(a.upsilon.split())
     script = json.load(open(os.path.join(B, "gen", "script.json")))
@@ -177,9 +193,7 @@ def main():
         icon = icon_of(i)
         if icon:
             shutil.copy(icon, os.path.join(O, "icons", i + ".png"))
-        # the clip the website plays: from the emulator (tools/previews.py), else the gallery's GIF
-        preview = next((f"{d}/{i}.gif" for d in ("previews", "gallery")
-                        if os.path.exists(os.path.join(ROOT, "docs", "media", d, f"{i}.gif"))), None)
+        preview = preview_of(i)
         thumb = os.path.join(ROOT, "docs", "media", f"thumb_{i}.png")
         if os.path.exists(thumb):
             shutil.copy(thumb, os.path.join(O, "thumbs", i + ".png"))

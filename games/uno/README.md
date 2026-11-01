@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="../../docs/media/uno.gif" width="640" alt="UNO: the bots play their cards in turn, then you pick a card in your hand and play it">
+  <img src="../../docs/media/gallery/uno.gif" width="640" alt="UNO: the bots play their cards in turn, then you pick a card in your hand and play it">
 </p>
 
 ## Highlights

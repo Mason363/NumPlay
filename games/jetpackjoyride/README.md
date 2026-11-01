@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="../../docs/media/jetpackjoyride.gif" width="640" alt="Jetpack Joyride: Barry grabs coins and rides the Profit Bird until it hits a zapper, then flies on past a missile">
+  <img src="../../docs/media/gallery/jetpackjoyride.gif" width="640" alt="Jetpack Joyride: Barry grabs coins and rides the Profit Bird until it hits a zapper, then flies on past a missile">
 </p>
 
 ## Highlights

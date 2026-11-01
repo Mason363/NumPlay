@@ -7,8 +7,8 @@
  *   play shots DIR       pictures of the screens (DIR/<name>.ppm)
  *   play docs DIR        the README's pictures (DIR/<name>.ppm)
  *   play film DIR MS T [TIME]   MS milliseconds of a race on circuit T (time of day 0..2), a bot driving
- *                        (DIR/<frame>_<ms>.raw, for tools/record.py --frames: docs/media/turborush.gif is
- *                        `play film DIR 24000 0`, 11000-20000)
+ *                        (DIR/<frame>_<ms>.raw, for tools/record.py --frames:
+ *                        docs/media/gallery/turborush.gif is `play film DIR 24000 0`, 11000-20000)
  */
 #define main tr_app_main
 #include "../src/main.c"
