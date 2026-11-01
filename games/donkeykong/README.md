@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="../../docs/media/donkeykong.gif" width="640" alt="Donkey Kong: Mario climbs the 25m girders over Kong's barrels and reaches Pauline">
+  <img src="../../docs/media/gallery/donkeykong.gif" width="640" alt="Donkey Kong: Mario climbs the 25m girders over Kong's barrels and reaches Pauline">
 </p>
 
 ## Highlights

@@ -505,22 +505,22 @@ NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyri
     <td align="center"><img src="docs/media/gallery/doodlejump.gif" alt="Doodle Jump: the doodler climbs past blue platforms and a monster"><br><a href="games/doodlejump/README.md"><b>Doodle Jump</b></a></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/media/jetpackjoyride.gif" alt="Jetpack Joyride: Barry grabs coins and rides the Profit Bird until it hits a zapper, then flies on past a missile"><br><a href="games/jetpackjoyride/README.md"><b>Jetpack Joyride</b></a></td>
-    <td align="center"><img src="docs/media/stickmanhook.gif" alt="Stickman Hook: two levels swung from hook to hook, each over the finish line"><br><a href="games/stickmanhook/README.md"><b>Stickman Hook</b></a></td>
-    <td align="center"><img src="docs/media/donkeykong.gif" alt="Donkey Kong: Mario climbs the 25m girders past rolling barrels to Pauline"><br><a href="games/donkeykong/README.md"><b>Donkey Kong</b></a></td>
+    <td align="center"><img src="docs/media/gallery/jetpackjoyride.gif" alt="Jetpack Joyride: Barry grabs coins and rides the Profit Bird until it hits a zapper, then flies on past a missile"><br><a href="games/jetpackjoyride/README.md"><b>Jetpack Joyride</b></a></td>
+    <td align="center"><img src="docs/media/gallery/stickmanhook.gif" alt="Stickman Hook: two levels swung from hook to hook, each over the finish line"><br><a href="games/stickmanhook/README.md"><b>Stickman Hook</b></a></td>
+    <td align="center"><img src="docs/media/gallery/donkeykong.gif" alt="Donkey Kong: Mario climbs the 25m girders past rolling barrels to Pauline"><br><a href="games/donkeykong/README.md"><b>Donkey Kong</b></a></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/media/dune.gif" alt="Dune: the ball rolls down the dunes, flies over the line for coins and lands Perfect Slides"><br><a href="games/dune/README.md"><b>Dune</b></a></td>
-    <td align="center"><img src="docs/media/monkeymart.gif" alt="Monkey Mart: the monkey carries bananas and milk to the shelves while the customers shop"><br><a href="games/monkeymart/README.md"><b>Monkey Mart</b></a></td>
-    <td align="center"><img src="docs/media/tombofthemask.gif" alt="Tomb of the Mask: dashing up the tomb ahead of the rising flood"><br><a href="games/tombofthemask/README.md"><b>Tomb of the Mask</b></a></td>
+    <td align="center"><img src="docs/media/gallery/dune.gif" alt="Dune: the ball rolls down the dunes, flies over the line for coins and lands Perfect Slides"><br><a href="games/dune/README.md"><b>Dune</b></a></td>
+    <td align="center"><img src="docs/media/gallery/monkeymart.gif" alt="Monkey Mart: the monkey carries bananas and milk to the shelves while the customers shop"><br><a href="games/monkeymart/README.md"><b>Monkey Mart</b></a></td>
+    <td align="center"><img src="docs/media/gallery/tombofthemask.gif" alt="Tomb of the Mask: dashing up the tomb ahead of the rising flood"><br><a href="games/tombofthemask/README.md"><b>Tomb of the Mask</b></a></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/media/uno.gif" alt="UNO: a hand against three bots, a Draw Two and a colour called"><br><a href="games/uno/README.md"><b>UNO</b></a></td>
-    <td align="center"><img src="docs/media/fnf.gif" alt="Friday Night Funkin': Ready, Set, Go, then the first notes of a song"><br><a href="games/fnf/README.md"><b>Friday Night Funkin'</b></a></td>
-    <td align="center"><img src="docs/media/turborush.gif" alt="Turbo Rush: racing along Sunset Coast, passing rivals before a bend"><br><a href="games/turborush/README.md"><b>Turbo Rush</b></a></td>
+    <td align="center"><img src="docs/media/gallery/uno.gif" alt="UNO: a hand against three bots, a Draw Two and a colour called"><br><a href="games/uno/README.md"><b>UNO</b></a></td>
+    <td align="center"><img src="docs/media/gallery/fnf.gif" alt="Friday Night Funkin': Ready, Set, Go, then the first notes of a song"><br><a href="games/fnf/README.md"><b>Friday Night Funkin'</b></a></td>
+    <td align="center"><img src="docs/media/gallery/turborush.gif" alt="Turbo Rush: racing along Sunset Coast, passing rivals before a bend"><br><a href="games/turborush/README.md"><b>Turbo Rush</b></a></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/media/angrybirds.gif" alt="Angry Birds: the first level, aimed, fired and knocked down with one bird"><br><a href="games/angrybirds/README.md"><b>Angry Birds</b></a></td>
+    <td align="center"><img src="docs/media/gallery/angrybirds.gif" alt="Angry Birds: the first level, aimed, fired and knocked down with one bird"><br><a href="games/angrybirds/README.md"><b>Angry Birds</b></a></td>
     <td align="center"><img src="docs/media/gallery/polytrack.gif" alt="PolyTrack: Desert 4, through the tube and on to the finish"><br><a href="games/polytrack/README.md"><b>PolyTrack</b></a></td>
     <td align="center"><img src="docs/media/gallery/paperclips.gif" alt="Universal Paperclips: the first clips, a strategy tournament, the HypnoDrones, a battle against the drifters and the last clips"><br><a href="games/paperclips/README.md"><b>Universal Paperclips</b></a></td>
   </tr>

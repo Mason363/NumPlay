@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="../../docs/media/turborush.gif" width="640" alt="Turbo Rush: racing along Sunset Coast, passing a rival before a bend">
+  <img src="../../docs/media/gallery/turborush.gif" width="640" alt="Turbo Rush: racing along Sunset Coast, passing a rival before a bend">
 </p>
 
 ## Highlights

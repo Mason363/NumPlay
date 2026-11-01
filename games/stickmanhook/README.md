@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="../../docs/media/stickmanhook.gif" width="640" alt="Stickman Hook: the stickman swings through a level, crosses the checkered line in slow motion and dances on the victory screen">
+  <img src="../../docs/media/gallery/stickmanhook.gif" width="640" alt="Stickman Hook: the stickman swings through a level, crosses the checkered line in slow motion and dances on the victory screen">
 </p>
 
 ## Highlights

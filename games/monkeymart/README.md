@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="../../docs/media/monkeymart.gif" width="640" alt="Monkey Mart: the monkey picks bananas and corn, fills the shelves and takes the money at the till while customers shop">
+  <img src="../../docs/media/gallery/monkeymart.gif" width="640" alt="Monkey Mart: the monkey picks bananas and corn, fills the shelves and takes the money at the till while customers shop">
 </p>
 
 ## Highlights
