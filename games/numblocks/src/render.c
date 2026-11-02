@@ -1443,6 +1443,16 @@ static int box_texel(const Box *b, int face, float x, float y, float z) {
     int k = (u & 1) ? q >> 4 : q & 15;
     return k ? skin_dragon_pal[k] : -1;
   }
+  if (b->skin >= SKIN_VILLAGER) {   /* (64 x 64: the villagers', by profession) */
+    static const uint8_t *const vpx[5] = {skin_farmer_px, skin_librarian_px, skin_priest_px, skin_smith_px, skin_butcher_px};
+    static const uint16_t *const vpal[5] = {skin_farmer_pal, skin_librarian_pal, skin_priest_pal, skin_smith_pal,
+                                            skin_butcher_pal};
+    if ((unsigned)u >= 64 || (unsigned)v >= 64) return -1;
+    int k = b->skin - SKIN_VILLAGER;
+    uint8_t q = vpx[k][(v * 64 + u) >> 1];
+    int i = (u & 1) ? q >> 4 : q & 15;
+    return i ? vpal[k][i] : -1;
+  }
   if (b->skin == SKIN_CRYSTAL) {   /* (its 64 x 32 drawn at 128 x 64) */
     if ((unsigned)u >= 64 || (unsigned)v >= 32) return -1;
     uint8_t q = skin_crystal_px[(v * 2 * 128 + u * 2) >> 1];

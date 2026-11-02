@@ -392,6 +392,16 @@ extern const uint8_t skin_crystal_px[];   /* endercrystal/endercrystal.png, 4 bi
 extern const uint16_t skin_crystal_pal[16];
 extern const uint8_t skin_dragon_px[];   /* enderdragon/dragon.png, 4 bits a texel */
 extern const uint16_t skin_dragon_pal[16];
+extern const uint8_t skin_farmer_px[];   /* villager/farmer.png, 4 bits a texel */
+extern const uint16_t skin_farmer_pal[16];
+extern const uint8_t skin_librarian_px[];   /* villager/librarian.png, 4 bits a texel */
+extern const uint16_t skin_librarian_pal[16];
+extern const uint8_t skin_priest_px[];   /* villager/priest.png, 4 bits a texel */
+extern const uint16_t skin_priest_pal[16];
+extern const uint8_t skin_smith_px[];   /* villager/smith.png, 4 bits a texel */
+extern const uint16_t skin_smith_pal[16];
+extern const uint8_t skin_butcher_px[];   /* villager/butcher.png, 4 bits a texel */
+extern const uint16_t skin_butcher_pal[16];
 #endif
 
 #endif

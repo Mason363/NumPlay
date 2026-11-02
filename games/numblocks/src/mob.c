@@ -26,6 +26,7 @@ static const MobInfo info[] = {
     [E_BLAZE] = {0.6f, 1.8f, 0.23f, 20},    [E_MAGMA] = {0.51f, 0.51f, 0.2f, 1},
     [E_WSKELETON] = {0.72f, 2.535f, 0.25f, 20}, [E_ENDERMAN] = {0.6f, 2.9f, 0.3f, 40},
     [E_CRYSTAL] = {2.0f, 2.0f, 0.0f, 5},    [E_DRAGON] = {16.0f, 8.0f, 0.0f, 200},
+    [E_VILLAGER] = {0.6f, 1.95f, 0.3f, 20},   /* (EntityAIWander's 0.6 of its speed, 0.5) */
 #endif
 };
 #if NB_DIMS

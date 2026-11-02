@@ -500,7 +500,10 @@ SKINS = ['zombie/zombie', 'skeleton/skeleton', 'creeper/creeper', 'spider/spider
 SKINS_DIMS = ['zombie_pigman', 'ghast/ghast', 'ghast/ghast_shooting', 'blaze', 'slime/magmacube',
               'enderman/enderman', 'skeleton/wither_skeleton']
 # skins too big for 64 x 32: name, file
-BIG_SKINS = [('crystal', 'endercrystal/endercrystal'), ('dragon', 'enderdragon/dragon')]
+BIG_SKINS = [('crystal', 'endercrystal/endercrystal'), ('dragon', 'enderdragon/dragon'),
+             # the villagers' (64 x 64), by profession: farmer, librarian, priest, blacksmith, butcher
+             ('farmer', 'villager/farmer'), ('librarian', 'villager/librarian'), ('priest', 'villager/priest'),
+             ('smith', 'villager/smith'), ('butcher', 'villager/butcher')]
 GUI_SPRITES_DIMS = [('boss_bg', 'gui/icons', 0, 74, 182, 5), ('boss', 'gui/icons', 0, 79, 182, 5)]
 
 

@@ -14,8 +14,8 @@
  * Differences from 1.8.8, as the population view goes (gen.c's top comment): a house's height is the average
  * ground (the terrain as made, without its caves and trees) under all of it, which 1.8.8 takes under the part
  * the first population to reach it holds (all of it for most houses); the pillars under houses stop at the
- * terrain without its caves; a desert temple's chests draw no enchanted book (see dungeon_book); the
- * villagers, jungle temples and witch huts are not made.
+ * terrain without its caves; a desert temple's chests draw no enchanted book (see dungeon_book); jungle
+ * temples and witch huts are not made. A house's villagers are spawned when its chunk is made (mob_villager).
  *
  * The layout is made in the scratch union U before the chunk's terrain, for each gen_slab near a village;
  * the pieces that cross the four populations' boxes are kept on gen_slab's stack (tp), their heights found
@@ -631,7 +631,20 @@ static void vs_run(const TP *t, const uint8_t *p, int desert) {
             }
             break;
         }
-        case X_VILLAGERS: p++; break;
+        case X_VILLAGERS: {
+            /* spawnVillagers: n of them in a row, while in the population's box (when their chunk is made);
+             * the church's a priest, the library's a librarian, the blacksmith's one, the butcher's first */
+            int n = *p++;
+            for (int i = 0; i < n; i++) {
+                int vx = tp_x(t, x + i, z), vz = tp_z(t, x + i, z);
+                if (!pb_in(vx, Y, vz)) break;
+                if (!in_c_range(vx, Y, vz)) continue;
+                int prof = t->type == VT_CHURCH ? 2 : t->type == VT_HOUSE1 ? 1 : t->type == VT_HOUSE2 ? 3
+                           : t->type == VT_HALL && i == 0 ? 4 : -1;
+                mob_villager(vx, Y, vz, prof);
+            }
+            break;
+        }
         case X_CLEAR:
         case X_DOWN: {
             vs_xyz(p, &x1, &y1, &z1), p += 2;

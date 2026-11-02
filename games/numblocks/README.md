@@ -29,13 +29,13 @@ Minecraft 1.8.8 on your NumWorks calculator. NumBlocks isn't a look-alike: it fo
 - **Endermen and ender pearls:** they teleport, carry blocks around and come after you if you look at them. A thrown ender pearl takes you where it lands.
 - **Eyes of ender and strongholds:** blaze powder and an ender pearl make an eye of ender. Thrown, it flies towards the nearest of the world's three strongholds, the very ones 1.8.8 makes for your seed, with their corridors, prisons, libraries, fountains and iron doors that open with a button. Put an eye in each of the 12 frames of the portal room to open the End portal.
 - **The End:** the island of end stone and its obsidian pillars, the ender crystals on top that heal the dragon, and the Ender Dragon itself: it circles, charges and dives, breaks what it can on its way (obsidian, end stone and bedrock stop it), and shows its health at the top of the screen. While they are out of sight, triangles at the screen's edge point to the dragon (purple) and to the pillars whose crystals are still whole (pink). Kill it for its experience, the exit portal and the dragon egg. The exit portal shows the End poem and the credits, then takes you home.
-- **Villages:** where Minecraft 1.8.8 puts them for your seed, built from its own plans: houses, the church, the library, the blacksmith and its chest, farms, lamps, roads and the well. In a desert they are made of sandstone.
+- **Villages:** where Minecraft 1.8.8 puts them for your seed, built from its own plans: houses, the church, the library, the blacksmith and its chest, farms, lamps, roads and the well, and their villagers: farmers, librarians, priests, blacksmiths and butchers. In a desert they are made of sandstone.
 - **Desert temples:** the hidden room under the floor, its four chests and the TNT trap under the pressure plate.
 - **Mineshafts:** the room, corridors, crossings and stairs, with their supports, rails, cobwebs, torches and cave spider spawners.
 - **Dungeons:** their spawners make skeletons, zombies or spiders, and their chests have their loot.
 - **Old worlds:** a world made before keeps its look where you had been. New places get the villages and the rest.
 - **Saved:** each dimension keeps its own changes, and you come back where you left. Open a world saved in the Nether or the End in NumPlay's NumBlocks and you are in the Overworld where you last stood there, without the items it doesn't have.
-- **Not in:** brewing (nether wart grows, but there are no potions), silverfish (the strongholds' stone bricks are plain ones), villagers, jungle temples, witch huts, ocean monuments, the mineshafts' chest minecarts, and redstone. Cave spider spawners make spiders.
+- **Not in:** brewing (nether wart grows, but there are no potions), silverfish (the strongholds' stone bricks are plain ones), trading with villagers, jungle temples, witch huts, ocean monuments, the mineshafts' chest minecarts, and redstone. Cave spider spawners make spiders.
 
 ## Controls
 

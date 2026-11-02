@@ -64,7 +64,9 @@ void dims_explode(float x, float y, float z, float power, bool fire);   /* (mob.
 void dims_spawners_tick(void);                                         /* (mob.c) the fortresses' blaze spawners */
 int gen_fortress_spawners(int x, int z, int *out, int n);              /* (gen.c) theirs near there: x, y, z */
 int gen_dungeon_spawners(int x, int z, int *out, int n);   /* (gen.c) the dungeons' near there: x, y, z, mob */        /* (mob.c) the player's ender pearl lands there */
-enum { SKIN_CRYSTAL = 16, SKIN_DRAGON = 17 };   /* (the big skins: data.h's skin_crystal_px, skin_dragon_px) */
+enum { SKIN_CRYSTAL = 16, SKIN_DRAGON = 17, SKIN_VILLAGER = 18 };   /* (the big skins: data.h's skin_crystal_px...;
+                                                                    * the villagers' 18 to 22, by profession) */
+void mob_villager(int x, int y, int z, int prof);   /* (mob.c) a house's villager there, unless one is (prof -1: any) */
 void dims_credits(void);
 void credits_open(void);   /* (gui.c) GuiWinGame */
 void player_use_on(int x, int y, int z, int f);   /* (player.c, tests) the held item used on that block */

@@ -212,8 +212,9 @@ enum { E_NONE, E_ITEM, E_ZOMBIE, E_SKELETON, E_CREEPER, E_SPIDER, E_PIG, E_COW, 
 #if NB_DIMS
 /* NumBlocks.nwa's: the Nether's and the End's creatures (the ender crystal and the dragon count as mobs: they
  * are hit), then what flies (fireballs, eyes of ender: their item in item) */
-enum { E_PIGMAN = E_BOBBER + 1, E_GHAST, E_BLAZE, E_MAGMA, E_WSKELETON, E_ENDERMAN, E_CRYSTAL, E_DRAGON, E_FIREBALL, E_EYE };
-#define IS_MOB(t) (((t) >= E_ZOMBIE && (t) <= E_CHICKEN) || ((t) >= E_PIGMAN && (t) <= E_DRAGON))
+enum { E_PIGMAN = E_BOBBER + 1, E_GHAST, E_BLAZE, E_MAGMA, E_WSKELETON, E_ENDERMAN, E_CRYSTAL, E_DRAGON, E_FIREBALL, E_EYE,
+       E_VILLAGER };   /* (and the villages' villagers) */
+#define IS_MOB(t) (((t) >= E_ZOMBIE && (t) <= E_CHICKEN) || ((t) >= E_PIGMAN && (t) <= E_DRAGON) || (t) == E_VILLAGER)
 #define NOT_MOB(t) (!IS_MOB(t))
 #define IS_MONSTER(t) (((t) >= E_ZOMBIE && (t) <= E_SPIDER) || ((t) >= E_PIGMAN && (t) <= E_ENDERMAN))
 #else
