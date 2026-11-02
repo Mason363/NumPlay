@@ -2,6 +2,11 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.7: Temple Run fixed, Kingdom Rush's stage buildings
+
+- **Temple Run:** the game's own intro, with the path whole and the runner close at the start. No more flicker or scenery popping in, the camera stays out of the trees, and the runner and monkeys move at the game's own pace. The quit question is in the game's own alert box. 5% faster on average.
+- **Kingdom Rush:** the elves' hall, the Sasquatch's cave and the Sunray Tower.
+
 ## 1.24.6: Mr Bullet
 
 - **Mr Bullet:** MrBullet.nwa, 596 spy puzzles in Classic, Grenades, Hostages and Friendly Fire, with the game's own levels, pictures and physics.
