@@ -807,6 +807,26 @@ Your icon moves on by itself: jump over the spikes and reach the end. Hold the b
 
 <br clear="right">
 
+## Cat Ninja
+
+<img src="../games/catninja/docs/shot.png" width="320" align="right" alt="Cat Ninja: the cat wall jumps up a shaft in level 2">
+
+Cat Ninja comes as its own app, `CatNinja.nwa`: install it on its own.
+
+| Key | What it does |
+| --- | --- |
+| **Left / Right** (or 4 / 6) | Run |
+| **Up**, **OK** or **EXE** (or 8) | Jump; again in the air: double jump; against a wall: wall jump |
+| **Down** (or 2) | Roll (hold it and run); in the air: slam |
+| **Shift** | Jetpack on or off |
+| **⌫** (backspace) | Back to the last checkpoint |
+| **Back** | Pause: Resume, Retry, Title, How to play, Quit game |
+| **Home** | Save and quit |
+
+Walk right from the title map. Each level leads into the next: get through its spikes, lasers, mines and shooters, and grab the crystals on the way. Jump from wall to wall to climb (not on the sticky green walls). A slam breaks glass and presses red buttons. Gravity changers turn the whole world round. Die and you go back to the last checkpoint. Collect more than 20 of the 50 crystals before the end to save the world.
+
+<br clear="right">
+
 ## Portal Returns
 
 <img src="media/portal.gif" width="320" align="right" alt="Portal Returns: falling through a portal and flying across a test chamber">

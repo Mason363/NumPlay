@@ -64,6 +64,7 @@ ALONE = {
     "fnaf3": ("Five Nights at Freddy's 3", "Fazbear's Fright's six nights with Springtrap and the phantoms: the lure, the vents, the maintenance panel"),
     "fnaf4": ("Five Nights at Freddy's 4", "the bedroom's nights with the Nightmares: listen at the doors, the closet, the bed, Fun with Plushtrap"),
     "famidash": ("Famidash", "TFDSoft's Geometry Dash for the NES, made for the calculator: the 173 levels of Famidash HUGE, every mode, practice mode"),
+    "catninja": ("Cat Ninja", "Richman Stewart's Flash platformer: its 30 levels of wall jumps and traps, the boss and the crystals"),
 }
 VARIANTS = [
     ("NumPlay-Invisible.nwa", "The same app, hidden: a blank icon with no name"),

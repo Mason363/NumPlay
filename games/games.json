@@ -1449,5 +1449,26 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/famidash",
     "default": false,
     "xl": true
+  },
+  {
+    "id": "catninja",
+    "rank": 37,
+    "title": "Cat Ninja",
+    "tagline": "Wall jumps, traps and 50 crystals",
+    "credit": "Based on Cat Ninja by Richman Stewart",
+    "top": "0x7B3FC4",
+    "bottom": "0x2A1450",
+    "accent": "0xE473EE",
+    "colors": 16,
+    "records": [
+      "catninja.sav",
+      "catninja_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/catninja",
+    "default": false,
+    "xl": true
   }
 ]

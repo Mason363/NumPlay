@@ -117,14 +117,14 @@ typedef struct {
   bool on;
 } bomb_t;
 enum { TR_PIC, TR_CIRCLE_RED, TR_DOT }; /* a trail: a picture, the jetpack's red circle, a bullet's dot */
-typedef struct {
-  double x, y, sx, sy, scale, alpha, fade, rot;
+typedef struct { /* (only drawn: floats) */
+  float x, y, sx, sy, scale, alpha, fade, rot;
   int kind, pic, color, tint; /* tint: 0 none, 1 the map's, 2 the cat's (as it was) */
   float r;                    /* a circle's radius */
   uint8_t tr, tg, tb;         /* (the cat's tint when it was made, in 32nds) */
 } trail_t;
-typedef struct {
-  double x, y, speedx, gravity, alpha, rot;
+typedef struct { /* (only drawn: floats) */
+  float x, y, speedx, gravity, alpha, rot;
   int type, size, delayrate, delaytimer, pic, px0, py0, pw, ph; /* type 0: a piece of the cat (pic, its part) */
   bool onground;
 } particle_t;
