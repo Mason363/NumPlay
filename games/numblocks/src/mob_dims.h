@@ -160,6 +160,22 @@ static void dragon_parts(const Entity *e, float pt) {
 static void dims_parts(const Entity *e, float pt, float f, float a, float pitch, float age) {
     float sw = cosf(f * 0.6662f), swo = cosf(f * 0.6662f + PI);
     switch (e->type) {
+    case E_VILLAGER: {
+        /* ModelVillager: the head and its nose, the robe (its body inside it is not seen), the arms folded, the
+         * legs; its profession's skin */
+        int sk = SKIN_VILLAGER + (e->sheared < 5 ? e->sheared : 0);
+        box(-4, -10, -4, 8, 10, 8, 0, 0, 0, 0, 0, sk)->rx = pitch;
+        box(-1, -3, -6, 2, 4, 2, 24, 0, 0, 0, 0, sk)->rx = pitch;   /* (the nose: the head's, its pivot 2 up) */
+        box(-4, 0, -3, 8, 18, 6, 0, 38, 0, 0, 0, sk);
+        box(-8, -2, -2, 4, 8, 4, 44, 22, 0, 3, -1, sk)->rx = -0.75f;
+        box(4, -2, -2, 4, 8, 4, 44, 22, 0, 3, -1, sk)->rx = -0.75f;
+        box(-4, 2, -2, 8, 4, 4, 40, 38, 0, 3, -1, sk)->rx = -0.75f;
+        box(-2, 0, -2, 4, 12, 4, 0, 22, -2, 12, 0, sk)->rx = sw * 1.4f * a * 0.5f;
+        Part *ll = box(-2, 0, -2, 4, 12, 4, 0, 22, 2, 12, 0, sk);
+        ll->rx = swo * 1.4f * a * 0.5f;
+        ll->mirror = 1;
+        break;
+    }
     case E_PIGMAN:
     case E_WSKELETON: {
         /* ModelZombie (the pigman), ModelSkeleton (its arms held out as a zombie's: no bow) */
@@ -326,6 +342,7 @@ static bool dims_spawn(void) {
 /* ---------------------------------------------------------------- drops */
 static bool dims_loot(Entity *e) {
     switch (e->type) {
+    case E_VILLAGER: return true;   /* (nothing, no experience) */
     case E_PIGMAN:
         drop(I_ROTTEN_FLESH, rnd(2), e);
         drop(I_GOLD_NUGGET, rnd(2), e);
@@ -648,6 +665,19 @@ static void ender_tick(Entity *e) {
 
 /* the dimensions' creatures each tick: the ones that are all theirs (true), or what the others do before
  * they go on as zombies do */
+/* Village.spawnVillagers: a house's villager where 1.8.8 puts it (when its chunk is made), unless one is
+ * near: a farmer, librarian, priest, blacksmith or butcher (prof -1: one of them at random); ten at most */
+void mob_villager(int x, int y, int z, int prof) {
+    int n = 0;
+    for (int i = 0; i < N_ENT; i++) {
+        const Entity *o = &ents[i];
+        if (o->type != E_VILLAGER) continue;
+        if (++n >= 10 || (fabsf(o->x - (x + 0.5f)) < 4 && fabsf(o->z - (z + 0.5f)) < 4 && fabsf(o->y - y) < 4)) return;
+    }
+    Entity *e = spawn(E_VILLAGER, x + 0.5f, (float)y, z + 0.5f);
+    if (e) e->sheared = (uint8_t)(prof < 0 ? rnd(5) : prof);
+}
+
 void dragon_tick(Entity *e);     /* (end.c) */
 void crystal_gone(Entity *e);    /* (end.c) */
 static bool dims_tick(Entity *e) {

@@ -413,6 +413,8 @@ static void nether_slab(int cx, int cz, int y0, int h, uint8_t *out) {
 
 #include "gen_fortress.h"
 #include "gen_stronghold.h"
+#include "gen_struct.h"
+#include "gen_mineshaft.h"
 
 /* ---- ChunkProviderHell.populate
  * A chunk is decorated by the populations of the four chunks whose areas (offset by 8) cover it, replayed

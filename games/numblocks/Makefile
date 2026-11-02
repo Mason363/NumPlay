@@ -5,6 +5,7 @@
 #   make check      link it like the calculator does (output/numblocks.bin)
 #   make host       build/play: the game on a computer, for tests and screenshots
 #   make data       src/data.c from Minecraft 1.8.8's client.jar (CLIENT_JAR=path)
+#   make structs    src/gen_struct_data.h from 1.8.8's decompiled structure classes (MCP_DIR=path)
 Q ?= @
 CC = arm-none-eabi-gcc
 NWLINK ?= npx --yes -- nwlink@1.0.0
@@ -26,7 +27,7 @@ LDFLAGS = -Wl,--relocatable -nostartfiles --specs=nano.specs
 LDFLAGS += -Wl,-e,main -Wl,-u,eadk_app_name -Wl,-u,eadk_app_icon -Wl,-u,eadk_api_level
 LDFLAGS += -Wl,--gc-sections -flinker-output=nolto-rel
 
-.PHONY: build check clean host data
+.PHONY: build check clean host data structs
 build: $(BUILD_DIR)/numblocks.nwa
 
 check: $(BUILD_DIR)/numblocks.nwa
@@ -66,12 +67,17 @@ build/dims_test: $(GAME_DIMS) src/plat_host.c tests/dims.c $(HEADERS)
 build/np_load: $(GAME) src/plat_host.c tests/np_load.c $(HEADERS)
 	$(Q) mkdir -p build
 	$(Q) cc $(HOST_FLAGS) $(GAME) src/plat_host.c tests/np_load.c -lm -o $@
-test: build/unit build/unit_np build/dims_test build/np_load
+# villages and desert temples: where they start, their layouts, their blocks, old worlds (structs.c)
+build/structs_test: $(GAME_DIMS) src/plat_host.c tests/structs.c $(HEADERS)
+	$(Q) mkdir -p build
+	$(Q) cc $(HOST_FLAGS) -DNB_DIMS=1 $(GAME_DIMS) src/plat_host.c tests/structs.c -lm -o $@
+test: build/unit build/unit_np build/dims_test build/np_load build/structs_test
 	@mkdir -p build/unit-saves
 	./build/unit
 	./build/unit_np
 	./build/dims_test
 	./build/np_load
+	./build/structs_test
 # every pixel traced: the reference the adaptive picture is checked against
 build/play_ref: $(GAME_DIMS) src/plat_host.c tests/play.c $(HEADERS)
 	$(Q) mkdir -p build
@@ -82,6 +88,10 @@ data:
 	python3 tools/blocks.py --header > src/blocks.h
 	python3 tools/items.py --header > src/items.h
 	python3 tools/pack.py $(CLIENT_JAR)
+
+MCP_DIR ?= mcp
+structs:
+	python3 -I tools/structs.py $(MCP_DIR)
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
