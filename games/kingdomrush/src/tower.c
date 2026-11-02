@@ -76,6 +76,7 @@ BarrackStat barrack_stat(int kind, int level) {
 }
 
 int tower_range(int kind, int level) {
+  if (site_kind(kind)) return 0;
   if (kind == TW_BARRACKS || kind == TW_PALADIN || kind == TW_BARBARIAN) return barrack_stat(kind, level).rally;
   return tower_stat(kind, level).range;
 }
@@ -175,6 +176,7 @@ void spot_make(int s, int kind, int level) {
 /* what the next step costs: choice 0 the next level, 1 and 2 the specials; -1 if there is none, -2 locked */
 int spot_cost(int s, int choice) {
   Spot *t = &B.spot[s];
+  if (site_kind(t->kind)) return -1;
   if (t->kind == TW_NONE) {   /* the build menu: choice 1 archers, 2 barracks, 3 mages, 4 engineers */
     static const uint8_t kinds[5] = {0, TW_ARCHER, TW_BARRACKS, TW_MAGE, TW_ENGINEER};
     int k = kinds[choice < 0 || choice > 4 ? 0 : choice];
@@ -388,6 +390,10 @@ void tower_step(int s) {
   t->anim_t++, t->shooter_t[0]++, t->shooter_t[1]++;
   if (t->ice) ice_step(t);
   if (t->disabled) return;
+  if (site_kind(t->kind)) {
+    site_step(s);
+    return;
+  }
   if (t->building) {
     if (--t->building == 0) finish(s);
     return;
@@ -446,8 +452,10 @@ void barracks_open(int s) {
 
 bool spot_rally_ok(int s, Pt p) {
   Spot *t = &B.spot[s];
+  Pt c = {t->x, t->y - 10};
   int r = t->kind == TW_SORCERER ? S_mages_sorcerer_elementalRallyRange : barrack_stat(TW_BARRACKS, 1).rally;
-  if (!ellipse_contains(t->x, t->y - 10, (float)r, r * RANGE_RATIO, p.x, p.y)) return false;
+  if (site_kind(t->kind)) r = site_rally_range(s, &c);
+  if (!ellipse_contains(c.x, c.y, (float)r, r * RANGE_RATIO, p.x, p.y)) return false;
   for (int pa = 0; pa < B.npaths; pa++) {
     int n = path_len(pa, 0);
     for (int k = 0; k < n; k++) {
@@ -461,6 +469,10 @@ bool spot_rally_ok(int s, Pt p) {
 
 void spot_rally(int s, Pt p) {
   Spot *t = &B.spot[s];
+  if (site_kind(t->kind)) {
+    site_rally(s, p);
+    return;
+  }
   if (t->kind == TW_SORCERER) {
     special_rally(s, p);
     return;

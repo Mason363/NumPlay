@@ -22,6 +22,8 @@ static SoldierKind kind_of(int k) {
   case SK_REINF2: return (SoldierKind){11, 5, 20, 6, 5, AN_SO_REINFORCEMENTLEVEL2A_IDLE, AN_SO_REINFORCEMENTLEVEL2A_RUNNING, AN_SO_REINFORCEMENTLEVEL2A_FIGHTING, AN_SO_REINFORCEMENTLEVEL2A_DEAD, AN_SO_REINFORCEMENTLEVEL2A_RESPAWNING};
   case SK_REINF3: return (SoldierKind){11, 5, 20, 6, 5, AN_SO_REINFORCEMENTLEVEL3A_IDLE, AN_SO_REINFORCEMENTLEVEL3A_RUNNING, AN_SO_REINFORCEMENTLEVEL3A_FIGHTING, AN_SO_REINFORCEMENTLEVEL3A_DEAD, AN_SO_REINFORCEMENTLEVEL3A_RESPAWNING};
   case SK_REINF4: return (SoldierKind){11, 5, 20, 6, 5, AN_SO_REINFORCEMENTLEVEL4A_IDLE, AN_SO_REINFORCEMENTLEVEL4A_RUNNING, AN_SO_REINFORCEMENTLEVEL4A_FIGHTING, AN_SO_REINFORCEMENTLEVEL4A_DEAD, AN_SO_REINFORCEMENTLEVEL4A_RESPAWNING};
+  case SK_ELF: return (SoldierKind){18, 10, 20, 1, 0, AN_SO_ELF_IDLE, AN_SO_ELF_RUNNING, AN_SO_ELF_FIGHTING, AN_SO_ELF_DEAD, -1};
+  case SK_SASQ: return (SoldierKind){30, 13, 16, 18, 20, AN_SO_SASQUASH_IDLE, AN_SO_SASQUASH_RUNNING, AN_SO_SASQUASH_FIGHTING, AN_SO_SASQUASH_DEAD, -1};
   case SK_IMPERIAL: return (SoldierKind){18, 8, 20, 1, 12, AN_SO_IMPERIALGUARD_IDLE, AN_SO_IMPERIALGUARD_RUNNING, AN_SO_IMPERIALGUARD_ATTACK1, AN_SO_IMPERIALGUARD_DEAD, -1};
   default: return (SoldierKind){30, 13, 13, 27, 0, AN_SO_ELEMENTAL_IDLE, AN_SO_ELEMENTAL_RUNNING, AN_SO_ELEMENTAL_FIGHTING, AN_SO_ELEMENTAL_DEAD, AN_SO_ELEMENTAL_RESPAWNING};
   }
@@ -75,6 +77,20 @@ int soldier_new(int kind, int spot, Pt at, Pt rally) {
     /* they start dead, appear (respawning) at once, live 20 s and are gone when they fall */
     so->respawning = 0, so->dead = 1, so->lifes = 1, so->dead_time = 10, so->dead_t = 9;
     so->home_x = at.x, so->home_y = at.y;
+  } else if (kind == SK_ELF) {   /* SoldierElf: one life, no wait to go when it falls */
+    so->health = so->init_health = S_specials_elves_health, so->armor = S_specials_elves_armor;
+    so->min_dmg = S_specials_elves_minDamage, so->max_dmg = S_specials_elves_maxDamage;
+    so->reload = S_specials_elves_reload;
+    so->regen = S_specials_elves_regen, so->regen_reload = S_specials_elves_regenReload;
+    so->range_w = S_specials_elves_range, so->range_h = (int16_t)(S_specials_elves_range * RANGE_RATIO);
+    so->dead_time = 0, so->lifes = 1;
+  } else if (kind == SK_SASQ) {   /* SoldierSasquash */
+    so->health = so->init_health = S_specials_sasquash_health, so->armor = S_specials_sasquash_armor;
+    so->min_dmg = S_specials_sasquash_minDamage, so->max_dmg = S_specials_sasquash_maxDamage;
+    so->reload = (int16_t)(S_specials_sasquash_reload - so->charge);
+    so->regen = S_specials_sasquash_regen, so->regen_reload = S_specials_sasquash_regenReload;
+    so->range_w = S_specials_sasquash_range, so->range_h = (int16_t)(S_specials_sasquash_range * RANGE_RATIO);
+    so->dead_time = 50, so->lifes = 1, so->speed = 1.65f;
   } else if (kind == SK_IMPERIAL) {   /* SoldierImperialGuard: one life, its group's ground (rally: `at`) */
     so->health = so->init_health = S_specials_imperial_health, so->armor = S_specials_imperial_armor;
     so->min_dmg = S_specials_imperial_minDamage, so->max_dmg = S_specials_imperial_maxDamage;
@@ -241,6 +257,10 @@ static void hit(Soldier *so) {
     if (!e->active) stop_fight(so);
     return;
   }
+  if (site_soldier_hit(so)) {
+    if (!e->active) stop_fight(so);
+    return;
+  }
   if (!enemy_dodge(e)) {
     enemy_damage(e, special_soldier_damage(so, rnd_dmg(so->min_dmg, so->max_dmg)), ARM_P, 0);
     if (!e->active) stop_fight(so);
@@ -288,6 +308,7 @@ static void respawn(Soldier *so) {
   so->dx = so->rx, so->dy = so->ry;
   so->health = so->init_health;
   so->dead_t = 0, so->door_t = 0;
+  site_respawn(so);
   play(so, kind_of(so->kind).an_run);
 }
 
@@ -322,7 +343,7 @@ void soldier_step(Soldier *so) {
       play(so, kind_of(so->kind).an_spawn);
       return;
     }
-    if (so->kind == SK_IMPERIAL) {   /* (no second life) */
+    if (so->kind == SK_IMPERIAL || so->kind == SK_ELF || so->kind == SK_SASQ) {   /* (no second life) */
       so->alive = 0;
       return;
     }
@@ -336,7 +357,7 @@ void soldier_step(Soldier *so) {
     return;
   }
   if (so->respawning) {   /* readyToLive */
-    if (reinforcement(so) || so->kind == SK_ELEMENTAL) {
+    if (reinforcement(so) || so->kind == SK_ELEMENTAL || so->kind == SK_SASQ) {
       if (++so->door_t >= so->door_wait) respawn(so);
       return;
     }
@@ -361,6 +382,7 @@ void soldier_step(Soldier *so) {
     if (so->blocking || so->fighting) stop_fight(so);
     return;
   }
+  if (site_soldier(so)) return;
   if (special_soldier(so)) return;
   if (so->active && !so->fighting && !so->blocking && so->charge_t != 0) {   /* a blow finishing */
     if (so->charge_t < so->charge) {
@@ -373,7 +395,10 @@ void soldier_step(Soldier *so) {
   if (so->walking && !walk(so)) return;
   if (!so->active) return;
   if (so->idle) {
-    if (!find_enemy(so)) idle(so);
+    if (!find_enemy(so)) {
+      if (reinforcement(so)) site_reinforcement(so);
+      idle(so);
+    }
   } else if (so->fighting) {
     Enemy *e = EN(so->enemy);
     if (!e || !e->active) stop_fight(so);

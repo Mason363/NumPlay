@@ -138,12 +138,14 @@ static void burn_step(void) {
   int r = blazing ? S_powers_fireball_blazingEarthRange : S_powers_fireball_scorchedEarthRange;
   for (int k = 0; k < (int)(sizeof B.burn / sizeof B.burn[0]); k++) {
     if (!B.burn[k].on) continue;
-    if (++B.burn[k].t % FPS == 0)
+    if (++B.burn[k].t % FPS == 0) {
+      site_ice_hit(B.burn[k].at.x, B.burn[k].at.y, (float)r, r * RANGE_RATIO);
       for (int i = 0; i < MAX_ENEMIES; i++) {
         Enemy *e = &B.en[i];
         if (e->alive && e->active && !e->flying && ellipse_contains(B.burn[k].at.x, B.burn[k].at.y, (float)r, r * RANGE_RATIO, e->x, e->y))
           enemy_damage(e, rnd_dmg(lo, hi), ARM_I, 0);
       }
+    }
     if (B.burn[k].t >= B.burn[k].dur) B.burn[k].on = 0;
   }
 }

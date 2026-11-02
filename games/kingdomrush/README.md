@@ -22,7 +22,7 @@
 
 ## Highlights
 
-* **The whole free campaign:** Southport to the Dark Tower, with the game's own paths, waves and story, the Citadel's imperial guards, the graveyards where the dead rise again, and Vez'nan at the end.
+* **The whole free campaign:** Southport to the Dark Tower, with the game's own paths, waves and story, and each stage's own buildings: the elves' hall to repair and its Sylvan elves, the Citadel's imperial guards, the Sasquatch's frozen cave (fire breaks its ice), the Sunray Tower and its sorcerers, the graveyards where the dead rise again, and Vez'nan at the end.
 * **Heroic and Iron challenges** for every stage: 3 stars in the Campaign open them.
 * **Every tower:** archers, barracks, mages and bombards to level 3, then the eight special towers (Rangers Hideout, Musketeer Garrison, Holy Order, Barbarian Hall, Arcane Wizard, Sorcerer Mage, Big Bertha, Tesla x104) with all their abilities.
 * **Every enemy and boss:** 30-odd kinds, from goblins and wulves to dark knights, demons and necromancers, the Juggernaut, J.T. and Vez'nan.
@@ -69,10 +69,11 @@ On the map: the arrows pick a stage, OK opens it, Left and Right pick the mode, 
 * **Too big to install next to NumPlay.** Your saves in each are kept.
 * **Your stars and upgrades** are saved after every stage, in `kingdomrush.sav` and a copy in `kingdomrush_saves.py`, which comes back after installing apps from the NumWorks website. A stage itself is not saved: Home in a battle leaves it.
 * **Frozen towers:** J.T. freezes towers. Press OK on one three times to break the ice, as the original's three clicks.
+* **The Sunray:** its crosshair hops from enemy to enemy with the arrows, where the original follows the mouse; OK fires.
 * **New enemies** show their note once, the first time they come, where the original put an icon to click.
 * **No sound:** the calculator has no speaker.
 * **The pictures are the game's,** at 0.4 of their size: the 700 by 600 battlefield fills 280 by 240 pixels, beside a bar with your lives, gold and spells.
-* **Left out:** the three premium stages, heroes, achievements and the encyclopedia, and three stages' buildings: the elves' hall in Silveroak Forest, the Sasquatch's cave in Icewind Pass and the Sunray Tower in Stormcloud Temple.
+* **Left out:** the three premium stages, heroes, achievements and the encyclopedia.
 
 ## Credits
 

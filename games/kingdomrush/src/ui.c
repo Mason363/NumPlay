@@ -41,6 +41,10 @@ const char *tower_name(int kind, int level) {
   case TW_SORCERER: return tower_text("TOWER_SORCERER_NAME");
   case TW_BFG: return tower_text("TOWER_BFG_NAME");
   case TW_TESLA: return tower_text("TOWER_TESLA_NAME");
+  case TW_ELFRUIN: case TW_ELF: return tower_text("SPECIAL_ELF_NAME");
+  case TW_CAVE: return tower_text("SPECIAL_SASQUASH_REPAIR_NAME");
+  case TW_SASQ: return "Sasquatch";
+  case TW_TEMPLE: return tower_text("SPECIAL_SUNRAY_NAME");
   }
   return "";
 }
@@ -55,9 +59,40 @@ static void item(RingItem *it, int action, int icon, int pos, int cost, bool loc
   snprintf(it->name, sizeof it->name, "%s", name);
 }
 
+/* the stages' buildings' menus (their quickMenu.load: the places 7, 6 and 9) */
+static int site_ring(int s, RingItem *out) {
+  Spot *t = &B.spot[s];
+  int n = 0, c = site_buy_cost(s);
+  char nm[40];
+  switch (t->kind) {
+  case TW_ELFRUIN:
+    item(&out[n++], RA_SITE_BUY, 37, 7, c, false, tower_text("SPECIAL_ELF_REPAIR_NAME"), 0);
+    break;
+  case TW_ELF:
+    snprintf(nm, sizeof nm, "%s %d/%d", tower_text("SPECIAL_ELF_NAME"), site_soldiers(s), S_specials_elves_max);
+    item(&out[n++], RA_SITE_BUY, 38, 7, c < 0 ? 0 : c, c == -2, nm, 0);
+    item(&out[n++], RA_RALLY, IC_RALLY, 9, 0, false, "Rally point", 0);
+    break;
+  case TW_CAVE:
+    item(&out[n++], RA_SITE_BUY, 39, 7, 0, true, "Frozen solid ages ago", 0);
+    break;
+  case TW_SASQ:
+    item(&out[n++], RA_SITE_BUY, 39, 7, c < 0 ? 0 : c, c == -2, "Sasquatch", 0);
+    item(&out[n++], RA_RALLY, IC_RALLY, 9, 0, false, "Rally point", 0);
+    break;
+  case TW_TEMPLE:
+    item(&out[n++], RA_SITE_RAY, 3, 6, 0, !site_ray_ready(s), tower_text("SPECIAL_SUNRAY_CROSSHAIR_NAME"), 0);
+    snprintf(nm, sizeof nm, "%s %d/4", tower_text("SPECIAL_SUNRAY_MAGE_NAME"), site_mages(s));
+    item(&out[n++], RA_SITE_BUY, 40, 7, c < 0 ? 0 : c, c == -2, nm, 0);
+    break;
+  }
+  return n;
+}
+
 int ring_items(int s, RingItem *out) {
   Spot *t = &B.spot[s];
   int n = 0;
+  if (site_kind(t->kind)) return site_ring(s, out);
   if (t->kind == TW_NONE) {
     static const uint8_t acts[4] = {RA_ARCHER, RA_BARRACKS, RA_MAGE, RA_ENGINEER};
     static const uint8_t icons[4] = {IC_ARCHER, IC_SOLDIER, IC_MAGE, IC_ENGINEER};
@@ -173,13 +208,52 @@ static int base_of(int k) {
 }
 
 void draw_base(const Spot *t, int x, int y, int terrain) {
-  if (t->kind == TW_NONE || t->kind == 0xFF || t->building) return;
+  if (t->kind == TW_NONE || t->kind == 0xFF || t->building || site_kind(t->kind)) return;
   int b = base_of(t->kind);
   int an = b == TW_ARCHER ? AN_T_BASE_ARCHER_FOREST : b == TW_MAGE ? AN_T_BASE_MAGE_FOREST : AN_T_BASE_BAR_FOREST;
   spr_anim(an + terrain, 0, false, x, y, false);
 }
 
+/* the stages' buildings; the Sunray Tower's sorcerers at its four corners, charging with it */
+static void draw_site(const Spot *t, int x, int y) {
+  switch (t->kind) {
+  case TW_ELFRUIN: spr_anim(AN_T_ELFDEAD_IDLE, 0, false, x, y, false); return;
+  case TW_ELF:
+    if (t->door) spr_anim(AN_T_ELF_DOOR_OPEN, t->door_t, false, x, y, false);
+    else spr_anim(AN_T_ELF_IDLE, 0, false, x, y, false);
+    return;
+  case TW_CAVE:
+    if (t->sp_flag) spr_anim(AN_T_SASQFROZEN_FREE, t->anim_t, false, x, y, false);
+    else spr_anim(AN_T_SASQFROZEN_IDLE, 0, false, x, y, false);
+    return;
+  case TW_SASQ: spr_anim(AN_T_SASQ_ALL, 0, false, x, y, false); return;
+  }
+  /* TowerTemple: inactive, charging (looping), ready (looping, and while it shoots) */
+  int st = t->sp_flag;
+  if (st == 0) spr_anim(AN_T_TEMPLE_INACTIVE, 0, false, x, y, false);
+  else if (st == 1 || st == 2) spr_anim(AN_T_TEMPLE_CHARGING, t->anim_t, true, x, y, false);
+  else spr_anim(AN_T_TEMPLE_READYIDLE, t->anim_t, true, x, y, false);
+  static const int8_t at[4][2] = {{-28, -56}, {17, -56}, {-30, -30}, {19, -30}};
+  for (int k = 0; k < t->sp_lvl[0] && k < 4; k++) {
+    bool down = k <= 1;
+    int sx = x + (int)lroundf(at[k][0] * 0.4f), sy = y + (int)lroundf(at[k][1] * 0.4f);
+    int start = down ? AN_T_SUNMAGE_STARTCHARGEDOWN : AN_T_SUNMAGE_STARTCHARGEUP;
+    int end = down ? AN_T_SUNMAGE_ENDCHARGEDOWN : AN_T_SUNMAGE_ENDCHARGEUP;
+    if (st == 1 || st == 2) {
+      if (t->anim_t < anim_ticks(start)) spr_anim(start, t->anim_t, false, sx, sy, false);
+      else spr_anim(down ? AN_T_SUNMAGE_CHARGINGDOWN : AN_T_SUNMAGE_CHARGINGUP, t->anim_t - anim_ticks(start), true, sx, sy, false);
+    } else if (st == 3 && t->sp_t[1] && t->anim_t < anim_ticks(end))
+      spr_anim(end, t->anim_t, false, sx, sy, false);
+    else
+      spr_anim(down ? AN_T_SUNMAGE_IDLEDOWN : AN_T_SUNMAGE_IDLEUP, 0, false, sx, sy, false);
+  }
+}
+
 void draw_tower(const Spot *t, int x, int y) {
+  if (site_kind(t->kind)) {
+    draw_site(t, x, y);
+    return;
+  }
   if (t->building) {
     int b = base_of(t->kind);
     spr_anim(b == TW_ARCHER ? AN_T_BUILD_ARCHER : b == TW_MAGE ? AN_T_BUILD_MAGE : AN_T_BUILD_BAR, 0, false, x, y, false);

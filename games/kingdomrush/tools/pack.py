@@ -254,6 +254,11 @@ def sprites():
         sprite_set("T_" + n.upper(), "t_" + n, cid, None, 1)
     for n in ('build_archer', 'build_mage', 'build_bar', 'flag', 'rally'):
         single("T_" + n.upper(), "t_" + n)
+    # the stages' buildings: the elves' hall and its ruin, the Sasquatch's cave, the Sunray Tower and its sorcerers
+    for n, folder, cid, st in (("ELF", "t_elf", 2089, 2), ("ELFDEAD", "t_elfdead", 2080, 1), ("SASQFROZEN", "t_sasquashfrozen", 2072, 2),
+                               ("SASQ", "t_sasquash", 2077, 1), ("TEMPLE", "t_temple", 2219, 2), ("SUNMAGE", "t_sunraymage", 2222, 1)):
+        sprite_set("T_" + n, folder, cid, None, st)
+    sprite_set("B_SUNRAYHIT", "b_SunrayHit", 2134, None, 2, {"all": ""})
     sprite_set("T_CLOUD", "t_cloud", 385, None, 1, {"all": "", "cloudEnd": "end"})
     sprite_set("T_SELL", "t_sell", 377, None, 1, {"all": ""})
     shooters = {'archer1': 252, 'archer2': 1035, 'archer3': 1011, 'ranger': 1061, 'musketeer': 1195,
@@ -264,7 +269,7 @@ def sprites():
               'SoldierElemental', 'SoldierFarmerJohn', 'SoldierFarmerPaul', 'SoldierFarmerRingo',
               'SoldierReinforcementLevel2A', 'SoldierReinforcementLevel2B', 'SoldierReinforcementLevel3A',
               'SoldierReinforcementLevel3B', 'SoldierReinforcementLevel4A', 'SoldierReinforcementLevel4B',
-              'SoldierImperialGuard']:
+              'SoldierImperialGuard', 'SoldierElf', 'SoldierSasquash']:
         sprite_set("SO_" + c[7:].upper(), "so_" + c[7:], CLASS_ID[c], None, 1)
     for c in ['Arrow', 'ArrowEnemy', 'BoltNecromancer', 'BoltSorcerer', 'BombBfg', 'BombBlack', 'BombCommon',
               'BombDynamite', 'BombFragment', 'BombShrapnel', 'Fireball', 'Missile', 'MissileEnemy',
@@ -474,8 +479,14 @@ def pack_level(lv):
         hs = lv["holders"][mode]
         b = bytearray(struct.pack("<B", len(hs)))
         for h in hs:
-            if h["cls"] == "ref":   # the level's special building (elf hall, frozen sasquatch, temple): later
-                b += struct.pack("<BBhhhh", 0xFF, 0, 0, 0, 0, 0)
+            # the stages' buildings: 0xFF, then 1 the elves' ruined hall (Level5), 2 the Sasquatch's frozen cave
+            # (Level8's TowerSoldierSasquashFrozen), 3 the Sunray Tower (Level9's TowerTemple)
+            if h["cls"] == "ref":
+                site, x, y, rx, ry = (2, 201, 168, 306, 215) if h["name"] == "_loc3_" else (3, 124, 503, 124, 503)
+                b += struct.pack("<BBhhhh", 0xFF, site, x, y, rx, ry)
+                continue
+            if h["cls"] == "TowerSoldierElfDestroyed":
+                b += struct.pack("<BBhhhh", 0xFF, 1, round(h["x"]), round(h["y"]), round(h["rally"][0]), round(h["rally"][1]))
                 continue
             kind = TOWER_KIND.get(h["cls"], 0xFE)
             pre = PREMADE.get(h["args"][0] if h["args"] else "", 0)
@@ -718,7 +729,7 @@ def write_strings():
     out += ["};", "const char *upgrade_name(int line, int n) { return ups[line * 5 + n][0]; }",
             "const char *upgrade_desc(int line, int n) { return ups[line * 5 + n][1]; }", ""]
     # towers and their abilities: names and descriptions by key
-    keys = [k for k in S if k.startswith("TOWER_") or k.startswith("POWER_")]
+    keys = [k for k in S if k.startswith("TOWER_") or k.startswith("POWER_") or k.startswith("SPECIAL_")]
     out.append("static const char *const tw[][2] = {")
     for k in keys:
         out.append(f"  {{{c_str(k)}, {c_str(S[k])}}},")
