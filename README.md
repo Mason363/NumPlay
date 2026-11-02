@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>29 free games for your NumWorks calculator, in one app.</b><br>
-  Plus 35 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.
+  Plus 36 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.
 </p>
 
 <p align="center">
@@ -154,9 +154,10 @@ These are too big to fit next to NumPlay, so each one is its own app. Install it
   <tr>
     <td align="center"><a href="games/fnaf3/README.md"><img src="docs/media/thumb_fnaf3.png" width="200" alt="Five Nights at Freddy's 3"><br><b>Five Nights at Freddy's 3</b></a><br><sub>Fazbear's Fright: Springtrap, the phantoms, the vents and the 8-bit minigames</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys3.nwa">Download</a></td>
     <td align="center"><a href="games/fnaf4/README.md"><img src="docs/media/thumb_fnaf4.png" width="200" alt="Five Nights at Freddy's 4"><br><b>Five Nights at Freddy's 4</b></a><br><sub>The bedroom: listen at the doors, the closet, the bed, Fun with Plushtrap</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys4.nwa">Download</a></td>
-    <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-64"><b>Super Mario 64</b></a><br><sub>In a repository of its own: NumWorks-Super-Mario-64</sub></td>
+    <td align="center"><a href="games/clashroyale/README.md"><img src="docs/media/thumb_clashroyale.png" width="200" alt="Clash Royale"><br><b>Clash Royale</b></a><br><sub>Battles against a bot: 41 cards, seven arenas, trophies</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/ClashRoyale.nwa">Download</a></td>
   </tr>
   <tr>
+    <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-64"><b>Super Mario 64</b></a><br><sub>In a repository of its own: NumWorks-Super-Mario-64</sub></td>
     <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-Bros"><b>Super Mario Bros.</b></a><br><sub>All 32 stages, in a repository of its own: NumWorks-Super-Mario-Bros</sub></td>
     <td align="center"><a href="#roadmap"><b>More on the way</b></a><br><sub>Minecraft 1.18.2 and more: see the roadmap</sub></td>
   </tr>
@@ -322,6 +323,7 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] ColecoVision games in Retro-Go
 - [x] Five Nights at Freddy's 3
 - [x] Five Nights at Freddy's 4
+- [x] Clash Royale, against bots
 - [ ] Full Minecraft 1.18.2 as a standalone app
 - [ ] Among Us, against bots
 - [ ] Cat Ninja
@@ -349,7 +351,6 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Mario Kart
 - [ ] OMORI
 - [ ] The Legend of Zelda: Ocarina of Time
-- [ ] Clash Royale, against bots
 - [ ] florr.io
 - [ ] Rider Worlds
 - [ ] Hollow Knight: Godhome, its boss fights in an app of their own
@@ -408,6 +409,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 - **Five Nights at Freddy's 2** by Scott Cawthon inspired NumPlay's Five Nights at Freddy's 2, which uses the game's own pictures, from its Clickteam HTML5 build as the fan port [fnaf-2_html5](https://github.com/VocalNutria9174/fnaf-2_html5) (VocalNutria9174) keeps it, two of them from fredtheking's [FNaF2-RaylibCs](https://github.com/fredtheking/FNaF2-RaylibCs), and the DejaVu fonts ([license](LICENSES/DejaVu.txt)). Its AI levels, paths, music box, flashlight and Withered Foxy follow what the game's players read out of its events, written down on the [Technical FNaF Wiki](https://technicalfnaf.fandom.com) and the [Five Nights at Freddy's Wiki](https://freddy-fazbears-pizza.fandom.com). Not affiliated with Scott Cawthon.
 - **Five Nights at Freddy's 3** by Scott Cawthon inspired NumPlay's Five Nights at Freddy's 3, which uses the game's own pictures and runs its nights as the game's own events do, both read from its Android package. Not affiliated with Scott Cawthon.
 - **Five Nights at Freddy's 4** by Scott Cawthon inspired NumPlay's Five Nights at Freddy's 4, which uses the game's own pictures and runs its nights as the game's own events do, both read from its iOS package. Not affiliated with Scott Cawthon.
+- **Clash Royale** by Supercell inspired NumPlay's Clash Royale, which plays the 2016 game's cards, towers and rules with their own numbers and uses its arenas, troops, buildings, card art and fonts (Supercell-Magic, CCBackBeat), read from its Android package. Its bot is NumPlay's own. Not affiliated with Supercell.
 
 - **Pong** by Atari (1972) inspired NumPlay's 2 Players, with air hockey, tanks in a maze in the spirit of Tank Trouble and the light cycles of Tron. All four are written in C for NumPlay and drawn from shapes, with no code or art from them.
 - **[Cookie Clicker](https://orteil.dashnet.org/cookieclicker/)** by Orteil and Opti (DashNet) inspired NumPlay's Cookie Clicker, which uses the game's own pictures, texts and numbers (version 2.058, from its public mirror [ozh/cookieclicker](https://github.com/ozh/cookieclicker)) and the **Merriweather**, **Kavoon** and **Noto Sans** fonts (SIL Open Font License: [Merriweather](LICENSES/OFL-1.1-Merriweather.txt), [Kavoon](LICENSES/OFL-1.1-Kavoon.txt), [Noto Sans](LICENSES/OFL-1.1-NotoSans.txt)). Not affiliated with Orteil or DashNet.
@@ -436,7 +438,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 
 NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyright (c) 2026 Mason Chen. Code and fonts from others keep their own licenses: the `UNLICENSE` files in the games' folders and the [LICENSES](LICENSES) folder. The names, artwork and music of the games NumPlay is inspired by belong to their makers and are not covered by it.
 
-<sub>Unofficial fan games, not affiliated with NumWorks, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale), jcw87 (Bad Time Simulator), Imangi Studios (Temple Run), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's, Five Nights at Freddy's 2, Five Nights at Freddy's 3, Five Nights at Freddy's 4), SEGA (Sonic the Hedgehog, Master System, Game Gear, SG-1000), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), the makers of Snow Rider 3D, Ketchapp (Rider), TFDSoft (Famidash), Brodie Lockard or Activision (Shanghai), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Oakever Games (Meowdoku), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go), Coleco (ColecoVision). Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System, Game Gear and SG-1000 of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
+<sub>Unofficial fan games, not affiliated with NumWorks, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale), jcw87 (Bad Time Simulator), Imangi Studios (Temple Run), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's, Five Nights at Freddy's 2, Five Nights at Freddy's 3, Five Nights at Freddy's 4), SEGA (Sonic the Hedgehog, Master System, Game Gear, SG-1000), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), the makers of Snow Rider 3D, Ketchapp (Rider), TFDSoft (Famidash), Brodie Lockard or Activision (Shanghai), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Oakever Games (Meowdoku), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go), Coleco (ColecoVision), Supercell (Clash Royale). Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System, Game Gear and SG-1000 of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, Clash Royale of Supercell, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
 
 ## Gallery
 
@@ -549,5 +551,6 @@ NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyri
   <tr>
     <td align="center"><img src="docs/media/gallery/fnaf3.gif" alt="Five Nights at Freddy's 3: the office, the monitor up, CAM 07 and the audio lure played"><br><a href="games/fnaf3/README.md"><b>Five Nights at Freddy's 3</b></a></td>
     <td align="center"><img src="docs/media/gallery/fnaf4.gif" alt="Five Nights at Freddy's 4: the bedroom, a run to the left door, the flashlight down the hall, then the bed"><br><a href="games/fnaf4/README.md"><b>Five Nights at Freddy's 4</b></a></td>
+    <td align="center"><img src="docs/media/gallery/clashroyale.gif" alt="Clash Royale: Archers, a Giant and a Valkyrie go to the bridge against the bot's Goblin Hut"><br><a href="games/clashroyale/README.md"><b>Clash Royale</b></a></td>
   </tr>
 </table>
