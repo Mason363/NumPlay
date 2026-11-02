@@ -74,7 +74,7 @@ Keep moving, or the eagle gets you. Coins add up across every run and stay saved
 
 The left thumb looks with the arrows (shift and alpha are just under them), the right one walks. The first time you open NumBlocks it shows these keys. You can change them in Options, then Controls, which also shows the key sheet again. In NumBlocks, Back places blocks, so **ans** pauses. In the inventory, the arrows move between slots, **OK** picks up or puts down a stack, **EXE** one item, and **shift** with **OK** sends a stack to the other side. To spread a stack, hold **OK** and move over the slots: it splits evenly when you let go (hold **EXE** instead to drop one in each). In Creative, the Search Items tab finds blocks as you type, and **shift** with up or down jumps to the top or bottom of a tab. Commands like /gamemode and /give work in worlds with Allow Cheats on (or after Open to LAN in the pause menu); **toolbox** finishes a word as you type it. Your world saves as you play and when you quit, and on its own NumBlocks keeps a copy in `numblocks_saves.py` (inside NumPlay, `numplay_saves.py` holds it), so installing again doesn't erase your worlds.
 
-On its own, `NumBlocks.nwa` also has the Nether and the End: portals, fortresses, strongholds and the Ender Dragon, as Minecraft 1.8.8 makes them (NumPlay's NumBlocks stays in the Overworld).
+On its own, `NumBlocks.nwa` also has the Nether and the End: portals, fortresses, strongholds and the Ender Dragon, and villages, desert temples and mineshafts, as Minecraft 1.8.8 makes them (NumPlay's NumBlocks stays in the Overworld, without them).
 
 <br clear="right">
 
