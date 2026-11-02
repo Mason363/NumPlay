@@ -51,7 +51,7 @@ Name the vessel, then walk and talk your way from Kris's room into the Dark Worl
 
 ## Good to know
 
-* The chapter goes as far as the Field so far: the Great Board, the Forest and the Card Castle come next.
+* The chapter goes as far as the Field's first rooms so far. Ralsei's lessons with the Dummy, the Field's puzzles, shops, the Great Board, the Forest and the Card Castle come next.
 * The battle's menus and numbers are drawn at half the original's size, as the Dark World is; the enemies' bubbles keep their size, so their words stay readable.
 * No music or sound: the calculator has no speaker.
 

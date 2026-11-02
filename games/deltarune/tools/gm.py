@@ -497,14 +497,16 @@ class Decompiler:
             ins = prog[k]
             a = ins["a"]
             if k in logic:
+                # (a chain, a && b && c, has a jump for each term to the same end)
                 x = stack.pop() if stack else "?"
-                pend[logic[k][0]] = (x, logic[k][1])
+                pend.setdefault(logic[k][0], []).append((x, logic[k][1]))
                 k += 1
                 continue
             if k in pend:
-                x, op_ = pend.pop(k)
                 y = stack.pop() if stack else "?"
-                stack.append("(%s %s %s)" % (x, op_, y))
+                for x, op_ in reversed(pend.pop(k)):
+                    y = "(%s %s %s)" % (x, op_, y)
+                stack.append(y)
                 k = at[skip_to[k]]
                 continue
             k += 1

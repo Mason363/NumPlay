@@ -289,7 +289,7 @@ L5656:;
   c->msc = 360;
   /* gml: scr_text(global.msc) */
 L5708:;
-  if (!((g_room == room_dark3) || (g_room == room_dark7))) goto L5812;
+  if (!((g_room == room_dark2) || ((g_room == room_dark3) || (g_room == room_dark7)))) goto L5812;
   MSG(0, obj_readable_room1_slash_Other_10_gml_400_0);
 L5812:;
   if (!(g_room == room_dark3a)) goto L5864;
@@ -334,7 +334,7 @@ L6520:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_457_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_458_0);
 L6612:;
-  if (!((g_room == room_field_checkers4) || (g_room == room_field_checkers6))) goto L6716;
+  if (!((g_room == room_field_checkers1) || ((g_room == room_field_checkers4) || (g_room == room_field_checkers6)))) goto L6716;
   MSG(0, obj_readable_room1_slash_Other_10_gml_465_0);
 L6716:;
   if (!(g_room == room_field_puzzletutorial)) goto L6768;
@@ -1079,7 +1079,7 @@ L1288:;
   if (!(g_room == room_castle_tutorial)) goto L1364;
   c->spr = spr_dummynpc;
 L1364:;
-  if (!((g_room == room_field_puzzle1) || (g_room == room_field4))) goto L1444;
+  if (!((g_room == room_field2A) || ((g_room == room_field_puzzle1) || (g_room == room_field4)))) goto L1444;
   c->spr = spr_candytree;
 L1444:;
   if (!(g_room == room_field_topchef)) goto L1528;
@@ -1599,7 +1599,7 @@ L6528:;
   MSG(2, obj_npc_room_slash_Other_10_gml_399_0);
   sv.flag[233] = 1;
 L6684:;
-  goto L6848; /* gml: if !((scr_weaponcheck_inventory(9) == 0) && (global.charweapon[3] != 9)) goto L6848 */
+  goto L6848; /* gml: if !((global.flag[108] == 1) && ((scr_weaponcheck_inventory(9) == 0) && (global.charweapon[3] != 9))) goto L6848 */
   MSG(0, obj_npc_room_slash_Other_10_gml_406_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_407_0);
 L6848:;
@@ -4943,7 +4943,7 @@ L38568:;
   MSG(0, scr_text_slash_scr_text_gml_1795_0);
   goto L39332; /* gml: if !(global.choice == 0) goto L39332 */
   /* gml: which = 0 */
-  if (!(gm_keyitemcheck(6) && gm_keyitemcheck(7))) goto L38728;
+  if (!(gm_keyitemcheck(4) && (gm_keyitemcheck(6) && gm_keyitemcheck(7)))) goto L38728;
   /* gml: which = 3 */
 L38728:;
   goto L38844; /* gml: if !(scr_keyitemcheck(3) && (which == 0)) goto L38844 */
