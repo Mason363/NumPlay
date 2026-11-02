@@ -496,6 +496,9 @@ def main():
     # (a Moss Knight's grass ball: a Unity sprite)
     pgb = unity.prefab("sharedassets149.assets", 34)
     fleurs["SPRITE_GRASS_BALL"] = SPRITES.id(pgb, next(c["v"] for c in pgb["objects"][0]["c"] if c["type"] == "SpriteRenderer")["m_Sprite"], 1)
+    if XL:
+        # (the gas the Fungoons spit: their Gas Attack particles' texture, a unit wide)
+        fleurs["SPRITE_GAS"] = SPRITES.tex("sharedassets128.assets", 7, 1.0)
     # (a soul orb: Soul Orb R's sprite, as stretched as it gets; its sorting)
     pso = unity.prefab(*vm.SOUL_ORB)
     fleurs["SPRITE_SOUL_ORB"] = SPRITES.id(pso, next(c["v"] for c in pso["objects"][0]["c"] if c["type"] == "SpriteRenderer")["m_Sprite"], 2)
@@ -518,7 +521,7 @@ def main():
         fleurs["TUTE_" + name] = "{%d, %.4ff, %.4ff}" % (s, kx, ky)
     # the focus tutorial King's Pass's first tablet shows (Focus_prompt_temp, the HUD's where it is): its picture, its
     # lines (Prompts: in the message's style) by their rects' tops, centred or ending at x, the key to hold (Cast's: its
-    # box's left); the lines where the game has them (the text bigger, they still clear each other and the picture)
+    # box's left); a line no nearer the one above than a line's height at the game's own size
     fdoc = unity.scene("Tutorial_01")
     fby = {o["path"]: o for o in fdoc["objects"]}
     froot = "_Props/Tut_tablet_top/Focus_prompt_temp"
@@ -538,6 +541,9 @@ def main():
         top = q["pos"][1] + ((1 - tc["m_pivot"]["y"]) * h - mg["y"]) * k
         al = tm["m_textAlignment"] % 4
         assert al in (1, 2), n
+        if rows:
+            top = min(top, prev - text._style("Perpetua", 3.73 * 1.4407, text.HUD_PX, *text.PERPETUA)[2] / text.HUD_PX)
+        prev = top
         rows.append("{%d, %.4ff, %.4ff, %d}" % (TEXTS.id(gt["sheetName"], gt["convName"], "MSG"),
                                                 (x0 + x1) / 2 if al == 1 else x1, top, al - 1))
     fleurs["FOCUS_PROMPT_TEXTS"] = "{%s}" % ", ".join(rows)
