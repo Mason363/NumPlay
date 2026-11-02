@@ -2,6 +2,13 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.22.0: Famidash HUGE, ColecoVision games and Universal Paperclips in French
+
+- **Famidash:** all 173 levels of Famidash HUGE, its fullest version: the main game and its B, C, D and E-Sides, with the demon faces, Lucky Draw's own rules and the fun settings open from the start. Your progress moves to the same levels.
+- **Retro-Go:** ColecoVision games, with the keypad on the calculator's digits. Games whose file stops partway into its last kilobyte play now.
+- **Universal Paperclips in French:** UniversalPaperclips-French.nwa, every text translated, with numbers written the French way.
+- **Roadmap:** vote for the next game with a 👍 on its issue.
+
 ## 1.21.0: Temple Run's own look, Crossy Road's characters and faster 3D games
 
 - **Temple Run:** the game's own textures, camera, fog, jungle floor and screens. It draws 15% faster, far path pieces keep more of their shape, far blocks and trunks no longer show scrambled textures, and it's 63 KB smaller.
