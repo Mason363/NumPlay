@@ -233,11 +233,6 @@ static void keys_line(const char *s) {
   d_text(&font_small, (SCREEN_W - d_text_width(&font_small, s)) / 2, 235, s, C(0xF2E2BC), 255);
 }
 
-static void button(int x, int y, int w, int h, const char *s, bool focus) {
-  d_panel(x, y, w, h, 6, focus ? 3 : 1, focus ? 0xFFD040 : 0x6A4A28, focus ? 0x8A5A26 : 0x5A3A1A, focus ? 0x6A4018 : 0x3E2810);
-  label(&font_mid, x + w / 2, y + h / 2 + 6, s, focus ? 0xFFFFFF : DIM, 0);
-}
-
 /* the run's screen, the game's: the totem on the left with its coin meter (full at 100 coins) and an emblem for
  * each bonus level, vines along the top, the score and the run's coins on their plates at the top right, the idol
  * at the bottom right; a board drops with the distance at 250, 500, 750 and 1000 m, then each 500 m */
@@ -409,13 +404,40 @@ static void pause_overlay(void) {
   keys_line("Up Down choose  -  OK select  -  Back resume");
 }
 
+/* the game's alert (its AlertView): the dark over everything, its plate, the title and the question in its lettering
+ * (cream, then sand), No and Yes on its buttons (in its yellow); the one in focus pointed at, the other dimmer */
+static void alert(const char *title, const char *text, int focus) {
+  d_dim(128);
+  const HudPic *bg = &hud_pics[HP_ALERT_BG], *bt = &hud_pics[HP_ALERT_BUTTON];
+  int x = (SCREEN_W - bg->w) / 2, y = (SCREEN_H - bg->h) / 2 - 8, cx = SCREEN_W / 2;
+  d_pic(HP_ALERT_BG, x, y, 255, 0, 0);
+  d_white(cx, y + 6, title, -1, C(0xF7F2DE), 0);
+  /* (the question in lines that fit the plate) */
+  int ty = y + 36, max = bg->w - 28;
+  for (const char *t = text; *t;) {
+    int n = 0, cut = 0;
+    while (t[n] && d_white_width(t, n + 1) <= max) {
+      n++;
+      if (t[n] == ' ' || !t[n]) cut = n;
+    }
+    if (!cut) cut = n ? n : 1;
+    d_white(cx, ty, t, cut, C(0xDFD3A4), 0);
+    t += cut;
+    while (*t == ' ') t++;
+    ty += hud_white.line + 2;
+  }
+  static const char *const label[2] = {"No", "Yes"};
+  for (int i = 0; i < 2; i++) {
+    int bx = cx - 6 - bt->w + i * (bt->w + 12), by = y + bg->h - bt->h - 10;
+    d_pic(HP_ALERT_BUTTON, bx, by, 255, 0, 0);
+    d_white(bx + bt->w / 2, by + (bt->h - hud_white.line) / 2 + 1, label[i], -1, C(focus == i ? 0xF6D600 : 0xB4A060), 0);
+    if (focus == i) pointer(bx - 2, by + bt->h / 2);
+  }
+}
+
 static void quit_overlay(void) {
-  d_dim(150);
-  parchment(50, 64, 220, 110);
-  const char *q = quit_new ? "Start a new run?" : "Quit this run?";
-  d_text(&font_mid, 160 - d_text_width(&font_mid, q) / 2, 100, q, C(0x3A2208), 255);
-  button(70, 128, 80, 28, "No", sel == 0);
-  button(170, 128, 80, 28, "Yes", sel == 1);
+  if (quit_new) alert("New Game", "Are you sure you want to start a new game?", sel);
+  else alert("Exit Game", "Are you sure you want to exit?", sel);
   keys_line("Left Right choose  -  OK select");
 }
 

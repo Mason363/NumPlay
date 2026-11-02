@@ -83,10 +83,17 @@ enum {
   HP_SEPARATOR,
   HP_CHECK_EMPTY,
   HP_CHECK_FULL,
+  HP_ALERT_BG = 249,
+  HP_ALERT_BUTTON = 250,
 };
 
 extern const HudPic hud_pics[];
 extern const uint16_t hud_pal[256];
 extern const uint8_t hud_alpha[256], hud_px[];
 extern const HudFont hud_gold, hud_gold_small;
+
+/* the white lettering: each letter's picture is how much its pixels show, hud_white_px[off ..] */
+extern const HudPic hud_white_pics[];
+extern const uint8_t hud_white_px[];
+extern const HudFont hud_white;
 #endif
