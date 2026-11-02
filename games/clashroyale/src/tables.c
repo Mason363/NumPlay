@@ -136,7 +136,7 @@ const ProjDef PROJS[NPROJS] = {
   {300, 100, 1500, 0, P_AOE_GROUND, 255, 0, 0, 0, 200, 1473}, /* BombTowerProjectile */
   {1400, 20, 0, 0, P_HOMING | P_ARROW, 255, 0, 0, 0, 0, -1}, /* xbow_projectile */
   {600, 325, 2500, 1800, P_AOE_GROUND | P_AOE_AIR | P_REDUCED, 255, 0, 0, 0, 50, 1478}, /* FireballSpell */
-  {600, 0, 0, 0, P_HOMING | P_AOE_GROUND | P_AOE_AIR | P_ARROW, 255, 0, 0, 0, 50, -1}, /* ArrowsSpellDeco */
+  {600, 115, 4000, 0, P_HOMING | P_AOE_GROUND | P_AOE_AIR | P_REDUCED | P_ARROW, 255, 0, 0, 0, 50, -1}, /* ArrowsSpell */
   {350, 700, 2000, 1800, P_AOE_GROUND | P_AOE_AIR | P_REDUCED, 255, 0, 0, 0, 50, 1479}, /* RocketSpell */
   {400, 50, 1500, 0, P_AOE_GROUND | P_REDUCED, 4, 3, 5, 1200, 40, 1480}, /* GoblinBarrelSpell */
   {500, 650, 0, 0, P_REDUCED, 255, 0, 0, 0, 0, -1}, /* LighningSpell */
