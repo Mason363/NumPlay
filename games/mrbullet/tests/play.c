@@ -263,9 +263,10 @@ int main(int argc, char **argv) {
   }
   if (argc >= 3 && !strcmp(argv[1], "seq")) {
     /* levels in a row, shot as the calculator's measuring build shoots them: Box2D's memory after each */
-    b2_heap_limit = 81000;
+    b2_heap_limit = getenv("LIMIT") ? atol(getenv("LIMIT")) : 81000;
     for (int k = 2; k < argc; k++) {
       b2_heap_peak = b2_heap_now;
+      max_contacts = 0;
       game_load(atoi(argv[k]) - 1, (uint8_t *)level_mem);
       for (int s = 0; s < 480; s++) {
         if (s % 90 == 0) {
@@ -274,10 +275,11 @@ int main(int argc, char **argv) {
           game_fire();
         }
         game_step();
+        if (world_contacts() > max_contacts) max_contacts = world_contacts();
       }
       long peak = b2_heap_peak;
       game_end();
-      printf("level %s: Box2D's memory at most %ld, %ld left after\n", argv[k], peak, b2_heap_now);
+      { extern long b2_alloc_max; printf("level %s: Box2D's memory at most %ld, %ld left after, biggest block %ld, contacts %d\n", argv[k], peak, b2_heap_now, b2_alloc_max, max_contacts); b2_alloc_max = 0; }
     }
     return 0;
   }

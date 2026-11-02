@@ -28,12 +28,18 @@ b2Version b2_version = {2, 3, 1};
 /* Box2D's memory in use and the most it has used (a word before each block keeps its size), and the limit past
    which no new contact is made (b2ContactManager::AddPair): a pair that would touch waits until there is room */
 extern "C" { long b2_heap_now, b2_heap_peak, b2_heap_limit; }
+#ifdef HOST
+long b2_alloc_max;
+#endif
 void* b2Alloc(int32 size)
 {
 	long *p = (long *)malloc(size + sizeof(long) * 2);
 	if (!p) return NULL;
 	p[0] = size;
 	b2_heap_now += size + sizeof(long) * 2;
+#ifdef HOST
+	{ extern long b2_alloc_max; if (size > b2_alloc_max) b2_alloc_max = size; }
+#endif
 	if (b2_heap_now > b2_heap_peak) b2_heap_peak = b2_heap_now;
 	return p + 2;
 }

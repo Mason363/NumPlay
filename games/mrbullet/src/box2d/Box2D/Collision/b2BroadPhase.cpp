@@ -1,3 +1,4 @@
+/* Altered for NumPlay's Mr Bullet (NumWorks calculator): at most 1024 pairs gathered a step */
 /*
 * Copyright (c) 2006-2009 Erin Catto http://www.box2d.org
 *
@@ -104,11 +105,20 @@ bool b2BroadPhase::QueryCallback(int32 proxyId)
 	// Grow the pair buffer as needed.
 	if (m_pairCount == m_pairCapacity)
 	{
-		b2Pair* oldBuffer = m_pairBuffer;
+		// (NumPlay: at most 1024 pairs a step, 8 KB; the pairs left wait for the proxy's next move)
+		if (m_pairCapacity >= 1024)
+		{
+			return false;
+		}
+		b2Pair* newBuffer = (b2Pair*)b2Alloc(m_pairCapacity * 2 * sizeof(b2Pair));
+		if (newBuffer == NULL)
+		{
+			return false;
+		}
+		memcpy(newBuffer, m_pairBuffer, m_pairCount * sizeof(b2Pair));
+		b2Free(m_pairBuffer);
+		m_pairBuffer = newBuffer;
 		m_pairCapacity *= 2;
-		m_pairBuffer = (b2Pair*)b2Alloc(m_pairCapacity * sizeof(b2Pair));
-		memcpy(m_pairBuffer, oldBuffer, m_pairCount * sizeof(b2Pair));
-		b2Free(oldBuffer);
 	}
 
 	m_pairBuffer[m_pairCount].proxyIdA = b2Min(proxyId, m_queryProxyId);
