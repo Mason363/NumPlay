@@ -22,6 +22,11 @@ uint32_t perf_max __attribute__((used));
 uint32_t perf_slow __attribute__((used));
 uint32_t perf_draw __attribute__((used));   /* (milliseconds spent drawing) */
 uint32_t host_god __attribute__((used));    /* (set by tools/bench.py: nothing hurts the runner) */
+#ifdef TR_BENCH
+/* (read by tools/bench.py after each drawing: in a run, its distance, turns and polygons) */
+uint32_t bench_run __attribute__((used)), bench_dist __attribute__((used)), bench_turns __attribute__((used));
+uint32_t bench_polys __attribute__((used));
+#endif
 
 int main(void) {
   uint16_t band[SCREEN_W * BAND_H];   /* (here: on the stack, out of the RAM apps get) */
@@ -64,6 +69,10 @@ int main(void) {
       perf_draw += dt;
       if (dt > perf_max) perf_max = dt;
       if (dt > 33) perf_slow++;
+#ifdef TR_BENCH
+      bench_run = app_in_run(), bench_dist = (uint32_t)run.dist, bench_turns = (uint32_t)run.turns;
+      bench_polys = (uint32_t)r_count();
+#endif
       perf_frames++;
     } else
       plat_sleep(1);
