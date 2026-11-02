@@ -765,24 +765,25 @@ static void endless_more(rd_run *r) {
 /* the bike goes 18 pixels a frame at most: what is this near comes in some frames before it can touch it; short of
  * memory (many falling platforms and their contacts), only what is right round the bike stays */
 static bool tight;
-static bool near_box(float x0, float y0, float x1, float y1, float cx, float cy, float m) {
-  if (tight) return x1 > cx - 50 && x0 < cx + 80 && y1 > cy - 55 && y0 < cy + 55;
-  return x1 > cx - m - 80 && x0 < cx + m + 150 && y1 > cy - m - 90 && y0 < cy + m + 90;
+typedef struct {
+  float x0, y0, x1, y1;
+} box_t;
+static bool near_box(float x0, float y0, float x1, float y1, const box_t *w, float m) {
+  return x1 > w->x0 - m && x0 < w->x1 + m && y1 > w->y0 - m && y0 < w->y1 + m;
 }
 static void stream(rd_run *r, bool all) {
   rd_bikestate *b = &r->b;
   tight = ph_free() < RESERVE;
-  /* the windows: the bike, and anything falling free (awake) */
-  float wx[MAXDYN + 1], wy[MAXDYN + 1];
+  /* the windows: round the bike, and round anything falling free (awake) */
+  box_t win[MAXDYN + 1];
   int nw = 0;
-  wx[nw] = b->x, wy[nw] = b->y, nw++;
+  if (tight) win[nw++] = (box_t){b->x - 50, b->y - 55, b->x + 80, b->y + 55};
+  else win[nw++] = (box_t){b->x - 80, b->y - 90, b->x + 150, b->y + 90};
   for (int k = 0; k < MAXDYN && !tight; k++) {
     rd_dyn *d = &r->dyn[k];
-    if (d->used && d->body && (d->flags & DY_FREE) && ph_awake(d->body)) {
-      float x, y, a;
-      ph_get(d->body, &x, &y, &a);
-      wx[nw] = x, wy[nw] = y, nw++;
-    }
+    box_t *w = &win[nw];
+    if (d->used && d->body && (d->flags & DY_FREE) && ph_awake(d->body) && ph_bounds(d->body, &w->x0, &w->y0, &w->x1, &w->y1))
+      w->x0 -= 50, w->y0 -= 50, w->x1 += 50, w->y1 += 50, nw++;
   }
   for (int i = 0; i < r->nlive; i++) {
     rd_live *l = &r->live[i];
@@ -796,8 +797,8 @@ static void stream(rd_run *r, bool all) {
     float m = l->dyn != NO_DYN ? 60 : 0;
     bool in = false, keep = false;
     for (int w = 0; w < nw; w++) {
-      in |= near_box(x0, y0, x1, y1, wx[w], wy[w], m);
-      keep |= near_box(x0, y0, x1, y1, wx[w], wy[w], m + 60);
+      in |= near_box(x0, y0, x1, y1, &win[w], tight ? 0 : m);
+      keep |= near_box(x0, y0, x1, y1, &win[w], tight ? 0 : m + 60);
     }
     if (l->dyn != NO_DYN) { /* a moving object: all of it */
       if (all) in = keep;
@@ -823,8 +824,8 @@ static void stream(rd_run *r, bool all) {
       for (int j = 1; j < n; j++) a0 = fminf(a0, xy[2 * j]), a1 = fmaxf(a1, xy[2 * j]), b0 = fminf(b0, xy[2 * j + 1]), b1 = fmaxf(b1, xy[2 * j + 1]);
       bool pin = false, pkeep = false;
       for (int w = 0; w < nw; w++) {
-        pin |= near_box(a0, b0, a1, b1, wx[w], wy[w], 0);
-        pkeep |= near_box(a0, b0, a1, b1, wx[w], wy[w], 60);
+        pin |= near_box(a0, b0, a1, b1, &win[w], 0);
+        pkeep |= near_box(a0, b0, a1, b1, &win[w], tight ? 0 : 60);
       }
       if (all) pin = pkeep;
       uint64_t bit = (uint64_t)1 << k;

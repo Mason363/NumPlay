@@ -179,16 +179,23 @@ static void snap_save(snap_t *s) { s->run = run, s->n = ph_top(), memcpy(s->mem,
 static void snap_load(const snap_t *s) { run = s->run, memcpy(ph_arena(), s->mem, s->n); }
 static void snap_copy(snap_t *d, const snap_t *s) { d->run = s->run, d->n = s->n, memcpy(d->mem, s->mem, s->n); }
 static snap_t beam[BEAM], next_beam[BEAM * PAT];
+static int spread = 3; /* states kept at each stretch of track */
 static uint8_t paths[BEAM][1600], next_paths[BEAM * PAT][1600];
 static float worth(const rd_run *r) { /* (a loop takes the bike back over its x a while: how far it rode counts too) */
   return r->mode == RUN_ENDLESS ? (r->score + r->pending) * 2000.0f + r->perfect * 300 + r->b.x : r->b.max_x + 0.5f * r->b.odo;
 }
-static int solve_run(int mode, int level, int bike, uint32_t seed, uint8_t *out, int max_segs) {
+/* (wait: the ride begins with a touch and that many pieces let go, for platforms that move in time) */
+static int solve_from(int mode, int level, int bike, uint32_t seed, uint8_t *out, int max_segs, int wait) {
   int nb = 1;
   run_start(&run, mode, level, bike, mode == RUN_LEVEL ? level / 8 : 6, seed);
+  for (int sg = 0; sg <= wait; sg++) {
+    int p = sg ? 1 : 4;
+    for (int f = 0; f < SEG && !run.ended; f++) run_step(&run, pat(p, f));
+    for (int k = 0; k < BEAM; k++) paths[k][sg] = (uint8_t)p;
+  }
   snap_save(&beam[0]);
   float far_x = -1e9f;
-  for (int sg = 0; sg < max_segs; sg++) {
+  for (int sg = wait + 1; sg < max_segs; sg++) {
     int nn = 0;
     for (int i = 0; i < nb; i++)
       for (int p = 0; p < PAT; p++) {
@@ -233,7 +240,7 @@ static int solve_run(int mode, int level, int bike, uint32_t seed, uint8_t *out,
         same += (int)floorf(a->b.max_x / 48) == (int)floorf(c->b.max_x / 48);
       }
       if (near) continue;
-      if (same >= 3) spare[ns++] = order[q];
+      if (same >= spread) spare[ns++] = order[q];
       else pick[np++] = order[q];
     }
     for (int q = 0; q < ns && np < BEAM; q++) pick[np++] = spare[q];
@@ -243,6 +250,15 @@ static int solve_run(int mode, int level, int bike, uint32_t seed, uint8_t *out,
   if (mode == RUN_ENDLESS) { memcpy(out, paths[0], (size_t)max_segs); snap_load(&beam[0]); return max_segs; }
   printf(" [out of time at x %.0f]", beam[0].run.b.x);
   return 0;
+}
+static int solve_run(int mode, int level, int bike, uint32_t seed, uint8_t *out, int max_segs) {
+  int n = 0;
+  for (int k = 0; k < (mode == RUN_LEVEL ? 2 : 1) && !n; k++) {
+    spread = k ? BEAM : 3; /* (then the plain furthest ones) */
+    for (int w = 0; w < (mode == RUN_LEVEL ? 8 : 1) && !n; w++) n = solve_from(mode, level, bike, seed, out, max_segs, w);
+  }
+  spread = 3;
+  return n;
 }
 static int solve_level(int level, uint8_t *out, int max_segs) { return solve_run(RUN_LEVEL, level, 0, 9, out, max_segs); }
 
@@ -255,7 +271,7 @@ static int ride(int mode, int level, int flips, int frames, int bike) {
 static void test_levels(void) {
   /* levels ridden to their end by a search over the button (the game's own tracks and times) */
   static uint8_t path[1600];
-  static const int some[] = {0, 4, 7, 17};
+  static const int some[] = {0, 1, 10, 25}; /* Easy 1 and 2 (#341), a catapult, falling platforms (play solve 0 47: all) */
   int ok = 0;
   for (unsigned i = 0; i < sizeof some / sizeof *some; i++) {
     int n = solve_level(some[i], path, 300);
