@@ -2,11 +2,16 @@
 #ifndef FD_DATA_H
 #define FD_DATA_H
 #include <stdint.h>
-#define CHR_UNIQUE 82
+#define CHR_UNIQUE 83
 #define PAR_BANK0 80
 #define PAR_BANK1 81
-#define NLEVELS 45
-#define NOFFICIAL 27
+#define CHR_DEMON_FACE 82
+#define LEVEL_FINGERDASH 20
+#define LEVEL_LUCKYDRAW 172
+#define SET_A_LEVELS 45
+extern const uint8_t level_of_set_a[SET_A_LEVELS]; /* (saves before the HUGE levels) */
+#define NLEVELS 173
+#define NOFFICIAL 28
 #define NMETATILES 256
 extern const uint8_t chr_data[CHR_UNIQUE][1024];
 extern const uint8_t chr_bank_map[112];
@@ -72,4 +77,5 @@ extern const uint8_t cmap_color1_charmap[128];
 extern const uint8_t cmap_endlevel_charmap[128];
 extern const uint8_t cmap_mainmenu_customize[128];
 extern const uint8_t cmap_bgm_charmap[128];
+extern const uint8_t cmap_luckydraw_charmap[128];
 #endif

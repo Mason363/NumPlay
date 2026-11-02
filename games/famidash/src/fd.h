@@ -40,13 +40,16 @@ enum { GAMEMODE_CUBE, GAMEMODE_SHIP, GAMEMODE_BALL, GAMEMODE_UFO, GAMEMODE_ROBOT
 #define platformer 0x04
 
 /* the save: everything the NES kept in SRAM, and the settings */
-typedef struct {
-  uint8_t coin1[NLEVELS], coin2[NLEVELS], coin3[NLEVELS], complete[NLEVELS], normal[NLEVELS], practice[NLEVELS];
-  uint8_t icoin1[NLEVELS], icoin2[NLEVELS], icoin3[NLEVELS], icomplete[NLEVELS], inormal[NLEVELS], ipractice[NLEVELS];
-} progress_t;
+#define FD_PROGRESS(n) /* twelve arrays of n bytes, one after the other */                                    \
+  struct {                                                                                                     \
+    uint8_t coin1[n], coin2[n], coin3[n], complete[n], normal[n], practice[n];                                 \
+    uint8_t icoin1[n], icoin2[n], icoin3[n], icomplete[n], inormal[n], ipractice[n];                           \
+  }
+typedef FD_PROGRESS(NLEVELS) progress_t;
 extern progress_t prog;
 
 /* ---- game.c */
+extern uint8_t tempplat; /* Lucky Draw turned the platformer off for itself */
 extern uint8_t gameState, level, gamemode, dual, icon, icon_colors[3], options, invisible, invisblocks, retro_mode,
     discomode, cam_seesaw, viseffects, trails, auto_practicepoints, gameboy_mode, twoplayer;
 extern uint8_t practice_point_count, curr_practice_point, coins, kandoframecnt, cube_data[2], attemptCounter[7];
@@ -88,6 +91,10 @@ extern int oam_n;
 extern uint8_t pal_bright_level; /* 0..8, 4 normal */
 extern uint8_t emphasis;         /* NES PPU mask bits 0 (grey) and 5-7 (tints) */
 extern uint8_t chr_bg[4], chr_spr[2]; /* NES CHR banks: four 1 KB for the tiles, two 2 KB for sprites */
+typedef struct { int32_t x, y; uint8_t n, tiles[32]; } text_line_t;
+extern text_line_t text_lines[3];
+bool game_lucky_text(text_line_t *a, text_line_t *b); /* Lucky Draw's triggers survived, after a try (then cleared) */
+#define BG_DEMON_FACES 77 /* the HUGE ROM's demon faces: its bank 76 is the starfox icon here, and 77 never tiles */
 void oam_clear(void);
 void oam_spr(int x, int y, uint8_t tile, uint8_t attr);
 void oam_meta_spr(int x, int y, const uint8_t *data);

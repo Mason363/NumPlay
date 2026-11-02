@@ -440,6 +440,35 @@ static void test_saves(void) {
   CHECK(!save_ok(&bad), "an icon out of range is refused");
   bad = *(const save_t *)keep, bad.prog.normal[0] = 101, bad.sum = fnv(&bad, offsetof(save_t, sum));
   CHECK(!save_ok(&bad), "a percentage over 100 is refused");
+  /* a save from before the HUGE levels (version 1: level set A's 45), alone and as the copy: its levels moved */
+  static save_v1_t o;
+  memset(&o, 0, sizeof o);
+  o.magic = MAGIC, o.version = 1, o.icon = 5, o.prog.normal[27] = 64, o.prog.coin1[27] = 1, o.last_level = 27;
+  o.sum = fnv(&o, offsetof(save_v1_t, sum));
+  memset(files, 0, sizeof files);
+  plat_save(SAVE_NAME, &o, sizeof o);
+  icon = 0, level = 0, memset(&prog, 0, sizeof prog);
+  load();
+  CHECK(icon == 5 && level == level_of_set_a[27] && prog.normal[level] == 64 && prog.coin1[level] &&
+        !strcmp(level_list[level].lo, "RETRAY") && level != 27, "a version 1 save: its levels where they are now");
+  { /* the copy as version 1 wrote it */
+    static uint8_t c[1 + sizeof head + (sizeof o + 2) / 3 * 4 + 2];
+    uint8_t *q = c;
+    const uint8_t *f = (const uint8_t *)&o;
+    *q++ = 0;
+    memcpy(q, head, sizeof head - 1), q += sizeof head - 1;
+    for (uint32_t i = 0; i < sizeof o; i += 3, q += 4) {
+      uint32_t left = sizeof o - i, v = (uint32_t)f[i] << 16 | (left > 1 ? (uint32_t)f[i + 1] << 8 : 0) | (left > 2 ? f[i + 2] : 0);
+      q[0] = (uint8_t)b64[v >> 18 & 63], q[1] = (uint8_t)b64[v >> 12 & 63];
+      q[2] = left > 1 ? (uint8_t)b64[v >> 6 & 63] : '=', q[3] = left > 2 ? (uint8_t)b64[v & 63] : '=';
+    }
+    *q++ = '\n';
+    memset(files, 0, sizeof files);
+    plat_save(COPY_NAME, c, (uint32_t)(q - c));
+  }
+  icon = 0, level = 0, memset(&prog, 0, sizeof prog);
+  load();
+  CHECK(icon == 5 && level == level_of_set_a[27] && prog.normal[level] == 64, "a version 1 copy: its levels where they are now");
   /* the first time: how to play; OK twice reads it, Home saves that */
   memset(files, 0, sizeof files);
   frame_no = 0, quit_at = 120, script = help_script;

@@ -15,20 +15,21 @@
 #define SAVE_NAME "famidash.sav"
 #define COPY_NAME "famidash_saves.py"
 #define MAGIC 0x31444D46u /* "FMD1" */
-#define VERSION 1
+#define VERSION 2 /* 1: level set A's 45 levels, before the HUGE ROM's */
 
 /* ---------------------------------------------------------------- the save */
-typedef struct {
-  uint32_t magic;
-  uint8_t version, flags, icon, retro; /* flags: 1 how to play read */
-  uint8_t colors[3], plat;
-  uint8_t viseffects, trails, autocp, invisible;
-  uint8_t disco, invisblocks, seesaw, gameboy;
-  uint8_t last_level, pad[3];
-  progress_t prog;
-  uint32_t play_ms;
+#define SAVE_FIELDS(prog_t)                                                                                    \
+  uint32_t magic;                                                                                              \
+  uint8_t version, flags, icon, retro; /* flags: 1 how to play read */                                         \
+  uint8_t colors[3], plat;                                                                                     \
+  uint8_t viseffects, trails, autocp, invisible;                                                               \
+  uint8_t disco, invisblocks, seesaw, gameboy;                                                                 \
+  uint8_t last_level, pad[3];                                                                                  \
+  prog_t prog;                                                                                                 \
+  uint32_t play_ms;                                                                                            \
   uint32_t sum;
-} save_t;
+typedef struct { SAVE_FIELDS(progress_t) } save_t;
+typedef struct { SAVE_FIELDS(FD_PROGRESS(SET_A_LEVELS)) } save_v1_t;
 static save_t sv;
 
 static uint32_t fnv(const void *d, uint32_t n) {
@@ -48,13 +49,30 @@ static bool save_ok(const save_t *s) {
       return false;
   return true;
 }
+/* a version 1 save: its levels put where the HUGE ROM has them */
+static bool from_v1(const uint8_t *d, uint32_t n, save_t *out) {
+  static save_v1_t o;
+  if (n != sizeof o) return false;
+  memcpy(&o, d, sizeof o);
+  if (o.magic != MAGIC || o.version != 1 || o.sum != fnv(&o, offsetof(save_v1_t, sum))) return false;
+  memset(out, 0, sizeof *out);
+  memcpy(out, &o, offsetof(save_t, prog));
+  const uint8_t *a = (const uint8_t *)&o.prog;
+  uint8_t *b = (uint8_t *)&out->prog;
+  for (int k = 0; k < 12; k++)
+    for (int i = 0; i < SET_A_LEVELS; i++) b[k * NLEVELS + level_of_set_a[i]] = a[k * SET_A_LEVELS + i];
+  out->version = VERSION, out->last_level = level_of_set_a[o.last_level < SET_A_LEVELS ? o.last_level : 0];
+  out->play_ms = o.play_ms, out->sum = fnv(out, offsetof(save_t, sum));
+  return save_ok(out);
+}
+
 static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 #define TAG "#>" SAVE_NAME ":" /* the copy's line (found anywhere: an older copy has a longer head) */
 static const char head[] = "# Famidash's saves: keep this file\n" TAG;
 static uint8_t copy[1 + sizeof head + (sizeof(save_t) + 2) / 3 * 4 + 2];
 
 static void sync_out(void) { /* the game's settings into the save */
-  sv.icon = icon, sv.retro = retro_mode, memcpy(sv.colors, icon_colors, 3), sv.plat = options & platformer ? 1 : 0;
+  sv.icon = icon, sv.retro = retro_mode, memcpy(sv.colors, icon_colors, 3), sv.plat = options & platformer || tempplat ? 1 : 0;
   sv.viseffects = viseffects, sv.trails = trails, sv.autocp = auto_practicepoints, sv.invisible = invisible;
   sv.disco = discomode, sv.invisblocks = invisblocks, sv.seesaw = cam_seesaw ? 1 : 0, sv.gameboy = gameboy_mode;
   sv.last_level = level < NLEVELS ? level : 0;
@@ -93,19 +111,24 @@ static bool copy_read(save_t *out) {
   uint32_t n;
   const uint8_t *c = plat_load(COPY_NAME, &n);
   if (!c) return false;
-  const uint32_t hl = sizeof TAG - 1, m = (sizeof(save_t) + 2) / 3 * 4;
-  for (uint32_t i = 0; i + hl + m <= n; i++) {
+  const uint32_t hl = sizeof TAG - 1;
+  for (uint32_t i = 0; i + hl <= n; i++) {
     if (memcmp(c + i, head + sizeof head - sizeof TAG, hl)) continue;
     const uint8_t *l = c + i + hl;
+    uint32_t m = 0;
+    while (i + hl + m < n && b64v(l[m]) >= 0 && l[m] != '\n') m++;
+    if (m % 4 || m > (sizeof(save_t) + 2) / 3 * 4) return false;
     static uint8_t buf[(sizeof(save_t) + 2) / 3 * 3];
     for (uint32_t k = 0; k < m; k += 4) {
-      int v0 = b64v(l[k]), v1 = b64v(l[k + 1]), v2 = b64v(l[k + 2]), v3 = b64v(l[k + 3]);
-      if (v0 < 0 || v1 < 0 || v2 < 0 || v3 < 0) return false;
-      uint32_t w = (uint32_t)(v0 << 18 | v1 << 12 | v2 << 6 | v3);
+      uint32_t w = (uint32_t)(b64v(l[k]) << 18 | b64v(l[k + 1]) << 12 | b64v(l[k + 2]) << 6 | b64v(l[k + 3]));
       buf[k / 4 * 3] = (uint8_t)(w >> 16), buf[k / 4 * 3 + 1] = (uint8_t)(w >> 8), buf[k / 4 * 3 + 2] = (uint8_t)w;
     }
-    memcpy(out, buf, sizeof *out);
-    return save_ok(out);
+    uint32_t len = m / 4 * 3 - (m && l[m - 1] == '=') - (m > 1 && l[m - 2] == '=');
+    if (len == sizeof *out) {
+      memcpy(out, buf, sizeof *out);
+      return save_ok(out);
+    }
+    return from_v1(buf, len, out);
   }
   return false;
 }
@@ -123,6 +146,7 @@ static void load(void) {
     memcpy(&t, d, sizeof t);
     if (save_ok(&t)) { sv = t; sync_in(); return; }
   }
+  if (d && from_v1(d, n, &t)) { sv = t; sync_in(); return; }
   if (copy_read(&t)) { sv = t; sync_in(); return; }
   fresh();
   sync_in();
@@ -138,8 +162,7 @@ extern uint8_t titleicon;
 void fd_draw_title_player(uint8_t x, uint8_t y, uint8_t gm, uint8_t mini);
 const unsigned char *fd_number_sprite(int i);
 const unsigned char *fd_metasprite(int t);
-extern int32_t text_x, text_y;
-extern uint8_t text_tiles[16], text_n, nt_fill_tile, nt_wrap_split;
+extern uint8_t nt_fill_tile, nt_wrap_split;
 
 #define NT(nt, x, y) nametable[nt][(y) * 32 + (x)]
 static void nt_load(const uint8_t *src) { memcpy(nametable[0], src, 1024), memcpy(nametable[1], src, 1024); }
@@ -202,11 +225,7 @@ static const int8_t POGO_Title_Jump_Table[] = {6, 6, 5, 5, 4, 4, 3, 3, 2, 2, 2, 
                                                -3, -3, -4, -4, -5, -5, -6, -6};
 enum { TM_CUBE, TM_SHIP, TM_BALL, TM_UFO, TM_ROBOT, TM_SPIDER, TM_WAVE, TM_SWING, TM_NINJA, TM_POGO, TM_SNAKE, TM_FOOTBALL };
 
-static void unlocked_check(void) {
-  all_levels_complete = 0xFC;
-  for (int i = 0; i <= 12; i++)
-    if (!prog.complete[i]) all_levels_complete = 0;
-}
+static void unlocked_check(void) { all_levels_complete = 0xFC; } /* (the HUGE ROM: the fun settings from the start) */
 
 static void set_title_icon(void) {
   int m = title_mode % 12;
@@ -413,6 +432,8 @@ static uint8_t lsel_tmp4, lsel_hold, lsel_start;
 static const uint8_t colors_list[9] = {0x12, 0x14, 0x15, 0x16, 0x17, 0x28, 0x2A, 0x2C, 0x11};
 static const uint8_t difficulty_pal_A[7] = {0x21, 0x2A, 0x28, 0x16, 0x24, 0x16, 0x28};
 static const uint8_t difficulty_pal_B[7] = {0x06, 0x30, 0x30, 0x30, 0x06, 0x30, 0x21};
+static const uint8_t difficulty_pal_C[7] = {0x13, 0x14, 0x16, 0x16, 0x06, 0x06, 0x03}; /* (the demons: easy to grandpa) */
+static const uint8_t difficulty_pal_D[7] = {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30};
 static const char *const coin_counter[8] = {"___", "^__", "_^_", "^^_", "__^", "^_^", "_^^", "^^^"};
 
 static uint8_t pct_normal(int l) { return invisblocks ? prog.inormal[l] : prog.normal[l]; }
@@ -443,7 +464,9 @@ static void refreshmenu(void) {
   if (invisblocks ? prog.icomplete[level] : prog.complete[level]) nt_put(n, 7, 9, cmap_color1_charmap['y']), nt_put(n, 8, 9, cmap_color1_charmap['z']);
   else nt_put(n, 7, 9, cmap_color1_charmap[' ']), nt_put(n, 8, 9, cmap_color1_charmap[' ']);
   uint8_t d = L->difficulty;
-  pal_col(0x0a, difficulty_pal_A[d]), pal_col(0x0b, difficulty_pal_B[d]);
+  bool demon = L->stars == 10 && level > 25; /* (refreshmenuHUGE.c: the demon faces) */
+  chr_bg[2] = demon ? BG_DEMON_FACES : 100;
+  pal_col(0x0a, (demon ? difficulty_pal_C : difficulty_pal_A)[d]), pal_col(0x0b, (demon ? difficulty_pal_D : difficulty_pal_B)[d]);
   uint8_t t = (uint8_t)(cmap_color1_charmap['a'] + d * 2);
   nt_put(n, 7, 10, t), nt_put(n, 8, 10, (uint8_t)(t + 1)), nt_put(n, 7, 11, (uint8_t)(t + 0x10)), nt_put(n, 8, 11, (uint8_t)(t + 0x11));
   char st[4];
@@ -491,6 +514,7 @@ static void draw_both_progress_bars(void) {
 }
 
 static void enter_levels(void) {
+  if (tempplat == 1) tempplat = 0, options |= platformer;
   bg_mode = BG_NAMETABLE;
   menu_banks(98);
   chr_spr[0] = 0xFE, chr_spr[1] = 96;
@@ -564,20 +588,27 @@ static void game_banks(void) {
   chr_spr[0] = spr_bank0, chr_spr[1] = spr_bank1;
 }
 
-/* "ATTEMPT 12": put into the first screen's tiles, as unrle_first_screen does */
+/* "ATTEMPT 12" (and Lucky Draw's triggers): put into the first screen's tiles, as unrle_first_screen does */
 static void attempt_text(void) {
   static const uint8_t att[7] = {0xF0, 0xF1, 0xF1, 0xF2, 0xF3, 0xF4, 0xF1};
-  memset(text_tiles, 0, sizeof text_tiles);
+  memset(text_lines, 0, sizeof text_lines);
+  text_line_t *t = &text_lines[0];
   int digits = 7;
   while (digits > 1 && !attemptCounter[digits - 1]) digits--;
-  for (int i = 0; i < 7; i++) text_tiles[i] = att[i];
-  for (int i = 0; i < digits; i++) text_tiles[14 - i] = (uint8_t)(0xF5 + attemptCounter[i]);
-  text_n = 15;
-  int32_t sx = (int32_t)scroll_x, x = (sx & ~0x1FF) + 48;
-  if (x < sx - 32) x += 512;
-  /* row 15 of the lower nametable: 121 lines under the top of the level's first view */
-  text_x = x, text_y = (scroll_y + 121) & ~7;
-  if (x + 15 * 8 > sx + 256 + 32) text_n = 0;
+  for (int i = 0; i < 7; i++) t->tiles[i] = att[i];
+  for (int i = 0; i < digits; i++) t->tiles[14 - i] = (uint8_t)(0xF5 + attemptCounter[i]);
+  t->n = 15;
+  int32_t sx = (int32_t)scroll_x, base = sx & ~0x1FF;
+  if (base + 48 < sx - 32) base += 512;
+  /* row 15 of the lower nametable: 121 lines under the top of the level's first view; Lucky Draw's rows 6 and 8 */
+  int32_t row15 = scroll_y + 121;
+  t->x = base + 48, t->y = row15 & ~7;
+  if (game_lucky_text(&text_lines[1], &text_lines[2])) {
+    text_lines[1].x = text_lines[2].x = base + 8;
+    text_lines[1].y = (row15 - 72) & ~7, text_lines[2].y = (row15 - 56) & ~7;
+  }
+  for (int k = 0; k < 3; k++)
+    if (text_lines[k].x + text_lines[k].n * 8 > sx + 256 + 32) text_lines[k].n = 0;
 }
 
 static uint32_t level_frame; /* when the level was chosen */

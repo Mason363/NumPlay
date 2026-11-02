@@ -23,11 +23,11 @@
 ## Highlights
 
 * **Famidash itself:** the game's code, written for the NES, turned into C for the calculator. Jumps, gravity, speeds, orbs and pads use its numbers to the last fraction of a pixel, 60 times a second, as on the NES.
-* **All 45 levels of the main game,** in its order: the 27 main levels, from Stereo Madness to The Challenge, and the 18 community levels, from Retray to Water Temple. Each has its three coins, attempts, and two progress bars: normal and practice.
+* **All 173 levels of Famidash HUGE,** its fullest version, in its order: the 28 main levels, from Stereo Madness to The Challenge, and the 145 community levels, from Best Automatic Lvl to Lucky Draw. Each has its three coins, attempts, and two progress bars: normal and practice.
 * **Every mode its levels use:** cube, ship, ball, UFO, robot, spider, wave, swing and ninja, and the random portals' pogo, snake and football. Gravity, speed, size and dual portals, teleports, orbs and pads of every colour, dash orbs and the rest.
 * **Practice mode:** checkpoints you place, and ones the game places for you, up to eight.
 * **Its NES art:** the tiles, the moving background, the sprites and the menus, at their real size. The level is shown 320 pixels wide: the NES's 256 in the middle and a little more of the level on each side.
-* **19 icons and three colours** to choose in Customize. Beat the first 13 levels and the **fun settings** open: invisible player, platformer, retro, disco, blind mode, camera seesaw and the gameboy colours.
+* **19 icons and three colours** to choose in Customize. The **fun settings** are open from the start, as in HUGE: invisible player, platformer, retro, disco, blind mode, camera seesaw and the gameboy colours.
 * **Saved:** your coins, progress, icon, colours and settings. Home saves and quits from anywhere. Your game is also copied into `famidash_saves.py`, so installing the app again doesn't erase it.
 
 <table>
@@ -70,7 +70,7 @@ Each level hides three coins. They only count when you finish the level in one g
 
 * **On its own:** Famidash is too big to fit next to NumPlay. Installing it from the NumWorks website swaps out NumPlay and the other apps, and installing NumPlay again swaps it back out. Your progress in each one is kept.
 * **Quit game** in the pause menu asks first, and takes you back to the level select.
-* It is Famidash's main game, "The Original Game". Its B, C, D and E-Sides and the big collections are other versions of Famidash and are not in this app.
+* It is Famidash HUGE: the main game and its B, C, D and E-Sides in one. Progress from the older 45 level app moves to the same levels here.
 * There is no music or sound: the calculator has no speaker. So the sound test, the music settings and the practice music sync are left out.
 * Two-player mode is left out: the calculator has one keypad. Levels with two icons (the dual portals) play as in the game, both icons on one button. The debug mode and the hidden cheats are left out too.
 * Around the NES's screen the level goes on 32 pixels to each side. Those sides only show the level; what happens still happens on the NES's 256 pixels, as in the game.
@@ -79,7 +79,7 @@ Each level hides three coins. They only count when you finish the level in one g
 
 Made by Mason Chen as part of NumPlay, a port of **[Famidash](https://github.com/tfdsoft/famidash)** by **TFDSoft**. Geometry Dash is by **RobTop Games**. Not affiliated with them.
 
-* From Famidash (MIT License, `LICENSES/MIT-Famidash.txt`): its game code, turned into C; its 45 levels, metatiles and ground; its graphics (the CHR banks: tiles, parallax, sprites, icons, menus); its menu screens and palettes. Read by `tools/data.py`.
+* From Famidash (MIT License, `LICENSES/MIT-Famidash.txt`): its game code, turned into C; the 173 levels of its HUGE version, metatiles and ground; its graphics (the CHR banks: tiles, parallax, sprites, icons, menus); its menu screens and palettes. Read by `tools/data.py`.
 * Famidash is made by its core team, Zephyrside (UserSniper), kandowontu, Ficus mcHousePlant, dajinkosa, ElAngel378, SeaGlowingPro and KawaiiDawn, with Aquamarine, vikrinox, adrluc096, Zee_Scott, StudsX, cloud54, RedGD, AnnoyedArt1256, sussysy and Crafty Jumper, and the winners of its icon contest.
 * Its levels are named after the songs of ForeverBound, DJVI, Step, Waterflame, Dj-Nate and OcularNebula, as Famidash's credits say. The songs themselves are not in the app.
 * The menus' help texts use NumPlay's **Nunito** (SIL Open Font License).

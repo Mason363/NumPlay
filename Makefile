@@ -47,7 +47,7 @@ XL_APP_SPACE = 6291456
 # the spaces the customizer website offers (kit.json "spaces"; tools/kit.py links a NumPlay at each)
 SPACES = std:$(APP_START):$(APP_END) e26:$(APP_START_26):$(APP_END) xl:$(APP_START):$(XL_END) xl26:$(APP_START_26):$(XL_END)
 # big games that must install on their own without Enlarged Extra Apps: make check holds them to APP_SPACE
-APP_SPACE_APPS = HillClimbRacing FridayNightFunkin TurboRush AngryBirds PolyTrack UniversalPaperclips UniversalPaperclips-French BadTimeSimulator Mahjong SnowRider3D TempleRun
+APP_SPACE_APPS = HillClimbRacing FridayNightFunkin TurboRush AngryBirds PolyTrack UniversalPaperclips UniversalPaperclips-French BadTimeSimulator Mahjong SnowRider3D TempleRun Famidash
 # Upsilon, the N0110 and N0115's custom software, gives .nwa apps less RAM: NumPlay-Upsilon.nwa has
 # the games that fit it (NumPlay draws their text there: see launcher/src/compat.c)
 UPSILON_RAM = 107674

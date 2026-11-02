@@ -16,9 +16,8 @@ uint8_t nametable[2][1024];
 int nt_scroll_x, nt_scroll_y;
 int nt_split_y0 = -1, nt_split_y1 = -1, nt_split_x;
 uint8_t nt_fill_tile, nt_wrap_split;
-/* the "ATTEMPT 1" line: tiles put into the level's first screen */
-int32_t text_x, text_y;
-uint8_t text_tiles[16], text_n;
+/* the "ATTEMPT 1" line (and Lucky Draw's two): tiles put into the level's first screen */
+text_line_t text_lines[3];
 
 /* the NES's 64 colours (2C02), as RGB565 */
 static const uint32_t nes_rgb[64] = {
@@ -70,7 +69,7 @@ static void frame_setup(void) {
     if (emphasis & 1) c &= 0x30;
     pal565[i] = rgb(nes_rgb[c & 0x3F], emphasis);
   }
-  for (int i = 0; i < 4; i++) bgp[i] = bank_ptr(chr_bg[i]);
+  for (int i = 0; i < 4; i++) bgp[i] = chr_bg[i] == BG_DEMON_FACES ? chr_data[CHR_DEMON_FACE] : bank_ptr(chr_bg[i]);
   par_on = chr_bg[2] >= 112;
   par_shift = (uint8_t)(chr_bg[2] - 112);
   if (par_on && par_shift != par_img_shift) {
@@ -109,15 +108,16 @@ static void level_row(uint8_t *buf, int32_t t0, int wy) {
   const uint8_t *ltab = half ? mt_bl : mt_tl, *rtab = half ? mt_br : mt_tr;
   int32_t mc_prev = 0x7FFFFFFF;
   uint8_t mt = 0;
+  const text_line_t *tl = NULL;
+  for (int k = 0; k < 3; k++)
+    if (text_lines[k].n && mrow < 60 && (wy >> 3) == (text_lines[k].y >> 3)) tl = &text_lines[k];
   for (int i = 0; i < 42; i++) {
     int32_t T = t0 + i, mc = T >> 1;
     if (mc != mc_prev) mt = level_metatile(mc, mrow), mc_prev = mc;
     uint8_t tile = (T & 1) ? rtab[mt] : ltab[mt];
     if (invisblocks && mrow < 57) tile = 0;
     uint8_t *d = buf + i * 8;
-    if (text_n && mrow < 60 && (wy >> 3) == (text_y >> 3) && T >= (text_x >> 3) && T < (text_x >> 3) + text_n &&
-        text_tiles[T - (text_x >> 3)])
-      tile = text_tiles[T - (text_x >> 3)];
+    if (tl && T >= (tl->x >> 3) && T < (tl->x >> 3) + tl->n && tl->tiles[T - (tl->x >> 3)]) tile = tl->tiles[T - (tl->x >> 3)];
     if (tile == 0 && par_on && !no_parallax) {
       int32_t tt = T < 0 ? 0 : T;
       int pc = (int)(tt % 6), pstart = (int)((3 * (tt / 6)) % 9);

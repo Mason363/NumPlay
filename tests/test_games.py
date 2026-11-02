@@ -404,8 +404,8 @@ def rider_ok(v):
 
 
 def famidash_ok(v):
-    """Famidash's save: "FMD1", version 1, 572 bytes, an FNV-1a sum of the rest at the end"""
-    if len(v) != 572 or v[:4] != b"FMD1" or v[4] != 1:
+    """Famidash's save: "FMD1", version 2, 2108 bytes, an FNV-1a sum of the rest at the end"""
+    if len(v) != 2108 or v[:4] != b"FMD1" or v[4] != 2:
         return False
     h = 2166136261
     for x in v[:-4]:
@@ -639,8 +639,8 @@ CHECKS = {
     "fnaf2": (lambda v: v[:4] == b"FNF2" and struct.unpack_from("<f", v, 96)[0] > 2,
               lambda v: v[:4] == b"FNF2" and struct.unpack_from("<f", v, 96)[0] > 6.5),
     # "FMD1", version 1: how to play read (flags at 5), time played (564); after the reinstall, from the copy, more
-    "famidash": (lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 564)[0] >= 7000,
-                 lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 564)[0] >= 12000),
+    "famidash": (lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 7000,
+                 lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 12000),
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept

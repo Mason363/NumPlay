@@ -75,8 +75,9 @@ static uint8_t currplayer, shuffle_offset;
 static uint8_t spiderframe[2], robotframe[2], ballframe, robotjumpframe[2], robotjumptime[2];
 static uint8_t hblocked[2], jblocked[2], fblocked[2], dblocked[2], ninjajumps[2];
 static uint8_t slowmode, kandokidshack4;
-static uint16_t triggers;
+static uint16_t triggers, top_triggers;
 static uint8_t triggers_hit[3];
+uint8_t tempplat;
 uint8_t current_deco_type, current_spike_set, current_block_set, current_saw_set;
 static uint8_t nocamlock, nocamlockforced, nullscapes_orb_type, nullscapes_active, teleport_output;
 static uint8_t level_resetting_flag, timewarp_done;
@@ -1681,7 +1682,7 @@ static uint8_t sprite_load_special_behavior(void) {
     if (!invisblocks ? prog.coin3[level] : prog.icoin3[level]) activesprites_type[spr_index] = O_COINGOTTEN3;
     /* fall through */
   case O_COINGOTTEN3:
-    if (level == 20 /* fingerdash */ && minicoins != 10) {
+    if (level == LEVEL_FINGERDASH && minicoins != 10) {
       activesprites_type[spr_index] = 0xFF;
       return 0x10;
     }
@@ -2363,6 +2364,26 @@ static void reset_level(void) {
   update_currplayer_table_idx();
   unrle_first_screen();
   current_saw_set = 14; /* SAWBLADESA */
+  if (level == LEVEL_LUCKYDRAW) current_saw_set = 111; /* LETTERBANK */
+}
+
+/* Lucky Draw's text after a try (credits.c's Lucky_Draw_Text_Stuff): the triggers it survived, and the most */
+bool game_lucky_text(text_line_t *a, text_line_t *b) {
+  if (level != LEVEL_LUCKYDRAW || !(triggers_hit[0] || triggers_hit[1] || triggers_hit[2])) return false;
+  static const char t1[] = "TRIGGERS SURVIVED", t2[] = "TOP TRIGGERS SURVIVED";
+  for (int i = 0; t1[i]; i++) a->tiles[i] = cmap_luckydraw_charmap[(uint8_t)t1[i]];
+  a->tiles[19] = (uint8_t)(0xF5 + triggers_hit[2]), a->tiles[20] = (uint8_t)(0xF5 + triggers_hit[1]);
+  a->tiles[21] = (uint8_t)(0xF5 + triggers_hit[0]), a->tiles[22] = 0xD0, a->tiles[23] = 0xF5 + 8, a->tiles[24] = a->tiles[25] = 0xF5;
+  a->n = 26;
+  if (triggers > top_triggers) top_triggers = triggers;
+  for (int i = 0; t2[i]; i++) b->tiles[i] = cmap_luckydraw_charmap[(uint8_t)t2[i]];
+  int d2 = top_triggers / 100 % 10, d1 = top_triggers / 10 % 10, d0 = top_triggers % 10;
+  if (d2) b->tiles[22] = (uint8_t)(0xF5 + d2);
+  if (d2 | d1) b->tiles[23] = (uint8_t)(0xF5 + d1);
+  b->tiles[24] = (uint8_t)(0xF5 + d0), b->tiles[25] = 0xD0, b->tiles[26] = 0xF5 + 8, b->tiles[27] = b->tiles[28] = 0xF5;
+  b->n = 29;
+  triggers = 0, triggers_hit[0] = triggers_hit[1] = triggers_hit[2] = 0;
+  return true;
 }
 
 /* ---------------------------------------------------------------- state_game in steps */
@@ -2376,12 +2397,13 @@ void game_begin(void) {
   memset(hblocked, 0, sizeof hblocked), memset(jblocked, 0, sizeof jblocked), memset(fblocked, 0, sizeof fblocked);
   memset(dblocked, 0, sizeof dblocked), memset(ninjajumps, 0, sizeof ninjajumps), memset(black_orbed, 0, sizeof black_orbed);
   memset(attemptCounter, 0, sizeof attemptCounter);
-  jumps = 0, triggers = 0, practice_point_count = 0, force_platformer = 0, slowmode = 0, disco_sprites = 0;
+  jumps = 0, triggers = 0, top_triggers = 0, practice_point_count = 0, force_platformer = 0, slowmode = 0, disco_sprites = 0;
   triggers_hit[0] = triggers_hit[1] = triggers_hit[2] = 0;
   cube_rotate[0] = cube_rotate[1] = 0;
 }
 
 void game_start(void) {
+  if (level == LEVEL_LUCKYDRAW && (options & platformer)) options ^= platformer, tempplat = 1;
   fartmode = newrand();
   coin1_timer = coin2_timer = coin3_timer = 0;
   kandokidshack2 = 0, kandokidshack4 = 0, animating = 0, orbactive = 0, nocamlock = 0, currplayer = 0;
@@ -2465,7 +2487,7 @@ static void everything_else(void) {
   if (orbed[currplayer] && !(controllingplayer->hold & (PAD_A | PAD_UP))) orbed[currplayer] = 0;
   sprite_collide();
   if (retro_mode && gamemode == GAMEMODE_CUBE) gamemode = GAMEMODE_ROBOT;
-  movement();
+  if (level != LEVEL_LUCKYDRAW || !(cube_data[currplayer] & 1)) movement();
   processXMovement = 1;
   runthecolls();
   processXMovement = 0;
@@ -2486,7 +2508,7 @@ static void everything_else(void) {
     decrement_was_on_slope();
     if (orbed[currplayer] && !(controllingplayer->hold & (PAD_A | PAD_UP))) orbed[currplayer] = 0;
     sprite_collide();
-    movement();
+    if (level != LEVEL_LUCKYDRAW || !(cube_data[currplayer] & 1)) movement();
     if (dual && ((options & platformer) || force_platformer) && !twoplayer) currplayer_relx = player_relx[0], currplayer_vel_x = player_vel_x[0];
     else if (dual && !(options & platformer) && !force_platformer) currplayer_relx = player_relx[0], currplayer_vel_x = player_vel_x[0];
     processXMovement = 0;
@@ -2502,6 +2524,7 @@ static void everything_else(void) {
 
 /* one NES frame of state_game's loop, without the drawing (draw_screen's timing is kept) */
 void game_step(void) {
+  if (level == LEVEL_LUCKYDRAW) dblocked[0] = 1;
   newrand();
   if (kandokidshack2 && !(kandoframecnt & 0x0F)) icon = icon == MAX_ICONS - 1 ? 0 : icon + 1;
   pal_col(3, outline_color), pal_col(7, outline_color);
@@ -2757,16 +2780,27 @@ static bool draws_as_margin(uint8_t t) {
   return true;
 }
 
+/* an object's animation or picture, or NULL: the lists end at 0x7E (an object 0x7F is drawn as nothing) */
+static const struct SpriteFrame *anim_of(uint8_t t) {
+  t &= 0x7F;
+  return t < sizeof animation_frame_list / sizeof *animation_frame_list ? animation_frame_list[t] : NULL;
+}
+static const unsigned char *meta_of(uint8_t t) {
+  t &= 0x7F;
+  return t < sizeof Metasprites / sizeof *Metasprites ? Metasprites[t] : NULL;
+}
+
 static const unsigned char *frame_of(uint8_t t, uint8_t frame) {
-  const struct SpriteFrame *a = (const struct SpriteFrame *)animation_frame_list[t & 0x7F];
+  const struct SpriteFrame *a = anim_of(t);
   if (a) {
     if (frame >= animation_frame_length[t]) frame = 0;
     return a[frame].ptr;
   }
-  return Metasprites[t & 0x7F];
+  return meta_of(t);
 }
 
 static void draw_one(int x, int y, const unsigned char *d) {
+  if (!d) return;
   if (!disco_sprites) oam_meta_spr(x, y, d);
   else oam_meta_spr_disco(x, y, d);
 }
@@ -2795,11 +2829,11 @@ static void draw_margin_objects(void) {
     if (t == O_COIN1 && (!invisblocks ? prog.coin1[level] : prog.icoin1[level])) t = O_COINGOTTEN1;
     if (t == O_COIN2 && (!invisblocks ? prog.coin2[level] : prog.icoin2[level])) t = O_COINGOTTEN2;
     if (t == O_COIN3 && (!invisblocks ? prog.coin3[level] : prog.icoin3[level])) t = O_COINGOTTEN3;
-    if (t == O_COIN3 && level == 20 && minicoins != 10) continue;
+    if (t == O_COIN3 && level == LEVEL_FINGERDASH && minicoins != 10) continue;
     int y = (int)((p[2] | p[3] << 8) - (int32_t)scroll_y);
     if (y < -48 || y > 260) continue;
     int fx = (int)(x - sx);
-    const struct SpriteFrame *a = (const struct SpriteFrame *)animation_frame_list[t & 0x7F];
+    const struct SpriteFrame *a = anim_of(t);
     uint8_t fr = 0;
     if (a && animation_frame_length[t]) fr = (uint8_t)((kandoframecnt >> 2) % animation_frame_length[t]);
     draw_one(fx, y - 1, frame_of(t, fr));
@@ -2853,7 +2887,7 @@ void game_draw(void) {
       }
     }
     uint8_t spr_type = activesprites_type[spr_index];
-    const struct SpriteFrame *a = (const struct SpriteFrame *)animation_frame_list[spr_type & 0x7F];
+    const struct SpriteFrame *a = anim_of(spr_type);
     const unsigned char *d;
     if (a) {
       uint8_t frame;
@@ -2875,7 +2909,7 @@ void game_draw(void) {
       if (frame >= animation_frame_length[spr_type]) frame = 0;
       d = a[frame].ptr;
       if (reload) activesprites_anim_frame_count[spr_index] = (int8_t)a[frame].frame_count;
-    } else d = Metasprites[spr_type & 0x7F];
+    } else d = meta_of(spr_type);
     draw_one(temp_x, ty, d);
   }
   draw_margin_objects();
@@ -2935,7 +2969,7 @@ void game_death_frame(int f) {
 
 /* the metasprites the menus use */
 const unsigned char *fd_number_sprite(int i) { return Number_Sprites[i]; }
-const unsigned char *fd_metasprite(int t) { return Metasprites[t & 0x7F]; }
+const unsigned char *fd_metasprite(int t) { return meta_of(t); }
 pspr_t fd_title_player(void);
 void fd_draw_title_player(uint8_t x, uint8_t y, uint8_t gm, uint8_t mini) {
   gamemode = gm, player_mini[0] = mini, player_relx[0] = (uint16_t)(x << 8), player_rely[0] = (uint16_t)(y << 8);

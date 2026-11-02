@@ -619,7 +619,8 @@
       3,
       4,
       5,
-      6
+      6,
+      7
     ]
   },
   {
@@ -1388,7 +1389,7 @@
     "id": "famidash",
     "rank": 34,
     "title": "Famidash",
-    "tagline": "Geometry Dash for the NES: 45 levels",
+    "tagline": "Geometry Dash for the NES: 173 levels",
     "credit": "Based on Famidash by TFDSoft",
     "top": "0x3032EC",
     "bottom": "0x101E74",
