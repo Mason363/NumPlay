@@ -84,6 +84,8 @@
   // a big game too big to go beside the launcher in this space (kit.json "alone") goes on its own there,
   // as its own app: as if you installed just that game
   const alone = (id) => !!game(id).alone && own([id], []) + flash(id) > capacity();
+  // (one too big for this space even on its own, as FNAF World is but for Nwagra's 6 MB)
+  const bigger = (id) => alone(id) && game(id).alone.size > capacity();
   const solo = () => ordered().find(alone) || null;
   let before = null;  // your games while one of those is picked, back when it's taken out
   function items() {
@@ -223,7 +225,7 @@
     const s0 = solo(), picks = ordered();
     for (const [id, b] of buttons) {
       const g = byId[id], on = st.picked.has(id);
-      const fits = alone(id) || (!s0 && total(picks.concat([id])) <= cap);
+      const fits = alone(id) ? !bigger(id) : !s0 && total(picks.concat([id])) <= cap;
       b.classList.toggle('on', on);
       b.classList.toggle('off', !on && fits);
       b.classList.toggle('nofit', !on && !fits);
@@ -333,6 +335,12 @@
       st.picked.delete(id);
       bump(b, 'pop-off');
       if (alone(id) && before) { st.picked = new Set(before); before = null; }
+    } else if (bigger(id)) {
+      if (!quiet) {
+        bump(b, 'shake'); toast(byId[id].title + ' is ' + mb(game(id).alone.size) + ': it needs Nwagra. Pick it in the space for apps');
+        if (popOpen !== $('#space-pop')) { renderSpaces(); openPop($('#space-pop'), $('#space-chip'), true); }
+      }
+      return;
     } else if (alone(id)) {
       if (!s) before = ordered();
       st.picked = new Set([id]);

@@ -758,6 +758,25 @@ Last from 12 to 6 AM at Fazbear's Fright. Springtrap comes room by room: play th
 Last from 12 to 6 AM in the bedroom. At a door, listen with the light off: breathing means someone stands right there, so hold the door shut until the steps go; no breathing, light the hall. Shut the closet on Foxy, light the Freddles off the bed. Fredbear comes up a hall on the 5th night: hold that door shut. After each of the first five nights, stop Plushtrap on the X to start the next at 2 AM. Night 5 opens the 6th and the Extras.
 
 <br clear="right">
+
+## FNAF World
+
+<img src="../games/fnafworld/docs/shot.png" width="320" align="right" alt="FNAF World: a battle, Bonnie's attacks to pick">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** | Walk, pick |
+| **OK** or **EXE** | Attack, choose |
+| **1 2 3** | An attack straight away |
+| **Backspace** | Switch the party's rows in a battle |
+| **0** held | Run from a battle |
+| **Back** | Menu: party, chips, bytes, jump, save |
+| **Home** | Save and quit |
+
+Walk the world and enemies jump you. In a battle each of your four fills its charge; when one is full, pick one of its three attacks. Switch to the other four when they tire. Win exp, levels and Faz Tokens. Chests hold chips, Lolbit sells bytes, Mendo sells armor. Beat a challenger after a battle to make it yours, and take on the bosses on the map.
+
+<br clear="right">
+
 ## Famidash
 
 <img src="../games/famidash/docs/shot.png" width="320" align="right" alt="Famidash">

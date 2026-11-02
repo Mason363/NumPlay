@@ -63,6 +63,7 @@ ALONE = {
     "fnaf2": ("Five Nights at Freddy's 2", "the new pizzeria's six nights and the Custom Night: the mask, the music box, the flashlight"),
     "fnaf3": ("Five Nights at Freddy's 3", "Fazbear's Fright's six nights with Springtrap and the phantoms: the lure, the vents, the maintenance panel"),
     "fnaf4": ("Five Nights at Freddy's 4", "the bedroom's nights with the Nightmares: listen at the doors, the closet, the bed, Fun with Plushtrap"),
+    "fnafworld": ("FNAF World", "the RPG: the overworld, battles with a party of eight, 48 characters, chips, bytes, bosses and endings (6 MB apps only)"),
     "famidash": ("Famidash", "TFDSoft's Geometry Dash for the NES, made for the calculator: the 173 levels of Famidash HUGE, every mode, practice mode"),
     "clashroyale": ("Clash Royale", "battles against a bot: 41 cards of the 2016 game, its seven arenas, elixir, crowns and trophies"),
     "catninja": ("Cat Ninja", "Richman Stewart's Flash platformer: its 30 levels of wall jumps and traps, the boss and the crystals"),

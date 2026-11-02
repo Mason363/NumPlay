@@ -260,7 +260,7 @@ def main():
         src, name = apps[g["id"]].split(":")
         b = os.path.join(tmp, "alone.bin")
         subprocess.run([a.nwlink, "nwa-bin", "--ram-length", str(ram), src, b], check=True, stdout=subprocess.DEVNULL)
-        if os.path.getsize(b) > a.app_space:
+        if os.path.getsize(b) > max(a.app_space, a.xl_app_space):   # (one that only fits Nwagra's 6 MB: there)
             sys.exit(f"kit: {name} doesn't fit the app area even on its own")
         gz(src, os.path.join(O, "apps", g["id"] + ".nwa.gz"))
         g["alone"] = {"file": name, "size": os.path.getsize(b)}
@@ -303,7 +303,7 @@ def main():
             sys.exit(f"kit: in {sid}, NumPlay installs as {n} bytes, but its games' sizes add up to {used}")
         # a big game that doesn't go beside the launcher there must have its own app that fits
         for g in games:
-            if g["xl"] and base_alone + g["flash"] > size and (not g.get("alone") or g["alone"]["size"] > size):
+            if g["xl"] and base_alone + g["flash"] > size and not g.get("alone"):
                 sys.exit(f"kit: {g['id']} fits neither beside the launcher nor on its own in {sid}")
         big = [i for i in ids if i not in default]
         print(f"kit: {sid}, {size} bytes from {sp['start']:#x}: NumPlay with {len(ids)} games ({', '.join(big) or 'no big ones'}) "

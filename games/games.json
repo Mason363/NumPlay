@@ -1438,6 +1438,29 @@
     "xl": true
   },
   {
+    "id": "fnafworld",
+    "rank": 41,
+    "title": "FNAF World",
+    "tagline": "Battle through the world",
+    "credit": "Based on the game by Scott Cawthon",
+    "top": "0x2A6AC8",
+    "bottom": "0x0C2A16",
+    "accent": "0x8CD25A",
+    "colors": 16,
+    "records": [
+      "fnafw1.sav",
+      "fnafw2.sav",
+      "fnafw3.sav",
+      "fnafw_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/fnafworld",
+    "default": false,
+    "xl": true
+  },
+  {
     "id": "famidash",
     "rank": 34,
     "title": "Famidash",

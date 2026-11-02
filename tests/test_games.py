@@ -312,6 +312,13 @@ GAMES = {
     # in it, paused
     "fnaf4": ("FiveNightsAtFreddys4.nwa", "fnaf4res.sav", presses((1500, "ok"), (2200, "ok")), 9000,
               presses((1500, "back")), 5000),
+    # the title, file 1, New Game, Adventure, Normal, the party (0 done), the map; Home keeps the file. Next time,
+    # from the copy: the title, file 1, Continue, the party, the map, quit with On/Off
+    "fnafworld": ("FiveNightsAtFreddysWorld.nwa", "fnafw1.sav",
+                  presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "ok"), (4300, "ok"),
+                          (5200, "0")) + [(6000, 8000, K["right"])], 10000,
+                  presses((1500, "ok"), (2200, "ok"), (2900, "down"), (3400, "ok"), (4100, "0"))
+                  + [(4800, 6400, K["left"])], 9000),
     # how to play (the first time: two pages), Play, Stereo Madness, OK held to jump, Back to pause; Home keeps the
     # guide read and the time played. Next time, from the copy, Play straight away, quit with On/Off
     "famidash": ("Famidash.nwa", "famidash.sav",
@@ -405,7 +412,7 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
           "badtime": "badtime_saves.py", "mahjong": "mahjong_saves.py",
           "rider": "rider_saves.py", "snowrider": "snowrider_saves.py", "templerun": "templerun_saves.py",
-          "fnaf2": "fnaf2_saves.py", "fnaf3": "fnaf3_saves.py", "fnaf4": "fnaf4_saves.py", "famidash": "famidash_saves.py",
+          "fnaf2": "fnaf2_saves.py", "fnaf3": "fnaf3_saves.py", "fnaf4": "fnaf4_saves.py", "fnafworld": "fnafw_saves.py", "famidash": "famidash_saves.py",
           "clashroyale": "clashroyale_saves.py",
           "catninja": "catninja_saves.py",
           "kingdomrush": "kingdomrush_saves.py"}
@@ -689,6 +696,9 @@ CHECKS = {
     # the night kept ("FNF4", its steps at 652); after the reinstall, from the copy, it goes on
     "fnaf4": (lambda v: v[:4] == b"FNF4" and struct.unpack_from("<I", v, 652)[0] > 120,
               lambda v: v[:4] == b"FNF4" and struct.unpack_from("<I", v, 652)[0] > 300),
+    # "FNFW", the file started (at 8), the time played (minutes, seconds at 396); after the reinstall, from the copy, more
+    "fnafworld": (lambda v: v[:4] == b"FNFW" and v[8] == 1 and v[396] * 60 + v[397] >= 3,
+                  lambda v: v[:4] == b"FNFW" and v[8] == 1 and v[396] * 60 + v[397] >= 6),
     # "FMD1", version 1: how to play read (flags at 5), time played (564); after the reinstall, from the copy, more
     "famidash": (lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 7000,
                  lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 12000),
@@ -773,6 +783,7 @@ def play(name, path, out, index=None, copy=None, tag=None, start=800):
     game's own copy of its saves: only the scripts are left before the second session, as after installing
     the app again. The problems, the stack used and the files after the first session."""
     nwa, save, keys1, home1, keys2, home2 = GAMES[name]
+    emu.configure(xl=os.path.getsize(path) > 2 * 1024 * 1024)  # (a 6 MB app: Enlarged Extra Apps)
     tag = tag or name
     if index is not None:  # Home in a game quits NumPlay altogether
         keys1, home1 = through_launcher(index, keys1, home1, start)
