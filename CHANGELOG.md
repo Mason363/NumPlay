@@ -2,6 +2,10 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.9: Ralsei's lessons in Deltarune
+
+- **Deltarune:** Ralsei's lessons with the Dummy, every one of his comments, and the Dummy's hugs. Dialogue keeps the game's own letter spacing.
+
 ## 1.24.8: NumPico, your own PICO-8 carts
 
 - **NumPico:** drop your .p8 and .p8.png carts on NumPlay Studio and they play in your NumPlay, with PICO-8's pause menu and cart saves.
