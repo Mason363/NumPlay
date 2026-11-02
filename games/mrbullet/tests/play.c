@@ -261,6 +261,26 @@ int main(int argc, char **argv) {
     }
     return 0;
   }
+  if (argc >= 3 && !strcmp(argv[1], "seq")) {
+    /* levels in a row, shot as the calculator's measuring build shoots them: Box2D's memory after each */
+    b2_heap_limit = 81000;
+    for (int k = 2; k < argc; k++) {
+      b2_heap_peak = b2_heap_now;
+      game_load(atoi(argv[k]) - 1, (uint8_t *)level_mem);
+      for (int s = 0; s < 480; s++) {
+        if (s % 90 == 0) {
+          g.aim = -0.2f - 0.25f * (float)(s / 90);
+          g.ch[g.hero].left = 0;
+          game_fire();
+        }
+        game_step();
+      }
+      long peak = b2_heap_peak;
+      game_end();
+      printf("level %s: Box2D's memory at most %ld, %ld left after\n", argv[k], peak, b2_heap_now);
+    }
+    return 0;
+  }
   if (argc >= 5 && !strcmp(argv[1], "try")) {
     /* which angles (degrees, by tenths) clear a level with one shot */
     int l = atoi(argv[2]) - 1;
