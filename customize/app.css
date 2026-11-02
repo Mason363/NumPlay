@@ -310,6 +310,12 @@ body.dragging .drop-hint { display: flex; }
 .drop:hover .c2, body.dragging .c2 { transform: translateY(-9px); }
 .drop:hover .c3, body.dragging .c3 { transform: rotate(20deg) translate(3px, -4px); }
 /* ...and for your own apps, three of the calculator's app icons, fanned the same way */
+.drop-art.pico i { width: 38px; height: 40px; border-radius: 4px; background: linear-gradient(#3a3a40, #232328); }
+.drop-art.pico i::before { display: none; }
+.drop-art.pico i::after { left: 6px; right: 6px; top: 6px; bottom: 10px; border-radius: 2px; }
+.drop-art.pico .c1::after { background: linear-gradient(#ff77a8, #ff004d); }
+.drop-art.pico .c2::after { background: linear-gradient(#29adff, #1d2b53); }
+.drop-art.pico .c3::after { background: linear-gradient(#ffec27, #ffa300); }
 .drop-art.apps i { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(#f2f2f5, #d6d6dc); }
 .drop-art.apps i::before { display: none; }
 .drop-art.apps i::after { left: 7px; right: 7px; top: 7px; bottom: 7px; border-radius: 6px; }
@@ -340,6 +346,7 @@ body.dragging .drop-hint { display: flex; }
 .cart.enter { animation: slot 420ms var(--spring); }
 /* an app of your own: its icon, as on the calculator's home screen */
 .cart.app { width: 48px; height: 48px; border-radius: 12px; background: center / cover no-repeat; image-rendering: pixelated; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16); }
+.cart.p8 { width: 52px; height: 52px; border-radius: 6px; background: #1d2b53 center / 40px 40px no-repeat; image-rendering: pixelated; box-shadow: inset 0 0 0 6px #1d2b53, 0 2px 5px rgba(0, 0, 0, 0.16); }
 @keyframes slot { 0% { transform: translateY(-22px) scale(0.8); opacity: 0; } 100% { transform: none; opacity: 1; } }
 
 /* ---- tooltip, toast and the install sheet */
