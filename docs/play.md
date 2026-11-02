@@ -74,15 +74,13 @@ Keep moving, or the eagle gets you. Coins add up across every run and stay saved
 
 The left thumb looks with the arrows (shift and alpha are just under them), the right one walks. The first time you open NumBlocks it shows these keys. You can change them in Options, then Controls, which also shows the key sheet again. In NumBlocks, Back places blocks, so **ans** pauses. In the inventory, the arrows move between slots, **OK** picks up or puts down a stack, **EXE** one item, and **shift** with **OK** sends a stack to the other side. To spread a stack, hold **OK** and move over the slots: it splits evenly when you let go (hold **EXE** instead to drop one in each). In Creative, the Search Items tab finds blocks as you type, and **shift** with up or down jumps to the top or bottom of a tab. Commands like /gamemode and /give work in worlds with Allow Cheats on (or after Open to LAN in the pause menu); **toolbox** finishes a word as you type it. Your world saves as you play and when you quit, and on its own NumBlocks keeps a copy in `numblocks_saves.py` (inside NumPlay, `numplay_saves.py` holds it), so installing again doesn't erase your worlds.
 
-On its own, `NumBlocks.nwa` also has the Nether and the End: portals, fortresses, strongholds and the Ender Dragon, as Minecraft 1.8.8 makes them (NumPlay's NumBlocks stays in the Overworld).
+On its own, `NumBlocks.nwa` also has the Nether and the End: portals, fortresses, strongholds and the Ender Dragon, and villages, desert temples and mineshafts, as Minecraft 1.8.8 makes them (NumPlay's NumBlocks stays in the Overworld, without them).
 
 <br clear="right">
 
 ## Hollow Knight
 
 <img src="media/hollowknight.gif" width="320" align="right" alt="Hollow Knight: the Knight in King's Pass, against the False Knight and Hornet">
-
-Hollow Knight comes as its own app, `HollowKnight.nwa`: it is too big to share the calculator with NumPlay.
 
 | Key | What it does |
 | --- | --- |
@@ -115,8 +113,6 @@ At the Crossroads' way down to the Fungal Wastes, Hollow Knight saves and asks f
 
 <img src="media/celeste.gif" width="320" align="right" alt="Celeste: Madeline dashing through the Forsaken City">
 
-Celeste comes as its own app, `Celeste.nwa`: it is too big to share the calculator with NumPlay.
-
 | Key | What it does |
 | --- | --- |
 | **Arrows** | Move, and aim the dash |
@@ -133,8 +129,6 @@ Choose Climb, then a chapter, then Start. Madeline can dash once in the air (twi
 ## NumPowder
 
 <img src="media/numpowder.gif" width="320" align="right" alt="NumPowder: sand, water and lava">
-
-NumPowder comes as its own app, `NumPowder.nwa`: it is too big to share the calculator with NumPlay.
 
 | Key | What it does |
 | --- | --- |
@@ -156,8 +150,6 @@ Pick a material with **toolbox**, then hold **OK** to draw it. The bar at the bo
 ## The Final Earth 2
 
 <img src="media/finalearth2.gif" width="320" align="right" alt="The Final Earth 2: building a house on a city in free play">
-
-The Final Earth 2 comes as its own app, `FinalEarth2.nwa`: it is too big to share the calculator with NumPlay.
 
 | Key | What it does |
 | --- | --- |
@@ -259,8 +251,6 @@ Drop fruit into the box. Two of the same fruit touching join into the next one u
 
 <img src="media/championisland.gif" width="320" align="right" alt="Champion Island: Lucky crossing the island, then the island map">
 
-Champion Island comes as its own app, `ChampionIsland.nwa`: it is too big to share the calculator with NumPlay.
-
 | Key | What it does |
 | --- | --- |
 | **Arrows** (or 4, 6, 8, 2) | Walk, and play |
@@ -286,8 +276,6 @@ Every sport shows its rules and keys before it starts. Your progress is also cop
 
 <img src="media/undertale.gif" width="320" align="right" alt="Undertale: Flowey's friendliness pellets, Toriel's tile puzzle, Napstablook's tears and Toriel's fire">
 
-Undertale comes as its own app, `Undertale.nwa`: it is too big to share the calculator with NumPlay.
-
 | Key | What it does |
 | --- | --- |
 | **Arrows** (or 4, 6, 8, 2) | Walk, move your SOUL, choose |
@@ -300,11 +288,25 @@ Name the fallen human, then walk and talk your way through the Ruins, Snowdin, W
 
 <br clear="right">
 
+## Deltarune
+
+<img src="media/gallery/deltarune.gif" width="320" align="right" alt="Deltarune: Kris, Susie and Ralsei fight a Rudinn, its diamonds fly at the SOUL">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** (or 4, 6, 8, 2) | Walk, move your SOUL, choose |
+| **OK**, **EXE** or 5 | Talk, read, confirm (Z in the game) |
+| **Back** or **⌫** | Cancel; hold it to run, or to show the whole text at once (X in the game) |
+| **toolbox**, **shift** or **var** | The menu (C in the game) |
+| **Home** | Keep the moment and quit |
+
+Chapter 1: Kris wakes up, goes to school, and falls into the Dark World with Susie. In a battle each of your party picks in turn: FIGHT (press **OK** as each bar reaches the line), ACT (Kris) or MAGIC (Susie and Ralsei), ITEM, SPARE or DEFEND. Defending, hitting well and letting bullets pass close by your SOUL (grazing) fill the TP bar, which pays for ACTs and spells. An enemy whose name turns yellow can be spared; one that's TIRED can be put to sleep by Ralsei's Pacify. Walk up to a SAVE point and press **OK** to save. Home keeps the moment you were at, and your save is also copied into `deltarune_saves.py`, so installing the app again doesn't erase it.
+
+<br clear="right">
+
 ## Doom
 
 <img src="media/doom.gif" width="320" align="right" alt="Doom: imps down a corridor of Phobos Lab, then zombiemen around the yellow key">
-
-Doom comes as its own app, `Doom.nwa`: it is too big to share the calculator with NumPlay.
 
 | Key | What it does |
 | --- | --- |
@@ -335,8 +337,6 @@ Press a key on the title screen for the menu, then choose New Game, Knee-Deep in
 
 <img src="media/isaac.gif" width="320" align="right" alt="The Binding of Isaac: Isaac clears a room of the Basement, then fights Monstro">
 
-The Binding of Isaac comes as its own app, `BindingOfIsaac.nwa`: it is too big to share the calculator with NumPlay.
-
 | Key | What it does |
 | --- | --- |
 | **Arrows** | Walk |
@@ -356,8 +356,6 @@ On the menu, **Controls** swaps them: the number keys walk and the arrows cry. E
 
 <img src="media/pvz.gif" width="320" align="right" alt="Plants vs. Zombies: the front lawn, the night, the pool, the fog, the roof and Dr. Zomboss">
 
-Plants vs. Zombies comes as its own app, `PlantsVsZombies.nwa`: it is too big to share the calculator with NumPlay.
-
 | Key | What it does |
 | --- | --- |
 | **Arrows** | Move over the lawn, choose in the menus |
@@ -375,8 +373,6 @@ Plant your lawn to stop the zombies before they reach your house. Sunflowers mak
 ## Five Nights at Freddy's
 
 <img src="media/fnaf.gif" width="320" align="right" alt="Five Nights at Freddy's: Bonnie at the left door, the door comes down, then the cameras">
-
-Five Nights at Freddy's comes as its own app, `FiveNightsAtFreddys.nwa`: it is too big to share the calculator with NumPlay.
 
 | Key | What it does |
 | --- | --- |
@@ -398,8 +394,6 @@ Last from 12 AM to 6 AM, five nights in a row. Light the doorways to see who is 
 
 <img src="media/sonic.gif" width="320" align="right" alt="Sonic the Hedgehog: the title, Green Hill, Marble, Spring Yard and a Special Stage">
 
-Sonic the Hedgehog comes as its own app, `SonicTheHedgehog.nwa`: it is too big to share the calculator with NumPlay.
-
 | Key | What it does |
 | --- | --- |
 | **Arrows** (or 4, 6, 8, 2) | Run, look up, duck; **Down** while running rolls |
@@ -414,8 +408,6 @@ Run right to the signpost at the end of each act; each zone's third act ends wit
 ## Subway Surfers
 
 <img src="media/subway.gif" width="320" align="right" alt="Subway Surfers: running between trains, jumping barriers, then flying with the jetpack">
-
-Subway Surfers comes as its own app, `SubwaySurfers.nwa`: it is too big to share the calculator with NumPlay.
 
 | Key | What it does |
 | --- | --- |
@@ -435,8 +427,6 @@ Hit the side of a train or a barrier's edge and you stumble: the Inspector and h
 
 <img src="media/hillclimb.gif" width="320" align="right" alt="Hill Climb Racing: the Hill Climber up the Countryside's hills, then the Motocross Bike's back flip on the Moon">
 
-Hill Climb Racing comes as its own app, `HillClimbRacing.nwa`: it is too big to share the calculator with NumPlay.
-
 | Key | What it does |
 | --- | --- |
 | **Right**, **OK** or **EXE** (or 6) | Gas; in the air, tilt back |
@@ -451,8 +441,6 @@ Drive as far as you can before the fuel runs out or Bill lands on his head. It d
 ## Cookie Clicker
 
 <img src="media/cookieclicker.gif" width="320" align="right" alt="Cookie Clicker: a golden cookie caught for a Frenzy, upgrades bought, the Grimoire, then an ascension">
-
-Cookie Clicker comes as its own app, `CookieClicker.nwa`: it is too big to share the calculator with NumPlay.
 
 | Key | What it does |
 | --- | --- |
@@ -476,8 +464,6 @@ Click the cookie, buy buildings that bake for you and upgrades that make them ba
 ## Level Devil
 
 <img src="media/leveldevil.gif" width="320" align="right" alt="Level Devil: the Devil's eyes on the jaws, the title and the map; in the first room the floor drops under the runner, it dies, tries again and jumps the pit to the door">
-
-Level Devil comes as its own app, `LevelDevil.nwa`: install it on its own.
 
 | Key | What it does |
 | --- | --- |
@@ -559,7 +545,7 @@ The ball rolls on by itself. Hold OK going downhill to speed up and let go going
 | **shift** | Hats |
 | **Back** | Menu (with How to play and Quit) |
 
-Walk the monkey over the plants and animals to pick up what they make, carry it to the shelves, and take the money at the counter. Stand on a price pad to pay for a new stand, a machine or a worker; plants and animals get tired and need a visit to wake up. When the first mart is full, the truck takes you to the second. Your mart is saved.
+Walk the monkey over the plants and animals to pick up what they make, carry it to the shelves, and take the money at the counter. Stand on a price pad to pay for a new stand, a machine or a worker; plants and animals get tired and need a visit to wake up. When the first mart is full, the truck takes you to the second.
 
 <br clear="right">
 
@@ -619,7 +605,7 @@ Take the tiles away in pairs that match: the same tile, or any flower with any f
 | **OK** | Choose |
 | **Back** | Pause (with Restart, Options and Quit) |
 
-Press each arrow as it reaches the line at the top. Sick, Good, Bad and Shit depend on how close you are; misses cost health, and the song is lost when it runs out. Play the weeks in story mode or any song in freeplay. There's no sound: the characters and the camera keep the beat. Your scores are saved.
+Press each arrow as it reaches the line at the top. Sick, Good, Bad and Shit depend on how close you are; misses cost health, and the song is lost when it runs out. Play the weeks in story mode or any song in freeplay. There's no sound: the characters and the camera keep the beat.
 
 <br clear="right">
 
@@ -727,7 +713,7 @@ The sled slides down the endless slope by itself, faster and faster. Steer aroun
 | **1 / 3** | Head start, mega head start (at the start) |
 | **Back** | Pause (with How to play and Quit game) |
 
-Temple Run comes as its own app, `TempleRun.nwa`. Run from the temple and don't stop: turn at every corner, jump gaps, roots and fallen trees, slide under branches, jump or slide past the fire, and lean along narrow paths. Jump up to the cliffs. Trip once and your pursuers catch up; trip again soon and they get you. Coins buy upgrades for the four power-ups in the store, and each objective done raises your score multiplier.
+Run from the temple and don't stop: turn at every corner, jump gaps, roots and fallen trees, slide under branches, jump or slide past the fire, and lean along narrow paths. Jump up to the cliffs. Trip once and your pursuers catch up; trip again soon and they get you. Coins buy upgrades for the four power-ups in the store, and each objective done raises your score multiplier.
 
 <br clear="right">
 
@@ -746,7 +732,7 @@ Temple Run comes as its own app, `TempleRun.nwa`. Run from the temple and don't 
 | **Up**, held | On the monitor: the camera's light; on CAM 11, wind the music box |
 | **Back** | Pause (Resume, How to play, Quit night) |
 
-Five Nights at Freddy's 2 comes as its own app, `FiveNightsAtFreddys2.nwa`. Last from 12 to 6 AM. Your office has no doors: a hallway in front and a vent on each side. Keep the music box on CAM 11 wound or the Puppet comes, and nothing stops it. When someone stands in the hallway or a vent, put the mask on; if one is in the office when the monitor comes down, the mask at once. The mask doesn't fool Withered Foxy: flash the hallway at him. Balloon Boy takes your lights, and the flashlight's battery doesn't come back. Night 5 opens the 6th, and the 6th the Custom Night, with its ten modes.
+Last from 12 to 6 AM. Your office has no doors: a hallway in front and a vent on each side. Keep the music box on CAM 11 wound or the Puppet comes, and nothing stops it. When someone stands in the hallway or a vent, put the mask on; if one is in the office when the monitor comes down, the mask at once. The mask doesn't fool Withered Foxy: flash the hallway at him. Balloon Boy takes your lights, and the flashlight's battery doesn't come back. Night 5 opens the 6th, and the 6th the Custom Night, with its ten modes.
 ## Five Nights at Freddy's 3
 
 <img src="../games/fnaf3/docs/shot.png" width="320" align="right" alt="Five Nights at Freddy's 3: Springtrap at the office's window">
@@ -782,6 +768,25 @@ Last from 12 to 6 AM at Fazbear's Fright. Springtrap comes room by room: play th
 Last from 12 to 6 AM in the bedroom. At a door, listen with the light off: breathing means someone stands right there, so hold the door shut until the steps go; no breathing, light the hall. Shut the closet on Foxy, light the Freddles off the bed. Fredbear comes up a hall on the 5th night: hold that door shut. After each of the first five nights, stop Plushtrap on the X to start the next at 2 AM. Night 5 opens the 6th and the Extras.
 
 <br clear="right">
+
+## FNAF World
+
+<img src="../games/fnafworld/docs/shot.png" width="320" align="right" alt="FNAF World: a battle, Bonnie's attacks to pick">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** | Walk, pick |
+| **OK** or **EXE** | Attack, choose |
+| **1 2 3** | An attack straight away |
+| **Backspace** | Switch the party's rows in a battle |
+| **0** held | Run from a battle |
+| **Back** | Menu: party, chips, bytes, jump, save |
+| **Home** | Save and quit |
+
+Walk the world and enemies jump you. In a battle each of your four fills its charge; when one is full, pick one of its three attacks. Switch to the other four when they tire. Win exp, levels and Faz Tokens. Chests hold chips, Lolbit sells bytes, Mendo sells armor. Beat a challenger after a battle to make it yours, and take on the bosses on the map.
+
+<br clear="right">
+
 ## Famidash
 
 <img src="../games/famidash/docs/shot.png" width="320" align="right" alt="Famidash">
@@ -832,6 +837,56 @@ Knock down the bot's towers before it knocks down yours: a Princess tower is a c
 | **Home** | Save and quit |
 
 Walk right from the title map. Each level leads into the next: get through its spikes, lasers, mines and shooters, and grab the crystals on the way. Jump from wall to wall to climb (not on the sticky green walls). A slam breaks glass and presses red buttons. Gravity changers turn the whole world round. Die and you go back to the last checkpoint. Collect more than 20 of the 50 crystals before the end to save the world.
+
+<br clear="right">
+
+## Kingdom Rush
+
+<img src="../games/kingdomrush/docs/shot.png" width="320" align="right" alt="Kingdom Rush: towers and soldiers holding the Citadel's roads">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** | Hop between build spots, towers, wave flags and enemies |
+| **OK** or **EXE** | The tower menu: build, upgrade, sell, buy an ability, move the rally point |
+| **1** | Rain of Fire: aim with the arrows, OK to cast |
+| **2** | Reinforcements: aim, OK to call them |
+| **3** or **⌫** | The next wave now, for gold (or OK on its flag) |
+| **Back** | Close the menu, or pause |
+| **Home** | Save and quit |
+
+Enemies walk the roads, and each one that gets through costs lives. Archers and mages shoot, bombards blast what walks, barracks send soldiers to block the road. At level 4 a tower becomes one of two special towers, with abilities to buy. On the map, OK opens a stage and Left / Right picks Campaign, Heroic or Iron: 3 stars in the Campaign open the other two. **0** opens the upgrades: OK buys one with your stars, ⌫ gives them all back.
+
+<br clear="right">
+
+## Mr Bullet
+
+<img src="../games/mrbullet/docs/shot.png" width="320" align="right" alt="Mr Bullet">
+
+| Key | What it does |
+| --- | --- |
+| **Up** and **Down** | Aim (hold to aim faster) |
+| **Left** and **Right** | Turn round (Grenades: how hard you throw) |
+| **OK** or **EXE** | Fire |
+| **Back** | Pause (Resume, Restart, Levels, How to play, Quit game) |
+| **Home** | Save and quit |
+
+Shoot every spy in the level. Bullets bounce off walls, so aim at a wall to reach a spy you can't see, or knock a crate onto him. Glass breaks, red boxes explode, and a coloured switch makes its blocks vanish or appear. Use as few bullets as the level needs for three stars; the gold bullet is the last one. Grenades go off after 2.5 seconds. Don't hit the hostages, and in Friendly Fire don't let your own bullet come back at you.
+
+<br clear="right">
+
+## NumPico
+
+<img src="../games/numpico/docs/shot.png" width="320" align="right" alt="NumPico playing Combo Pool">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** or **8 4 6 2** | The D-pad |
+| **OK** or **EXE** | 🅾️ |
+| **Back** or **Ans** | ❎ |
+| **⌫** (backspace) | Pause menu (Continue, the cart's items, Reset cart, Quit) |
+| **Home** | Quit |
+
+NumPico plays PICO-8 carts. Drop your .p8 and .p8.png carts on NumPlay Studio and they come in your NumPlay with it. Pick a cart in the list and press OK. Each cart plays as on PICO-8, with the keys written at the left of the picture. A cart too big for the calculator's memory says so.
 
 <br clear="right">
 

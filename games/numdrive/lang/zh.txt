@@ -16,6 +16,5 @@ Next Level	下一关
 Levels	关卡
 Quit game	退出游戏
 Quit game?	退出游戏？
-You can come back anytime.	随时欢迎回来。
 Yes	是
 No	否

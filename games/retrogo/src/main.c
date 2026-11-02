@@ -1206,7 +1206,7 @@ static int game_menu(void) {
     if (about() == DLG_HOME) return save_and_exit(), GAME_EXIT;
     break;
   case M_QUIT: {
-    int k = confirm(T("Quit game?"), T("The battery save is kept."));
+    int k = confirm(T("Quit game?"), NULL);
     if (k == DLG_HOME) return save_and_exit(), GAME_EXIT;
     if (k == 1) return sram_save(), GAME_PICKER;
     break;

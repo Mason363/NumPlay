@@ -1,7 +1,8 @@
 /* The picture, drawn the way the game looks: dark ground under a dark sky, the track as glowing lines (a light core,
  * its colour, a soft edge), red saws and spikes, white gems, and the bike as a coloured shape with a white edge
- * on two white wheels, a trail behind it. Everything is drawn in a 320x240 picture of colour numbers first, then
- * sent to the screen in strips with the texts over it (launcher/src/gfx.c). */
+ * on two white wheels, a trail behind it. Everything is first written down as a list of shapes in colour numbers,
+ * then filled strip by strip into the screen with the texts over it (launcher/src/gfx.c): no picture of the whole
+ * screen is kept, and the list itself sits in the physics' memory left free between two steps. */
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,21 +10,161 @@
 #include "rider.h"
 #include "data.h"
 
-uint8_t fb[240][320];
 uint16_t pal[256];
 #define ZOOM 0.5f
 
-int obj_poly(const rd_run *r, int i, int k, float *xy);
+/* ---------------------------------------------------------------- the list of shapes */
+enum { D_CONVEX, D_POLY, D_DISC, D_LINE, D_RECT };
+typedef struct {
+  uint8_t type, col;
+  uint16_t n, at; /* points (or the line's thickness), where they start in the pool */
+  int16_t y0, y1; /* the rows it covers */
+} dcmd;
+static dcmd *cmds;   /* (in the physics' free memory: a third shapes, the rest points) */
+static int16_t *pts; /* eighths of a pixel */
+static int ncmd, npts, NCMD, NPTS;
+static uint8_t bg_col;
 
-void fb_fill(int x, int y, int w, int h, uint8_t c) {
-  int x1 = x + w, y1 = y + h;
-  if (x < 0) x = 0;
-  if (y < 0) y = 0;
-  if (x1 > 320) x1 = 320;
-  if (y1 > 240) y1 = 240;
-  for (int j = y; j < y1; j++) memset(&fb[j][x], c, (size_t)(x1 > x ? x1 - x : 0));
+void draw_clear(uint8_t c) {
+  size_t n;
+  uint8_t *m = ph_scratch(&n);
+  NCMD = (int)(n / 3 / sizeof(dcmd)), cmds = (dcmd *)m;
+  NPTS = (int)((n - NCMD * sizeof(dcmd)) / 4), pts = (int16_t *)(m + NCMD * sizeof(dcmd));
+  if (NCMD > 900) NCMD = 900;
+  if (NPTS > 4000) NPTS = 4000;
+  ncmd = npts = 0, bg_col = c;
 }
 
+static inline int16_t q8(float v) {
+  v *= 8;
+  if (v > 32000) v = 32000;
+  if (v < -32000) v = -32000;
+  return (int16_t)lrintf(v);
+}
+static void push_shape(int type, const float *xy, int n, uint8_t col) {
+  if (ncmd == NCMD || npts + n > NPTS || n < 1) return;
+  float y0 = 1e9f, y1 = -1e9f, x0 = 1e9f, x1 = -1e9f;
+  for (int i = 0; i < n; i++) {
+    y0 = fminf(y0, xy[2 * i + 1]), y1 = fmaxf(y1, xy[2 * i + 1]);
+    x0 = fminf(x0, xy[2 * i]), x1 = fmaxf(x1, xy[2 * i]);
+  }
+  if (y1 < 0 || y0 > 240 || x1 < 0 || x0 > 320) return;
+  dcmd *c = &cmds[ncmd++];
+  c->type = (uint8_t)type, c->col = col, c->n = (uint16_t)n, c->at = (uint16_t)npts;
+  c->y0 = (int16_t)floorf(fmaxf(y0, -1)), c->y1 = (int16_t)ceilf(fminf(y1, 241));
+  for (int i = 0; i < n; i++) pts[2 * npts] = q8(xy[2 * i]), pts[2 * npts + 1] = q8(xy[2 * i + 1]), npts++;
+}
+static void fill_convex(const float *xy, int n, uint8_t col) { push_shape(D_CONVEX, xy, n, col); }
+static void fill_poly(const float *xy, int n, uint8_t col) { push_shape(D_POLY, xy, n, col); }
+static void disc(float cx, float cy, float rad, uint8_t c) {
+  float q[4] = {cx - rad, cy - rad, cx + rad, cy + rad};
+  int k = ncmd;
+  push_shape(D_DISC, q, 2, c);
+  if (ncmd > k) cmds[k].y0 = (int16_t)floorf(cy - rad), cmds[k].y1 = (int16_t)ceilf(cy + rad);
+}
+static void line(float x0, float y0, float x1, float y1, uint8_t c, int thick) {
+  float q[4] = {x0, y0, x1, y1};
+  int k = ncmd;
+  push_shape(D_LINE, q, 2, c);
+  if (ncmd > k) cmds[k].type = D_LINE, cmds[k].y1 = (int16_t)(cmds[k].y1 + 1), cmds[k].n = 2 | (uint16_t)(thick << 8);
+}
+void fb_fill(int x, int y, int w, int h, uint8_t c) {
+  float q[4] = {(float)x, (float)y, (float)(x + w), (float)(y + h)};
+  push_shape(D_RECT, q, 2, c);
+}
+
+/* ---------------------------------------------------------------- filling a strip */
+static color_t *strip;
+static int sy0, sy1;
+static inline void span(int y, int a, int b, color_t c) {
+  if (a < 0) a = 0;
+  if (b > 319) b = 319;
+  color_t *p = strip + (y - sy0) * SCREEN_W;
+  for (int x = a; x <= b; x++) p[x] = c;
+}
+static void raster(const dcmd *c) {
+  const int16_t *p = pts + 2 * c->at;
+  color_t col = pal[c->col];
+  int r0 = c->y0 > sy0 ? c->y0 : sy0, r1 = c->y1 < sy1 - 1 ? c->y1 : sy1 - 1;
+  switch (c->type) {
+  case D_CONVEX:
+  case D_POLY: {
+    int n = c->n;
+    for (int y = r0; y <= r1; y++) {
+      float yc = y + 0.5f, xs[48];
+      int m = 0;
+      for (int i = 0; i < n && m < 48; i++) {
+        int j = i + 1 == n ? 0 : i + 1;
+        float ax = p[2 * i] * 0.125f, ay = p[2 * i + 1] * 0.125f, bx = p[2 * j] * 0.125f, by = p[2 * j + 1] * 0.125f;
+        if ((ay <= yc) == (by <= yc)) continue;
+        xs[m++] = ax + (yc - ay) * (bx - ax) / (by - ay);
+      }
+      if (c->type == D_CONVEX) {
+        if (m < 2) continue;
+        float xl = xs[0], xr = xs[0];
+        for (int i = 1; i < m; i++) xl = fminf(xl, xs[i]), xr = fmaxf(xr, xs[i]);
+        span(y, (int)ceilf(xl - 0.5f), (int)floorf(xr - 0.5f), col);
+        continue;
+      }
+      for (int i = 1; i < m; i++)
+        for (int j = i; j > 0 && xs[j - 1] > xs[j]; j--) { float t = xs[j]; xs[j] = xs[j - 1], xs[j - 1] = t; }
+      for (int i = 0; i + 1 < m; i += 2) span(y, (int)ceilf(xs[i] - 0.5f), (int)floorf(xs[i + 1] - 0.5f), col);
+    }
+    break;
+  }
+  case D_DISC: {
+    float cx = (p[0] + p[2]) * 0.0625f, cy = (p[1] + p[3]) * 0.0625f, rad = (p[2] - p[0]) * 0.0625f;
+    for (int y = r0; y <= r1; y++) {
+      float dy = y + 0.5f - cy, w2 = rad * rad - dy * dy;
+      if (w2 < 0) continue;
+      float w = sqrtf(w2);
+      span(y, (int)ceilf(cx - w - 0.5f), (int)floorf(cx + w - 0.5f), col);
+    }
+    break;
+  }
+  case D_LINE: {
+    float x0 = p[0] * 0.125f, y0 = p[1] * 0.125f, dx = p[2] * 0.125f - x0, dy = p[3] * 0.125f - y0;
+    int thick = c->n >> 8, n = (int)(fmaxf(fabsf(dx), fabsf(dy)) + 1);
+    for (int i = 0; i <= n; i++) {
+      int x = (int)(x0 + dx * i / n), y = (int)(y0 + dy * i / n);
+      for (int k = 0; k < (thick > 1 ? 4 : 1); k++) {
+        int xx = x + (k & 1), yy = y + (k >> 1);
+        if (xx >= 0 && xx < 320 && yy >= sy0 && yy < sy1) strip[(yy - sy0) * SCREEN_W + xx] = col;
+      }
+    }
+    break;
+  }
+  case D_RECT: {
+    int x0 = p[0] >> 3, x1 = (p[2] >> 3) - 1, ya = (p[1] >> 3) > r0 ? (p[1] >> 3) : r0, yb = (p[3] >> 3) - 1 < r1 ? (p[3] >> 3) - 1 : r1;
+    for (int y = ya; y <= yb; y++) span(y, x0, x1, col);
+    break;
+  }
+  }
+}
+
+static void (*hud_fn)(void);
+static void scene(void *ctx) {
+  (void)ctx;
+  strip = gfx_buf, sy0 = gfx_y0, sy1 = gfx_y1;
+  color_t bg = pal[bg_col];
+  for (int i = 0; i < SCREEN_W * (sy1 - sy0); i++) strip[i] = bg;
+  for (int i = 0; i < ncmd; i++)
+    if (cmds[i].y1 >= sy0 && cmds[i].y0 < sy1) raster(&cmds[i]);
+  if (hud_fn) hud_fn();
+}
+#ifdef HOST
+int draw_most_cmds, draw_most_pts;
+#endif
+void draw_flush(void (*hud)(void)) {
+  hud_fn = hud;
+#ifdef HOST
+  if (ncmd > draw_most_cmds) draw_most_cmds = ncmd;
+  if (npts > draw_most_pts) draw_most_pts = npts;
+#endif
+  gfx_render(scene, 0, 0, SCREEN_H);
+}
+
+/* ---------------------------------------------------------------- colours */
 static uint32_t mix888(uint32_t a, uint32_t b, float t) {
   uint32_t o = 0;
   for (int s = 0; s < 24; s += 8) {
@@ -50,52 +191,6 @@ void draw_theme(int theme) {
   for (int i = 0; i < C_TRAIL + 8; i++) pal[i] = c565(c[i]);
 }
 
-/* ---------------------------------------------------------------- filling polygons */
-static void fill_convex(const float *xy, int n, uint8_t col) {
-  float y0 = 1e9f, y1 = -1e9f;
-  for (int i = 0; i < n; i++) y0 = fminf(y0, xy[2 * i + 1]), y1 = fmaxf(y1, xy[2 * i + 1]);
-  int r0 = (int)ceilf(y0 - 0.5f), r1 = (int)floorf(y1 - 0.5f);
-  if (r0 < 0) r0 = 0;
-  if (r1 > 239) r1 = 239;
-  for (int y = r0; y <= r1; y++) {
-    float yc = y + 0.5f, xl = 1e9f, xr = -1e9f;
-    for (int i = 0; i < n; i++) {
-      float ax = xy[2 * i], ay = xy[2 * i + 1], bx = xy[2 * ((i + 1) % n)], by = xy[2 * ((i + 1) % n) + 1];
-      if ((ay <= yc) == (by <= yc)) continue;
-      float x = ax + (yc - ay) * (bx - ax) / (by - ay);
-      xl = fminf(xl, x), xr = fmaxf(xr, x);
-    }
-    int a = (int)ceilf(xl - 0.5f), b = (int)floorf(xr - 0.5f);
-    if (a < 0) a = 0;
-    if (b > 319) b = 319;
-    if (b >= a) memset(&fb[y][a], col, (size_t)(b - a + 1));
-  }
-}
-/* any polygon, even-odd */
-static void fill_poly(const float *xy, int n, uint8_t col) {
-  float y0 = 1e9f, y1 = -1e9f;
-  for (int i = 0; i < n; i++) y0 = fminf(y0, xy[2 * i + 1]), y1 = fmaxf(y1, xy[2 * i + 1]);
-  int r0 = (int)ceilf(y0 - 0.5f), r1 = (int)floorf(y1 - 0.5f);
-  if (r0 < 0) r0 = 0;
-  if (r1 > 239) r1 = 239;
-  for (int y = r0; y <= r1; y++) {
-    float yc = y + 0.5f, xs[48];
-    int m = 0;
-    for (int i = 0; i < n && m < 48; i++) {
-      float ax = xy[2 * i], ay = xy[2 * i + 1], bx = xy[2 * ((i + 1) % n)], by = xy[2 * ((i + 1) % n) + 1];
-      if ((ay <= yc) == (by <= yc)) continue;
-      xs[m++] = ax + (yc - ay) * (bx - ax) / (by - ay);
-    }
-    for (int i = 1; i < m; i++)
-      for (int j = i; j > 0 && xs[j - 1] > xs[j]; j--) { float t = xs[j]; xs[j] = xs[j - 1], xs[j - 1] = t; }
-    for (int i = 0; i + 1 < m; i += 2) {
-      int a = (int)ceilf(xs[i] - 0.5f), b = (int)floorf(xs[i + 1] - 0.5f);
-      if (a < 0) a = 0;
-      if (b > 319) b = 319;
-      if (b >= a) memset(&fb[y][a], col, (size_t)(b - a + 1));
-    }
-  }
-}
 /* the polygon grown (d > 0) or shrunk (d < 0) by d pixels; with long_only, only its long sides move (a strip's
  * pieces keep meeting end to end) */
 static void offset_poly(const float *xy, int n, float d, bool long_only, float *out) {
@@ -123,32 +218,6 @@ static void offset_poly(const float *xy, int n, float d, bool long_only, float *
     float m = ox * ox + oy * oy, lim = 4 * d * d;
     if (m > lim) { float k = sqrtf(lim / m); ox *= k, oy *= k; }
     out[2 * i] = xy[2 * i] + ox, out[2 * i + 1] = xy[2 * i + 1] + oy;
-  }
-}
-
-static void dot(int x, int y, uint8_t c) {
-  if (x >= 0 && x < 320 && y >= 0 && y < 240) fb[y][x] = c;
-}
-static void line(float x0, float y0, float x1, float y1, uint8_t c, int thick) {
-  float dx = x1 - x0, dy = y1 - y0;
-  int n = (int)(fmaxf(fabsf(dx), fabsf(dy)) + 1);
-  for (int i = 0; i <= n; i++) {
-    int x = (int)(x0 + dx * i / n), y = (int)(y0 + dy * i / n);
-    dot(x, y, c);
-    if (thick > 1) dot(x + 1, y, c), dot(x, y + 1, c), dot(x + 1, y + 1, c);
-  }
-}
-static void disc(float cx, float cy, float rad, uint8_t c) {
-  int y0 = (int)floorf(cy - rad), y1 = (int)ceilf(cy + rad);
-  for (int y = y0; y <= y1; y++) {
-    if (y < 0 || y > 239) continue;
-    float dy = y + 0.5f - cy, w2 = rad * rad - dy * dy;
-    if (w2 < 0) continue;
-    float w = sqrtf(w2);
-    int a = (int)ceilf(cx - w - 0.5f), b = (int)floorf(cx + w - 0.5f);
-    if (a < 0) a = 0;
-    if (b > 319) b = 319;
-    if (b >= a) memset(&fb[y][a], c, (size_t)(b - a + 1));
   }
 }
 
@@ -182,21 +251,25 @@ static int core_poly(const float *xy, int n, float *out) {
 }
 
 /* ---------------------------------------------------------------- the bike */
-void draw_bike_at(int bike, float x, float y, float a, float z, int glow) {
+static int bike_shape(int bike, float x, float y, float a, float z, float *xy) {
   const rd_bike *bk = &rd_bikes[bike];
-  float c = cosf(a), s = sinf(a), xy[96], g[96];
+  float c = cosf(a), s = sinf(a);
   int n = bk->on > 48 ? 48 : bk->on;
   for (int i = 0; i < n; i++) {
     float lx = bike_xy[2 * (bk->o0 + i)] * 0.5f * z, ly = bike_xy[2 * (bk->o0 + i) + 1] * 0.5f * z;
     xy[2 * i] = x + c * lx - s * ly, xy[2 * i + 1] = y + s * lx + c * ly;
   }
-  float wx[2], wy[2], wr = 8.4f * z;
-  for (int k = 0; k < 2; k++) {
-    float lx = (k ? 38 : -34) * z, ly = 13.3f * z;
-    wx[k] = x + c * lx - s * ly, wy[k] = y + s * lx + c * ly;
-  }
-  if (!bk->front)
-    for (int k = 0; k < 2; k++) disc(wx[k], wy[k], wr, C_WHITE), disc(wx[k], wy[k], wr * 0.35f, C_WHEEL_HUB);
+  return n;
+}
+#define WHEEL_R 8.4f
+void draw_wheels_at(float x0, float y0, float x1, float y1, float z, int front) {
+  (void)front;
+  disc(x0, y0, WHEEL_R * z, C_WHITE), disc(x0, y0, WHEEL_R * z * 0.35f, C_WHEEL_HUB);
+  disc(x1, y1, WHEEL_R * z, C_WHITE), disc(x1, y1, WHEEL_R * z * 0.35f, C_WHEEL_HUB);
+}
+static void bike_body_at(int bike, float x, float y, float a, float z, int glow) {
+  float xy[96], g[96];
+  int n = bike_shape(bike, x, y, a, z, xy);
   if (glow) { /* the white edge: the shape drawn one pixel bigger in white first */
     for (int d = 0; d < 4; d++) {
       float ox = d == 0 ? 1 : d == 1 ? -1 : 0, oy = d == 2 ? 1 : d == 3 ? -1 : 0;
@@ -205,28 +278,53 @@ void draw_bike_at(int bike, float x, float y, float a, float z, int glow) {
     }
   }
   fill_poly(xy, n, C_BODY);
-  if (bk->front)
-    for (int k = 0; k < 2; k++) disc(wx[k], wy[k], wr, C_WHITE), disc(wx[k], wy[k], wr * 0.35f, C_WHEEL_HUB);
+}
+/* the bike as it stands (menus): wheels where GameCharacter puts them, x0.7 (x0.49 down) from the body's centre */
+static void stand_wheels(float x, float y, float a, float z, float *w) {
+  float c = cosf(a), s = sinf(a);
+  for (int k = 0; k < 2; k++) {
+    float lx = (k ? 38 : -34) * 0.7f * z, ly = (37 - 18) * 0.49f * z;
+    w[2 * k] = x + c * lx - s * ly, w[2 * k + 1] = y + s * lx + c * ly;
+  }
+}
+void draw_bike_at(int bike, float x, float y, float a, float z, int glow) {
+  float w[4];
+  stand_wheels(x, y, a, z, w);
+  bool front = rd_bikes[bike].front;
+  if (!front) draw_wheels_at(w[0], w[1], w[2], w[3], z, 0);
+  bike_body_at(bike, x, y, a, z, glow);
+  if (front) draw_wheels_at(w[0], w[1], w[2], w[3], z, 1);
+}
+void draw_bike_shape(int bike, float x, float y, float a, float z, uint8_t c) {
+  float w[4], xy[96];
+  stand_wheels(x, y, a, z, w);
+  disc(w[0], w[1], WHEEL_R * z, c), disc(w[2], w[3], WHEEL_R * z, c);
+  fill_poly(xy, bike_shape(bike, x, y, a, z, xy), c);
 }
 
 /* ---------------------------------------------------------------- the run */
 void draw_run(const rd_run *r) {
   float sh = r->ended == END_CRASH && r->shake > 0 ? r->shake * 20 : 0;
   float cx = r->camx + (sh ? (float)((int)(r->end_ms * 7) % 5 - 2) * sh * 0.3f : 0), cy = r->camy;
-  memset(fb, C_BG, sizeof fb);
+  draw_clear(C_BG);
   float wx0 = cx - 8, wx1 = cx + 320 / ZOOM + 8, wy0 = cy - 8, wy1 = cy + 240 / ZOOM + 8;
   float xy[64], o[64];
   /* three passes: the ground, the glow round the lines, the lines and the rest */
   for (int pass = 0; pass < 3; pass++) {
     for (int i = 0; i < r->nlive; i++) {
       const rd_live *l = &r->live[i];
-      if (l->x1 < wx0 || l->x0 > wx1 || l->y1 < wy0 || l->y0 > wy1 || (l->st & ST_GONE)) continue;
+      if (!(l->st & ST_USED) || (l->st & ST_GONE)) continue;
+      float bx0, by0, bx1, by1;
+      obj_box(r, i, &bx0, &by0, &bx1, &by1);
+      if (bx1 < wx0 || bx0 > wx1 || by1 < wy0 || by0 > wy1) continue;
       const rd_obj *ob = &rd_objs[l->obj];
       int kind = ob->kind;
       if ((pass == 0) != (kind == K_GROUND)) continue;
+      float px, py, pa;
+      obj_pose(r, i, &px, &py, &pa);
       if (kind == K_GEM) {
         if (pass != 2) continue;
-        float sx = (l->cx - cx) * ZOOM, sy = (l->cy - cy) * ZOOM, w = ob->sx * 0.14f * ZOOM, h = ob->sy * 0.18f * ZOOM;
+        float sx = (px - cx) * ZOOM, sy = (py - cy) * ZOOM, w = fabsf(ob->sx) * 0.14f * ZOOM, h = fabsf(ob->sy) * 0.18f * ZOOM;
         float d[8] = {sx, sy - h, sx + w, sy, sx, sy + h, sx - w, sy};
         offset_poly(d, 4, 2, false, o);
         fill_convex(o, 4, C_GEM_HALO);
@@ -235,11 +333,9 @@ void draw_run(const rd_run *r) {
       }
       if (kind == K_FINISH) {
         if (pass != 2) continue;
-        float sx = (l->cx - cx) * ZOOM, top = (l->cy - ob->sy / 2 - cy) * ZOOM, bot = (l->cy + ob->sy / 2 - cy) * ZOOM;
-        for (int y = (int)top; y < (int)bot; y++) {
-          bool lit = ((y - (int)top) / 6) & 1;
-          for (int k = -3; k <= 3; k++) dot((int)sx + k, y, abs(k) == 3 ? C_HALO : lit ? C_WHITE : C_FINISH);
-        }
+        int sx = (int)((px - cx) * ZOOM), top = (int)((py - fabsf(ob->sy) / 2 - cy) * ZOOM), bot = (int)((py + fabsf(ob->sy) / 2 - cy) * ZOOM);
+        fb_fill(sx - 3, top, 1, bot - top, C_HALO), fb_fill(sx + 3, top, 1, bot - top, C_HALO);
+        for (int y = top; y < bot; y += 6) fb_fill(sx - 2, y, 5, bot - y < 6 ? bot - y : 6, ((y - top) / 6) & 1 ? C_WHITE : C_FINISH);
         continue;
       }
       for (int k = 0;; k++) {
@@ -265,12 +361,12 @@ void draw_run(const rd_run *r) {
       }
       /* speed pads: arrows running along */
       if (kind == K_BOOST && pass == 2) {
-        float c = cosf(l->rot), s = sinf(l->rot), ph = fmodf(r->ms / 8, 24);
+        float c = cosf(pa), s = sinf(pa), ph = fmodf(r->ms / 8, 24);
         for (int k = -2; k <= 1; k++) {
-          float ax = (k * 24 + ph) * ZOOM, bx = (l->cx - cx) * ZOOM, by = (l->cy - cy) * ZOOM - 4;
-          float px = bx + c * ax, py = by + s * ax;
-          line(px - c * 3 - s * 3, py - s * 3 + c * 3, px, py, C_WHITE, 1);
-          line(px - c * 3 + s * 3, py - s * 3 - c * 3, px, py, C_WHITE, 1);
+          float ax = (k * 24 + ph) * ZOOM, bx = (px - cx) * ZOOM, by = (py - cy) * ZOOM - 4;
+          float qx = bx + c * ax, qy = by + s * ax;
+          line(qx - c * 3 - s * 3, qy - s * 3 + c * 3, qx, qy, C_WHITE, 1);
+          line(qx - c * 3 + s * 3, qy - s * 3 - c * 3, qx, qy, C_WHITE, 1);
         }
       }
     }
@@ -283,7 +379,11 @@ void draw_run(const rd_run *r) {
     line(x0, y0, x1, y1, (uint8_t)(C_TRAIL + i * 8 / TRAIL), i < TRAIL / 2 ? 2 : 1);
   }
   if (r->ended != END_CRASH) {
-    draw_bike_at(r->bike, (b->x - cx) * ZOOM, (b->y - cy) * ZOOM, b->a, ZOOM, 1);
+    float w0x = (b->wx[0] - cx) * ZOOM, w0y = (b->wy[0] - cy) * ZOOM, w1x = (b->wx[1] - cx) * ZOOM, w1y = (b->wy[1] - cy) * ZOOM;
+    bool front = rd_bikes[r->bike].front;
+    if (!front) draw_wheels_at(w0x, w0y, w1x, w1y, ZOOM, 0);
+    bike_body_at(r->bike, (b->x - cx) * ZOOM, (b->y - cy) * ZOOM, b->a, ZOOM, 1);
+    if (front) draw_wheels_at(w0x, w0y, w1x, w1y, ZOOM, 1);
   } else {
     for (int i = 0; i < r->nbits; i++) {
       const rd_bit *p = &r->bits[i];
@@ -294,7 +394,7 @@ void draw_run(const rd_run *r) {
                       x + c + s * 0.35f, y + s - c * 0.35f, x - c + s * 0.35f, y - s - c * 0.35f};
         offset_poly(q, 4, 1, false, o), fill_convex(o, 4, C_WHITE), fill_convex(q, 4, C_BODY);
       } else if (r->end_ms < 900) {
-        dot((int)x, (int)y, p->c), dot((int)x + 1, (int)y, p->c);
+        fb_fill((int)x, (int)y, 2, 1, p->c);
       }
     }
   }
@@ -316,19 +416,3 @@ void draw_star(float x, float y, float rad, uint8_t c) {
 }
 void draw_line(float x0, float y0, float x1, float y1, uint8_t c) { line(x0, y0, x1, y1, c, 1); }
 void draw_disc(float x, float y, float rad, uint8_t c) { disc(x, y, rad, c); }
-
-/* ---------------------------------------------------------------- to the screen */
-static void (*hud_fn)(void);
-static void scene(void *ctx) {
-  (void)ctx;
-  for (int y = gfx_y0; y < gfx_y1; y++) {
-    color_t *d = gfx_buf + (y - gfx_y0) * SCREEN_W;
-    const uint8_t *s = fb[y];
-    for (int x = 0; x < 320; x++) d[x] = pal[s[x]];
-  }
-  if (hud_fn) hud_fn();
-}
-void draw_flush(void (*hud)(void)) {
-  hud_fn = hud;
-  gfx_render(scene, 0, 0, SCREEN_H);
-}

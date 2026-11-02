@@ -203,7 +203,9 @@ def main():
                     mine = os.path.join(tmp, f"own-{i}.nwa")
                     open(mine, "wb").write(data)
                     n, msg3 = installed(mine, k["appSpace"])
-                    if n is None or n > k["appSpace"] or n != own["size"]:
+                    if n is None:   # (one that only fits Nwagra's 6 MB: the Studio offers it there only)
+                        n, msg3 = installed(mine, k["xlAppSpace"])
+                    if n is None or n > k["xlAppSpace"] or n != own["size"]:
                         problems.append(f"on its own: {n} bytes, kit.json says {own['size']} ({msg3})")
                 failed |= report(f"alone {i}", problems, f"{big} bytes, {big - k['appSpace']} over the app space: "
                                  f"in NumPlay with more space (Epsilon 26, Nwagra), else {own.get('file')} on its own" if big else "")

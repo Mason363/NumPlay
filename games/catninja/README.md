@@ -9,7 +9,6 @@ Save the world, or something: collect the energy crystals. Richman Stewart's Fla
 - **Every trap:** spikes, lasers on timers, mines that blink before they blow, shooters and homing shooters, falling spikes, sun spikes that crawl along walls, dirt that crumbles, crates, springs, boosts, magnets, gravity changers that turn the whole world round, gravity blocks that don't, teleporters, the jetpack, the speed pill and the hallucination pill that makes the world wobble.
 - **Checkpoints** as the game has them (die before the next one and you go back, even to the level before), the deaths and crystals counted at the top, the boss of level 29 and the ending: collect more than 20 of the 50 crystals to save the world.
 - **Its pictures and fonts, all of them the game's,** with the map slowly changing colour as in the original. The world is drawn at half size, so a bit less of it shows than in the browser; the TV screens are drawn bigger so their words can be read.
-- **Saves:** Home or Quit game keeps the level and the place you reached, your checkpoint, deaths and crystals. Next time the title map's way right takes you back there. A copy goes into `catninja_saves.py`, so installing the app again doesn't erase it.
 
 <img src="docs/title.png" width="240" alt="The title map: CAT NINJA, the search for the magical energy crystals, and the cat"> <img src="docs/gravity.png" width="240" alt="Level 5: the world turning over after a gravity changer"> <img src="docs/pill.png" width="240" alt="Level 24: after the hallucination pill, the world tilts and grows">
 

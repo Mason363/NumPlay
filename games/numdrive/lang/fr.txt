@@ -16,6 +16,5 @@ Next Level	Niveau suivant
 Levels	Niveaux
 Quit game	Quitter
 Quit game?	Quitter ?
-You can come back anytime.	Tu peux revenir quand tu veux.
 Yes	Oui
 No	Non

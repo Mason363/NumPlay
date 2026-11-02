@@ -757,11 +757,10 @@ static void scene(void *ctx) {
     static const char *const items[PAUSE_COUNT] = {"Resume", "New game", "How to play", "Quit game"};
     for (int i = 0; i < PAUSE_COUNT; i++) button(84, 76 + i * 30, 152, 24, items[i], v->sel == i);
   } else if (v->screen == V_QUIT) {
-    panel(50, 66, 220, 104);
-    ctext(&np_font_body, 160, 90, "Quit the game?", WHITE);
-    ctext(&np_font_small, 160, 108, "It's saved for next time", MUTED);
-    button(64, 122, 92, 24, "Keep playing", v->sel == 0);
-    button(164, 122, 92, 24, "Quit", v->sel == 1);
+    panel(50, 82, 220, 72);
+    ctext(&np_font_body, 160, 104, "Quit the game?", WHITE);
+    button(64, 118, 92, 24, "Keep playing", v->sel == 0);
+    button(164, 118, 92, 24, "Quit", v->sel == 1);
   }
   if (gfx_y1 > 226) keyline(uno_keys(g, v));
 }

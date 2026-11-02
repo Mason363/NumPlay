@@ -201,7 +201,7 @@ def main():
             "id": i, "index": n, "rank": g.get("rank", 99), "title": g["title"], "tagline": g["tagline"], "credit": g.get("credit"),
             "top": g["top"], "bottom": g["bottom"], "accent": g["accent"],
             "flash": flash, "ram": ram, "heap": g.get("heap", 0), "default": i in default, "upsilon": i in upsilon,
-            "roms": bool(g.get("roms")), "systems": g.get("systems"), "xl": bool(g.get("xl")),
+            "roms": bool(g.get("roms")), "systems": g.get("systems"), "xl": bool(g.get("xl")), "carts": bool(g.get("carts")),
             "bytes": os.path.getsize(os.path.join(O, "games", i + ".o.gz")),
             "icon": bool(icon), "thumb": os.path.exists(thumb), "preview": preview})
 
@@ -218,7 +218,8 @@ def main():
         nm = subprocess.run(["arm-none-eabi-nm", "-u", nwa], capture_output=True, text=True, check=True).stdout
         loose = [l.split()[-1] for l in nm.splitlines()
                  if not re.match(r"(eadk_|_heap_end$|_data_section_|_bss_section_)", l.split()[-1])
-                 and l.split() not in (["w", "__sf"], ["w", "_printf_float"])]  # (newlib's own weak hooks)
+                 and l.split() not in (["w", "__sf"], ["w", "_printf_float"],  # (newlib's own weak hooks)
+                                       ["w", "np_carts"])]  # (NumPico's carts: the website links them)
         if loose:
             sys.exit(f"kit: {ids[0] if len(ids) == 1 else 'NumPlay'} leaves undefined: {' '.join(loose)}")
     nwa = os.path.join(tmp, "custom.nwa")
@@ -260,7 +261,7 @@ def main():
         src, name = apps[g["id"]].split(":")
         b = os.path.join(tmp, "alone.bin")
         subprocess.run([a.nwlink, "nwa-bin", "--ram-length", str(ram), src, b], check=True, stdout=subprocess.DEVNULL)
-        if os.path.getsize(b) > a.app_space:
+        if os.path.getsize(b) > max(a.app_space, a.xl_app_space):   # (one that only fits Nwagra's 6 MB: there)
             sys.exit(f"kit: {name} doesn't fit the app area even on its own")
         gz(src, os.path.join(O, "apps", g["id"] + ".nwa.gz"))
         g["alone"] = {"file": name, "size": os.path.getsize(b)}
@@ -303,7 +304,7 @@ def main():
             sys.exit(f"kit: in {sid}, NumPlay installs as {n} bytes, but its games' sizes add up to {used}")
         # a big game that doesn't go beside the launcher there must have its own app that fits
         for g in games:
-            if g["xl"] and base_alone + g["flash"] > size and (not g.get("alone") or g["alone"]["size"] > size):
+            if g["xl"] and base_alone + g["flash"] > size and not g.get("alone"):
                 sys.exit(f"kit: {g['id']} fits neither beside the launcher nor on its own in {sid}")
         big = [i for i in ids if i not in default]
         print(f"kit: {sid}, {size} bytes from {sp['start']:#x}: NumPlay with {len(ids)} games ({', '.join(big) or 'no big ones'}) "

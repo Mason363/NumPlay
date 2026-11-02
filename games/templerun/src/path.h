@@ -48,7 +48,8 @@ extern int path_root;      /* the piece under the runner */
 /* the game's pacing (GameController's HandlePacing): by distance run, the time since the last power-up */
 void path_pace(float dist, float since_power, float dd);
 void path_start(void);                    /* the temple, and the path from it */
-void path_advance(int to);                /* the runner is on the piece next to the root: the rest pruned, laid on */
+/* the runner is on the piece next to the root: the rest pruned (not in the intro: the game keeps it all then), laid on */
+void path_advance(int to, bool prune);
 int path_at(float x, float z);            /* the piece at a point: the root or one next to it (-1: none) */
 bool path_ground(const Tile *t, float x, float z);   /* inside the piece's ground */
 bool path_opens(const Tile *t, int side);

@@ -669,8 +669,10 @@ static Chest *chest_at(int x, int y, int z, bool make) {
 #if NB_DIMS
       if (dim == DIM_NETHER && !edits_changed(x, y, z)) chest_loot(&chests[i], 0);
       else if (dim == DIM_OVERWORLD && !edits_changed(x, y, z)) {
-        int k = gen_stronghold_chest(x, y, z);   /* (a stronghold's: 1-3; none: 0) */
-        if (k) chest_loot(&chests[i], k);
+        int k = gen_stronghold_chest(x, y, z);   /* (a stronghold's: 1-3; else a village's or a temple's: 4, 5; */
+        if (!k) k = gen_struct_chest(x, y, z) + 3;   /* else a dungeon's: 6) */
+        if (k == 3) k = 6;
+        chest_loot(&chests[i], k);
       }
 #endif
       return &chests[i];
@@ -750,9 +752,24 @@ static void chest_loot(Chest *c, int kind) {
       {I_IRON_INGOT, 1, 5, 10}, {I_GOLD_INGOT, 1, 3, 5}, {I_REDSTONE, 4, 9, 5}, {I_COAL, 3, 8, 10},
       {I_BREAD, 1, 3, 15}, {I_APPLE, 1, 3, 15}, {I_IRON_PICKAXE, 1, 1, 1}, {0, 1, 1, 1}};
   static const Loot library[] = {{I_BOOK, 1, 3, 20}, {I_PAPER, 2, 7, 20}, {0, 1, 1, 1}, {I_COMPASS, 1, 1, 1}, {0, 1, 5, 2}};
-  static const struct { const Loot *l; uint8_t total, n0, n1; } T[4] = {
-      {fort, 75, 2, 4}, {corridor, 99, 2, 2}, {room, 62, 1, 4}, {library, 44, 1, 4}};
-  if (kind < 0 || kind > 3) return;
+  /* StructureVillagePieces.House2's, ComponentScatteredFeaturePieces.DesertPyramid's (and its book),
+   * WorldGenDungeons' (records and name tags are not in NumBlocks either) */
+  static const Loot smith[] = {
+      {I_DIAMOND, 1, 3, 3}, {I_IRON_INGOT, 1, 5, 10}, {I_GOLD_INGOT, 1, 3, 5}, {I_BREAD, 1, 3, 15}, {I_APPLE, 1, 3, 15},
+      {I_IRON_PICKAXE, 1, 1, 5}, {I_IRON_SWORD, 1, 1, 5}, {I_IRON_CHESTPLATE, 1, 1, 5}, {I_IRON_HELMET, 1, 1, 5},
+      {I_IRON_LEGGINGS, 1, 1, 5}, {I_IRON_BOOTS, 1, 1, 5}, {B_OBSIDIAN, 3, 7, 5}, {B_SAPLING_OAK, 3, 7, 5},
+      {0, 1, 1, 3}, {0, 1, 1, 1}, {0, 1, 1, 1}, {0, 1, 1, 1}};
+  static const Loot desert[] = {
+      {I_DIAMOND, 1, 3, 3}, {I_IRON_INGOT, 1, 5, 10}, {I_GOLD_INGOT, 2, 7, 15}, {I_EMERALD, 1, 3, 2}, {I_BONE, 4, 6, 20},
+      {I_ROTTEN_FLESH, 3, 7, 16}, {0, 1, 1, 3}, {0, 1, 1, 1}, {0, 1, 1, 1}, {0, 1, 1, 1}, {0, 1, 1, 1}};
+  static const Loot dungeon[] = {
+      {0, 1, 1, 10}, {I_IRON_INGOT, 1, 4, 10}, {I_BREAD, 1, 1, 10}, {I_WHEAT, 1, 4, 10}, {I_GUNPOWDER, 1, 4, 10},
+      {I_STRING, 1, 4, 10}, {I_BUCKET, 1, 1, 10}, {I_GOLDEN_APPLE, 1, 1, 1}, {I_REDSTONE, 1, 4, 10}, {0, 1, 1, 4},
+      {0, 1, 1, 4}, {0, 1, 1, 10}, {0, 1, 1, 2}, {0, 1, 1, 5}, {0, 1, 1, 1}, {0, 1, 1, 1}};
+  static const struct { const Loot *l; uint8_t total, n0, n1; } T[7] = {
+      {fort, 75, 2, 4}, {corridor, 99, 2, 2}, {room, 62, 1, 4}, {library, 44, 1, 4}, {smith, 94, 3, 6},
+      {desert, 73, 2, 5}, {dungeon, 108, 8, 1}};
+  if (kind < 0 || kind > 6) return;
   const Loot *L = T[kind].l;
   int n = T[kind].n0 + rnd(T[kind].n1);
   for (int k = 0; k < n; k++) {

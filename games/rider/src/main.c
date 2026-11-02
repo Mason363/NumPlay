@@ -568,7 +568,7 @@ static void hud_levels(void) {
   keyline("Arrows choose   Left Right group   OK ride   Back menu");
 }
 static void draw_levels(void) {
-  memset(fb, C_BG, sizeof fb);
+  draw_clear(C_BG);
   for (int i = 0; i < 8; i++) {
     int x = 22 + (i % 4) * 72, y = 64 + (i / 4) * 70, l = page * 8 + i;
     for (int k = 0; k < 3; k++) draw_star(x + 16 + k * 16, y + 40, 6, k < sv.stars[l] ? C_GEM : C_GROUND);
@@ -623,13 +623,10 @@ static void hud_bikes(void) {
   keyline(overlay == OV_WON ? "OK ride it   Back keep looking" : "Arrows choose   OK ride or win   Back menu");
 }
 static void draw_bikes(void) {
-  memset(fb, C_BG, sizeof fb);
+  draw_clear(C_BG);
   if (bike_sel >= 0) {
-    draw_bike_at(bike_sel, 80, 32, 0, 1.1f, owned(bike_sel));
-    if (!owned(bike_sel))
-      for (int yy = 0; yy < 64; yy++)
-        for (int xx = 0; xx < 170; xx++)
-          if (fb[yy][xx] != C_BG) fb[yy][xx] = C_GROUND;
+    if (owned(bike_sel)) draw_bike_at(bike_sel, 80, 32, 0, 1.1f, 1);
+    else draw_bike_shape(bike_sel, 80, 32, 0, 1.1f, C_GROUND);
   }
   for (int i = 0; i < 4 * COLS; i++) {
     int idx = bike_scroll * COLS + i - 1;
@@ -637,16 +634,10 @@ static void draw_bikes(void) {
     int x = 6 + (i % COLS) * 44, y = 68 + (i / COLS) * 38;
     if (idx < 0) continue;
     if (owned(idx)) draw_bike_at(idx, x + 21, y + 15, 0, 0.42f, 1);
-    else {
-      draw_bike_at(idx, x + 21, y + 15, 0, 0.42f, 0);
-      /* not won yet: a dark shape */
-      for (int yy = y; yy < y + 34 && yy < 240; yy++)
-        for (int xx = x; xx < x + 42; xx++)
-          if (fb[yy][xx] != C_BG) fb[yy][xx] = C_GROUND;
-    }
+    else draw_bike_shape(idx, x + 21, y + 15, 0, 0.42f, C_GROUND); /* not won yet: a dark shape */
   }
   if (overlay == OV_WON) {
-    memset(fb, C_BG, sizeof fb);
+    draw_clear(C_BG);
     draw_bike_at(won_bike, 160, 116, 0, 1.3f, 1);
   }
   draw_flush(hud_bikes);
@@ -674,7 +665,7 @@ static void hud_colors(void) {
   keyline("Arrows choose   OK on/off   Back menu");
 }
 static void draw_colors(void) {
-  memset(fb, C_BG, sizeof fb);
+  draw_clear(C_BG);
   draw_flush(hud_colors);
 }
 
@@ -701,7 +692,7 @@ static void hud_help(void) {
 }
 static void draw_help(void) {
   if (help_back == S_RIDE) draw_run(&run);
-  else memset(fb, C_BG, sizeof fb);
+  else draw_clear(C_BG);
   draw_flush(hud_help);
 }
 

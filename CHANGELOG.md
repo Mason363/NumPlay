@@ -2,6 +2,44 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.9: Ralsei's lessons in Deltarune
+
+- **Deltarune:** Ralsei's lessons with the Dummy, every one of his comments, and the Dummy's hugs. Dialogue keeps the game's own letter spacing.
+
+## 1.24.8: NumPico, your own PICO-8 carts
+
+- **NumPico:** drop your .p8 and .p8.png carts on NumPlay Studio and they play in your NumPlay, with PICO-8's pause menu and cart saves.
+
+## 1.24.7: Temple Run fixed, Kingdom Rush's stage buildings
+
+- **Temple Run:** the game's own intro, with the path whole and the runner close at the start. No more flicker or scenery popping in, the camera stays out of the trees, and the runner and monkeys move at the game's own pace. The quit question is in the game's own alert box. 5% faster on average.
+- **Kingdom Rush:** the elves' hall, the Sasquatch's cave and the Sunray Tower.
+
+## 1.24.6: Mr Bullet
+
+- **Mr Bullet:** MrBullet.nwa, 596 spy puzzles in Classic, Grenades, Hostages and Friendly Fire, with the game's own levels, pictures and physics.
+
+## 1.24.5: FNAF World
+
+- **FNAF World:** FiveNightsAtFreddysWorld.nwa, the adventure with all 48 characters, the whole map, the battles, chips, bytes, shops and four endings, from the game's own files. It needs the 6 MB of app space Nwagra gives.
+- **NumPlay Studio:** a game that needs Nwagra opens the space picker.
+
+## 1.24.4: Deltarune, Rider's own physics and NumBlocks' villages
+
+- **Deltarune:** Deltarune.nwa, Chapter 1 from Kris's room, the drive to school and the Dark World to Castle Town, Lancer and the Field's first rooms, with the game's own pictures, texts and battles.
+- **Rider:** the game's own physics engine, LiquidFun 1.1.0 (Box2D 2.3.0), set up as the game sets it up. The bike fits through level 1's loop and holds to level 2's tipping bowls.
+- **NumBlocks:** villages with villagers, desert temples with their trap, mineshafts and working dungeon spawners, laid out as Minecraft 1.8.8 does. Your worlds keep their look where you've been.
+- **Quit dialogs** ask only the question, in 16 games.
+
+## 1.24.3: Kingdom Rush
+
+- **Kingdom Rush:** KingdomRush.nwa, the 2011 tower defense with its 12 stages, Heroic and Iron challenges, every tower, upgrade and boss, from the game's own files.
+
+## 1.24.2: Cat Ninja
+
+- **Cat Ninja:** CatNinja.nwa, Richman Stewart's Flash platformer with all 30 levels, its traps, the boss and the crystals, from the game's own files.
+- **Hollow Knight:** fog and light shafts draw 9% faster.
+
 ## 1.24.1: Clash Royale
 
 - **Clash Royale:** ClashRoyale.nwa, battles against a bot with 41 cards of the 2016 game, its seven arenas and trophies, with the game's own pictures and numbers.

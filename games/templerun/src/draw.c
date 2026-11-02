@@ -259,3 +259,35 @@ int d_gold(const HudFont *f, int x, int y, const char *s, int align, int a256) {
   }
   return w;
 }
+
+static const HudPic *white_of(char ch) {
+  int c = (uint8_t)ch - hud_white.first;
+  return &hud_white_pics[c >= 0 && c < hud_white.count ? c : 0];
+}
+
+int d_white_width(const char *s, int n) {
+  int w = 0;
+  for (; *s && n; s++, n--) w += white_of(*s)->advance;
+  return w;
+}
+
+int d_white(int x, int y, const char *s, int n, uint16_t c, int align) {
+  int w = d_white_width(s, n);
+  x -= align < 0 ? 0 : align == 0 ? w / 2 : w;
+  if (y >= r_y1 || y + hud_white.line < r_y0) return w;
+  for (; *s && n; s++, n--) {
+    const HudPic *g = white_of(*s);
+    int gx = x + g->ox, gy = y + g->oy;
+    int y0 = imax(gy, r_y0), y1 = imin(gy + g->h, r_y1), x0 = imax(gx, 0), x1 = imin(gx + g->w, SCREEN_W);
+    for (int j = y0; j < y1; j++) {
+      const uint8_t *src = hud_white_px + g->off + (j - gy) * g->w - gx;
+      uint16_t *d = row(j);
+      for (int i = x0; i < x1; i++) {
+        int a = src[i];
+        if (a) d[i] = a >= 248 ? c : r_mix565(d[i], c, a >> 3);
+      }
+    }
+    x += g->advance;
+  }
+  return w;
+}

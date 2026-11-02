@@ -78,6 +78,8 @@ def custom_texture(jar, n):
     animated one ('@portal#4': the portal's fifth)"""
     if n == '@end_sky':
         return jar.image('environment/end_sky').convert('RGBA').crop((0, 0, 16, 16))
+    if n == '@rail_x':   # (a rail turned to run east to west)
+        return jar.image('blocks/rail_normal').transpose(Image.ROTATE_90)
     if '#' in n:
         name, k = n[1:].split('#')
         return jar.image('blocks/' + name).crop((0, 16 * int(k), 16, 16 * int(k) + 16))
@@ -498,7 +500,10 @@ SKINS = ['zombie/zombie', 'skeleton/skeleton', 'creeper/creeper', 'spider/spider
 SKINS_DIMS = ['zombie_pigman', 'ghast/ghast', 'ghast/ghast_shooting', 'blaze', 'slime/magmacube',
               'enderman/enderman', 'skeleton/wither_skeleton']
 # skins too big for 64 x 32: name, file
-BIG_SKINS = [('crystal', 'endercrystal/endercrystal'), ('dragon', 'enderdragon/dragon')]
+BIG_SKINS = [('crystal', 'endercrystal/endercrystal'), ('dragon', 'enderdragon/dragon'),
+             # the villagers' (64 x 64), by profession: farmer, librarian, priest, blacksmith, butcher
+             ('farmer', 'villager/farmer'), ('librarian', 'villager/librarian'), ('priest', 'villager/priest'),
+             ('smith', 'villager/smith'), ('butcher', 'villager/butcher')]
 GUI_SPRITES_DIMS = [('boss_bg', 'gui/icons', 0, 74, 182, 5), ('boss', 'gui/icons', 0, 79, 182, 5)]
 
 

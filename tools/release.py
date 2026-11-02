@@ -30,6 +30,7 @@ ALONE = {
     "hollowknight": ("Hollow Knight", "from King's Pass to Hornet in Greenpath"),
     "hkfungal": ("Hollow Knight: Fungal Wastes", "Hallownest past Greenpath, sharing Hollow Knight's saves"),
     "undertale": ("Undertale", "the whole Underground, to the barrier and the neutral ending"),
+    "deltarune": ("Deltarune", "Chapter 1, from Kris's room into the Dark World and its first battles"),
     "subway": ("Subway Surfers", "the endless run down the subway's tracks, in 3D"),
     "fnaf": ("Five Nights at Freddy's", "five nights at Freddy Fazbear's Pizza, the 6th and the Custom Night"),
     "hillclimb": ("Hill Climb Racing", "Newton Bill's ride up the hills: thirteen stages, thirteen vehicles"),
@@ -63,9 +64,13 @@ ALONE = {
     "fnaf2": ("Five Nights at Freddy's 2", "the new pizzeria's six nights and the Custom Night: the mask, the music box, the flashlight"),
     "fnaf3": ("Five Nights at Freddy's 3", "Fazbear's Fright's six nights with Springtrap and the phantoms: the lure, the vents, the maintenance panel"),
     "fnaf4": ("Five Nights at Freddy's 4", "the bedroom's nights with the Nightmares: listen at the doors, the closet, the bed, Fun with Plushtrap"),
+    "fnafworld": ("FNAF World", "the RPG: the overworld, battles with a party of eight, 48 characters, chips, bytes, bosses and endings (6 MB apps only)"),
     "famidash": ("Famidash", "TFDSoft's Geometry Dash for the NES, made for the calculator: the 173 levels of Famidash HUGE, every mode, practice mode"),
     "clashroyale": ("Clash Royale", "battles against a bot: 41 cards of the 2016 game, its seven arenas, elixir, crowns and trophies"),
     "catninja": ("Cat Ninja", "Richman Stewart's Flash platformer: its 30 levels of wall jumps and traps, the boss and the crystals"),
+    "kingdomrush": ("Kingdom Rush", "Ironhide's 2011 tower defense: its 12 stages with Heroic and Iron challenges, every tower, spell and boss"),
+    "mrbullet": ("Mr Bullet", "Lion Studios' spy puzzles: 596 levels of Classic, Grenades, Hostages and Friendly Fire, read from the game's own files"),
+    "numpico": ("NumPico", "PICO-8 carts on the calculator: add your own .p8 and .p8.png carts in NumPlay Studio"),
 }
 VARIANTS = [
     ("NumPlay-Invisible.nwa", "The same app, hidden: a blank icon with no name"),

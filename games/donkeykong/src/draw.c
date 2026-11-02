@@ -376,11 +376,10 @@ static void pause_menu(void) {
 }
 
 static void confirm_menu(void) {
-  card(76, 92);
-  gfx_text_center(&np_font_body, PX + 112, 102, W->confirm ? "Quit this game?" : "Start a new game?", WHITE, 256);
-  gfx_text_center(&np_font_small, PX + 112, 120, "Your score so far counts.", MUTED, 256);
-  choice(142, "No", W->sel == 0);
-  choice(160, "Yes", W->sel == 1);
+  card(80, 84);
+  gfx_text_center(&np_font_body, PX + 112, 106, W->confirm ? "Quit this game?" : "Start a new game?", WHITE, 256);
+  choice(132, "No", W->sel == 0);
+  choice(150, "Yes", W->sel == 1);
 }
 
 static void over_menu(void) {

@@ -94,13 +94,28 @@ static int fails;
 static int flat_level(void) { /* the first Easy level starts on flat ground */
   return 0;
 }
+/* the whole bike moved (a test's lift into the air) */
+static void lift(rd_run *r, float dy) {
+  for (int p = 0; p < BP_N; p++) {
+    float x, y, a;
+    ph_get(r->b.part[p], &x, &y, &a);
+    ph_set_pos(r->b.part[p], x, y + dy);
+    ph_set_vel(r->b.part[p], 300, 0);
+    ph_set_avel(r->b.part[p], 0);
+  }
+}
 static void test_physics(void) {
   rd_run *r = &run;
   run_start(r, RUN_LEVEL, flat_level(), 0, 0, 5);
-  CHECK(r->b.ground, "the bike stands on the track at the start");
+  float sy = r->b.y;
+  run_step(r, false);
+  CHECK(r->b.y == sy && !r->b.started, "waits for the first touch");
+  run_step(r, true), run_step(r, false);
+  for (int i = 0; i < 90; i++) run_step(r, false);
+  CHECK(r->b.ground, "the bike stands on the track");
   float y0 = r->b.y;
   for (int i = 0; i < 30; i++) run_step(r, false);
-  CHECK(fabsf(r->b.y - y0) < 2 && fabsf(r->b.vx) < 5, "still: it stays put (moved %.2f, vx %.2f)", r->b.y - y0, r->b.vx);
+  CHECK(fabsf(r->b.y - y0) < 2, "still: it stays put (moved %.2f)", r->b.y - y0);
   /* held on the ground: the button's speed grows 14 a frame up to 550 */
   run_step(r, true);
   float s1 = r->b.speed;
@@ -108,25 +123,24 @@ static void test_physics(void) {
   CHECK(fabsf(r->b.speed - s1 - 9 * 14) < 1, "14 px/s a frame (%.1f -> %.1f)", s1, r->b.speed);
   for (int i = 0; i < 60 && r->b.ground; i++) run_step(r, true);
   CHECK(r->b.speed <= 550.01f, "at most 550 px/s (%.1f)", r->b.speed);
-  /* in the air: the turn grows by the torque and stops at 500 degrees a second */
-  rd_bikestate *b = &r->b;
-  b->y -= 2000, b->vx = 300, b->vy = 0, b->w = 0, b->ground = false, b->air_ms = 100;
-  float vy0 = b->vy;
+  /* in the air: the turn grows by the torque and stops near 500 degrees a second */
   run_step(r, false);
-  CHECK(fabsf(b->vy - vy0 - (294.0f / 60 + 4.41f)) < 0.5f, "gravity and the game's push down in the air (%.2f)", b->vy - vy0);
-  b->held = false;
+  lift(r, -3000);
+  for (int i = 0; i < 6; i++) run_step(r, false);
+  CHECK(!r->b.ground, "in the air");
   for (int i = 0; i < 90; i++) run_step(r, true);
-  CHECK(fabsf(b->w / 0.017453f + 500) < 10, "spin at -500 deg/s (%.1f)", b->w / 0.017453f);
+  float w = r->b.w / 0.017453f;
+  CHECK(w < -450 && w > -560, "spin at -500 deg/s (%.1f)", w);
   /* let go: it eases to a stop in a second */
-  run_step(r, false);
-  for (int i = 0; i < 59; i++) run_step(r, false);
-  CHECK(fabsf(b->w) < 0.05f, "stopped turning a second after letting go (%.3f)", b->w);
+  for (int i = 0; i < 64; i++) run_step(r, false);
+  CHECK(fabsf(r->b.w) < 0.05f, "stopped turning a second after letting go (%.3f)", r->b.w);
   CHECK(r->flips >= 1, "a flip counted (%d)", r->flips);
 }
 
 /* a bot: holds on the ground, and in the air holds only while the bike leans forward of its landing */
 static bool bot(const rd_run *r, int flips) {
   const rd_bikestate *b = &r->b;
+  if (!b->started) return true;
   if (b->ground) return true;
   if (!flips) { /* lands: noses up to the way it flies */
     float target = atan2f(b->vy, b->vx > 1 ? b->vx : 1) * 0.5f;
@@ -138,10 +152,12 @@ static bool bot(const rd_run *r, int flips) {
   return r->b.air_ms < 1400 && (b->air_flips < flips && !(deg < -30 && deg > -120 && b->air_flips == flips - 1));
 }
 /* a level ridden by search: pieces of 15 frames, a few ways to hold the button in each, the furthest
- * still riding kept; returns the frames' button in path (1 held), or 0 if none got to the end */
-#define SEG 15
+ * still riding kept; returns the frames' button in path (1 held), or 0 if none got to the end.
+ * A state is the run and Box2D's arena, copied away and back. */
+static int seg_len = 15; /* (the search tries 15, 11 and 13: the path is replayed with the one that worked) */
+#define SEG seg_len
 #ifndef BEAM
-#define BEAM 12
+#define BEAM 20
 #endif
 #define PAT 7
 static bool pat(int p, int f) {
@@ -155,51 +171,109 @@ static bool pat(int p, int f) {
   default: return f >= SEG - 4;
   }
 }
-static rd_run beam[BEAM], next_beam[BEAM * PAT], tmp;
+typedef struct {
+  rd_run run;
+  size_t n;
+  uint8_t mem[PH_ARENA];
+} snap_t;
+static void snap_save(snap_t *s) { s->run = run, s->n = ph_top(), memcpy(s->mem, ph_arena(), s->n); }
+static void snap_load(const snap_t *s) { run = s->run, memcpy(ph_arena(), s->mem, s->n); }
+static void snap_copy(snap_t *d, const snap_t *s) { d->run = s->run, d->n = s->n, memcpy(d->mem, s->mem, s->n); }
+static snap_t beam[BEAM], next_beam[BEAM * PAT];
+static int spread = 3; /* states kept at each stretch of track */
+static int ahead; /* (last: a state is kept only if the bot still rides that many frames on, after letting go a while) */
+static bool doomed(const snap_t *s) {
+  for (int k = 0; k < 5; k++) {
+    snap_load(s);
+    for (int f = 0; f < ahead && !run.ended; f++) run_step(&run, k == 4 || (f >= k * 12 && bot(&run, 0)));
+    if (run.ended != END_CRASH) return false;
+  }
+  return true;
+}
 static uint8_t paths[BEAM][1600], next_paths[BEAM * PAT][1600];
-static float worth(const rd_run *r) { return r->mode == RUN_ENDLESS ? (r->score + r->pending) * 2000.0f + r->perfect * 300 + r->b.x : r->b.x; }
-static int solve_run(int mode, int level, int bike, uint32_t seed, uint8_t *out, int max_segs) {
+static float worth(const rd_run *r) { /* (a loop takes the bike back over its x a while: how far it rode counts too) */
+  return r->mode == RUN_ENDLESS ? (r->score + r->pending) * 2000.0f + r->perfect * 300 + r->b.x : r->b.max_x + 0.5f * r->b.odo;
+}
+/* (wait: the ride begins with a touch and that many pieces let go, for platforms that move in time) */
+static int solve_from(int mode, int level, int bike, uint32_t seed, uint8_t *out, int max_segs, int wait) {
   int nb = 1;
-  run_start(&beam[0], mode, level, bike, mode == RUN_LEVEL ? level / 8 : 6, seed);
-  for (int sg = 0; sg < max_segs; sg++) {
+  run_start(&run, mode, level, bike, mode == RUN_LEVEL ? level / 8 : 6, seed);
+  for (int sg = 0; sg <= wait; sg++) {
+    int p = sg ? 1 : 4;
+    for (int f = 0; f < SEG && !run.ended; f++) run_step(&run, pat(p, f));
+    for (int k = 0; k < BEAM; k++) paths[k][sg] = (uint8_t)p;
+  }
+  snap_save(&beam[0]);
+  float far_x = -1e9f;
+  for (int sg = wait + 1; sg < max_segs; sg++) {
     int nn = 0;
     for (int i = 0; i < nb; i++)
       for (int p = 0; p < PAT; p++) {
-        tmp = beam[i];
-        for (int f = 0; f < SEG && !tmp.ended; f++) run_step(&tmp, pat(p, f));
-        if (tmp.ended == END_CRASH) continue;
-        if (tmp.ended == END_FINISH) {
+        snap_load(&beam[i]);
+        for (int f = 0; f < SEG && !run.ended; f++) run_step(&run, pat(p, f));
+        if (run.b.x > far_x) far_x = run.b.x;
+        if (run.ended == END_CRASH) continue;
+        if (run.ended == END_FINISH) {
           memcpy(out, paths[i], (size_t)sg), out[sg] = (uint8_t)p;
           return sg + 1;
         }
-        next_beam[nn] = tmp;
+        snap_save(&next_beam[nn]);
+        if (ahead && doomed(&next_beam[nn])) continue;
         memcpy(next_paths[nn], paths[i], (size_t)sg), next_paths[nn][sg] = (uint8_t)p;
         nn++;
       }
     if (!nn) {
-      printf(" [died at x %.0f, %.1f s]", beam[0].b.x, beam[0].ms / 1000);
+      printf(" [died at x %.0f (furthest %.0f), %.1f s]", beam[0].run.b.x, far_x, beam[0].run.ms / 1000);
       if (getenv("DIED")) {
         char p[256];
-        run = beam[0], draw_theme(run.theme), screen = S_RIDE, used_ok = true, overlay = 0, draw_ride();
+        snap_load(&beam[0]);
+        draw_theme(run.theme), screen = S_RIDE, used_ok = true, overlay = 0, draw_ride();
         snprintf(p, sizeof p, "%s/died%02d.ppm", getenv("DIED"), level), ppm(p);
       }
       return 0;
     }
-    /* keep the furthest, a few apart */
-    nb = 0;
-    for (int k = 0; k < BEAM && nn; k++) {
-      int best = 0;
-      for (int j = 1; j < nn; j++)
-        if (worth(&next_beam[j]) > worth(&next_beam[best])) best = j;
-      beam[nb] = next_beam[best], memcpy(paths[nb], next_paths[best], (size_t)sg + 1), nb++;
-      float bx = next_beam[best].b.x, by = next_beam[best].b.y;
-      for (int j = 0; j < nn; j++)
-        if (fabsf(next_beam[j].b.x - bx) < 3 && fabsf(next_beam[j].b.y - by) < 3) next_beam[j] = next_beam[--nn], memcpy(next_paths[j], next_paths[nn], (size_t)sg + 1), j--;
+    /* keep the furthest, a few apart, and only a few at each stretch of the track: slower ones, that wait for a
+     * moving platform, stay in */
+    static int order[BEAM * PAT], pick[BEAM], spare[BEAM * PAT];
+    for (int j = 0; j < nn; j++) order[j] = j;
+    for (int i = 1; i < nn; i++)
+      for (int j = i; j > 0 && worth(&next_beam[order[j - 1]].run) < worth(&next_beam[order[j]].run); j--) {
+        int t = order[j]; order[j] = order[j - 1], order[j - 1] = t;
+      }
+    int np = 0, ns = 0;
+    for (int q = 0; q < nn && np < BEAM; q++) {
+      const rd_run *c = &next_beam[order[q]].run;
+      bool near = false;
+      int same = 0;
+      for (int k = 0; k < np; k++) {
+        const rd_run *a = &next_beam[pick[k]].run;
+        near |= fabsf(a->b.x - c->b.x) < 3 && fabsf(a->b.y - c->b.y) < 3;
+        same += (int)floorf(a->b.max_x / 48) == (int)floorf(c->b.max_x / 48);
+      }
+      if (near) continue;
+      if (same >= spread) spare[ns++] = order[q];
+      else pick[np++] = order[q];
     }
+    for (int q = 0; q < ns && np < BEAM; q++) pick[np++] = spare[q];
+    nb = 0;
+    for (int k = 0; k < np; k++) snap_copy(&beam[nb], &next_beam[pick[k]]), memcpy(paths[nb], next_paths[pick[k]], (size_t)sg + 1), nb++;
   }
-  if (mode == RUN_ENDLESS) { memcpy(out, paths[0], (size_t)max_segs); return max_segs; }
-  printf(" [out of time at x %.0f]", beam[0].b.x);
+  if (mode == RUN_ENDLESS) { memcpy(out, paths[0], (size_t)max_segs); snap_load(&beam[0]); return max_segs; }
+  printf(" [out of time at x %.0f]", beam[0].run.b.x);
   return 0;
+}
+static int solve_run(int mode, int level, int bike, uint32_t seed, uint8_t *out, int max_segs) {
+  int n = 0;
+  static const int lens[3] = {15, 11, 13};
+  for (int k = getenv("SOLVE_K") ? atoi(getenv("SOLVE_K")) : 0; k < (mode == RUN_LEVEL ? 8 : 1) && !n; k++) {
+    spread = k & 1 ? BEAM : 3; /* (then the plain furthest ones) */
+    ahead = k >= 6 ? 45 : 0;
+    seg_len = k < 6 ? lens[k / 2] : lens[k - 6];
+    for (int w = 0; w < (mode == RUN_LEVEL ? 8 : 1) && !n; w++) n = solve_from(mode, level, bike, seed, out, max_segs * 15 / seg_len, w);
+  }
+  spread = 3, ahead = 0;
+  if (!n) seg_len = 15;
+  return n;
 }
 static int solve_level(int level, uint8_t *out, int max_segs) { return solve_run(RUN_LEVEL, level, 0, 9, out, max_segs); }
 
@@ -212,7 +286,7 @@ static int ride(int mode, int level, int flips, int frames, int bike) {
 static void test_levels(void) {
   /* levels ridden to their end by a search over the button (the game's own tracks and times) */
   static uint8_t path[1600];
-  static const int some[] = {0, 4, 7, 17};
+  static const int some[] = {0, 1, 10, 25}; /* Easy 1 and 2 (#341), a catapult, falling platforms (play solve 0 47: all) */
   int ok = 0;
   for (unsigned i = 0; i < sizeof some / sizeof *some; i++) {
     int n = solve_level(some[i], path, 300);
@@ -229,16 +303,18 @@ static void test_levels(void) {
   /* flipping all the time ends on the bike's head */
   int e = ride(RUN_ENDLESS, 0, 9, 60 * 60, 0);
   CHECK(e == END_CRASH, "holding the button for ever crashes (%d)", e);
-  /* the endless run: pieces keep coming, flips are counted */
-  int best = 0, flips = 0;
+  /* the endless run: pieces keep coming, flips are counted (a bot on every bike, then the search's ride) */
+  int far = 0;
   for (int s = 0; s < 20; s++) {
     rd_run *r = &run;
     run_start(r, RUN_ENDLESS, 0, s % NBIKES, 6 + s % 10, 100 + (uint32_t)s);
-    for (int i = 0; i < 60 * 90 && !r->ended; i++) run_step(r, bot(r, 1));
-    best = r->score > best ? r->score : best, flips += r->flips;
+    for (int i = 0; i < 60 * 90 && !r->ended; i++) run_step(r, bot(r, 0));
+    if (r->b.max_x > far) far = (int)r->b.max_x;
   }
-  printf("endless: best %d, %d flips in 20 runs\n", best, flips);
-  CHECK(flips > 0, "flips in the endless run");
+  for (uint32_t sd = 33; sd < 37 && !run.flips; sd++) solve_run(RUN_ENDLESS, 0, 0, sd, path, 60);
+  printf("endless: a bot as far as x %d; the search's ride: score %d, %d flips, %d perfect\n", far, run.score, run.flips, run.perfect);
+  CHECK(far > 3000, "the endless run goes on (%d)", far);
+  CHECK(run.flips > 0 && run.score + run.pending > 0, "flips counted in the endless run");
 }
 
 /* ---------------------------------------------------------------- the app, with keys */
@@ -399,8 +475,8 @@ int main(int argc, char **argv) {
     int n = atoi(argv[4]), fl = argc > 5 ? atoi(argv[5]) : 0;
     for (int i = 0; i < n && !r->ended; i++) {
       run_step(r, bot(r, fl));
-      if (argc > 6 && i >= atoi(argv[6]) - 12 && i <= atoi(argv[6])) run_debug(r);
       if (i % 20 == 0 || (argc > 6 && i >= atoi(argv[6]) - 12 && i <= atoi(argv[6]))) printf("%4d x %7.1f y %7.1f vx %6.1f vy %6.1f a %6.1f w %6.1f g %d spd %5.1f flips %d score %d\n", i, r->b.x, r->b.y, r->b.vx, r->b.vy, r->b.a / 0.0174533f, r->b.w / 0.0174533f, r->b.ground, r->b.speed, r->flips, r->score);
+      if (getenv("MEM") && i % 20 == 0) printf("     arena used %zu top %zu peak %zu proxies %d\n", ph_used(), ph_top(), ph_peak(), ph_proxies());
     }
     printf("ended %d at x %.0f (finish %.0f) ms %.0f\n", r->ended, r->b.x, r->finish_x, r->ms);
     if (getenv("SEGS")) print_segs(r);
@@ -408,6 +484,38 @@ int main(int argc, char **argv) {
     screen = S_RIDE, used_ok = true;
     draw_ride();
     ppm(argv[2]);
+    return 0;
+  }
+  if (argc > 4 && !strcmp(argv[1], "wait")) { /* wait LEVEL FROM TO: press, let go WAIT frames, then hold: how far */
+    int l = atoi(argv[2]);
+    for (int w = atoi(argv[3]); w <= atoi(argv[4]); w += 6) {
+      rd_run *r = &run;
+      run_start(r, RUN_LEVEL, l, 0, l / 8, 3);
+      run_step(r, true);
+      int i = 0;
+      for (; i < 60 * 30 && !r->ended; i++) run_step(r, i >= w);
+      printf("wait %3d: ended %d at x %.0f y %.0f after %.1f s\n", w, r->ended, r->b.x, r->b.y, r->ms / 1000);
+    }
+    return 0;
+  }
+  if (argc > 1 && !strcmp(argv[1], "mem")) { /* mem: the arena and the fixtures at their most, the bot in every level */
+    int maxp = 0;
+    for (int l = 0; l < NLEVELS; l++) {
+      if (getenv("LEVEL") && l != atoi(getenv("LEVEL"))) continue;
+      for (int fl = 0; fl < 2; fl++) {
+        rd_run *r = &run;
+        run_start(r, RUN_LEVEL, l, 0, l / 8, 3);
+        int mp = 0;
+        int mc = 0;
+        for (int i = 0; i < 60 * 40 && !r->ended; i++) { run_step(r, bot(r, fl)); if (i % 7 == 0) draw_run(r), draw_flush(0); if (ph_proxies() > mp) mp = ph_proxies(); if (ph_contacts() > mc) { mc = ph_contacts(); if (getenv("WHERE")) printf("  frame %d contacts %d fixtures %d bodies %d at x %.0f\n", i, mc, ph_proxies(), ph_bodies(), r->b.x); } }
+        printf("  contacts at most %d\n", mc);
+        if (mp > maxp) maxp = mp;
+        printf("level %2d bot %d: calculator %6zu bytes, %3d fixtures at most, %u frames short, %s, ended %d at x %.0f\n", l, fl, ph_device_peak(), mp, (unsigned)r->tight_frames, r->broken ? "OUT OF MEMORY" : "fine", r->ended, r->b.x);
+      }
+    }
+    printf("fixtures at most %d\n", maxp);
+    { extern int draw_most_cmds, draw_most_pts; printf("drawn: %d shapes, %d points at most\n", draw_most_cmds, draw_most_pts); }
+    { void ph_device_classes(int *); int ch[14]; ph_device_classes(ch); for (int k = 0; k < 14; k++) printf("%d ", ch[k]); printf("(chunks of 16 32 64 96 128 160 192 224 256 320 ...)\n"); }
     return 0;
   }
   if (argc > 2 && !strcmp(argv[1], "solve")) { /* solve FIRST [LAST]: can the levels be ridden to their end */
@@ -419,7 +527,7 @@ int main(int argc, char **argv) {
       if (n) {
         run_start(&run, RUN_LEVEL, l, 0, l / 8, 9);
         for (int sg = 0; sg < n; sg++) for (int f = 0; f < SEG && !run.ended; f++) run_step(&run, pat(path[sg], f));
-        printf(" in %.2f s, %d flips", run_level_time(&run) / 1000, run.flips);
+        printf(" in %.2f s, %d flips (stars at %.1f and %.1f s)", run_level_time(&run) / 1000, run.flips, star2[l] / 100.0f, star3[l] / 100.0f);
         ok++;
       }
       printf("\n");

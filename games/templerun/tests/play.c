@@ -1,14 +1,14 @@
 /* Plays Temple Run on a computer, with scripted keys, and saves frames.
  *
  *   play [--frames N] [--keys "10-40:right,50:ok,..."] [--shots 30,60|all] [--out DIR] [--saves DIR] [--seed N]
- *        [--bot FROM] [--fuzz FROM] [--coins N] [--up N] [--use N] [--god] [--draw-every N] [--raw DIR:FROM-TO]
+ *        [--bot FROM] [--fuzz FROM] [--coins N] [--up N] [--use N] [--god] [--draw-every N] [--raw DIR:FROM-TO] [--raw-step N]
  *        [--invis] [--root F]... [--calm F] [--stats]
  *
  * Keys: left right up down ok back one three home lean_l lean_r shift. "a-b:key" holds the key from frame a to b,
  * "a:key" for one frame (frames are the game's steps, 60 a second). --bot plays the run from frame FROM on: it
  * reads the path ahead, turns at the corners, jumps, slides and leans. --fuzz presses random keys from FROM on
  * (Home never). --god: nothing hurts (invisible, and the wings always on). --up N: every upgrade at level N;
- * --use N: N of each thing to use. Screenshots are DIR/shot_<frame>.ppm; --raw keeps frames FROM..TO as raw
+ * --use N: N of each thing to use. Screenshots are DIR/shot_<frame>.ppm; --raw keeps every --raw-step-th (4) of frames FROM..TO as raw
  * RGB565 files for tools/record.py --frames. --invis: always invisible (obstacles pass, gaps and corners don't).
  * --root F: at frame F the next pieces are plain (up to a corner) and the next one has a root across it; --calm F:
  * at frame F the last stumble is long ago; --plain F: from frame F on, the pieces ahead are plain (up to a corner).
@@ -77,7 +77,7 @@ static void plain_ahead(bool root) {
 }
 
 int main(int argc, char **argv) {
-  int frames = 600, draw_every = 1, bot_from = -1, fuzz_from = -1, coins = -1, up = -1, use = -1, raw_from = 0, raw_to = -1;
+  int frames = 600, draw_every = 1, bot_from = -1, fuzz_from = -1, coins = -1, up = -1, use = -1, raw_from = 0, raw_to = -1, raw_step = 4;
   const char *shots = "", *out = "build/shots", *saves = "build/host-saves", *raw = NULL;
   bool stats = false, all = false, god = false, invis = false;
   int roots[8], nroots = 0, calm = -1, trace = -1, plain = -1;
@@ -96,6 +96,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(a, "--up")) up = atoi(v), i++;
     else if (!strcmp(a, "--use")) use = atoi(v), i++;
     else if (!strcmp(a, "--draw-every")) draw_every = atoi(v), i++;
+    else if (!strcmp(a, "--raw-step")) raw_step = atoi(v) > 0 ? atoi(v) : 4, i++;
     else if (!strcmp(a, "--raw")) {
       snprintf(rawdir, sizeof rawdir, "%s", v);
       char *c = strrchr(rawdir, ':');
@@ -169,7 +170,7 @@ int main(int argc, char **argv) {
     snprintf(name, sizeof name, ",%d,", f);
     snprintf(list, sizeof list, ",%s,", shots);
     bool shot = all || strstr(list, name);
-    bool keep = raw && f >= raw_from && f <= raw_to && f % 4 == 0;
+    bool keep = raw && f >= raw_from && f <= raw_to && (f - raw_from) % raw_step == 0;
     if (shot || keep || f % draw_every == 0) {
       app_draw();
       if (r_count() > max_polys) max_polys = r_count();

@@ -173,7 +173,6 @@ Paused	Pause
 Quit Universal Paperclips?	Quitter Universal Paperclips\xA0?
 Are you sure you want to restart?	Vraiment recommencer\xA0?
 Start a new game?	Commencer une nouvelle partie\xA0?
-Your paperclips are saved.	Tes trombones sont sauvegardés.
 This game will be gone.	Cette partie sera perdue.
 Quit	Quitter
 Keep playing	Continuer

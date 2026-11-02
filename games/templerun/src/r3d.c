@@ -1,9 +1,9 @@
 /* The 3D renderer (r3d.h): polygons in a list, drawn band by band with a depth buffer. */
 #include "r3d.h"
 
-#define NEAR 0.35f
+#define NEAR R_NEAR
 #define FAR 190.0f
-#define ZK 22000.0f      /* depths are ZK / z: 62857 at the near plane, larger is nearer */
+#define ZK 62000.0f      /* depths are ZK / z: 65263 at the near plane, larger is nearer */
 #define MAXP 1800        /* polygons a frame */
 #define MAXV 6000        /* their corners */
 #define MAXT 760         /* textured faces in perspective */
@@ -21,6 +21,7 @@ typedef struct {
   uint8_t n, kind;
   uint8_t y0, y1;        /* the rows it covers */
   uint8_t alpha;         /* see-through (255: not); textured faces: their light 0..32 */
+  uint8_t near;          /* its nearest depth >> 8: the polygons are drawn nearest first */
 } Poly;
 typedef struct {
   int16_t x, y;
@@ -39,10 +40,11 @@ int r_y0, r_y1;
 Camera cam;
 float r_fog0 = 19, r_fog1 = 76, r_far = 40;
 uint32_t r_fog_rgb = 0x325256;
-/* the fog by depth: its amount (0..32) for depths d >> 2, below fog_d0 (nearer than r_fog0: none) */
-#define FOG_N 640
+/* the fog by depth: its amount (0..32) for depths d >> 3, below fog_d0 (nearer than r_fog0: none; farther than r_fog1,
+ * below fog_d1: all) */
+#define FOG_N 512
 static uint8_t fogtab[FOG_N];
-static uint16_t fog_d0, fog565;
+static uint16_t fog_d0, fog_d1, fog565;
 static float fog_made0, fog_made1;
 
 /* the frame's lists: in the RAM after the game's own (r_init) */
@@ -53,6 +55,7 @@ typedef struct {
   UV uvs[MAXT];
   uint16_t zbuf[SCREEN_W * BAND_H] __attribute__((aligned(8)));
 } Work;
+_Static_assert(SCREEN_W * BAND_H >= MAXP + 256, "the depth buffer holds the sort's lists");
 static Work *work;
 #define polys (work->polys)
 #define order (work->order)
@@ -185,7 +188,7 @@ static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, u
 /* the rest of emit, from the corners on the screen (sx, sy from its middle) */
 static void emit_screen(const CV *p, int n, float *sx, float *sy, int kind, uint16_t color, int flags, int alpha, uint16_t avg) {
   float f = cam.f;
-  float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f, zsum = 0;
+  float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f, zsum = 0, zmin = 1e9f;
   for (int i = 0; i < n; i++) {
     sx[i] += cam.cx, sy[i] += cam.cy;
     if (sx[i] < x0) x0 = sx[i];
@@ -193,6 +196,7 @@ static void emit_screen(const CV *p, int n, float *sx, float *sy, int kind, uint
     if (sy[i] < y0) y0 = sy[i];
     if (sy[i] > y1) y1 = sy[i];
     zsum += p[i].z;
+    if (p[i].z < zmin) zmin = p[i].z;
   }
   if (x1 < 0 || x0 >= SCREEN_W || y1 < 0 || y0 >= SCREEN_H) return;
   float area = 0;
@@ -215,7 +219,8 @@ static void emit_screen(const CV *p, int n, float *sx, float *sy, int kind, uint
   if (flags & P_DECAL) q->c += 3;
   if (flags & P_DECAL2) q->c += 6;
   if (flags & P_DECAL3) q->c += 9;
-  float zm = zsum / (float)n;
+  float zm = zsum / (float)n, dn = ZK / zmin;
+  q->near = (uint8_t)(dn >= 65535 ? 255 : (int)dn >> 8);
   q->kind = (uint8_t)kind;
   q->extra = 0;
   if (kind == K_PERSP) {
@@ -394,6 +399,70 @@ static const uint32_t *spread(const Texture *t) {
   return NULL;
 }
 
+/* pixels [zp, ze) of a textured run (their colours at cp): where it lies in front, its texel, see-through where the
+ * picture is, lit by light (32: as it is; sp: the picture's spread palette, when lit). WL: the picture's side, log2, when
+ * it is known here (0: the picture's own). Returns the depth after the run */
+__attribute__((always_inline)) static inline uint32_t tex_run(uint16_t *zp, const uint16_t *ze, uint16_t *cp, uint32_t z,
+                                                              uint32_t da, uint32_t uu, uint32_t du, uint32_t vv, uint32_t dv,
+                                                              const Texture *tx, int light, const uint32_t *sp, int WL) {
+  const uint8_t *px = tx->px;
+  const uint16_t *pal = tx->pal;
+  bool clear = tx->clear;
+  /* the texel: v's row times the width, or u's column */
+  uint32_t wl = WL ? (uint32_t)WL : tx->wl, wm = (1u << wl) - 1, hm = WL ? wm : (1u << tx->hl) - 1;
+#define TEXEL ((((vv >> 16) & hm) << wl) | ((uu >> 16) & wm))
+  if (light >= 32 && !clear) {
+    for (; zp < ze; zp++, cp++, z += da, uu += du, vv += dv) {
+      uint16_t d = (uint16_t)(z >> 16);
+      if (d > *zp) *zp = d, *cp = pal[px[TEXEL]];
+    }
+  } else if (light >= 32) {
+    for (; zp < ze; zp++, cp++, z += da, uu += du, vv += dv) {
+      uint16_t d = (uint16_t)(z >> 16);
+      if (d <= *zp) continue;
+      uint8_t t = px[TEXEL];
+      if (t) *zp = d, *cp = pal[t];
+    }
+  } else if (sp && !clear) {
+    for (; zp < ze; zp++, cp++, z += da, uu += du, vv += dv) {
+      uint16_t d = (uint16_t)(z >> 16);
+      if (d <= *zp) continue;
+      uint32_t x = (sp[px[TEXEL]] * (uint32_t)light >> 5) & 0x07E0F81F;   /* (r_mix565(0, pal[t], light)) */
+      *zp = d, *cp = (uint16_t)(x | x >> 16);
+    }
+  } else if (sp) {
+    for (; zp < ze; zp++, cp++, z += da, uu += du, vv += dv) {
+      uint16_t d = (uint16_t)(z >> 16);
+      if (d <= *zp) continue;
+      uint8_t t = px[TEXEL];
+      if (!t) continue;
+      uint32_t x = (sp[t] * (uint32_t)light >> 5) & 0x07E0F81F;
+      *zp = d, *cp = (uint16_t)(x | x >> 16);
+    }
+  } else {
+    for (; zp < ze; zp++, cp++, z += da, uu += du, vv += dv) {
+      uint16_t d = (uint16_t)(z >> 16);
+      if (d <= *zp) continue;
+      uint8_t t = px[TEXEL];
+      if (clear && !t) continue;
+      *zp = d, *cp = r_mix565(0, pal[t], light);
+    }
+  }
+#undef TEXEL
+  return z;
+}
+
+/* (each its own function: the run's loop has the registers to itself) */
+#define TEX_RUN(name, WL)                                                                                              \
+  __attribute__((noinline)) static uint32_t name(uint16_t *zp, const uint16_t *ze, uint16_t *cp, uint32_t z, uint32_t da, \
+                                                 uint32_t uu, uint32_t du, uint32_t vv, uint32_t dv, const Texture *tx,  \
+                                                 int light, const uint32_t *sp) {                                         \
+    return tex_run(zp, ze, cp, z, da, uu, du, vv, dv, tx, light, sp, WL);                                               \
+  }
+TEX_RUN(tex_run9, 9)
+TEX_RUN(tex_run8, 8)
+TEX_RUN(tex_run0, 0)
+
 /* a row of a polygon, pixels [x0, x1) of row y (its middle yc), between the edges L (at xl) and R (at xr) */
 __attribute__((noinline)) static void raster_row(const Poly *q, int kind, int y, float yc, int x0, int x1,
                                                             const Texture *tx, int32_t da, int alpha, uint16_t col) {
@@ -422,12 +491,7 @@ __attribute__((noinline)) static void raster_row(const Poly *q, int kind, int y,
   }
   if (kind == K_PERSP) {
     const UV *w = &uvs[q->extra];
-    const uint8_t *px = tx->px;
-    const uint16_t *pal = tx->pal;
-    /* the texel: (v >> vs & hmask) | (u >> 16 & wm), v's row already times the width */
-    uint32_t wm = (1u << tx->wl) - 1, hmask = ((1u << tx->hl) - 1) << tx->wl;
-    int vs = 16 - tx->wl, light = q->alpha;
-    bool clear = tx->clear;
+    int light = q->alpha;
     const uint32_t *sp = light < 32 ? spread(tx) : NULL;
     /* u and v exactly every 16 pixels, straight lines between; a run of 16 all behind what is drawn is passed
      * over without its texture places */
@@ -466,45 +530,10 @@ __attribute__((noinline)) static void raster_row(const Poly *q, int kind, int y,
       if (n == 16) du = (uint32_t)((u2 - u) >> 4), dv = (uint32_t)((v2 - v) >> 4);
       else du = (uint32_t)((u2 - u) / n), dv = (uint32_t)((v2 - v) / n);
       uint32_t uu = (uint32_t)u, vv = (uint32_t)v;
-      /* (three loops: the plain one kept as short as can be) */
-      if (light >= 32 && !clear) {
-        for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
-          uint16_t d = (uint16_t)(z >> 16);
-          if (d > *zp) *zp = d, *cp = pal[px[(vv >> vs & hmask) | (uu >> 16 & wm)]];
-        }
-      } else if (light >= 32) {
-        for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
-          uint16_t d = (uint16_t)(z >> 16);
-          if (d <= *zp) continue;
-          uint8_t t = px[(vv >> vs & hmask) | (uu >> 16 & wm)];
-          if (t) *zp = d, *cp = pal[t];
-#ifdef HOST
-          if (t) r_stat_written++;
-          else {
-            r_stat_holes++, r_stat_texhole[q->color]++;
-            extern int r_show_holes;
-            if (r_show_holes) *cp = 0xF81F;
-          }
-#endif
-        }
-      } else if (sp) {
-        for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
-          uint16_t d = (uint16_t)(z >> 16);
-          if (d <= *zp) continue;
-          uint8_t t = px[(vv >> vs & hmask) | (uu >> 16 & wm)];
-          if (clear && !t) continue;
-          uint32_t x = (sp[t] * (uint32_t)light >> 5) & 0x07E0F81F;   /* (r_mix565(0, pal[t], light)) */
-          *zp = d, *cp = (uint16_t)(x | x >> 16);
-        }
-      } else {
-        for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
-          uint16_t d = (uint16_t)(z >> 16);
-          if (d <= *zp) continue;
-          uint8_t t = px[(vv >> vs & hmask) | (uu >> 16 & wm)];
-          if (clear && !t) continue;
-          *zp = d, *cp = r_mix565(0, pal[t], light);
-        }
-      }
+      /* (the game's pictures are square, 512 or 256 across: their loops with the sizes known, short of registers) */
+      if (tx->wl == 9 && tx->hl == 9) z = tex_run9(zp, ze, cp, z, (uint32_t)da, uu, du, vv, dv, tx, light, sp);
+      else if (tx->wl == 8 && tx->hl == 8) z = tex_run8(zp, ze, cp, z, (uint32_t)da, uu, du, vv, dv, tx, light, sp);
+      else z = tex_run0(zp, ze, cp, z, (uint32_t)da, uu, du, vv, dv, tx, light, sp);
       x += n;
       qz = qz2, qu = qu2, qv = qv2, u = u2, v = v2;
       known = true;
@@ -633,45 +662,75 @@ static void fog_make(void) {
   if (fog_made0 == r_fog0 && fog_made1 == r_fog1) return;
   fog_made0 = r_fog0, fog_made1 = r_fog1;
   float d0 = ZK / r_fog0;
-  fog_d0 = d0 >= 4 * FOG_N ? 4 * FOG_N - 1 : (uint16_t)d0;
+  fog_d0 = d0 >= 8 * FOG_N ? 8 * FOG_N - 1 : (uint16_t)d0;
+  fog_d1 = 0;
   for (int i = 0; i < FOG_N; i++) {
-    float z = ZK / ((float)i * 4 + 2), t = (z - r_fog0) / (r_fog1 - r_fog0);
+    float z = ZK / ((float)i * 8 + 4), t = (z - r_fog0) / (r_fog1 - r_fog0);
     fogtab[i] = (uint8_t)(t <= 0 ? 0 : t >= 1 ? 32 : (int)(t * 32 + 0.5f));
+    if (fogtab[i] == 32) fog_d1 = (uint16_t)(i * 8 + 8);
   }
 }
 
-/* a band's pixels toward the fog's colour, each by its depth (the background's too: the sky, depth 0, is all fog) */
-static void fog_band(void) {
-  uint16_t fc = fog565, d0 = fog_d0;
-  uint32_t y = (fc | (uint32_t)fc << 16) & 0x07E0F81F;   /* (r_mix565 with the fog's colour spread once) */
-  for (int i = 0; i < SCREEN_W * BAND_H; i++) {
-    uint16_t d = zbuf[i];
-    if (d >= d0) continue;
-    int t = fogtab[d >> 2];
-    if (t >= 32) r_col[i] = fc;
-    else if (t) {
-      uint32_t c = r_col[i], x = (c | c << 16) & 0x07E0F81F;
-      x = (x + ((y - x) * (uint32_t)t >> 5)) & 0x07E0F81F;
-      r_col[i] = (uint16_t)(x | x >> 16);
-    }
-  }
-}
-
-uint16_t r_floor_depth(float z) {
+static uint16_t r_floor_depth(float z) {
   float d = ZK / z;
   d -= d * (1.0f / 256);   /* (a hair farther: a shadow lying on it is drawn, what is under it is not) */
   return d >= 65535 ? 65535 : d <= 0 ? 0 : (uint16_t)d;
 }
 
-void r_band_depth(int y, int x0, int x1, uint16_t d) {
-  uint16_t *zb = zbuf + (y - r_y0) * SCREEN_W;
-  for (int x = x0; x < x1; x++) zb[x] = d;
+/* after a band's polygons: the ground (its picture, fogged as its row's depth has it) and the sky where none lies
+ * nearer, and every other pixel toward the fog's colour by its depth; one pass over the band */
+static void back_band(const Texture *tex, r_ground_fn ground) {
+  uint16_t fc = fog565, d0 = fog_d0, d1 = fog_d1;
+  uint32_t fs = (fc | (uint32_t)fc << 16) & 0x07E0F81F;   /* (r_mix565 with the fog's colour spread once) */
+  const uint32_t *sp = tex ? spread(tex) : NULL;
+  for (int y = r_y0; y < r_y1; y++) {
+    uint16_t *zb = zbuf + (y - r_y0) * SCREEN_W, *cb = r_col + (y - r_y0) * SCREEN_W;
+    RGround g = {0, 0, 0, 0, 0};
+    if (ground && sp) ground(y, &g);
+    uint16_t dg = g.z > 0 && g.z < r_fog1 ? r_floor_depth(g.z) : 0;
+    int tg = dg >= d0 ? 0 : fogtab[dg >> 3];
+    if (!dg || tg >= 32) {
+      /* the sky (or the ground all in the fog): the fog's colour where nothing is drawn */
+      for (int x = 0; x < SCREEN_W; x++) {
+        uint16_t d = zb[x];
+        if (d >= d0) continue;
+        if (d < d1) {
+          cb[x] = fc;
+          continue;
+        }
+        uint32_t c = cb[x], k = (c | c << 16) & 0x07E0F81F;
+        k = (k + ((fs - k) * (uint32_t)fogtab[d >> 3] >> 5)) & 0x07E0F81F;
+        cb[x] = (uint16_t)(k | k >> 16);
+      }
+      continue;
+    }
+    /* the ground's texel at x: (v >> vs & hm) | (u >> 16 & wm), as raster_row finds them; fogged by its row */
+    const uint8_t *px = tex->px;
+    uint32_t wm = (1u << tex->wl) - 1, hm = ((1u << tex->hl) - 1) << tex->wl, keep = (uint32_t)(32 - tg), add = fs * (uint32_t)tg;
+    int vs = 16 - tex->wl;
+    for (int x = 0; x < SCREEN_W; x++) {
+      uint16_t d = zb[x];
+      if (d < dg) {
+        uint32_t u = (uint32_t)(g.u + g.du * x), v = (uint32_t)(g.v + g.dv * x);
+        uint32_t k = ((sp[px[(v >> vs & hm) | (u >> 16 & wm)]] * keep + add) >> 5) & 0x07E0F81F;
+        cb[x] = (uint16_t)(k | k >> 16), zb[x] = dg;
+      } else if (d < d0) {
+        if (d < d1) {
+          cb[x] = fc;
+          continue;
+        }
+        uint32_t c = cb[x], k = (c | c << 16) & 0x07E0F81F;
+        k = (k + ((fs - k) * (uint32_t)fogtab[d >> 3] >> 5)) & 0x07E0F81F;
+        cb[x] = (uint16_t)(k | k >> 16);
+      }
+    }
+  }
 }
 
-void r_render(r_band_fn bg, r_band_fn overlay) {
+void r_render(const Texture *tex, r_ground_fn ground, r_band_fn overlay) {
   fog_make();
   fog565 = r_565(r_fog_rgb);
-  /* the see-through polygons after the others, in the order they came */
+  /* the see-through polygons after the others (and after the ground: they are seen over it), in the order they came */
   if (nalpha) {
     int k = 0;
     for (int i = 0; i < npolys; i++)
@@ -679,21 +738,32 @@ void r_render(r_band_fn bg, r_band_fn overlay) {
     for (int i = 0; i < npolys; i++)
       if (polys[i].alpha != 255 && polys[i].kind != K_PERSP) order[k++] = (uint16_t)i;
   }
+  /* the opaque ones nearest first: what lies behind them is then passed over 16 pixels at a time (raster_row), not drawn
+   * and drawn over (a counting sort by their nearest depths, its lists in the depth buffer's room, unused till the
+   * bands) */
+  int opaque = npolys - nalpha;
+  uint16_t *sorted = (uint16_t *)(void *)zbuf, *count = sorted + MAXP;
+  for (int k = 0; k < 256; k++) count[k] = 0;
+  for (int i = 0; i < opaque; i++) count[polys[order[i]].near]++;
+  for (int k = 255, at = 0; k >= 0; k--) {
+    int c = count[k];
+    count[k] = (uint16_t)at, at += c;
+  }
+  for (int i = 0; i < opaque; i++) sorted[count[polys[order[i]].near]++] = order[i];
+  for (int i = 0; i < opaque; i++) order[i] = sorted[i];
   for (int band = 0; band < NBANDS; band++) {
     r_y0 = band * BAND_H, r_y1 = r_y0 + BAND_H;
     /* (cleared a word at a time: the C library's is a byte at a time) */
     for (uint32_t *p = (uint32_t *)(void *)zbuf, *e = p + sizeof zbuf / 4; p < e; p += 4) p[0] = p[1] = p[2] = p[3] = 0;
-    if (bg) bg();
-    else
-      for (int i = 0; i < SCREEN_W * BAND_H; i++) r_col[i] = 0;
     for (int i = 0; i < npolys; i++) {
+      if (i == opaque) back_band(tex, ground);
       const Poly *q = &polys[order[i]];
       if (q->y1 > r_y0 && q->y0 < r_y1) {
         if (q->n == 3 && (q->kind == K_FLAT || q->kind == K_PERSP)) raster_tri(q);
         else raster(q);
       }
     }
-    fog_band();
+    if (opaque == npolys) back_band(tex, ground);
     if (overlay) overlay();
     plat_push(0, r_y0, SCREEN_W, BAND_H, r_col);
   }

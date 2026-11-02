@@ -135,8 +135,8 @@ def store(d):
 
 
 def wings_and_headstart(d):
-    # OK in a run: the wings; with no one playing the runner dies, and the wings bring it back
-    st = play(d, "--use", "3", "--frames", "1500", "--keys", "30:ok,90:ok,200:ok")
+    # OK in a run (after its intro): the wings; with no one playing the runner dies, and the wings bring it back
+    st = play(d, "--use", "3", "--frames", "1500", "--keys", "30:ok,90:ok,300:ok")
     assert st["saved"] >= 1, st
     assert save(d)["wings"] == 2, save(d)
     # 1 near the start: a head start, far ahead in seconds

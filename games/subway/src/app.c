@@ -720,16 +720,12 @@ static void pause_overlay(void) {
 static void quit_overlay(void) {
   d_dim(110);
   bool title = back_to == S_TITLE;
-  popup(30, 56, 260, 130, "Quit");
-  if (band(84, 40)) {
-    d_text(&font_mid, 160 - d_text_width(&font_mid, title ? "Quit Subway Surfers?" : "Quit this run?") / 2, 104,
-           title ? "Quit Subway Surfers?" : "Quit this run?", C(0x243D5E), 255);
-    const char *sub = title ? "Your coins and progress are saved." : "The coins you picked up are kept.";
-    d_text(&font_small, 160 - d_text_width(&font_small, sub) / 2, 120, sub, C(0x243D5E), 255);
-  }
-  button(48, 140, 100, 30, &sl_red, "QUIT", sel == 1);
-  button(172, 140, 100, 30, &sl_green, title ? "STAY" : "PLAY ON", sel == 0);
-  if (band(194, 16)) hint(160, 196, "Left Right", "choose", "OK", "confirm");
+  popup(30, 64, 260, 114, "Quit");
+  const char *q = title ? "Quit Subway Surfers?" : "Quit this run?";
+  if (band(96, 24)) d_text(&font_mid, 160 - d_text_width(&font_mid, q) / 2, 112, q, C(0x243D5E), 255);
+  button(48, 132, 100, 30, &sl_red, "QUIT", sel == 1);
+  button(172, 132, 100, 30, &sl_green, title ? "STAY" : "PLAY ON", sel == 0);
+  if (band(186, 16)) hint(160, 188, "Left Right", "choose", "OK", "confirm");
 }
 
 static void saveme_overlay(void) {

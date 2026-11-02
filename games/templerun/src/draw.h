@@ -33,4 +33,7 @@ void d_pic(int pic, int x, int y, int a256, int flip, int from_row);
 /* the game's golden lettering: its line's top at y, align -1 left, 0 centre, 1 right of x; returns its width */
 int d_gold(const HudFont *f, int x, int y, const char *s, int align, int a256);
 int d_gold_width(const HudFont *f, const char *s);
+/* the game's white lettering in colour c (as its labels colour it): the same, s up to its end or n letters */
+int d_white(int x, int y, const char *s, int n, uint16_t c, int align);
+int d_white_width(const char *s, int n);
 #endif

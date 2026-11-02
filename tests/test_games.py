@@ -182,6 +182,12 @@ GAMES = {
                           *[(5000 + 200 * i, "down") for i in range(8)], (6800, "right"), (7000, "right"),
                           (7300, "ok"), (8300, "right"), (8600, "ok"), (10500, "right", 1500)), 13000,
                   presses((1500, "left", 1000)), 4000),
+    # New game, the name "A" and END: Toriel wakes Kris up and her texts go by; Home keeps the moment, and the
+    # next start is back there
+    "deltarune": ("Deltarune.nwa", "drresume.sav",
+                  presses((1500, "ok"), (2500, "ok"), (3000, "down"), (3200, "down"), (3400, "down"), (3600, "down"),
+                          (3800, "right"), (4100, "ok"), (6000, "ok"), (7000, "ok"), (8000, "ok")), 11000,
+                  presses((1500, "left", 1000)), 4000),
     # how to play, the title, a run up the middle track through the first coins; Home banks them. Next time
     # straight from the title into another run, quit with On/Off
     "subway": ("SubwaySurfers.nwa", "subway.sav", presses((1500, "ok"), (2500, "ok")), 8000,
@@ -310,6 +316,13 @@ GAMES = {
     # in it, paused
     "fnaf4": ("FiveNightsAtFreddys4.nwa", "fnaf4res.sav", presses((1500, "ok"), (2200, "ok")), 9000,
               presses((1500, "back")), 5000),
+    # the title, file 1, New Game, Adventure, Normal, the party (0 done), the map; Home keeps the file. Next time,
+    # from the copy: the title, file 1, Continue, the party, the map, quit with On/Off
+    "fnafworld": ("FiveNightsAtFreddysWorld.nwa", "fnafw1.sav",
+                  presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "ok"), (4300, "ok"),
+                          (5200, "0")) + [(6000, 8000, K["right"])], 10000,
+                  presses((1500, "ok"), (2200, "ok"), (2900, "down"), (3400, "ok"), (4100, "0"))
+                  + [(4800, 6400, K["left"])], 9000),
     # how to play (the first time: two pages), Play, Stereo Madness, OK held to jump, Back to pause; Home keeps the
     # guide read and the time played. Next time, from the copy, Play straight away, quit with On/Off
     "famidash": ("Famidash.nwa", "famidash.sav",
@@ -330,6 +343,20 @@ GAMES = {
     "catninja": ("CatNinja.nwa", "catninja.sav",
                  presses((1500, "ok"), (9500, "back")) + [(2500, 9000, K["right"])], 10000,
                  [(1500, 6000, K["right"])], 6500),
+    # the title, the map, Southport's Campaign, an archer tower, the first wave and its goblin's notification, Back to
+    # pause; Home keeps it read. Next time, from the copy, the map, quit with On/Off
+    "kingdomrush": ("KingdomRush.nwa", "kingdomrush.sav",
+                    presses((1000, "ok"), (1800, "ok"), (2600, "ok"), (3600, "ok"), (4300, "ok"), (5000, "3"),
+                            (8000, "ok"), (8800, "back")), 9500,
+                    presses((1500, "ok"), (2200, "back")), 3500),
+    # the title's Play, Classic, the first level, how to play (the first time), then one bullet: the level cleared;
+    # Home keeps its three stars. Next time, from the copy, the same level without the guide, quit with On/Off
+    "mrbullet": ("MrBullet.nwa", "mrbullet.sav",
+                 presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "ok"), (4300, "ok")), 7500,
+                 presses((1500, "ok"), (2200, "ok"), (2900, "ok")), 4500),
+    # no carts in its table (NumPlay Studio adds them): the screen that says so; keys do nothing, Home leaves
+    "numpico": ("NumPico.nwa", None, presses((1500, "ok"), (2000, "back"), (2500, "backspace")), 3500,
+                presses((1500, "ok")), 2500),
 }
 
 
@@ -387,8 +414,10 @@ SEEDS = {
 # NumWorks installer keeps): before the second session, as after installing
 # the app again, only the scripts are left, and the save must come back
 COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.py", "celeste": "celeste_saves.py",
-          "hollowknight": "hollowknight_saves.py", "hkfungal": "hollowknight_saves.py", "finalearth2": "finalearth2_saves.py",
-          "numpowder": "numpowder_saves.py", "undertale": "undertale_saves.py", "subway": "subway_saves.py",
+          "hollowknight": "hollowknight_saves.py", "hkfungal": "hollowknight_saves.py",
+          "finalearth2": "finalearth2_saves.py",
+          "numpowder": "numpowder_saves.py", "undertale": "undertale_saves.py", "deltarune": "deltarune_saves.py",
+          "subway": "subway_saves.py",
           "fnaf": "fnaf_saves.py", "doom": "doom_saves.py", "isaac": "isaac_saves.py",
           "hillclimb": "hillclimb_saves.py", "pvz": "pvz_saves.py", "sonic": "sonic_saves.py",
           "cookieclicker": "cookieclicker_saves.py", "leveldevil": "leveldevil_saves.py",
@@ -399,9 +428,11 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
           "badtime": "badtime_saves.py", "mahjong": "mahjong_saves.py",
           "rider": "rider_saves.py", "snowrider": "snowrider_saves.py", "templerun": "templerun_saves.py",
-          "fnaf2": "fnaf2_saves.py", "fnaf3": "fnaf3_saves.py", "fnaf4": "fnaf4_saves.py", "famidash": "famidash_saves.py",
+          "fnaf2": "fnaf2_saves.py", "fnaf3": "fnaf3_saves.py", "fnaf4": "fnaf4_saves.py", "fnafworld": "fnafw_saves.py", "famidash": "famidash_saves.py",
           "clashroyale": "clashroyale_saves.py",
-          "catninja": "catninja_saves.py"}
+          "catninja": "catninja_saves.py",
+          "kingdomrush": "kingdomrush_saves.py",
+          "mrbullet": "mrbullet_saves.py"}
 
 
 def paperclips_ok(v):
@@ -512,6 +543,9 @@ CHECKS = {
     # the moment kept ("UT01", the frames played at 52); after the reinstall, from the copy, it goes on
     "undertale": (lambda v: v[:4] == b"UT01" and struct.unpack_from("<I", v, 52)[0] > 0,
                   lambda v: v[:4] == b"UT01" and struct.unpack_from("<I", v, 52)[0] > 60),
+    # the moment kept ("DR01", the frames played at 156); after the reinstall, from the copy, it goes on
+    "deltarune": (lambda v: v[:4] == b"DR01" and struct.unpack_from("<I", v, 156)[0] > 0,
+                  lambda v: v[:4] == b"DR01" and struct.unpack_from("<I", v, 156)[0] > 60),
     # the progress ("SUB1"): a run played, its coins banked (offset 8), runs at 20; then a second run
     "subway": (lambda v: v[:4] == b"SUB1" and struct.unpack_from("<I", v, 8)[0] > 0 and struct.unpack_from("<I", v, 20)[0] == 1,
                lambda v: v[:4] == b"SUB1" and struct.unpack_from("<I", v, 20)[0] == 2),
@@ -682,6 +716,9 @@ CHECKS = {
     # the night kept ("FNF4", its steps at 652); after the reinstall, from the copy, it goes on
     "fnaf4": (lambda v: v[:4] == b"FNF4" and struct.unpack_from("<I", v, 652)[0] > 120,
               lambda v: v[:4] == b"FNF4" and struct.unpack_from("<I", v, 652)[0] > 300),
+    # "FNFW", the file started (at 8), the time played (minutes, seconds at 396); after the reinstall, from the copy, more
+    "fnafworld": (lambda v: v[:4] == b"FNFW" and v[8] == 1 and v[396] * 60 + v[397] >= 3,
+                  lambda v: v[:4] == b"FNFW" and v[8] == 1 and v[396] * 60 + v[397] >= 6),
     # "FMD1", version 1: how to play read (flags at 5), time played (564); after the reinstall, from the copy, more
     "famidash": (lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 7000,
                  lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 12000),
@@ -690,6 +727,13 @@ CHECKS = {
     # "CTN1", version 1: how to play read (flags at 5), in level 1 (the level at 9); after the reinstall, from the
     # copy, back in it through the title map and on (level 1 or 2)
     "catninja": (lambda v: catninja_ok(v) and v[5] & 1 and v[9] == 0, lambda v: catninja_ok(v) and v[5] & 1 and v[9] in (0, 1)),
+    # "KRS", version 1, the check byte last: the goblin's notification read (seen_note at 48); after the reinstall,
+    # from the copy, still read
+    "kingdomrush": (lambda v: len(v) == 57 and v[:4] == b"KRS\1" and v[48] & 8,
+                    lambda v: len(v) == 57 and v[:4] == b"KRS\1" and v[48] & 8),
+    # "MRB1", version 1, its size (1216): the first level's three stars (8), cleared (604), how to play read (1208);
+    # after the reinstall, from the copy, the same
+    "mrbullet": (lambda v: len(v) == 1216 and v[:4] == b"MRB1" and v[8] == 3 and v[604] == 1 and v[1208] == 1,) * 2,
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept
@@ -762,6 +806,7 @@ def play(name, path, out, index=None, copy=None, tag=None, start=800):
     game's own copy of its saves: only the scripts are left before the second session, as after installing
     the app again. The problems, the stack used and the files after the first session."""
     nwa, save, keys1, home1, keys2, home2 = GAMES[name]
+    emu.configure(xl=os.path.getsize(path) > 2 * 1024 * 1024)  # (a 6 MB app: Enlarged Extra Apps)
     tag = tag or name
     if index is not None:  # Home in a game quits NumPlay altogether
         keys1, home1 = through_launcher(index, keys1, home1, start)
