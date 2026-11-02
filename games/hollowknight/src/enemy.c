@@ -20,7 +20,7 @@ enum {
   EF_FK, EF_FKHEAD, EF_GFLY, EF_HATCHER, EF_HATCHLING, EF_SLUG, EF_MOSSWALKER, EF_PIGEON, EF_PLANTTRAP, EF_SHAKER,
   EF_MOSQUITO, EF_FATFLY, EF_MOSSCHARGER, EF_MOSSKNIGHT, EF_HORNET, EF_MENDER,
   /* (past Greenpath: HK_XL) */
-  EF_FUNGLING, EF_FUNGOON, EF_AMBLOOM
+  EF_FUNGLING, EF_FUNGOON, EF_AMBLOOM, EF_SHRUMELING
 };
 enum { R_IDLE, R_TURN, R_WALK, R_A1, R_A2, R_A3, R_A4, R_A5, R_A6, R_A7, R_A8, R_DEATH_AIR, R_DEATH_LAND, NUM_ROLES };
 typedef struct {
@@ -6539,6 +6539,9 @@ void enemies_enter(void) {
   memset(&sh, 0, sizeof sh);
   memset(balls, 0, sizeof balls);
   memset(bullets, 0, sizeof bullets);
+#ifdef HK_XL
+  xl_enter();
+#endif
   memset(waves, 0, sizeof waves);
   memset(spurts, 0, sizeof spurts);
   memset(&gm, 0, sizeof gm);
@@ -6647,6 +6650,9 @@ void enemies_fixed(void) {
   geo_tick();
   balls_tick();
   bullets_tick();
+#ifdef HK_XL
+  xl_tick();
+#endif
   waves_tick();
   fk_arena_tick();
   fk_head_place();
@@ -6769,8 +6775,14 @@ void enemies_draw(void) {
       sprite_inst(sh.slash.sprite, e->body.x - 0.0486f * e->sx, e->body.y - 0.0117f, z - 0.001f, 1.27f * e->sx, 1, 0, &in);
       gfx_actor(&in, SORT_KEY(0, 0));
     }
+#ifdef HK_XL
+    xl_draw_enemy(e, z, flash_tint(e, 2 + i % 5));
+#endif
   }
   bullets_draw();
+#ifdef HK_XL
+  xl_draw();
+#endif
   spurts_draw();
   fk_arena_draw();
   gfly_corpse_draw();
@@ -6924,6 +6936,9 @@ int enemies_touch_hero(float x0, float y0, float x1, float y1, int *side) {
   }
   int dmg = bullets_touch_hero(x0, y0, x1, y1, side);
   if (dmg) return dmg;
+#ifdef HK_XL
+  if ((dmg = xl_touch(x0, y0, x1, y1, side))) return dmg;
+#endif
   dmg = spurts_touch(x0, y0, x1, y1, side);
   if (dmg) return dmg;
   dmg = barrels_touch(x0, y0, x1, y1, side);
@@ -6951,6 +6966,11 @@ void enemies_debug(void) {
   int ng = 0;
   for (int i = 0; i < MAX_GEO; i++) ng += geo[i].on;
   printf("   geo %d pieces, %d in purse, mp %d\n", ng, g_pd.geo, g_pd.mp);
+#ifdef HK_XL
+  int ngas = 0;
+  for (int i = 0; i < MAX_GAS; i++) ngas += gas[i].on;
+  printf("   gas %d\n", ngas);
+#endif
 }
 
 /* (tests: the enemy of the room's record ent out and alive) */

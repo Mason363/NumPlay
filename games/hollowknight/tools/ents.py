@@ -45,7 +45,7 @@ ENEMY_VARS = {"Zombie Swipe": (["Lunge Speed", "Idle Time"], ["Coward"]),
 TRIGGER_BODIES = {"Pigeon"}
 FRAME_BODIES = {"Plant Trap Control", "Mossy Control"}
 RANGES = {"Moss Walker": ("Wake Range",), "Pigeon": ("Hero Range", "Enemy Range"), "Plant Trap Control": ("Detector",),
-          "Moss Knight Control": ("Wake Box",), "Mender Bug Ctrl": ("Hero Detect",)}
+          "Moss Knight Control": ("Wake Box",), "Mender Bug Ctrl": ("Hero Detect",), "Fungus Flyer": ("Attack R", "Attack L")}
 # (enemies whose attacks start with their colliders off: those still kept, off)
 HITBOXES_OFF = {"Moss Knight Control"}
 # what follows an enemy's record: ENT_BOX records, tagged
@@ -136,6 +136,10 @@ class Sprites:
     def tk2d(self, path, col, name, scale=1.0, res=1.0):
         """A 2D Toolkit sprite of a collection (file, path id), by name."""
         return self._add(("tk2d", path, col, name, round(scale, 3), res))
+
+    def tex(self, path, pid, size, res=1.0):
+        """A texture of its own (a particle's), size units wide, centred."""
+        return self._add(("tex", path, pid, 0, round(size, 3), res))
 
     def _add(self, key):
         if key not in self.index:

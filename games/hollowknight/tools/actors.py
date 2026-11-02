@@ -102,6 +102,11 @@ XL_KINDS = [
     ("fungling", "Fungoon baby", ("sharedassets167.assets", 180), "FUNGLING", {"IDLE": "Idle", "A1": "TurnToIdle",
                                                                                "DEATH_AIR": "Death"}),
     ("ambloom", "Walker", ("sharedassets168.assets", 48), "AMBLOOM", {"WALK": "Walk", "TURN": "Turn"}),
+    ("fungoon", "Fungus Flyer", ("sharedassets167.assets", 134), "FUNGOON",
+     {"IDLE": "Float", "A1": "Spit Antic", "A2": "Spit", "A3": "Spit Recover", "A4": "Effect", "DEATH_AIR": "Death"}),
+    # (Shrumeling: its code plays its poses by name, CLIP_SHRUMELING_*)
+    ("shrumeling", "Shroom Mini", ("sharedassets169.assets", 210), "SHRUMELING", {"IDLE": "Idle", "A1": "Startle", "A2": "Run"},
+     ["Mini Rest 1", "Mini Rest 2", "Mini Rest 3", "Mini Rest to Wake 1", "Mini Rest to Wake 2", "Mini Rest to Wake 3"]),
     # (Fungified Husk: the Volatile Mosskin's FSM)
     ("fungushusk", "Fungus Zombie Attack", ("sharedassets167.assets", 135), "SHAKER",
      {"IDLE": "Idle", "WALK": "Walk", "TURN": "Turn", "A1": "Attack"}),
@@ -386,6 +391,15 @@ def unity_sprites(keys):
     object's scale."""
     out = []
     for level, exts, fid, pid, scale, res in keys:
+        if level == "tex":
+            # (a texture, scale units wide: a particle's, drawn as one)
+            img = tk2d.atlas(exts, fid)
+            wu, hu = scale, scale * img.height / img.width
+            w, h = min(img.width, max(1, round(wu * K0 * res))), min(img.height, max(1, round(hu * K0 * res)))
+            arr = np.asarray(img.resize((w, h), Image.BOX)).copy()
+            out.append({"key": (exts, fid), "job": art.ImageJob(arr, "tex/%d" % fid), "lx": -wu / 2, "ty": hu / 2,
+                        "tu": wu / w, "tv": hu / h})
+            continue
         if level == "tk2d":
             path, col, name = exts, fid, pid
             c = tk2d.collection(path, col)

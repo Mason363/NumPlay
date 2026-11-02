@@ -20,7 +20,7 @@ BUILD_DIR = output
 endif
 GAME = src/res.c src/tex.c src/room.c src/gfx.c src/phys.c src/anim.c src/hero.c src/camera.c src/game.c src/world.c src/obj.c src/enemy.c src/hud.c src/spell.c src/text.c src/npc.c src/title.c src/vm.c src/msg.c src/save.c src/death.c src/menu.c src/inv.c src/shop.c src/collect.c src/stag.c src/map.c src/lzma/LzmaDec.c
 SRC = $(GAME) src/plat_eadk.c src/main.c
-HEADERS = $(wildcard src/*.h) ../common/epsilon_app.h ../common/epsilon_files.h
+HEADERS = $(wildcard src/*.h) src/enemy_xl.c ../common/epsilon_app.h ../common/epsilon_files.h
 
 CFLAGS = -std=gnu11 $(shell $(NWLINK) eadk-cflags-device) -DEPSILON_XL=1 -DDATA_BIN='"$(DATA)"' $(XL_FLAGS)
 CFLAGS += -O2 -Wall -Wextra -Wno-unused-parameter -fno-math-errno -fsingle-precision-constant
