@@ -772,6 +772,23 @@ Five Nights at Freddy's 2 comes as its own app, `FiveNightsAtFreddys2.nwa`. Last
 Last from 12 to 6 AM at Fazbear's Fright. Springtrap comes room by room: play the audio on a camera next to his and he follows it, and seal the vent he crawls into. Reboot the audio, the cameras and the ventilation on the maintenance panel when they fail; with the ventilation down the dark comes in waves and he comes closer. Look away from a phantom on a camera before it jumps out. Night 5 opens the 6th.
 
 <br clear="right">
+
+## Five Nights at Freddy's 4
+
+<img src="../games/fnaf4/docs/shot.png" width="320" align="right" alt="Five Nights at Freddy's 4: the bedroom, the closet ahead">
+
+| Key | What it does |
+| --- | --- |
+| **Left / Right** (or 4 / 6) | Look left and right, at a door |
+| **OK** | Run to the door you face, or the closet |
+| **Down** | Turn to the bed, run back, turn around |
+| **OK** held | The flashlight |
+| **Up** held | Hold the door or the closet shut |
+| **Back** | Pause (Resume, Quit game) |
+
+Last from 12 to 6 AM in the bedroom. At a door, listen with the light off: breathing means someone stands right there, so hold the door shut until the steps go; no breathing, light the hall. Shut the closet on Foxy, light the Freddles off the bed. Fredbear comes up a hall on the 5th night: hold that door shut. After each of the first five nights, stop Plushtrap on the X to start the next at 2 AM. Night 5 opens the 6th and the Extras.
+
+<br clear="right">
 ## Famidash
 
 <img src="../games/famidash/docs/shot.png" width="320" align="right" alt="Famidash">

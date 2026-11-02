@@ -1408,6 +1408,28 @@
     "xl": true
   },
   {
+    "id": "fnaf4",
+    "rank": 36,
+    "title": "Five Nights at Freddy's 4",
+    "tagline": "Survive the bedroom",
+    "credit": "Based on the game by Scott Cawthon",
+    "top": "0x1E2638",
+    "bottom": "0x06080E",
+    "accent": "0x7A8FC8",
+    "colors": 16,
+    "records": [
+      "fnaf4.sav",
+      "fnaf4res.sav",
+      "fnaf4_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/fnaf4",
+    "default": false,
+    "xl": true
+  },
+  {
     "id": "famidash",
     "rank": 34,
     "title": "Famidash",
