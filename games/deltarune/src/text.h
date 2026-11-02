@@ -66,7 +66,9 @@ void writer_start(Writer *w, int x, int y, int charline);
 void writer_add(Writer *w, const char *s);
 bool writer_update(Writer *w, uint32_t pressed, uint32_t held);   /* false once done */
 void writer_draw(const Writer *w);
+extern uint16_t writer_img[6];                 /* global.writerimg: what \In draws (0 none) */
 bool writer_talking(const Writer *w);
+void writer_draw_face(const Writer *w);
 void writer_show_all(Writer *w);
 int writer_lines(const Writer *w);          /* lines shown of its message (linecount + 1) */
 #endif

@@ -212,7 +212,7 @@ int gfx_text_ex(int font, int x, int y, const char *s, int n, uint16_t color, in
   font_get(font, &f);
   int lines = 1;
   for (int i = 0; i < len; i++) lines += s[i] == '\n';
-  int w = gfx_text_width(font, s, len) + len * spacing;
+  int w = spacing >= GFX_FIXED ? len * (spacing - GFX_FIXED) + 8 : gfx_text_width(font, s, len) + len * spacing;
   if (npool + len > GFX_TEXT_POOL) {
     dropped_now++;
     return w;
@@ -412,7 +412,7 @@ static void rast_text(const Item *it, int by0, int by1) {
     if (!g) continue;
     int gw = g[1], gh = g[2], gx = x + (int8_t)g[3], gy = y + (int8_t)g[4];
     if (it->a) gx += shake_of(it->seed, i, 0, it->a), gy += shake_of(it->seed, i, 1, it->a);
-    x += g[0] + it->b;
+    x += it->b >= GFX_FIXED ? it->b - GFX_FIXED : g[0] + it->b;
     if (gy >= by1 || gy + gh <= by0) continue;
     const uint8_t *bits = f.bits + rd16(g + 6);
     int stride = (gw + 7) >> 3;

@@ -79,6 +79,13 @@ rc, s = play("--room", R["room_dark1"], "--at", "280,200", "--plot", 10, "--flag
              "--path", path)
 check("the landing to the castle, Lancer's fight and Ralsei", rc == 0 and s.get("plot") == "30" and s.get("party") == "1,3,0")
 
+# the tutorial: Ralsei offers it (Yes), then a lesson a turn: FIGHT, DEFEND, his PACIFY, the Hug, SPARE; the Manual
+rc, s = play("--room", R["room_castle_tutorial"], "--at", "90,310", "--plot", 30, "--party", "1,3,0", "--frames", 7000,
+             "--keys", "1-170:right,1200-1700:left", "--mash",
+             "--menukeys", "z,z,left,z,right,z,z,z,right,right,z,z,right,z,right,right,z,z")
+check("the tutorial, FIGHT to SPARE, and the Manual", rc == 0 and s.get("plot") == "31" and s.get("alive") == "0"
+      and s.get("mercy", "").startswith("100"))
+
 # ---------------------------------------------------------------- random keys
 starts = [("room_krisroom", "246,97", 0), ("room_schoollobby", "110,200", 3), ("room_dark1", "280,200", 10),
           ("room_dark_eyepuzzle", "200,300", 12), ("room_castle_town", "300,600", 30), ("room_field1", "450,310", 33)]

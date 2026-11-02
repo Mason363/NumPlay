@@ -11,6 +11,8 @@
 #include "text.h"
 
 enum { BR_WON, BR_SPARED, BR_FLED, BR_LOST, BR_SCRIPTED };
+/* what a member does this turn (battle_action) */
+enum { A_NONE, A_FIGHT, A_ACT, A_SPELL, A_ITEM, A_SPARE, A_DEFEND };
 
 void battle_start(int encounter);
 bool battle_over(void);
@@ -45,7 +47,16 @@ typedef struct EnemyDef {
   void (*draw_front)(struct Enemy *e); /* (drawn over the box and the bullets: a bike...) */
   int16_t blx, bly;                    /* its bubble (scr_enemyblcon) from it, units: 0, 0 the usual -160, 0 */
   uint16_t blspr;                      /* the bubble's sprite, 0 spr_battleblcon_long */
+  /* a battle of its own (the Dummy's lessons): asked BS_* things, NULL none */
+  int (*script)(struct Enemy *e, int ev, int arg);
+  uint8_t flags;                       /* EF_* */
 } EnemyDef;
+enum { EF_AMBUSH = 1,                  /* its turn first (scr_ambush) */
+       EF_STAYS = 2 };                 /* SPARE, PACIFY and FIGHT don't take it out: its script hears it (BS_*) */
+enum { BS_CANMOVE,                     /* may member arg (CH_*) choose this turn? (global.charmove) */
+       BS_STEP,                        /* every frame (arg 0), or asked (arg 1); nonzero: busy, the actions wait */
+       BS_DRAW,                        /* over the party (a hug...) */
+       BS_SPARED, BS_PACIFIED };       /* (EF_STAYS) what would have taken it out */
 
 typedef struct Enemy {
   const EnemyDef *def;
@@ -65,6 +76,7 @@ typedef struct Enemy {
   uint16_t say[4];                     /* this turn's bubble (text ids), 0xFFFF none */
   int nsay;
   uint16_t pic;                        /* or a picture in the bubble (obj_heartblcon), 0 none */
+  bool rest;                           /* no attack this turn (said in its talk) */
   int dmg_show, dmg_t, dmg_kind;       /* the number over it */
 } Enemy;
 
@@ -111,4 +123,14 @@ int enemies_alive(void);
 const EnemyDef *enemy_def(int obj);
 void enemy_defeat_run(Enemy *e);                 /* it runs off (killed by FIGHT: it flees) */
 void enemy_spare(Enemy *e);
+void enemy_leave(Enemy *e);                      /* gone, no spoils (scr_monsterdefeat by its own script) */
+int battle_action(int c, int *sub);              /* what member c (CH_*) does this turn: A_*, its ACT/spell/item */
+void battle_box_talk(int fc, int fe, const char *const *m, int n);   /* in its talk: the box speaks (typer 45),
+                                                 the bubbles and the attack wait for it */
+void battle_lesson(int fc, int fe, const char *const *m, int n, uint16_t after);   /* at the turn's end: a text to
+                                                 read, then the turn begins with `after` in the box (0xFFFF none) */
+bool battle_text_on(void);                       /* the box's text is showing */
+void battle_hide_hero(int c, bool hide);
+void battle_hero_pos(int c, int *x, int *y);     /* its place, units */
+int battle_hp_lost(int c);                       /* HP member c lost in this battle */
 #endif

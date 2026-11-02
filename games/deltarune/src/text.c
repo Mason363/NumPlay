@@ -333,6 +333,12 @@ int writer_lines(const Writer *w) {
   return n;
 }
 
+/* a writer's face (the battle box's, typer 45) where the box puts it */
+void writer_draw_face(const Writer *w) {
+  static int t;
+  if (w->fc && !w->done) face_draw(w->fc, w->fe, w->x + 8, w->y + 5, writer_talking(w), t++);
+}
+
 bool writer_talking(const Writer *w) { return !w->done && !w->halt && w->talk_t > 0; }
 
 static uint16_t color_of(char c, uint16_t own) {
@@ -347,6 +353,8 @@ static uint16_t color_of(char c, uint16_t own) {
   }
 }
 
+uint16_t writer_img[6];
+
 void writer_draw(const Writer *w) {
   if (w->done || !w->nmsg) return;
   int x0 = w->x + (w->fc ? 58 : 0);
@@ -359,8 +367,13 @@ void writer_draw(const Writer *w) {
     bool flush = false;
     if (*p == '\\') {
       if (p[1] == 'c') {
-        if (nrun) gfx_text_ex(w->font, run_x, wy, run, nrun, col, 0, 0, 0), nrun = 0;
+        if (nrun) gfx_text_ex(w->font, run_x, wy, run, nrun, col, 0, 0, GFX_FIXED + w->hspace), nrun = 0;
         col = color_of(p[2], w->color);
+      }
+      /* \In: global.writerimg[n] where it stands (the spaces after it make its room) */
+      if (p[1] == 'I' && p[2] >= '0' && p[2] <= '5' && writer_img[p[2] - '0']) {
+        if (nrun) gfx_text_ex(w->font, run_x, wy, run, nrun, col, 0, 0, GFX_FIXED + w->hspace), nrun = 0;
+        gfx_sprite(writer_img[p[2] - '0'], 0, wx + 2, wy + 1, 0, 255);
       }
       i += 2;
       continue;
@@ -373,24 +386,24 @@ void writer_draw(const Writer *w) {
     if (*p == '&') {
       flush = true;
     } else if (*p == '|') {
-      if (nrun) gfx_text_ex(w->font, run_x, wy, run, nrun, col, 0, 0, 0), nrun = 0;
+      if (nrun) gfx_text_ex(w->font, run_x, wy, run, nrun, col, 0, 0, GFX_FIXED + w->hspace), nrun = 0;
       wx += w->hspace;
       run_x = wx;
       continue;
     }
     if (flush) {
-      if (nrun) gfx_text_ex(w->font, run_x, wy, run, nrun, col, 0, 0, 0), nrun = 0;
+      if (nrun) gfx_text_ex(w->font, run_x, wy, run, nrun, col, 0, 0, GFX_FIXED + w->hspace), nrun = 0;
       wx = x0, wy += w->vspace, run_x = wx;
       continue;
     }
     /* every letter is hspace wide: drawn one by one where the font's own width differs */
     char ch = *p;
-    if (nrun == (int)sizeof run) gfx_text_ex(w->font, run_x, wy, run, nrun, col, 0, 0, 0), nrun = 0, run_x = wx;
+    if (nrun == (int)sizeof run) gfx_text_ex(w->font, run_x, wy, run, nrun, col, 0, 0, GFX_FIXED + w->hspace), nrun = 0, run_x = wx;
     if (!nrun) run_x = wx;
     run[nrun++] = ch;
     wx += w->hspace;
   }
-  if (nrun) gfx_text_ex(w->font, run_x, wy, run, nrun, col, 0, 0, 0);
+  if (nrun) gfx_text_ex(w->font, run_x, wy, run, nrun, col, 0, 0, GFX_FIXED + w->hspace);
 }
 
 /* ---------------------------------------------------------------- the dialogue box */
@@ -520,7 +533,8 @@ void text_draw(void) {
     gfx_rect(19, y0 + 3, 282, 69, C_BLACK, 255);
     draw_darkbox(12, y0 - 4, 308, y0 + 79);
   }
-  if (box.fc) face_draw(box.fc, box.fe, box.x + 8, box.y + 5, writer_talking(&box), face_t);
+  /* (obj_choicer_neo puts the face away while it asks) */
+  if (box.fc && !g_choice_n) face_draw(box.fc, box.fe, box.x + 8, box.y + 5, writer_talking(&box), face_t);
   writer_draw(&box);
   draw_choices(top);
 }

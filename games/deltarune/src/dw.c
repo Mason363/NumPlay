@@ -4,6 +4,7 @@
 /* The Dark World (rooms.h): the cliffs where Kris lands, Susie in the dust, the eye puzzle, Lancer's chase,
  * the castle's front (Lancer's first fight, Ralsei), Castle Town and the tutorial, the Great Door and the
  * Field's enemies. Each cutscene is the original's event object as a protothread, its texts its own. */
+#include <stdio.h>
 #include <string.h>
 #include "battle.h"
 #include "event.h"
@@ -76,6 +77,8 @@ void dw_setup(int room) {
       }
       break;
     case room_castle_tutorial:
+      /* obj_tutorialbattleevent: the training dummy Ralsei made, and his lesson */
+      room_add_npc(obj_npc_room, 900, 160);
       if (plot() < 31) room_queue_event(EV_TUTORIAL);
       break;
     case room_castle_darkdoor:
@@ -314,16 +317,80 @@ static int ev_castle_front(Ev *c) {
 
 /* obj_tutorialbattleevent: Ralsei's lesson with the Dummy, and his Manual */
 static int ev_tutorial(Ev *c) {
+  static char manual[2][128];
   EV_BEGIN;
-  WAIT(20);
-  BATTLE(3);
-  TALKF(FC_RALSEI, 6, obj_tutorialbattleevent_slash_Step_0_gml_95_0, obj_tutorialbattleevent_slash_Step_0_gml_96_0,
-        obj_tutorialbattleevent_slash_Step_0_gml_89_0, obj_tutorialbattleevent_slash_Step_0_gml_92_0);
+  /* when the view reaches the dummy (xx - 13 .. xx + 20, the event at 400) */
+  FREE(true);
+  WAIT_UNTIL(cam_x >= 387 && !text_active());
+  FREE(false);
+  pl.frozen = true;
+  cam_locked = true, cam_x = 390;
+  {
+    /* scr_text 135: would Kris like a lesson? */
+    static const char *ch[2];
+    text_clear();
+    text_face(FC_RALSEI, 3);
+    text_add(str(scr_text_slash_scr_text_gml_292_0));
+    text_add(str(scr_text_slash_scr_text_gml_293_0));
+    text_add(str(scr_text_slash_scr_text_gml_294_0));
+    text_add(str(scr_text_slash_scr_text_gml_295_0));
+    ch[0] = str(scr_text_slash_scr_text_gml_288_0), ch[1] = str(scr_text_slash_scr_text_gml_289_0);
+    for (int i = 0; i < 2; i++)
+      if (ch[i][0] == '#') ch[i]++;   /* ("#" starts a line in GameMaker) */
+    text_set_choices(ch[0], ch[1], NULL, NULL);
+    text_open();
+  }
+  WAIT_UNTIL(!text_active());
+  if (text_choice() == 0) {
+    TALKF(FC_RALSEI, 3, scr_text_slash_scr_text_gml_302_0);
+    {
+      Obj *d = obj_find_inst(250);
+      if (d) d->flags |= OF_HIDDEN;
+    }
+    BATTLE(3);
+    {
+      Obj *d = obj_find_inst(250);
+      if (d) d->flags &= (uint16_t)~OF_HIDDEN;
+    }
+    WAIT(30);
+    snprintf(manual[0], sizeof manual[0], "%s%s%s", str(obj_tutorialbattleevent_slash_Step_0_gml_90_0), "toolbox",
+             str(obj_tutorialbattleevent_slash_Step_0_gml_90_1));
+    text_clear();
+    text_face(FC_RALSEI, 0);
+    if (flag(205) >= 4) {
+      text_add(str(obj_tutorialbattleevent_slash_Step_0_gml_95_0));
+      text_add(str(obj_tutorialbattleevent_slash_Step_0_gml_96_0));
+    } else {
+      text_add(str(obj_tutorialbattleevent_slash_Step_0_gml_87_0));
+      text_add(str(obj_tutorialbattleevent_slash_Step_0_gml_88_0));
+    }
+    text_add(str(obj_tutorialbattleevent_slash_Step_0_gml_89_0));
+    text_add(manual[0]);
+    text_add("\\F0%");
+    text_add(str(obj_tutorialbattleevent_slash_Step_0_gml_92_0));
+    text_open();
+  } else {
+    /* (no lesson: Kris fought Lancer already) */
+    snprintf(manual[1], sizeof manual[1], "%s%s%s", str(scr_text_slash_scr_text_gml_311_0), "toolbox",
+             str(scr_text_slash_scr_text_gml_311_1));
+    text_clear();
+    text_face(FC_RALSEI, 3);
+    text_add(str(scr_text_slash_scr_text_gml_307_0));
+    text_add(str(scr_text_slash_scr_text_gml_308_0));
+    text_add(str(scr_text_slash_scr_text_gml_309_0));
+    text_add(str(scr_text_slash_scr_text_gml_310_0));
+    text_add(manual[1]);
+    text_add("\\F0%");
+    text_add(str(scr_text_slash_scr_text_gml_313_0));
+    text_open();
+  }
+  WAIT_UNTIL(!text_active());
   {
     extern void gm_itemget(int id);
     gm_itemget(4);   /* the Manual */
   }
-  set_plot(31);
+  if (plot() < 31) set_plot(31);
+  pl.frozen = false, cam_locked = false;
   EV_END;
 }
 

@@ -48,6 +48,7 @@ void gfx_tiles(int wx, int wy, bool front);
 int gfx_text(int font, int x, int y, const char *s, uint16_t color, uint8_t alpha);
 /* the same, each letter shaken by up to `shake` pixels (the game's shaking text), seeded */
 int gfx_text_ex(int font, int x, int y, const char *s, int n, uint16_t color, int shake, uint32_t seed, int spacing);
+#define GFX_FIXED 100   /* spacing GFX_FIXED + n: every letter n pixels on (obj_writer's hspace) */
 int gfx_text_width(int font, const char *s, int n);
 int font_height(int font);
 /* a line one pixel wide */
