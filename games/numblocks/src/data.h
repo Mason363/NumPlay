@@ -5,7 +5,7 @@
 #include "blocks.h"
 
 #if NB_DIMS
-#define NTEX 248
+#define NTEX 249
 #else
 #define NTEX 217
 #endif
@@ -375,16 +375,17 @@ extern const uint16_t img_row0[], img_pal[][16];
 #define TX_IRON_BARS 237
 #define TX_DOOR_IRON_LOWER 238
 #define TX_DOOR_IRON_UPPER 239
-#define TX_PORTAL_4 240
-#define TX_PORTAL_8 241
-#define TX_PORTAL_12 242
-#define TX_PORTAL_16 243
-#define TX_PORTAL_20 244
-#define TX_PORTAL_24 245
-#define TX_PORTAL_28 246
-#define TX_END_SKY 247
-#define SP_BOSS_BG 497
-#define SP_BOSS 498
+#define TX_RAIL_X 240
+#define TX_PORTAL_4 241
+#define TX_PORTAL_8 242
+#define TX_PORTAL_12 243
+#define TX_PORTAL_16 244
+#define TX_PORTAL_20 245
+#define TX_PORTAL_24 246
+#define TX_PORTAL_28 247
+#define TX_END_SKY 248
+#define SP_BOSS_BG 498
+#define SP_BOSS 499
 enum { SKIN_ZOMBIE_PIGMAN = 9, SKIN_GHAST = 10, SKIN_GHAST_SHOOTING = 11, SKIN_BLAZE = 12, SKIN_MAGMACUBE = 13, SKIN_ENDERMAN = 14, SKIN_WITHER_SKELETON = 15 };
 extern const char end_text[];   /* the End poem, then the credits */
 extern const uint8_t skin_crystal_px[];   /* endercrystal/endercrystal.png, 4 bits a texel */

@@ -7,6 +7,7 @@
  *   more than two pieces off the roads;
  *   how they are built: a village's well, its blacksmith's chest and a desert temple's trap where 1.8.8 puts
  *   them, and the same blocks whichever rows of a chunk are made; a dungeon's spawner at work;
+ *   mineshafts: where they start (MapGenBase's random, here again), the same blocks whichever rows are made;
  *   old worlds: a world saved before NumBlocks.nwa made villages keeps its look where it had been (no
  *   village there), and gets them elsewhere; it remembers where that is. */
 #include <math.h>
@@ -42,6 +43,23 @@ static int jint(int n) {
   while (bits - val + (n - 1) < 0);
   return val;
 }
+static int64_t jlong(void) {
+  int64_t hi = jnext(32);
+  return (int64_t)((uint64_t)hi << 32) + jnext(32);
+}
+static double jdouble(void) {
+  int64_t a = jnext(26), b = jnext(27);
+  return (double)((a << 27) + b) * (1.0 / 9007199254740992.0);
+}
+/* MapGenMineshaft.canSpawnStructureAtCoords for chunk (x, z), with MapGenBase's random for it */
+static int mineshaft_at(int64_t seed, int x, int z) {
+  jseed(seed);
+  int64_t j = jlong(), k = jlong();
+  jseed((int64_t)((uint64_t)(int64_t)x * (uint64_t)j ^ (uint64_t)(int64_t)z * (uint64_t)k ^ (uint64_t)seed));
+  jnext(32);
+  int m = abs(x) > abs(z) ? abs(x) : abs(z);
+  return jdouble() < 0.004 && jint(80) < m;
+}
 /* MapGenVillage / MapGenScatteredFeature.canSpawnStructureAtCoords: region (rx, rz)'s start */
 static void start_of(int64_t seed, int rx, int rz, int salt, int *sx, int *sz) {
   jseed((int64_t)((uint64_t)(int64_t)rx * 341873128712ULL + (uint64_t)(int64_t)rz * 132897987541ULL + (uint64_t)seed +
@@ -50,7 +68,7 @@ static void start_of(int64_t seed, int rx, int rz, int salt, int *sx, int *sz) {
   *sz = rz * 32 + jint(32 - 8);
 }
 
-static uint8_t slab[128 * 256], hb[128 * 256 / 8];
+static uint8_t slab[128 * 256], hb[128 * 256 / 8], part[24 * 256], phb[24 * 256 / 8];
 static int block_at(const uint8_t *s, const uint8_t *h, int x, int y, int z) {
   int c = (y * 16 + (z & 15)) * 16 + (x & 15);
   return s[c] | (h[c >> 3] >> (c & 7) & 1) << 8;
@@ -142,7 +160,6 @@ int main(void) {
       }
   SAY("the well at %d %d: %d water, %d cobblestone, its water up to y %d", wx, wz, water, cobble, wy);
   CHECK(water >= 4 * 10 && cobble >= 12 * 10);
-  static uint8_t part[24 * 256], phb[24 * 256 / 8];
   int differ = 0;
   for (int k = 0; k < 9; k++) {   /* (the well's chunk and the eight around it) */
     int qx = cx - 1 + k % 3, qz = cz - 1 + k / 3;
@@ -192,6 +209,39 @@ int main(void) {
     }
   SAY("at %d %d %d, of %s", dsp[0], dsp[1], dsp[2], nd ? dsp[3] == 0 ? "skeletons" : dsp[3] == 1 ? "zombies" : "spiders" : "nothing");
   CHECK(nd > 0);
+
+  printf("mineshafts\n");
+  int nms = 0, mo[7], first[2] = {0, 0};
+  for (int qz = -80; qz <= 80; qz++)
+    for (int qx = -80; qx <= 80; qx++) {
+      int m = gen_mineshaft_find(qx, qz, mo);
+      CHECK(m == mineshaft_at(0, qx, qz));
+      if (!m) continue;
+      if (!nms++) first[0] = qx, first[1] = qz;
+      CHECK(mo[6] > 0 && mo[1] >= 1 && mo[4] <= 63);
+    }
+  SAY("%d start in 161 x 161 chunks of seed 0", nms);
+  CHECK(nms > 20);
+  /* the first one's room: dug out, its floor dirt; its chunks the same whichever rows are made */
+  gen_mineshaft_find(first[0], first[1], mo);
+  int built = 0, msd = 0;
+  for (int k = 0; k < 9; k++) {
+    int qx = first[0] - 1 + k % 3, qz = first[1] - 1 + k / 3;
+    make(qx, qz, 0, 128, slab, hb);
+    for (int i = 0; i < 128 * 256; i++) built += slab[i] == B_FENCE_OAK || slab[i] == B_RAIL;
+    for (int y0 = 0; y0 < 128; y0 += 24) {
+      int h = 128 - y0 < 24 ? 128 - y0 : 24;
+      make(qx, qz, y0, h, part, phb);
+      for (int y = 0; y < h; y++)
+        for (int i = 0; i < 256; i++) {
+          int a = block_at(part, phb, i & 15, y, i >> 4), b = block_at(slab, hb, i & 15, y0 + y, i >> 4);
+          msd += a != b && (a == B_FENCE_OAK || a == B_PLANKS_OAK || a == B_RAIL || a == B_COBWEB || b == B_FENCE_OAK ||
+                            b == B_PLANKS_OAK || b == B_RAIL || b == B_COBWEB);
+        }
+    }
+  }
+  SAY("chunk %d %d's: %d pieces, %d fences and rails around it, %d blocks differ by rows", first[0], first[1], mo[6], built, msd);
+  CHECK(built > 10 && msd == 0);
 
   printf("a desert temple's trap\n");
   gen_init(12345);

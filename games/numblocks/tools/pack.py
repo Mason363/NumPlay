@@ -78,6 +78,8 @@ def custom_texture(jar, n):
     animated one ('@portal#4': the portal's fifth)"""
     if n == '@end_sky':
         return jar.image('environment/end_sky').convert('RGBA').crop((0, 0, 16, 16))
+    if n == '@rail_x':   # (a rail turned to run east to west)
+        return jar.image('blocks/rail_normal').transpose(Image.ROTATE_90)
     if '#' in n:
         name, k = n[1:].split('#')
         return jar.image('blocks/' + name).crop((0, 16 * int(k), 16, 16 * int(k) + 16))

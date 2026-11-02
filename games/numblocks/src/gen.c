@@ -113,6 +113,7 @@ static int stronghold_prepare(int cx, int cz);
 static void structs_slab(int cx, int cz, void *smem);
 static int structs_populate(void);
 static void struct_cache(void *mem);
+static void mineshaft_slab(int cx, int cz, int y0, int h, uint8_t *out);   /* (gen_mineshaft.h) */
 /* the dungeons' spawners in the chunks made last (the game runs them): where, the mob (0 skeleton, 1 zombie,
  * 2 spider) */
 static struct {
@@ -5620,6 +5621,7 @@ void gen_slab(int cx, int cz, int y0, int h, uint8_t *out) {
     populate(cx, cz, pb[3]);
 #if NB_DIMS
     stronghold_slab(cx, cz, y0, h, out);
+    mineshaft_slab(cx, cz, y0, h, out);
 #endif
     memset(sum_pin, 0, sizeof sum_pin);
     last_cx = cx;

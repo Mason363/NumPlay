@@ -309,6 +309,8 @@ bd('STONE_PRESSURE_PLATE', 70, model='button', tex='stone', hard=0.5, tool='pick
 for v, d in [(0, 'E'), (1, 'W'), (2, 'S'), (3, 'N')]:
     bd(f'SANDSTONE_STAIRS_{d}', 128, v, model='stairs', tex=tsb('sandstone_top', 'sandstone_normal', 'sandstone_bottom'),
        hard=0.8, tool='pickaxe')
+# mineshafts' rails running east to west
+bd('RAIL_X', 66, 1, model='flat', tex='@rail_x', hard=0.7, tool='pickaxe')
 
 MODELS_DIMS = MODELS + ['portal', 'frame', 'endportal', 'egg', 'button']
 # every state of NumBlocks.nwa, by number: S, unused numbers (never a block), then D

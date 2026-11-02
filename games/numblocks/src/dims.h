@@ -56,6 +56,7 @@ int gen_struct_chest(int x, int y, int z);          /* (gen.c) a village's or a 
 int gen_village_find(int rx, int rz, int *out);     /* (gen.c, tests) the village of a region of the grid */
 int gen_village_piece(int i, int *out);             /* (gen.c, tests) a piece of the village just found */
 int gen_temple_find(int rx, int rz, int *out);      /* (gen.c, tests) the temple grid's start there */
+int gen_mineshaft_find(int cx, int cz, int *out);   /* (gen.c, tests) the mineshaft starting in a chunk */
 bool gen_old_chunk(int cx, int cz);                 /* (save.c) a chunk made before the villages: none in it */
 extern uint8_t *gen_hi;                             /* (gen.c) the ninth bits of the slab gen_slab fills */
 void pearl_land(float x, float y, float z);
