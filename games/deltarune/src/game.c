@@ -100,7 +100,8 @@ static void title_draw(void) {
     gfx_text(FONT_MAIN, 160 - w / 2, 150 + 22 * i, s, col, 255);
     if (title_sel == i) gfx_sprite(spr_heartsmall, 0, 160 - w / 2 - 16, 154 + 22 * i, 0, 255);
   }
-  gfx_text(FONT_SMALL, 6, 228, "OK choose", rgb565(0x808080), 255);
+  static const char keys[] = "OK confirm  Back cancel/run  Toolbox menu  Home save and quit";
+  gfx_text(FONT_SMALL, 160 - gfx_text_width(FONT_SMALL, keys, 80) / 2, 228, keys, rgb565(0x808080), 255);
 }
 
 void game_init(void) {

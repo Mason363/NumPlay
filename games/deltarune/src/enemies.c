@@ -424,17 +424,14 @@ static void lancer_draw(Enemy *e, int x, int y) {
 static void dummy_talk(Enemy *e) { e->nsay = 0; }
 static void dummy_attack(Enemy *e, int t) { (void)e, (void)t; }
 static bool dummy_act(Enemy *e, int act) {
-  (void)e;
-  if (act == 1) {
-    static char buf[64];
-    battle_face(0, 0);
-    uint16_t s = scr_monstersetup_slash_scr_monstersetup_gml_78_0;
-    (void)buf;
-    battle_say(&s, 1);
-    return true;
+  uint16_t s;
+  switch (act) {
+    case 1: s = obj_dummyenemy_slash_Step_0_gml_642_0; break;
+    case 2: s = obj_dummyenemy_slash_Step_0_gml_666_0, mercy_add(e, 100); break;
+    default: s = obj_dummyenemy_slash_Step_0_gml_666_0, mercy_add(e, 100); break;
   }
-  mercy_add(e, 100);
-  return false;
+  battle_say(&s, 1);
+  return true;
 }
 
 /* ================================================================ the table */
