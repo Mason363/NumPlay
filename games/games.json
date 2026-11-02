@@ -1566,5 +1566,31 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/mrbullet",
     "default": false,
     "xl": true
+  },
+  {
+    "id": "numpico",
+    "rank": 43,
+    "title": "NumPico",
+    "tagline": "Your own PICO-8 carts",
+    "credit": "Plays PICO-8 carts with femto8 by Ben Baker",
+    "top": "0x29ADFF",
+    "bottom": "0x1D2B53",
+    "accent": "0xFF004D",
+    "colors": 16,
+    "heap": 49152,
+    "records": [
+      "numpico.cfg",
+      "p8_*"
+    ],
+    "reset": [
+      "p8_*"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/numpico",
+    "default": false,
+    "xl": true,
+    "carts": true
   }
 ]
