@@ -2,9 +2,10 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
-## 1.22.0: Five Nights at Freddy's 3, Famidash HUGE, ColecoVision games and Universal Paperclips in French
+## 1.23.0: Five Nights at Freddy's 3 and 4, Famidash HUGE, ColecoVision games and Universal Paperclips in French
 
 - **Five Nights at Freddy's 3:** FiveNightsAtFreddys3.nwa, nights 1 to 6 with Springtrap, the phantoms, the lure, the vents and the maintenance panel, the game's own pictures and rules.
+- **Five Nights at Freddy's 4:** FiveNightsAtFreddys4.nwa, nights 1 to 6, the Nightmare and 20/20/20/20 in the bedroom, with Fun with Plushtrap, the extras, the game's own pictures and rules.
 - **Famidash:** all 173 levels of Famidash HUGE, its fullest version: the main game and its B, C, D and E-Sides, with the demon faces, Lucky Draw's own rules and the fun settings open from the start. Your progress moves to the same levels.
 - **Retro-Go:** ColecoVision games, with the keypad on the calculator's digits. Games whose file stops partway into its last kilobyte play now.
 - **Universal Paperclips in French:** UniversalPaperclips-French.nwa, every text translated, with numbers written the French way.

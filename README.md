@@ -550,5 +550,7 @@ NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyri
   </tr>
   <tr>
     <td align="center"><img src="docs/media/gallery/famidash.gif" alt="Famidash: in Stereo Madness the cube jumps from pillar to pillar, through a portal and past a coin"><br><a href="games/famidash/README.md"><b>Famidash</b></a></td>
+    <td align="center"><img src="docs/media/gallery/fnaf3.gif" alt="Five Nights at Freddy's 3: the office, the monitor up, CAM 07 and the audio lure played"><br><a href="games/fnaf3/README.md"><b>Five Nights at Freddy's 3</b></a></td>
+    <td align="center"><img src="docs/media/gallery/fnaf4.gif" alt="Five Nights at Freddy's 4: the bedroom, a run to the left door, the flashlight down the hall, then the bed"><br><a href="games/fnaf4/README.md"><b>Five Nights at Freddy's 4</b></a></td>
   </tr>
 </table>
