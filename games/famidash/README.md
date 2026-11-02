@@ -73,7 +73,7 @@ Each level hides three coins. They only count when you finish the level in one g
 * **Quit game** in the pause menu asks first, and takes you back to the level select.
 * It is Famidash HUGE: the main game and its B, C, D and E-Sides in one. Progress from the older 45 level app moves to the same levels here.
 * There is no music or sound: the calculator has no speaker. So the sound test, the music settings and the practice music sync are left out.
-* Two-player mode is left out: the calculator has one keypad. Levels with two icons (the dual portals) play as in the game, both icons on one button. The debug mode and the hidden cheats are left out too.
+* Two-player mode is left out: the calculator has one keypad. Levels with two icons (the dual portals) play as in the game, both icons on one button. The hidden cheats are left out.
 * Around the NES's screen the level goes on 32 pixels to each side. Those sides only show the level; what happens still happens on the NES's 256 pixels, as in the game.
 
 ## Credits
