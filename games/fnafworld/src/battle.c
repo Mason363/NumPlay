@@ -41,7 +41,7 @@ enum {
   T_CHARGE, T_CHARGE_FAST, T_SPEED, T_SPEED_SLOW, T_ENEMY_GO, T_WHO, T_STRENGTH, T_SECOND, T_SPECIAL, T_ROLL,
   T_SCREW, T_CHEESE, T_4000, T_CONFUSE, T_5000, T_POISON, T_COMET, T_PFURY, T_FURY, T_PIZZA, T_PIZZA2, T_FREDDLE,
   T_STARS, T_DRIP, T_PUDDLE, T_POPPER, T_CLOUDS, T_FAVORS, T_MYSTERY, T_HOCUS, T_VIRUS, T_UNSCREW, T_LAVA, T_EXP,
-  T_TOKENS, T_RUN, T_COUNT
+  T_TOKENS, T_RUN, T_SNOW, T_COUNT
 };
 static uint32_t ms3;   /* the battle's clock */
 static bool every(int id, int ms) {
@@ -132,7 +132,7 @@ enum {
   FX_MIC, FX_PIZZA, FX_BITE, FX_HOOK, FX_CLAW, FX_TORNADO, FX_BALLOON, FX_HEAD, FX_TOXICBITE, FX_TBALLOON,
   FX_BADPIZZA, FX_GLOOM, FX_CLOUD, FX_RAIN, FX_STAR, FX_DRIP, FX_PUDDLE, FX_MUNCHIE, FX_FREDDLE, FX_POPPER,
   FX_PRIZE, FX_HAUNT, FX_ENDO, FX_DAGGER, FX_WALL, FX_JACKO, FX_SAW, FX_ENEMY_BALLOON, FX_STINGER, FX_SYTH,
-  FX_LASER, FX_NOTE, FX_SCREW, FX_HIT
+  FX_LASER, FX_NOTE, FX_SCREW, FX_HIT, FX_DEATH
 };
 
 /* ------------------------------------------------------------------ the start */
@@ -797,6 +797,18 @@ static void fx_step(void) {
           }
         if (f->x < -100) f->kind = 0;
         break;
+      case FX_DEATH: {   /* 1814-1819, 1825: 9999 to a member, or three seconds off Neon Wall */
+        if (f->t < 0) break;
+        int tx = STOP[f->b][0], ty = STOP[f->b][1] - 90;
+        home(f, tx, ty, 16 * 14);
+        f->x += f->vx / 16, f->y += f->vy / 16;
+        if ((f->x - tx) * (f->x - tx) + (f->y - ty) * (f->y - ty) < 1600) {
+          if (B.shield > 0) B.shield = (int16_t)(B.shield > 3 ? B.shield - 3 : 0);
+          else party_hit(f->b, 9999), fx_new(FX_SHOW, AN_POW, tx, ty);
+          f->kind = 0;
+        }
+        break;
+      }
       case FX_ENEMY_BALLOON:   /* 1316, 1325: an enemy's balloon to a member */
         home(f, STOP[f->b][0], STOP[f->b][1] - 90, 16 * 8);
         f->x += f->vx / 16, f->y += f->vy / 16;
@@ -934,7 +946,13 @@ static void special_step(void) {
       case 8: B.hose = 75, B.shake = 100; break;   /* waterhose */
       case 9: B.special18 = 20, B.shake = 100; break;
       case 10: B.wall_t = 60, B.shake = 100; break;
-      case 11: B.screw_t = 20, B.screw_who = (int16_t)(rnd_n(4) + 1); break;
+      case 11:   /* 1820-1824: five scythes at the party, one at a time */
+        B.screw_t = 0;
+        for (int n = 0; n < 5; n++) {
+          Fx *f = fx_new(FX_DEATH, AN_SYTH, B.en[0].x - 3, B.en[0].y - 118);
+          if (f) f->t = (int16_t)(-30 * n), f->b = (int16_t)rnd_n(4);
+        }
+        break;
     }
   }
   /* the specials playing */
@@ -976,8 +994,12 @@ static void special_step(void) {
       }
     }
   }
-  if (B.wall_t > 0 && --B.wall_t == 1)
-    for (int n = 0; n < 4; n++) party_hit(n, B.special_strength);
+  if (B.wall_t > 0 && --B.wall_t == 1)   /* 1781-1782: the wall reaches them */
+    for (int n = 0; n < 4; n++) party_hit(n, B.boss ? B.strength + rnd_n(50) : rnd_n(100) + 200);
+  if (B.special18 > 0 && every(T_SNOW, 100) && --B.special18 == 1) {   /* 1776-1778: the snowballs */
+    B.special18 = 0;
+    for (int n = 0; n < 4; n++) party_hit(n, rnd_n(*life_of(n)));
+  }
 }
 
 void battle_step(void) {

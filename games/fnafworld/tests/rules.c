@@ -154,6 +154,20 @@ static void battles(void) {
     steps(400, 0);
   }
   CHECK(1, "every attack played");
+  /* every special of the enemies (1301-1314) */
+  int hurt = 0;
+  for (int sp = 1; sp <= 11; sp++) {
+    battle_start(sp == 11 ? 14 : 0);
+    g.scene = SC_BATTLE;
+    steps(60, 0);
+    int32_t before = 0, after = 0;
+    for (int k = 0; k < 4; k++) before += B.life[k];
+    B.special = (uint8_t)sp, B.special_t = 1;
+    steps(sp == 6 ? 60 * 9 : 60 * 4, 0);
+    for (int k = 0; k < 4; k++) after += B.life[k];
+    hurt += after < before;
+  }
+  CHECK(hurt >= 7, "the specials hurt (%d of 11)", hurt);
 }
 
 static void fuzz(void) {
