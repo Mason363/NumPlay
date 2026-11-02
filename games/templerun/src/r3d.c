@@ -452,6 +452,17 @@ __attribute__((always_inline)) static inline uint32_t tex_run(uint16_t *zp, cons
   return z;
 }
 
+/* (each its own function: the run's loop has the registers to itself) */
+#define TEX_RUN(name, WL)                                                                                              \
+  __attribute__((noinline)) static uint32_t name(uint16_t *zp, const uint16_t *ze, uint16_t *cp, uint32_t z, uint32_t da, \
+                                                 uint32_t uu, uint32_t du, uint32_t vv, uint32_t dv, const Texture *tx,  \
+                                                 int light, const uint32_t *sp) {                                         \
+    return tex_run(zp, ze, cp, z, da, uu, du, vv, dv, tx, light, sp, WL);                                               \
+  }
+TEX_RUN(tex_run9, 9)
+TEX_RUN(tex_run8, 8)
+TEX_RUN(tex_run0, 0)
+
 /* a row of a polygon, pixels [x0, x1) of row y (its middle yc), between the edges L (at xl) and R (at xr) */
 __attribute__((noinline)) static void raster_row(const Poly *q, int kind, int y, float yc, int x0, int x1,
                                                             const Texture *tx, int32_t da, int alpha, uint16_t col) {
@@ -520,9 +531,9 @@ __attribute__((noinline)) static void raster_row(const Poly *q, int kind, int y,
       else du = (uint32_t)((u2 - u) / n), dv = (uint32_t)((v2 - v) / n);
       uint32_t uu = (uint32_t)u, vv = (uint32_t)v;
       /* (the game's pictures are square, 512 or 256 across: their loops with the sizes known, short of registers) */
-      if (tx->wl == 9 && tx->hl == 9) z = tex_run(zp, ze, cp, z, (uint32_t)da, uu, du, vv, dv, tx, light, sp, 9);
-      else if (tx->wl == 8 && tx->hl == 8) z = tex_run(zp, ze, cp, z, (uint32_t)da, uu, du, vv, dv, tx, light, sp, 8);
-      else z = tex_run(zp, ze, cp, z, (uint32_t)da, uu, du, vv, dv, tx, light, sp, 0);
+      if (tx->wl == 9 && tx->hl == 9) z = tex_run9(zp, ze, cp, z, (uint32_t)da, uu, du, vv, dv, tx, light, sp);
+      else if (tx->wl == 8 && tx->hl == 8) z = tex_run8(zp, ze, cp, z, (uint32_t)da, uu, du, vv, dv, tx, light, sp);
+      else z = tex_run0(zp, ze, cp, z, (uint32_t)da, uu, du, vv, dv, tx, light, sp);
       x += n;
       qz = qz2, qu = qu2, qv = qv2, u = u2, v = v2;
       known = true;
