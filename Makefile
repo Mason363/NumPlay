@@ -18,7 +18,7 @@ PY ?= python3
 CARGO ?= cargo
 B = build/data
 # Conventional games honor a configurable output directory; special layouts are kept local.
-GAMES_REDIRECT = angrybirds badtime balatro blockblast breakout buckshot catninja celeste championisland chess clashroyale connectfour cookieclicker coreball dinorun donkeykong doodlejump doom dune famidash finalearth2 flappybird flappydunk fnaf fnaf2 fnaf3 fnaf4 fnf g2048 hillclimb hollowknight invaders isaac jetpackjoyride kingdomrush leveldevil mahjong meowdoku minesweeper monkeymart numblocks numpowder numvisuals pacman paperclips polytrack portal pvz rider snake snowrider sokoban solitaire sonic stickmanhook subway sudoku suika templerun tombofthemask towerblock twoplayer undertale uno uttt
+GAMES_REDIRECT = angrybirds badtime balatro blockblast breakout buckshot catninja celeste championisland chess clashroyale connectfour cookieclicker coreball deltarune dinorun donkeykong doodlejump doom dune famidash finalearth2 flappybird flappydunk fnaf fnaf2 fnaf3 fnaf4 fnf g2048 hillclimb hollowknight invaders isaac jetpackjoyride kingdomrush leveldevil mahjong meowdoku minesweeper monkeymart numblocks numpowder numvisuals pacman paperclips polytrack portal pvz rider snake snowrider sokoban solitaire sonic stickmanhook subway sudoku suika templerun tombofthemask towerblock twoplayer undertale uno uttt
 GAMES_OUT = dinorun
 GAME_REDIRECT_ARG = $(if $(filter $(1),$(GAMES_OUT)),OUT=../../$(B)/games/$(1),BUILD_DIR=../../$(B)/games/$(1))
 # the RAM the oldest calculator software that runs apps gives them (23.2: 148928 bytes; 25.2 gives 153676).
@@ -29,7 +29,7 @@ RAM_LIMIT = 148928
 # custom builds of Epsilon 25.2's source give apps less: 133652 bytes; every game fits there too, in NumPlay and on
 # its own (their big buffers are on the stack, 32 KB apart from that RAM, or in the RAM the software has left)
 CUSTOM_RAM = 133652
-BIG_APPS = Celeste HollowKnight Undertale ChampionIsland FinalEarth2 NumPowder NumBlocks NumDrive SubwaySurfers FiveNightsAtFreddys Doom BindingOfIsaac HillClimbRacing PlantsVsZombies SonicTheHedgehog CookieClicker LevelDevil JetpackJoyride StickmanHook DonkeyKong Dune MonkeyMart TombOfTheMask UNO FridayNightFunkin AngryBirds PolyTrack UniversalPaperclips BadTimeSimulator Mahjong Rider SnowRider3D TempleRun FiveNightsAtFreddys2 FiveNightsAtFreddys3 FiveNightsAtFreddys4 Famidash ClashRoyale UniversalPaperclips-French CatNinja KingdomRush
+BIG_APPS = Celeste HollowKnight Undertale ChampionIsland FinalEarth2 NumPowder NumBlocks NumDrive SubwaySurfers FiveNightsAtFreddys Doom BindingOfIsaac HillClimbRacing PlantsVsZombies SonicTheHedgehog CookieClicker LevelDevil JetpackJoyride StickmanHook DonkeyKong Dune MonkeyMart TombOfTheMask UNO FridayNightFunkin AngryBirds PolyTrack UniversalPaperclips BadTimeSimulator Mahjong Rider SnowRider3D TempleRun FiveNightsAtFreddys2 FiveNightsAtFreddys3 FiveNightsAtFreddys4 Famidash ClashRoyale UniversalPaperclips-French CatNinja KingdomRush Deltarune
 # the calculator's space for installed apps: from the end of its software (64 KiB aligned) to 64 KiB before the
 # end of its 4 MiB slot of flash, 0x903F0000. The software's size sets the start: 0x90200000 is the latest a
 # NumPlay counts on (1.94 MB, APP_SPACE); Epsilon 26.4 on an N0120 ends at 0x90180000 (2.44 MB, the
@@ -339,6 +339,7 @@ APP_famidash = $(B)/games/famidash/famidash.nwa:Famidash.nwa
 APP_clashroyale = $(B)/games/clashroyale/clashroyale.nwa:ClashRoyale.nwa
 APP_catninja = $(B)/games/catninja/catninja.nwa:CatNinja.nwa
 APP_kingdomrush = $(B)/games/kingdomrush/kingdomrush.nwa:KingdomRush.nwa
+APP_deltarune = $(B)/games/deltarune/deltarune.nwa:Deltarune.nwa
 # the big games' modules are made from these (the kit)
 $(foreach g,$(XL_GAMES),$(eval MOD_$(g) = $$(word 1,$$(subst :, ,$$(APP_$(g))))))
 
@@ -389,6 +390,7 @@ apps: | $(B)
 	$(MAKE) -C games/clashroyale build NWLINK="$(NWLINK)" BUILD_DIR=../../$(B)/games/clashroyale
 	$(MAKE) -C games/catninja build NWLINK="$(NWLINK)" BUILD_DIR=../../$(B)/games/catninja
 	$(MAKE) -C games/kingdomrush build NWLINK="$(NWLINK)" BUILD_DIR=../../$(B)/games/kingdomrush
+	$(MAKE) -C games/deltarune build NWLINK="$(NWLINK)" BUILD_DIR=../../$(B)/games/deltarune
 	cd games/tetris/tetris && NWLINK="$(NWLINK)" $(CARGO) build --release --quiet
 	cp $(word 1,$(subst :, ,$(APP_numdash))) $(B)/apps/$(word 2,$(subst :, ,$(APP_numdash)))
 	cp $(word 1,$(subst :, ,$(APP_crossyroad))) $(B)/apps/$(word 2,$(subst :, ,$(APP_crossyroad)))
@@ -438,6 +440,7 @@ apps: | $(B)
 	cp $(word 1,$(subst :, ,$(APP_clashroyale))) $(B)/apps/$(word 2,$(subst :, ,$(APP_clashroyale)))
 	cp $(word 1,$(subst :, ,$(APP_catninja))) $(B)/apps/$(word 2,$(subst :, ,$(APP_catninja)))
 	cp $(word 1,$(subst :, ,$(APP_kingdomrush))) $(B)/apps/$(word 2,$(subst :, ,$(APP_kingdomrush)))
+	cp $(word 1,$(subst :, ,$(APP_deltarune))) $(B)/apps/$(word 2,$(subst :, ,$(APP_deltarune)))
 	arm-none-eabi-strip --strip-unneeded $(B)/apps/Tetris.nwa
 
 STD_APPS = $(foreach g,$(STD_GAMES),$(B)/apps/$(NWA_$(g)))
@@ -527,5 +530,6 @@ clean:
 	-$(MAKE) -C games/clashroyale clean
 	-$(MAKE) -C games/catninja clean
 	-$(MAKE) -C games/kingdomrush clean
+	-$(MAKE) -C games/deltarune clean
 	-cd games/tetris/tetris && $(CARGO) clean
 	-$(foreach g,$(STD_GAMES),$(MAKE) -C games/$(g) clean;)

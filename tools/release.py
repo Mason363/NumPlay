@@ -29,6 +29,7 @@ ALONE = {
     "celeste": ("Celeste", "the whole climb up Celeste Mountain"),
     "hollowknight": ("Hollow Knight", "from King's Pass to Hornet in Greenpath"),
     "undertale": ("Undertale", "the whole Underground, to the barrier and the neutral ending"),
+    "deltarune": ("Deltarune", "Chapter 1, from Kris's room into the Dark World and its first battles"),
     "subway": ("Subway Surfers", "the endless run down the subway's tracks, in 3D"),
     "fnaf": ("Five Nights at Freddy's", "five nights at Freddy Fazbear's Pizza, the 6th and the Custom Night"),
     "hillclimb": ("Hill Climb Racing", "Newton Bill's ride up the hills: thirteen stages, thirteen vehicles"),
