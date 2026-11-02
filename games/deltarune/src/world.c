@@ -110,6 +110,12 @@ Obj *obj_find(int name) {
     if (!(objs[i].flags & OF_GONE) && objs[i].name == name) return &objs[i];
   return NULL;
 }
+Obj *obj_find_inst(int inst) {
+  for (int i = 0; i < MAX_OBJS; i++)
+    if (!(objs[i].flags & OF_GONE) && objs[i].inst == inst) return &objs[i];
+  return NULL;
+}
+
 Obj *obj_get(int name) {
   Obj *o = obj_find(name);
   if (o) return o;

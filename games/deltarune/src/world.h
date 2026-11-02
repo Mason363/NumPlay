@@ -88,6 +88,7 @@ bool world_inst(int obj, int k, Inst *out);        /* the room's k-th instance o
 /* things */
 Obj *obj_new(uint16_t spr, int x, int y);          /* units */
 Obj *obj_find(int name);
+Obj *obj_find_inst(int inst);  /* by its place among the room's instances */
 Obj *obj_get(int name);    /* obj_find, or a spare one (events can't crash on it) */
 void obj_free(Obj *o);
 void obj_clear_all(void);

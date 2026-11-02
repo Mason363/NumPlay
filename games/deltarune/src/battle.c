@@ -19,9 +19,8 @@ Bullet bul[MAX_BUL];
 int g_tension;
 int g_last_encounter;
 
-enum { P_INTRO, P_MENU, P_ACTIONS, P_FIGHT, P_FIGHT_HIT, P_TALK, P_DODGE, P_TURN_END, P_WIN, P_LOST, P_DONE };
+enum { P_INTRO, P_MENU, P_ACTIONS, P_FIGHT, P_FIGHT_HIT, P_TALK, P_DODGE, P_TURN_END, P_LESSON, P_WIN, P_LOST, P_DONE };
 enum { M_BUTTONS, M_ENEMY, M_ACTS, M_SPELLS, M_ITEMS, M_PARTY };
-enum { A_NONE, A_FIGHT, A_ACT, A_SPELL, A_ITEM, A_SPARE, A_DEFEND };
 
 typedef struct {
   int c;                       /* CH_* */
@@ -68,6 +67,10 @@ static struct {
   int graze_t;
   int graze_acc, time_acc;     /* grazing's TP and the turn's time, in 1/20 */
   int pic_t;                   /* a picture bubble's frames */
+  uint16_t lesson_after;       /* P_LESSON: the box's text when the turn begins */
+  bool talk_wait;              /* P_TALK: the box speaks first */
+  bool hide[4];                /* by CH_*: not drawn (a cutscene's marker stands in) */
+  int16_t hp0[4];              /* HP at the start */
   bool won_text;
   int talk_i;                  /* whose bubble shows */
   Writer bw;                   /* the bubble's text */
@@ -97,6 +100,39 @@ static uint16_t char_color(int c) {
 
 /* ---------------------------------------------------------------- helpers for the enemies */
 Writer *scene_writer(void) { return &B.bw; }
+
+/* ---------------------------------------------------------------- for a battle's own script */
+static int script_ask(int ev, int arg) {
+  int r = 0;
+  for (int i = 0; i < MAX_EN; i++)
+    if (en[i].type && en[i].def && en[i].def->script) r |= en[i].def->script(&en[i], ev, arg);
+  return r;
+}
+static bool scripted(int flag) {
+  for (int i = 0; i < MAX_EN; i++)
+    if (en[i].alive && en[i].def && (en[i].def->flags & flag)) return true;
+  return false;
+}
+static bool can_move(int c) {
+  for (int i = 0; i < MAX_EN; i++)
+    if (en[i].alive && en[i].def && en[i].def->script && !en[i].def->script(&en[i], BS_CANMOVE, c)) return false;
+  return true;
+}
+int battle_action(int c, int *sub) {
+  for (int k = 0; k < B.nh; k++)
+    if (B.h[k].c == c) {
+      if (sub) *sub = B.h[k].sub;
+      return B.h[k].action;
+    }
+  return A_NONE;
+}
+bool battle_text_on(void) { return B.w_on; }
+void battle_hide_hero(int c, bool hide) { B.hide[c & 3] = hide; }
+void battle_hero_pos(int c, int *x, int *y) {
+  for (int k = 0; k < B.nh; k++)
+    if (B.h[k].c == c) *x = B.h[k].x, *y = B.h[k].y;
+}
+int battle_hp_lost(int c) { return B.hp0[c & 3] - sv.hp[c & 3]; }
 
 static Enemy *target_enemy(int i) { return (i >= 0 && i < MAX_EN && en[i].alive) ? &en[i] : NULL; }
 int enemies_alive(void) {
@@ -181,6 +217,17 @@ void battle_say_strs(const char *const *m, int n) {
   writer_box();
   for (int i = 0; i < n && i < MAX_MSG; i++) writer_add(&B.w, m[i]);
 }
+void battle_box_talk(int fc, int fe, const char *const *m, int n) {
+  battle_face(fc, fe);
+  battle_say_strs(m, n);
+  B.talk_wait = true;
+}
+void battle_lesson(int fc, int fe, const char *const *m, int n, uint16_t after) {
+  battle_face(fc, fe);
+  battle_say_strs(m, n);
+  B.lesson_after = after;
+  B.phase = P_LESSON;
+}
 void battle_end_attack(void) {
   if (B.turntimer > 1) B.turntimer = 1;
 }
@@ -200,10 +247,19 @@ void enemy_say(Enemy *e, const uint16_t *ids, int n) {
 }
 
 void enemy_defeat_run(Enemy *e) {
+  if (e->def && (e->def->flags & EF_STAYS)) {
+    if (e->hp < 1) e->hp = 1;
+    return;
+  }
   e->alive = false, e->killed = true, e->fade = 1;
   B.gold += monster_defs[e->type].gold;
 }
+void enemy_leave(Enemy *e) { e->alive = false, e->fade = 1; }
 void enemy_spare(Enemy *e) {
+  if (e->def && (e->def->flags & EF_STAYS)) {
+    e->def->script(e, BS_SPARED, 0);
+    return;
+  }
   e->alive = false, e->spared = true, e->fade = 1;
   B.gold += monster_defs[e->type].gold;
 }
@@ -226,6 +282,8 @@ void battle_start(int enc) {
     e->alive = true;
     e->hp = e->maxhp = md->hp, e->at = md->at, e->df = md->df;
     e->x = m->x, e->y = m->y;
+    /* (0, 0: where the room's own stands, the Dummy: its npc at 900, 160 with the view at 390) */
+    if (!m->x && !m->y) e->x = 510, e->y = 160;
     e->comment = " ";
     for (int k = 0; k < 4; k++) e->say[k] = 0xFFFF;
   }
@@ -238,11 +296,12 @@ void battle_start(int enc) {
     B.h[k].y = B.nh == 1 ? 140 : B.nh == 2 ? 100 + 80 * k : 50 + 80 * k;
   }
   B.tp_x = -40, B.tp_vx = 13;
+  for (int c = 0; c < 4; c++) B.hp0[c] = sv.hp[c];
   B.phase = P_INTRO;
   B.saved_mode = g_mode;
   g_mode = MODE_BATTLE;
   uint16_t msg = d->battlemsg != 0xFFFF ? d->battlemsg : monster_defs[d->m[0].type].battlemsg;
-  if (msg != 0xFFFF) battle_say(&msg, 1);
+  if (msg != 0xFFFF && !scripted(EF_AMBUSH)) battle_say(&msg, 1);
 }
 
 bool battle_over(void) { return B.over; }
@@ -261,7 +320,7 @@ int battle_ui(void) {
       }
     case P_FIGHT: return BUI_BARS;
     case P_DODGE: return BUI_DODGE;
-    case P_ACTIONS: case P_TALK: case P_WIN: return BUI_TEXT;
+    case P_ACTIONS: case P_TALK: case P_WIN: case P_LESSON: return BUI_TEXT;
     default: return BUI_NONE;
   }
 }
@@ -465,6 +524,7 @@ static void next_hero(void) {
     Hero *h = &B.h[B.turn];
     if (h->action == A_NONE + 100) continue;   /* acting with Kris */
     if (sv.hp[h->c] <= 0) continue;            /* down */
+    if (!can_move(h->c)) continue;
     memcpy(B.items_snap, sv.item, sizeof sv.item);
     return;
   }
@@ -484,7 +544,7 @@ static void turn_begin(void) {
       if (sv.hp[c] > sv.maxhp[c]) sv.hp[c] = sv.maxhp[c];
     }
   }
-  while (B.turn < B.nh && sv.hp[B.h[B.turn].c] <= 0) B.turn++;
+  while (B.turn < B.nh && (sv.hp[B.h[B.turn].c] <= 0 || !can_move(B.h[B.turn].c))) B.turn++;
   if (B.turn >= B.nh) begin_actions();
   memcpy(B.items_snap, sv.item, sizeof sv.item);
 }
@@ -551,7 +611,8 @@ static void do_spell(int k) {
       }
       if (e->tired) {
         battle_sayf(scr_spelltext_slash_scr_spelltext_gml_23_0, char_name(h->c), NULL);
-        enemy_spare(e);
+        if (e->def && (e->def->flags & EF_STAYS)) e->def->script(e, BS_PACIFIED, 0);
+        else enemy_spare(e);
       } else if (e->mercy >= 100) {
         battle_sayf(scr_spelltext_slash_scr_spelltext_gml_36_0, char_name(h->c), NULL);
       } else {
@@ -613,7 +674,7 @@ static bool do_act(int k) {
 static void begin_fight(void);
 
 static void actions_step(void) {
-  if (B.w_on) return;
+  if (B.w_on || script_ask(BS_STEP, 1)) return;
   while (B.act_k < B.nh) {
     int k = B.act_k++;
     switch (B.h[k].action) {
@@ -734,12 +795,20 @@ static void begin_talk(void) {
   B.t = 0;
   B.talk_i = -1;
   for (int i = 0; i < MAX_EN; i++) {
-    en[i].nsay = 0, en[i].pic = 0;
+    en[i].nsay = 0, en[i].pic = 0, en[i].rest = false;
     if (en[i].alive && en[i].def && en[i].def->talk) en[i].def->talk(&en[i]);
   }
 }
 
 static void begin_dodge(void) {
+  bool all_rest = true;
+  for (int i = 0; i < MAX_EN; i++)
+    if (en[i].alive && !en[i].rest) all_rest = false;
+  if (all_rest) {
+    B.phase = P_TURN_END;
+    B.t = 0, B.box_t = 0;
+    return;
+  }
   B.phase = P_DODGE;
   B.t = 0;
   B.box_t = 0;
@@ -752,6 +821,10 @@ static void begin_dodge(void) {
 }
 
 static void talk_update(uint32_t pressed, uint32_t held) {
+  if (B.talk_wait) {
+    if (B.w_on) return;
+    B.talk_wait = false;
+  }
   /* each enemy's bubble in turn, Z goes on (scr_blconskip) */
   if (B.talk_i < 0 || B.bw.done) {
     int i = B.talk_i + 1;
@@ -943,12 +1016,17 @@ void battle_update(uint32_t pressed, uint32_t held) {
     if (B.h[k].anim_t) B.h[k].anim_t++;
   }
   if (B.shake > 0) B.shake--;
+  script_ask(BS_STEP, 0);
   bool text_was = B.w_on;
   if (B.w_on && !writer_update(&B.w, B.phase == P_MENU ? 0 : pressed, B.phase == P_MENU ? 0 : held)) B.w_on = false;
   switch (B.phase) {
     case P_INTRO:
       B.bp = B.bp + ((152 - B.bp) < 40 ? (152 - B.bp + 1) / 2 : 30);
-      if (B.bp >= 152) B.bp = 152, turn_begin();
+      if (B.bp >= 152) {
+        B.bp = 152;
+        if (scripted(EF_AMBUSH)) begin_talk();
+        else turn_begin();
+      }
       break;
     case P_MENU:
       (void)text_was;
@@ -977,9 +1055,19 @@ void battle_update(uint32_t pressed, uint32_t held) {
               break;
             }
           /* (an enemy that left in its own text, as Lancer out of fuel: the battle ends on it, no spoils) */
-          if (!enemies_alive()) B.phase = P_WIN, B.t = 0, B.result = BR_WON;
-          else turn_begin();
+          if (!enemies_alive()) {
+            if (B.w_on) B.phase = P_WIN, B.t = 0, B.result = BR_WON;
+            else win_check();
+          } else if (B.phase != P_LESSON) {
+            turn_begin();
+          }
         }
+      }
+      break;
+    case P_LESSON:
+      if (!B.w_on) {
+        turn_begin();
+        if (B.lesson_after != 0xFFFF) battle_say(&B.lesson_after, 1);
       }
       break;
     case P_WIN:
@@ -1042,6 +1130,7 @@ static void draw_number(int n, int x, int y, uint16_t col) {
 static void draw_heroes(void) {
   for (int k = 0; k < B.nh; k++) {
     const Hero *h = &B.h[k];
+    if (B.hide[h->c & 3]) continue;
     uint16_t spr = hero_sprite(h);
     int fr = (spr == spr_krisb_attack || spr == spr_susieb_attack || spr == spr_ralseib_attack) ? h->anim_t / 3 : B.t / 6;
     if (B.phase == P_INTRO) fr = B.t / 2;
@@ -1231,7 +1320,7 @@ static void draw_panel(void) {
     }
     return;
   }
-  if (B.w_on) writer_draw(&B.w);
+  if (B.w_on) writer_draw_face(&B.w), writer_draw(&B.w);
   else if (B.phase == P_MENU && B.menu == M_BUTTONS) writer_draw(&B.w);
 }
 
@@ -1291,6 +1380,7 @@ void battle_draw(void) {
   draw_background();
   draw_enemies();
   draw_heroes();
+  script_ask(BS_DRAW, 0);
   draw_box();
   draw_bubble();
   draw_tp();

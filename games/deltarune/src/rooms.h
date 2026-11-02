@@ -25,6 +25,7 @@ void room_draw_over(void);         /* what a room draws over everything (a cutsc
 int room_next(int room, int n);    /* n rooms after it in the original's order (before: n < 0) */
 void room_step(void);              /* each frame in the overworld: the room's own (its cutscenes start) */
 const char *room_title(int room);
+Obj *room_add_npc(int obj, int x, int y);   /* (an npc a cutscene makes) */
 void room_queue_event(int id);     /* the room's cutscene, started once nothing else runs */  /* the name the SAVE menu shows */
 
 /* each part's own (lw.c the Light World, dw.c the Dark World...) */

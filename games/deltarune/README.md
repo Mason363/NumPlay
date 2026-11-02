@@ -23,7 +23,7 @@
 ## Highlights
 
 * **The Light World:** Toriel wakes Kris up, drives Kris to school, Alphys's class, Susie in the hall and the supply closet, where the floor gives way. Every bed, shelf and sign says what it says in the game.
-* **The Dark World:** the cliffs where Kris lands, Susie in the dust pile, the eye puzzle, the slopes, Lancer's chase, the castle, Lancer's first fight and Ralsei, Castle Town, the tutorial and the Great Door to the Field.
+* **The Dark World:** the cliffs where Kris lands, Susie in the dust pile, the eye puzzle, the slopes, Lancer's chase, the castle, Lancer's first fight and Ralsei, Castle Town, Ralsei's lessons with his training dummy and the Great Door to the Field.
 * **Battles like in the game:** each member of the party picks FIGHT, ACT or MAGIC, ITEM, SPARE or DEFEND. FIGHT's bars, TP from defending, hitting and grazing, Rude Buster, Pacify and Heal Prayer, the enemies' bubbles and their bullets in the box: Lancer, the Dummy, Rudinn and Hathy.
 * **The original's own pictures, rooms and texts**, read from Chapter 1's game files, with its numbers: stats, items, spells, enemies and battles.
 * **Saved like in the game:** SAVE at the SAVE points. Home keeps the moment you were at, and your save is also copied into `deltarune_saves.py`, so installing the app again doesn't erase it.
@@ -51,7 +51,7 @@ Name the vessel, then walk and talk your way from Kris's room into the Dark Worl
 
 ## Good to know
 
-* The chapter goes as far as the Field's first rooms so far. Ralsei's lessons with the Dummy, the Field's puzzles, shops, the Great Board, the Forest and the Card Castle come next.
+* The chapter goes as far as the Field's first rooms so far. The Field's puzzles, shops, the Great Board, the Forest and the Card Castle come next.
 * The battle's menus and numbers are drawn at half the original's size, as the Dark World is; the enemies' bubbles keep their size, so their words stay readable.
 * No music or sound: the calculator has no speaker.
 

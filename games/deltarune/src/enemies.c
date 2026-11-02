@@ -526,30 +526,367 @@ static void lancer_draw(Enemy *e, int x, int y) {
   gfx_sprite(spr_lancerbike, e->siner / 4, x + e->shake / 2, y, 0, e->fade ? (uint8_t)max_i(0, 255 - e->fade * 12) : 255);
 }
 
-/* ================================================================ the Dummy (obj_dummyenemy) */
-static void dummy_talk(Enemy *e) { e->nsay = 0; }
-static void dummy_attack(Enemy *e, int t) { (void)e, (void)t; }
-static bool dummy_act(Enemy *e, int act) {
-  uint16_t s;
-  switch (act) {
-    case 1: s = obj_dummyenemy_slash_Step_0_gml_642_0; break;
-    case 2: s = obj_dummyenemy_slash_Step_0_gml_666_0, mercy_add(e, 100); break;
-    default: s = obj_dummyenemy_slash_Step_0_gml_666_0, mercy_add(e, 100); break;
+/* ================================================================ the Dummy (obj_dummyenemy): Ralsei's lessons */
+/* The tutorial is a battle of its own: the Dummy's turn first (Ralsei shows the SOUL, then a few bullets to dodge),
+ * then one lesson a turn (plot): 1 FIGHT, 2 DEFEND, 3 Ralsei's SPELLs (only he moves), 4 ACT, 5 SPARE. After each
+ * turn Ralsei says what he thinks of what Kris did, in the box; the Dummy never attacks again. It ends when Kris
+ * SPAREs it at the end, or Ralsei runs out of things to teach. */
+static struct {
+  int8_t plot, attackcon, hitdum, misstime, defendtime, item_command, rwc, spare_command, win_spare;
+  int8_t checked, hugtime, r_hugtime;
+  bool won, pacifycon;
+  int16_t dummyhp;
+  /* a hug (actcon 10-20 and 30-40): who, its phase and frames, the marker's way */
+  int8_t hug, hug_ph;
+  int16_t hug_t, hug_img;
+  int16_t fx, fy, tx, ty, kx, ky, rx, ry;
+} D;
+static const char *dm[10];
+static char dz[2][128];
+
+static void dm_clear(void) { memset(dm, 0, sizeof dm); }
+static void M(int i, uint16_t id) { dm[i] = str(id); }
+/* (a text with the key's name in it: scr_get_input_name, the OK key here) */
+static void MZ(int i, uint16_t a, uint16_t b, int slot) {
+  size_t n = strlen(str(a));
+  if (n > 90) n = 90;
+  memcpy(dz[slot], str(a), n);
+  strcpy(dz[slot] + n, "OK");
+  strncat(dz[slot], str(b), sizeof dz[slot] - n - 3);
+  dm[i] = dz[slot];
+}
+/* the messages up to the one that ends the text (its last mark %) */
+static int dm_count(void) {
+  int i = 0;
+  for (; i < 10 && dm[i]; i++) {
+    size_t n = strlen(dm[i]);
+    if (n && dm[i][n - 1] == '%') return i + 1;
   }
-  battle_say(&s, 1);
-  return true;
+  return i;
+}
+
+static void dummy_talk(Enemy *e) {
+  e->nsay = 0;
+  dm_clear();
+  M(0, obj_dummyenemy_slash_Step_0_gml_81_0);   /* "Skip": nothing said */
+  int fe = 1, dial = 0;
+  bool commanded = false, said = false;
+  if (D.attackcon == 0) {
+    /* the ambush: the SOUL, then dodging */
+    D.attackcon = 1, fe = 0, said = true;
+    set_flag(30, 0);
+    M(0, obj_dummyenemy_slash_Step_0_gml_87_0), M(1, obj_dummyenemy_slash_Step_0_gml_88_0), M(2, obj_dummyenemy_slash_Step_0_gml_89_0), M(3, obj_dummyenemy_slash_Step_0_gml_90_0), M(4, obj_dummyenemy_slash_Step_0_gml_91_0), M(5, obj_dummyenemy_slash_Step_0_gml_92_0), M(6, obj_dummyenemy_slash_Step_0_gml_93_0), M(7, obj_dummyenemy_slash_Step_0_gml_94_0);
+  }
+  int kris = battle_action(CH_KRIS, NULL), ral = battle_action(CH_RALSEI, NULL);
+  bool spare_used = D.plot != 3 && kris == A_SPARE;
+  bool ral_wrong = D.plot == 3 && (ral == A_SPARE || ral == A_ITEM);
+  if (D.plot >= 1) {
+    if (kris == A_FIGHT) {
+      if (D.dummyhp > e->hp) dial = 1;
+      if (D.dummyhp == e->hp && D.plot == 1) dial = 2;
+      if (D.misstime == 9 && D.plot == 2) dial = 3, set_flag(205, 6);
+      if (dial == 1 && D.hitdum >= 3) D.hitdum = 4, dial = 3, set_flag(205, 4);
+    }
+    if (kris == A_DEFEND && !commanded) {
+      fe = 0, said = true;
+      M(0, obj_dummyenemy_slash_Step_0_gml_115_0), M(1, obj_dummyenemy_slash_Step_0_gml_116_0);
+      if (D.defendtime == 1) M(0, obj_dummyenemy_slash_Step_0_gml_120_0), M(1, obj_dummyenemy_slash_Step_0_gml_121_0);
+      if (D.defendtime == 2) fe = 1, M(0, obj_dummyenemy_slash_Step_0_gml_127_0), M(1, obj_dummyenemy_slash_Step_0_gml_128_0), M(2, obj_dummyenemy_slash_Step_0_gml_129_0);
+      if (D.defendtime == 3) fe = 9, M(0, obj_dummyenemy_slash_Step_0_gml_136_0);
+      if (D.plot == 2) {
+        M(0, obj_dummyenemy_slash_Step_0_gml_142_0), M(1, obj_dummyenemy_slash_Step_0_gml_143_0), M(2, obj_dummyenemy_slash_Step_0_gml_144_0), M(3, obj_dummyenemy_slash_Step_0_gml_145_0), M(4, obj_dummyenemy_slash_Step_0_gml_146_0);
+        if (e->hp == e->maxhp) M(2, obj_dummyenemy_slash_Step_0_gml_150_0), M(3, obj_dummyenemy_slash_Step_0_gml_151_0);
+        e->tired = true;
+        if (!e->comment || !strcmp(e->comment, " ")) e->comment = str(obj_dummyenemy_slash_Draw_0_gml_4_0);
+        D.plot = 3;
+        if (D.defendtime == 4) D.defendtime = 3;
+      }
+      if (D.defendtime >= 4) dial = 3, set_flag(205, 5);
+      D.defendtime++;
+      commanded = true;
+    }
+    if (kris == A_ITEM && !commanded) {
+      fe = 0, said = true;
+      M(0, obj_dummyenemy_slash_Step_0_gml_167_0), M(1, obj_dummyenemy_slash_Step_0_gml_168_0), M(2, obj_dummyenemy_slash_Step_0_gml_169_0);
+      if (D.item_command == 1) fe = 1, M(0, obj_dummyenemy_slash_Step_0_gml_174_0), M(1, obj_dummyenemy_slash_Step_0_gml_175_0), M(2, obj_dummyenemy_slash_Step_0_gml_176_0), M(3, obj_dummyenemy_slash_Step_0_gml_177_0), M(4, obj_dummyenemy_slash_Step_0_gml_178_0);
+      if (D.item_command == 2) fe = 6, M(0, obj_dummyenemy_slash_Step_0_gml_184_0), M(1, obj_dummyenemy_slash_Step_0_gml_185_0);
+      if (D.item_command == 3) fe = 0, M(0, obj_dummyenemy_slash_Step_0_gml_191_0), M(1, obj_dummyenemy_slash_Step_0_gml_192_0);
+      if (D.item_command >= 4) dial = 3;
+      commanded = true;
+      D.item_command++;
+    }
+    if (ral_wrong && !commanded) {
+      said = true;
+      M(0, obj_dummyenemy_slash_Step_0_gml_206_0);
+      if (D.rwc == 0) M(0, obj_dummyenemy_slash_Step_0_gml_211_0);
+      if (D.rwc == 1) M(0, obj_dummyenemy_slash_Step_0_gml_216_0), M(1, obj_dummyenemy_slash_Step_0_gml_217_0);
+      if (D.rwc == 2) M(0, obj_dummyenemy_slash_Step_0_gml_222_0);
+      if (D.rwc == 3) {
+        M(0, obj_dummyenemy_slash_Step_0_gml_227_0), M(1, obj_dummyenemy_slash_Step_0_gml_228_0), M(2, obj_dummyenemy_slash_Step_0_gml_229_0), M(3, obj_dummyenemy_slash_Step_0_gml_230_0), M(4, obj_dummyenemy_slash_Step_0_gml_231_0);
+        if (D.plot == 3) D.plot = 4;
+        if (e->mercy >= 100) M(2, obj_dummyenemy_slash_Step_0_gml_237_0), M(3, obj_dummyenemy_slash_Step_0_gml_238_0), M(4, obj_dummyenemy_slash_Step_0_gml_239_0), D.plot = 5;
+      }
+      D.rwc++;
+    }
+    if (D.plot == 3 && ral == A_SPELL && !ral_wrong && !commanded) {
+      said = true;
+      M(0, obj_dummyenemy_slash_Step_0_gml_252_0), M(1, obj_dummyenemy_slash_Step_0_gml_253_0), M(2, obj_dummyenemy_slash_Step_0_gml_254_0), M(3, obj_dummyenemy_slash_Step_0_gml_255_0), M(4, obj_dummyenemy_slash_Step_0_gml_256_0);
+      if (D.pacifycon) {
+        M(0, obj_dummyenemy_slash_Step_0_gml_260_0);
+        if (!e->tired) M(0, obj_dummyenemy_slash_Step_0_gml_262_0);
+      }
+      D.plot = 4;
+      if (e->mercy >= 100) M(2, obj_dummyenemy_slash_Step_0_gml_268_0), M(3, obj_dummyenemy_slash_Step_0_gml_269_0), M(4, obj_dummyenemy_slash_Step_0_gml_270_0), D.plot = 5;
+      commanded = true;
+    }
+    if (spare_used && !commanded) {
+      said = true;
+      if (D.plot < 5) {
+        fe = 0;
+        if (D.spare_command == 0) M(0, obj_dummyenemy_slash_Step_0_gml_282_0);
+        if (D.spare_command == 1) M(0, obj_dummyenemy_slash_Step_0_gml_283_0);
+        if (D.spare_command >= 2) M(0, obj_dummyenemy_slash_Step_0_gml_284_0);
+        if (e->mercy >= 100) D.win_spare++;
+        if (D.win_spare == 1) fe = 6, M(0, obj_dummyenemy_slash_Step_0_gml_289_0), M(1, obj_dummyenemy_slash_Step_0_gml_290_0), M(2, obj_dummyenemy_slash_Step_0_gml_291_0);
+        if (D.win_spare == 2) fe = 6, M(0, obj_dummyenemy_slash_Step_0_gml_296_0), M(1, obj_dummyenemy_slash_Step_0_gml_297_0), M(2, obj_dummyenemy_slash_Step_0_gml_298_0), D.won = true;
+      }
+      if (D.plot == 5) M(0, obj_dummyenemy_slash_Step_0_gml_307_0), M(1, obj_dummyenemy_slash_Step_0_gml_308_0), D.won = true;
+      D.spare_command++;
+      commanded = true;
+    }
+    if (dial == 1) {
+      said = true;
+      if (D.plot == 1) {
+        fe = 3;
+        if (D.dummyhp > e->hp + 50) M(0, obj_dummyenemy_slash_Step_0_gml_327_0), M(1, obj_dummyenemy_slash_Step_0_gml_328_0);
+        else M(0, obj_dummyenemy_slash_Step_0_gml_332_0), MZ(1, obj_dummyenemy_slash_Step_0_gml_333_0, obj_dummyenemy_slash_Step_0_gml_333_1, 0);
+        if (D.misstime >= 6) fe = 8, M(0, obj_dummyenemy_slash_Step_0_gml_338_0), M(1, obj_dummyenemy_slash_Step_0_gml_339_0);
+        M(2, obj_dummyenemy_slash_Step_0_gml_341_0), M(3, obj_dummyenemy_slash_Step_0_gml_342_0), M(4, obj_dummyenemy_slash_Step_0_gml_343_0), M(5, obj_dummyenemy_slash_Step_0_gml_344_0);
+        D.plot = 2;
+        if (D.defendtime >= 1) {
+          M(2, obj_dummyenemy_slash_Step_0_gml_348_0), M(3, obj_dummyenemy_slash_Step_0_gml_349_0), M(4, obj_dummyenemy_slash_Step_0_gml_350_0), M(5, obj_dummyenemy_slash_Step_0_gml_351_0), M(6, obj_dummyenemy_slash_Step_0_gml_352_0), M(7, obj_dummyenemy_slash_Step_0_gml_353_0);
+          D.plot = 3;
+        }
+      } else {
+        if (D.hitdum == 0) fe = 1, M(0, obj_dummyenemy_slash_Step_0_gml_364_0), M(1, obj_dummyenemy_slash_Step_0_gml_365_0);
+        if (D.hitdum == 1) fe = 1, M(0, obj_dummyenemy_slash_Step_0_gml_372_0), M(1, obj_dummyenemy_slash_Step_0_gml_373_0), M(2, obj_dummyenemy_slash_Step_0_gml_374_0);
+        if (D.hitdum == 2) fe = 6, M(0, obj_dummyenemy_slash_Step_0_gml_380_0), M(1, obj_dummyenemy_slash_Step_0_gml_381_0), M(2, obj_dummyenemy_slash_Step_0_gml_382_0);
+        if (D.hitdum >= 3) dial = 3;
+        D.hitdum++;
+      }
+    }
+    if (dial == 2) {
+      said = true;
+      fe = 3;
+      M(0, obj_dummyenemy_slash_Step_0_gml_398_0), MZ(1, obj_dummyenemy_slash_Step_0_gml_399_0, obj_dummyenemy_slash_Step_0_gml_399_1, 0);
+      if (D.misstime >= 1) {
+        fe = 8;
+        M(0, obj_dummyenemy_slash_Step_0_gml_403_0);
+        if (D.misstime == 2) MZ(0, obj_dummyenemy_slash_Step_0_gml_404_0, obj_dummyenemy_slash_Step_0_gml_404_1, 1);
+        if (D.misstime == 3) MZ(0, obj_dummyenemy_slash_Step_0_gml_405_0, obj_dummyenemy_slash_Step_0_gml_405_1, 1);
+        if (D.misstime == 4) MZ(0, obj_dummyenemy_slash_Step_0_gml_406_0, obj_dummyenemy_slash_Step_0_gml_406_1, 1);
+        if (D.misstime == 5) M(0, obj_dummyenemy_slash_Step_0_gml_407_0);
+        if (D.misstime == 6) M(0, obj_dummyenemy_slash_Step_0_gml_408_0);
+        if (D.misstime == 7) fe = 9, M(0, obj_dummyenemy_slash_Step_0_gml_412_0);
+        if (D.misstime == 8) {
+          fe = 1, M(0, obj_dummyenemy_slash_Step_0_gml_417_0);
+          D.plot = 2;
+          if (D.defendtime >= 1) {
+            M(0, obj_dummyenemy_slash_Step_0_gml_421_0), M(1, obj_dummyenemy_slash_Step_0_gml_422_0), M(2, obj_dummyenemy_slash_Step_0_gml_423_0), M(3, obj_dummyenemy_slash_Step_0_gml_424_0), M(4, obj_dummyenemy_slash_Step_0_gml_425_0), M(5, obj_dummyenemy_slash_Step_0_gml_426_0), M(6, obj_dummyenemy_slash_Step_0_gml_427_0);
+            D.plot = 3;
+          }
+        }
+      }
+      D.misstime++;
+    }
+    if (dial == 3) {
+      said = true;
+      fe = 9;
+      M(0, obj_dummyenemy_slash_Step_0_gml_441_0), M(1, obj_dummyenemy_slash_Step_0_gml_442_0), M(2, obj_dummyenemy_slash_Step_0_gml_443_0), M(3, obj_dummyenemy_slash_Step_0_gml_444_0);
+      if (D.hitdum >= 4) M(0, obj_dummyenemy_slash_Step_0_gml_447_0), M(1, obj_dummyenemy_slash_Step_0_gml_448_0), M(2, obj_dummyenemy_slash_Step_0_gml_449_0);
+      D.won = true;
+    }
+  }
+  /* (the "Skip" text isn't shown: the writer goes at once) */
+  if (said && dm[0] != str(obj_dummyenemy_slash_Step_0_gml_81_0)) battle_box_talk(FC_RALSEI, fe, dm, dm_count());
+  D.dummyhp = e->hp;
+  e->rest = D.attackcon == 2 || D.won;
+}
+
+/* obj_dbulletcontroller type 14: small bullets from the right, every 10 frames */
+static void dummy_attack(Enemy *e, int t) {
+  if (t % 10) return;
+  int half = box_half();
+  Bullet *b = bullet_new(spr_smallbullet, 660, box_cy() - half + rnd_n(2 * half));
+  b->vx = -8 * BFX, b->angle = (int16_t)angle_of(180), b->scale = 128, b->r = 6;
+  b->damage = (int16_t)(e->at * 5);
+}
+
+/* the turn's end: after the ambush the FIGHT lesson; then "Let's try ..." for the lesson it is */
+static void dummy_flavor(Enemy *e) {
+  if (D.won) {
+    enemy_leave(e);
+    return;
+  }
+  if (D.attackcon == 1) {
+    D.attackcon = 2;
+    dm_clear();
+    int fe = 0;
+    M(0, obj_dummyenemy_slash_Step_0_gml_598_0);
+    if (battle_hp_lost(CH_KRIS) > 0) fe = 6, M(0, obj_dummyenemy_slash_Step_0_gml_602_0);
+    M(1, obj_dummyenemy_slash_Step_0_gml_604_0), M(2, obj_dummyenemy_slash_Step_0_gml_605_0), M(3, obj_dummyenemy_slash_Step_0_gml_606_0), M(4, obj_dummyenemy_slash_Step_0_gml_607_0);
+    D.plot = 1;
+    battle_lesson(FC_RALSEI, fe, dm, 5, obj_dummyenemy_slash_Step_0_gml_610_0);
+    return;
+  }
+  static const uint16_t lets[5] = {obj_dummyenemy_slash_Step_0_gml_556_0, obj_dummyenemy_slash_Step_0_gml_557_0, obj_dummyenemy_slash_Step_0_gml_558_0, obj_dummyenemy_slash_Step_0_gml_559_0, obj_dummyenemy_slash_Step_0_gml_560_0};
+  if (D.plot >= 1 && D.plot <= 5) battle_say(&lets[D.plot - 1], 1);
+}
+
+static void hug_start(int who) {
+  int x = 80, y = 140;
+  battle_hero_pos(CH_KRIS, &x, &y);
+  D.hug = (int8_t)who, D.hug_ph = 0, D.hug_t = 0, D.hug_img = 0;
+  D.fx = (int16_t)x, D.fy = (int16_t)y, D.kx = (int16_t)x, D.ky = (int16_t)y;
+  if (who == 1) {
+    Enemy *e = &en[0];
+    /* (monsterx - 42, monstery - 30): the Dummy's middle, x + 45, y + 75 */
+    D.tx = (int16_t)(e->x + 3), D.ty = (int16_t)(e->y + 45);
+  } else {
+    int rx = 80, ry = 140;
+    battle_hero_pos(CH_RALSEI, &rx, &ry);
+    D.rx = (int16_t)rx, D.ry = (int16_t)ry;
+    D.tx = (int16_t)(rx - 24), D.ty = (int16_t)(ry + 10);
+  }
+  battle_hide_hero(CH_KRIS, true);
+}
+
+static bool dummy_act(Enemy *e, int act) {
+  (void)e;
+  dm_clear();
+  switch (act) {
+    case 1:
+      M(0, obj_dummyenemy_slash_Step_0_gml_642_0);
+      if (D.checked == 0) {
+        M(0, obj_dummyenemy_slash_Step_0_gml_645_0);
+        dm[1] = "\\F0\\E6\\FR%";
+        M(2, obj_dummyenemy_slash_Step_0_gml_647_0), M(3, obj_dummyenemy_slash_Step_0_gml_648_0), M(4, obj_dummyenemy_slash_Step_0_gml_649_0);
+      }
+      D.checked++;
+      battle_say_strs(dm, dm_count());
+      return true;
+    case 2:
+      M(0, obj_dummyenemy_slash_Step_0_gml_666_0);
+      battle_say_strs(dm, 1);
+      hug_start(1);
+      return true;
+    case 3:
+      M(0, obj_dummyenemy_slash_Step_0_gml_808_0);
+      battle_say_strs(dm, 1);
+      hug_start(2);
+      return true;
+    default: return false;
+  }
+}
+
+/* the hug, step by step: there, the hug, Ralsei's words, the hug undone, back */
+static int hug_step(void) {
+  if (!D.hug) return 0;
+  int t = ++D.hug_t;
+  switch (D.hug_ph) {
+    case 0:
+      if (t <= 15) D.kx = (int16_t)(D.fx + (D.tx - D.fx) * t / 15), D.ky = (int16_t)(D.fy + (D.ty - D.fy) * t / 15);
+      if (t == 25 && D.hug == 2) battle_hide_hero(CH_RALSEI, true);
+      if (t > 25) D.hug_img = (int16_t)min_i(3, (t - 25) / 4);
+      if (t >= 37) D.hug_ph = 1;
+      break;
+    case 1:
+      if (battle_text_on()) break;
+      dm_clear();
+      if (D.hug == 1) {
+        int fe = 0;
+        set_flag(205, 1);
+        M(0, obj_dummyenemy_slash_Step_0_gml_711_0);
+        if (D.plot == 5) {
+          M(0, obj_dummyenemy_slash_Step_0_gml_714_0);
+          if (D.hugtime >= 1) M(0, obj_dummyenemy_slash_Step_0_gml_715_0);
+          D.hugtime++;
+        }
+        if (D.plot == 1) {
+          fe = 3;
+          M(0, obj_dummyenemy_slash_Step_0_gml_722_0), M(1, obj_dummyenemy_slash_Step_0_gml_723_0), M(2, obj_dummyenemy_slash_Step_0_gml_724_0), M(3, obj_dummyenemy_slash_Step_0_gml_725_0), M(4, obj_dummyenemy_slash_Step_0_gml_726_0), M(5, obj_dummyenemy_slash_Step_0_gml_727_0), M(6, obj_dummyenemy_slash_Step_0_gml_728_0);
+          D.plot = 2;
+          if (D.defendtime >= 1) {
+            M(3, obj_dummyenemy_slash_Step_0_gml_733_0), M(4, obj_dummyenemy_slash_Step_0_gml_734_0), M(5, obj_dummyenemy_slash_Step_0_gml_735_0), M(6, obj_dummyenemy_slash_Step_0_gml_736_0), M(7, obj_dummyenemy_slash_Step_0_gml_737_0), M(8, obj_dummyenemy_slash_Step_0_gml_738_0);
+            D.plot = 3;
+          }
+        }
+        if (D.plot == 4) fe = 8, M(0, obj_dummyenemy_slash_Step_0_gml_746_0), M(1, obj_dummyenemy_slash_Step_0_gml_747_0), M(2, obj_dummyenemy_slash_Step_0_gml_748_0), M(3, obj_dummyenemy_slash_Step_0_gml_749_0), M(4, obj_dummyenemy_slash_Step_0_gml_750_0), D.plot = 5;
+        battle_face(FC_RALSEI, fe);
+      } else {
+        M(0, obj_dummyenemy_slash_Step_0_gml_846_0);
+        if (D.r_hugtime == 0) M(0, obj_dummyenemy_slash_Step_0_gml_850_0), M(1, obj_dummyenemy_slash_Step_0_gml_851_0), M(2, obj_dummyenemy_slash_Step_0_gml_852_0), M(3, obj_dummyenemy_slash_Step_0_gml_853_0);
+        if (D.r_hugtime == 1) M(0, obj_dummyenemy_slash_Step_0_gml_858_0), M(1, obj_dummyenemy_slash_Step_0_gml_859_0), M(2, obj_dummyenemy_slash_Step_0_gml_860_0);
+        if (D.r_hugtime == 2) M(0, obj_dummyenemy_slash_Step_0_gml_868_0), M(1, obj_dummyenemy_slash_Step_0_gml_869_0), M(2, obj_dummyenemy_slash_Step_0_gml_870_0), M(3, obj_dummyenemy_slash_Step_0_gml_871_0);
+        if (D.r_hugtime >= 3) M(0, obj_dummyenemy_slash_Step_0_gml_876_0);
+        D.r_hugtime++;
+        battle_face(FC_RALSEI, 2);
+      }
+      battle_say_strs(dm, dm_count());
+      D.hug_ph = 2;
+      break;
+    case 2:
+      if (!battle_text_on()) D.hug_ph = 3, D.hug_t = 0;
+      break;
+    case 3:
+      D.hug_img = (int16_t)max_i(0, 3 - t / 4);
+      if (t >= 12) D.hug_ph = 4, D.hug_t = 0;
+      break;
+    default:
+      if (t <= 15) D.kx = (int16_t)(D.tx + (D.fx - D.tx) * t / 15), D.ky = (int16_t)(D.ty + (D.fy - D.ty) * t / 15);
+      if (t >= 25) {
+        if (D.hug == 1) mercy_add(&en[0], 100);
+        else battle_hide_hero(CH_RALSEI, false);
+        battle_hide_hero(CH_KRIS, false);
+        D.hug = 0;
+      }
+      break;
+  }
+  return 1;
+}
+
+static int dummy_script(Enemy *e, int ev, int arg) {
+  if (!e->v[0]) {
+    /* (the battle's first call: its own state from the start) */
+    memset(&D, 0, sizeof D);
+    e->v[0] = 1;
+    writer_img[0] = spr_btfight_h, writer_img[1] = spr_btdefend_h, writer_img[2] = spr_bttech_h;
+    writer_img[3] = spr_btact_h, writer_img[4] = spr_btspare_h, writer_img[5] = spr_btitem_h;
+  }
+  switch (ev) {
+    case BS_CANMOVE: return D.plot == 3 ? arg == CH_RALSEI : arg == CH_KRIS;
+    case BS_STEP: return arg ? D.hug != 0 : hug_step();
+    case BS_DRAW:
+      if (D.hug) {
+        gfx_sprite(spr_kris_hug, D.hug_img, D.kx / 2, D.ky / 2, 0, 255);
+        if (D.hug == 2 && (D.hug_ph > 0 || D.hug_t >= 25)) gfx_sprite(spr_ralseil_blush, 0, D.rx / 2, D.ry / 2, 0, 255);
+      }
+      return 0;
+    case BS_PACIFIED: D.pacifycon = true; return 0;
+    default: return 0;
+  }
 }
 
 /* ================================================================ the table */
 static const EnemyDef defs[] = {
   {obj_diamondenemy, spr_diamondm_idle, spr_diamondm_hurt, spr_diamondm_spared, 6, rudinn_talk, rudinn_attack,
-   rudinn_flavor, rudinn_act, NULL, 140, NULL, 0, 0, 0},
+   rudinn_flavor, rudinn_act, NULL, 140, NULL, 0, 0, 0, NULL, 0},
   {obj_heartenemy, spr_heartenemy_idle, spr_heartenemy_hurt, spr_heartenemy_spared, 6, hathy_talk, hathy_attack,
-   hathy_flavor, hathy_act, hathy_draw, 140, NULL, -100, 0, spr_battleblcon},
+   hathy_flavor, hathy_act, hathy_draw, 140, NULL, -100, 0, spr_battleblcon, NULL, 0},
   {obj_lancerboss, spr_lancerbike, spr_lancerbike, spr_lancerbike, 4, lancer_talk, lancer_attack, lancer_flavor,
-   lancer_act, lancer_draw, 999, lancer_front, -235, -65, 0},
-  {obj_dummyenemy, spr_dummymonster, spr_dummymonster, spr_dummymonster, 6, dummy_talk, dummy_attack, NULL, dummy_act,
-   NULL, 60, NULL, 0, 0, 0},
+   lancer_act, lancer_draw, 999, lancer_front, -235, -65, 0, NULL, 0},
+  {obj_dummyenemy, spr_dummymonster, spr_dummymonster, spr_dummymonster, 6, dummy_talk, dummy_attack, dummy_flavor,
+   dummy_act, NULL, 150, NULL, 0, 0, 0, dummy_script, EF_AMBUSH | EF_STAYS},
 };
 
 const EnemyDef *enemy_def(int obj) {

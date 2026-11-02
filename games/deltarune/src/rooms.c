@@ -112,6 +112,14 @@ static bool is_door(int obj) {
 }
 
 static void npc_setup(const Inst *in);
+/* an npc a cutscene makes (instance_create of obj_npc_room...): as the room's own */
+Obj *room_add_npc(int obj, int x, int y) {
+  Inst in = {(uint16_t)obj, (int16_t)x, (int16_t)y, 100, 100, 250};
+  npc_setup(&in);
+  for (int i = MAX_OBJS - 1; i >= 0; i--)
+    if (!(objs[i].flags & OF_GONE) && objs[i].inst == 250) return &objs[i];
+  return NULL;
+}
 static uint8_t reads[256];
 static int pending_ev;
 
