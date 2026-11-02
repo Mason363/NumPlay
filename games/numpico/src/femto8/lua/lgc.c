@@ -2,6 +2,7 @@
 ** $Id: lgc.c,v 2.140.1.2 2013/04/26 18:22:05 roberto Exp roberto $
 ** Garbage Collector
 ** See Copyright Notice in lua.h
+** Changed for NumPico: 2-byte line numbers.
 */
 
 #include <string.h>
@@ -470,7 +471,7 @@ static int traverseproto (global_State *g, Proto *f) {
   return sizeof(Proto) + sizeof(Instruction) * f->sizecode +
                          sizeof(Proto *) * f->sizep +
                          sizeof(TValue) * f->sizek +
-                         sizeof(int) * f->sizelineinfo +
+                         sizeof(lineinfo_t) * f->sizelineinfo +
                          sizeof(LocVar) * f->sizelocvars +
                          sizeof(Upvaldesc) * f->sizeupvalues;
 }

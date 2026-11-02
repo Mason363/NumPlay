@@ -2,6 +2,7 @@
 ** $Id: lstring.c,v 2.26 2013/01/08 13:50:10 roberto Exp $
 ** String table (keeps all strings handled by Lua)
 ** See Copyright Notice in lua.h
+** Changed for NumPico: the table of strings stops growing at 1024 lists.
 */
 
 
@@ -118,7 +119,8 @@ static TString *newshrstr (lua_State *L, const char *str, size_t l,
   GCObject **list;  /* (pointer to) list where it will be inserted */
   stringtable *tb = &G(L)->strt;
   TString *s;
-  if (tb->nuse >= cast(lu_int32, tb->size) && tb->size <= MAX_INT/2)
+  /* (NumPico: 1024 lists at most, 4 KB: longer lists rather than a bigger table) */
+  if (tb->nuse >= cast(lu_int32, tb->size) && tb->size < 1024)
     luaS_resize(L, tb->size*2);  /* too crowded */
   list = &tb->hash[lmod(h, tb->size)];
   s = createstrobj(L, str, l, LUA_TSHRSTR, h, list);

@@ -2,6 +2,8 @@
 ** $Id: lcode.c,v 2.62 2012/08/16 17:34:28 roberto Exp $
 ** Code generator for Lua
 ** See Copyright Notice in lua.h
+** Changed for NumPico: no line numbers kept for the instructions (see ldebug.h); constants found
+** without a table.
 */
 
 
@@ -216,10 +218,7 @@ static int luaK_code (FuncState *fs, Instruction i) {
   luaM_growvector(fs->ls->L, f->code, fs->pc, f->sizecode, Instruction,
                   MAX_INT, "opcodes");
   f->code[fs->pc] = i;
-  /* save corresponding line information */
-  luaM_growvector(fs->ls->L, f->lineinfo, fs->pc, f->sizelineinfo, int,
-                  MAX_INT, "opcodes");
-  f->lineinfo[fs->pc] = fs->ls->lastline;
+  /* (NumPico: no line for each instruction, see ldebug.h) */
   return fs->pc++;
 }
 
@@ -290,23 +289,17 @@ static void freeexp (FuncState *fs, expdesc *e) {
 
 static int addk (FuncState *fs, TValue *key, TValue *v) {
   lua_State *L = fs->ls->L;
-  TValue *idx = luaH_set(L, fs->h, key);
   Proto *f = fs->f;
   int k, oldsize;
-  if (ttisnumber(idx)) {
-    lua_Number n = nvalue(idx);
-    lua_number2int(k, n);
+  (void)key;
+  /* (NumPico: the function's constants looked through in turn, not in a table: such tables took
+     kilobytes the calculator doesn't have) */
+  for (k = 0; k < fs->nk; k++)
     if (luaV_rawequalobj(&f->k[k], v))
       return k;
-    /* else may be a collision (e.g., between 0.0 and "\0\0\0\0\0\0\0\0");
-       go through and create a new entry for this value */
-  }
   /* constant not found; create a new entry */
   oldsize = f->sizek;
   k = fs->nk;
-  /* numerical value does not need GC barrier;
-     table has no metatable, so it does not need to invalidate cache */
-  setnvalue(idx, cast_num(k));
   luaM_growvector(L, f->k, k, f->sizek, TValue, MAXARG_Ax, "constants");
   while (oldsize < f->sizek) setnilvalue(&f->k[oldsize++]);
   setobj(L, &f->k[k], v);
@@ -328,14 +321,8 @@ int luaK_numberK (FuncState *fs, lua_Number r) {
   lua_State *L = fs->ls->L;
   TValue o;
   setnvalue(&o, r);
-  if (r == 0 || luai_numisnan(NULL, r)) {  /* handle -0 and NaN */
-    /* use raw representation as key to avoid numeric problems */
-    setsvalue(L, L->top++, luaS_newlstr(L, (char *)&r, sizeof(r)));
-    n = addk(fs, L->top - 1, &o);
-    L->top--;
-  }
-  else
-    n = addk(fs, &o, &o);  /* regular case */
+  (void)L;
+  n = addk(fs, &o, &o);  /* (NumPico: fixed point numbers have no -0 and no NaN) */
   return n;
 }
 
@@ -891,7 +878,7 @@ void luaK_posfix (FuncState *fs, BinOpr op,
 
 
 void luaK_fixline (FuncState *fs, int line) {
-  fs->f->lineinfo[fs->pc - 1] = line;
+  (void)fs; (void)line;
 }
 
 

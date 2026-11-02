@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 void heap_init(uint8_t *start, uint8_t *end);
+/* more RAM for it */
+void heap_add(uint8_t *start, uint8_t *end);
 /* lua_Alloc */
 void *heap_alloc(void *ud, void *ptr, size_t osize, size_t nsize);
 uint32_t heap_used(void);

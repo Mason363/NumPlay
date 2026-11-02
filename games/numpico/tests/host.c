@@ -57,7 +57,7 @@ void plat_push(int x, int y, int w, int h, const uint16_t *px) {
 }
 
 uint32_t plat_keys(void) {
-  if (frames >= limit) return PK_HOME;
+  if (frames >= limit || now_ms > 1200000) return PK_HOME; /* (or after 20 minutes on the clock: a cart stuck) */
   /* the list: the cart to play */
   if (cart_pick >= 0 && !picked) {
     static int step;

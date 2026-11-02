@@ -2,6 +2,7 @@
 ** $Id: lobject.h,v 2.71.1.1 2013/04/12 18:48:47 roberto Exp roberto $
 ** Type definitions for Lua objects
 ** See Copyright Notice in lua.h
+** Changed for NumPico: 2-byte line numbers.
 */
 
 
@@ -454,6 +455,9 @@ typedef struct Upvaldesc {
 ** Description of a local variable for function prototypes
 ** (used for debug information)
 */
+/* (NumPico: a cart's code has fewer than 65536 lines, so a line takes 2 bytes, not 4) */
+typedef unsigned short lineinfo_t;
+
 typedef struct LocVar {
   TString *varname;
   int startpc;  /* first point where variable is active */
@@ -469,7 +473,7 @@ typedef struct Proto {
   TValue *k;  /* constants used by the function */
   Instruction *code;
   struct Proto **p;  /* functions defined inside the function */
-  int *lineinfo;  /* map from opcodes to source lines (debug information) */
+  lineinfo_t *lineinfo;  /* map from opcodes to source lines (debug information) */
   LocVar *locvars;  /* information about local variables (debug information) */
   Upvaldesc *upvalues;  /* upvalue information */
   union Closure *cache;  /* last created closure with this prototype */

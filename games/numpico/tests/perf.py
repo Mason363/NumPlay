@@ -61,7 +61,18 @@ def main():
         heap, size = word(c, "perf_heap"), word(c, "perf_heap_size")
         end = ["playing", "quit", "home", "error", "OUT OF MEMORY", "load"][min(word(c, "perf_end"), 5)]
         print(f"{name:28s} {frames / secs:5.1f} pictures/s {updates / secs:5.1f} frames/s  Lua {heap // 1024:3d} KB "
-              f"of {size // 1024} KB  {end}", flush=True)
+              f"of {size // 1024} KB  {end}  (API {word(c, 'perf_base') // 1024} KB, code {word(c, 'perf_load_used') // 1024} KB, "
+              f"{word(c, 'perf_load_peak') // 1024} KB while read)", flush=True)
+        # the stack: the deepest word written (it starts as zeros)
+        st = bytes(c.uc.mem_read(emu.EXT_RAM_END, emu.STACK_TOP - emu.EXT_RAM_END))
+        deep = next((i for i in range(0, len(st), 4) if st[i:i + 4] != bytes(4)), len(st))
+        print(f"  stack {(len(st) - deep) // 1024} KB of {len(st) // 1024} KB")
+        if word(c, "perf_fail_size"):
+            print(f"  last failed: {word(c, 'perf_fail_size')} bytes with {word(c, 'perf_fail_used')} used, "
+                  f"the largest free block {word(c, 'perf_fail_largest')}")
+            if os.environ.get("MAP"):
+                m = struct.unpack("<128I", bytes(c.uc.mem_read(c.symbols["perf_fail_map"], 512)))
+                print("  free:", " ".join(f"{m[i] & 0xfffff:05x}+{m[i + 1]}" for i in range(0, 128, 2) if m[i]))
         if a.shots:
             os.makedirs(a.shots, exist_ok=True)
             c.save_png(os.path.join(a.shots, name.split(".")[0] + ".png"))

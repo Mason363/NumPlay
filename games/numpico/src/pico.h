@@ -40,6 +40,10 @@ extern pico_error_t pico_error;
 extern int pico_next;
 extern uint32_t pico_peak; /* the most memory Lua had, in bytes, the last time a cart ran */
 
+/* more RAM for Lua, on main's stack (its 32 KB are more than the calculator needs: see llimits.h) */
+#define PICO_EXTRA 14336
+extern uint8_t *pico_extra;
+
 extern p8_cart_t pico_carts[P8_MAX_CARTS];
 extern int pico_ncarts;
 

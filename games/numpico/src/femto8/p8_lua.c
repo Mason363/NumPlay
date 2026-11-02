@@ -32,6 +32,7 @@
 #include "lualib.h"
 #include "lauxlib.h"
 #include "../pico.h"
+#include "../heap.h"
 
 lua_State *L = NULL;
 static int m_status = 0;
@@ -2053,10 +2054,18 @@ int lua_init_script(const char *file_name, const char *script, size_t script_len
     (void)file_name;
     lua_settop(L, 0);
 
+    // (the collector stopped while the code is read: the strings the parser makes aren't kept by a
+    // table, llex.c; then what it left behind goes)
+    lua_gc(L, LUA_GCSTOP, 0);
     m_status = luaL_loadbuffer(L, script, script_len, "=cart");
-
+    lua_gc(L, LUA_GCRESTART, 0);
     if (m_status)
         return m_status;
+    lua_gc(L, LUA_GCCOLLECT, 0);
+    {
+        extern uint32_t perf_load_used, perf_load_peak;
+        perf_load_used = heap_used(), perf_load_peak = heap_peak();
+    }
 
     m_status = lua_pcall(L, 0, 0, 0);
     return m_status;

@@ -13,7 +13,9 @@
 
 #define pcRel(pc, p)	(cast(int, (pc) - (p)->code) - 1)
 
-#define getfuncline(f,pc)	(((f)->lineinfo) ? (f)->lineinfo[pc] : 0)
+/* (NumPico: an instruction's line is its function's first: lines would take 2 bytes for each
+   instruction, too much for the calculator's RAM) */
+#define getfuncline(f,pc)	((void)(pc), (f)->linedefined)
 
 #define resethookcount(L)	(L->hookcount = L->basehookcount)
 

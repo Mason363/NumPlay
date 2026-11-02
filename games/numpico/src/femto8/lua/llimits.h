@@ -2,6 +2,7 @@
 ** $Id: llimits.h,v 1.103 2013/02/20 14:08:56 roberto Exp $
 ** Limits, basic types, and some other `installation-dependent' definitions
 ** See Copyright Notice in lua.h
+** Changed for NumPico: fewer nested C calls and parser levels (the stack is 32 KB).
 */
 
 #ifndef llimits_h
@@ -116,7 +117,10 @@ typedef LUAI_UACNUMBER l_uacNumber;
 ** in a program. (Value must fit in an unsigned short int.)
 */
 #if !defined(LUAI_MAXCCALLS)
-#define LUAI_MAXCCALLS		200
+/* (NumPico: the calculator's stack is 32 KB, and a C call into Lua takes about 400 bytes of it, a level
+   of the parser 150: 32 calls and 64 levels fit, beside 14 KB of Lua's memory, pico.h) */
+#define LUAI_MAXCCALLS		32
+#define LUAI_MAXPARSE		64
 #endif
 
 /*

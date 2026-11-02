@@ -2,6 +2,7 @@
 ** $Id: linit.c,v 1.32 2011/04/08 19:17:36 roberto Exp $
 ** Initialization of libraries for lua.c and other clients
 ** See Copyright Notice in lua.h
+** Changed for NumPico: no coroutine and string tables (PICO-8 has cocreate, coresume, sub, chr and the others instead).
 */
 
 
@@ -29,8 +30,6 @@
 static const luaL_Reg loadedlibs[] = {
   {"_G", luaopen_base},
   {"_G", luaopen_pico8},
-  {LUA_COLIBNAME, luaopen_coroutine},
-  {LUA_STRLIBNAME, luaopen_string},
   {NULL, NULL}
 };
 

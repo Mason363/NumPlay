@@ -2,6 +2,7 @@
 ** $Id: ldebug.c,v 2.90.1.3 2013/05/16 16:04:15 roberto Exp roberto $
 ** Debug Interface
 ** See Copyright Notice in lua.h
+** Changed for NumPico: 2-byte line numbers.
 */
 
 
@@ -216,7 +217,7 @@ static void collectvalidlines (lua_State *L, Closure *f) {
   else {
     int i;
     TValue v;
-    int *lineinfo = f->l.p->lineinfo;
+    lineinfo_t *lineinfo = f->l.p->lineinfo;
     Table *t = luaH_new(L);  /* new table to store active lines */
     sethvalue(L, L->top, t);  /* push it on stack */
     api_incr_top(L);

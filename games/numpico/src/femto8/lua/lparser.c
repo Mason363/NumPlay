@@ -2,6 +2,7 @@
 ** $Id: lparser.c,v 2.130 2013/02/06 13:37:39 roberto Exp $
 ** Lua Parser
 ** See Copyright Notice in lua.h
+** Changed for NumPico: no instruction lines (ldebug.h); a function's local names freed once it's read (the calculator's RAM is small).
 */
 
 
@@ -376,7 +377,7 @@ static void adjust_assign (LexState *ls, int nvars, int nexps, expdesc *e) {
 static void enterlevel (LexState *ls) {
   lua_State *L = ls->L;
   ++L->nCcalls;
-  checklimit(ls->fs, L->nCcalls, LUAI_MAXCCALLS, "C levels");
+  checklimit(ls->fs, L->nCcalls, LUAI_MAXPARSE, "C levels");
 }
 
 
@@ -606,14 +607,14 @@ static void close_func (LexState *ls) {
   leaveblock(fs);
   luaM_reallocvector(L, f->code, f->sizecode, fs->pc, Instruction);
   f->sizecode = fs->pc;
-  luaM_reallocvector(L, f->lineinfo, f->sizelineinfo, fs->pc, int);
-  f->sizelineinfo = fs->pc;
   luaM_reallocvector(L, f->k, f->sizek, fs->nk, TValue);
   f->sizek = fs->nk;
   luaM_reallocvector(L, f->p, f->sizep, fs->np, Proto *);
   f->sizep = fs->np;
-  luaM_reallocvector(L, f->locvars, f->sizelocvars, fs->nlocvars, LocVar);
-  f->sizelocvars = fs->nlocvars;
+  /* (the names of the locals were for the parser: errors say "a nil value", not "local 'x'") */
+  luaM_freearray(L, f->locvars, f->sizelocvars);
+  f->locvars = NULL;
+  f->sizelocvars = 0;
   luaM_reallocvector(L, f->upvalues, f->sizeupvalues, fs->nups, Upvaldesc);
   f->sizeupvalues = fs->nups;
   lua_assert(fs->bl == NULL);
@@ -1212,7 +1213,7 @@ static void assignment (LexState *ls, struct LHS_assign *lh, int nvars) {
     suffixedexp(ls, &nv.v);
     if (nv.v.k != VINDEXED)
       check_conflict(ls, lh, &nv.v);
-    checklimit(ls->fs, nvars + ls->L->nCcalls, LUAI_MAXCCALLS,
+    checklimit(ls->fs, nvars + ls->L->nCcalls, LUAI_MAXPARSE,
                     "C levels");
     assignment(ls, &nv, nvars+1);
   }

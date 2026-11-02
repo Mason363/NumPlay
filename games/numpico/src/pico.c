@@ -40,6 +40,7 @@ p8_cart_t pico_carts[P8_MAX_CARTS];
 int pico_ncarts;
 pico_error_t pico_error;
 int pico_next = -1;
+uint8_t *pico_extra;
 uint32_t pico_peak;
 
 static int cart = -1, breadcrumb = -1;
@@ -172,7 +173,8 @@ static uint8_t high_color(uint8_t hc, uint8_t pix, int sx, int sy) {
 }
 
 /* (for tools/emu.py and tests/perf.py: pictures shown, frames run, Lua's memory at its most) */
-__attribute__((used)) uint32_t perf_frames, perf_updates, perf_heap, perf_heap_size, perf_end;
+__attribute__((used)) uint32_t perf_frames, perf_updates, perf_heap, perf_heap_size, perf_end, perf_base, perf_load_used,
+  perf_load_peak, perf_fail_size, perf_fail_used, perf_fail_largest, perf_fail_map[128];
 
 void p8_render(void) {
   perf_frames++;
@@ -602,7 +604,9 @@ static int start(void) {
   uint8_t *a, *b;
   plat_heap(&a, &b);
   heap_init(a, b);
+  if (pico_extra) heap_add(pico_extra, pico_extra + PICO_EXTRA);
   if (lua_load_api() != 0) return PICO_MEMORY;
+  perf_base = heap_used();
   lua_gc(L, LUA_GCSETPAUSE, 150);
   in_lua = true;
   int st = lua_init_script(NULL, c->code, c->code_len);

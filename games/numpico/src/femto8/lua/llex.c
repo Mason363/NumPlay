@@ -2,6 +2,7 @@
 ** $Id: llex.c,v 2.63.1.2 2013/08/30 15:49:41 roberto Exp roberto $
 ** Lexical Analyzer
 ** See Copyright Notice in lua.h
+** Changed for NumPico: no table keeping the strings while the code is read (the collector is stopped then).
 */
 
 
@@ -130,22 +131,9 @@ l_noret luaX_syntaxerror (LexState *ls, const char *msg) {
 ** (by that time it should be anchored in function's prototype)
 */
 TString *luaX_newstring (LexState *ls, const char *str, size_t l) {
-  lua_State *L = ls->L;
-  TValue *o;  /* entry for `str' */
-  TString *ts = luaS_newlstr(L, str, l);  /* create new string */
-  setsvalue2s(L, L->top++, ts);  /* temporarily anchor it in stack */
-  o = luaH_set(L, ls->fs->h, L->top - 1);
-  if (ttisnil(o)) {  /* not in use yet? (see 'addK') */
-    /* boolean value does not need GC barrier;
-       table has no metatable, so it does not need to invalidate cache */
-    setbvalue(o, 1);  /* t[string] = true */
-    luaC_checkGC(L);
-  }
-  else {  /* string already present */
-    ts = rawtsvalue(keyfromval(o));  /* re-use value previously stored */
-  }
-  L->top--;  /* remove string from stack */
-  return ts;
+  /* (NumPico: the collector is stopped while the code is read, pico.c, so the strings need no table
+     to keep them: such tables took kilobytes the calculator doesn't have) */
+  return luaS_newlstr(ls->L, str, l);
 }
 
 

@@ -225,10 +225,11 @@ static void end_scene(void *ctx) {
 
 /* ------------------------------------------------------------ keys */
 static uint32_t held;
+/* the keys just pressed (Home: held, too) */
 static uint32_t hits(void) {
   uint32_t k = plat_keys(), hit = k & ~held;
   held = k;
-  return hit;
+  return hit | (k & PK_HOME);
 }
 
 /* ------------------------------------------------------------ playing */
@@ -266,6 +267,8 @@ static int play(int i) {
 }
 
 int numpico_main(void) {
+  uint8_t extra[PICO_EXTRA] __attribute__((aligned(8)));
+  pico_extra = extra;
   plat_begin();
   strips_init();
   cfg_load();
