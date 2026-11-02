@@ -165,3 +165,32 @@ void gfx_img(int id, int x, int y, uint16_t c) {
   const uint8_t *p = img_at(id);
   alpha_rows(p + 8, (int)rd16(p), (int)rd16(p + 2), x, y, c);
 }
+
+/* ------------------------------------------------------------------ sprites (the minigames) */
+static const uint8_t *spr_at(int id) {
+  const uint8_t *s = section(SEC_SPRS);
+  return s + rd32(s + 4 + 4 * id);
+}
+int gfx_sprite_w(int id) { return (int)rd16(spr_at(id)); }
+int gfx_sprite_h(int id) { return (int)rd16(spr_at(id) + 2); }
+
+/* a sprite with its hot spot at (x, y), mirrored or not: 16 colours, 0 clear */
+void gfx_sprite(int id, int x, int y) {
+  const uint8_t *p = spr_at(id);
+  int w = (int)rd16(p), h = (int)rd16(p + 2);
+  x -= rds16(p + 4), y -= rds16(p + 6);
+  const uint8_t *pal = p + 8, *px = p + 40;
+  int stride = (w + 1) / 2;
+  int r0 = gfx_y0 - y, r1 = gfx_y0 + BAND_H - y;
+  if (r0 < 0) r0 = 0;
+  if (r1 > h) r1 = h;
+  int c0 = x < 0 ? -x : 0, c1 = x + w > SCREEN_W ? SCREEN_W - x : w;
+  for (int r = r0; r < r1; r++) {
+    const uint8_t *row = px + r * stride;
+    uint16_t *dst = gfx_band + (y + r - gfx_y0) * SCREEN_W + x;
+    for (int c = c0; c < c1; c++) {
+      int k = (row[c >> 1] >> ((c & 1) * 4)) & 15;
+      if (k) dst[c] = (uint16_t)rd16(pal + 2 * k);
+    }
+  }
+}

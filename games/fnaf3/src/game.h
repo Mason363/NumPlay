@@ -20,7 +20,21 @@ enum { L_NONE, L_CAM1, L_CAM10 = 10, L_VENT11, L_VENT15 = 15, L_ST1, L_ST2, L_ST
 enum { PH_NONE, PH_BB, PH_FREDDY, PH_CHICA, PH_FOXY };
 
 /* scenes */
-enum { SC_TITLE, SC_EXTRAS, SC_DAY, SC_NIGHT, SC_STATIC, SC_OVER, SC_SIX, SC_END };
+enum { SC_TITLE, SC_EXTRAS, SC_DAY, SC_NIGHT, SC_STATIC, SC_OVER, SC_SIX, SC_END, SC_MINI };
+
+/* the minigames' saves (the game's Ini keys): BB's balloons, the cake, the four children given one */
+enum { MG_BB = 1, MG_CAKE = 2, MG_K1 = 4, MG_K2 = 8, MG_K3 = 16, MG_K4 = 32 };
+
+/* a minigame (mini.c) */
+typedef struct {
+  uint8_t level, from_extras, win, secret, changed, moving, latch, dir;
+  int16_t hx, hy;          /* "hitbox" */
+  int16_t camx, camy;      /* the screen shown ("watch screen", its corner) */
+  int8_t jump;             /* "Active" A */
+  int16_t counter, counter2, cake_t, win_t;
+  uint16_t every[10];
+  uint32_t frame;
+} Mini;
 
 /* A night, all of it: kept as it is when Home quits (save.c), so the next start goes on from there. */
 typedef struct {
@@ -125,6 +139,10 @@ typedef struct {
   bool running;
   /* the save (Ini "freddy3"): the night reached, the stars, the extras */
   uint8_t level, beatgame, beat6, goodend, keys_seen;
+  uint8_t mg_flags;        /* MG_* */
+  uint8_t mini_next;       /* a minigame to go to after this step, + 1 (0 none) */
+  uint8_t mini_after;      /* where a minigame leads (game.c) */
+  uint8_t extras_sub;      /* Extras' list of minigames shown */
   uint8_t cheats;          /* bits: fast nights, radar, aggressive, no errors */
   uint8_t menu, menu_n;
   uint8_t paused, confirm, pause_item;
@@ -133,6 +151,7 @@ typedef struct {
   const char *cap[4];      /* what is heard, as captions (the newest last) */
   float cap_t[4];
   Night n;
+  Mini mg;
 } Game;
 
 enum { CH_FAST = 1, CH_RADAR = 2, CH_AGGRESSIVE = 4, CH_NOERRORS = 8 };
@@ -159,6 +178,12 @@ int spring_cam(void);          /* "mon in": 1..15, 0 elsewhere */
 void view_night(void);
 void view_scare(void);
 void view_captions(void);
+
+/* mini.c */
+void mini_begin(int level, bool from_extras);
+void mini_step(void);
+void mini_draw(void);
+int mini_done(void);
 
 /* save.c */
 void save_restore_copy(void);

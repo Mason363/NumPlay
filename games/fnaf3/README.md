@@ -20,6 +20,7 @@
 * **Springtrap** walks the attraction's ten cameras and its five vents. He looks in through the window, runs past it, hides by the door and peeks around it. Lure him away with BB's laugh, and seal the vent he's in.
 * **The maintenance panel:** the audio, the cameras and the ventilation wear out. Reboot one or all. With the ventilation down the office flashes red, the cameras show him where he isn't, and the dark comes in waves.
 * **The phantoms:** BB, Mangle, Chica, Phantom Freddy, the Puppet and Foxy, when and where the game brings them, each once a night.
+* **The 8-bit minigames** after each of the first five nights. Carry the cake from Mangle's Quest to the four children and Happiest Day ends the game well.
 * **Nights 1 to 5, then the 6th:** the 6th night and the Extras open once the game is beaten, a star for each ending.
 * **Home** keeps the night as it is, and the next start puts you back in it, paused.
 
@@ -54,6 +55,7 @@ The phantoms don't kill you, but their scare brings the ventilation down and Spr
 | Backspace | On the monitor: the camera map or the vent map |
 | EXE | The monitor down, the panel's Exit |
 | ↑ ↓, OK | On the panel: a system, reboot it |
+| ← →, OK | In a minigame: walk, jump |
 | Back | Pause |
 | Home | Keep the night and quit |
 
@@ -61,7 +63,7 @@ The phantoms don't kill you, but their scare brings the ventilation down and Spr
 
 * **Too big to install next to NumPlay.** Your saves in each are kept.
 * **No sound:** the calculator has no speaker. What you would hear is written at the bottom left: the footsteps, the vents, BB's laugh, the alarm. Springtrap's hum, louder the closer he is, is the two bars at the top left.
-* **Left out:** the phone calls and the 8-bit minigames between nights, with the good ending they lead to. The cheats in Extras open with the good ending, so they stay shut.
+* **Left out:** the phone calls.
 * **The pictures are the game's,** at half size: the screen shows 640 of its 800 pixels around where the game looks.
 
 ## Credits

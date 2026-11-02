@@ -33,12 +33,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import ccn  # noqa: E402
 import codec as C  # noqa: E402
+import minigames  # noqa: E402
 
 OUT_BIN = os.path.join(HERE, "..", "src", "data.bin")
 OUT_H = os.path.join(HERE, "..", "src", "data.h")
 ROOT = os.path.join(HERE, "..", "..", "..")
 CCN = os.path.expanduser("~/Documents/Assets/gamesrc/fnaf3/dl/application.ccn")
-SECTIONS = ["HUFF", "QUANT", "PICS", "TABLE", "BANK", "FONTS", "IMGS"]
+SECTIONS = ["HUFF", "QUANT", "PICS", "TABLE", "BANK", "FONTS", "IMGS", "SPRS"]
 QUALITY = {"scene": 80, "scare": 70, "face": 76}
 FONT_DIRS = [os.environ.get("FONTS", ""), "/usr/share/fonts/truetype/dejavu", "/usr/share/fonts/TTF",
              "/usr/local/share/fonts", "/Library/Fonts", os.path.expanduser("~/Library/Fonts"),
@@ -500,6 +501,7 @@ def main():
     panel_imgs()
     head_imgs()
     icon()
+    mini_h = minigames.build(APP, lambda n, a: PICS.index(pic(n, a, "face")), arr)
     huff, quant, pics, table, bank = encode_all()
     fonts = [
         ttf_font(font(11, bold=True, mono=True)),   # FONT_HUD
@@ -508,7 +510,7 @@ def main():
         ttf_font(font(24, bold=True)),              # FONT_CLOCK
         ttf_font(font(24, mono=True)),              # FONT_HUGE
     ]
-    sections = [huff, quant, pics, table, bank, pack_fonts(fonts), pack_imgs()]
+    sections = [huff, quant, pics, table, bank, pack_fonts(fonts), pack_imgs(), minigames.pack_sprites()]
     head = b"FNF3" + struct.pack("<I", len(sections))
     offs, p = [], len(head) + 4 * len(sections)
     for s in sections:
@@ -526,6 +528,7 @@ def main():
     h += [f"#define {n} {v}" for n, v in DEFINES]
     h += ["", "#endif", ""]
     open(OUT_H, "w").write("\n".join(h))
+    open(os.path.join(HERE, "..", "src", "mini_data.h"), "w").write("\n".join(mini_h))
     print(f"data.bin: {len(out)} bytes")
 
 

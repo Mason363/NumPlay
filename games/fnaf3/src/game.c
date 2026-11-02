@@ -9,6 +9,7 @@
 #include "gfx.h"
 #include "data.h"
 #include "plat.h"
+#include "mini.h"
 
 Game g;
 
@@ -98,36 +99,81 @@ static void title_draw(void) {
   gfx_text(FONT_HUD, 8, SCREEN_H - 14, "Up Down choose   OK start   Back quit", WHITE);
 }
 
+/* ------------------------------------------------------------ the minigames */
+/* after a minigame: the night again (BB's, from the camera), the next night, the ending or Extras */
+enum { AFTER_NIGHT, AFTER_NEXT, AFTER_END, AFTER_EXTRAS };
+static void mini_go(int level, int after) {
+  mini_begin(level, after == AFTER_EXTRAS);
+  g.mini_after = (uint8_t)after;
+  go(SC_MINI);
+}
+
+static void mini_over(void) {
+  switch (g.mini_after) {
+  case AFTER_NIGHT: start_night(g.n.night); break;
+  case AFTER_NEXT: start_night(g.n.night + 1); break;
+  case AFTER_END: g.ending = g.goodend ? 3 : 1, go(SC_END); break;
+  default: go(SC_EXTRAS); break;
+  }
+}
+
 /* ------------------------------------------------------------ extras */
+static const char *const mini_names[MINI_COUNT] = {"BB's Air Adventure", "Mangle's Quest", "Chica's Party",
+                                                    "Stage 01", "Shadow Bonnie", "Happiest Day"};
+/* Extras: the cheats (after the 6th night and the good ending), the minigames (once the game is beaten), Exit */
+static int extras_n(void) { return (g.goodend && g.beat6 ? 4 : 0) + (g.beatgame ? 1 : 0) + 1; }
+
 static void extras_step(void) {
+  if (g.extras_sub) {   /* the minigames */
+    if (pressed(K_UP | K_DIGIT(8))) g.menu = (uint8_t)((g.menu + MINI_COUNT - 1) % MINI_COUNT);
+    if (pressed(K_DOWN | K_DIGIT(2))) g.menu = (uint8_t)((g.menu + 1) % MINI_COUNT);
+    if (pressed(K_BACK)) g.extras_sub = 0;
+    if (pressed(K_OK | K_EXE)) mini_go(g.menu, AFTER_EXTRAS);
+    return;
+  }
   bool cheats = g.goodend && g.beat6;
-  int n = cheats ? 5 : 1;
+  int n = extras_n();
   if (pressed(K_UP | K_DIGIT(8))) g.extras_sel = (uint8_t)((g.extras_sel + n - 1) % n);
   if (pressed(K_DOWN | K_DIGIT(2))) g.extras_sel = (uint8_t)((g.extras_sel + 1) % n);
   if (pressed(K_BACK)) go(SC_TITLE);
   if (pressed(K_OK | K_EXE)) {
+    int c = cheats ? 4 : 0;
     if (g.extras_sel == n - 1) go(SC_TITLE);
-    else g.cheats ^= (uint8_t)(1 << g.extras_sel), save_progress();
+    else if (g.extras_sel < c) g.cheats ^= (uint8_t)(1 << g.extras_sel), save_progress();
+    else g.extras_sub = 1, g.menu = 0;
   }
 }
 
 static void extras_draw(void) {
   gfx_fill(0, 0, SCREEN_W, SCREEN_H, BLACK);
+  if (g.extras_sub) {
+    gfx_text_s(FONT_BIG, 14, 12, "Minigames", WHITE);
+    for (int i = 0; i < MINI_COUNT; i++) {
+      int y = 50 + 22 * i;
+      if (i == g.menu) gfx_text(FONT_TEXT, 14, y, ">>", WHITE);
+      gfx_text(FONT_TEXT, 34, y, mini_names[i], WHITE);
+    }
+    gfx_text(FONT_HUD, 8, SCREEN_H - 14, "Up Down choose   OK play   Back extras", WHITE);
+    return;
+  }
   gfx_text_s(FONT_BIG, 14, 12, "Extras", WHITE);
   bool cheats = g.goodend && g.beat6;
   static const char *const names[4] = {"Fast Nights", "Radar", "Aggressive", "No Errors"};
-  int n = 0;
+  int i = 0, y = 50;
   if (cheats)
-    for (; n < 4; n++) {
-      int y = 50 + 22 * n;
-      if (n == g.extras_sel) gfx_text(FONT_TEXT, 14, y, ">>", WHITE);
-      gfx_text(FONT_TEXT, 34, y, names[n], WHITE);
-      gfx_text(FONT_TEXT, 160, y, g.cheats >> n & 1 ? "ON" : "OFF", g.cheats >> n & 1 ? GREEN_TEXT : GREY_TEXT);
+    for (; i < 4; i++, y += 22) {
+      if (i == g.extras_sel) gfx_text(FONT_TEXT, 14, y, ">>", WHITE);
+      gfx_text(FONT_TEXT, 34, y, names[i], WHITE);
+      gfx_text(FONT_TEXT, 160, y, g.cheats >> i & 1 ? "ON" : "OFF", g.cheats >> i & 1 ? GREEN_TEXT : GREY_TEXT);
     }
   else
-    gfx_text(FONT_TEXT, 14, 50, "The cheats open after the 6th night and the good ending.", GREY_TEXT);
-  int y = 50 + 22 * (cheats ? 4 : 2);
-  if (g.extras_sel == n) gfx_text(FONT_TEXT, 14, y, ">>", WHITE);
+    gfx_text(FONT_TEXT, 14, y, "The cheats open after the 6th night and the good ending.", GREY_TEXT), y += 22;
+  if (g.beatgame) {
+    if (i == g.extras_sel) gfx_text(FONT_TEXT, 14, y, ">>", WHITE);
+    gfx_text(FONT_TEXT, 34, y, "Minigames", WHITE);
+    i++, y += 22;
+  }
+  if (i == g.extras_sel) gfx_text(FONT_TEXT, 14, y, ">>", WHITE);
   gfx_text(FONT_TEXT, 34, y, "Exit", WHITE);
   gfx_text(FONT_HUD, 8, SCREEN_H - 14, "Up Down choose   OK pick   Back title", WHITE);
 }
@@ -174,14 +220,16 @@ static void pause_draw(void) {
   gfx_text_c(FONT_TEXT, SCREEN_W / 2, 134, g.pause_item == 1 ? "> Quit game <" : "Quit game", WHITE);
 }
 
+/* 6 AM: after each of the first five nights its minigame (the phone builds' "cutscenes"), Happiest Day the last */
 static void six_done(void) {
   int night = g.n.night;
   if (night == 5) g.beatgame = 1;
   if (night == 6) g.beat6 = 1;
   if (night < 5) g.level = (uint8_t)(night + 1);
   save_progress();
-  if (night >= 5) g.ending = night == 6 ? 2 : 1, go(SC_END);
-  else start_night(night + 1);
+  static const uint8_t after_night[6] = {0, MINI_MANGLE, MINI_CHICA, MINI_STAGE, MINI_SHADOW, MINI_HAPPY};
+  if (night == 6) g.ending = 2, go(SC_END);
+  else mini_go(after_night[night], night == 5 ? AFTER_END : AFTER_NEXT);
 }
 
 void game_step(uint32_t keys) {
@@ -210,6 +258,7 @@ void game_step(uint32_t keys) {
       break;
     }
     night_step();
+    if (g.mini_next) mini_go(g.mini_next - 1, AFTER_NIGHT), g.mini_next = 0;
     break;
   case SC_STATIC:
     if (g.t > 5) go(SC_OVER);
@@ -222,6 +271,10 @@ void game_step(uint32_t keys) {
     break;
   case SC_END:
     if (g.t > 20 || (g.t > 3 && pressed(K_OK | K_EXE | K_BACK))) go(SC_TITLE);
+    break;
+  case SC_MINI:
+    mini_step();
+    if (mini_done() || pressed(K_BACK)) mini_over();
     break;
   }
   g.t += 1.0f / 60;
@@ -263,6 +316,7 @@ static void game_band(void) {
     gfx_text(FONT_HUGE, 156, 100, "AM", WHITE);
     break;
   }
-  case SC_END: pic_draw(g.ending == 2 ? PIC_THEEND : PIC_BADEND, 0, 0); break;
+  case SC_END: pic_draw(g.ending == 3 ? PIC_GOODEND : g.ending == 2 ? PIC_THEEND : PIC_BADEND, 0, 0); break;
+  case SC_MINI: mini_draw(); break;
   }
 }

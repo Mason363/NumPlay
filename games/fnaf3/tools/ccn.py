@@ -40,7 +40,7 @@ class App:
             self.pics[h] = (fmt, w, hh, q + 22, size, hx, hy)
             q += 22 + size
         self.bank = bank
-        self.objects, self.by_name = {}, {}
+        self.objects, self.by_name, self.props, self.dirs = {}, {}, {}, {}
         b = next(c for i, c in top if i == 0x2229)
         q = 4
         for _ in range(struct.unpack_from("<I", b, 0)[0]):
@@ -59,7 +59,9 @@ class App:
                     break
             anims = self._anims(props) if head[1] == 2 and props else {}
             self.objects[head[0]] = (head[1], name, anims)
-        self.frames = {}
+            self.props[head[0]] = props
+            self.dirs[head[0]] = self._dirs(props) if head[1] == 2 and props else {}
+        self.frames, self.frame_size = {}, {}
         for i, c in top:
             if i != 0x3333:
                 continue
@@ -71,6 +73,7 @@ class App:
                 _, obj, px, py = struct.unpack_from("<HHii", x, 4 + 20 * k)
                 placed.append((obj, px, py))
             self.frames[name] = placed
+            self.frame_size[name] = struct.unpack_from("<ii", sub[0x3334], 0)
 
     @staticmethod
     def _anims(p):
@@ -88,6 +91,31 @@ class App:
                 n = struct.unpack_from("<H", p, q + 6)[0]
                 out[a] = list(struct.unpack_from(f"<{n}H", p, q + 8))
         return out
+
+    @staticmethod
+    def _dirs(p):
+        """every animation's directions: {(animation, direction): pictures}"""
+        at = struct.unpack_from("<H", p, 6)[0]
+        out = {}
+        if not at:
+            return out
+        count = struct.unpack_from("<H", p, at + 2)[0]
+        for a, off in enumerate(struct.unpack_from(f"<{count}H", p, at + 4)):
+            if not off:
+                continue
+            for d, doff in enumerate(struct.unpack_from("<32H", p, at + off)):
+                if doff:
+                    q = at + off + doff
+                    n = struct.unpack_from("<H", p, q + 6)[0]
+                    out[(a, d)] = list(struct.unpack_from(f"<{n}H", p, q + 8))
+        return out
+
+    def backdrop(self, h):
+        """a backdrop's obstacle type (1 solid), its size and picture"""
+        p = self.props[h]
+        obst = struct.unpack_from("<H", p, 4)[0]
+        w, hh = struct.unpack_from("<II", p, 8)
+        return obst, w, hh, struct.unpack_from("<H", p, 16)[0]
 
     def picture(self, h):
         """a picture by its number, RGBA"""

@@ -45,6 +45,11 @@ void gfx_img(int id, int x, int y, uint16_t c);
 int gfx_img_w(int id);
 int gfx_img_h(int id);
 
+/* the minigames' sprites (SPR: tools/minigames.py), their hot spot at (x, y) */
+void gfx_sprite(int id, int x, int y);
+int gfx_sprite_w(int id);
+int gfx_sprite_h(int id);
+
 /* pictures (pic.c): the whole of one at (x, y), or the part (sx, sy, w, h) of it */
 void pic_draw(int id, int x, int y);
 void pic_part(int id, int x, int y, int sx, int sy, int w, int h);

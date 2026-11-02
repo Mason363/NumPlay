@@ -8,6 +8,8 @@
 #include "../src/game.h"
 #include "../src/gfx.h"
 #include "../src/plat.h"
+#include "../src/mini.h"
+#include "../src/mini_data.h"
 
 extern const uint8_t fnaf3_data[];
 const uint8_t *fnaf3_bin;
@@ -186,6 +188,75 @@ static void fuzz(int sessions) {
   }
 }
 
+/* the minigames: standing, walking, the cake handed round to Happiest Day's good ending */
+static int inst_of(int level, int obj, int *x, int *y) {
+  const MgLevel *l = &mg_levels[level];
+  for (int k = 0; k < l->ninst; k++)
+    if (mg_insts[l->inst0 + k].obj == obj) return *x = mg_insts[l->inst0 + k].x, *y = mg_insts[l->inst0 + k].y, 1;
+  return 0;
+}
+
+static void minis(void) {
+  for (int l = 0; l < MINI_COUNT; l++) {
+    g.mg_flags = 0;
+    mini_begin(l, false);
+    g.scene = SC_MINI;
+    steps(60 * 3, 0);
+    int y0 = g.mg.hy;
+    steps(60, 0);
+    CHECK(g.mg.hy == y0 && y0 < mg_levels[l].h, "minigame %d: standing (y %d then %d)", l, y0, g.mg.hy);
+    int ground = g.mg.hy, top = ground;   /* (from where it starts: Stage 01's room is low further on) */
+    step(K_OK);
+    for (int k = 0; k < 60; k++) step(0), top = g.mg.hy < top ? g.mg.hy : top;
+    CHECK(ground - top >= 120 && ground - top <= 160, "minigame %d: a jump of 7 steps (%d px)", l, ground - top);
+    steps(60, 0);
+    int x0 = g.mg.hx;
+    steps(60 * 2, K_RIGHT);
+    CHECK(g.mg.hx > x0 + 100, "minigame %d: walks right (%d to %d)", l, x0, g.mg.hx);
+    for (int k = 0; k < 60 * 30 && g.scene == SC_MINI; k++) step(k % 25 == 0 ? K_RIGHT | K_OK : K_RIGHT);
+    CHECK(g.mg.hy < mg_levels[l].h + 480, "minigame %d: stays in its level", l);
+  }
+  /* Mangle's Quest's cake, given in BB's Air Adventure, Chica's Party, Stage 01 and Shadow Bonnie */
+  g.mg_flags = 0, g.goodend = 0;
+  int x, y;
+  mini_begin(MINI_MANGLE, false);
+  CHECK(inst_of(MINI_MANGLE, MGO_MANGLE_GET_THIS, &x, &y), "Mangle's cake is there");
+  g.mg.hx = (int16_t)x, g.mg.hy = (int16_t)y;
+  step(0);
+  CHECK(g.mg_flags & MG_CAKE && g.mg.win, "the cake taken");
+  mini_begin(MINI_BB, false);
+  inst_of(MINI_BB, MGO_BB_BIG_CAKE, &x, &y);
+  g.mg.hx = (int16_t)x, g.mg.hy = (int16_t)y;
+  steps(260, 0);
+  CHECK(g.mg_flags & MG_K1 && g.mg.win, "BB's child has it");
+  mini_begin(MINI_STAGE, false);
+  inst_of(MINI_STAGE, MGO_STAGE_BIG_CAKE, &x, &y);
+  g.mg.hx = (int16_t)x, g.mg.hy = (int16_t)y;
+  steps(260, 0);
+  CHECK(g.mg_flags & MG_K3, "Stage 01's child has it");
+  mini_begin(MINI_CHICA, false);
+  inst_of(MINI_CHICA, MGO_CHICA_GET_THIS_2, &x, &y);
+  g.mg.hx = (int16_t)x, g.mg.hy = (int16_t)y;
+  steps(260, 0);
+  CHECK(g.mg_flags & MG_K2, "Chica's Party's child has it");
+  mini_begin(MINI_SHADOW, false);
+  CHECK(g.mg_flags & MG_K4, "Shadow Bonnie's child has it");
+  mini_begin(MINI_HAPPY, false);
+  inst_of(MINI_HAPPY, MGO_HAPPY_TRIGGER, &x, &y);
+  g.mg.hx = (int16_t)x, g.mg.hy = (int16_t)y;
+  step(0);
+  CHECK(g.goodend, "Happiest Day: the good ending");
+  /* after the first night, its minigame; after it, the second night */
+  g.mg_flags = 0, g.goodend = 0;
+  night(1);
+  N.hour = 5, N.frame = 0;
+  for (int k = 0; k < 60 * 70 && g.scene != SC_MINI; k++) step(k % 2 ? K_OK : 0);
+  CHECK(g.scene == SC_MINI && g.mg.level == MINI_MANGLE, "after night 1: Mangle's Quest (%d)", g.scene);
+  tap(K_BACK);
+  steps(2, 0);
+  CHECK((g.scene == SC_DAY || g.scene == SC_NIGHT) && g.n.night == 2, "then night 2 (%d %d)", g.scene, g.n.night);
+}
+
 static void saves(void) {
   night(3);
   steps(60 * 30, 0);
@@ -206,6 +277,20 @@ static void shot(const char *dir, const char *name) {
   game_draw();
   snprintf(p, sizeof p, "%s/%s.ppm", dir, name);
   host_shot(p);
+}
+
+static void draw_minis(const char *dir) {
+  for (int l = 0; l < 6; l++) {
+    mini_begin(l, false);
+    g.scene = SC_MINI;
+    steps(90, 0);
+    char n[32];
+    snprintf(n, sizeof n, "mini%d", l);
+    shot(dir, n);
+    for (int k = 0; k < 120; k++) step(k % 40 == 0 ? K_RIGHT | K_OK : K_RIGHT);
+    snprintf(n, sizeof n, "mini%db", l);
+    shot(dir, n);
+  }
 }
 
 static void draw_all(const char *dir) {
@@ -244,6 +329,10 @@ int main(int argc, char **argv) {
   fnaf3_bin = fnaf3_data;
   host_save_dir("build");
   game_init();
+  if (argc > 2 && !strcmp(argv[1], "minis")) {
+    draw_minis(argv[2]);
+    return 0;
+  }
   if (argc > 2 && !strcmp(argv[1], "shots")) {
     draw_all(argv[2]);
     return 0;
@@ -251,6 +340,7 @@ int main(int argc, char **argv) {
   rules();
   bot_nights();
   fuzz(60);
+  minis();
   saves();
   printf("%d checks, %d failed\n", checks, fails);
   return fails != 0;

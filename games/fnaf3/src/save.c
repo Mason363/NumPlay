@@ -15,7 +15,7 @@
 typedef struct {   /* the game's Ini keys: level, beatgame, beat6, goodend, and the extras' cheats */
   uint32_t magic;
   uint8_t version, level, beatgame, beat6;
-  uint8_t goodend, cheats, keys_seen, pad;
+  uint8_t goodend, cheats, keys_seen, mg;   /* mg: the minigames' keys (bb, cake, k1 to k4) */
 } Progress;
 
 typedef struct {
@@ -114,7 +114,7 @@ void save_progress(void) {
   memset(&p, 0, sizeof p);
   p.magic = MAGIC, p.version = VERSION;
   p.level = g.level, p.beatgame = g.beatgame, p.beat6 = g.beat6, p.goodend = g.goodend;
-  p.cheats = g.cheats, p.keys_seen = g.keys_seen;
+  p.cheats = g.cheats, p.keys_seen = g.keys_seen, p.mg = g.mg_flags;
   plat_save(SAVE_NAME, &p, sizeof p);
   copy_write();
 }
@@ -129,7 +129,7 @@ void save_load(void) {
   if (p.magic != MAGIC || p.version != VERSION) return;
   g.level = p.level >= 1 && p.level <= 7 ? p.level : 1;
   g.beatgame = p.beatgame & 1, g.beat6 = p.beat6 & 1, g.goodend = p.goodend & 1;
-  g.cheats = p.cheats & 15, g.keys_seen = p.keys_seen ? 1 : 0;
+  g.cheats = p.cheats & 15, g.keys_seen = p.keys_seen ? 1 : 0, g.mg_flags = p.mg & 63;
 }
 
 void save_resume(void) {

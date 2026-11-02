@@ -4,6 +4,7 @@
 #include <string.h>
 #include "game.h"
 #include "data.h"
+#include "mini.h"
 #include "plat.h"
 
 #define N g.n
@@ -177,6 +178,7 @@ static void input(void) {
         to = N.vents_map ? (id <= 5 ? 10 + id : 0) : id;
       }
     if (to && to != now && !(N.vents_map && N.sealing)) select_cam(to);
+    if (pressed(K_DIGIT(8)) && now == 8 && !N.vents_map) g.mini_next = MINI_BB + 1;   /* BB on CAM 08 [690] */
     if (pressed(K_OK)) {
       if (!N.vents_map) play_audio();
       else N.sealing = N.vent, N.seal_t = (int16_t)(50 + rnd_n(50));   /* (the double click on a vent camera) */
