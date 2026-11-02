@@ -171,6 +171,10 @@ GAMES = {
                      presses((2500, "ok"), (4500, "ok"), (5500, "ok"), (6500, "ok")) + every(18000, 22000, 600, "right", 400),
                      25000,
                      presses((2500, "ok"), (4500, "ok")) + every(9000, 11000, 600, "left", 400), 14000),
+    # Hollow Knight's second app, from a save of the first's made as the Knight went from the Crossroads towards
+    # the Fungal Wastes: Start Game, the first profile, and the Knight walks in down there; Home saves; then again
+    "hkfungal": ("HollowKnightFungalWastes.nwa", "hk1.sav", presses((2500, "ok"), (4500, "ok")) + every(9000, 11000, 600, "left", 400),
+                 14000, presses((2500, "ok"), (4500, "ok")), 12000),
     # past the intro and the title, the name "A", Done, Yes: Frisk falls on the golden flowers and walks; Home keeps
     # the moment, and the next start is back there
     "undertale": ("Undertale.nwa", "utresume.sav",
@@ -359,6 +363,9 @@ def monkeymart_save():
 
 
 SEEDS = {
+    # (games/hollowknight/tests/cross.sav: the first app's save as the Knight goes into the second's part)
+    "hkfungal": open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "games", "hollowknight", "tests",
+                                  "cross.sav"), "rb").read(),
     "monkeymart": monkeymart_save(),
     # level 5 to play, 9 reached, how to play not read yet
     "coreball": coreball_save(5, 9),
@@ -380,7 +387,7 @@ SEEDS = {
 # NumWorks installer keeps): before the second session, as after installing
 # the app again, only the scripts are left, and the save must come back
 COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.py", "celeste": "celeste_saves.py",
-          "hollowknight": "hollowknight_saves.py", "finalearth2": "finalearth2_saves.py",
+          "hollowknight": "hollowknight_saves.py", "hkfungal": "hollowknight_saves.py", "finalearth2": "finalearth2_saves.py",
           "numpowder": "numpowder_saves.py", "undertale": "undertale_saves.py", "subway": "subway_saves.py",
           "fnaf": "fnaf_saves.py", "doom": "doom_saves.py", "isaac": "isaac_saves.py",
           "hillclimb": "hillclimb_saves.py", "pvz": "pvz_saves.py", "sonic": "sonic_saves.py",
@@ -534,6 +541,9 @@ CHECKS = {
     # a game saved ("HKSV", then the play time at 152); after the reinstall, from the copy, it goes on
     "hollowknight": (lambda v: v[:4] == b"HKSV" and struct.unpack_from("<f", v, 152)[0] > 0,
                      lambda v: v[:4] == b"HKSV" and struct.unpack_from("<f", v, 152)[0] > 10),
+    # (the seed's play time 3.8 s, the way taken spent: played on, saved; then again)
+    "hkfungal": (lambda v: v[:4] == b"HKSV" and struct.unpack_from("<f", v, 152)[0] > 6,
+                 lambda v: v[:4] == b"HKSV" and struct.unpack_from("<f", v, 152)[0] > 10),
     "numvisuals": (lambda v: v[:2] == b"V\1" and v[3] == 4 and struct.unpack_from("<i", v, 8)[0] == 2,
                    lambda v: struct.unpack_from("<i", v, 8)[0] == 3),  # the add-on and its count
     # a run kept (guide read), the ball on its way; then further along the same run

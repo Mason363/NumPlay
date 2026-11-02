@@ -518,8 +518,8 @@ def main():
     pgb = unity.prefab("sharedassets149.assets", 34)
     fleurs["SPRITE_GRASS_BALL"] = SPRITES.id(pgb, next(c["v"] for c in pgb["objects"][0]["c"] if c["type"] == "SpriteRenderer")["m_Sprite"], 1)
     if PART == 2:
-        # (the gas the Fungoons spit: their Gas Attack particles' texture, a unit wide)
-        fleurs["SPRITE_GAS"] = SPRITES.tex("sharedassets128.assets", 7, 1.0)
+        # (the gas the Fungoons spit: their Gas Attack particles' texture, 4 units wide)
+        fleurs["SPRITE_GAS"] = SPRITES.tex("sharedassets128.assets", 7, 4.0)
     # (a soul orb: Soul Orb R's sprite, as stretched as it gets; its sorting)
     pso = unity.prefab(*vm.SOUL_ORB)
     fleurs["SPRITE_SOUL_ORB"] = SPRITES.id(pso, next(c["v"] for c in pso["objects"][0]["c"] if c["type"] == "SpriteRenderer")["m_Sprite"], 2)

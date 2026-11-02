@@ -181,7 +181,7 @@ static void gas_draw(void) {
     if (k <= 0) continue;
     float d = (1.5f * gas_scale(g) + 1.0f) * k;
     Inst in;
-    sprite_inst(SPRITE_GAS, g->x, g->y, -0.001f, d, d, tint, &in);
+    sprite_inst(SPRITE_GAS, g->x, g->y, -0.001f, d / 4, d / 4, tint, &in);   /* (its sprite 4 units wide) */
     gfx_actor_minor(&in, SORT_KEY(0, 0));
   }
 }

@@ -28,6 +28,7 @@ EXTRAS = set()
 ALONE = {
     "celeste": ("Celeste", "the whole climb up Celeste Mountain"),
     "hollowknight": ("Hollow Knight", "from King's Pass to Hornet in Greenpath"),
+    "hkfungal": ("Hollow Knight: Fungal Wastes", "Hallownest past Greenpath, sharing Hollow Knight's saves"),
     "undertale": ("Undertale", "the whole Underground, to the barrier and the neutral ending"),
     "subway": ("Subway Surfers", "the endless run down the subway's tracks, in 3D"),
     "fnaf": ("Five Nights at Freddy's", "five nights at Freddy Fazbear's Pizza, the 6th and the Custom Night"),
