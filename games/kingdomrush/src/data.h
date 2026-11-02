@@ -33,7 +33,7 @@
 #define PIC_MAP 13
 #define MAP_Y0 17
 #define PIC_UPGRADES 14
-#define UPG_X 52
+#define UPG_X 2
 #define AN_E_GOBLIN_WALKING 0
 #define AN_E_GOBLIN_WALKINGUP 1
 #define AN_E_GOBLIN_WALKINGDOWN 2

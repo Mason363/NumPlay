@@ -43,7 +43,7 @@ FONT_DIRS = [os.environ.get("FONTS", ""), os.path.expanduser("~/Documents/Assets
              os.path.expanduser("~/Documents/Assets/gamesrc/fonts/dejavu"), "/Library/Fonts"]
 NLEVELS = 12
 MAP_Y0 = 17   # the map's rows shown: from 17 (of 274)
-UPG_X = 52    # where the upgrades' panel (215 x 240) sits
+UPG_X = 2     # where the upgrades' panel (215 x 240) sits; what the chosen one does at its right
 TERRAIN_IDS = [1541, 1540, 1537, 1505, 1498, 1495, 1492, 1489, 1486, 1483, 1480, 1477]
 
 DEFINES = []

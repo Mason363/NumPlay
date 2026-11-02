@@ -328,6 +328,20 @@ int main(int argc, char **argv) {
         host_shot(p);
       }
     }
+    /* the map halfway through, the upgrades, the help */
+    for (int i = 0; i < 7; i++) g.p.camp[i] = (uint8_t)(1 + i % 3);
+    g.p.heroic[0] = g.p.iron[1] = 1;
+    memset(g.p.ups, 0, sizeof g.p.ups);
+    g.p.ups[0] = 2, g.p.ups[3] = 1;
+    g.map_sel = 7;
+    g.screen = SCR_MAP;
+    game_draw();
+    snprintf(p, sizeof p, "%s/map2.ppm", argv[2]);
+    host_shot(p);
+    press(K_DIGIT(0));
+    game_draw();
+    snprintf(p, sizeof p, "%s/upgrades.ppm", argv[2]);
+    host_shot(p);
     return 0;
   }
   test_numbers();

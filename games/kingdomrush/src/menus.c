@@ -119,8 +119,10 @@ static void map_band(void) {
     }
     if (g.p.camp[i]) {
       spr_anim(AN_UI_FLAGDONE, 0, false, x, y, false);
-      for (int k = 0; k < 3; k++) spr_anim(AN_UI_FLAGSTAR, k < g.p.camp[i] ? 1 : 0, false, x - 13 + 7 * k, y + 3, false);
-      if (g.p.heroic[i]) spr_anim(AN_UI_FLAGHEROIC, 0, false, x, y, false);
+      /* LevelThumbCompleted: star1 to star3 over the banner, the heroic shield beside it */
+      static const int8_t sx[3] = {-7, -1, 4}, sy[3] = {-25, -25, -24};
+      for (int k = 0; k < g.p.camp[i] && k < 3; k++) spr_anim(AN_UI_FLAGSTAR, 1, false, x + sx[k], y + sy[k], false);
+      if (g.p.heroic[i]) spr_anim(AN_UI_FLAGHEROIC, 0, false, x - 7, y - 20, false);
     } else
       spr_anim(AN_UI_FLAGNEW, 0, false, x, y, false);
   }
@@ -219,32 +221,37 @@ static void upgrades_band(void) {
       int state = r < have ? 2 : r == have ? 0 : 1;
       spr_anim(AN_UI_UPITEM, state, false, x, y, false);
       int icon = icon_line[c] * 5 + r;
-      if (state == 1) spr_frame_tint(anim_slot(AN_UI_UPICONS, icon, false), x, y, false, RGB(0x202020), 20);
+      if (state == 1) spr_frame_tint(anim_slot(AN_UI_UPICONS, icon, false), x, y, false, RGB(0x181410), 24);
       else spr_anim(AN_UI_UPICONS, icon, false, x, y, false);
-      if (state == 0) {
-        char s[4];
-        snprintf(s, sizeof s, "%d", up_cost[c][r]);
-        gfx_text_oc(FONT_SMALL, x + 6, y + 6, s, stars_free() >= up_cost[c][r] ? C_GOLD : RGB(0xFF6040));
+      /* (the icons hang from their top left corner: 18 x 17) */
+      if (state == 0) {   /* the next to buy: its price */
+        char p[4];
+        snprintf(p, sizeof p, "%d", up_cost[c][r]);
+        gfx_text_oc(FONT_SMALL, x + 16, y + 8, p, stars_free() >= up_cost[c][r] ? C_GOLD : RGB(0xFF6040));
       }
       if (c == up_col && r == up_row) {
-        gfx_frame_rect(x - 10, y - 10, 21, 21, RGB(0xFFE14D));
-        gfx_frame_rect(x - 11, y - 11, 23, 23, RGB(0x6A4A00));
+        gfx_frame_rect(x - 2, y - 2, 23, 22, RGB(0xFFE14D));
+        gfx_frame_rect(x - 3, y - 3, 25, 24, RGB(0x6A4A00));
       }
     }
-  /* stars to spend, and what the chosen one does */
+  /* stars to spend */
   char s[48];
   snprintf(s, sizeof s, "%d", stars_free());
   spr_anim(AN_UI_STAR, 0, false, UPG_X + 8, 213, false);
   gfx_text_o(FONT_HUD, UPG_X + 25, 213, s, C_GOLD);
+  /* what the chosen one does, what it costs, the keys */
   if (gfx_rows(0, 240)) {
-    const char *nm = upgrade_name(up_col, up_row), *ds = upgrade_desc(up_col, up_row);
-    gfx_fill(0, 0, UPG_X - 2, 240, RGB(0x1E140B));
-    gfx_fill(UPG_X + 217, 0, 320 - UPG_X - 217, 240, RGB(0x1E140B));
-    gfx_text_box(FONT_SMALL, UPG_X + 220, 40, 48, nm, C_GOLD);
-    gfx_text_box(FONT_SMALL, UPG_X + 220, 80, 48, ds, C_TEXT);
-    gfx_text_box(FONT_SMALL, 2, 40, 48, "OK buy", C_TEXT);
-    gfx_text_box(FONT_SMALL, 2, 64, 48, "Clear: all stars back", C_DIM);
-    gfx_text_box(FONT_SMALL, 2, 110, 48, "Back map", C_TEXT);
+    int x0 = UPG_X + 217, w = 320 - x0;
+    panel(x0, 0, w, 240);
+    int y = 8 + gfx_text_box(FONT_HUD, x0 + 6, 8, w - 10, upgrade_name(up_col, up_row), C_GOLD);
+    int have = g.p.ups[up_col];
+    if (up_row < have) snprintf(s, sizeof s, "Bought");
+    else snprintf(s, sizeof s, "%d star%s", up_cost[up_col][up_row], up_cost[up_col][up_row] > 1 ? "s" : "");
+    gfx_text(FONT_SMALL, x0 + 6, y + 2, s, up_row < have ? C_DIM : up_row > have ? C_DIM : stars_free() >= up_cost[up_col][up_row] ? C_GOLD : RGB(0xFF6040));
+    gfx_text_box(FONT_TEXT, x0 + 6, y + 20, w - 10, upgrade_desc(up_col, up_row), C_TEXT);
+    gfx_text(FONT_SMALL, x0 + 6, 196, "OK buy", C_TEXT);
+    gfx_text(FONT_SMALL, x0 + 6, 210, "Clear reset", C_TEXT);
+    gfx_text(FONT_SMALL, x0 + 6, 224, "Back map", C_TEXT);
   }
 }
 void upgrades_draw(void) { gfx_frame(upgrades_band); }
