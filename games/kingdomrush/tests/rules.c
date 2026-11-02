@@ -349,6 +349,10 @@ int main(int argc, char **argv) {
     game_draw();
     snprintf(p, sizeof p, "%s/upgrades.ppm", argv[2]);
     host_shot(p);
+    g.screen = SCR_HELP;
+    game_draw();
+    snprintf(p, sizeof p, "%s/help.ppm", argv[2]);
+    host_shot(p);
     return 0;
   }
   test_numbers();

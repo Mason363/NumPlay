@@ -250,7 +250,7 @@ static void upgrades_band(void) {
     gfx_text(FONT_SMALL, x0 + 6, y + 2, s, up_row < have ? C_DIM : up_row > have ? C_DIM : stars_free() >= up_cost[up_col][up_row] ? C_GOLD : RGB(0xFF6040));
     gfx_text_box(FONT_TEXT, x0 + 6, y + 20, w - 10, upgrade_desc(up_col, up_row), C_TEXT);
     gfx_text(FONT_SMALL, x0 + 6, 196, "OK buy", C_TEXT);
-    gfx_text(FONT_SMALL, x0 + 6, 210, "Clear reset", C_TEXT);
+    gfx_text(FONT_SMALL, x0 + 6, 210, "Backspace reset", C_TEXT);
     gfx_text(FONT_SMALL, x0 + 6, 224, "Back map", C_TEXT);
   }
 }
@@ -264,17 +264,22 @@ void help_step(void) {
 static void help_band(void) {
   gfx_fill(0, gfx_y0, 320, BAND_H, RGB(0x2A1C10));
   gfx_text_oc(FONT_BIG, 160, 6, "How to play", C_GOLD);
-  static const char *const lines[] = {
-    "Enemies walk the roads. Each one that gets through costs lives.",
-    "Arrows: hop between build spots, wave flags and enemies.",
-    "OK on a spot: the tower menu. Arrows pick, OK buys.",
-    "Archers and mages shoot. Bombards blast ground enemies.",
-    "Barracks send soldiers to block the road (rally point).",
-    "1: rain of fire.  2: reinforcements. Aim with the arrows.",
-    "Clear key (or the flag): the next wave now, for gold.",
-    "Back: pause.  Home: save and quit.",
+  int y = 38 + gfx_text_box(FONT_TEXT, 12, 38, 296,
+                            "Stop the enemies on the roads: each one that gets through costs lives. Barracks send "
+                            "soldiers to block the road, where their rally point says.", C_TEXT);
+  static const char *const keys[][2] = {
+    {"Arrows", "Hop between spots, flags and enemies"},
+    {"OK", "Tower menu: build, upgrade, sell"},
+    {"1", "Rain of fire: aim, then OK"},
+    {"2", "Reinforcements: aim, then OK"},
+    {"3", "The next wave now, for gold"},
+    {"Back", "Pause"},
+    {"Home", "Save and quit"},
   };
-  for (int i = 0; i < (int)(sizeof lines / sizeof lines[0]); i++) gfx_text(FONT_TEXT, 12, 40 + 22 * i, lines[i], C_TEXT);
+  for (int i = 0; i < (int)(sizeof keys / sizeof keys[0]); i++) {
+    gfx_text(FONT_HUD, 12, y + 8 + 19 * i, keys[i][0], C_GOLD);
+    gfx_text(FONT_TEXT, 72, y + 9 + 19 * i, keys[i][1], C_TEXT);
+  }
   gfx_text_c(FONT_SMALL, 160, 226, "OK back", C_DIM);
 }
 void help_draw(void) { gfx_frame(help_band); }
