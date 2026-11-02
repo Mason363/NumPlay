@@ -350,6 +350,9 @@ GAMES = {
     "mrbullet": ("MrBullet.nwa", "mrbullet.sav",
                  presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "ok"), (4300, "ok")), 7500,
                  presses((1500, "ok"), (2200, "ok"), (2900, "ok")), 4500),
+    # no carts in its table (NumPlay Studio adds them): the screen that says so; keys do nothing, Home leaves
+    "numpico": ("NumPico.nwa", None, presses((1500, "ok"), (2000, "back"), (2500, "backspace")), 3500,
+                presses((1500, "ok")), 2500),
 }
 
 

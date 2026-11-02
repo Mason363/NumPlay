@@ -184,7 +184,7 @@ static void panel_scene(void *ctx) {
     {"arrows", "\x8b\x91\x94\x83"}, {"ok, exe", "\x8e"}, {"back, ans", "\x97"}, {"backspace", "menu"}, {"home", "quit"}};
   int y = 40;
   for (int i = 0; i < 5; i++) {
-    ptext(4, y, hints[i][0], DARK, 2);
+    ptext(4, y, hints[i][0], pico_rgb565[13], 2);
     ptext(4, y + 14, hints[i][1], WHITE, 2);
     y += 34;
   }

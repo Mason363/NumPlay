@@ -864,6 +864,22 @@ Shoot every spy in the level. Bullets bounce off walls, so aim at a wall to reac
 
 <br clear="right">
 
+## NumPico
+
+<img src="../games/numpico/docs/shot.png" width="320" align="right" alt="NumPico playing Combo Pool">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** or **8 4 6 2** | The D-pad |
+| **OK** or **EXE** | 🅾️ |
+| **Back** or **Ans** | ❎ |
+| **⌫** (backspace) | Pause menu (Continue, the cart's items, Reset cart, Quit) |
+| **Home** | Quit |
+
+NumPico plays PICO-8 carts. Drop your .p8 and .p8.png carts on NumPlay Studio and they come in your NumPlay with it. Pick a cart in the list and press OK. Each cart plays as on PICO-8, with the keys written at the left of the picture. A cart too big for the calculator's memory says so.
+
+<br clear="right">
+
 ## Portal Returns
 
 <img src="media/portal.gif" width="320" align="right" alt="Portal Returns: falling through a portal and flying across a test chamber">
