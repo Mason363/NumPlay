@@ -613,23 +613,6 @@ Press each arrow as it reaches the line at the top. Sick, Good, Bad and Shit dep
 
 <br clear="right">
 
-## Turbo Rush
-
-<img src="../games/turborush/docs/shot.png" width="320" align="right" alt="Turbo Rush">
-
-| Key | What it does |
-| --- | --- |
-| **Up** | Accelerate |
-| **Down** | Brake |
-| **Left, Right** | Steer |
-| **OK** | Nitro |
-| **+, -** | Change gear (manual gearbox) |
-| **Back** | Pause (with Restart race, How to play and Quit game) |
-
-Three laps against seven rivals. A bend pulls you outwards, more the faster you go, so brake before the sharp ones. The grass slows you, and trees, lamps and buildings stop you and damage the car. Races pay credits for the engine, tires, nitro and armor in the garage. Play one race, the six circuits as a Grand Prix, or Free Ride. Home saves the race, and Continue picks it up.
-
-<br clear="right">
-
 ## Angry Birds
 
 <img src="../games/angrybirds/docs/shot.png" width="320" align="right" alt="Angry Birds">
@@ -804,6 +787,41 @@ Last from 12 to 6 AM in the bedroom. At a door, listen with the light off: breat
 | **Home** | Save and quit |
 
 Your icon moves on by itself: jump over the spikes and reach the end. Hold the button and the cube jumps again as it lands. Portals turn it into a ship (hold to fly up), a ball or a spider (press to flip), a UFO (press to hop), a robot (hold to jump higher) or a wave (hold to go up). Press on a ring to jump in the air. Each level hides three coins, which count when you finish it in one go. Practice mode places checkpoints as you play.
+
+<br clear="right">
+
+## Clash Royale
+
+<img src="../games/clashroyale/docs/shot.png" width="320" align="right" alt="Clash Royale: troops at the bridge, the bot's towers on the right">
+
+| Key | What it does |
+| --- | --- |
+| **1** to **4** | Pick a card of your hand |
+| **Left / Right**, **OK** | Pick a card, then take it to the field |
+| **Arrows** | Move the card on the field |
+| **OK** | Drop it there |
+| **Back** | Put the card back; in the hand, pause |
+| **Home** | Keep the battle and quit |
+
+Knock down the bot's towers before it knocks down yours: a Princess tower is a crown, the King tower is three and ends the battle. Elixir fills up by itself and pays for your cards; a played card goes to the back of your deck and the next takes its place. Troops and buildings go on your side of the river, spells anywhere. The last minute gives double elixir; even crowns at the end bring overtime, where the next crown wins. Wins give trophies, and trophies open the next arena. Build your deck of eight from the 41 cards in Deck.
+
+<br clear="right">
+
+## Cat Ninja
+
+<img src="../games/catninja/docs/shot.png" width="320" align="right" alt="Cat Ninja: the cat wall jumps up a shaft in level 2">
+
+| Key | What it does |
+| --- | --- |
+| **Left / Right** (or 4 / 6) | Run |
+| **Up**, **OK** or **EXE** (or 8) | Jump; again in the air: double jump; against a wall: wall jump |
+| **Down** (or 2) | Roll (hold it and run); in the air: slam |
+| **Shift** | Jetpack on or off |
+| **⌫** (backspace) | Back to the last checkpoint |
+| **Back** | Pause: Resume, Retry, Title, How to play, Quit game |
+| **Home** | Save and quit |
+
+Walk right from the title map. Each level leads into the next: get through its spikes, lasers, mines and shooters, and grab the crystals on the way. Jump from wall to wall to climb (not on the sticky green walls). A slam breaks glass and presses red buttons. Gravity changers turn the whole world round. Die and you go back to the last checkpoint. Collect more than 20 of the 50 crystals before the end to save the world.
 
 <br clear="right">
 

@@ -49,6 +49,15 @@ main {
 .title button { border: 0; padding: 0 0.04em 0.06em 0; background: none; font: inherit; letter-spacing: inherit; cursor: pointer; display: block; overflow: hidden; }
 .title span { display: block; }
 .chips { display: flex; gap: 8px; }
+.search {
+  grid-column: 1 / -1; margin-top: 14px; max-width: 360px; height: 42px; padding: 0 14px; border-radius: 21px;
+  background: var(--card); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); display: flex; align-items: center; gap: 9px;
+  color: var(--mute); cursor: text;
+}
+.search:focus-within { box-shadow: 0 0 0 3px var(--blue); }
+.search input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; outline: none; font-size: 15px; font-weight: 550; color: var(--ink); }
+.search input::placeholder { color: var(--mute); }
+.no-match { grid-column: 1 / -1; margin: 8px 0 0; font-size: 14px; color: var(--text); }
 .lede { grid-column: 1 / -1; margin: 10px 0 0; max-width: 34em; font-size: 18px; line-height: 1.4; font-weight: 550; color: var(--ink); }
 .row-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
 .row-head:first-child { margin-top: 0; }

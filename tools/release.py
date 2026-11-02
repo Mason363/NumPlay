@@ -51,7 +51,6 @@ ALONE = {
     "tombofthemask": ("Tomb of the Mask", "dash through the tomb: the endless arcade climb and all 200 stages, with the 16 masks"),
     "uno": ("UNO", "the card game against one to three bots, with the official rules and scoring to 500"),
     "fnf": ("Friday Night Funkin'", "the Tutorial, Weeks 1 to 7, Weekend 1 and LE SSERAFIM, in story mode and freeplay"),
-    "turborush": ("Turbo Rush", "an arcade racer by Bobydeluxe: six circuits, a Grand Prix, single races and Free Ride"),
     "angrybirds": ("Angry Birds", "the 429 levels of the Chrome edition, its seven birds and the Mighty Eagle"),
     "polytrack": ("PolyTrack", "Kodub's low-poly time trial racer: its 17 tracks, loops, wall rides and jumps, against your ghost"),
     "paperclips": ("Universal Paperclips", "Frank Lantz's game of an AI making paperclips: business, the Earth, then the universe"),
@@ -64,6 +63,8 @@ ALONE = {
     "fnaf3": ("Five Nights at Freddy's 3", "Fazbear's Fright's six nights with Springtrap and the phantoms: the lure, the vents, the maintenance panel"),
     "fnaf4": ("Five Nights at Freddy's 4", "the bedroom's nights with the Nightmares: listen at the doors, the closet, the bed, Fun with Plushtrap"),
     "famidash": ("Famidash", "TFDSoft's Geometry Dash for the NES, made for the calculator: the 173 levels of Famidash HUGE, every mode, practice mode"),
+    "clashroyale": ("Clash Royale", "battles against a bot: 41 cards of the 2016 game, its seven arenas, elixir, crowns and trophies"),
+    "catninja": ("Cat Ninja", "Richman Stewart's Flash platformer: its 30 levels of wall jumps and traps, the boss and the crystals"),
 }
 VARIANTS = [
     ("NumPlay-Invisible.nwa", "The same app, hidden: a blank icon with no name"),

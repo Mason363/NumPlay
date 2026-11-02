@@ -258,10 +258,6 @@ GAMES = {
     # guide read. Next time, from the copy: Options, downscroll on (Back saves it), quit with On/Off
     "fnf": ("FridayNightFunkin.nwa", "fnf.sav", presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "back")), 7000,
             presses((1500, "ok"), (2200, "down"), (2700, "down"), (3200, "ok"), (3900, "ok"), (4600, "back")), 6000),
-    # the title's Play, Start, the first-run guide's OK, then the race: flat out, Back to pause, Home. Next time,
-    # from the copy, Continue: the race again (after a 3, 2, 1), quit with On/Off
-    "turborush": ("TurboRush.nwa", "turborush.sav", presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (9500, "back"))
-                  + [(3500, 9000, K["up"])], 11000, presses((1500, "ok")) + [(3500, 6500, K["up"])], 7500),
     # the title, Poached Eggs, its first level, the story, how to play (the first time), then a bird launched; Home
     # keeps the play time. Next time, from the copy, the same level without the guide, quit with On/Off
     "angrybirds": ("AngryBirds.nwa", "angrybirds.sav",
@@ -320,6 +316,16 @@ GAMES = {
     "portal": ("PortalReturns.nwa", "portal.sav",
                presses((1500, "ok"), (2500, "ok"), (3500, "ok")) + every(4000, 7000, 400, "right", 300), 8000,
                presses((1500, "ok")), 4000),
+    # Battle: how to play (the first time), then the battle: a card dropped at the bridge; Home keeps the battle and the
+    # profile. Next time, from the copy, Battle goes straight in, quit with On/Off
+    "clashroyale": ("ClashRoyale.nwa", "clashroyale.sav",
+                    presses((1500, "ok"), (2200, "ok"), (4000, "1"), (4400, "ok"), (6500, "2"), (6900, "ok")), 9000,
+                    presses((1500, "ok")), 5000),
+    # how to play (the first time), then right through the title map into level 1, Back to pause; Home keeps it.
+    # Next time, from the copy, right again: the title map's way back to level 1
+    "catninja": ("CatNinja.nwa", "catninja.sav",
+                 presses((1500, "ok"), (9500, "back")) + [(2500, 9000, K["right"])], 10000,
+                 [(1500, 6000, K["right"])], 6500),
 }
 
 
@@ -382,11 +388,13 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "jetpackjoyride": "jetpackjoyride_saves.py", "stickmanhook": "stickmanhook_saves.py",
           "donkeykong": "donkeykong_saves.py", "dune": "dune_saves.py", "monkeymart": "monkeymart_saves.py",
           "tombofthemask": "tombofthemask_saves.py", "uno": "uno_saves.py",
-          "fnf": "fnf_saves.py", "turborush": "turborush_saves.py",
+          "fnf": "fnf_saves.py",
           "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
           "badtime": "badtime_saves.py", "mahjong": "mahjong_saves.py",
           "rider": "rider_saves.py", "snowrider": "snowrider_saves.py", "templerun": "templerun_saves.py",
-          "fnaf2": "fnaf2_saves.py", "fnaf3": "fnaf3_saves.py", "fnaf4": "fnaf4_saves.py", "famidash": "famidash_saves.py"}
+          "fnaf2": "fnaf2_saves.py", "fnaf3": "fnaf3_saves.py", "fnaf4": "fnaf4_saves.py", "famidash": "famidash_saves.py",
+          "clashroyale": "clashroyale_saves.py",
+          "catninja": "catninja_saves.py"}
 
 
 def paperclips_ok(v):
@@ -412,6 +420,26 @@ def rider_ok(v):
 def famidash_ok(v):
     """Famidash's save: "FMD1", version 2, 2108 bytes, an FNV-1a sum of the rest at the end"""
     if len(v) != 2108 or v[:4] != b"FMD1" or v[4] != 2:
+        return False
+    h = 2166136261
+    for x in v[:-4]:
+        h = (h ^ x) * 16777619 & 0xFFFFFFFF
+    return struct.unpack_from("<I", v, len(v) - 4)[0] == h
+
+
+def clashroyale_ok(v):
+    """Clash Royale's profile: "CRY1", version 1, 48 bytes, an FNV-1a sum of the rest at the end"""
+    if len(v) != 48 or v[:4] != b"CRY1" or struct.unpack_from("<HH", v, 4) != (1, 48):
+        return False
+    h = 2166136261
+    for x in v[:-4]:
+        h = (h ^ x) * 16777619 & 0xFFFFFFFF
+    return struct.unpack_from("<I", v, 44)[0] == h
+
+
+def catninja_ok(v):
+    """Cat Ninja's save: "CTN1", version 1, 40 bytes, an FNV-1a sum of the rest at the end"""
+    if len(v) != 40 or v[:4] != b"CTN1" or v[4] != 1:
         return False
     h = 2166136261
     for x in v[:-4]:
@@ -602,12 +630,6 @@ CHECKS = {
     # on (at 8), the guide still read
     "fnf": (lambda v: len(v) == 1552 and v[:4] == b"FNFS" and v[4] == 1 and v[9] == 1 and v[8] == 0,
             lambda v: len(v) == 1552 and v[:4] == b"FNFS" and v[9] == 1 and v[8] == 1),
-    # "TRU1", version 1, its size (492): the guide read (85), a race kept (114) and going (phase at 127), its clock
-    # (164) running; after the reinstall, from the copy, the same race goes on
-    "turborush": (lambda v: len(v) == 492 and v[:4] == b"TRU1" and v[85] == 1 and v[114] == 1 and v[127] == 1
-                  and struct.unpack_from("<I", v, 164)[0] >= 1000,
-                  lambda v: len(v) == 492 and v[:4] == b"TRU1" and v[114] == 1 and v[127] == 1
-                  and struct.unpack_from("<I", v, 164)[0] >= 4000),
     # "ABS1", version 1, its size (3032): how to play shown (guide at 3014), the first level last played (3012), some
     # seconds of play (3024); after the reinstall, from the copy, more of them
     "angrybirds": (lambda v: len(v) == 3032 and v[:4] == b"ABS1" and v[3014] == 1
@@ -653,6 +675,11 @@ CHECKS = {
     # "FMD1", version 1: how to play read (flags at 5), time played (564); after the reinstall, from the copy, more
     "famidash": (lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 7000,
                  lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 12000),
+    # "CRY1", version 1, its size (48): how to play read (guide at 40); after the reinstall, from the copy
+    "clashroyale": (lambda v: clashroyale_ok(v) and v[40] == 1,) * 2,
+    # "CTN1", version 1: how to play read (flags at 5), in level 1 (the level at 9); after the reinstall, from the
+    # copy, back in it through the title map and on (level 1 or 2)
+    "catninja": (lambda v: catninja_ok(v) and v[5] & 1 and v[9] == 0, lambda v: catninja_ok(v) and v[5] & 1 and v[9] in (0, 1)),
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept
