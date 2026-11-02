@@ -3,7 +3,8 @@
 behaviour sanitizers, the ROM read only like the calculator's flash):
 
 - test ROMs give the pictures they should (Blargg's cpu_instrs and instr_timing, dmg-acid2 and
-  cgb-acid2, nestest, zexdoc for the Master System, Cheril Perils Classic for the SG-1000), when they are in
+  cgb-acid2, nestest, zexdoc for the Master System, Cheril Perils Classic for the SG-1000, Bankruptcy
+  Builder for the ColecoVision), when they are in
   the test ROM folder, and the
   Master System's Z80 runs the CP/M instruction exercisers (prelim; zexdoc and zexall with ZEX=1)
   to the clock;
@@ -36,10 +37,12 @@ EXPECTED = {
     "sega/zexall/x/zexdoc.sms": (3000, "", "e20e5a6fb45d"),
     # (the SG-1000: the Mojon Twins' homebrew, its title, the menu, then Cheril in the first room)
     "sg1000/cheril_perils_ntsc.sg": (1500, "900=2,910=0,1000=2,1010=0,1100=128,1300=129,1320=128", "fd4688405166"),
+    # (the ColecoVision: Philip Klaus Krause's homebrew, keypad 1 for one player, then its first level)
+    "coleco/bankruptcybuilder.col": (1500, "300=1,310=0,400=512,410=0,500=16,510=0", "390bab2011d9"),
 }
 # the CP/M exercisers and the clocks superzazu's z80 takes for them
 ZEX = [("z80/prelim.com", 8721), ("z80/zexdoc.cim", 46734978649), ("z80/zexall.cim", 46734978649)]
-SYSTEMS = (".gb", ".gbc", ".nes", ".sms", ".gg", ".sg")
+SYSTEMS = (".gb", ".gbc", ".nes", ".sms", ".gg", ".sg", ".col")
 
 
 def run(rom, frames, seed=0, script=""):
@@ -98,7 +101,7 @@ if z80 and folder:
 # don't crash it
 for rel in ("libbet.gb", "ucity_compat.gbc", "cgb-acid2.gbc", "thwaite.nes", "croom.nes", "240pee.nes",
             "sega/raposa/x/raposadosol_v20.sms", "sega/waternet/sms/waternet.sms", "sega/waternet/gg/waternet.gg",
-            "sega/tunnel/tunnel.gg"):
+            "sega/tunnel/tunnel.gg", "coleco/bankruptcybuilder.col", "coleco/breakout.col"):
     path = os.path.join(folder, rel) if folder else ""
     if not os.path.exists(path):
         continue

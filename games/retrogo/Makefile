@@ -20,7 +20,7 @@ ROMS ?=
 GB_SRC = $(addprefix src/gb/,cpu.c hw.c mem.c lcdc.c rtc.c lcd.c gb.c)
 NES_SRC = $(addprefix src/nes/,nes6502.c nes_ppu.c nes_mmc.c mmclist.c nes_apu.c nes.c) \
   $(sort $(wildcard src/nes/mappers/*.c))
-SMS_SRC = src/sms/z80.c src/sms/sms.c
+SMS_SRC = src/sms/z80.c src/sms/sms.c src/sms/coleco_bios.c
 CORE_SRC = $(GB_SRC) $(NES_SRC) $(SMS_SRC)
 APP_SRC = src/main.c src/romtable.c src/pack.c
 CORE_H = $(wildcard src/*.h src/gb/*.h src/nes/*.h src/sms/*.h)

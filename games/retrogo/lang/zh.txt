@@ -86,7 +86,8 @@ Welcome to Retro-Go!	欢迎使用 Retro-Go！
 Add games on NumPlay's	请在 NumPlay 的
 customizer website:	定制网站上添加
 Game Boy, Game Boy Color, NES,	Game Boy、Game Boy Color、NES、
-Master System, Game Gear, SG-1000.	Master System、Game Gear 和 SG-1000 游戏。
+Master System, Game Gear, SG-1000,	Master System、Game Gear、SG-1000
+ColecoVision.	和 ColecoVision 游戏。
 Home: quit	主页：退出
 Left/Right: system    OK: games    Home: quit	左/右：主机    OK：游戏    主页：退出
 OK: play    Back: systems    Left/Right: system	OK：开始    返回：主机    左/右：切换主机
@@ -109,3 +110,10 @@ B, 1	B, 1
 Start, Pause	Start, 暂停
 Pause	暂停
 z80 by superzazu	superzazu 的 z80
+Joystick	摇杆
+Left button	左键
+Right button	右键
+Keypad	数字键盘
+0 to 9	0 到 9
+* and #	* 和 #
+x and /	x 和 /

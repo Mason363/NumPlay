@@ -2,7 +2,9 @@
  * (Sega's, Codemasters', the Korean one), the work RAM, the pads, the Game Gear's ports and the
  * video chip (mode 4: the tiles, their scrolling and priorities, the sprites, the line and frame
  * interrupts, the counters; and the TMS9918's modes the SG-1000 draws with: Graphics I and II,
- * Text and Multicolor, with its sprites), drawn a line at a time. Written for NumPlay from the
+ * Text and Multicolor, with its sprites), drawn a line at a time. The ColecoVision is the same Z80
+ * and TMS9918 with its own memory, ports and controllers, and its BIOS (coleco_bios.c); its memory
+ * and ports follow SMS Plus's as Retro-Go has them, with the Super Game Module's RAM. Written for NumPlay from the
  * hardware's public descriptions (Charles MacDonald's notes on the VDP and the Master System,
  * Texas Instruments' TMS9918A manual, SMS Power's pages); no sound, the calculator has no
  * speaker. The short list of games that need something of their own (their CRC32s) is SMS Plus
@@ -55,7 +57,8 @@ typedef struct {
   uint8_t io3f;          /* the pads' lines (port $3F) */
   uint8_t sram_on;       /* the game turned its cartridge RAM on */
   uint8_t pause;         /* the pause button, held */
-  uint8_t pad_[3];
+  uint8_t cv_joy;        /* the ColecoVision's controllers read: the joystick (1) or the keypad (0) */
+  uint8_t sgm53, sgm7f;  /* the Super Game Module's ports: its 24 KB of RAM on (bit 0), the BIOS on (bit 1) */
 } state_t;
 
 /* a line's registers as it was drawn (sms_redraw draws the frame again from them) */
@@ -63,15 +66,17 @@ typedef struct { uint8_t r0, r1, r2, r3, r4, r5, r6, r7, hs, vs; } line_regs_t;
 
 static z80 cpu;
 static state_t st;
-static uint8_t *ram, *vram, *sram, *sram_slot;
+static uint8_t *ram, *vram, *sram, *sram_slot, *tail; /* tail: the ROM's last 1 KB when it isn't whole, padded */
 static uint32_t *expand;        /* a byte of a tile's plane -> its 8 pixels, a bit in each nibble */
 static line_regs_t *snap;
 static int snap_lines;
 static const uint8_t *rom;
 static uint32_t rom_size, banks;
 static uint8_t mapper_kind;
-static bool gg, gg_vdp, sg, pal, sram_dirty;
-static uint8_t pad_bits;
+static bool gg, gg_vdp, sg, cv, pal, sram_dirty;
+static uint8_t pad_bits, cv_nmi;
+static int cv_key = -1;
+extern const uint8_t coleco_bios[8192];
 static bool start_button;
 static uint32_t line_start, line_end;
 static uint16_t pal565[32];
@@ -87,17 +92,23 @@ static const uint8_t open_bus[0x400] = {[0 ... 0x3FF] = 0xFF};
 const uint8_t *z80_rmap[64];
 
 /* ------------------------------------------------------------ memory */
-static const uint8_t *rom_page(uint32_t bank, int k) {
-  uint32_t at = (bank % banks) * 0x4000 + (uint32_t)k * 0x400;
-  return at + 0x400 <= rom_size ? rom + at : open_bus;
+static const uint8_t *rom_at(uint32_t at) { /* the 1 KB of ROM from at */
+  return at + 0x400 <= rom_size ? rom + at : at < rom_size ? tail : open_bus;
 }
+static const uint8_t *rom_page(uint32_t bank, int k) { return rom_at((bank % banks) * 0x4000 + (uint32_t)k * 0x400); }
 
 static void map_update(void) {
   sram_slot = NULL;
+  if (cv) { /* the BIOS (or the module's RAM), the module's RAM, 1 KB of RAM over and over, 32 KB of cartridge */
+    for (int k = 0; k < 8; k++) z80_rmap[k] = st.sgm7f & 2 ? coleco_bios + k * 0x400 : sram + k * 0x400;
+    for (int k = 8; k < 32; k++) z80_rmap[k] = st.sgm53 & 1 ? sram + k * 0x400 : k >= 24 ? ram : open_bus;
+    for (int k = 32; k < 64; k++) z80_rmap[k] = rom_at((uint32_t)(k - 32) * 0x400);
+    return;
+  }
   if (sg) { /* the SG-1000: 48 KB of cartridge in a row (the smaller ones with RAM after them), 1 KB of RAM */
     for (int k = 0; k < 48; k++) {
       uint32_t at = (uint32_t)k * 0x400;
-      z80_rmap[k] = at + 0x400 <= rom_size ? rom + at : k >= 32 && rom_size <= 0x8000 ? sram + (at & 0x3FFF) : open_bus;
+      z80_rmap[k] = at < rom_size ? rom_at(at) : k >= 32 && rom_size <= 0x8000 ? sram + (at & 0x3FFF) : open_bus;
     }
     for (int k = 0; k < 16; k++) z80_rmap[48 + k] = ram;
     return;
@@ -119,6 +130,15 @@ static void map_update(void) {
 }
 
 void z80_bus_write(uint16_t a, uint8_t v) {
+  if (cv) {
+    if (a < 0x2000) {
+      if (!(st.sgm7f & 2)) sram[a] = v;
+    } else if (a < 0x8000) {
+      if (st.sgm53 & 1) sram[a] = v;
+      else if (a >= 0x6000) ram[a & 0x3FF] = v;
+    }
+    return;
+  }
   if (sg) {
     if (a >= 0xC000) ram[a & 0x3FF] = v;
     else if (a >= 0x8000 && rom_size <= 0x8000) sram[a & 0x3FFF] = v; /* (The Castle's and Othello's RAM) */
@@ -154,6 +174,12 @@ static int height_of(uint8_t r0, uint8_t r1) {
 static int height(void) { return height_of(st.reg[0], st.reg[1]); }
 
 static void irq_update(void) {
+  if (cv) { /* the ColecoVision: the video chip's interrupt is an NMI, when it starts */
+    uint8_t on = st.vint && (st.reg[1] & 0x20);
+    if (on && !cv_nmi) z80_gen_nmi(&cpu);
+    cv_nmi = on;
+    return;
+  }
   cpu.irq_line = (st.vint && (st.reg[1] & 0x20)) || (st.hint && (st.reg[0] & 0x10) && !sg);
 }
 
@@ -250,7 +276,31 @@ static uint8_t pad_dd(void) {
   return v;
 }
 
+/* the ColecoVision's controller: the joystick and the left button, or the keypad and the right button */
+static uint8_t cv_pad(void) {
+  static const uint8_t keymask[12] = {0x7A, 0x7D, 0x77, 0x7C, 0x72, 0x73, 0x7E, 0x75, 0x71, 0x7B, 0x79, 0x76};
+  uint8_t v = 0x7F;
+  if (st.cv_joy) {
+    if (pad_bits & 0x01) v &= (uint8_t)~1;
+    else if (pad_bits & 0x02) v &= (uint8_t)~4;
+    if (pad_bits & 0x04) v &= (uint8_t)~8;
+    else if (pad_bits & 0x08) v &= (uint8_t)~2;
+    if (pad_bits & 0x20) v &= (uint8_t)~0x40;
+  } else {
+    if (cv_key >= 0 && cv_key < 12) v = keymask[cv_key];
+    if (pad_bits & 0x10) v &= (uint8_t)~0x40;
+  }
+  return v;
+}
+
 uint8_t z80_bus_in(uint8_t port) {
+  if (cv) {
+    switch (port & 0xE0) {
+    case 0xA0: return port & 1 ? vdp_status() : vdp_read();
+    case 0xE0: return port & 2 ? 0x7F : cv_pad(); /* (one controller) */
+    }
+    return port == 0x53 ? st.sgm53 : port == 0x7F ? st.sgm7f : 0xFF;
+  }
   if (gg && port < 7) { /* the Game Gear's: Start, outside Japan, 60 Hz; the link port, idle */
     static const uint8_t idle[7] = {0, 0x7F, 0xFF, 0x00, 0xFF, 0x00, 0xFF};
     return port ? idle[port] : (uint8_t)(0x40 | (start_button ? 0 : 0x80));
@@ -267,6 +317,17 @@ uint8_t z80_bus_in(uint8_t port) {
 }
 
 void z80_bus_out(uint8_t port, uint8_t v) {
+  if (cv) {
+    switch (port & 0xE0) {
+    case 0x80: st.cv_joy = 0; return;
+    case 0xC0: st.cv_joy = 1; return;
+    case 0xA0: port & 1 ? vdp_control(v) : vdp_write(v); return;
+    case 0xE0: return; /* (the sound chip) */
+    }
+    if (port == 0x53) st.sgm53 = v, map_update();
+    else if (port == 0x7F) st.sgm7f = v, map_update();
+    return;
+  }
   if (gg && port < 7) return; /* (the link port and the stereo sound) */
   switch (port & 0xC1) {
   case 0x01: st.io3f = v; break;
@@ -498,10 +559,13 @@ void sms_redraw(void) {
   st.status = status;
 }
 
+void sms_set_keypad(int key) { cv_key = key; }
+
 void sms_set_pad(int p) {
   pad_bits = (uint8_t)((p & RG_PAD_UP ? 0x01 : 0) | (p & RG_PAD_DOWN ? 0x02 : 0) | (p & RG_PAD_LEFT ? 0x04 : 0) |
                        (p & RG_PAD_RIGHT ? 0x08 : 0) | (p & RG_PAD_B ? 0x10 : 0) | (p & RG_PAD_A ? 0x20 : 0));
   bool start = p & RG_PAD_START;
+  if (cv) return;
   if (gg_vdp) {
     start_button = start;
   } else { /* the Master System's pause button (or the Game Gear's Start in its mode): an NMI */
@@ -513,6 +577,7 @@ void sms_set_pad(int p) {
 uint32_t sms_frame_us(void) { return pal ? 20120 : 16688; } /* (313 or 262 lines of 228 clocks) */
 bool sms_is_gg(void) { return gg; }
 bool sms_is_sg(void) { return sg; }
+bool sms_is_cv(void) { return cv; }
 
 void sms_reset(bool hard) {
   if (hard) {
@@ -530,6 +595,7 @@ void sms_reset(bool hard) {
   st.mapper[0] = 0, st.mapper[1] = 0, st.mapper[2] = 1;
   st.mapper[3] = mapper_kind == MAP_SEGA ? 2 : 0;
   st.line = 0, st.pause = 0;
+  st.cv_joy = 0, st.sgm53 = 0, st.sgm7f = 0xFF, cv_nmi = 0;
   map_update();
   z80_init(&cpu);
   if (!sg) cpu.sp = 0xDFF0; /* (where the BIOS leaves it; a few games count on it) */
@@ -542,8 +608,10 @@ int sms_load(const uint8_t *data, uint32_t size, uint32_t crc, int machine) {
   if (size < 0x400) return RG_ERR_ROM;
   rg_alloc_reset();
   ram = rg_alloc(0x2000), vram = rg_alloc(0x4000), sram = rg_alloc(0x8000);
-  expand = rg_alloc(256 * sizeof *expand), snap = rg_alloc(240 * sizeof *snap);
-  if (!ram || !vram || !sram || !expand || !snap) return RG_ERR_MEMORY;
+  expand = rg_alloc(256 * sizeof *expand), snap = rg_alloc(240 * sizeof *snap), tail = rg_alloc(0x400);
+  if (!ram || !vram || !sram || !expand || !snap || !tail) return RG_ERR_MEMORY;
+  memset(tail, 0xFF, 0x400);
+  memcpy(tail, data + (size & ~0x3FFu), size & 0x3FF);
   for (int b = 0; b < 256; b++) {
     uint32_t v = 0;
     for (int i = 0; i < 8; i++)
@@ -561,9 +629,10 @@ int sms_load(const uint8_t *data, uint32_t size, uint32_t crc, int machine) {
   }
   mapper_kind = flags & DB_CODIES ? MAP_CODIES : flags & DB_KOREA ? MAP_KOREA : MAP_SEGA;
   pal = flags & DB_PAL;
-  gg = machine == SMS_GG, gg_vdp = gg && !(flags & DB_GGMS), sg = machine == SMS_SG;
-  if (sg) pal = false;
-  pad_bits = 0, start_button = false, sram_dirty = false;
+  cv = machine == SMS_CV;
+  gg = machine == SMS_GG, gg_vdp = gg && !(flags & DB_GGMS), sg = machine == SMS_SG || cv;
+  if (sg) pal = false, mapper_kind = MAP_SEGA;
+  pad_bits = 0, cv_key = -1, start_button = false, sram_dirty = false;
   sms_reset(true);
   return RG_OK;
 }
@@ -593,7 +662,8 @@ void sms_state_loaded(void) {
   line_start = line_end = 0;
   if (st.line >= lines_per_frame()) st.line = 0;
   st.addr &= 0x3FFF, st.code &= 3, st.pending &= 1, st.vint &= 1, st.hint &= 1;
-  st.sram_on &= 1, st.pause &= 1;
+  st.sram_on &= 1, st.pause &= 1, st.cv_joy &= 1;
+  cv_nmi = st.vint && (st.reg[1] & 0x20); /* (not again for an interrupt the state was in) */
   if (st.counter < -1 || st.counter > 255) st.counter = st.reg[10];
   map_update();
   for (int i = 0; i < 32; i++) palette_update(i);

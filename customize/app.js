@@ -18,8 +18,9 @@
     4: { tag: 'SMS', name: 'Master System', color: '#2f62c4', shell: '#cfd6e4' },
     5: { tag: 'GG', name: 'Game Gear', color: '#3b3b3b', shell: '#c8c8cc' },
     6: { tag: 'SG', name: 'SG-1000', color: '#c0392b', shell: '#2b2b2e' },
+    7: { tag: 'COL', name: 'ColecoVision', color: '#2c3e50', shell: '#1d1d1f' },
   };
-  const EXT = { gb: 1, gbc: 2, nes: 3, sms: 4, gg: 5, sg: 6 };
+  const EXT = { gb: 1, gbc: 2, nes: 3, sms: 4, gg: 5, sg: 6, col: 7 };
   const ROM_ENTRY = 52, ROM_HEAD = 12;
   const PRESETS = { 'NumPlay': ['NumPlay', 'NumPlay'], 'NumPlay-Invisible': ['Invisible', ' '], 'NumPlay-Matrices': ['Matrices', 'Matrices'] };
   const LANGS = { en: ['EN', 'English'], fr: ['FR', 'Français'], zh: ['中文', '中文'] };

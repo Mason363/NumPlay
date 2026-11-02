@@ -1125,9 +1125,10 @@ NumVisuals comes on its own, as NumVisuals.nwa, or in a NumPlay of your own from
 | **OK** | Open it. In a game: **A** (**2** on Sega's pads) |
 | **Back** | Back to the systems. In a game: **B** (**1**) |
 | **shift** / **EXE** | In a game: **Select** / **Start** (the Master System's **Pause**) |
+| **0** to **9**, **×**, **÷** | The ColecoVision's keypad (**×** is \*, **÷** is #) |
 | **Backspace** | Retro-Go's menu: save, load, reset, options |
 | **Home** | Save and quit |
 
-Game Boy, Game Boy Color, NES, Master System, Game Gear and SG-1000 games you pick on NumPlay's customizer website. Open a game for New game, or Resume game from one of its 4 save slots. In a game, Backspace opens Retro-Go's menu: Save & Continue, Save & Quit, Load game, Reset, Options, where the picture can be 1x, Fit or Full screen, and Controls, where you give any button the key you want: pick it, press **OK**, then its new key. The cartridges' own saves are kept as well.
+Game Boy, Game Boy Color, NES, Master System, Game Gear, SG-1000 and ColecoVision games you pick on NumPlay's customizer website. Open a game for New game, or Resume game from one of its 4 save slots. In a game, Backspace opens Retro-Go's menu: Save & Continue, Save & Quit, Load game, Reset, Options, where the picture can be 1x, Fit or Full screen, and Controls, where you give any button the key you want: pick it, press **OK**, then its new key. The cartridges' own saves are kept as well.
 
 <br clear="right">
