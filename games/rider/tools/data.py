@@ -52,71 +52,93 @@ for n in tpl_names:
 tpl_poly.append(len(poly_vert)); poly_vert.append(len(verts) // 2)
 
 # ---------------------------------------------------------------- tracks
+# As the game builds them (code.backgroundModule, code.GameObject): every object a body at its picture's centre, turned
+# and scaled; dynamic when it moves (an animation, physicsActive or physicsActiveOnCollision), static otherwise.
 EASE = ['linear', 'inOutQuad', 'outBounce', 'outBack', 'inQuad', 'outQuad', 'inOutSine']
 objs, anims, steps, tracks = [], [], [], []
+BIKE_W, BIKE_H = 117 * 0.7, 37 * 0.7   # the bike's picture (GameCharacter getWidth, getHeight)
 def steps_of(v):
     if not v: return []
     if isinstance(v, str): v = json.loads(v)
     return [(float(a), int(b), EASE.index(c), int(d)) for a, b, c, d in v]
+def lua_true(v): return v is not None and v is not False   # Lua: only nil and false are false
 def track(path, kind):
     obs, d = objects(path)
     by_id = {o['id']: o for o in obs}
     start, finish, first = None, None, len(objs)
     kept = [o for o in obs if o['type'] in KIND or o['type'] == 'character']
-    children = {}
+    parent_of = {}   # animGroundChild: a ground that takes its platform's animations (copyAnimationInheritance)
     for o in kept:
         g = o['props'].get('animGroundChild')
-        if g is not None and int(g) in by_id: children[int(g)] = o['id']
+        if g is not None and int(g) in by_id: parent_of[int(g)] = o
     order = [o for o in kept if o['type'] != 'character']
     # grounds first (drawn under everything), then the rest
     order.sort(key=lambda o: (o['type'] != 'ground',))
-    index = {o['id']: first + i for i, o in enumerate(order)}
     for o in kept:
-        if o['type'] == 'character': start = (o['cx'], o['cy'])
+        if o['type'] == 'character':
+            # Board: startX = x + the bike's half width, startY = y - its half height; startRotation the object's
+            raw = [r for L in d['layers'] for r in L.get('objects', []) if r.get('id') == o['id']][0]
+            start = (raw['x'] + BIKE_W / 2, raw['y'] - BIKE_H / 2, raw.get('rotation', 0))
     width = d['width'] * d['tilewidth']
     for o in order:
         p = o['props']; k = KIND[o['type']]
         flags = 0
-        if truthy(p.get('dontDieOnCollision')): flags |= 1
-        falls = truthy(p.get('physicsActiveOnCollision'))
-        if falls: flags |= 2
-        if truthy(p.get('physicsActive')): flags |= 2 | 4   # moved by physics from the start: falls at once
-        falls = falls or bool(flags & 4)
-        rot_s, px_s, py_s = steps_of(p.get('animRotation')), steps_of(p.get('animPositionX')), steps_of(p.get('animPositionY'))
+        if lua_true(p.get('dontDieOnCollision')): flags |= 1
+        on_coll = lua_true(p.get('physicsActiveOnCollision'))
+        pivot = lua_true(p.get('physicsPivotJoint'))
+        remove = False
+        active = lua_true(p.get('physicsActive'))
+        if on_coll:   # GameObject.create: a pivot that the first touch takes away
+            if not pivot: remove = True
+            pivot = active = True
+        if on_coll: flags |= 2
+        if active: flags |= 4
+        if pivot: flags |= 8
+        if remove: flags |= 16
+        delay = p.get('physicsActiveDelay')
+        delay = -1 if delay is None else int(delay)
+        # the pivot: tools.calculateAnchorToCoords, from the picture's box on screen (turned)
+        a = math.radians(o['rot'])
+        cw = abs(o['w'] * math.cos(a)) + abs(o['h'] * math.sin(a)); ch = abs(o['w'] * math.sin(a)) + abs(o['h'] * math.cos(a))
+        pvx = (0.5 - float(p.get('physicsPivotJointAnchorX', 0.5))) * cw
+        pvy = (0.5 - float(p.get('physicsPivotJointAnchorY', 0.5))) * ch
+        src = parent_of.get(o['id'])
+        q = src['props'] if src is not None else p   # the animations and their settings: its own, or its platform's
+        rot_s, px_s, py_s = steps_of(q.get('animRotation')), steps_of(q.get('animPositionX')), steps_of(q.get('animPositionY'))
         anim = 0xFFFF
-        parent = children.get(o['id'])
-        if rot_s or px_s or py_s or falls or parent is not None:
+        if rot_s or px_s or py_s:
+            # the anchor it turns about: its own animAnchorX/Y, in its own frame, turned with it (addPhysics)
             ax = float(p.get('animAnchorX', 0.5)) - 0.5; ay = float(p.get('animAnchorY', 0.5)) - 0.5
-            # the pivot in the object's own frame (as drawn: y down), turned with it
-            a = math.radians(o['rot']); lx, ly = ax * o['w'], ay * o['h']
-            pvx, pvy = o['cx'] + math.cos(a) * lx - math.sin(a) * ly, o['cy'] + math.sin(a) * lx + math.cos(a) * ly
-            loops = int(p.get('animLoops', -1))
-            af = (1 if truthy(p.get('animStartOnCollision')) else 0)
+            lx, ly = ax * o['w'], ay * o['h']
+            anx, any_ = math.cos(a) * lx - math.sin(a) * ly, math.sin(a) * lx + math.cos(a) * ly
+            loops = q.get('animLoops')
+            loops = -1 if loops is None else int(loops)
             anim = len(anims)
-            anims.append([af, max(-1, min(100, loops)), int(p.get('animStartDelay', 0)), int(p.get('physicsActiveDelay', 0)),
-                          int(round(pvx)), int(round(pvy)), len(steps), len(rot_s), len(px_s), len(py_s),
-                          index.get(parent, 0xFFFF) if parent is not None else 0xFFFF])
+            anims.append([1 if lua_true(q.get('animStartOnCollision')) else 0, 1 if lua_true(q.get('animStopOnCollision')) else 0,
+                          max(-100, min(100, loops)), int(q.get('animStartDelay', 0) or 0), ff(anx), ff(any_),
+                          len(steps), len(rot_s), len(px_s), len(py_s)])
             for st in rot_s + px_s + py_s: steps.append(st)
         if o['type'] == 'finish': finish = o['cx']
         n = o['name']
         if n in tpl_index:
             W, H = imgdim(n); sx, sy = o['w'] / W * (-1 if o['fh'] else 1), o['h'] / H * (-1 if o['fv'] else 1)
-            pts = [q for sh in o['shapes'] if not sh['sensor'] for q in world(o, sh['pts'])]
+            pts = [q2 for sh in o['shapes'] if not sh['sensor'] for q2 in world(o, sh['pts'])]
             tpl = tpl_index[n]
         else:
             sx, sy, tpl = o['w'], o['h'], 0xFF
             hw, hh = o['w'] / 2, o['h'] / 2
             pts = world(o, [(-hw, -hh), (hw, -hh), (hw, hh), (-hw, hh)])
         if not pts: pts = [(o['cx'], o['cy'])]
-        bb = [int(math.floor(min(q[0] for q in pts))), int(math.floor(min(q[1] for q in pts))),
-              int(math.ceil(max(q[0] for q in pts))), int(math.ceil(max(q[1] for q in pts)))]
-        objs.append([k, tpl, flags, anim, int(round(o['cx'])), int(round(o['cy'])), int(round(o['rot'] * 100)) % 36000,
-                     ff(sx), ff(sy)] + bb)
-    if start is None:   # the endless run's start piece: on its first platform
-        x = 150.0
-        tops = [q[1] for o in order if o['type'] == 'platform' for sh in o['shapes'] for q in world(o, sh['pts']) if abs(q[0] - x) < 40]
-        start = (x, min(tops) - 23) if tops else (100, 1300)
-    tracks.append([first, len(objs) - first, int(width), int(round(start[0])), int(round(start[1])),
+        bb = [int(math.floor(min(q2[0] for q2 in pts))), int(math.floor(min(q2[1] for q2 in pts))),
+              int(math.ceil(max(q2[0] for q2 in pts))), int(math.ceil(max(q2[1] for q2 in pts)))]
+        objs.append([k, tpl, flags, anim, ff(o['cx']), ff(o['cy']), ff(o['rot']), ff(sx), ff(sy)] + bb +
+                    [int(round(pvx)), int(round(pvy)), delay])
+    if start is None:
+        # the endless run (Board.create): startX = -0.6 x 640 + 275, startY = 480 - 350, in the first piece's frame
+        # (it starts at x -320, y groundBaseTopY - 1600, groundBaseTopY = 0.525 x 1136 on a 16:9 iPhone);
+        # startRotation unset: startingCharacterRotation
+        start = (-0.6 * 640 + 275 + 320, 480 - 350 - (0.525 * 1136 - 1600), cfg['startingCharacterRotation'])
+    tracks.append([first, len(objs) - first, int(width), ff(start[0]), ff(start[1]), ff(start[2]),
                    int(round(finish)) if finish is not None else 0])
 for l in levels: track(APP + '/data/levels/%s.json' % l, 'level')
 for c in chunks: track(APP + '/data/chunks/%s.json' % c, 'chunk')
@@ -127,20 +149,22 @@ out.append('#define NTPL %d\n#define NLEVELS %d\n#define NCHUNKS %d\n#define NOB
 out.append('/* the physics outlines: tpl -> polygons -> vertices (quarter pixels, around the picture\'s centre) */')
 arr('uint16_t', 'tpl_poly', tpl_poly); arr('uint16_t', 'poly_vert', poly_vert); arr('int16_t', 'tpl_xy', verts)
 out.append('static const char *const tpl_name[NTPL] = {' + ', '.join('"%s"' % n for n in tpl_names) + '};')
-out.append('/* kind, template, flags (1 never kills, 2 falls once touched, 4 falls from the start), animation, centre, turn\n'
-           ' * (1/100 degree), scale x and y (negative: flipped), bounding box */')
+out.append('/* kind, template, flags (1 never kills, 2 falls once touched, 4 moved by physics, 8 held by a pivot, 16 the\n'
+           ' * pivot goes on a touch), animation, centre, turn (degrees), scale x and y (negative: flipped), bounding box,\n'
+           ' * pivot (from the centre), physicsActiveDelay (ms, -1 none) */')
 out.append('static const rd_obj rd_objs[NOBJ] = {')
 for o in objs: out.append('  {%s},' % ', '.join(str(v) for v in o))
 out.append('};')
-out.append('/* start on touch, loops (-1 for ever), start delay, fall delay (ms), pivot, first step, rotation, x and y\n'
-           ' * steps, the ground that moves with it */')
+out.append('/* starts on a touch, stops on a touch, loops (-1 for ever, 0 only on a touch), start delay (ms), anchor (from\n'
+           ' * the centre), first step, rotation, x and y steps */')
 out.append('static const rd_anim rd_anims[%d] = {' % max(1, len(anims)))
 for a in anims: out.append('  {%s},' % ', '.join(str(v) for v in a))
 out.append('};')
+out.append('/* delta, time (ms), easing, delay (ms) */')
 out.append('static const rd_step rd_steps[%d] = {' % max(1, len(steps)))
-for s in steps: out.append('  {%s, %d, %d, %d},' % (ff(s[0]), s[1], s[2], s[3]))
+for s_ in steps: out.append('  {%s, %d, %d, %d},' % (ff(s_[0]), s_[1], s_[2], s_[3]))
 out.append('};')
-out.append('/* first object, objects, width, start, finish x */')
+out.append('/* first object, objects, width, start (centre of the bike and its turn), finish x */')
 out.append('static const rd_track rd_tracks[%d] = {' % len(tracks))
 for t, nm in zip(tracks, levels + chunks): out.append('  {%s}, /* %s */' % (', '.join(str(v) for v in t), nm))
 out.append('};')
@@ -219,7 +243,7 @@ for c in chars:
         area = sum(q[i][0] * q[(i + 1) % len(q)][1] - q[(i + 1) % len(q)][0] * q[i][1] for i in range(len(q)))
         if area < 0: q.reverse()
         hull_poly.append(len(hull) // 2)
-        for x, y in q: hull += [int(round(x * 0.7 * 2)), int(round(y * 0.7 * 2))]
+        for x, y in q: hull += [int(round(x * 64)), int(round(y * 64))]   # PhysicsEditor's pixels x64 (the game scales by 0.7)
     rule, val = 0, 0
     for r, k in enumerate(('unlockAtChallengeCompleted', 'unlockAtAmountDeaths', 'unlockAtHighscore', 'unlockAtAmountStars'), 1):
         if k in c: rule, val = r, c[k]
@@ -231,7 +255,7 @@ out.append('/* class (common, rare, epic, special, secret), unlock rule (1 chall
 out.append('static const rd_bike rd_bikes[NBIKES] = {')
 for b in bike_rows: out.append('  {%s},' % ', '.join(str(v) for v in b))
 out.append('};')
-arr('int8_t', 'bike_xy', outline); arr('uint16_t', 'hull_poly', hull_poly); arr('int8_t', 'hull_xy', hull)
+arr('int8_t', 'bike_xy', outline); arr('uint16_t', 'hull_poly', hull_poly); arr('int16_t', 'hull_xy', hull)
 
 # ---------------------------------------------------------------- texts
 ti = props('code.textIndicators.properties')
