@@ -269,6 +269,8 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 
 ## Roadmap
 
+[Vote](https://github.com/Mason363/NumPlay/issues?q=is%3Aissue+is%3Aopen+label%3A%22on+roadmap%22+sort%3Areactions-%2B1-desc) with a 👍 on the game you want next. The most voted come first.
+
 - [x] Celeste
 - [x] Hollow Knight
 - [x] Minecraft 1.8 (NumBlocks)
