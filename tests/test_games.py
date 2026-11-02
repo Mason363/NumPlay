@@ -670,8 +670,8 @@ CHECKS = {
     "famidash": (lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 7000,
                  lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 12000),
     # "CTN1", version 1: how to play read (flags at 5), in level 1 (the level at 9); after the reinstall, from the
-    # copy, still there
-    "catninja": (lambda v: catninja_ok(v) and v[5] & 1 and v[9] == 0, lambda v: catninja_ok(v) and v[5] & 1 and v[9] == 0),
+    # copy, back in it through the title map and on (level 1 or 2)
+    "catninja": (lambda v: catninja_ok(v) and v[5] & 1 and v[9] == 0, lambda v: catninja_ok(v) and v[5] & 1 and v[9] in (0, 1)),
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept

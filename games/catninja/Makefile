@@ -25,6 +25,7 @@ CFLAGS = -std=gnu11 $(shell $(NWLINK) eadk-cflags-device) -DPLATFORM_DEVICE=1 -D
 CFLAGS += -Os -Wall -Wextra -Wno-unused-parameter -fno-math-errno
 CFLAGS += -fno-tree-loop-distribute-patterns -flto -fno-fat-lto-objects -fwhole-program -fvisibility=internal
 CFLAGS += -ffunction-sections -fdata-sections
+CFLAGS += $(if $(PERF_LEVEL),-DPERF_LEVEL=$(PERF_LEVEL)) # (make perf PERF_LEVEL=n: that level straight away)
 LDFLAGS = -Wl,--relocatable -nostartfiles --specs=nano.specs
 LDFLAGS += -Wl,-e,main -Wl,-u,eadk_app_name -Wl,-u,eadk_app_icon -Wl,-u,eadk_api_level
 LDFLAGS += -Wl,--gc-sections -flinker-output=nolto-rel

@@ -168,7 +168,7 @@ static const char *const help[] = {
 static void scene(void *ctx) {
   (void)ctx;
   if (ov == OV_HELP) {
-    gfx_vgrad(0, gfx_y0, 320, gfx_y1 - gfx_y0, 0x2A1450, 0x0C0618);
+    gfx_vgrad(0, 0, 320, 240, 0x2A1450, 0x0C0618);
     text_c(&np_font_title, 160, 34, "How to play", HEX(0xE473EE));
     for (int i = 0; i < (int)(sizeof help / sizeof help[0]); i++)
       text_c(&np_font_small, 160, 62 + i * 18 + (i > 0) * 6, help[i], i ? HEX(0xFFFFFF) : HEX(0x12DFF5));
@@ -215,6 +215,12 @@ int main(void) {
   draw_init();
   load();
   start_game();
+#ifdef PERF_LEVEL /* (make perf: a level straight away) */
+  {
+    extern void game_debug_goto(int lv);
+    game_debug_goto(PERF_LEVEL), sv.flags |= 1;
+  }
+#endif
   if (!(sv.flags & 1)) ov = OV_HELP, help_back = OV_NONE, sv.flags |= 1;
   uint32_t held = plat_keys(), stale = held, gheld = 0, last = plat_millis(), saved = last, acc = 0;
   int up_held = 0, spawn_seen = P.spawnx * 7 + P.spawny * 3 + P.spawnlevel;
