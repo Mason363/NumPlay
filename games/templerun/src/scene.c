@@ -162,24 +162,18 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
   if (me->far >= 0 && z0 > MESH_FAR) me = &meshes[me->far];
   float s, c;
   r_sincos(yaw - cyaw, &s, &c);
-  /* the corners in place once each, in the camera's space and on the screen; a mesh with more than MESH_CORNERS (the
-   * temple) has its faces' moved as they come */
+  /* each corner in place once, the first time a face it is on is drawn, in the camera's space and on the screen (a
+   * far piece draws only some of its faces: the others' corners are left alone); a mesh's corners past MESH_CORNERS
+   * (the temple's) are moved for each face they are on */
   static SV v[MESH_CORNERS];
-  int nv = 0;
-  for (int i = 0; i < me->nf; i++) {
-    int e = me->f[i].first + me->f[i].n;
-    for (int k = me->f[i].first; k < e; k++)
-      if (me->idx[k] >= nv) nv = me->idx[k] + 1;
+  static uint16_t made[MESH_CORNERS], stamp;   /* (v[j] is this mesh's when made[j] is stamp) */
+  if (++stamp == 0) {
+    memset(made, 0, sizeof made);
+    stamp = 1;
   }
-  for (int k = 0; k < 3 * me->nt; k++)
-    if (me->tidx[k] >= nv) nv = me->tidx[k] + 1;
-  bool each = nv > MESH_CORNERS;
-  for (int i = 0; i < nv && !each; i++) {
-    float mx = me->v[i].x * 0.25f, my = me->v[i].y * 0.25f, mz = me->v[i].z * 0.25f;
-    v[i] = r_corner((V3){(x0 + mx * c + mz * s) * S, (dy + my) * S, (z0 - mx * s + mz * c) * S});
-  }
-#define CORNER(j) (each ? r_corner((V3){(x0 + me->v[j].x * 0.25f * c + me->v[j].z * 0.25f * s) * S, (dy + me->v[j].y * 0.25f) * S, \
-                                       (z0 - me->v[j].x * 0.25f * s + me->v[j].z * 0.25f * c) * S}) : v[j])
+#define MOVE(j) r_corner((V3){(x0 + me->v[j].x * 0.25f * c + me->v[j].z * 0.25f * s) * S, (dy + me->v[j].y * 0.25f) * S, \
+                              (z0 - me->v[j].x * 0.25f * s + me->v[j].z * 0.25f * c) * S})
+#define CORNER(j) ((j) >= MESH_CORNERS ? MOVE(j) : made[j] == stamp ? v[j] : (made[j] = stamp, v[j] = MOVE(j)))
   int flags = alpha < 255 ? P_ALPHA : 0;
   for (int i = 0; i < me->nf; i++) {
     const MFace *f = &me->f[i];
@@ -213,6 +207,7 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
     r_poly_tex_view(p, uv, 3, t->tex, t->light + 1, flags, t->avg);
   }
 #undef CORNER
+#undef MOVE
 }
 
 static void draw_tile(const Tile *t) {
