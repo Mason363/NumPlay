@@ -82,15 +82,15 @@ static void diamond_controller(Enemy *e, int t, int type) {
       b->angle = (int16_t)angle_of(dir);
       if (b->alpha < 250) {
         b->alpha = (uint8_t)min_i(255, b->alpha + 26);
-        b->scale = (int16_t)(256 * 3 - b->alpha * 2);
+        b->scale = (int16_t)((3 * 255 - 2 * b->alpha) * 128 / 255);   /* (3 - alpha * 2, the original's scale) */
         /* (move_towards_point 2 while forming) */
         b->x += ldx(2 * 16, dir), b->y += ldy(2 * 16, dir);
       } else if (!b->c) {
-        b->c = 1, b->t = 0, b->scale = 256;
+        b->c = 1, b->t = 0, b->scale = 128;
         b->b = (int16_t)dir;
       } else if (b->t >= 5 && b->c == 1) {
         Bullet *s = bullet_new(spr_diamondbullet, bx, by);
-        s->damage = b->damage, s->r = 8;
+        s->damage = b->damage, s->r = 8, s->scale = 128;
         s->vx = ldx(6 * 16, b->b), s->vy = ldy(6 * 16, b->b);
         s->angle = (int16_t)angle_of(b->b);
         b->c = 2, b->t = 0;
@@ -101,9 +101,9 @@ static void diamond_controller(Enemy *e, int t, int type) {
     } else if (b->d == 2) {
       if (b->alpha < 250) {
         b->alpha = (uint8_t)min_i(255, b->alpha + 26);
-        b->scale = (int16_t)(256 * 3 - b->alpha * 2);
+        b->scale = (int16_t)((3 * 255 - 2 * b->alpha) * 128 / 255);
         if (b->alpha >= 250) {
-          b->scale = 256, b->harmless = false, b->r = 8;
+          b->scale = 128, b->harmless = false, b->r = 8;
           if (hy < by) b->vy = 1 * 16, b->ay = -16 / 5;
           else b->vy = -2 * 16, b->ay = 16;
         }
@@ -168,9 +168,9 @@ static bool rudinn_act(Enemy *e, int act) {
 
 /* ================================================================ Hathy (obj_heartenemy) */
 static void hathy_talk(Enemy *e) {
-  /* its bubble is a picture (spr_heartblcon): drawn by hathy_draw */
-  e->v[5] = 20;
-  e->nsay = 0;
+  /* its bubble is a picture (obj_heartblcon): a heart, or what the ACT made it feel */
+  e->pic = e->acting == 2 ? spr_heartblcon_2 : e->acting == 3 ? spr_heartblcon_3
+                                                              : (rnd_n(2) ? spr_heartblcon_1 : spr_heartblcon_0);
 }
 
 /* obj_heartshaper: 16 hearts in a ring closing on the SOUL; obj_spinheart: one big heart that spins, then
@@ -183,7 +183,7 @@ static void hathy_attack(Enemy *e, int t) {
     /* obj_spinheart */
     if (t == 0) {
       Bullet *b = bullet_new(spr_spinheart, heart_x(), heart_y());
-      b->damage = (int16_t)dmg, b->alpha = 0, b->scale = 256 * 2, b->harmless = true, b->r = 10;
+      b->damage = (int16_t)dmg, b->alpha = 0, b->scale = 128 * 4, b->harmless = true, b->r = 10;
       b->angle = (int16_t)angle_of(-90), b->d = 3;
       e->v[0] = 0;
     }
@@ -194,8 +194,8 @@ static void hathy_attack(Enemy *e, int t) {
       switch (b->c) {
         case 0:
           b->alpha = (uint8_t)min_i(255, b->alpha + 51);
-          b->scale = (int16_t)(b->scale - 256 / 10);
-          if (b->t >= 5) b->c = 1, b->t = 0, b->harmless = false, b->scale = 256;
+          b->scale = (int16_t)(b->scale - 128 / 5);   /* (4, less 0.2 a frame: 3) */
+          if (b->t >= 5) b->c = 1, b->t = 0, b->harmless = false, b->scale = 128 * 3;
           break;
         case 1:
           if (b->t >= 10) b->c = 2, b->t = 0, b->b = (int16_t)pick4(26, 30, 34, 38);
@@ -226,7 +226,8 @@ static void hathy_attack(Enemy *e, int t) {
       e->v[0] = 160, e->v[1] = 0;
       for (int k = 0; k < 16; k++) {
         Bullet *b = bullet_new(spr_heartbullet, -20, -20);
-        b->damage = (int16_t)dmg, b->alpha = 0, b->d = 4, b->a = (int16_t)k, b->r = 6;
+        b->damage = (int16_t)dmg, b->alpha = 0, b->d = 4, b->a = (int16_t)k, b->r = 6, b->scale = 128;
+        b->gp = 2, b->timep = 1;
       }
     }
     if (e->v[0] > 80) e->v[0] -= 5;
@@ -302,66 +303,171 @@ static void lancer_talk(Enemy *e) {
   enemy_say(e, &s, 1);
 }
 
-/* obj_lancerbike: a race (up and down, two honks, a dash across) or a lap round the screen shooting spades */
+/* obj_lancerbike: the bike itself is the bullet. A race (up and down, two honks, a dash across the screen
+ * and back from the other side) or a lap round the screen's edges shooting spades at the SOUL. */
+static struct {
+  int32_t x, y, hs, vs;        /* its origin (the wheels), 1/16 unit */
+  int sp;                      /* speed (lap) */
+  int ang16;                   /* turned clockwise this far (image_angle = -ang), 1/16 degree */
+  int ysc;                     /* image_yscale, 1024 = 1 (2: as drawn) */
+  int lcon, racecon, ltimer, shrink, btimer, rtimer, maxr, frame;
+  int orx, ory, dmg;
+  uint16_t spr;
+  int8_t box;                  /* the bullet that is its hit box */
+} bike;
+
+/* sin of num/den radians, in 1/1024 */
+static int sin_rad(int num, int den) { return gfx_sin((int)((int64_t)num * 256 * 1000 / ((int64_t)den * 6283))); }
+
+static int bike_dmg(void) {
+  int h = sv.hp[CH_KRIS], m = sv.maxhp[CH_KRIS];
+  return h <= m / 2 ? (h + 2) / 3 : bike.dmg;
+}
+
 static void lancer_attack(Enemy *e, int t) {
-  static int bx, by, vx, vy, con, timer, maxr, angd;
-  int dmg = 20;
-  if (sv.hp[CH_KRIS] <= sv.maxhp[CH_KRIS] / 2) dmg = 10;
-  if (sv.hp[CH_KRIS] <= sv.maxhp[CH_KRIS] / 4) dmg = 5;
   if (t == 0) {
-    bx = e->x, by = e->y, con = (e->turns % 2) ? 10 : 1, timer = 0, angd = 0;
-    vy = 14 * (rnd_n(2) ? 1 : -1), vx = 0, maxr = 15 + rnd_n(25);
-    e->v[4] = 1;   /* (hidden: the bike is the bullet) */
-  }
-  timer++;
-  int orx = e->x, ory = e->y;
-  if (con == 1) {   /* racing up and down */
-    by += vy;
-    if (by < 120 + 10) vy = 12;
-    if (by > 250 - 10) vy = -12;
-    if (timer > maxr) con = 2, timer = 0;
-  } else if (con == 2) {   /* honk, honk */
-    if (timer >= 25) con = 3, vx = -20, timer = 0;
-  } else if (con == 3) {
-    bx += vx;
-    angd = min_i(50, angd + timer * 2 + 4);
-    if (bx <= -40) bx = 740, by = ory, vx = -12, con = 4, angd = 0;
-  } else if (con == 4) {
-    bx += vx;
-    if (bx <= orx + 5) bx = orx, con = 99;
-  } else if (con >= 10 && con < 20) {
-    /* the lap: left along the bottom, up the left, right along the top, down the right, home */
-    int sp = 16;
-    if (con == 10) { if (timer > 10) con = 11; }
-    else if (con == 11) { bx -= sp; if (bx <= 5) bx = 5, con = 12; }
-    else if (con == 12) { by -= sp; if (by <= 5) by = 5, con = 13; }
-    else if (con == 13) { bx += sp; if (bx >= 630) bx = 630, con = 14; }
-    else if (con == 14) { by += sp; if (by >= ory) by = ory, con = 15; }
-    else if (con == 15) { bx -= sp; if (bx <= orx) bx = orx, con = 16, timer = 0; }
-    else if (con == 16) { if (timer >= 30) con = 99; }
-    if (con >= 11 && con <= 15 && timer % 10 == 0) {
-      Bullet *s = bullet_new(spr_spadebullet, bx, by);
-      int d = dir_to(bx, by, heart_x(), heart_y());
-      s->vx = ldx(4 * 16, d), s->vy = ldy(4 * 16, d);
-      s->ax = ldx(16 * 4 / 10, d), s->ay = ldy(16 * 4 / 10, d);
-      s->angle = (int16_t)angle_of(d), s->damage = (int16_t)(e->at * 5), s->r = 8;
-      if (sv.hp[CH_KRIS] <= sv.maxhp[CH_KRIS] / 2) s->damage = (int16_t)((sv.hp[CH_KRIS] + 2) / 3);
+    memset(&bike, 0, sizeof bike);
+    bike.x = e->x * BFX, bike.y = e->y * BFX, bike.ysc = 2048, bike.spr = spr_lancerbike;
+    bike.orx = e->x, bike.ory = e->y;
+    bike.dmg = sv.hp[CH_KRIS] <= sv.maxhp[CH_KRIS] / 4 ? 5 : sv.hp[CH_KRIS] <= sv.maxhp[CH_KRIS] / 2 ? 10 : 20;
+    if (e->turns % 2 == 0) {
+      bike.racecon = 2, bike.vs = -14 * BFX * (rnd_n(2) ? 1 : -1), bike.maxr = 15 + rnd_n(25);
+    } else {
+      bike.lcon = 1;
     }
+    Bullet *b = bullet_new(0xFFFF, e->x, e->y);
+    b->keep = true, b->w = 25, b->h = 22, b->gp = 10, b->timep = 0;
+    bike.box = (int8_t)(b - bul);
+    e->v[4] = 1;   /* (Lancer is on the bike: not drawn where he stands) */
   }
-  e->v[2] = (int16_t)(bx / 2), e->v[3] = (int16_t)(by / 2);
-  /* the bike itself hurts */
-  int dx = heart_x() - (bx + 40), dy = heart_y() - (by + 30);
-  if (con != 99 && dx * dx + dy * dy < 40 * 40) {
-    Bullet *b = bullet_new(0xFFFF, heart_x(), heart_y());
-    b->damage = (int16_t)dmg, b->life = 1, b->r = 30;
+  int x = bike.x / BFX, y = bike.y / BFX;
+  bool end = false;
+  /* the lap: spades every 10 frames, from the bike's front */
+  if (bike.lcon >= 6 && bike.lcon < 10 && ++bike.btimer >= 10) {
+    int a = -bike.ang16 / 16 - 20;
+    Bullet *s = bullet_new(spr_spadebullet, x - ldx(40 * 16, a) / 16, y - ldy(40 * 16, a) / 16);
+    int d = dir_to(s->x / BFX, s->y / BFX, heart_x(), heart_y());
+    s->vx = ldx(4 * 16, d), s->vy = ldy(4 * 16, d);
+    s->ax = ldx(64, d) / 10, s->ay = ldy(64, d) / 10;   /* (friction -0.4) */
+    s->angle = (int16_t)angle_of(d), s->damage = (int16_t)bike_dmg(), s->r = 10, s->timep = 0, s->scale = 128;
+    bike.btimer = 0;
   }
-  if (con == 99) {
+  switch (bike.lcon) {
+    case 1:
+      if (++bike.ltimer >= 10) bike.lcon = 2, bike.ltimer = 0;
+      break;
+    case 2: {   /* the wobble before it goes */
+      bike.ltimer++, bike.shrink++;
+      int lt = bike.ltimer, s5 = sin_rad(lt, 5);
+      bike.hs = 5 * BFX * sin_rad(lt, 3) / 1024;
+      bike.ysc = bike.shrink > 4 ? 2048 - s5 * 8 / bike.shrink : 2048 - s5;
+      if (lt > 7) bike.ang16 += abs_i(s5) * 64 / 1024;
+      if (lt > 4 && abs_i(s5) <= 61) bike.lcon = 5, bike.ysc = 2048, bike.sp = 4, bike.hs = -4 * BFX;
+      break;
+    }
+    case 5:
+      if (bike.sp < 16) bike.sp += 2;
+      if (bike.ang16 < 45 * 16) bike.ang16 += 4 * 16;
+      bike.hs = -bike.sp * BFX;
+      if (x < 80) bike.lcon = 6;
+      break;
+    case 6:
+      if (bike.ang16 < 135 * 16) bike.ang16 += 10 * 16;
+      if (x <= 5) bike.lcon = 7, bike.hs = 0, bike.vs = -bike.sp * BFX;
+      break;
+    case 7:
+      if (y < 80) {
+        if (bike.ang16 < 225 * 16) bike.ang16 += 10 * 16;
+        if (y <= 5) bike.lcon = 8, bike.vs = 0, bike.hs = bike.sp * BFX;
+      } else if (bike.ang16 < 135 * 16) {
+        bike.ang16 += 10 * 16;
+      }
+      break;
+    case 8:
+      if (x >= 540) {
+        if (bike.ang16 < 315 * 16) bike.ang16 += 10 * 16;
+        if (x >= 630) bike.lcon = 9, bike.hs = 0, bike.vs = bike.sp * BFX;
+      } else if (bike.ang16 < 225 * 16) {
+        bike.ang16 += 10 * 16;
+      }
+      break;
+    case 9:
+      if (y > bike.ory - 70) {
+        if (bike.ang16 < 360 * 16) bike.ang16 += 10 * 16;
+        if (y >= bike.ory - 5) bike.y = bike.ory * BFX, bike.lcon = 10, bike.vs = 0, bike.hs = -bike.sp * BFX;
+      } else if (bike.ang16 < 315 * 16) {
+        bike.ang16 += 10 * 16;
+      }
+      break;
+    case 10:
+      bike.ang16 = 0;
+      if (x <= bike.orx) bike.hs = bike.vs = 0, bike.x = bike.orx * BFX, bike.lcon = 11, bike.ltimer = 0;
+      break;
+    case 11:
+      bike.spr = spr_lancerbike_l;
+      bike.ltimer++;
+      if (bike.ltimer >= 25)
+        for (int i = 0; i < MAX_BUL; i++)
+          if (bul[i].on && bul[i].spr == spr_spadebullet) bul[i].harmless = true, bul[i].alpha = (uint8_t)max_i(0, bul[i].alpha - 51);
+      if (bike.ltimer >= 30) end = true;
+      break;
+    default: break;
+  }
+  switch (bike.racecon) {
+    case 2:   /* up and down between the box's top and bottom */
+      if (y < 120 + 10) bike.vs = 12 * BFX;
+      if (y > 250 - 10) bike.vs = -12 * BFX;
+      if (++bike.rtimer > bike.maxr) bike.vs = 0, bike.racecon = 3, bike.rtimer = 0;
+      break;
+    case 3:   /* honk, honk */
+      bike.rtimer++;
+      if (bike.rtimer == 5 || bike.rtimer == 10) {
+        Bullet *h = bullet_new(spr_lancernoise, x - 60, y - 40);
+        h->harmless = true, h->scale = 128, h->d = 3;
+      }
+      if (bike.rtimer >= 25) bike.racecon = 4, bike.hs = -20 * BFX, bike.rtimer = 0, bike.ang16 = 0;
+      break;
+    case 4:   /* across, leaning back, and in again from the right */
+      bike.rtimer++;
+      bike.ang16 = min_i(50 * 16, bike.ang16 + (bike.rtimer * 2 + 4) * 16);
+      if (x <= -40) bike.ang16 = 0, bike.x = 740 * BFX, bike.y = bike.ory * BFX, bike.hs = -12 * BFX, bike.racecon = 5;
+      break;
+    case 5:
+      if (x <= bike.orx + 5) bike.hs = 0, bike.x = bike.orx * BFX, bike.racecon = 0, end = true;
+      break;
+    default: break;
+  }
+  bike.x += bike.hs, bike.y += bike.vs;
+  bike.frame++;
+  /* the honks grow and fade (obj_afterimage_grow) */
+  for (int i = 0; i < MAX_BUL; i++)
+    if (bul[i].on && bul[i].d == 3 && bul[i].spr == spr_lancernoise) {
+      bul[i].scale = (int16_t)(bul[i].scale + 26);
+      if (bul[i].alpha <= 26) bul[i].on = false;
+      else bul[i].alpha = (uint8_t)(bul[i].alpha - 26);
+    }
+  /* its hit box: the sprite's (x 5-30, y 20-42 of 61 x 46, origin 28, 44; drawn at 2), turned with it */
+  Bullet *b = &bul[bike.box];
+  int ga = bike.ang16 * 256 / (360 * 16);
+  int cx = -21, cy = -26 * bike.ysc / 2048;
+  int ca = gfx_cos(ga), sa = gfx_sin(ga);
+  b->x = bike.x + (cx * ca - cy * sa) * BFX / 1024, b->y = bike.y + (cx * sa + cy * ca) * BFX / 1024;
+  b->angle = (int16_t)ga, b->h = (int16_t)max_i(4, 22 * bike.ysc / 2048), b->damage = (int16_t)bike_dmg();
+  b->on = !end;
+  if (end) {
     e->v[4] = 0;
     e->turns++;
     if (e->turns >= 4) e->v[5] = 1;   /* out of fuel */
     for (int i = 0; i < MAX_BUL; i++) bul[i].on = false;
     battle_end_attack();
   }
+}
+
+/* the bike over the box (bullets' depth) */
+static void lancer_front(Enemy *e) {
+  if (!e->v[4]) return;
+  int ga = bike.ang16 * 256 / (360 * 16);
+  gfx_sprite_ex(bike.spr, bike.frame % 6, bike.x / BFX / 2, bike.y / BFX / 2, 256, 256 * bike.ysc / 2048, ga, 0, 255);
 }
 
 static void lancer_flavor(Enemy *e) {
@@ -416,7 +522,7 @@ static bool lancer_act(Enemy *e, int act) {
 }
 
 static void lancer_draw(Enemy *e, int x, int y) {
-  if (e->v[4]) x = e->v[2], y = e->v[3];
+  if (e->v[4]) return;
   gfx_sprite(spr_lancerbike, e->siner / 4, x + e->shake / 2, y, 0, e->fade ? (uint8_t)max_i(0, 255 - e->fade * 12) : 255);
 }
 
@@ -437,13 +543,13 @@ static bool dummy_act(Enemy *e, int act) {
 /* ================================================================ the table */
 static const EnemyDef defs[] = {
   {obj_diamondenemy, spr_diamondm_idle, spr_diamondm_hurt, spr_diamondm_spared, 6, rudinn_talk, rudinn_attack,
-   rudinn_flavor, rudinn_act, NULL, 140},
+   rudinn_flavor, rudinn_act, NULL, 140, NULL, 0, 0, 0},
   {obj_heartenemy, spr_heartenemy_idle, spr_heartenemy_hurt, spr_heartenemy_spared, 6, hathy_talk, hathy_attack,
-   hathy_flavor, hathy_act, hathy_draw, 140},
+   hathy_flavor, hathy_act, hathy_draw, 140, NULL, -100, 0, spr_battleblcon},
   {obj_lancerboss, spr_lancerbike, spr_lancerbike, spr_lancerbike, 4, lancer_talk, lancer_attack, lancer_flavor,
-   lancer_act, lancer_draw, 999},
+   lancer_act, lancer_draw, 999, lancer_front, -235, -65, 0},
   {obj_dummyenemy, spr_dummymonster, spr_dummymonster, spr_dummymonster, 6, dummy_talk, dummy_attack, NULL, dummy_act,
-   NULL, 60},
+   NULL, 60, NULL, 0, 0, 0},
 };
 
 const EnemyDef *enemy_def(int obj) {

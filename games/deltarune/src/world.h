@@ -64,7 +64,8 @@ extern Player pl;
 extern int g_room;
 extern int cam_x, cam_y;      /* the view's top-left, units */
 extern bool cam_locked;       /* a cutscene moves the camera */
-extern uint8_t g_fade;        /* 0 clear .. 255 black, over the room */
+extern uint8_t g_fade;        /* 0 clear .. 255 g_fade_col, over the room */
+extern uint16_t g_fade_col;   /* (black, 0, unless a cutscene says) */
 extern int g_shake;
 
 const RoomInfo *world_room_info(void);
@@ -80,6 +81,7 @@ bool world_place_free(int x, int y, int ignore);   /* Kris's box with its top-le
 void world_camera(void);
 void world_fade_to(int room, int entrance);
 bool world_fading(void);
+void world_fade_in(void);
 bool world_marker(int obj, int *x, int *y);        /* where the room's instance of obj is */
 bool world_inst(int obj, int k, Inst *out);        /* the room's k-th instance of obj */
 

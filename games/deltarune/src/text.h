@@ -55,6 +55,7 @@ typedef struct {
   bool closing;             /* /%: Z closes */
   bool done;                /* closed */
   bool skippable;
+  uint8_t rate;             /* frames a letter (scr_textsetup's rate) */
   bool aster;               /* the message starts with "* " */
   uint8_t fc, fe;
   int talk_t;               /* frames the mouth moves */
@@ -67,4 +68,5 @@ bool writer_update(Writer *w, uint32_t pressed, uint32_t held);   /* false once 
 void writer_draw(const Writer *w);
 bool writer_talking(const Writer *w);
 void writer_show_all(Writer *w);
+int writer_lines(const Writer *w);          /* lines shown of its message (linecount + 1) */
 #endif

@@ -66,6 +66,8 @@ static struct {
   int inv;                     /* invincible frames */
   int turntimer;
   int graze_t;
+  int graze_acc, time_acc;     /* grazing's TP and the turn's time, in 1/20 */
+  int pic_t;                   /* a picture bubble's frames */
   bool won_text;
   int talk_i;                  /* whose bubble shows */
   Writer bw;                   /* the bubble's text */
@@ -94,6 +96,8 @@ static uint16_t char_color(int c) {
 }
 
 /* ---------------------------------------------------------------- helpers for the enemies */
+Writer *scene_writer(void) { return &B.bw; }
+
 static Enemy *target_enemy(int i) { return (i >= 0 && i < MAX_EN && en[i].alive) ? &en[i] : NULL; }
 int enemies_alive(void) {
   int n = 0;
@@ -133,7 +137,7 @@ Bullet *bullet_new(uint16_t spr, int x, int y) {
       Bullet *b = &bul[i];
       memset(b, 0, sizeof *b);
       b->on = true, b->spr = spr, b->x = x * BFX, b->y = y * BFX;
-      b->alpha = 255, b->scale = 256, b->r = 8, b->damage = 30;
+      b->alpha = 255, b->scale = 256, b->r = 8, b->damage = 30, b->gp = 5, b->timep = 5;
       return b;
     }
   static Bullet spare;
@@ -335,6 +339,10 @@ static void bmenu_update(uint32_t pressed) {
     return;
   }
   if (B.menu == M_ENEMY) {
+    if (!enemies_alive()) {
+      B.menu = M_BUTTONS;
+      return;
+    }
     for (int k = 0; k < 3; k++) {
       if (pressed & K_DOWN) {
         do *s = (*s + 1) % MAX_EN; while (!en[*s].alive);
@@ -726,7 +734,7 @@ static void begin_talk(void) {
   B.t = 0;
   B.talk_i = -1;
   for (int i = 0; i < MAX_EN; i++) {
-    en[i].nsay = 0;
+    en[i].nsay = 0, en[i].pic = 0;
     if (en[i].alive && en[i].def && en[i].def->talk) en[i].def->talk(&en[i]);
   }
 }
@@ -747,12 +755,12 @@ static void talk_update(uint32_t pressed, uint32_t held) {
   /* each enemy's bubble in turn, Z goes on (scr_blconskip) */
   if (B.talk_i < 0 || B.bw.done) {
     int i = B.talk_i + 1;
-    while (i < MAX_EN && !(en[i].alive && en[i].nsay)) i++;
+    while (i < MAX_EN && !(en[i].alive && (en[i].nsay || en[i].pic))) i++;
     if (i >= MAX_EN) {
       begin_dodge();
       return;
     }
-    B.talk_i = i;
+    B.talk_i = i, B.pic_t = 0;
     writer_start(&B.bw, 0, 0, 12);
     B.bw.font = FONT_DOTUMCHE, B.bw.color = C_BLACK, B.bw.hspace = 9, B.bw.vspace = 20;
     for (int k = 0; k < en[i].nsay; k++) {
@@ -766,6 +774,12 @@ static void talk_update(uint32_t pressed, uint32_t held) {
       if (n < 2 || (s[n - 1] != '/' && s[n - 1] != '%')) strcat(bufs[i][k], "/");
       writer_add(&B.bw, bufs[i][k]);
     }
+  }
+  if (en[B.talk_i].pic) {
+    /* a picture: talkmax (90) frames, Z after 15 */
+    B.pic_t++;
+    if (B.pic_t >= 90 || ((pressed & K_Z) && B.pic_t > 15)) B.bw.done = true;
+    return;
   }
   writer_update(&B.bw, pressed, held);
 }
@@ -828,43 +842,56 @@ static void bullets_update(void) {
       continue;
     }
     int bx = b->x / BFX, by = b->y / BFX;
-    if (bx < -80 || bx > 720 || by < -80 || by > 560) {
+    if (!b->keep && (bx < -80 || bx > 720 || by < -80 || by > 560)) {
       b->on = false;
       continue;
     }
     if (b->harmless || b->alpha < 128) continue;
     int dx = bx - sx, dy = by - sy;
-    int hit_r = b->r + 6, graze_r = b->r + 26;
-    int d2 = dx * dx + dy * dy;
-    if (d2 < hit_r * hit_r) {
-      if (B.inv <= 0) hurt_party(b->target, b->damage);
-      b->on = false;
-      continue;
+    bool hit, graze;
+    if (b->w) {
+      /* a box turned by angle: the SOUL into its own axes */
+      int ca = gfx_cos(b->angle), sa = gfx_sin(b->angle);
+      int lx = abs_i((dx * ca + dy * sa) / 1024), ly = abs_i((dy * ca - dx * sa) / 1024);
+      hit = lx < b->w + 6 && ly < b->h + 6;
+      graze = lx < b->w + 26 && ly < b->h + 26;
+    } else {
+      int hit_r = b->r + 6, graze_r = b->r + 26, d2 = dx * dx + dy * dy;
+      hit = d2 < hit_r * hit_r;
+      graze = d2 < graze_r * graze_r;
     }
-    if (d2 < graze_r * graze_r && B.inv <= 0) {
+    if (hit) {
+      if (B.inv <= 0) hurt_party(b->target, b->damage);
+      if (!b->keep) {
+        b->on = false;
+        continue;
+      }
+    }
+    if (graze && B.inv <= 0) {
+      /* obj_grazebox: the first touch grazepoints and timepoints, then a twentieth of them a frame */
       grazing = true;
       if (!b->grazed) {
         b->grazed = 1;
-        tension_add(5);
-        if (B.turntimer >= 10) B.turntimer -= 5;
+        tension_add(b->gp);
+        B.turntimer -= b->timep;
       } else {
-        B.graze_t++;
-        if (B.graze_t >= 4) B.graze_t = 0, tension_add(1);
+        B.graze_acc += b->gp, B.time_acc += b->timep;
+        tension_add(B.graze_acc / 20), B.turntimer -= B.time_acc / 20;
+        B.graze_acc %= 20, B.time_acc %= 20;
       }
     }
   }
-  if (grazing) B.graze_t = B.graze_t ? B.graze_t : 1;
+  if (grazing) B.graze_t = 1;
 }
 
 static void dodge_update(uint32_t held) {
-  B.t++;
   if (B.box_t < 15) {
     B.box_t++;
     return;
   }
   if (B.inv > 0) B.inv--;
   soul_update(held);
-  int t = B.t - 15;
+  int t = B.t - 16;   /* (battle_update counts B.t; the box grew in the first 15 frames) */
   for (int i = 0; i < MAX_EN; i++)
     if (en[i].alive && en[i].def && en[i].def->attack) en[i].def->attack(&en[i], t);
   bullets_update();
@@ -949,7 +976,9 @@ void battle_update(uint32_t pressed, uint32_t held) {
               en[i].def->flavor(&en[i]);
               break;
             }
-          turn_begin();
+          /* (an enemy that left in its own text, as Lancer out of fuel: the battle ends on it, no spoils) */
+          if (!enemies_alive()) B.phase = P_WIN, B.t = 0, B.result = BR_WON;
+          else turn_begin();
         }
       }
       break;
@@ -1226,18 +1255,35 @@ static void draw_box(void) {
       gfx_sprite(b->spr, b->img / 16, bx2(b->x / BFX), bx2(b->y / BFX), 0, b->alpha);
   }
   /* the SOUL, blinking while invincible */
+  for (int i = 0; i < MAX_EN; i++)
+    if (en[i].alive && en[i].def && en[i].def->draw_front) en[i].def->draw_front(&en[i]);
   if (!(B.inv > 0 && (B.inv / 3) % 2)) gfx_sprite(spr_dodgeheart_h, 0, bx2(B.hx), bx2(B.hy), 0, 255);
   if (B.graze_t) gfx_sprite(spr_grazeappear_h, 0, bx2(B.hx + 10), bx2(B.hy + 10), 0, 96);
   B.graze_t = 0;
 }
 
+/* the bubble (obj_battleblcon) where the original puts it, at its own size (the text stays readable): its tail
+ * on the halved spot the original's tail is, then kept on the screen and above the panel */
 static void draw_bubble(void) {
   if (B.phase != P_TALK || B.talk_i < 0 || B.bw.done) return;
   Enemy *e = &en[B.talk_i];
-  int x = bx2(e->x) - 80, y = bx2(e->y);
-  if (x < 2) x = 2;
-  gfx_sprite(spr_battleblcon, 0, x, y, 0, 255);
-  B.bw.x = x + 12, B.bw.y = y + 8;
+  const EnemyDef *d = e->def;
+  uint16_t spr = d->blspr ? d->blspr : spr_battleblcon_long;
+  int bx = e->x + (d->blx || d->bly ? d->blx : -160), by = e->y + d->bly;
+  int tipx = spr == spr_battleblcon ? 95 : 148, tipy = 40, w = spr == spr_battleblcon ? 96 : 150, h = spr_h(spr);
+  int x = bx2(bx + tipx) - tipx, y = bx2(by + tipy) - tipy;
+  int bottom = bx2(480 - B.bp) - 2;
+  x = clamp_i(x, 2, SCREEN_W - 2 - w);
+  y = clamp_i(y, 2, bottom - h);
+  gfx_sprite(spr, 0, x, y, 0, 255);
+  if (e->pic) {
+    /* obj_heartblcon: the picture bobbing in it */
+    int a = e->siner * 256 * 1000 / (8 * 6283);
+    int ox = (gfx_sin(a) + (gfx_sin(a) < 0 ? -512 : 512)) / 1024, oy = (gfx_cos(a) + (gfx_cos(a) < 0 ? -512 : 512)) / 1024;
+    gfx_sprite(e->pic, B.pic_t / 5, x + 15 + ox, y + 15 + oy, 0, 255);
+    return;
+  }
+  B.bw.x = x + 5, B.bw.y = y + 5;
   writer_draw(&B.bw);
 }
 

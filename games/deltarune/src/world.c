@@ -13,6 +13,7 @@ int g_room = -1;
 int cam_x, cam_y;
 bool cam_locked;
 uint8_t g_fade;
+uint16_t g_fade_col;
 int g_shake;
 static RoomInfo ri;
 
@@ -310,8 +311,11 @@ static struct {
 
 void world_fade_to(int room, int entrance) {
   fade.phase = 1, fade.t = 0, fade.room = room, fade.entrance = entrance;
+  g_fade_col = C_BLACK;
 }
 bool world_fading(void) { return fade.phase != 0; }
+/* (from black, as obj_persistentfadein with image_alpha 1.2: three frames black, then 0.08 a frame) */
+void world_fade_in(void) { fade.phase = 2, fade.t = 11, g_fade_col = C_BLACK, g_fade = 255; }
 
 static void fade_step(void) {
   if (!fade.phase) return;
@@ -324,7 +328,7 @@ static void fade_step(void) {
     }
   } else {
     fade.t--;
-    g_fade = (uint8_t)max_i(0, fade.t * 255 / 8);
+    g_fade = (uint8_t)clamp_i(fade.t * 255 / 8, 0, 255);
     if (fade.t <= 0) fade.phase = 0, g_fade = 0;
   }
 }
@@ -444,7 +448,7 @@ void pl_walk_to(int x, int y, int sp) { walk.x = x, walk.y = y, walk.sp = sp ? s
 bool pl_walking(void) { return walk.on; }
 static void pl_walk_step(void) {
   if (!walk.on) {
-    kris_animate(false, false);
+    if (!pl.spr) kris_animate(false, false);   /* (a cutscene's own sprite keeps its frame) */
     return;
   }
   int dx = walk.x - pl.x, dy = walk.y - pl.y;
@@ -548,5 +552,5 @@ void world_draw_scene(void) {
 void world_draw(void) {
   world_draw_scene();
   text_draw();
-  if (g_fade) gfx_rect(0, 0, SCREEN_W, SCREEN_H, C_BLACK, g_fade);
+  if (g_fade) gfx_rect(0, 0, SCREEN_W, SCREEN_H, g_fade_col, g_fade);
 }

@@ -6,7 +6,9 @@
  * obj_schoollobbycutscene, obj_classscene, obj_darkdoor, obj_insideclosetcutscene) as a protothread, its
  * texts its own, its timings its alarms'. */
 #include <string.h>
+#include "battle.h"
 #include "event.h"
+#include "gfx.h"
 #include "game.h"
 #include "plat.h"
 #include "rooms.h"
@@ -83,7 +85,6 @@ void lw_setup(int room) {
   }
 }
 
-void lw_step(void) {}
 
 /* obj_krisroom: Toriel wakes Kris up */
 static int ev_krisroom(Ev *c) {
@@ -128,25 +129,217 @@ static int ev_krisroom(Ev *c) {
   EV_END;
 }
 
-/* obj_carcutscene: Toriel is waiting by the car; off to school */
+/* ---------------------------------------------------------------- the drive to school (obj_carcutscene) */
+/* scr_pan: the view moves (dx, dy) a frame (1/16 unit) for t frames */
+static struct { int32_t x, y; int dx, dy, t; } pan;
+static void pan_start(int dx, int dy, int t) {
+  cam_locked = true;
+  pan.x = cam_x * FX, pan.y = cam_y * FX, pan.dx = dx, pan.dy = dy, pan.t = t;
+}
+static void view_at(int x, int y) {
+  cam_locked = true, cam_x = x, cam_y = y;
+  pan.t = 0;
+}
+/* Toriel's words on the way (typer 8: a letter every two frames, no box, a shadow behind) and the dark
+ * that comes down under them (obj_fadeout at depth 4000) */
+static bool car_text;
+static int under_fade;           /* 0..100 */
+static void car_text_start(void) {
+  Writer *w = scene_writer();
+  writer_start(w, 40, 20, 33);
+  w->rate = 2, w->skippable = false;
+  writer_add(w, str(obj_carcutscene_slash_Alarm_5_gml_2_0));
+  writer_add(w, str(obj_carcutscene_slash_Alarm_5_gml_3_0));
+  writer_add(w, str(obj_carcutscene_slash_Alarm_5_gml_4_0));
+  writer_add(w, str(obj_carcutscene_slash_Alarm_5_gml_5_0));
+  car_text = true;
+}
+
+void lw_step(void) {
+  if (pan.t > 0) {
+    pan.x += pan.dx, pan.y += pan.dy, pan.t--;
+    cam_x = pan.x / FX, cam_y = pan.y / FX;
+  }
+  if (car_text && !writer_update(scene_writer(), 0, 0)) car_text = false;
+}
+
+void lw_draw(void) {
+  if (under_fade) gfx_rect(0, 0, SCREEN_W, SCREEN_H, C_BLACK, (uint8_t)min_i(255, under_fade * 255 / 100));
+  if (car_text) {
+    const Writer *w = scene_writer();
+    int x1 = w->x + 33 * 8, y1 = w->y + writer_lines(w) * 18;
+    for (int i = 1; i <= 6; i++)
+      gfx_rect(w->x - 10 - i, w->y - 10 - i, x1 - w->x + 20 + 2 * i, y1 - w->y + 25 + 2 * i, C_BLACK, 38);
+    writer_draw(w);
+  }
+}
+
+/* a fade over everything, toward col (obj_fadeout: alpha + sp a frame, in 1/1000) or from it (obj_persistentfadein) */
+static void fade_set(int a1000, uint16_t col) {
+  g_fade_col = col;
+  g_fade = (uint8_t)clamp_i(a1000 * 255 / 1000, 0, 255);
+}
+
+static void people_gone(uint16_t obj) {
+  for (int i = 0; i < MAX_OBJS; i++)
+    if (!(objs[i].flags & OF_GONE) && objs[i].obj == obj) obj_free(&objs[i]);
+}
+
+/* a room of the drive: Kris and Toriel are in the car, the view where the original puts it */
+static Obj *drive_room(int room, int vx, int vy) {
+  world_enter(room, 0, 0, DIR_DOWN);
+  pl.frozen = true, pl.hidden = true;
+  people_gone(obj_npc_room);
+  view_at(vx, vy);
+  return NULL;
+}
+
+static Obj *car_at(int x, int y, uint16_t spr, int hs, int vs) {
+  Obj *car = marker(spr, x, y, FX / 4, ACT_PROP);
+  car->hs = hs, car->vs = vs;
+  return car;
+}
+
+/* Kris, moved by the cutscene: (dx, dy) a frame for n frames, his frame every k frames */
+#define KRIS_GO(S, dx, dy, n, k)                                   \
+  do {                                                               \
+    pl.spr = (S);                                                    \
+    for (c->v[0] = 0; c->v[0] < (n); c->v[0]++) {                    \
+      pl.x += (dx), pl.y += (dy), pl.img = (c->v[0] / (k)) % 4;      \
+      WAIT(1);                                                       \
+    }                                                                \
+  } while (0)
+
+/* waves as the car goes by (carcon) */
+static void wave(int name, uint16_t spr) {
+  Obj *o = obj_find(name);
+  if (o && o->spr != spr) o->spr = spr, o->img = 0, o->ispd = FX / 5;
+}
+
 static int ev_car(Ev *c) {
   Obj *t = obj_get(ACT_TORIEL), *car = obj_get(ACT_PROP);
   EV_BEGIN;
   pl.frozen = true;
+  t->flags |= OF_BACK, car->flags |= OF_BACK;   /* (depths 400000 and 500000) */
+  people_gone(obj_npc_sign);
   WAIT(30);
+  cam_locked = true;
   t->spr = spr_toriel_u;
   text_side(0);
   TALKF(FC_TORIEL, 2, obj_carcutscene_slash_Step_0_gml_17_0);
+  /* con 3: Kris walks left, the view down */
+  t->img = 0, t->ispd = 0;
+  pan_start(0, FX, 60);
+  KRIS_GO(spr_krisl, -1, 0, 20, 4);
+  car_text_start();                                  /* (alarm 5) */
+  KRIS_GO(spr_krisl, -1, 0, 20, 4);
   t->spr = spr_toriel_l;
-  KRIS_WALK(car->x / FX + 10, car->y / FX - 30, 2);
-  pl.hidden = true;
-  t->flags |= OF_HIDDEN;
+  KRIS_GO(spr_krisd, 0, 1, 60, 5);
+  pl.spr = spr_krisr, pl.img = 0;
+  WAIT(40);
+  /* con 9: into the car */
+  car->flags = (uint16_t)((car->flags & ~OF_BACK) | OF_FRONT);   /* (depth 6000) */
+  t->hs = -FX, t->ispd = FX / 5;
+  KRIS_GO(spr_krisr, 1, 0, 32, 5);
+  c->v[2] = car->x / FX - pl.x, c->v[3] = car->y / FX - pl.y;     /* ckx, cky */
+  c->v[4] = (car->x - t->x) / FX, c->v[5] = (car->y - t->y) / FX; /* ctx, cty */
+  t->flags |= OF_HIDDEN, pl.hidden = true;
   WAIT(30);
-  car->spr = spr_torcar_r, car->ispd = FX / 4, car->hs = 2 * FX;
-  WAIT(60);
-  pl.frozen = false;
-  pl.hidden = false;
-  FADE_TO(room_schoollobby, 1);
+  /* con 13: backs out, stops, drives off down the road */
+  car->spr = spr_torcar_l, car->hs = FX, car->ispd = FX / 4;
+  WAIT(80);
+  car->hs = 0, car->ispd = 0, car->img = 0;
+  WAIT(30);
+  car->hs = -FX, car->ispd = FX / 4;
+  WAIT(80);
+  pan_start(0, FX / 2, 100);
+  car->spr = spr_torcar_d, car->hs = 0, car->vs = 2 * FX;
+  for (c->v[0] = 0; c->v[0] < 190; c->v[0]++) {
+    under_fade = min_i(100, c->v[0] + 1);
+    WAIT(1);
+  }
+  for (c->v[0] = 0; c->v[0] < 45; c->v[0]++) {
+    fade_set((c->v[0] + 1) * 25, C_WHITE);
+    WAIT(1);
+  }
+  /* con 23: town, north (the writer's gone) */
+  car_text = false, under_fade = 0;
+  drive_room(room_town_north, 180, 0);
+  pan_start(5 * FX / 2, 0, 900);
+  car_at(390, 0, spr_torcar_d, 0, 3 * FX);
+  marker(spr_npc_catty, 486, 68, 0, ACT_NPC1);
+  marker(spr_npc_cattydad, 574, 64, 0, ACT_NPC2);
+  marker(spr_npc_bratty, 744, 174, 0, ACT_NPC3);
+  marker(spr_npc_froggit, 800, 114, FX / 5, ACT_NPC4);
+  for (c->v[0] = 0; c->v[0] < 46 + 80 + 30; c->v[0]++) {
+    fade_set(1000 - (c->v[0] + 1) * 80, C_WHITE);
+    if (c->v[0] == 46) car->spr = spr_torcar_r, car->vs = 0, car->hs = 3 * FX;
+    if (c->v[0] == 126) car->spr = spr_torcar_d, car->hs = 0, car->vs = 3 * FX;
+    if (c->v[0] >= 126) fade_set((c->v[0] - 125) * 80, C_BLACK);
+    if (car->y >= 100 * FX) wave(ACT_NPC1, spr_npc_catty_wave);
+    if (car->x >= 550 * FX) wave(ACT_NPC2, spr_npc_cattydad_wave);
+    WAIT(1);
+  }
+  /* con 140: town, south */
+  drive_room(room_town_south, 660, 0);
+  people_gone(obj_npc_facing);
+  pan_start(2 * FX, 0, 300);
+  car_at(810, 0, spr_torcar_d, 0, 3 * FX);
+  marker(spr_npc_qc_stand, 764, 85, 0, ACT_NPC1);
+  marker(spr_undyne_dt, 905, 80, 0, ACT_NPC2);
+  marker(spr_npc_politicsbear, 710, 82, 0, ACT_NPC3);
+  for (c->v[0] = 0; c->v[0] < 46 + 86 + 30; c->v[0]++) {
+    fade_set(1000 - (c->v[0] + 1) * 80, C_BLACK);
+    if (c->v[0] == 46) car->spr = spr_torcar_r, car->vs = 0, car->hs = 3 * FX;
+    if (c->v[0] >= 132) fade_set((c->v[0] - 131) * 80, C_BLACK);
+    if (car->y >= 100 * FX) wave(ACT_NPC1, spr_npc_qc_wave), wave(ACT_NPC2, spr_undyne_d_wave);
+    WAIT(1);
+  }
+  /* con 161: the school */
+  drive_room(room_town_school, 0, world_room_info()->h - 240);
+  pan_start(FX, 0, 100);
+  car_at(0, 220, spr_torcar_r, 2 * FX, 0);
+  for (c->v[0] = 0; c->v[0] < 120; c->v[0]++) {
+    fade_set(1000 - (c->v[0] + 1) * 80, C_BLACK);
+    WAIT(1);
+  }
+  car->spr = spr_torcar_u, car->hs = 0, car->vs = -2 * FX;
+  WAIT(30);
+  car->vs = 0, car->ispd = 0, car->img = 0;
+  WAIT(30 + 15);
+  /* con 39: out they get (each where the other got in) */
+  pan_start(FX, -FX / 3, 100);
+  car->flags |= OF_FRONT;
+  pl.x = car->x / FX - c->v[4] + 10, pl.y = car->y / FX - c->v[5], pl.hidden = false;
+  t = marker(spr_toriel_l, car->x / FX - c->v[2], car->y / FX - c->v[3], FX / 5, ACT_TORIEL);
+  t->hs = -FX;
+  KRIS_GO(spr_krisr, 1, 0, 30, 5);
+  car->flags = (uint16_t)((car->flags & ~OF_FRONT) | OF_BACK);
+  pl.spr = spr_krisd, pl.img = 0;
+  t->hs = 0, t->vs = 2 * FX, t->spr = spr_toriel_d, t->ispd = FX / 4;
+  WAIT(15);
+  t->spr = spr_toriel_r, t->vs = 0, t->hs = 2 * FX;
+  WAIT(51);
+  pl.spr = spr_krisr;
+  t->hs = 0, t->vs = -2 * FX, t->spr = spr_toriel_u;
+  WAIT(22);
+  t->vs = 0, t->spr = spr_toriel_l, t->ispd = 0, t->img = 0;
+  WAIT(30);
+  pl.hidden = true;
+  t->spr = spr_toriel_handhold_r;
+  WAIT(30);
+  t->hs = FX, t->ispd = FX / 10;
+  WAIT(44);
+  pan_start(0, -FX / 2, 999);
+  t->vs = -FX / 4, t->hs = 0, t->spr = spr_toriel_handhold_u;
+  for (c->v[0] = 0; c->v[0] < 40; c->v[0]++) {
+    fade_set((c->v[0] + 1) * 30, C_BLACK);
+    WAIT(1);
+  }
+  pan.t = 0;
+  pl.frozen = false, pl.spr = 0;
+  world_enter_marker(room_schoollobby, 1);
+  world_fade_in();
   EV_END;
 }
 

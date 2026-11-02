@@ -176,6 +176,7 @@ void writer_start(Writer *w, int x, int y, int charline) {
   w->font = FONT_MAIN;
   w->color = C_WHITE;
   w->skippable = true;
+  w->rate = 1;
 }
 
 void writer_add(Writer *w, const char *s) {
@@ -320,9 +321,16 @@ bool writer_update(Writer *w, uint32_t pressed, uint32_t held) {
     }
     w->pos++;
     if (*p != ' ') w->talk_t = 6;
+    if (w->rate > 1) w->wait = w->rate - 1;
     break;
   }
   return !w->done;
+}
+
+int writer_lines(const Writer *w) {
+  int n = 1;
+  for (int i = 0; i < w->pos && i < w->len; i++) n += w->line[i] == '&';
+  return n;
 }
 
 bool writer_talking(const Writer *w) { return !w->done && !w->halt && w->talk_t > 0; }

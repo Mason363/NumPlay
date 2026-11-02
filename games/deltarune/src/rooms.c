@@ -168,6 +168,7 @@ void room_step(void) {
 
 void room_draw_over(void) {
   if (world_dark()) dw_draw();
+  else lw_draw();
 }
 
 void room_menu(void) { menu_open(); }

@@ -20,6 +20,7 @@ void battle_draw(void);
 /* (for the tests) what the battle waits for */
 enum { BUI_NONE, BUI_BUTTONS, BUI_TARGET, BUI_ACTS, BUI_ITEMS, BUI_SPELLS, BUI_PARTY, BUI_BARS, BUI_DODGE, BUI_TEXT };
 int battle_ui(void);
+Writer *scene_writer(void);   /* a writer for a cutscene's own text (the bubble's, free outside battles) */
 extern int g_last_encounter;
 
 /* ---------------------------------------------------------------- for the enemies (enemies.c) */
@@ -41,6 +42,9 @@ typedef struct EnemyDef {
   bool (*act)(struct Enemy *e, int act);
   void (*draw)(struct Enemy *e, int x, int y);   /* (its own drawing, NULL the usual) */
   int turntimer;                       /* frames its attack lasts */
+  void (*draw_front)(struct Enemy *e); /* (drawn over the box and the bullets: a bike...) */
+  int16_t blx, bly;                    /* its bubble (scr_enemyblcon) from it, units: 0, 0 the usual -160, 0 */
+  uint16_t blspr;                      /* the bubble's sprite, 0 spr_battleblcon_long */
 } EnemyDef;
 
 typedef struct Enemy {
@@ -60,6 +64,7 @@ typedef struct Enemy {
   int16_t v[8];                        /* its own */
   uint16_t say[4];                     /* this turn's bubble (text ids), 0xFFFF none */
   int nsay;
+  uint16_t pic;                        /* or a picture in the bubble (obj_heartblcon), 0 none */
   int dmg_show, dmg_t, dmg_kind;       /* the number over it */
 } Enemy;
 
@@ -67,7 +72,7 @@ typedef struct {
   uint16_t spr;
   int32_t x, y, vx, vy, ax, ay;        /* 1/16 unit */
   int16_t r;                           /* hit radius (units), or a box */
-  int16_t w, h;
+  int16_t w, h;                        /* (w: a box, half w by half h, turned by angle, not r) */
   int16_t t, life;
   int16_t a, b, c, d;                  /* the attack's own */
   int16_t img, ispd;                   /* image_index, image_speed (1/16) */
@@ -79,6 +84,8 @@ typedef struct {
   bool harmless;
   int16_t damage;
   int8_t target;                       /* party member hit (0-2), 3 all */
+  uint8_t gp, timep;                   /* grazepoints, timepoints (5, 5) */
+  bool keep;                           /* not gone when it hits (the bike...): off the screen too */
 } Bullet;
 
 extern Enemy en[MAX_EN];
