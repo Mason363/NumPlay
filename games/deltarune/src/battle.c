@@ -640,7 +640,7 @@ static void begin_fight(void) {
     return;
   }
   /* one bolt each, in a random order, 12 or 18 frames apart (diff 10, +2 in one-button mode) */
-  int off = -1, last = -1;
+  int off = 0, last = -1;   /* (boltxoff, lastbolt) */
   for (int i = 0; i < nf; i++) {
     int j = rnd_n(nf - i) + i, t = fighters[i];
     fighters[i] = fighters[j], fighters[j] = t;

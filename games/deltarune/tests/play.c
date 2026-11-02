@@ -2,7 +2,7 @@
  *
  *   play [--frames N] [--keys "10-40:right,50:z,..."] [--shots 30,60|all|every:N] [--out DIR] [--saves DIR]
  *        [--room NAME_NUMBER --at X,Y] [--plot P] [--party 1,2,3] [--flag F=V]... [--battle N] [--fuzz SEED]
- *        [--mash] [--trace]
+ *        [--mash] [--trace] [--perfect] [--menukeys "right,z,..."]
  *
  * Keys: left right up down z x c home. "a-b:key" holds the key from frame a to b, "a:key" for one frame.
  * --room starts a new game in room N (its number in data.h) with Kris's top-left at (X, Y), past the title.
@@ -169,7 +169,9 @@ static uint32_t path_keys(void) {
 int main(int argc, char **argv) {
   int frames = 300, room = -1, ax = 0, ay = 0, plotv = -1, battle = -1, every = 0;
   unsigned fuzz = 0;
-  bool all = false, mash = false, trace = false;
+  bool all = false, mash = false, trace = false, perfect = false;
+  int bars_t = -1, mk_wait = 0;
+  const char *menukeys = NULL;
   const char *out = "build/shots", *shots = "";
   int party[3] = {0, 0, 0};
   static int flags[64][2];
@@ -192,6 +194,8 @@ int main(int argc, char **argv) {
     else if (!strcmp(a, "--battle")) battle = atoi(v), i++;
     else if (!strcmp(a, "--fuzz")) fuzz = (unsigned)atoi(v), i++;
     else if (!strcmp(a, "--mash")) mash = true;
+    else if (!strcmp(a, "--perfect")) perfect = true;
+    else if (!strcmp(a, "--menukeys")) menukeys = v, i++;
     else if (!strcmp(a, "--trace")) trace = true;
     else if (!strcmp(a, "--path")) path_at = argv[++i];
   }
@@ -217,6 +221,19 @@ int main(int argc, char **argv) {
       seed ^= seed << 13, seed ^= seed >> 17, seed ^= seed << 5;
       static const uint32_t ks[] = {K_LEFT, K_RIGHT, K_UP, K_DOWN, K_Z, K_X, K_C, 0};
       k = ks[seed % 8] | ((seed >> 8) % 3 == 0 ? ks[(seed >> 12) % 8] : 0);
+    } else if (menukeys && *menukeys && g_mode == MODE_BATTLE && battle_ui() >= BUI_BUTTONS && battle_ui() <= BUI_PARTY) {
+      /* the battle's menus: the next key of the list, one every 3 frames */
+      if (++mk_wait >= 3) {
+        mk_wait = 0;
+        k = key_of(menukeys);
+        while (*menukeys && *menukeys != ',') menukeys++;
+        if (*menukeys) menukeys++;
+      }
+    } else if (perfect && battle_ui() == BUI_BARS) {
+      /* FIGHT's bar: Z the frame a lone bolt reaches the line (its frame 29: a perfect hit) */
+      if (bars_t < 0) bars_t = 0;
+      k = bars_t == 29 ? K_Z : 0;
+      bars_t++;
     } else if (!k && (k = path_keys())) {
     } else if (mash && !k && f % 4 == 0) {
       k = K_Z;
@@ -248,5 +265,7 @@ int main(int argc, char **argv) {
   printf("STATE mode %d room %d kris %d,%d dir %d plot %d hp %d,%d,%d gold %ld party %d,%d,%d dropped %d blocks %u\n",
          g_mode, g_room, (int)pl.x, (int)pl.y, pl.dir, sv.plot, sv.hp[1], sv.hp[2], sv.hp[3], (long)sv.gold,
          sv.chr[0], sv.chr[1], sv.chr[2], gfx_dropped, (unsigned)blk_most_in_frame);
+  printf("BATTLE tp %d enemies %d,%d,%d mercy %d,%d,%d alive %d\n", g_tension, en[0].hp, en[1].hp, en[2].hp, en[0].mercy,
+         en[1].mercy, en[2].mercy, enemies_alive());
   return 0;
 }
