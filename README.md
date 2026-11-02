@@ -153,7 +153,7 @@ These are too big to fit next to NumPlay, so each one is its own app. Install it
   </tr>
   <tr>
     <td align="center"><a href="games/famidash/README.md"><img src="docs/media/thumb_famidash.png" width="200" alt="Famidash"><br><b>Famidash</b></a><br><sub>Geometry Dash for the NES: 173 levels, every mode, practice mode</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Famidash.nwa">Download</a></td>
-    <td align="center"><a href="games/fnaf3/README.md"><img src="docs/media/thumb_fnaf3.png" width="200" alt="Five Nights at Freddy's 3"><br><b>Five Nights at Freddy's 3</b></a><br><sub>Fazbear's Fright: Springtrap, the phantoms, the lure and the vents</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys3.nwa">Download</a></td>
+    <td align="center"><a href="games/fnaf3/README.md"><img src="docs/media/thumb_fnaf3.png" width="200" alt="Five Nights at Freddy's 3"><br><b>Five Nights at Freddy's 3</b></a><br><sub>Fazbear's Fright: Springtrap, the phantoms, the vents and the 8-bit minigames</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys3.nwa">Download</a></td>
     <td align="center"><a href="games/fnaf4/README.md"><img src="docs/media/thumb_fnaf4.png" width="200" alt="Five Nights at Freddy's 4"><br><b>Five Nights at Freddy's 4</b></a><br><sub>The bedroom: listen at the doors, the closet, the bed, Fun with Plushtrap</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys4.nwa">Download</a></td>
   </tr>
   <tr>

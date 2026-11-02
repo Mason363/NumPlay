@@ -2,6 +2,10 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.0: Five Nights at Freddy's 3's minigames
+
+- **Five Nights at Freddy's 3:** the 8-bit minigames after each night, BB's Air Adventure on CAM 08 and the good ending. All six are in Extras once the game is beaten.
+
 ## 1.23.0: Five Nights at Freddy's 3 and 4, Famidash HUGE, ColecoVision games and Universal Paperclips in French
 
 - **Five Nights at Freddy's 3:** FiveNightsAtFreddys3.nwa, nights 1 to 6 with Springtrap, the phantoms, the lure, the vents and the maintenance panel, the game's own pictures and rules.
