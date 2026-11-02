@@ -19,7 +19,7 @@
 #define SMALL_FAR 350.0f     /* rocks, heads and ground patches seen this far */
 #define TREE_FAR FOG1        /* the rest of the scenery (past it, all fog) */
 #define SCENERY_POLYS 1080   /* the polygons a frame the scenery's reach is kept to (of the renderer's 1800) */
-#define LOD_NEAR 95.0f       /* path pieces nearer than this are whole */
+#define LOD_NEAR 70.0f       /* path pieces nearer than this are whole */
 #define VIEW (FOG1 + 20)     /* units seen ahead */
 #define PI 3.14159265f
 
@@ -199,11 +199,7 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
   int nt = me->nt;
   if (m < 2 * M_PIECES) {
     float d2 = dx * dx + dz * dz;
-    if (d2 > LOD_NEAR * LOD_NEAR) {
-      float q = LOD_NEAR / __builtin_sqrtf(d2);   /* (q^1.5 of them: as many a frame as the steps of halves, thirds and
-                                                     fifths it replaces) */
-      nt = (int)((float)nt * q * __builtin_sqrtf(q));
-    }
+    if (d2 > LOD_NEAR * LOD_NEAR) nt = (int)((float)nt * (LOD_NEAR * LOD_NEAR) / d2);   /* (fewer as the square of the distance) */
   }
   for (int i = 0; i < nt; i++) {
     const TFace *t = &me->t[i];

@@ -21,6 +21,7 @@ typedef struct {
   uint8_t n, kind;
   uint8_t y0, y1;        /* the rows it covers */
   uint8_t alpha;         /* see-through (255: not); textured faces: their light 0..32 */
+  uint8_t near;          /* its nearest depth >> 8: the polygons are drawn nearest first */
 } Poly;
 typedef struct {
   int16_t x, y;
@@ -54,6 +55,7 @@ typedef struct {
   UV uvs[MAXT];
   uint16_t zbuf[SCREEN_W * BAND_H] __attribute__((aligned(8)));
 } Work;
+_Static_assert(SCREEN_W * BAND_H >= MAXP + 256, "the depth buffer holds the sort's lists");
 static Work *work;
 #define polys (work->polys)
 #define order (work->order)
@@ -186,7 +188,7 @@ static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, u
 /* the rest of emit, from the corners on the screen (sx, sy from its middle) */
 static void emit_screen(const CV *p, int n, float *sx, float *sy, int kind, uint16_t color, int flags, int alpha, uint16_t avg) {
   float f = cam.f;
-  float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f, zsum = 0;
+  float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f, zsum = 0, zmin = 1e9f;
   for (int i = 0; i < n; i++) {
     sx[i] += cam.cx, sy[i] += cam.cy;
     if (sx[i] < x0) x0 = sx[i];
@@ -194,6 +196,7 @@ static void emit_screen(const CV *p, int n, float *sx, float *sy, int kind, uint
     if (sy[i] < y0) y0 = sy[i];
     if (sy[i] > y1) y1 = sy[i];
     zsum += p[i].z;
+    if (p[i].z < zmin) zmin = p[i].z;
   }
   if (x1 < 0 || x0 >= SCREEN_W || y1 < 0 || y0 >= SCREEN_H) return;
   float area = 0;
@@ -216,7 +219,8 @@ static void emit_screen(const CV *p, int n, float *sx, float *sy, int kind, uint
   if (flags & P_DECAL) q->c += 3;
   if (flags & P_DECAL2) q->c += 6;
   if (flags & P_DECAL3) q->c += 9;
-  float zm = zsum / (float)n;
+  float zm = zsum / (float)n, dn = ZK / zmin;
+  q->near = (uint8_t)(dn >= 65535 ? 255 : (int)dn >> 8);
   q->kind = (uint8_t)kind;
   q->extra = 0;
   if (kind == K_PERSP) {
@@ -395,6 +399,59 @@ static const uint32_t *spread(const Texture *t) {
   return NULL;
 }
 
+/* pixels [zp, ze) of a textured run (their colours at cp): where it lies in front, its texel, see-through where the
+ * picture is, lit by light (32: as it is; sp: the picture's spread palette, when lit). WL: the picture's side, log2, when
+ * it is known here (0: the picture's own). Returns the depth after the run */
+__attribute__((always_inline)) static inline uint32_t tex_run(uint16_t *zp, const uint16_t *ze, uint16_t *cp, uint32_t z,
+                                                              uint32_t da, uint32_t uu, uint32_t du, uint32_t vv, uint32_t dv,
+                                                              const Texture *tx, int light, const uint32_t *sp, int WL) {
+  const uint8_t *px = tx->px;
+  const uint16_t *pal = tx->pal;
+  bool clear = tx->clear;
+  /* the texel: v's row times the width, or u's column */
+  uint32_t wl = WL ? (uint32_t)WL : tx->wl, wm = (1u << wl) - 1, hm = WL ? wm : (1u << tx->hl) - 1;
+#define TEXEL ((((vv >> 16) & hm) << wl) | ((uu >> 16) & wm))
+  if (light >= 32 && !clear) {
+    for (; zp < ze; zp++, cp++, z += da, uu += du, vv += dv) {
+      uint16_t d = (uint16_t)(z >> 16);
+      if (d > *zp) *zp = d, *cp = pal[px[TEXEL]];
+    }
+  } else if (light >= 32) {
+    for (; zp < ze; zp++, cp++, z += da, uu += du, vv += dv) {
+      uint16_t d = (uint16_t)(z >> 16);
+      if (d <= *zp) continue;
+      uint8_t t = px[TEXEL];
+      if (t) *zp = d, *cp = pal[t];
+    }
+  } else if (sp && !clear) {
+    for (; zp < ze; zp++, cp++, z += da, uu += du, vv += dv) {
+      uint16_t d = (uint16_t)(z >> 16);
+      if (d <= *zp) continue;
+      uint32_t x = (sp[px[TEXEL]] * (uint32_t)light >> 5) & 0x07E0F81F;   /* (r_mix565(0, pal[t], light)) */
+      *zp = d, *cp = (uint16_t)(x | x >> 16);
+    }
+  } else if (sp) {
+    for (; zp < ze; zp++, cp++, z += da, uu += du, vv += dv) {
+      uint16_t d = (uint16_t)(z >> 16);
+      if (d <= *zp) continue;
+      uint8_t t = px[TEXEL];
+      if (!t) continue;
+      uint32_t x = (sp[t] * (uint32_t)light >> 5) & 0x07E0F81F;
+      *zp = d, *cp = (uint16_t)(x | x >> 16);
+    }
+  } else {
+    for (; zp < ze; zp++, cp++, z += da, uu += du, vv += dv) {
+      uint16_t d = (uint16_t)(z >> 16);
+      if (d <= *zp) continue;
+      uint8_t t = px[TEXEL];
+      if (clear && !t) continue;
+      *zp = d, *cp = r_mix565(0, pal[t], light);
+    }
+  }
+#undef TEXEL
+  return z;
+}
+
 /* a row of a polygon, pixels [x0, x1) of row y (its middle yc), between the edges L (at xl) and R (at xr) */
 __attribute__((noinline)) static void raster_row(const Poly *q, int kind, int y, float yc, int x0, int x1,
                                                             const Texture *tx, int32_t da, int alpha, uint16_t col) {
@@ -423,12 +480,7 @@ __attribute__((noinline)) static void raster_row(const Poly *q, int kind, int y,
   }
   if (kind == K_PERSP) {
     const UV *w = &uvs[q->extra];
-    const uint8_t *px = tx->px;
-    const uint16_t *pal = tx->pal;
-    /* the texel: (v >> vs & hmask) | (u >> 16 & wm), v's row already times the width */
-    uint32_t wm = (1u << tx->wl) - 1, hmask = ((1u << tx->hl) - 1) << tx->wl;
-    int vs = 16 - tx->wl, light = q->alpha;
-    bool clear = tx->clear;
+    int light = q->alpha;
     const uint32_t *sp = light < 32 ? spread(tx) : NULL;
     /* u and v exactly every 16 pixels, straight lines between; a run of 16 all behind what is drawn is passed
      * over without its texture places */
@@ -467,45 +519,10 @@ __attribute__((noinline)) static void raster_row(const Poly *q, int kind, int y,
       if (n == 16) du = (uint32_t)((u2 - u) >> 4), dv = (uint32_t)((v2 - v) >> 4);
       else du = (uint32_t)((u2 - u) / n), dv = (uint32_t)((v2 - v) / n);
       uint32_t uu = (uint32_t)u, vv = (uint32_t)v;
-      /* (three loops: the plain one kept as short as can be) */
-      if (light >= 32 && !clear) {
-        for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
-          uint16_t d = (uint16_t)(z >> 16);
-          if (d > *zp) *zp = d, *cp = pal[px[(vv >> vs & hmask) | (uu >> 16 & wm)]];
-        }
-      } else if (light >= 32) {
-        for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
-          uint16_t d = (uint16_t)(z >> 16);
-          if (d <= *zp) continue;
-          uint8_t t = px[(vv >> vs & hmask) | (uu >> 16 & wm)];
-          if (t) *zp = d, *cp = pal[t];
-#ifdef HOST
-          if (t) r_stat_written++;
-          else {
-            r_stat_holes++, r_stat_texhole[q->color]++;
-            extern int r_show_holes;
-            if (r_show_holes) *cp = 0xF81F;
-          }
-#endif
-        }
-      } else if (sp) {
-        for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
-          uint16_t d = (uint16_t)(z >> 16);
-          if (d <= *zp) continue;
-          uint8_t t = px[(vv >> vs & hmask) | (uu >> 16 & wm)];
-          if (clear && !t) continue;
-          uint32_t x = (sp[t] * (uint32_t)light >> 5) & 0x07E0F81F;   /* (r_mix565(0, pal[t], light)) */
-          *zp = d, *cp = (uint16_t)(x | x >> 16);
-        }
-      } else {
-        for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
-          uint16_t d = (uint16_t)(z >> 16);
-          if (d <= *zp) continue;
-          uint8_t t = px[(vv >> vs & hmask) | (uu >> 16 & wm)];
-          if (clear && !t) continue;
-          *zp = d, *cp = r_mix565(0, pal[t], light);
-        }
-      }
+      /* (the game's pictures are square, 512 or 256 across: their loops with the sizes known, short of registers) */
+      if (tx->wl == 9 && tx->hl == 9) z = tex_run(zp, ze, cp, z, (uint32_t)da, uu, du, vv, dv, tx, light, sp, 9);
+      else if (tx->wl == 8 && tx->hl == 8) z = tex_run(zp, ze, cp, z, (uint32_t)da, uu, du, vv, dv, tx, light, sp, 8);
+      else z = tex_run(zp, ze, cp, z, (uint32_t)da, uu, du, vv, dv, tx, light, sp, 0);
       x += n;
       qz = qz2, qu = qu2, qv = qv2, u = u2, v = v2;
       known = true;
@@ -710,11 +727,23 @@ void r_render(const Texture *tex, r_ground_fn ground, r_band_fn overlay) {
     for (int i = 0; i < npolys; i++)
       if (polys[i].alpha != 255 && polys[i].kind != K_PERSP) order[k++] = (uint16_t)i;
   }
+  /* the opaque ones nearest first: what lies behind them is then passed over 16 pixels at a time (raster_row), not drawn
+   * and drawn over (a counting sort by their nearest depths, its lists in the depth buffer's room, unused till the
+   * bands) */
+  int opaque = npolys - nalpha;
+  uint16_t *sorted = (uint16_t *)(void *)zbuf, *count = sorted + MAXP;
+  for (int k = 0; k < 256; k++) count[k] = 0;
+  for (int i = 0; i < opaque; i++) count[polys[order[i]].near]++;
+  for (int k = 255, at = 0; k >= 0; k--) {
+    int c = count[k];
+    count[k] = (uint16_t)at, at += c;
+  }
+  for (int i = 0; i < opaque; i++) sorted[count[polys[order[i]].near]++] = order[i];
+  for (int i = 0; i < opaque; i++) order[i] = sorted[i];
   for (int band = 0; band < NBANDS; band++) {
     r_y0 = band * BAND_H, r_y1 = r_y0 + BAND_H;
     /* (cleared a word at a time: the C library's is a byte at a time) */
     for (uint32_t *p = (uint32_t *)(void *)zbuf, *e = p + sizeof zbuf / 4; p < e; p += 4) p[0] = p[1] = p[2] = p[3] = 0;
-    int opaque = npolys - nalpha;
     for (int i = 0; i < npolys; i++) {
       if (i == opaque) back_band(tex, ground);
       const Poly *q = &polys[order[i]];
