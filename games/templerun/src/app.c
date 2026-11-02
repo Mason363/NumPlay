@@ -119,8 +119,11 @@ static void store_buy(void) {
   say("Bought");
 }
 
+static void board_step(void);
+
 void app_step(uint32_t keys, uint32_t pressed) {
   state_t += 1.0f / 60;
+  scene_tick();
   if (note_t > 0) note_t -= 1.0f / 60;
   if (pressed & K_HOME) {
     if (state == S_RUN || state == S_PAUSE || state == S_QUIT) end_run();   /* (the results not shown yet) */
@@ -169,6 +172,7 @@ void app_step(uint32_t keys, uint32_t pressed) {
     uint16_t before = (uint16_t)(pg.use[0] + pg.use[1] + pg.use[2]);
     game_step(in);
     scene_follow();
+    board_step();
     if (pg.use[0] + pg.use[1] + pg.use[2] != before) save_write();
     if (game_over()) {
       end_run();
@@ -242,18 +246,17 @@ static void button(int x, int y, int w, int h, const char *s, bool focus) {
 static int board_dist;
 static float board_t = -1;
 
-static void board(void) {
+static void board_step(void) {   /* (a 60th of a second of the run) */
   int d = (int)run.dist;
   if (d < board_dist) board_dist = 0;
   int next = board_dist < 1000 ? board_dist + 250 : board_dist + 500;
   if (d >= next) board_dist = next, board_t = 0;
+  else if (board_t >= 0 && (board_t += 1.0f / 60) >= 2.5f) board_t = -1;
+}
+
+static void board(void) {
   if (board_t < 0) return;
-  board_t += 1.0f / 30;
-  float t = board_t, down = t < 0.25f ? t * 4 : t < 2.25f ? 1 : t < 2.5f ? (2.5f - t) * 4 : -1;
-  if (down < 0) {
-    board_t = -1;
-    return;
-  }
+  float t = board_t, down = t < 0.25f ? t * 4 : t < 2.25f ? 1 : (2.5f - t) * 4;
   const HudPic *bp = &hud_pics[HP_BOARD];
   int y = -bp->h + (int)(down * (bp->h - 34));
   d_pic(HP_BOARD, (SCREEN_W - bp->w) / 2, y, 255, 0, 0);
@@ -410,8 +413,7 @@ static void quit_overlay(void) {
   d_dim(150);
   parchment(50, 64, 220, 110);
   const char *q = quit_new ? "Start a new run?" : "Quit this run?";
-  d_text(&font_mid, 160 - d_text_width(&font_mid, q) / 2, 92, q, C(0x3A2208), 255);
-  d_text(&font_small, 160 - d_text_width(&font_small, "Your coins are kept.") / 2, 112, "Your coins are kept.", C(0x5A3A14), 255);
+  d_text(&font_mid, 160 - d_text_width(&font_mid, q) / 2, 100, q, C(0x3A2208), 255);
   button(70, 128, 80, 28, "No", sel == 0);
   button(170, 128, 80, 28, "Yes", sel == 1);
   keys_line("Left Right choose  -  OK select");

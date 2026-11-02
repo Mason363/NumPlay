@@ -1,9 +1,9 @@
 /* The 3D renderer (r3d.h): polygons in a list, drawn band by band with a depth buffer. */
 #include "r3d.h"
 
-#define NEAR 0.35f
+#define NEAR R_NEAR
 #define FAR 190.0f
-#define ZK 22000.0f      /* depths are ZK / z: 62857 at the near plane, larger is nearer */
+#define ZK 62000.0f      /* depths are ZK / z: 65263 at the near plane, larger is nearer */
 #define MAXP 1800        /* polygons a frame */
 #define MAXV 6000        /* their corners */
 #define MAXT 760         /* textured faces in perspective */
@@ -39,10 +39,11 @@ int r_y0, r_y1;
 Camera cam;
 float r_fog0 = 19, r_fog1 = 76, r_far = 40;
 uint32_t r_fog_rgb = 0x325256;
-/* the fog by depth: its amount (0..32) for depths d >> 2, below fog_d0 (nearer than r_fog0: none) */
-#define FOG_N 640
+/* the fog by depth: its amount (0..32) for depths d >> 3, below fog_d0 (nearer than r_fog0: none; farther than r_fog1,
+ * below fog_d1: all) */
+#define FOG_N 512
 static uint8_t fogtab[FOG_N];
-static uint16_t fog_d0, fog565;
+static uint16_t fog_d0, fog_d1, fog565;
 static float fog_made0, fog_made1;
 
 /* the frame's lists: in the RAM after the game's own (r_init) */
@@ -633,45 +634,75 @@ static void fog_make(void) {
   if (fog_made0 == r_fog0 && fog_made1 == r_fog1) return;
   fog_made0 = r_fog0, fog_made1 = r_fog1;
   float d0 = ZK / r_fog0;
-  fog_d0 = d0 >= 4 * FOG_N ? 4 * FOG_N - 1 : (uint16_t)d0;
+  fog_d0 = d0 >= 8 * FOG_N ? 8 * FOG_N - 1 : (uint16_t)d0;
+  fog_d1 = 0;
   for (int i = 0; i < FOG_N; i++) {
-    float z = ZK / ((float)i * 4 + 2), t = (z - r_fog0) / (r_fog1 - r_fog0);
+    float z = ZK / ((float)i * 8 + 4), t = (z - r_fog0) / (r_fog1 - r_fog0);
     fogtab[i] = (uint8_t)(t <= 0 ? 0 : t >= 1 ? 32 : (int)(t * 32 + 0.5f));
+    if (fogtab[i] == 32) fog_d1 = (uint16_t)(i * 8 + 8);
   }
 }
 
-/* a band's pixels toward the fog's colour, each by its depth (the background's too: the sky, depth 0, is all fog) */
-static void fog_band(void) {
-  uint16_t fc = fog565, d0 = fog_d0;
-  uint32_t y = (fc | (uint32_t)fc << 16) & 0x07E0F81F;   /* (r_mix565 with the fog's colour spread once) */
-  for (int i = 0; i < SCREEN_W * BAND_H; i++) {
-    uint16_t d = zbuf[i];
-    if (d >= d0) continue;
-    int t = fogtab[d >> 2];
-    if (t >= 32) r_col[i] = fc;
-    else if (t) {
-      uint32_t c = r_col[i], x = (c | c << 16) & 0x07E0F81F;
-      x = (x + ((y - x) * (uint32_t)t >> 5)) & 0x07E0F81F;
-      r_col[i] = (uint16_t)(x | x >> 16);
-    }
-  }
-}
-
-uint16_t r_floor_depth(float z) {
+static uint16_t r_floor_depth(float z) {
   float d = ZK / z;
   d -= d * (1.0f / 256);   /* (a hair farther: a shadow lying on it is drawn, what is under it is not) */
   return d >= 65535 ? 65535 : d <= 0 ? 0 : (uint16_t)d;
 }
 
-void r_band_depth(int y, int x0, int x1, uint16_t d) {
-  uint16_t *zb = zbuf + (y - r_y0) * SCREEN_W;
-  for (int x = x0; x < x1; x++) zb[x] = d;
+/* after a band's polygons: the ground (its picture, fogged as its row's depth has it) and the sky where none lies
+ * nearer, and every other pixel toward the fog's colour by its depth; one pass over the band */
+static void back_band(const Texture *tex, r_ground_fn ground) {
+  uint16_t fc = fog565, d0 = fog_d0, d1 = fog_d1;
+  uint32_t fs = (fc | (uint32_t)fc << 16) & 0x07E0F81F;   /* (r_mix565 with the fog's colour spread once) */
+  const uint32_t *sp = tex ? spread(tex) : NULL;
+  for (int y = r_y0; y < r_y1; y++) {
+    uint16_t *zb = zbuf + (y - r_y0) * SCREEN_W, *cb = r_col + (y - r_y0) * SCREEN_W;
+    RGround g = {0, 0, 0, 0, 0};
+    if (ground && sp) ground(y, &g);
+    uint16_t dg = g.z > 0 && g.z < r_fog1 ? r_floor_depth(g.z) : 0;
+    int tg = dg >= d0 ? 0 : fogtab[dg >> 3];
+    if (!dg || tg >= 32) {
+      /* the sky (or the ground all in the fog): the fog's colour where nothing is drawn */
+      for (int x = 0; x < SCREEN_W; x++) {
+        uint16_t d = zb[x];
+        if (d >= d0) continue;
+        if (d < d1) {
+          cb[x] = fc;
+          continue;
+        }
+        uint32_t c = cb[x], k = (c | c << 16) & 0x07E0F81F;
+        k = (k + ((fs - k) * (uint32_t)fogtab[d >> 3] >> 5)) & 0x07E0F81F;
+        cb[x] = (uint16_t)(k | k >> 16);
+      }
+      continue;
+    }
+    /* the ground's texel at x: (v >> vs & hm) | (u >> 16 & wm), as raster_row finds them; fogged by its row */
+    const uint8_t *px = tex->px;
+    uint32_t wm = (1u << tex->wl) - 1, hm = ((1u << tex->hl) - 1) << tex->wl, keep = (uint32_t)(32 - tg), add = fs * (uint32_t)tg;
+    int vs = 16 - tex->wl;
+    for (int x = 0; x < SCREEN_W; x++) {
+      uint16_t d = zb[x];
+      if (d < dg) {
+        uint32_t u = (uint32_t)(g.u + g.du * x), v = (uint32_t)(g.v + g.dv * x);
+        uint32_t k = ((sp[px[(v >> vs & hm) | (u >> 16 & wm)]] * keep + add) >> 5) & 0x07E0F81F;
+        cb[x] = (uint16_t)(k | k >> 16), zb[x] = dg;
+      } else if (d < d0) {
+        if (d < d1) {
+          cb[x] = fc;
+          continue;
+        }
+        uint32_t c = cb[x], k = (c | c << 16) & 0x07E0F81F;
+        k = (k + ((fs - k) * (uint32_t)fogtab[d >> 3] >> 5)) & 0x07E0F81F;
+        cb[x] = (uint16_t)(k | k >> 16);
+      }
+    }
+  }
 }
 
-void r_render(r_band_fn bg, r_band_fn overlay) {
+void r_render(const Texture *tex, r_ground_fn ground, r_band_fn overlay) {
   fog_make();
   fog565 = r_565(r_fog_rgb);
-  /* the see-through polygons after the others, in the order they came */
+  /* the see-through polygons after the others (and after the ground: they are seen over it), in the order they came */
   if (nalpha) {
     int k = 0;
     for (int i = 0; i < npolys; i++)
@@ -683,17 +714,16 @@ void r_render(r_band_fn bg, r_band_fn overlay) {
     r_y0 = band * BAND_H, r_y1 = r_y0 + BAND_H;
     /* (cleared a word at a time: the C library's is a byte at a time) */
     for (uint32_t *p = (uint32_t *)(void *)zbuf, *e = p + sizeof zbuf / 4; p < e; p += 4) p[0] = p[1] = p[2] = p[3] = 0;
-    if (bg) bg();
-    else
-      for (int i = 0; i < SCREEN_W * BAND_H; i++) r_col[i] = 0;
+    int opaque = npolys - nalpha;
     for (int i = 0; i < npolys; i++) {
+      if (i == opaque) back_band(tex, ground);
       const Poly *q = &polys[order[i]];
       if (q->y1 > r_y0 && q->y0 < r_y1) {
         if (q->n == 3 && (q->kind == K_FLAT || q->kind == K_PERSP)) raster_tri(q);
         else raster(q);
       }
     }
-    fog_band();
+    if (opaque == npolys) back_band(tex, ground);
     if (overlay) overlay();
     plat_push(0, r_y0, SCREEN_W, BAND_H, r_col);
   }

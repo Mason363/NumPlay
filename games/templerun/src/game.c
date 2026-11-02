@@ -93,7 +93,7 @@ static void pursue(void) {
     else if (yaw < -1) c = 0, s = 1;
     else if (yaw > 2) c = -1, s = 0;
     p->x = x + side[i] * c, p->z = z + side[i] * s, p->y = y, p->yaw = yaw;
-    p->phase += DT * (pl.dead ? 2.0f : pl.v / 14.0f);
+    p->phase += DT / 0.5667f;   /* (their Run clip: 0.5667 s, played as it is) */
   }
 }
 
@@ -154,16 +154,18 @@ static void stumble(void) {
   run.stumbles++;
 }
 
-static void jump(void) {
-  if (pl.jumping || pl.stumbling || pl.falling || !pl.on_ground) return;
+static bool jump(void) {
+  if (pl.jumping || pl.stumbling || pl.falling || !pl.on_ground) return false;
   pl.vy = pl.v < 80 ? 80 : pl.v > 100 ? 100 : pl.v;
   pl.jumping = true, pl.sliding = false, pl.on_ground = false;
+  return true;
 }
 
-static void slide(void) {
-  if (pl.sliding || pl.jumping || pl.falling) return;
+static bool slide(void) {
+  if (pl.sliding || pl.jumping || pl.falling) return false;
   pl.sliding = true, pl.t_slide = 0;
   pl.slide_len = minf(pl.v * 0.007f, 0.75f);
+  return true;
 }
 
 /* ResurrectPlayer: the wings bring it back on the next quiet piece ahead (false: none near) */
@@ -172,8 +174,8 @@ static bool resurrect(void) {
   for (int k = 0; k < 10 && i >= 0; k++) {
     const Tile *t = &tiles[i];
     if (k && !t->has_obstacles && !path_is_turn(t) && t->mesh >= 0) {
-      for (int j = 0; j < n; j++) path_advance(chain[j]);
-      path_advance(i);
+      for (int j = 0; j < n; j++) path_advance(chain[j], true);
+      path_advance(i, true);
       pl.x = path_cx(t) - 20 * DX[t->dir], pl.z = path_cz(t) - 20 * DZ[t->dir];
       pl.y = pl.ground = t->y, pl.vy = 0, pl.dir = t->dir;
       pl.death_v = pl.v > START_V ? pl.v : 0;
@@ -354,12 +356,21 @@ void game_step(uint32_t in) {
     pursue();
     return;
   }
-  /* keys */
+  /* the intro: he holds still, then runs out of the temple; keys count once it is over */
+  if (run.time <= INTRO_HOLD) {
+    pl.anim += DT * pl.v * (0.65f / 100 / 0.4f);
+    pursue();
+    return;
+  }
+  if (run.time <= INTRO) in = 0;
+  /* keys (a jump or a slide that cannot be made yet is kept half a second, a turn a second: the game's) */
   if (in & (IN_LEFT | IN_RIGHT)) pl.turn_wish = in & IN_LEFT ? -1 : 1, pl.t_wish = 0;
   if (pl.turn_wish && (pl.t_wish += DT) > 1) pl.turn_wish = 0;
   pl.lean = in & IN_LEAN_L ? -6.0f : in & IN_LEAN_R ? 6.0f : 0.0f;
-  if (in & IN_JUMP) jump();
-  if (in & IN_SLIDE) slide();
+  if (in & IN_JUMP) pl.jump_wish = 0.5f;
+  if (in & IN_SLIDE) pl.slide_wish = 0.5f;
+  if (pl.jump_wish > 0) pl.jump_wish = jump() ? 0 : pl.jump_wish - DT;
+  if (pl.slide_wish > 0) pl.slide_wish = slide() ? 0 : pl.slide_wish - DT;
   if ((in & IN_WINGS) && game_wings_ok()) {
     pg.use[USE_WINGS]--;
     pl.wings = 30;
@@ -405,7 +416,7 @@ void game_step(uint32_t in) {
   pl.y += pl.vy * DT;
   /* the piece under it (the root moves on, what is behind and the ways not taken pruned, the path laid on) */
   int ni = path_at(pl.x, pl.z);
-  if (ni >= 0 && ni != path_root) path_advance(ni), ni = path_root;
+  if (ni >= 0 && ni != path_root) path_advance(ni, run.time > INTRO), ni = path_root;
   t = ni >= 0 ? &tiles[ni] : NULL;
   /* over ground: inside the piece's ground, or invisible (then over everything) */
   bool inv = pl.invis > 0, over = inv || (t && path_ground(t, pl.x, pl.z));
@@ -471,7 +482,7 @@ void game_step(uint32_t in) {
     path_pace(run.dist, pl.since_power, d);
   }
   collect();
-  pl.anim += DT * pl.v / 22.0f;
+  pl.anim += DT * pl.v * (0.65f / 100 / 0.4f);   /* (its Run clip: 0.4 s, played at 0.65 x speed / 100) */
   trail_gap += pl.v * DT;
   if (trail_gap >= 2) trail_gap = 0, trail_add();
   pursue();

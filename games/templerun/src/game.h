@@ -35,7 +35,8 @@ typedef struct {
   float since_power;
   int turn_wish;           /* -1 left, 1 right: pressed before the corner (kept 1 s) */
   float t_wish;
-  float anim;              /* the run cycle */
+  float jump_wish, slide_wish;   /* seconds a jump or a slide pressed too soon is still kept (the game's 0.5) */
+  float anim;              /* the run cycle (its Run clip: 1 a cycle) */
 } Runner;
 
 typedef struct {
@@ -83,14 +84,17 @@ extern Fly fly[NFLY];
 
 /* the pursuers: where each one is (feet) and the way it faces (radians), whether they are seen */
 typedef struct {
-  float x, y, z, yaw, phase;
+  float x, y, z, yaw, phase;   /* phase: their Run clip (1 a cycle) */
 } Pursuer;
 #define NPURSUERS 3
 extern Pursuer pursuers[NPURSUERS];
 extern bool pursuers_on;
 
 void game_new_run(void);
-/* a 60th of a second: keys held (lean) and pressed (turn, jump, slide) */
+/* a 60th of a second: keys held (lean) and pressed (turn, jump, slide). A run starts with the game's intro: the
+ * runner holds still for INTRO_HOLD seconds, and keys count from INTRO on */
+#define INTRO_HOLD 1.0f
+#define INTRO 3.0f
 enum { IN_LEFT = 1, IN_RIGHT = 2, IN_JUMP = 4, IN_SLIDE = 8, IN_LEAN_L = 16, IN_LEAN_R = 32, IN_WINGS = 64,
        IN_HEADSTART = 128, IN_MEGA = 256 };
 void game_step(uint32_t in);

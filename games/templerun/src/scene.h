@@ -7,6 +7,8 @@
 void scene_init(void);
 void scene_reset(void);    /* the camera straight behind the runner (a new run) */
 void scene_follow(void);   /* a 60th of a second: the camera after the runner */
+bool scene_intro(void);    /* the run's intro is on (its camera; the path behind is kept) */
+void scene_tick(void);     /* a 60th of a second: what turns or burns (coins, fire) goes on */
 /* the frame: the camera after the runner (on the title: in front of it), the world, then overlay over it */
 void scene_draw(r_band_fn overlay, bool on_title);
 /* one mesh (data.h) at a point of the world, turned by yaw (0: its front toward +z); alpha < 255 see-through */
