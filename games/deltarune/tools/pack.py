@@ -174,6 +174,21 @@ def encode_frame(img, ox, oy):
     return head + b"".join(struct.pack("<H", r) for r in rows) + bytes(data)
 
 
+def halve(img):
+    """half the size: of each 2 x 2, the most opaque pixel, then the brightest (thin lines stay)"""
+    a = np.array(img.convert("RGBA")).astype(np.int32)
+    h, w = a.shape[0] // 2 * 2, a.shape[1] // 2 * 2
+    a = np.pad(a, ((0, a.shape[0] % 2), (0, a.shape[1] % 2), (0, 0)))
+    h, w = a.shape[0], a.shape[1]
+    q = [a[0:h:2, 0:w:2], a[1:h:2, 0:w:2], a[0:h:2, 1:w:2], a[1:h:2, 1:w:2]]
+    key = np.stack([(p[..., 3] >= 128) * 1000 + p[..., 0] * 3 + p[..., 1] * 6 + p[..., 2] for p in q])
+    best = key.argmax(axis=0)
+    out = np.zeros_like(q[0])
+    for k in range(4):
+        out[best == k] = q[k][best == k]
+    return Image.fromarray(out.astype(np.uint8), "RGBA")
+
+
 def crop_frames(frames):
     box = None
     for f in frames:
@@ -421,7 +436,9 @@ def main():
     spr_names = [s["name"] for s in g.sprites]
     room_names = [r["name"] for r in g.rooms]
     obj_names = [o["name"] for o in g.objects]
-    sprites = [n for n in spr_names if n in words]
+    # a sprite named with _h after it (spr_btfight_h): the same at half its size (the battle's own pictures,
+    # drawn at 640 x 480 there)
+    sprites = [n for n in spr_names if n in words] + [n + "_h" for n in spr_names if n + "_h" in words]
     rooms = [n for n in room_names if n in words]
     objs = sorted(n for n in obj_names if n in words)
     texts = sorted(k for k in lang if k in words)
@@ -432,8 +449,12 @@ def main():
     # sprites
     spr_table, frames, starts = bytearray(), [], []
     for name in sprites:
-        s = g.sprite(name)
-        fr = g.sprite_frames(name)
+        half = name.endswith("_h") and name not in spr_names
+        s = g.sprite(name[:-2] if half else name)
+        fr = g.sprite_frames(s["name"])
+        if half:
+            fr = [halve(f) for f in fr]
+            s = dict(s, ox=s["ox"] // 2, oy=s["oy"] // 2)
         fr, cx, cy = crop_frames(fr)
         starts.append(len(frames))
         spr_table += struct.pack("<HH", len(frames), len(fr))

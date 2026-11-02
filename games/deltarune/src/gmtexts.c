@@ -9,6 +9,7 @@
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wunused-label"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #endif
 
 void gm_readable_room1(TxtCtx *c) {

@@ -167,11 +167,11 @@ def main():
             g_("mercymod"), cstr(lang(field(r, "global.battlemsg[0]", ""))), ", ".join(acts)))
     out += ["};", "const int monster_count = %d;" % n, ""]
 
+    objs = [o["name"] for o in g.objects]
     # battles: scr_encountersetup (what each encounter places, around the view's top-left)
     enc = switch_cases(code("gml_Script_scr_encountersetup"))
     n = max(enc) + 1
     out.append("const EncounterDef encounter_defs[%d] = {" % n)
-    objs = [o["name"] for o in g.objects]
     for i in range(n):
         r = enc.get(i, [])
         ms = []
@@ -180,7 +180,7 @@ def main():
             it = num(str(field(r, "global.monsterinstancetype[%d]" % k, -1)))
             mx = num(str(field(r, "global.monstermakex[%d]" % k, 0)), xx=0, yy=0) or 0
             my = num(str(field(r, "global.monstermakey[%d]" % k, 0)), xx=0, yy=0) or 0
-            ms.append("{%d, %d, %d, %d}" % (t, it if it is not None else -1, mx, my))
+            ms.append("{%d, %s, %d, %d}" % (t, objs[int(it)] if it is not None and it >= 0 else "-1", mx, my))
         out.append("  {{%s}, %s}, /* %s */" % (", ".join(ms), cstr(lang(field(r, "global.battlemsg[0]", ""))),
                                               " ".join(objs[int(num(str(field(r, "global.monsterinstancetype[%d]" % k, 0))) or 0)]
                                                        for k in range(3)

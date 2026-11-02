@@ -120,45 +120,45 @@ const int monster_count = 26;
 
 const EncounterDef encounter_defs[41] = {
   {{{0, -1, 0, 0}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /*  */
-  {{{1, 238, 480, 110}, {1, 238, 500, 200}, {0, -1, 0, 0}}, 0xFFFF}, /* obj_placeholderenemy obj_placeholderenemy */
-  {{{2, 278, 540, 200}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /* obj_lancerboss */
-  {{{3, 236, 0, 0}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /* obj_dummyenemy */
-  {{{5, 280, 480, 140}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_84_0}, /* obj_diamondenemy */
-  {{{5, 280, 480, 110}, {5, 280, 500, 200}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_100_0}, /* obj_diamondenemy obj_diamondenemy */
-  {{{5, 280, 480, 110}, {6, 287, 500, 200}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_116_0}, /* obj_diamondenemy obj_heartenemy */
-  {{{9, 289, 440, 150}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_128_0}, /* obj_smallcheckers_enemy */
-  {{{16, 285, 400, 120}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_139_0}, /* obj_clubsenemy */
-  {{{6, 287, 480, 20}, {6, 287, 500, 120}, {6, 287, 460, 220}}, scr_encountersetup_slash_scr_encountersetup_gml_158_0}, /* obj_heartenemy obj_heartenemy obj_heartenemy */
+  {{{1, obj_placeholderenemy, 480, 110}, {1, obj_placeholderenemy, 500, 200}, {0, -1, 0, 0}}, 0xFFFF}, /* obj_placeholderenemy obj_placeholderenemy */
+  {{{2, obj_lancerboss, 540, 200}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /* obj_lancerboss */
+  {{{3, obj_dummyenemy, 0, 0}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /* obj_dummyenemy */
+  {{{5, obj_diamondenemy, 480, 140}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_84_0}, /* obj_diamondenemy */
+  {{{5, obj_diamondenemy, 480, 110}, {5, obj_diamondenemy, 500, 200}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_100_0}, /* obj_diamondenemy obj_diamondenemy */
+  {{{5, obj_diamondenemy, 480, 110}, {6, obj_heartenemy, 500, 200}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_116_0}, /* obj_diamondenemy obj_heartenemy */
+  {{{9, obj_smallcheckers_enemy, 440, 150}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_128_0}, /* obj_smallcheckers_enemy */
+  {{{16, obj_clubsenemy, 400, 120}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_139_0}, /* obj_clubsenemy */
+  {{{6, obj_heartenemy, 480, 20}, {6, obj_heartenemy, 500, 120}, {6, obj_heartenemy, 460, 220}}, scr_encountersetup_slash_scr_encountersetup_gml_158_0}, /* obj_heartenemy obj_heartenemy obj_heartenemy */
   {{{0, -1, 0, 0}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /*  */
   {{{0, -1, 0, 0}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /*  */
-  {{{10, 253, 480, 120}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_172_0}, /* obj_checkers_enemy */
-  {{{11, 260, 480, 110}, {11, 260, 500, 200}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_185_0}, /* obj_ponman_enemy obj_ponman_enemy */
-  {{{11, 260, 480, 20}, {11, 260, 500, 120}, {11, 260, 460, 220}}, scr_encountersetup_slash_scr_encountersetup_gml_206_0}, /* obj_ponman_enemy obj_ponman_enemy obj_ponman_enemy */
-  {{{7, 285, 400, 30}, {6, 287, 420, 200}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_223_0}, /* obj_clubsenemy obj_heartenemy */
-  {{{13, 273, 480, 140}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_234_0}, /* obj_rabbick_enemy */
-  {{{13, 273, 480, 60}, {13, 273, 460, 180}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_250_0}, /* obj_rabbick_enemy obj_rabbick_enemy */
-  {{{14, 275, 480, 140}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_261_0}, /* obj_bloxer_enemy */
-  {{{14, 275, 480, 60}, {14, 275, 460, 180}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_277_0}, /* obj_bloxer_enemy obj_bloxer_enemy */
-  {{{12, 279, 480, 160}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_292_0}, /* obj_lancerboss2 */
-  {{{15, 252, 480, 140}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_305_0}, /* obj_jigsawryenemy */
-  {{{15, 252, 480, 20}, {15, 252, 500, 120}, {15, 252, 460, 220}}, scr_encountersetup_slash_scr_encountersetup_gml_324_0}, /* obj_jigsawryenemy obj_jigsawryenemy obj_jigsawryenemy */
-  {{{15, 252, 480, 20}, {5, 280, 500, 120}, {6, 287, 460, 220}}, scr_encountersetup_slash_scr_encountersetup_gml_343_0}, /* obj_jigsawryenemy obj_diamondenemy obj_heartenemy */
-  {{{13, 273, 480, 60}, {5, 280, 460, 180}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_358_0}, /* obj_rabbick_enemy obj_diamondenemy */
-  {{{20, 284, 500, 160}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_384_0}, /* obj_joker */
+  {{{10, obj_checkers_enemy, 480, 120}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_172_0}, /* obj_checkers_enemy */
+  {{{11, obj_ponman_enemy, 480, 110}, {11, obj_ponman_enemy, 500, 200}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_185_0}, /* obj_ponman_enemy obj_ponman_enemy */
+  {{{11, obj_ponman_enemy, 480, 20}, {11, obj_ponman_enemy, 500, 120}, {11, obj_ponman_enemy, 460, 220}}, scr_encountersetup_slash_scr_encountersetup_gml_206_0}, /* obj_ponman_enemy obj_ponman_enemy obj_ponman_enemy */
+  {{{7, obj_clubsenemy, 400, 30}, {6, obj_heartenemy, 420, 200}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_223_0}, /* obj_clubsenemy obj_heartenemy */
+  {{{13, obj_rabbick_enemy, 480, 140}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_234_0}, /* obj_rabbick_enemy */
+  {{{13, obj_rabbick_enemy, 480, 60}, {13, obj_rabbick_enemy, 460, 180}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_250_0}, /* obj_rabbick_enemy obj_rabbick_enemy */
+  {{{14, obj_bloxer_enemy, 480, 140}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_261_0}, /* obj_bloxer_enemy */
+  {{{14, obj_bloxer_enemy, 480, 60}, {14, obj_bloxer_enemy, 460, 180}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_277_0}, /* obj_bloxer_enemy obj_bloxer_enemy */
+  {{{12, obj_lancerboss2, 480, 160}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_292_0}, /* obj_lancerboss2 */
+  {{{15, obj_jigsawryenemy, 480, 140}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_305_0}, /* obj_jigsawryenemy */
+  {{{15, obj_jigsawryenemy, 480, 20}, {15, obj_jigsawryenemy, 500, 120}, {15, obj_jigsawryenemy, 460, 220}}, scr_encountersetup_slash_scr_encountersetup_gml_324_0}, /* obj_jigsawryenemy obj_jigsawryenemy obj_jigsawryenemy */
+  {{{15, obj_jigsawryenemy, 480, 20}, {5, obj_diamondenemy, 500, 120}, {6, obj_heartenemy, 460, 220}}, scr_encountersetup_slash_scr_encountersetup_gml_343_0}, /* obj_jigsawryenemy obj_diamondenemy obj_heartenemy */
+  {{{13, obj_rabbick_enemy, 480, 60}, {5, obj_diamondenemy, 460, 180}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_358_0}, /* obj_rabbick_enemy obj_diamondenemy */
+  {{{20, obj_joker, 500, 160}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_384_0}, /* obj_joker */
   {{{0, -1, 0, 0}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /*  */
-  {{{21, 253, 480, 120}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_397_0}, /* obj_checkers_enemy */
-  {{{22, 250, 480, 110}, {22, 250, 500, 200}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_414_0}, /* obj_rudinnranger obj_rudinnranger */
-  {{{23, 288, 480, 110}, {23, 288, 500, 200}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_430_0}, /* obj_headhathy obj_headhathy */
-  {{{23, 288, 480, 20}, {23, 288, 500, 120}, {23, 288, 460, 220}}, scr_encountersetup_slash_scr_encountersetup_gml_449_0}, /* obj_headhathy obj_headhathy obj_headhathy */
-  {{{19, 281, 520, 80}, {18, 282, 540, 240}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_463_0}, /* obj_susieenemy obj_lancerboss3 */
-  {{{13, 273, 480, 20}, {13, 273, 500, 120}, {13, 273, 460, 220}}, scr_encountersetup_slash_scr_encountersetup_gml_484_0}, /* obj_rabbick_enemy obj_rabbick_enemy obj_rabbick_enemy */
-  {{{5, 280, 480, 20}, {6, 287, 500, 120}, {5, 280, 460, 220}}, scr_encountersetup_slash_scr_encountersetup_gml_505_0}, /* obj_diamondenemy obj_heartenemy obj_diamondenemy */
-  {{{0, -1, 0, 0}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /*  */
-  {{{0, -1, 0, 0}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /*  */
-  {{{0, -1, 0, 0}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /*  */
+  {{{21, obj_checkers_enemy, 480, 120}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_397_0}, /* obj_checkers_enemy */
+  {{{22, obj_rudinnranger, 480, 110}, {22, obj_rudinnranger, 500, 200}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_414_0}, /* obj_rudinnranger obj_rudinnranger */
+  {{{23, obj_headhathy, 480, 110}, {23, obj_headhathy, 500, 200}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_430_0}, /* obj_headhathy obj_headhathy */
+  {{{23, obj_headhathy, 480, 20}, {23, obj_headhathy, 500, 120}, {23, obj_headhathy, 460, 220}}, scr_encountersetup_slash_scr_encountersetup_gml_449_0}, /* obj_headhathy obj_headhathy obj_headhathy */
+  {{{19, obj_susieenemy, 520, 80}, {18, obj_lancerboss3, 540, 240}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_463_0}, /* obj_susieenemy obj_lancerboss3 */
+  {{{13, obj_rabbick_enemy, 480, 20}, {13, obj_rabbick_enemy, 500, 120}, {13, obj_rabbick_enemy, 460, 220}}, scr_encountersetup_slash_scr_encountersetup_gml_484_0}, /* obj_rabbick_enemy obj_rabbick_enemy obj_rabbick_enemy */
+  {{{5, obj_diamondenemy, 480, 20}, {6, obj_heartenemy, 500, 120}, {5, obj_diamondenemy, 460, 220}}, scr_encountersetup_slash_scr_encountersetup_gml_505_0}, /* obj_diamondenemy obj_heartenemy obj_diamondenemy */
   {{{0, -1, 0, 0}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /*  */
   {{{0, -1, 0, 0}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /*  */
   {{{0, -1, 0, 0}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /*  */
-  {{{25, 283, 460, 70}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_517_0}, /* obj_king_boss */
+  {{{0, -1, 0, 0}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /*  */
+  {{{0, -1, 0, 0}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /*  */
+  {{{0, -1, 0, 0}, {0, -1, 0, 0}, {0, -1, 0, 0}}, 0xFFFF}, /*  */
+  {{{25, obj_king_boss, 460, 70}, {0, -1, 0, 0}, {0, -1, 0, 0}}, scr_encountersetup_slash_scr_encountersetup_gml_517_0}, /* obj_king_boss */
 };
 const int encounter_count = 41;
