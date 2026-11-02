@@ -106,6 +106,24 @@ static void buttons_tick(void) {
     }
 }
 
+/* BlockPressurePlate: stepped on, it powers the block under it and its neighbours; TNT next to either is lit
+ * (BlockTNT.onNeighborBlockChange): the desert temples' trap */
+static void plates_tick(void) {
+  static int16_t last[3] = {0, -1, 0};
+  int x = ifloor(pl.x), y = ifloor(pl.y), z = ifloor(pl.z), b = world_get(x, y, z);
+  if (b != B_WOODEN_PRESSURE_PLATE && b != B_STONE_PRESSURE_PLATE) {
+    last[1] = -1;
+    return;
+  }
+  if (last[0] == x && last[1] == y && last[2] == z) return;
+  last[0] = (int16_t)x, last[1] = (int16_t)y, last[2] = (int16_t)z;
+  for (int p = 0; p < 2; p++)
+    for (int f = 0; f < 6; f++) {
+      int tx = x + NX[f], ty = y - p + NY[f], tz = z + NZ[f];
+      if (world_get(tx, ty, tz) == B_TNT) world_set(tx, ty, tz, B_AIR), tnt_light(tx, ty, tz, 80);
+    }
+}
+
 /* using an item of the Nether or the End (true: done) */
 static bool dims_use(int k, bool on_block, int x, int y, int z, int b) {
   Stack *h = held();

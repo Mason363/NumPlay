@@ -137,13 +137,18 @@ void world_unique_name(const char *base, char *out) {
  * in, the player as they are, every chest and furnace, the dimensions' state. If NumPlay's NumBlocks
  * saved the world after (the record is not the one the copy goes with), the record wins, the player in
  * the Overworld, and the Nether's and the End's chests and the dimensions' state come back from the copy */
+#define NOLD 8
 typedef struct {
   char magic[4];
   uint32_t time, played;   /* the record's: the copy goes with it */
   int32_t dim;
   Player pl;
   DimsState dst;
+  /* (NBD2) the chunks the world had before NumBlocks.nwa made villages and temples: up to 8 boxes */
+  uint8_t nold, pad[3];
+  int16_t old[NOLD][4];
 } Side;   /* then the tiles */
+#define SIDE1 offsetof(Side, nold)   /* (NBD1: the world's copy made before, without the boxes) */
 static void side_of(int s, char *out) {
   prefix_of(s, out);
   memcpy(out + 3, "rdim.nbx", 9);
@@ -154,7 +159,68 @@ static void known(Stack *s, int n) {
 }
 void tiles_for_numplay(void *t);
 void tiles_merge(const void *t);
-bool gen_old_chunk(int cx, int cz) { return false; }
+
+/* Villages and temples (gen_struct.h) are not made in the chunks a world had before NumBlocks.nwa made them,
+ * so that an old world keeps its look: where it had been, as told when it is first opened since (the
+ * regions of its changes, 3 chunks around, and 6 around the player and their spawn), kept as up to 8 boxes
+ * of chunks (x0, z0, x1, z1) with the world (the side record) */
+static int16_t old_box[NOLD][4];
+static uint8_t n_old;
+bool gen_old_chunk(int cx, int cz) {
+  for (int i = 0; i < n_old; i++)
+    if (cx >= old_box[i][0] && cx <= old_box[i][2] && cz >= old_box[i][1] && cz <= old_box[i][3]) return true;
+  return false;
+}
+static int b_area(const int16_t *b) { return (b[2] - b[0] + 1) * (b[3] - b[1] + 1); }
+static void old_area(int s, float x, float z) {
+  int16_t b[48][4];
+  int n = 0;
+  int ix = (int)x - (x < (int)x), iz = (int)z - (z < (int)z);   /* (floored) */
+  int c[2][2] = {{ix >> 4, iz >> 4}, {pl.spawn_x >> 4, pl.spawn_z >> 4}};
+  for (int k = 0; k < 2; k++)
+    b[n][0] = (int16_t)(c[k][0] - 6), b[n][1] = (int16_t)(c[k][1] - 6), b[n][2] = (int16_t)(c[k][0] + 6),
+    b[n][3] = (int16_t)(c[k][1] + 6), n++;
+  /* the Overworld's change records, "nb3r-3_12.nbe": regions of 4 x 4 chunks */
+  char pre[4], name[40];
+  prefix_of(s, pre);
+  for (int i = 0; plat_record(i, name, sizeof name); i++) {
+    if (memcmp(name, pre, 3) || name[3] != 'r') continue;
+    int v[2], k = 0;
+    const char *p = name + 4;
+    for (; k < 2; k++) {
+      int neg = *p == '-', d = 0;
+      p += neg;
+      if (*p < '0' || *p > '9') break;
+      while (*p >= '0' && *p <= '9') d = d * 10 + (*p++ - '0');
+      v[k] = neg ? -d : d;
+      if (*p++ != (k ? '.' : '_')) break;
+    }
+    if (k < 2) continue;
+    if (n == 48) n--;   /* (a world changed in more places: the last box grows to hold them) */
+    b[n][0] = (int16_t)(v[0] * 4 - 3), b[n][1] = (int16_t)(v[1] * 4 - 3), b[n][2] = (int16_t)(v[0] * 4 + 6),
+    b[n][3] = (int16_t)(v[1] * 4 + 6);
+    n++;
+  }
+  /* to 8 boxes: the two whose union adds least, joined, until they fit */
+  while (n > NOLD) {
+    int bi = 0, bj = 1, best = 0x7fffffff;
+    for (int i = 0; i < n; i++)
+      for (int j = i + 1; j < n; j++) {
+        int16_t u[4] = {b[i][0] < b[j][0] ? b[i][0] : b[j][0], b[i][1] < b[j][1] ? b[i][1] : b[j][1],
+                        b[i][2] > b[j][2] ? b[i][2] : b[j][2], b[i][3] > b[j][3] ? b[i][3] : b[j][3]};
+        int add = b_area(u) - b_area(b[i]) - b_area(b[j]);
+        if (add < best) best = add, bi = i, bj = j;
+      }
+    for (int k = 0; k < 2; k++) {
+      if (b[bj][k] < b[bi][k]) b[bi][k] = b[bj][k];
+      if (b[bj][k + 2] > b[bi][k + 2]) b[bi][k + 2] = b[bj][k + 2];
+    }
+    memmove(b[bj], b[bj + 1], sizeof b[0] * (size_t)(n - bj - 1));
+    n--;
+  }
+  memcpy(old_box, b, sizeof b[0] * (size_t)n);
+  n_old = (uint8_t)n;
+}
 #endif
 
 bool save_world(void) {
@@ -196,8 +262,10 @@ bool save_world(void) {
   {
     Side sd;
     memset(&sd, 0, sizeof sd);
-    memcpy(sd.magic, "NBD1", 4);
+    memcpy(sd.magic, "NBD2", 4);
     sd.time = game_time, sd.played = cur_played, sd.dim = dim, sd.pl = pl, sd.dst = dst;
+    sd.nold = n_old;
+    memcpy(sd.old, old_box, sizeof old_box);
     char rn[16];
     side_of(slot, rn);
     uint8_t *c = (uint8_t *)edits_scratch(sizeof sd + tl);
@@ -248,15 +316,24 @@ bool load_world(int s) {
     uint32_t sl;
     const uint8_t *c = plat_load(rn, &sl);
     Side sd;
-    if (c && sl == sizeof sd + tl && !memcmp(c, "NBD1", 4)) {
-      memcpy(&sd, c, sizeof sd);
+    memset(&sd, 0, sizeof sd);
+    /* (NBD1, from before the villages: no boxes; the world's are found below) */
+    uint32_t hl2 = c && !memcmp(c, "NBD2", 4) ? sizeof sd : c && !memcmp(c, "NBD1", 4) ? SIDE1 : 0;
+    if (hl2 && sl == hl2 + tl) {
+      memcpy(&sd, c, hl2);
       dst = sd.dst;
       if (sd.time == h.h2.h.time && sd.played == h.h2.played && sd.dim >= 0 && sd.dim <= DIM_END) {
         dim = sd.dim, pl = sd.pl;
-        memcpy(t, c + sizeof sd, tl);
+        memcpy(t, c + hl2, tl);
       } else
-        tiles_merge(c + sizeof sd);
+        tiles_merge(c + hl2);
     }
+    /* where the world had been before NumBlocks.nwa made villages: kept, else found now */
+    if (hl2 == sizeof sd) {
+      n_old = sd.nold > NOLD ? NOLD : sd.nold;
+      memcpy(old_box, sd.old, sizeof old_box);
+    } else if (dim == DIM_OVERWORLD) old_area(s, pl.x, pl.z);
+    else old_area(s, dst.ow_x, dst.ow_z);
   }
 #endif
   char pre[4];
@@ -284,6 +361,7 @@ void new_world(int s, int64_t seed, int mode, bool cheats, int type, const char 
 #if NB_DIMS
   dim = DIM_OVERWORLD;
   memset(&dst, 0, sizeof dst);
+  n_old = 0;   /* (a new world: villages everywhere) */
 #endif
   world_new(seed, pre);
   player_spawn();

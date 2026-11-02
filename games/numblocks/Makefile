@@ -67,12 +67,17 @@ build/dims_test: $(GAME_DIMS) src/plat_host.c tests/dims.c $(HEADERS)
 build/np_load: $(GAME) src/plat_host.c tests/np_load.c $(HEADERS)
 	$(Q) mkdir -p build
 	$(Q) cc $(HOST_FLAGS) $(GAME) src/plat_host.c tests/np_load.c -lm -o $@
-test: build/unit build/unit_np build/dims_test build/np_load
+# villages and desert temples: where they start, their layouts, their blocks, old worlds (structs.c)
+build/structs_test: $(GAME_DIMS) src/plat_host.c tests/structs.c $(HEADERS)
+	$(Q) mkdir -p build
+	$(Q) cc $(HOST_FLAGS) -DNB_DIMS=1 $(GAME_DIMS) src/plat_host.c tests/structs.c -lm -o $@
+test: build/unit build/unit_np build/dims_test build/np_load build/structs_test
 	@mkdir -p build/unit-saves
 	./build/unit
 	./build/unit_np
 	./build/dims_test
 	./build/np_load
+	./build/structs_test
 # every pixel traced: the reference the adaptive picture is checked against
 build/play_ref: $(GAME_DIMS) src/plat_host.c tests/play.c $(HEADERS)
 	$(Q) mkdir -p build
