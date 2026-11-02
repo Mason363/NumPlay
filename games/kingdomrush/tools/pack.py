@@ -305,6 +305,12 @@ def ui_sprites():
     anim("UI_FLAGSEL", ui_frames("flagdone", [3]), 1)
     anim("UI_FLAGSTAR", ui_frames("flagstar", [1, 2]), 1)
     anim("UI_FLAGHEROIC", ui_frames("flagheroic", [60]), 1)
+    # the map's road (its frames "1to2End" to "11to12End": the way so far), origin at the map's top left
+    anim("UI_ROAD", ui_frames("road", [18, 34, 53, 81, 109, 146, 159, 175, 200, 225, 250]), 1)
+    # MapStarProgress: its plank and star
+    sp = f"{KR}/render/u/starprog/1.png"
+    crop_icon("UI_STAR", sp, (101, 63, 115, 77))
+    crop_icon("UI_STARBOARD", sp, (52, 56, 120, 84))
     # the upgrades' icons (in the game's order: barracks, archers, mages, artillery, rain, reinforcements) and their
     # frames: available, locked, bought
     anim("UI_UPICONS", ui_frames("upicons", range(1, 31)), 1)
@@ -663,7 +669,27 @@ def write_strings():
                 rows.append(("", ""))
     out.append("static const char *const notes[][2] = {")
     out += [f"  {{{c_str(a)}, {c_str(b)}}}," for a, b in rows]
-    out += ["};", "const char *note_title(int n) { return n > 0 && n < (int)(sizeof notes / sizeof notes[0]) ? notes[n][0] : 0; }",
+    out.append("};")
+    # the picture beside each: an enemy (1, its type), a spell (2, 1 fire 2 reinforcements), a tower (3, TW_*)
+    tw = {"RANGERS": "TW_RANGER", "ARCANE": "TW_ARCANE", "MUSKETEERS": "TW_MUSKETEER", "BARBARIANS": "TW_BARBARIAN",
+          "SORCERER": "TW_SORCERER", "TESLA": "TW_TESLA", "PALADINS": "TW_PALADIN", "BFG": "TW_BFG"}
+    pics = []
+    for n in NOTES:
+        if n.startswith("NotificationEnemy") and "Enemy" + n[len("NotificationEnemy"):] in ENEMY_IDS:
+            pics.append(f"{{1, {ENEMY_IDS['Enemy' + n[len('NotificationEnemy'):]]}}}")
+        elif n.startswith("NotificationPower"):
+            pics.append("{2, 1}" if "Fireball" in n else "{2, 2}")
+        elif isinstance(TOWER_OF.get(n), str):
+            pics.append(f"{{3, {tw[TOWER_OF[n]]}}}")
+        else:
+            pics.append("{0, 0}")
+    out.append("static const uint8_t note_pics[][2] = {" + ", ".join(pics) + "};")
+    out.append("int note_pic(int n, int *arg) {")
+    out.append("  if (n <= 0 || n >= (int)(sizeof note_pics / sizeof note_pics[0])) return 0;")
+    out.append("  *arg = note_pics[n][1];")
+    out.append("  return note_pics[n][0];")
+    out.append("}")
+    out += ["const char *note_title(int n) { return n > 0 && n < (int)(sizeof notes / sizeof notes[0]) ? notes[n][0] : 0; }",
             "const char *note_text(int n) { return n > 0 && n < (int)(sizeof notes / sizeof notes[0]) && notes[n][1][0] ? notes[n][1] : 0; }", ""]
     out.append("static const char *const enemy_desc_s[EN_COUNT] = {")
     out += [f"  {c_str(S.get('ENEMY_' + ENEMY_KEY[e] + '_DESCRIPTION', ''))}," for e in ENEMIES]
@@ -718,8 +744,6 @@ def main():
     a[127:139, 282:320] = a[115:127, 282:320]   # (the version number at the right edge)
     pic("TITLE", Image.fromarray(a).convert("RGB"))
     m = Image.open(f"{KR}/render/u/map/1.png").convert("RGBA")
-    road = Image.open(f"{KR}/render/u/road/250.png").convert("RGBA")
-    m.alpha_composite(road)
     mp = m.crop((366, 366 + MAP_Y0, 686, 606 + MAP_Y0))
     pic("MAP", mp.convert("RGB"))
     define("MAP_Y0", MAP_Y0)

@@ -3,6 +3,7 @@
 #define KR_STRINGS_H
 const char *note_title(int n);
 const char *note_text(int n);         /* 0 when there is nothing to show */
+int note_pic(int n, int *arg);        /* 1 an enemy, 2 a spell, 3 a tower (TW_*), 0 none */
 const char *enemy_desc(int type);
 const char *level_title(int i);
 const char *level_story(int i);

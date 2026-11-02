@@ -597,7 +597,7 @@ void enemy_step(Enemy *e) {
   if (e->dead) return;
   debuffs(e);
   if (e->dead || !e->alive) return;
-  if (e->rage_t > 0 && e->type != EN_NECROMANCER && --e->rage_t == 0) {   /* the chieftain's rage ends */
+  if (e->rage_t > 0 && (e->type == EN_TROLL || e->type == EN_TROLLAXETHROWER || e->type == EN_TROLLCHIEFTAIN) && --e->rage_t == 0) {   /* the chieftain's rage ends */
     e->min_dmg = (int16_t)(e->min_dmg - S_enemies_trollChieftain_rageAddedMinDamage);
     e->max_dmg = (int16_t)(e->max_dmg - S_enemies_trollChieftain_rageAddedMaxDamage);
     e->speed -= S_enemies_trollChieftain_rageAddedSpeed, e->base_speed -= S_enemies_trollChieftain_rageAddedSpeed;

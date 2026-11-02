@@ -105,6 +105,11 @@ void map_step(void) {
 
 static void map_band(void) {
   pic_draw(PIC_MAP, 0, 0);
+  /* the road so far: to the stage after the last one won */
+  int won = 0;
+  while (won < NLEVELS && g.p.camp[won]) won++;
+  if (won > 11) won = 11;
+  if (won) spr_anim(AN_UI_ROAD, won - 1, false, 0, -MAP_Y0, false);
   for (int i = 0; i < NLEVELS; i++) {
     if (!unlocked(i)) continue;
     int x = fx(i), y = fy(i);
@@ -120,43 +125,40 @@ static void map_band(void) {
       spr_anim(AN_UI_FLAGNEW, 0, false, x, y, false);
   }
   /* the stars: won, and free to spend */
-  if (gfx_rows(2, 18)) {
-    gfx_panel(2, 2, 74, 17, RGB(0x2A1A0C), RGB(0xC09A5A));
+  if (gfx_rows(0, 30)) {   /* MapStarProgress: the stars won */
+    spr_anim(AN_UI_STARBOARD, 0, false, 248, 0, false);
     char s[24];
     snprintf(s, sizeof s, "%d/%d", stars_won(), stars_max());
-    spr_anim(AN_UI_FLAGSTAR, 1, false, 5, 4, false);
-    gfx_text(FONT_HUD, 22, 3, s, C_GOLD);
+    gfx_text_oc(FONT_HUD, 278, 6, s, WHITE);
   }
   if (!win_open) {
     char s[64];
-    snprintf(s, sizeof s, "Arrows choose   OK play %s   0 upgrades (%d stars)", level_title(g.map_sel), stars_free());
+    snprintf(s, sizeof s, "OK play %s    0 upgrades", level_title(g.map_sel));
     key_line(s);
     return;
   }
   /* LevelSelect: the stage's title, its story, its three modes */
   int i = g.map_sel;
-  if (!gfx_rows(30, 180)) return;
-  panel(30, 30, 260, 176);
-  gfx_text_oc(FONT_BIG, 160, 36, level_title(i), C_GOLD);
-  char story[200];
-  snprintf(story, sizeof story, "%s", level_story(i));
-  if (strlen(story) > 180) strcpy(story + 176, "...");
-  gfx_text_box(FONT_TEXT, 42, 64, 236, story, C_TEXT);
-  static const char *const names[3] = {"Campaign", "Heroic", "Iron"};
-  for (int m = 0; m < 3; m++) {
-    int x = 75 + 85 * m, y = 150;
-    bool open = mode_open(i, m), sel = m == win_mode;
-    gfx_panel(x - 36, y, 72, 20, sel ? RGB(0xE0A020) : RGB(0x5A3E20), sel ? WHITE : RGB(0xC09A5A));
-    gfx_text_c(FONT_HUD, x, y + 3, names[m], !open ? C_DIM : sel ? RGB(0x2A1A0C) : C_TEXT);
-    bool done = m == 0 ? g.p.camp[i] > 0 : m == 1 ? g.p.heroic[i] : g.p.iron[i];
-    if (done) spr_anim(AN_UI_FLAGSTAR, 1, false, x + 26, y - 6, false);
+  if (gfx_rows(4, 220)) {
+    panel(4, 4, 312, 220);
+    gfx_text_oc(FONT_BIG, 160, 8, level_title(i), C_GOLD);
+    gfx_text_box(FONT_TEXT, 16, 36, 290, level_story(i), C_TEXT);
+    static const char *const names[3] = {"Campaign", "Heroic", "Iron"};
+    for (int m = 0; m < 3; m++) {
+      int x = 75 + 85 * m, y = 180;
+      bool open = mode_open(i, m), sel = m == win_mode;
+      gfx_panel(x - 36, y, 72, 20, sel ? RGB(0xE0A020) : RGB(0x5A3E20), sel ? WHITE : RGB(0xC09A5A));
+      gfx_text_c(FONT_HUD, x, y + 3, names[m], !open ? C_DIM : sel ? RGB(0x2A1A0C) : C_TEXT);
+      bool done = m == 0 ? g.p.camp[i] > 0 : m == 1 ? g.p.heroic[i] : g.p.iron[i];
+      if (done) spr_anim(AN_UI_STAR, 0, false, x + 24, y - 8, false);
+    }
+    const char *rule = win_mode == 0 ? "Lose a life for each enemy that gets through."
+                       : !mode_open(i, win_mode) ? "Win this stage with 3 stars to open it."
+                       : win_mode == 1 ? "6 elite waves, 1 life, upgrades capped."
+                                       : "1 big wave, 1 life, some towers barred.";
+    gfx_text_c(FONT_SMALL, 160, 206, rule, C_DIM);
   }
-  const char *rule = win_mode == 0 ? "Defend the realm. Lose a life for each enemy that gets through."
-                     : !mode_open(i, win_mode) ? "Win this stage with 3 stars to open it."
-                     : win_mode == 1 ? "6 elite waves, 1 life, upgrades capped."
-                                     : "1 big wave, 1 life, some towers barred.";
-  gfx_text_c(FONT_SMALL, 160, 176, rule, C_DIM);
-  gfx_text_c(FONT_SMALL, 160, 190, "Left Right mode   OK fight   Back close", C_TEXT);
+  key_line("Left Right mode   OK fight   Back close");
 }
 void map_draw(void) { gfx_frame(map_band); }
 
@@ -232,7 +234,7 @@ static void upgrades_band(void) {
   /* stars to spend, and what the chosen one does */
   char s[48];
   snprintf(s, sizeof s, "%d", stars_free());
-  spr_anim(AN_UI_FLAGSTAR, 1, false, UPG_X + 8, 214, false);
+  spr_anim(AN_UI_STAR, 0, false, UPG_X + 8, 213, false);
   gfx_text_o(FONT_HUD, UPG_X + 25, 213, s, C_GOLD);
   if (gfx_rows(0, 240)) {
     const char *nm = upgrade_name(up_col, up_row), *ds = upgrade_desc(up_col, up_row);

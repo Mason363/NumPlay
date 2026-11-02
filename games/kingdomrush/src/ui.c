@@ -3,6 +3,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include "anim.h"
+#include "game.h"
 #include "gfx.h"
 #include "settings.h"
 #include "special.h"
@@ -109,12 +111,13 @@ void draw_ring(const RingItem *it, int n, int sel, int cx, int cy, int cash) {
     int slot = anim_slot(AN_UI_ICONS, it[i].icon - 1, false);
     bool afford = it[i].action == RA_SELL || it[i].action == RA_RALLY || it[i].cost <= cash;
     bool done = it[i].max && it[i].level >= it[i].max;
-    if (i == sel) {
-      gfx_ellipse_fill(x, y, 11, 11, RGB(0xFFE14D), 32);
-      gfx_ellipse(x, y, 12, 12, RGB(0x6A4A00), 32);
+    if (it[i].locked || !afford || done) spr_frame_tint(slot, x, y, false, RGB(0x302820), 18);
+    else spr_frame(slot, x, y, false);
+    if (i == sel) {   /* the chosen one: a bright ring */
+      gfx_ellipse(x, y, 11, 11, RGB(0xFFE14D), 32);
+      gfx_ellipse(x, y, 12, 12, RGB(0xFFE14D), 32);
+      gfx_ellipse(x, y, 13, 13, RGB(0x4A3000), 32);
     }
-    if (it[i].locked || !afford || done) spr_frame_tint(slot, x - 10, y - 10, false, RGB(0x302820), 18);
-    else spr_frame(slot, x - 10, y - 10, false);
     if (it[i].cost && !it[i].locked && !done) {
       char s[8];
       snprintf(s, sizeof s, "%d", it[i].cost);
@@ -404,7 +407,20 @@ void draw_note(int n) {
   if (!gfx_rows(40, 160)) return;
   window(60, 40, 240, 160);
   gfx_text_oc(FONT_HUD, 180, 48, note_title(n), C_GOLD);
-  gfx_text_box(FONT_TEXT, 72, 72, 216, note_text(n), C_TEXT);
+  int h = gfx_text_box(FONT_TEXT, 72, 72, 216, note_text(n), C_TEXT);
+  /* its picture under the words: the enemy walking, the spell, the tower */
+  int arg = 0, kind = note_pic(n, &arg), y = 72 + h + (184 - 72 - h) * 3 / 4;
+  if (kind == 1) {
+    int an = enemy_anim[arg][0];
+    spr_anim(an, (int)(g.ticks % (uint32_t)anim_ticks(an)), false, 180, y, false);
+  } else if (kind == 2) {
+    spr_anim(arg == 1 ? AN_UI_PFIRE_IDLE : AN_UI_PREINF_IDLE, 0, false, 180, y - 4, false);
+  } else if (kind == 3) {
+    Spot t = {0};
+    t.kind = (uint8_t)arg, t.level = 4;
+    draw_base(&t, 180, y, 0);
+    draw_tower(&t, 180, y);
+  }
   gfx_text_c(FONT_SMALL, 180, 184, "OK continue", C_DIM);
 }
 
@@ -417,10 +433,10 @@ void draw_result(bool won, int stars, int mode, int sel, int t) {
       for (int k = 0; k < 3; k++) {
         int x = 150 + 30 * k, y = 100;
         bool on = k < stars && t > 20 + 10 * k;
-        spr_anim(AN_UI_FLAGSTAR, on ? 1 : 0, false, x - 7, y - 8, false);
+        if (on) spr_anim(AN_UI_STAR, 0, false, x - 7, y - 7, false);
+        else spr_frame_tint(anim_slot(AN_UI_STAR, 0, false), x - 7, y - 7, false, RGB(0x302820), 24);
         if (on) gfx_ellipse(x, y, 9, 9, C_GOLD, 12);
       }
-      gfx_text_c(FONT_TEXT, 180, 120, stars == 3 ? "Flawless!" : stars == 2 ? "Well defended" : "The kingdom holds", C_TEXT);
     } else
       gfx_text_c(FONT_TEXT, 180, 100, mode == MODE_HEROIC ? "Heroic Challenge won: 1 star" : "Iron Challenge won: 1 star", C_TEXT);
   } else

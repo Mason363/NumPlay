@@ -126,6 +126,11 @@ static void test_numbers(void) {
 
 /* ------------------------------------------------------------------ a general */
 static int bot_style;
+static int alive_enemies(void) {
+  int n = 0;
+  for (int i = 0; i < MAX_ENEMIES; i++) n += B.en[i].alive && !B.en[i].dead && i != B.veznan;
+  return n;
+}
 static void general(void) {
   /* spells: on the enemy furthest along */
   int best = -1;
@@ -172,11 +177,11 @@ static int play_battle(int level, int mode, bool full_upgrades, int *lives) {
   battle_start(level, mode);
   for (int t = 0; t < 40; t++) battle_step();
   battle_call_wave();
-  for (int t = 0; t < 30 * 60 * 20 && B.state != LS_WIN && B.state != LS_OVER; t++) {
+  for (int t = 0; t < 30 * 60 * 60 && B.state != LS_WIN && B.state != LS_OVER; t++) {
     battle_step();
     if (t % 15 == 0) general();
     if (B.pending_note) B.pending_note = 0;
-    if (B.flags_up && mode == MODE_IRON) battle_call_wave();
+    if (B.flags_up && (mode == MODE_IRON || alive_enemies() < 4)) battle_call_wave();   /* (the general is in a hurry) */
   }
   *lives = B.lives;
   return B.state;
@@ -300,6 +305,17 @@ int main(int argc, char **argv) {
     int lvl = argc > 3 ? atoi(argv[3]) : 5;
     play_start(lvl, MODE_CAMPAIGN);
     for (int i = 0; i < 40; i++) step(0);
+    static const int notes[] = {1, 3, 17, 24};   /* a spell, an enemy, a tower, a flying enemy */
+    for (int k = 0; k < 4; k++) {
+      int n = notes[k];
+      g.p.seen_note[n >> 3] = (uint8_t)(g.p.seen_note[n >> 3] & ~(1 << (n & 7)));
+      B.pending_note = (uint8_t)n;
+      step(0);
+      game_draw();
+      snprintf(p, sizeof p, "%s/note%d.ppm", argv[2], n);
+      host_shot(p);
+      press(K_OK);
+    }
     battle_call_wave();
     bot_style = 1;
     for (int t = 0; t < 30 * 150; t++) {

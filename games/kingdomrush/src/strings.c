@@ -46,6 +46,12 @@ static const char *const notes[][2] = {
   {"New enemy: Demon Imp", "Flying mischievious infernal creatures that are often seen in the company of gargoyles.. Flying."},
   {"New enemy: Necromancer", "Master of the dark arts, the Necromancer summons undead minions to do their bidding. Summons undead, Ranged attack."},
 };
+static const uint8_t note_pics[][2] = {{0, 0}, {2, 2}, {2, 1}, {1, 0}, {1, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {1, 2}, {1, 3}, {0, 0}, {1, 4}, {0, 0}, {1, 5}, {1, 6}, {1, 10}, {3, TW_RANGER}, {1, 8}, {1, 9}, {1, 7}, {3, TW_ARCANE}, {0, 0}, {1, 13}, {1, 14}, {1, 12}, {3, TW_MUSKETEER}, {1, 18}, {1, 17}, {3, TW_BARBARIAN}, {1, 20}, {1, 21}, {1, 19}, {3, TW_SORCERER}, {1, 23}, {1, 24}, {3, TW_TESLA}, {1, 28}, {1, 29}, {1, 27}, {1, 31}, {1, 30}};
+int note_pic(int n, int *arg) {
+  if (n <= 0 || n >= (int)(sizeof note_pics / sizeof note_pics[0])) return 0;
+  *arg = note_pics[n][1];
+  return note_pics[n][0];
+}
 const char *note_title(int n) { return n > 0 && n < (int)(sizeof notes / sizeof notes[0]) ? notes[n][0] : 0; }
 const char *note_text(int n) { return n > 0 && n < (int)(sizeof notes / sizeof notes[0]) && notes[n][1][0] ? notes[n][1] : 0; }
 
