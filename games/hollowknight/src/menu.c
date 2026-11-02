@@ -131,7 +131,15 @@ static void load_game(void) {
     return;
   }
   game_new();
-  if (!save_load(slot) || !game_respawn()) {
+  bool loaded = save_load(slot);
+  if (loaded && !game_respawn()) {
+    /* (its bench in a room this build leaves out, as the bigger build's: Dirtmouth's) */
+    strcpy(g_pd.respawn_scene, "Town");
+    strcpy(g_pd.respawn_marker, "RestBench");
+    g_pd.respawn_type = 1;
+    loaded = game_respawn();
+  }
+  if (!loaded) {
     /* (a file that does not load after all: shown as corrupted) */
     go(MS_PROFILES, slot);
     mn.state[slot] = -1;
