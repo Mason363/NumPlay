@@ -102,6 +102,7 @@ typedef struct {
   ph_body *part[BP_N];
   uint8_t on_ground[BP_N]; /* the display objects' onGround (wheels, triggers, main body) */
   float landing_ms[2];     /* the triggers' landingTime */
+  uint8_t top_seen[2];     /* the triggers have touched a platform top (their table exists) */
   bool started;            /* the run has begun (physics runs) */
   bool accelerating, accel_fresh, held;
   int accel_in_air;        /* accelerationStartedInAir */

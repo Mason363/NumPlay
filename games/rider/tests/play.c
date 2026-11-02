@@ -154,7 +154,7 @@ static bool bot(const rd_run *r, int flips) {
 /* a level ridden by search: pieces of 15 frames, a few ways to hold the button in each, the furthest
  * still riding kept; returns the frames' button in path (1 held), or 0 if none got to the end.
  * A state is the run and Box2D's arena, copied away and back. */
-static int seg_len = 15; /* (the search tries 15, then 11: the path is replayed with the one that worked) */
+static int seg_len = 15; /* (the search tries 15, 11 and 13: the path is replayed with the one that worked) */
 #define SEG seg_len
 #ifndef BEAM
 #define BEAM 20
@@ -254,9 +254,10 @@ static int solve_from(int mode, int level, int bike, uint32_t seed, uint8_t *out
 }
 static int solve_run(int mode, int level, int bike, uint32_t seed, uint8_t *out, int max_segs) {
   int n = 0;
-  for (int k = 0; k < (mode == RUN_LEVEL ? 4 : 1) && !n; k++) {
+  static const int lens[3] = {15, 11, 13};
+  for (int k = 0; k < (mode == RUN_LEVEL ? 6 : 1) && !n; k++) {
     spread = k & 1 ? BEAM : 3; /* (then the plain furthest ones) */
-    seg_len = k < 2 ? 15 : 11;
+    seg_len = lens[k / 2];
     for (int w = 0; w < (mode == RUN_LEVEL ? 8 : 1) && !n; w++) n = solve_from(mode, level, bike, seed, out, max_segs * 15 / seg_len, w);
   }
   spread = 3;

@@ -195,6 +195,14 @@ static void touch_add(rd_run *r, int table, int who, int what, int d) {
   rd_touch *t = &r->touch[r->ntouch++];
   t->table = (uint8_t)table, t->who = (uint8_t)who, t->what = (uint16_t)what, t->n = (int16_t)d;
 }
+/* a trigger's table of platform tops: the game makes it at its first top, and counts nothing before (nil) */
+static int trig_tops(const rd_run *r, int trig) {
+  if (!r->b.top_seen[trig - BP_TRIG1]) return -1;
+  int s = 0;
+  for (int i = 0; i < r->ntouch; i++)
+    if (r->touch[i].table == T_TOP && r->touch[i].who == trig) s += r->touch[i].n;
+  return s;
+}
 static int touch_sum(const rd_run *r, int table, int who) { /* who < 0: anyone */
   int s = 0;
   for (int i = 0; i < r->ntouch; i++)
@@ -413,14 +421,14 @@ static void collision(bool began, uint16_t ta, uint16_t tb) {
   if (oa >= 0) obj_on_collision(r, oa);
   if (ob >= 0) obj_on_collision(r, ob);
   int d = began ? 1 : -1;
-  if (trig >= 0 && (t || bo)) touch_add(r, T_TOP, trig, t ? top : boost, d);
+  if (trig >= 0 && (t || bo)) touch_add(r, T_TOP, trig, t ? top : boost, d), b->top_seen[trig - BP_TRIG1] = 1;
   if (trig >= 0 && bo) touch_add(r, T_BOOST, trig, boost, d);
   if (trig >= 0 && (g || base || en)) touch_add(r, T_DEADLY, trig, g ? ground : base ? 0xFFFF : enemy, d);
   if (mainb >= 0 && (t || bo)) touch_add(r, T_BODY, 0, t ? top : boost, d);
   if (sens >= 0 && t) touch_add(r, T_SENS, sens, top, d);
   if (began) {
     bool just_landed = false;
-    int n_trig = trig >= 0 ? touch_sum(r, T_TOP, trig) : -1, n_body = mainb >= 0 ? touch_sum(r, T_BODY, 0) : -1;
+    int n_trig = trig >= 0 ? trig_tops(r, trig) : -1, n_body = mainb >= 0 ? touch_sum(r, T_BODY, 0) : -1;
     if (trig >= 0 && n_trig == 1) just_landed = in_air(r), set_ground(r, true, trig);
     else if (wheel >= 0) just_landed = in_air(r), set_ground(r, true, wheel);
     else if (mainb >= 0 && n_body == 1) just_landed = in_air(r), timer_cancel(r, TM_SET_GROUND), timer_add(r, 80, TM_SET_GROUND, 0, 0);
@@ -454,7 +462,7 @@ static void collision(bool began, uint16_t ta, uint16_t tb) {
       if (!(l->st & ST_GONE)) l->st |= ST_GONE, r->gems++;
     }
   } else if (!r->ended && (wheel >= 0 || mainb >= 0 || trig >= 0) && (t || bo)) {
-    if (trig >= 0 && touch_sum(r, T_TOP, trig) == 0) {
+    if (trig >= 0 && trig_tops(r, trig) == 0) {
       set_ground(r, false, trig);
       if (touch_sum(r, T_DEADLY, trig) > 0) timer_add(r, 16, TM_DEATH_ENDED, trig, 0);
       if (touch_sum(r, T_TOP, -1) == 0) { /* off the ground: where the flips count from */
@@ -1026,13 +1034,13 @@ static void timers(rd_run *r) {
       r->death_check = false;
       int trig = t.a & 0xFF, mainb = t.a & 0x100, wheel = t.a & 0x200;
       bool tr = trig != 0xFF;
-      int n_trig = tr ? touch_sum(r, T_TOP, trig) : -1, n_body = mainb ? touch_sum(r, T_BODY, 0) : -1;
+      int n_trig = tr ? trig_tops(r, trig) : -1, n_body = mainb ? touch_sum(r, T_BODY, 0) : -1;
       if (t.b & 1) { if (mainb || tr || wheel) instant_death(r); }
       else if ((tr && n_trig == 0) || (mainb && n_body == 0)) { if (t.b & 6) instant_death(r); }
       break;
     }
     case TM_DEATH_ENDED: { /* left the platform while on the side of a ground: dies, or looks again next frame */
-      int n_top = touch_sum(r, T_TOP, t.a), n_dead = touch_sum(r, T_DEADLY, t.a);
+      int n_top = trig_tops(r, t.a), n_dead = touch_sum(r, T_DEADLY, t.a);
       if (n_top == 0 && n_dead > 0) instant_death(r);
       else if (n_dead > 0) timer_add(r, 16, TM_DEATH_ENDED, t.a, 0);
       break;
