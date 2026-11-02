@@ -321,6 +321,11 @@ GAMES = {
     "clashroyale": ("ClashRoyale.nwa", "clashroyale.sav",
                     presses((1500, "ok"), (2200, "ok"), (4000, "1"), (4400, "ok"), (6500, "2"), (6900, "ok")), 9000,
                     presses((1500, "ok")), 5000),
+    # how to play (the first time), then right through the title map into level 1, Back to pause; Home keeps it.
+    # Next time, from the copy, right again: the title map's way back to level 1
+    "catninja": ("CatNinja.nwa", "catninja.sav",
+                 presses((1500, "ok"), (9500, "back")) + [(2500, 9000, K["right"])], 10000,
+                 [(1500, 6000, K["right"])], 6500),
 }
 
 
@@ -388,7 +393,8 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "badtime": "badtime_saves.py", "mahjong": "mahjong_saves.py",
           "rider": "rider_saves.py", "snowrider": "snowrider_saves.py", "templerun": "templerun_saves.py",
           "fnaf2": "fnaf2_saves.py", "fnaf3": "fnaf3_saves.py", "fnaf4": "fnaf4_saves.py", "famidash": "famidash_saves.py",
-          "clashroyale": "clashroyale_saves.py"}
+          "clashroyale": "clashroyale_saves.py",
+          "catninja": "catninja_saves.py"}
 
 
 def paperclips_ok(v):
@@ -429,6 +435,16 @@ def clashroyale_ok(v):
     for x in v[:-4]:
         h = (h ^ x) * 16777619 & 0xFFFFFFFF
     return struct.unpack_from("<I", v, 44)[0] == h
+
+
+def catninja_ok(v):
+    """Cat Ninja's save: "CTN1", version 1, 40 bytes, an FNV-1a sum of the rest at the end"""
+    if len(v) != 40 or v[:4] != b"CTN1" or v[4] != 1:
+        return False
+    h = 2166136261
+    for x in v[:-4]:
+        h = (h ^ x) * 16777619 & 0xFFFFFFFF
+    return struct.unpack_from("<I", v, len(v) - 4)[0] == h
 
 
 def badtime_ok(v):
@@ -661,6 +677,9 @@ CHECKS = {
                  lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 12000),
     # "CRY1", version 1, its size (48): how to play read (guide at 40); after the reinstall, from the copy
     "clashroyale": (lambda v: clashroyale_ok(v) and v[40] == 1,) * 2,
+    # "CTN1", version 1: how to play read (flags at 5), in level 1 (the level at 9); after the reinstall, from the
+    # copy, back in it through the title map and on (level 1 or 2)
+    "catninja": (lambda v: catninja_ok(v) and v[5] & 1 and v[9] == 0, lambda v: catninja_ok(v) and v[5] & 1 and v[9] in (0, 1)),
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept

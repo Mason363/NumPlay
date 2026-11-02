@@ -101,6 +101,7 @@ jobs:
           make -C games/templerun host test
           make -C games/fnaf2 host test
           make -C games/famidash host test
+          make -C games/catninja host test
 
 
 
