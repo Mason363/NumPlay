@@ -16,6 +16,7 @@ ROOMS = {
     "Crossroads_47": ["_NPCs/Tiso Bench NPC", "Stag", "_Scenery/Station Bell", "Stag_Tunnel/Stag_tunnel_Grate",
                       "Stag Blanker"],
     "Fungus1_16_alt": ["Stag", "Station Bell", "Stag_tunnel_Grate", "Stag Blanker"],
+    "Fungus2_02": ["Stag", "Station Bell", "Stag_tunnel_Grate", "Stag Blanker"],
     "Room_Town_Stag_Station": ["Stag", "Station Bell", "Stag_Tunnel/Stag_tunnel_Grate", "Stag Blanker", "Stag Lift",
                                "Station Door", "Gate Switch"],
     "Room_ruinhouse": ["Sly Dazed"],
