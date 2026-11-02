@@ -2,6 +2,13 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.1: Clash Royale
+
+- **Clash Royale:** ClashRoyale.nwa, battles against a bot with 41 cards of the 2016 game, its seven arenas and trophies, with the game's own pictures and numbers.
+- **Temple Run:** the game's own icon.
+- **NumPlay Studio:** search the games. Apps with an .eh_frame section come in, and a Game Boy game too big for the space picked opens the space picker.
+- **Turbo Rush** is no longer in NumPlay.
+
 ## 1.24.0: Five Nights at Freddy's 3's minigames
 
 - **Five Nights at Freddy's 3:** the 8-bit minigames after each night, BB's Air Adventure on CAM 08 and the good ending. All six are in Extras once the game is beaten.
