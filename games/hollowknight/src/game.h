@@ -4,6 +4,7 @@
 
 /* ---------------------------------------------------------------- PlayerData (what a save keeps) */
 #define MAX_PERSIST 1024
+#define MAX_ROOM_BITS 128   /* (the rooms a save keeps bits of: tools/vm.py) */
 #define SCENE_NAME 32
 /* the game's many bools (PlayerData's), by number: new ones only ever added at the end (saves keep them) */
 enum {
@@ -74,14 +75,16 @@ typedef struct {
   uint8_t current_inv_pane;     /* (currentInvPane) */
   uint8_t stag_position1;       /* (stagPosition + 1: 0 none yet, 1 Dirtmouth, 2 Crossroads, 3 Greenpath) */
   uint8_t stations_opened;      /* (stationsOpened) */
-  /* (scenesVisited, scenesMapped (the quill's), scenesEncounteredCocoon (a lifeblood cocoon broken there): by room) */
-  uint8_t rooms_visited[5], rooms_mapped[5], rooms_cocoon[5];
+  uint8_t old_rooms[3][5];      /* (versions 1 and 2: the rooms' bits below, 40 of each) */
   uint8_t map_key_pref;         /* (mapKeyPref: the map's key and its pins shown 0, the pins only 1, neither 2) */
   uint8_t mender_state;         /* (menderState: 1 the sign broken once, 2 the Mender Bug killed) */
   uint8_t reserved[13];
   /* (save version 2 on) the markers placed on the map (placedMarkers_b, _r, _y, _w: their places, 1/100 map units) */
   uint8_t markers_placed[4];
   int16_t markers[4][6][2];
+  /* (save version 3 on) scenesVisited, scenesMapped (the quill's), scenesEncounteredCocoon (a lifeblood cocoon broken
+   * there): by room, the map's own pieces from the last bit down */
+  uint8_t rooms_visited[MAX_ROOM_BITS / 8], rooms_mapped[MAX_ROOM_BITS / 8], rooms_cocoon[MAX_ROOM_BITS / 8];
   /* (saved apart, by the objects' names: their states) */
   uint8_t persist[MAX_PERSIST / 8];
   /* (not saved) */
@@ -89,6 +92,7 @@ typedef struct {
 } PlayerData;
 #define PD_SAVED offsetof(PlayerData, persist)
 #define PD_SAVED_V1 offsetof(PlayerData, markers_placed)   /* (a version 1 save's: no markers) */
+#define PD_SAVED_V2 offsetof(PlayerData, rooms_visited)    /* (a version 2 save's: the rooms' bits in old_rooms) */
 extern PlayerData g_pd;
 static inline bool pd_flag(int f) { return g_pd.flags[f >> 3] >> (f & 7) & 1; }
 /* (equippedCharm_N) */

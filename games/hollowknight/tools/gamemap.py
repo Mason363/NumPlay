@@ -34,7 +34,7 @@ COCOON = "hasPinCocoon"         # (pin_blue_health: SetupMap's, by the rooms a c
 
 
 def build(sprites, texts, res, rooms, pd_flags, room_zone):
-    """rooms: the rooms this part of the game has (their order); pd_flags: PlayerData bools -> flags; room_zone(room) ->
+    """rooms: the rooms by their bits in the save (vm.room_bits); pd_flags: PlayerData bools -> flags; room_zone(room) ->
     its map zone (SceneManager's mapZone)"""
     d = unity.prefab(*GAME_MAP)
     by = {o["path"]: o for o in d["objects"]}

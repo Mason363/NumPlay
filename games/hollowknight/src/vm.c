@@ -14,7 +14,7 @@
 #define MAX_VM_OBJS 48
 #define MAX_VM_ANIMS 20   /* (its objects that animate: an animator, a wave, a fade) */   /* (tools/vm.py: MAX_OBJS, MAX_FSMS, MAX_VARS) */
 #define MAX_VM_FSMS 29
-#define MAX_VM_VARS 232
+#define MAX_VM_VARS 256
 #define MAX_MOVERS 4
 #define NONE 0xFFFF
 #define OWNER 0xFF0F

@@ -5,7 +5,8 @@
 #include "game.h"
 
 #define SAVE_MAGIC 0x56534B48u   /* "HKSV" */
-#define SAVE_VERSION 2   /* (1: PlayerData up to PD_SAVED_V1, loaded with the rest cleared) */
+#define SAVE_VERSION 3   /* (1: PlayerData up to PD_SAVED_V1, 2: up to PD_SAVED_V2, loaded with the rest cleared) */
+#define V2_ROOMS 38      /* (versions 1 and 2: their rooms, then the map's own pieces) */
 
 typedef struct {
   uint32_t magic, version, size, crc;   /* (size, crc: of what follows the header) */
@@ -71,7 +72,7 @@ static const uint8_t *whole(const uint8_t *p, uint32_t len, uint32_t *count, uin
   SaveHead h;
   if (!p || len < sizeof h) return NULL;
   memcpy(&h, p, sizeof h);
-  uint32_t pd = h.version == SAVE_VERSION ? PD_SAVED : h.version == 1 ? PD_SAVED_V1 : 0;
+  uint32_t pd = h.version == SAVE_VERSION ? PD_SAVED : h.version == 2 ? PD_SAVED_V2 : h.version == 1 ? PD_SAVED_V1 : 0;
   if (h.magic != SAVE_MAGIC || !pd || len < sizeof h + pd + 4 || h.size != len - sizeof h ||
       h.crc != crc32(p + sizeof h, h.size))
     return NULL;
@@ -207,6 +208,19 @@ bool save_load(int slot) {
   save_select(slot);
   memset(&g_pd, 0, sizeof g_pd);
   memcpy(&g_pd, p, pd);
+  if (pd < PD_SAVED) {
+    /* (versions 1 and 2: the rooms' bits where they were, the map's own pieces after the rooms; the map's from the
+     * last bit down now) */
+    for (int k = 0; k < 3; k++) {
+      uint8_t *to = k == 0 ? g_pd.rooms_visited : k == 1 ? g_pd.rooms_mapped : g_pd.rooms_cocoon;
+      for (int i = 0; i < 40; i++)
+        if (g_pd.old_rooms[k][i >> 3] >> (i & 7) & 1) {
+          int j = i < V2_ROOMS ? i : MAX_ROOM_BITS - 1 - (i - V2_ROOMS);
+          to[j >> 3] |= (uint8_t)(1 << (j & 7));
+        }
+    }
+    memset(g_pd.old_rooms, 0, sizeof g_pd.old_rooms);
+  }
   /* (counts kept within their arrays whatever the file says) */
   for (int c = 0; c < 4; c++)
     if (g_pd.markers_placed[c] > 6) g_pd.markers_placed[c] = 6;

@@ -172,9 +172,18 @@ SKIP_PATHS = {("Crossroads_04", "_Transition Gates/Mender Door/Inspect"), ("Cros
 # tollbooth Crossroads_16 drops into; the game's Knight comes up to it first by rooms this port leaves out, so here the
 # tollbooth is the way on to Crossroads_21 and the False Knight
 PULLED = {("Crossroads_03", "_Props/Toll Gate Switch")}
-MAX_OBJS, MAX_FSMS, MAX_VARS, MAX_ANIMS = 48, 29, 232, 20   # (src/vm.c)
+MAX_OBJS, MAX_FSMS, MAX_VARS, MAX_ANIMS = 48, 29, 256, 20   # (src/vm.c)
 # map pieces of their own a script marks visited (AddToScenesVisited), as their room's (src/map.c: after the rooms)
 MAP_SCENES = {"Crossroads_21_b": "Crossroads_21"}
+MAX_ROOM_BITS = 128   # (src/game.h)
+
+
+def room_bits(rooms):
+    """Each room's bit in the save's lists (scenesVisited...), by its place in the list: the rooms, then the map's own
+    pieces (MAP_SCENES) from the last bit down (None: no room)"""
+    out = list(rooms) + [None] * (MAX_ROOM_BITS - len(rooms) - len(MAP_SCENES)) + list(MAP_SCENES)[::-1]
+    assert len(out) == MAX_ROOM_BITS
+    return out
 # the grubs in this part of the game (Crossroads_03, Fungus1_21): the Grubfather's rewards past them never come
 GRUBS = 2
 # the ints ConvertIntToString turns into strings here (the Grubfather's rewards given)
@@ -1330,7 +1339,7 @@ class Compiler:
             if beh == "GameManager" and m == "AddToScenesVisited":
                 names = self.string_values(args[0]["s"] if isinstance(args[0], dict) else args[0])
                 assert len(names) == 1 and names[0] in MAP_SCENES, names
-                return self.emit("SceneVisited", {"room": len(ROOM_NAMES) + list(MAP_SCENES).index(names[0])})
+                return self.emit("SceneVisited", {"room": room_bits(ROOM_NAMES).index(names[0])})
             if beh == "GameMap" and m == "SetupMap":
                 return None   # (the map: drawn as PlayerData has it, src/map.c)
             if beh == "HeroPlatformStick" and m in ("Activate", "Deactivate"):
@@ -1598,7 +1607,7 @@ def prepare(rooms, sprites, texts):
     global PIECE_SPRITES
     PIECE_SPRITES = sprites.id
     ROOM_NAMES[:] = rooms
-    assert len(rooms) + len(MAP_SCENES) <= 40   # (src/game.h: rooms_visited's bits)
+    assert len(rooms) + len(MAP_SCENES) <= MAX_ROOM_BITS   # (src/game.h: rooms_visited's bits)
     for name, prefixes in ROOMS.items():
         if name not in rooms:
             continue

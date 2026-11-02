@@ -13,6 +13,7 @@
   out of the view, and the view never jumping
 - a bench: sat on, the inventory opened, a charm equipped, then up again (atBench off)
 - the soul orb: dark with no soul, white with its liquid when full
+- a version 2 save: loaded, its rooms' bits where they are now
 - the charms: OK changes none away from a bench; at one, equipped (its effect on), none past the notches, unequipped,
   overcharmed on the fifth try and off again, kept by Home in the inventory and a load
 - the stag stations: each seen (their blanker faded out), come in by its gate, by the stag (called by its bell) and
@@ -109,6 +110,15 @@ def main():
     orb = shades[0] < 80 and shades[1] > 200
     results.append(report("the soul orb filled", rc, out if orb else out + "\nFAIL its middle: %.0f empty, %.0f full" % tuple(shades),
                           ("FAIL",)))
+    # a version 2 save (Crossroads_47's bench; rooms 19 and 20 visited, 20 mapped, and the map's piece of Crossroads_21
+    # at bit 38, as it was then): loaded, its rooms where they are now, the map's piece at the last bit
+    with tempfile.TemporaryDirectory() as saves:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "save_v2.sav"), "rb") as f, \
+                open(os.path.join(saves, "hk1.sav"), "wb") as g:
+            g.write(f.read())
+        rc, out = play("--room", "Crossroads_47", "--play", "*20", env={"HKSAVES": saves, "HKLOAD": "0", "HKPD": "1"})
+    rooms = next((l for l in out.splitlines() if l.startswith("rooms:")), "")
+    results.append(report("a version 2 save", rc, out if rooms == "rooms: 19 20m 127m" else out + "\nFAIL " + rooms, ("FAIL",)))
     with ThreadPoolExecutor(JOBS) as pool:
         walks = list(pool.map(lambda w: play("--gates", "wander:all:%d:%d" % w, env={"HKFAST": "1"} if w[0] % 2 else None), WALKS))
     for (seed, ticks), (rc, out) in zip(WALKS, walks):

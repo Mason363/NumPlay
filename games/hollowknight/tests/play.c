@@ -1439,6 +1439,11 @@ int main(int argc, char **argv) {
              g_pd.trinkets[0], g_pd.trinkets[1], g_pd.trinkets[2], g_pd.trinkets[3], g_pd.charms_owned, np, g_pd.health,
              g_pd.health_blue, g_pd.mp, (int)g_pd.geo, g_pd.grubs_collected, g_pd.max_health, g_pd.heart_pieces,
              g_pd.vessel_fragments, g_pd.mp_reserve_max, g_pd.shaman, g_pd.fireball_level);
+      /* (the rooms visited and mapped, by their bits) */
+      printf("rooms:");
+      for (int i = 0; i < MAX_ROOM_BITS; i++)
+        if (g_pd.rooms_visited[i >> 3] >> (i & 7) & 1) printf(" %d%s", i, g_pd.rooms_mapped[i >> 3] >> (i & 7) & 1 ? "m" : "");
+      printf("\n");
     }
     return 0;
   }

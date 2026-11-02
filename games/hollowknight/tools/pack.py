@@ -6,8 +6,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import unity, scene, visible, art, actors, coll, ents, font, text, vm
 
-SRC = os.path.join(HERE, "..", "src")
-ALL_ROOMS = [l.strip() for l in open(os.path.join(HERE, "rooms.txt")) if l.strip() and not l.startswith("#")]
+SRC = os.environ.get("HK_OUT") or os.path.join(HERE, "..", "src")
+# HK_XL=1: the bigger game, the rooms past Greenpath too (rooms_xl.txt, after the others: theirs keep their numbers),
+# into data_xl.bin and data_xl.h
+XL = os.environ.get("HK_XL") == "1"
+OUT = "data_xl" if XL else "data"
+ALL_ROOMS = [l.strip() for f in ["rooms.txt"] + ([os.environ.get("HK_XL_ROOMS", "rooms_xl.txt")] if XL else [])
+             for l in open(os.path.join(HERE, f)) if l.strip() and not l.startswith("#")]
 # (scenes loaded with others are part of those: two variants of the room, by a PlayerData bool)
 ROOMS = [r for r in ALL_ROOMS if r not in scene.additive_scenes(ALL_ROOMS)]
 VARIANT_ROOMS = [r for r in ROOMS if scene.additive(r)]
@@ -513,7 +518,7 @@ def main():
         fleurs["TUTE_" + name] = "{%d, %.4ff, %.4ff}" % (s, kx, ky)
     # the focus tutorial King's Pass's first tablet shows (Focus_prompt_temp, the HUD's where it is): its picture, its
     # lines (Prompts: in the message's style) by their rects' tops, centred or ending at x, the key to hold (Cast's: its
-    # box's left); a line no nearer the one above than its height (the text bigger)
+    # box's left); the lines where the game has them (the text bigger, they still clear each other and the picture)
     fdoc = unity.scene("Tutorial_01")
     fby = {o["path"]: o for o in fdoc["objects"]}
     froot = "_Props/Tut_tablet_top/Focus_prompt_temp"
@@ -533,9 +538,6 @@ def main():
         top = q["pos"][1] + ((1 - tc["m_pivot"]["y"]) * h - mg["y"]) * k
         al = tm["m_textAlignment"] % 4
         assert al in (1, 2), n
-        if rows:
-            top = min(top, prev - text.STYLES["MSG"][2] / text.HUD_PX)
-        prev = top
         rows.append("{%d, %.4ff, %.4ff, %d}" % (TEXTS.id(gt["sheetName"], gt["convName"], "MSG"),
                                                 (x0 + x1) / 2 if al == 1 else x1, top, al - 1))
     fleurs["FOCUS_PROMPT_TEXTS"] = "{%s}" % ", ".join(rows)
@@ -569,7 +571,7 @@ def main():
     fleurs.update(collect.build())
     fleurs.update(stag.build(SPRITES, TEXTS, hud_res, actors.clip_id, ents.pd_flags(), vm.STR.id, ROOMS))
     import gamemap
-    fleurs.update(gamemap.build(SPRITES, TEXTS, hud_res, list(ROOMS) + list(vm.MAP_SCENES), ents.pd_flags(),
+    fleurs.update(gamemap.build(SPRITES, TEXTS, hud_res, vm.room_bits(ROOMS), ents.pd_flags(),
                                 lambda r: scene.settings(unity.scene(vm.MAP_SCENES.get(r, r))).get("map_zone") or 0))
     fleurs["ROOM_ZONES"] = "{%s}" % ", ".join(str(scene.settings(unity.scene(r)).get("map_zone") or 0) for r in ROOMS)
     for i, item in enumerate(text.MSGS):
@@ -781,10 +783,10 @@ def main():
         table += struct.pack("<II", pos + len(body), len(secs[k].b))
         body += secs[k].b
     data = head + table + body
-    open(os.path.join(SRC, "data.bin"), "wb").write(data)
+    open(os.path.join(SRC, OUT + ".bin"), "wb").write(data)
     sizes = {k: len(secs[k].b) for k in SECTIONS}
-    print("data.bin", len(data), sizes, "%.0fs" % (time.time() - t0))
-    with open(os.path.join(SRC, "data.h"), "w") as f:
+    print(OUT + ".bin", len(data), sizes, "%.0fs" % (time.time() - t0))
+    with open(os.path.join(SRC, OUT + ".h"), "w") as f:
         f.write("/* made by tools/pack.py */\n#pragma once\n")
         for i, k in enumerate(SECTIONS):
             f.write("#define SEC_%s %d\n" % (k, i))

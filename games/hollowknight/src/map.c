@@ -45,9 +45,9 @@ static bool held(void) { return g_hero.keys & K_MAP; }
 static bool pressed(void) { return (g_hero.keys & K_MAP) && !(g_hero.prev_keys & K_MAP); }
 
 /* ---------------------------------------------------------------- PlayerData's lists */
-static bool bit(const uint8_t *b, int i) { return i >= 0 && i < 40 && (b[i >> 3] >> (i & 7) & 1); }
+static bool bit(const uint8_t *b, int i) { return i >= 0 && i < MAX_ROOM_BITS && (b[i >> 3] >> (i & 7) & 1); }
 static void set_bit(uint8_t *b, int i) {
-  if (i >= 0 && i < 40) b[i >> 3] |= (uint8_t)(1 << (i & 7));
+  if (i >= 0 && i < MAX_ROOM_BITS) b[i >> 3] |= (uint8_t)(1 << (i & 7));
 }
 
 void map_room_entered(void) { set_bit(g_pd.rooms_visited, g_room.id); }   /* (SceneManager: scenesVisited) */
