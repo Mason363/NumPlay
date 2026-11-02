@@ -61,7 +61,8 @@ extern uint8_t *gen_hi;                             /* (gen.c) the ninth bits of
 void pearl_land(float x, float y, float z);
 void dims_explode(float x, float y, float z, float power, bool fire);   /* (mob.c) */
 void dims_spawners_tick(void);                                         /* (mob.c) the fortresses' blaze spawners */
-int gen_fortress_spawners(int x, int z, int *out, int n);              /* (gen.c) theirs near there: x, y, z */        /* (mob.c) the player's ender pearl lands there */
+int gen_fortress_spawners(int x, int z, int *out, int n);              /* (gen.c) theirs near there: x, y, z */
+int gen_dungeon_spawners(int x, int z, int *out, int n);   /* (gen.c) the dungeons' near there: x, y, z, mob */        /* (mob.c) the player's ender pearl lands there */
 enum { SKIN_CRYSTAL = 16, SKIN_DRAGON = 17 };   /* (the big skins: data.h's skin_crystal_px, skin_dragon_px) */
 void dims_credits(void);
 void credits_open(void);   /* (gui.c) GuiWinGame */

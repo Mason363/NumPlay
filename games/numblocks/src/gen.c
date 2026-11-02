@@ -113,6 +113,26 @@ static int stronghold_prepare(int cx, int cz);
 static void structs_slab(int cx, int cz, void *smem);
 static int structs_populate(void);
 static void struct_cache(void *mem);
+/* the dungeons' spawners in the chunks made last (the game runs them): where, the mob (0 skeleton, 1 zombie,
+ * 2 spider) */
+static struct {
+    int16_t x, z;
+    uint8_t y, mob;
+} gsp[4];
+static uint8_t gsp_next;
+static void gen_spawner_made(int x, int y, int z, int mob) {
+    for (int i = 0; i < 4; i++)
+        if (gsp[i].x == x && gsp[i].y == y && gsp[i].z == z && gsp[i].mob != 255) return;
+    int i = gsp_next++ & 3;
+    gsp[i].x = (int16_t)x, gsp[i].y = (uint8_t)y, gsp[i].z = (int16_t)z, gsp[i].mob = (uint8_t)mob;
+}
+int gen_dungeon_spawners(int x, int z, int *out, int n) {
+    int k = 0;
+    for (int i = 0; i < 4 && k < n; i++)
+        if (gsp[i].mob != 255 && gsp[i].x - x <= 24 && x - gsp[i].x <= 24 && gsp[i].z - z <= 24 && z - gsp[i].z <= 24)
+            out[k * 4] = gsp[i].x, out[k * 4 + 1] = gsp[i].y, out[k * 4 + 2] = gsp[i].z, out[k * 4 + 3] = gsp[i].mob, k++;
+    return k;
+}
 #endif
 
 /* The float arithmetic here must be done as written (IEEE single precision, each operation
@@ -3758,7 +3778,12 @@ static void dungeon(int X, int Y, int Z) {
             }
         }
     put(X, Y, Z, B_MOB_SPAWNER, R_ALWAYS);
+#if NB_DIMS
+    int mob = RI(4); /* DungeonHooks: skeleton, zombie, zombie, spider */
+    if (in_c_range(X, Y, Z)) gen_spawner_made(X, Y, Z, mob == 0 ? 0 : mob == 3 ? 2 : 1);
+#else
     RI(4); /* mob type */
+#endif
     PV.qon = 0;
 }
 
@@ -5472,6 +5497,7 @@ void gen_init(int64_t seed) {
     last_cx = bc_cx = 0x7fffffff;
 #if NB_DIMS
     struct_cache(0); /* (another world: what its regions hold forgotten) */
+    memset(gsp, 255, sizeof gsp);
 #endif
 }
 

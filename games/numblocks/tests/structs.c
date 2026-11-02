@@ -5,8 +5,8 @@
  *   worked out here again with a java.util.Random of this file's own, for a few seeds;
  *   how villages are laid out: no two pieces in each other, all within reach of the well, kept only with
  *   more than two pieces off the roads;
- *   how they are built: a village's well and a desert temple's trap where 1.8.8 puts them, and the same
- *   blocks whichever rows of a chunk are made;
+ *   how they are built: a village's well, its blacksmith's chest and a desert temple's trap where 1.8.8 puts
+ *   them, and the same blocks whichever rows of a chunk are made; a dungeon's spawner at work;
  *   old worlds: a world saved before NumBlocks.nwa made villages keeps its look where it had been (no
  *   village there), and gets them elsewhere; it remembers where that is. */
 #include <math.h>
@@ -163,6 +163,36 @@ int main(void) {
   SAY("its nine chunks made in rows of 24: %d blocks of the village differ", differ);
   CHECK(differ == 0);
 
+  printf("the blacksmith's chest\n");
+  int smith = -1, sp[8];
+  gen_village_find(-2, -1, out);
+  for (int i = 0; gen_village_piece(i, sp); i++)
+    if (sp[0] == 10) smith = i;   /* (VT_HOUSE2) */
+  CHECK(smith >= 0);
+  if (smith >= 0) {
+    gen_village_piece(smith, sp);
+    /* its chest at (5, 1, 5) of the piece: turned its way, on the floor the ground sets */
+    int f = sp[1], kx = f == 3 ? sp[5] - 5 : f == 1 ? sp[2] + 5 : sp[2] + 5, kz = f == 0 ? sp[7] - 5 : f == 2 ? sp[4] + 5 : sp[4] + 5;
+    make(kx >> 4, kz >> 4, 0, 128, slab, hb);
+    int ky = -1;
+    for (int y = 40; y < 110; y++)
+      if (block_at(slab, hb, kx, y, kz) == B_CHEST) ky = y;
+    SAY("at %d %d %d: a chest %s", kx, ky, kz, ky >= 0 && gen_struct_chest(kx, ky, kz) == 1 ? "with its loot" : "missing");
+    CHECK(ky >= 0 && gen_struct_chest(kx, ky, kz) == 1);
+  }
+
+  printf("a dungeon's spawner\n");
+  gen_init(0);
+  int dsp[8], nd = 0;
+  for (int qz = -6; qz <= 6 && !nd; qz++)
+    for (int qx = -6; qx <= 6 && !nd; qx++) {
+      make(qx, qz, 0, 128, slab, hb);
+      nd = gen_dungeon_spawners(qx * 16 + 8, qz * 16 + 8, dsp, 2);
+      if (nd) CHECK(block_at(slab, hb, dsp[0], dsp[1], dsp[2]) == B_MOB_SPAWNER);
+    }
+  SAY("at %d %d %d, of %s", dsp[0], dsp[1], dsp[2], nd ? dsp[3] == 0 ? "skeletons" : dsp[3] == 1 ? "zombies" : "spiders" : "nothing");
+  CHECK(nd > 0);
+
   printf("a desert temple's trap\n");
   gen_init(12345);
   int t[2];
@@ -190,6 +220,29 @@ int main(void) {
   SAY("a new world: the well's water %d deep", new_well);
   CHECK(new_well >= 10);
   CHECK(save_world());
+  /* the dungeon's spawner at work, in the dark */
+  if (nd) {
+    pl.mode = 0, pl.flying = false;
+    pl.x = dsp[0] + 2.5f, pl.y = (float)dsp[1], pl.z = dsp[2] + 0.5f;
+    world_finish(pl.x, pl.y, pl.z);
+    for (int x = dsp[0] - 3; x <= dsp[0] + 3; x++)   /* (room around it: the dungeon may be crossed by a cave) */
+      for (int z = dsp[2] - 3; z <= dsp[2] + 3; z++) {
+        world_set(x, dsp[1] - 1, z, B_COBBLESTONE);
+        for (int y = dsp[1]; y <= dsp[1] + 2; y++)
+          if (x != dsp[0] || z != dsp[2] || y != dsp[1]) world_set(x, y, z, B_AIR);
+      }
+    static const int kind[3] = {E_SKELETON, E_ZOMBIE, E_SPIDER};
+    int made = 0;
+    for (int k = 0; k < 900 && !made; k++) {
+      host_time += 50;
+      game_frame();
+      pl.health = 20;
+      for (int i = 0; i < N_ENT; i++) made += ents[i].type == kind[dsp[3]];
+    }
+    SAY("it made %d mob(s) of its kind", made);
+    CHECK(made > 0);
+    pl.mode = 1, pl.flying = true, pl.y = 80;
+  }
   /* the world as NumBlocks.nwa saved it before: its side record without the boxes ("NBD1") */
   uint32_t len;
   const uint8_t *d = plat_load("nb1rdim.nbx", &len);
