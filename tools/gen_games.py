@@ -180,19 +180,20 @@ def main():
             "    KEEP(*(SORT_BY_NAME(.rodata.np_games.*)))",
             "    np_games_end = .;",
             "  }"]
-    def block(i, n, roms=False):
+    def block(i, n, roms=False, carts=False):
         p = f".rodata.np.{n}.{i}"
         return [f"  {p} : {{",
                 f"    np_{i}_begin = .;",
                 f"    KEEP(*({p}.0head))",
                 f"    *({p})",
                 f"    *({p}.init)"] + (
-               ["    *(.rodata.np_roms)"] if roms else []) + [
+               ["    *(.rodata.np_roms)"] if roms else []) + (
+               ["    *(.rodata.np_carts)"] if carts else []) + [
                 f"    KEEP(*({p}.shots))",
                 f"    KEEP(*({p}.zztail))",
                 f"    np_{i}_end = .;",
                 "  }"]
-    blocks = {g["id"]: block(g["id"], index[g["id"]], g.get("roms")) for g in manifest}
+    blocks = {g["id"]: block(g["id"], index[g["id"]], g.get("roms"), g.get("carts")) for g in manifest}
     tail = ["  .text : { *(.text .text.*) }",
             "  .rodata : { *(.rodata .rodata.*) }",
             "  .data : { *(.data .data.*) }",

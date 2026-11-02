@@ -1,4 +1,4 @@
-/* NumPlay Studio: pick games, add Retro-Go games, and link a NumPlay.nwa of your own in the
+/* NumPlay Studio: pick games, add Retro-Go games and PICO-8 carts, and link a NumPlay.nwa of your own in the
  * browser. The kit (kit/, made by `make kit` and `make kit-langs`, tools/kit.py) holds the objects
  * the Makefile links NumPlay.nwa from; GNU ld and objcopy, built as WebAssembly (ld/), link them
  * here the same way. */
@@ -45,15 +45,15 @@
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } return null; };
 
-  let kit = null, rg = null;
+  let kit = null, rg = null, pk = null;  // (Retro-Go and NumPico: the games that take your files)
   const kits = {};         // the kit of each language, loaded when picked
   const byId = {};
   const st = {
-    picked: new Set(), order: [], roms: [], apps: [], cap: 'std', lang: 'en',
+    picked: new Set(), order: [], roms: [], apps: [], carts: [], cap: 'std', lang: 'en',
     app: { icon: 'NumPlay', name: 'NumPlay', open: 'numplay', secret: 0, hint: true },
   };
   let custom = null;       // an icon of your own: { url, obj }
-  let romKey = 0, appKey = 0;
+  let romKey = 0, appKey = 0, cartKey = 0;
 
   // ------------------------------------------------------------------ sizes
   const spaces = () => kit.spaces && kit.spaces.length ? kit.spaces :
@@ -75,10 +75,13 @@
     return ids.some((id) => !byId[id].xl) || (rg && roms.length) ? k.base : k.baseAlone || k.base;
   };
   // what a NumPlay of these games (and Game Boy, NES and Sega games, and your own apps) takes
-  function total(ids, roms = st.roms, apps = st.apps) {
+  // (NumPico's carts: its table's head, then each one, npPico.cartBytes)
+  const cartsBytes = (carts) => 12 + carts.reduce((a, c) => a + npPico.cartBytes(c), 0);
+  function total(ids, roms = st.roms, apps = st.apps, carts = st.carts) {
     let n = own(ids, roms);
     for (const id of ids) n += flash(id);
     if (rg && roms.length) n += flash(rg.id) + ROM_HEAD + roms.reduce((a, r) => a + romBytes(r), 0);
+    if (pk && carts.length) n += flash(pk.id) + cartsBytes(carts);
     return n + apps.reduce((a, x) => a + x.flash, 0);
   }
   // a big game too big to go beside the launcher in this space (kit.json "alone") goes on its own there,
@@ -103,6 +106,11 @@
       out.push({ key: rg.id, id: rg.id, name: rg.title, bytes: flash(rg.id) + ROM_HEAD, color: hex(rg.top), icon: rg.icon ? KIT + 'icons/' + rg.id + '.png' : null });
       for (const r of st.roms)
         out.push({ key: 'rom' + r.key, rom: r, name: r.name, bytes: romBytes(r), color: SYS[r.sys].color, tag: SYS[r.sys].tag });
+    }
+    if (pk && st.carts.length) {
+      out.push({ key: pk.id, id: pk.id, name: pk.title, bytes: flash(pk.id) + 12, color: hex(pk.top), icon: pk.icon ? KIT + 'icons/' + pk.id + '.png' : null });
+      for (const c of st.carts)
+        out.push({ key: 'cart' + c.key, cart: c, name: c.title, bytes: npPico.cartBytes(c), color: '#ff004d', icon: c.url });
     }
     for (const a of st.apps) out.push({ key: 'app' + a.key, app: a, name: a.title, bytes: a.flash, color: hex(a.accent.toString(16)), icon: a.url });
     return out;
@@ -165,14 +173,14 @@
         if (t.tag) e.appendChild(el('b')).textContent = t.tag;
         map.appendChild(e);
         tiles.set(t.key, e);
-        if (t.id || t.rom || t.app) e.addEventListener('click', () => (t.rom ? removeRom(t.rom) : t.app ? removeApp(t.app) : toggle(t.id)));
+        if (t.id || t.rom || t.app || t.cart) e.addEventListener('click', () => (t.rom ? removeRom(t.rom) : t.app ? removeApp(t.app) : t.cart ? removeCart(t.cart) : toggle(t.id)));
       }
       e.classList.toggle('free', !!t.free);
       e.style.left = (100 * t.x / W) + '%';
       e.style.top = (100 * t.y / H) + '%';
       e.style.width = (100 * t.w / W) + '%';
       e.style.height = (100 * t.h / H) + '%';
-      e.style.cursor = t.id || t.rom || t.app ? 'pointer' : '';
+      e.style.cursor = t.id || t.rom || t.app || t.cart ? 'pointer' : '';
       if (!t.free)
         e.style.background = 'radial-gradient(130% 130% at 30% 25%, ' + mix(t.color, 0.45) + ' 0%, ' + t.color + ' 45%, ' + mix(t.color, -0.55) + ' 100%)';
       const s = Math.min(t.w, t.h);
@@ -290,6 +298,20 @@
       apps.appendChild(c);
     }
     for (const c of apps.querySelectorAll('.cart[data-k]')) if (!mine.has(c.dataset.k)) c.remove();
+    const p8 = $('#p8-carts'), ours = new Set();
+    for (const k of st.carts) {
+      ours.add('p' + k.key);
+      if (p8.querySelector('[data-k="p' + k.key + '"]')) continue;
+      const c = el('button', 'cart p8 enter', { type: 'button', 'data-k': 'p' + k.key, 'aria-label': 'Remove ' + k.title });
+      c.addEventListener('animationend', () => c.classList.remove('enter'), { once: true });
+      if (k.url) c.style.backgroundImage = 'url(' + k.url + ')';
+      c.dataset.tip = k.title + '|PICO-8 cart, ' + size(npPico.cartBytes(k));
+      c.appendChild(el('span', 'x')).innerHTML =
+        '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+      c.addEventListener('click', () => removeCart(k));
+      p8.appendChild(c);
+    }
+    for (const c of p8.querySelectorAll('.cart[data-k]')) if (!ours.has(c.dataset.k)) c.remove();
   }
 
   // ------------------------------------------------------------------ the game on the screen
@@ -406,12 +428,45 @@
     render();
   }
 
+  // ------------------------------------------------------------------ PICO-8 carts (NumPico)
+  // a cart's label as a picture, for its chip and its block on the screen
+  function labelUrl(label) {
+    if (!label) return null;
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    c.getContext('2d').putImageData(new ImageData(npPico.labelRGBA(label), 128, 128), 0, 0);
+    return c.toDataURL('image/png');
+  }
+  async function addCarts(files) {
+    const drop = $('#p8-drop');
+    if (solo()) { bump(drop, 'shake'); toast(byId[solo()].title + " takes the whole calculator, so there's no room for NumPico"); return; }
+    for (const f of files) {
+      let c;
+      try {
+        c = await npPico.readCart(new Uint8Array(await f.arrayBuffer()), f.name);
+      } catch (e) { console.error(e); bump(drop, 'shake'); toast(f.name + " isn't a PICO-8 cart NumPico can read"); continue; }
+      c.key = ++cartKey;
+      c.title = new TextDecoder().decode(c.name) || 'cart';
+      c.url = labelUrl(c.label);
+      if (st.carts.length >= 64) { bump(drop, 'shake'); toast('NumPico holds 64 carts at most'); break; }
+      const over = total(ordered(), st.roms, st.apps, st.carts.concat([c])) - capacity();
+      if (over > 0) { bump(drop, 'shake'); overflow(over); continue; }
+      st.carts.push(c);
+      fetchObj(objPath(pk.id)).catch(() => {});
+    }
+    render();
+  }
+  function removeCart(c) {
+    st.carts = st.carts.filter((x) => x !== c);
+    render();
+  }
+
   // ------------------------------------------------------------------ your own apps
   // An app's .nwa becomes a game of NumPlay the way a big game's does (apps.js). It may only leave undefined what
   // the calculator's installer gives an app (tools/kit.py's check) and what the launcher gives a big game (KIT_API)
   const LOOSE = /^(eadk_|_heap_end$|_data_section_|_bss_section_|np_keyboard_scan$|np_event_get$|np_display_draw_string$|np_sbrk$|numplay_launcher$|__sf$|_printf_float$)/;
   const MAX_GAMES = 96;  // (launcher/src/np.h's NP_MAX_GAMES: games, Retro-Go and apps)
-  const entries = () => ordered().length + (rg && st.roms.length ? 1 : 0) + st.apps.length;
+  const entries = () => ordered().length + (rg && st.roms.length ? 1 : 0) + (pk && st.carts.length ? 1 : 0) + st.apps.length;
   const ascii = (t) => (t || '').replace(/[^\x20-\x7e]/g, '').trim().slice(0, 24);
   const allocBytes = (obj) => npApps.readElf(obj).secs.reduce((n, x) => n + (x.flags & 2 && x.type !== 8 ? align4(x.size) : 0), 0);
   function iconUrlOf(icon) {
@@ -573,7 +628,7 @@
     let h = location.hash.slice(1);
     if (!h) h = store('numplay-studio2') || '';
     const p = new URLSearchParams(h);
-    const known = kit.games.filter((g) => g !== rg).sort((a, b) => (a.xl - b.xl) || ((a.rank || 99) - (b.rank || 99))).map((g) => g.id);
+    const known = kit.games.filter((g) => g !== rg && g !== pk).sort((a, b) => (a.xl - b.xl) || ((a.rank || 99) - (b.rank || 99))).map((g) => g.id);
     const saved = (store('numplay-order2') || '').split(',').filter((id) => known.includes(id));
     const linked = p.has('games') ? p.get('games').split(',').filter((id) => known.includes(id)) : null;
     // the order: the link's picks first, in its order, then the rest as last time, then the kit's
@@ -783,8 +838,9 @@
     await loadKit(st.lang);
     const k = langKit();
     const sel = ordered();
-    const roms = rg && st.roms.length;
+    const roms = rg && st.roms.length, carts = pk && st.carts.length;
     if (roms) sel.push(rg.id);
+    if (carts) sel.push(pk.id);
     const lang = st.lang === 'en' ? '' : st.lang + '/';
     const iconObj = st.app.icon === 'custom' && custom ? Promise.resolve(custom.obj) : fetchObj('variants/' + st.app.icon + '-icon.o');
     const [t, base, arena, icon, ...objs] = await Promise.all([loadTools(), fetchObj(lang + 'base.o'), fetchObj(lang + 'arena.o'), iconObj]
@@ -801,6 +857,10 @@
     if (roms) {
       files['roms.o'] = romObject(romTable(st.roms));
       args.push('roms.o');
+    }
+    if (carts) {  // (in NumPico's block: tools/gen_games.py's script)
+      files['carts.o'] = elfObject([{ name: '.rodata.np_carts', sym: 'np_carts', data: npPico.cartTable(st.carts), align: 4 }]);
+      args.push('carts.o');
     }
     // the launcher shows the games in the order of their entries: yours, not the kit's
     const keep = sel.map((id) => 'KEEP(*(.rodata.np_games.' + String((k.byId[id] || byId[id]).index).padStart(2, '0') + '))')
@@ -863,6 +923,7 @@
       for (const p of [lang + 'base.o', lang + 'arena.o', 'variants/' + (PRESETS[st.app.icon] ? st.app.icon : 'NumPlay') + '-icon.o']) fetchObj(p).catch(() => {});
       for (const id of st.picked) fetchObj(objPath(id)).catch(() => {});
       if (st.roms.length) fetchObj(objPath(rg.id)).catch(() => {});
+      if (st.carts.length) fetchObj(objPath(pk.id)).catch(() => {});
     }).catch(() => {});
   }
 
@@ -1674,7 +1735,7 @@
     // 4. beside it: the big games and your own
     const S = T0 + games.length * GAP + 200;
     const side = $('.side');
-    [...side.querySelectorAll(':scope > .row-head, #retro > .row-head, .drop, .foot')].forEach((n, i) =>
+    [...side.querySelectorAll(':scope > .row-head, #retro > .row-head, #pico > .row-head, .drop, .foot')].forEach((n, i) =>
       anim(n, [{ opacity: 0, transform: 'translateX(26px)' }, { opacity: 1, transform: 'none' }], { duration: 900, delay: S + (i ? 260 + i * 70 : 0), easing: E.out }));
     [...$('#big').children].forEach((b, i) =>
       anim(b, [{ opacity: 0, translate: '18px 0' }, { opacity: 1, translate: '0 0' }], { duration: 800, delay: S + 80 + i * 26, easing: E.out }));
@@ -1760,6 +1821,7 @@
     kit.byId = byId;
     kits.en = kit;
     rg = kit.games.find((g) => g.roms) || null;
+    pk = kit.games.find((g) => g.carts) || null;
     try {
       const c = store('numplay-icon');
       if (c) { const j = JSON.parse(c); custom = { url: j.url, obj: Uint8Array.from(atob(j.obj), (x) => x.charCodeAt(0)) }; }
@@ -1770,7 +1832,7 @@
       '<svg class="b-tick" viewBox="0 0 12 12"><path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
       '<svg class="b-plus" viewBox="0 0 12 12"><path d="M6 2.5v7M2.5 6h7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span>';
     for (const g of kit.games) {
-      if (g === rg) continue;
+      if (g === rg || g === pk) continue;
       const b = el('button', 'app off', { type: 'button', 'aria-label': g.title, 'aria-pressed': 'false', 'data-id': g.id });
       b.appendChild(el('img', '', { src: KIT + 'icons/' + g.id + '.png', alt: '', draggable: 'false' }));
       b.insertAdjacentHTML('beforeend', badge);
@@ -1842,8 +1904,12 @@
       $('#drop-sub').textContent = exts.map((x) => '.' + x).join(' ');
       $('#rom-file').addEventListener('change', (e) => { addRoms([...e.target.files]); e.target.value = ''; });
     }
+    if (pk) {
+      $('#pico').hidden = false;
+      $('#p8-file').addEventListener('change', (e) => { addCarts([...e.target.files]); e.target.value = ''; });
+    }
     $('#app-file').addEventListener('change', (e) => { addApps([...e.target.files]); e.target.value = ''; });
-    // files dropped anywhere: apps (.nwa) to your apps, the rest to Retro-Go
+    // files dropped anywhere: apps (.nwa) to your apps, PICO-8 carts to NumPico, the rest to Retro-Go
     let fileDrag = 0;
     const files = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
     addEventListener('dragenter', (e) => { if (files(e)) { fileDrag++; document.body.classList.add('dragging'); e.preventDefault(); } });
@@ -1854,8 +1920,10 @@
       e.preventDefault();
       fileDrag = 0;
       document.body.classList.remove('dragging');
-      const all = [...e.dataTransfer.files], nwa = all.filter((f) => /\.nwa$/i.test(f.name)), rest = all.filter((f) => !nwa.includes(f));
+      const all = [...e.dataTransfer.files], nwa = all.filter((f) => /\.nwa$/i.test(f.name));
+      const p8 = all.filter((f) => /\.p8(\.png)?$/i.test(f.name)), rest = all.filter((f) => !nwa.includes(f) && !p8.includes(f));
       if (nwa.length) await addApps(nwa);
+      if (p8.length && pk) await addCarts(p8);
       if (rest.length && rg) addRoms(rest);
     });
     tips();

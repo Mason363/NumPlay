@@ -69,6 +69,7 @@ ALONE = {
     "catninja": ("Cat Ninja", "Richman Stewart's Flash platformer: its 30 levels of wall jumps and traps, the boss and the crystals"),
     "kingdomrush": ("Kingdom Rush", "Ironhide's 2011 tower defense: its 12 stages with Heroic and Iron challenges, every tower, spell and boss"),
     "mrbullet": ("Mr Bullet", "Lion Studios' spy puzzles: 596 levels of Classic, Grenades, Hostages and Friendly Fire, read from the game's own files"),
+    "numpico": ("NumPico", "PICO-8 carts on the calculator: add your own .p8 and .p8.png carts in NumPlay Studio"),
 }
 VARIANTS = [
     ("NumPlay-Invisible.nwa", "The same app, hidden: a blank icon with no name"),
