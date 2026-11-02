@@ -2,6 +2,10 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.6: Mr Bullet
+
+- **Mr Bullet:** MrBullet.nwa, 596 spy puzzles in Classic, Grenades, Hostages and Friendly Fire, with the game's own levels, pictures and physics.
+
 ## 1.24.5: FNAF World
 
 - **FNAF World:** FiveNightsAtFreddysWorld.nwa, the adventure with all 48 characters, the whole map, the battles, chips, bytes, shops and four endings, from the game's own files. It needs the 6 MB of app space Nwagra gives.
