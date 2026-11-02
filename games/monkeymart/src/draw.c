@@ -707,14 +707,13 @@ static void pause_window(const mm_game *g, const mm_ui *v) {
 }
 
 static void quit_window(const mm_ui *v) {
-  window(50, 70, 220, 100, 0);
-  text_c(&mm_font_big, "Quit the game?", 160, 84, INK);
-  text_c(&mm_font_small, "Your mart is saved.", 160, 104, INK);
+  window(50, 77, 220, 86, 0);
+  text_c(&mm_font_big, "Quit the game?", 160, 91, INK);
   static const char *const yn[2] = {"No", "Yes"};
   for (int i = 0; i < 2; i++) {
     int x = 80 + i * 90;
-    button(x, 126, 70, 26, v->sel == i ? BUY : PALE, v->sel == i ? BUY_EDGE : DULL_EDGE, v->sel == i);
-    text_c(&mm_font_big, yn[i], x + 35, 133, INK);
+    button(x, 119, 70, 26, v->sel == i ? BUY : PALE, v->sel == i ? BUY_EDGE : DULL_EDGE, v->sel == i);
+    text_c(&mm_font_big, yn[i], x + 35, 126, INK);
   }
 }
 

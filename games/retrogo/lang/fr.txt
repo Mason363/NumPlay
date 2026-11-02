@@ -77,7 +77,6 @@ Soft reset	Redémarrage doux
 Hard reset	Redémarrage complet
 Reset Emulation?	Redémarrer le jeu ?
 Quit game?	Quitter le jeu ?
-The battery save is kept.	La sauvegarde de la cartouche est gardée.
 This cartridge type isn't supported.	Ce type de cartouche n'est pas pris en charge.
 This game needs more memory than the calculator has.	Ce jeu demande plus de mémoire que la calculatrice n'en a.
 This file isn't a game Retro-Go can read.	Retro-Go ne sait pas lire ce fichier.

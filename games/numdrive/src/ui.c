@@ -607,16 +607,15 @@ void quit_draw(bool yes) {
     uint16_t *buf = render_buffer();
     for (int r = 0; r < n; r++) bg_row(buf + r * SCREEN_W, sy + r, 0, SCREEN_W);
     g_begin(buf, sy, n);
-    g_rrect(63, 75, 200, 94, 12, C_SHADOW, 13);
-    g_rrect(59, 71, 202, 94, 13, C_BLACK, 32);
-    g_rrect(60, 72, 200, 92, 12, C_WHITE, 32);
-    g_text_c(&font_m, 160, 100 - font_m.base, T("Quit game?"), C_OUTLINE, 32);
-    g_text_c(&font_s, 160, 116 - font_s.base, T("You can come back anytime."), C_CAPTION, 32);
+    g_rrect(63, 81, 200, 82, 12, C_SHADOW, 13);
+    g_rrect(59, 77, 202, 82, 13, C_BLACK, 32);
+    g_rrect(60, 78, 200, 80, 12, C_WHITE, 32);
+    g_text_c(&font_m, 160, 106 - font_m.base, T("Quit game?"), C_OUTLINE, 32);
     for (int k = 0; k < 2; k++) {
       bool on = k == yes;
       int x = k ? 170 : 80;
-      g_button(x, 126, 70, 26, 6, on ? C_BLUE : C_GRAY, on ? C_BLUE_D : C_GRAY_D, on);
-      g_text_c(&font_s, x + 35, 126 + 17 - font_s.base, k ? T("Yes") : T("No"), C_WHITE, 32);
+      g_button(x, 120, 70, 26, 6, on ? C_BLUE : C_GRAY, on ? C_BLUE_D : C_GRAY_D, on);
+      g_text_c(&font_s, x + 35, 120 + 17 - font_s.base, k ? T("Yes") : T("No"), C_WHITE, 32);
     }
     plat_push(0, sy, SCREEN_W, n, buf);
   }
