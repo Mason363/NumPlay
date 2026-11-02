@@ -122,6 +122,12 @@ void battle_start(int level, int mode) {
   B.veznan = -1;
   if (level == NLEVELS - 1 && mode == MODE_CAMPAIGN) veznan_spawn();   /* (Level12: he waits in his tower) */
   B.grave = level == 9 ? 1 : level == 11 ? 2 : 0;   /* (Level10, Level12: a graveyard) */
+  if (level == 5 && mode != MODE_IRON) {   /* Level6: the imperial guards, each with its group's ground */
+    static const int16_t guards[7][4] = {{170, 300, 185, 300}, {208, 300, 185, 300}, {488, 300, 512, 300}, {522, 300, 512, 300},
+                                         {320, 160, 345, 160}, {345, 160, 345, 160}, {370, 160, 345, 160}};
+    for (int k = 0; k < 7; k++)
+      soldier_new(SK_IMPERIAL, -1, (Pt){guards[k][0], guards[k][1]}, (Pt){guards[k][2], guards[k][3]});
+  }
 }
 
 /* ------------------------------------------------------------------ cash, lives */

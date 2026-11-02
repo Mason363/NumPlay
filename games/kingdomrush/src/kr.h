@@ -294,7 +294,8 @@ void soldier_set_rally(Soldier *so, Pt p);
 void soldier_free(Soldier *so);
 static inline Soldier *SO(int i) { return i >= 0 && i < MAX_SOLDIERS && B.so[i].alive ? &B.so[i] : 0; }
 enum {
-  SK_L1, SK_L2, SK_L3, SK_PALADIN, SK_BARBARIAN, SK_FARMER, SK_REINF2, SK_REINF3, SK_REINF4, SK_ELEMENTAL
+  SK_L1, SK_L2, SK_L3, SK_PALADIN, SK_BARBARIAN, SK_FARMER, SK_REINF2, SK_REINF3, SK_REINF4, SK_ELEMENTAL,
+  SK_IMPERIAL
 };
 
 /* bullet.c */

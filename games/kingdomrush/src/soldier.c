@@ -22,6 +22,7 @@ static SoldierKind kind_of(int k) {
   case SK_REINF2: return (SoldierKind){11, 5, 20, 6, 5, AN_SO_REINFORCEMENTLEVEL2A_IDLE, AN_SO_REINFORCEMENTLEVEL2A_RUNNING, AN_SO_REINFORCEMENTLEVEL2A_FIGHTING, AN_SO_REINFORCEMENTLEVEL2A_DEAD, AN_SO_REINFORCEMENTLEVEL2A_RESPAWNING};
   case SK_REINF3: return (SoldierKind){11, 5, 20, 6, 5, AN_SO_REINFORCEMENTLEVEL3A_IDLE, AN_SO_REINFORCEMENTLEVEL3A_RUNNING, AN_SO_REINFORCEMENTLEVEL3A_FIGHTING, AN_SO_REINFORCEMENTLEVEL3A_DEAD, AN_SO_REINFORCEMENTLEVEL3A_RESPAWNING};
   case SK_REINF4: return (SoldierKind){11, 5, 20, 6, 5, AN_SO_REINFORCEMENTLEVEL4A_IDLE, AN_SO_REINFORCEMENTLEVEL4A_RUNNING, AN_SO_REINFORCEMENTLEVEL4A_FIGHTING, AN_SO_REINFORCEMENTLEVEL4A_DEAD, AN_SO_REINFORCEMENTLEVEL4A_RESPAWNING};
+  case SK_IMPERIAL: return (SoldierKind){18, 8, 20, 1, 12, AN_SO_IMPERIALGUARD_IDLE, AN_SO_IMPERIALGUARD_RUNNING, AN_SO_IMPERIALGUARD_ATTACK1, AN_SO_IMPERIALGUARD_DEAD, -1};
   default: return (SoldierKind){30, 13, 13, 27, 0, AN_SO_ELEMENTAL_IDLE, AN_SO_ELEMENTAL_RUNNING, AN_SO_ELEMENTAL_FIGHTING, AN_SO_ELEMENTAL_DEAD, AN_SO_ELEMENTAL_RESPAWNING};
   }
 }
@@ -74,6 +75,16 @@ int soldier_new(int kind, int spot, Pt at, Pt rally) {
     /* they start dead, appear (respawning) at once, live 20 s and are gone when they fall */
     so->respawning = 0, so->dead = 1, so->lifes = 1, so->dead_time = 10, so->dead_t = 9;
     so->home_x = at.x, so->home_y = at.y;
+  } else if (kind == SK_IMPERIAL) {   /* SoldierImperialGuard: one life, its group's ground (rally: `at`) */
+    so->health = so->init_health = S_specials_imperial_health, so->armor = S_specials_imperial_armor;
+    so->min_dmg = S_specials_imperial_minDamage, so->max_dmg = S_specials_imperial_maxDamage;
+    so->reload = (int16_t)(S_specials_imperial_reload - so->charge);
+    so->regen = S_specials_imperial_regen, so->regen_reload = S_specials_imperial_regenReload;
+    so->range_w = S_specials_imperial_range, so->range_h = (int16_t)(S_specials_imperial_range * RANGE_RATIO);
+    so->dead_time = 23, so->lifes = 1;
+    so->home_x = rally.x, so->home_y = rally.y;
+    so->rx = so->dx = at.x, so->ry = so->dy = at.y;
+    so->hidden = 0, so->respawning = 0, so->active = 1, so->idle = 1;
   } else {   /* the sorcerer's elemental */
     special_elemental_stats(so, spot);
   }
@@ -147,7 +158,7 @@ void soldier_damage(Soldier *so, int dmg, bool true_dmg) {
 /* ------------------------------------------------------------------ fights */
 static bool in_range(const Soldier *so, const Enemy *e) {
   float cx, cy;
-  if (reinforcement(so)) cx = so->home_x, cy = so->home_y;
+  if (reinforcement(so) || so->kind == SK_IMPERIAL) cx = so->home_x, cy = so->home_y;
   else if (so->spot >= 0 && so->kind == SK_ELEMENTAL) cx = so->rx, cy = so->ry;
   else if (so->spot >= 0) cx = B.spot[so->spot].rally.x, cy = B.spot[so->spot].rally.y + 10;
   else cx = so->rx, cy = so->ry;
@@ -309,6 +320,10 @@ void soldier_step(Soldier *so) {
       }
       so->lifes = 2, so->dead = 0, so->respawning = 1, so->door_t = 0, so->hidden = 0;
       play(so, kind_of(so->kind).an_spawn);
+      return;
+    }
+    if (so->kind == SK_IMPERIAL) {   /* (no second life) */
+      so->alive = 0;
       return;
     }
     if (so->kind == SK_ELEMENTAL) {

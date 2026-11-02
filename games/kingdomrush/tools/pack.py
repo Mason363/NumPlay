@@ -263,7 +263,8 @@ def sprites():
     for c in ['SoldierStandar', 'SoldierStandarLevel2', 'SoldierStandarLevel3', 'SoldierPaladin', 'SoldierBarbarian',
               'SoldierElemental', 'SoldierFarmerJohn', 'SoldierFarmerPaul', 'SoldierFarmerRingo',
               'SoldierReinforcementLevel2A', 'SoldierReinforcementLevel2B', 'SoldierReinforcementLevel3A',
-              'SoldierReinforcementLevel3B', 'SoldierReinforcementLevel4A', 'SoldierReinforcementLevel4B']:
+              'SoldierReinforcementLevel3B', 'SoldierReinforcementLevel4A', 'SoldierReinforcementLevel4B',
+              'SoldierImperialGuard']:
         sprite_set("SO_" + c[7:].upper(), "so_" + c[7:], CLASS_ID[c], None, 1)
     for c in ['Arrow', 'ArrowEnemy', 'BoltNecromancer', 'BoltSorcerer', 'BombBfg', 'BombBlack', 'BombCommon',
               'BombDynamite', 'BombFragment', 'BombShrapnel', 'Fireball', 'Missile', 'MissileEnemy',
@@ -587,7 +588,7 @@ def write_stats():
     out += ['  };', '  return type >= 0 && type < EN_COUNT ? n[type] : "";', '}', '']
     # a few settings the rules read by name
     flat = {}
-    for grp in ('archers', 'mages', 'engineers', 'soldiers', 'powers', 'enemies'):
+    for grp in ('archers', 'mages', 'engineers', 'soldiers', 'powers', 'enemies', 'specials'):
         for k, v in s[grp].items():
             for kk, vv in v.items():
                 if isinstance(vv, (int, float)) and not isinstance(vv, bool):
