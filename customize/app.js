@@ -1707,6 +1707,37 @@
     box.classList.add('fit');
   }
 
+  // ------------------------------------------------------------------ search
+  // A game shows when what's typed is in its name, its id or its initials ("fnaf", "hk", "pvz"), accents and
+  // punctuation aside. The grids keep their sizes; the others are only hidden
+  const plain = (t) => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  function search() {
+    const box = $('#search'), keys = new Map();
+    for (const [id, b] of buttons) {
+      const words = plain(byId[id].title).split(' ');
+      keys.set(b, [words.join(''), id, words.map((w) => (/^\d+$/.test(w) ? w : w[0])).join('')].join(' '));
+    }
+    const apply = () => {
+      const q = plain(box.value).replace(/ /g, '');
+      let n = 0;
+      for (const [b, k] of keys) { b.hidden = !!q && !k.includes(q); if (!b.hidden) n++; }
+      $('.games .row-head').hidden = ![...$('#small').children].some((b) => !b.hidden);
+      const none = $('#no-match');
+      none.hidden = !!n;
+      if (n) return;
+      none.textContent = 'No game called "' + box.value.trim() + '" yet. The ';
+      const a = none.appendChild(el('a', '', { href: 'https://github.com/Mason363/NumPlay#roadmap', target: '_blank', rel: 'noopener' }));
+      a.textContent = 'roadmap';
+      none.append(" has what's coming.");
+    };
+    box.addEventListener('input', apply);
+    box.addEventListener('keydown', (e) => { if (e.key === 'Escape' && box.value) { e.stopPropagation(); box.value = ''; apply(); } });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === '/' && !e.target.closest('input, textarea, select') && !e.metaKey && !e.ctrlKey) { e.preventDefault(); box.focus(); }
+    });
+    apply();
+  }
+
   // ------------------------------------------------------------------ start
   async function start() {
     try {
@@ -1750,6 +1781,7 @@
     }
     sortable(small);
     sortable(big);
+    search();
     fitGrid();
     addEventListener('resize', () => requestAnimationFrame(fitGrid));
     if (document.fonts) document.fonts.ready.then(fitGrid);
