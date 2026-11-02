@@ -135,9 +135,9 @@ def track(path, kind):
                     [int(round(pvx)), int(round(pvy)), delay])
     if start is None:
         # the endless run (Board.create): startX = -0.6 x 640 + 275, startY = 480 - 350, in the first piece's frame
-        # (it starts at x -320, y groundBaseTopY - 1600, groundBaseTopY = 0.525 x 1136 on a 16:9 iPhone);
-        # startRotation unset: startingCharacterRotation
-        start = (-0.6 * 640 + 275 + 320, 480 - 350 - (0.525 * 1136 - 1600), cfg['startingCharacterRotation'])
+        # (it starts at x -320, y groundBaseTopY - 1600, groundBaseTopY = 0.525 x the screen's height: 960, the
+        # game's own 640 x 960, which sets the bike just over the slope); startRotation unset: startingCharacterRotation
+        start = (-0.6 * 640 + 275 + 320, 480 - 350 - (0.525 * 960 - 1600), cfg['startingCharacterRotation'])
     tracks.append([first, len(objs) - first, int(width), ff(start[0]), ff(start[1]), ff(start[2]),
                    int(round(finish)) if finish is not None else 0])
 for l in levels: track(APP + '/data/levels/%s.json' % l, 'level')

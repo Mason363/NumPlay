@@ -48,7 +48,7 @@
 #define MAX_LANDINGS 3                  /* maxPlatformLandingAmount */
 #define MAX_FORCE 10000                 /* maxRealImpactForce */
 #define FRAME_DUR 16.6f                 /* defaultFrameDurationTime */
-#define BASE_TOP (1600 + 107)           /* the ground base's top: groundBaseTopY + 107 on a 16:9 iPhone */
+#define BASE_TOP (1600 + 111)           /* the ground base's top: 115 over its centre, 960 - 230 - groundBaseTopY + 1600 */
 #define FALL_OUT (1600 + 800)           /* fallen past it, between its blocks: gone */
 
 /* physicsObjectFilter */
@@ -965,9 +965,46 @@ void run_start(rd_run *r, int mode, int level, int bike, int theme, uint32_t see
   r->camx = b->x - 200, r->camy = b->y - 260;
 }
 
+/* platforms held by a pivot that a touch takes away, already touching the track: in the game the whole track is in
+ * the physics world, so the first step's preCollision (a platform top in it) lets them go; here the track is only
+ * there near the bike, so they are found by testing their polygons as Box2D's contacts would */
+static void first_touches(rd_run *r, int seg) {
+  float a[64], q[64];
+  for (int i = 0; i < r->nlive; i++) {
+    rd_live *l = &r->live[i];
+    if (!(l->st & ST_USED) || l->dyn == NO_DYN || (seg >= 0 && l->seg != seg)) continue;
+    rd_dyn *d = &r->dyn[l->dyn];
+    const rd_obj *o = O(r, i);
+    if (!(d->flags & DY_PIVOT) || !(o->flags & F_REMOVE) || d->pivot_ms >= 0) continue;
+    float x0, y0, x1, y1;
+    obj_box(r, i, &x0, &y0, &x1, &y1);
+    bool touch = false;
+    for (int j = 0; j < r->nlive && !touch; j++) {
+      rd_live *m = &r->live[j];
+      const rd_obj *p = O(r, j);
+      if (j == i || !(m->st & ST_USED) || (m->st & ST_GONE) || p->kind == K_GEM || p->kind == K_FINISH || animated(p)) continue;
+      if (o->kind != K_PLATFORM && p->kind != K_PLATFORM) continue; /* (Board's preCollision: a platform top in it) */
+      float u0, v0, u1, v1;
+      obj_box(r, j, &u0, &v0, &u1, &v1);
+      if (u1 < x0 - 1 || u0 > x1 + 1 || v1 < y0 - 1 || v0 > y1 + 1) continue;
+      for (int k = 0; !touch; k++) {
+        int n = obj_poly(r, i, k, a);
+        if (!n) break;
+        for (int h = 0; !touch; h++) {
+          int nq = obj_poly(r, j, h, q);
+          if (!nq) break;
+          touch = ph_polys_touch(a, n, q, nq);
+        }
+      }
+    }
+    if (touch) d->pivot_ms = r->ms + (o->delay >= 0 ? o->delay : 0);
+  }
+}
+
 /* the game starts with the first touch (Board.GameStart): the physics runs, the animations start */
 static void game_start(rd_run *r) {
   r->b.started = true;
+  first_touches(r, -1);
   for (int k = 0; k < MAXDYN; k++) {
     rd_dyn *d = &r->dyn[k];
     if (!d->used || !(d->flags & DY_ANIM)) continue;
@@ -1157,7 +1194,7 @@ void run_step(rd_run *r, bool held) {
   b->trail_x[0] = b->wx[0], b->trail_y[0] = b->wy[0];
   /* the endless run goes on */
   if (r->mode == RUN_ENDLESS)
-    while (r->end_x < b->x + 2400) endless_more(r);
+    while (r->end_x < b->x + 2400) endless_more(r), first_touches(r, r->nseg - 1);
   base_stream(r);
   stream(r, false);
   /* the camera: the bike a third in, a little below the middle */

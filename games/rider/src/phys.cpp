@@ -319,6 +319,21 @@ bool ph_bounds(const ph_body *b, float *x0, float *y0, float *x1, float *y1) {
   return any;
 }
 
+/* two polygons (in the world's pixels) touching as Box2D's contacts count it: a manifold with points */
+bool ph_polys_touch(const float *a, int na, const float *b, int nb) {
+  if (na < 3 || nb < 3 || na > b2_maxPolygonVertices || nb > b2_maxPolygonVertices) return false;
+  b2Vec2 va[b2_maxPolygonVertices], vb[b2_maxPolygonVertices];
+  for (int i = 0; i < na; i++) va[i].Set(a[2 * i] / SCALE, a[2 * i + 1] / SCALE);
+  for (int i = 0; i < nb; i++) vb[i].Set(b[2 * i] / SCALE, b[2 * i + 1] / SCALE);
+  b2PolygonShape sa, sb;
+  if (!sa.Set(va, na) || !sb.Set(vb, nb)) return false;
+  b2Transform id;
+  id.SetIdentity();
+  b2Manifold m;
+  b2CollidePolygons(&m, &sa, id, &sb, id);
+  return m.pointCount > 0;
+}
+
 /* Corona's frame-based step: dt = 1/fps (60, config.lua), 8 velocity and 3 position iterations */
 void ph_step(void) { world->Step(1.0f / 60, 8, 3); }
 

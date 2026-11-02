@@ -92,8 +92,8 @@ data:
 
 # on a computer: tests/play.c checks the game and saves pictures
 HOST_SAN = -fsanitize=address,undefined -fno-sanitize-recover=undefined
-HOST_FLAGS = -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -DHOST -I$(L) -Isrc $(B2) $(HOST_ARENA) $(HOST_SAN)
-HOST_CXXFLAGS = -std=gnu++11 -O2 -g -Wall -Wno-unused-parameter -Wno-unused-variable -Wno-unused-but-set-variable \
+HOST_FLAGS = -std=gnu11 -O1 -g -ffp-contract=off -Wall -Wextra -Wno-unused-parameter -DHOST -I$(L) -Isrc $(B2) $(HOST_ARENA) $(HOST_SAN)
+HOST_CXXFLAGS = -std=gnu++11 -O2 -g -ffp-contract=off -Wall -Wno-unused-parameter -Wno-unused-variable -Wno-unused-but-set-variable \
   -Wno-unused-private-field -DHOST -Isrc -fno-exceptions -fno-rtti $(B2) $(HOST_ARENA) $(HOST_SAN)
 HOST_PHYS = $(patsubst src/%.cpp,build/host/%.o,$(PHYS))
 host: build/play

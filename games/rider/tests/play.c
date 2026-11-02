@@ -154,7 +154,8 @@ static bool bot(const rd_run *r, int flips) {
 /* a level ridden by search: pieces of 15 frames, a few ways to hold the button in each, the furthest
  * still riding kept; returns the frames' button in path (1 held), or 0 if none got to the end.
  * A state is the run and Box2D's arena, copied away and back. */
-#define SEG 15
+static int seg_len = 15; /* (the search tries 15, then 11: the path is replayed with the one that worked) */
+#define SEG seg_len
 #ifndef BEAM
 #define BEAM 20
 #endif
@@ -253,11 +254,13 @@ static int solve_from(int mode, int level, int bike, uint32_t seed, uint8_t *out
 }
 static int solve_run(int mode, int level, int bike, uint32_t seed, uint8_t *out, int max_segs) {
   int n = 0;
-  for (int k = 0; k < (mode == RUN_LEVEL ? 2 : 1) && !n; k++) {
-    spread = k ? BEAM : 3; /* (then the plain furthest ones) */
-    for (int w = 0; w < (mode == RUN_LEVEL ? 8 : 1) && !n; w++) n = solve_from(mode, level, bike, seed, out, max_segs, w);
+  for (int k = 0; k < (mode == RUN_LEVEL ? 4 : 1) && !n; k++) {
+    spread = k & 1 ? BEAM : 3; /* (then the plain furthest ones) */
+    seg_len = k < 2 ? 15 : 11;
+    for (int w = 0; w < (mode == RUN_LEVEL ? 8 : 1) && !n; w++) n = solve_from(mode, level, bike, seed, out, max_segs * 15 / seg_len, w);
   }
   spread = 3;
+  if (!n) seg_len = 15;
   return n;
 }
 static int solve_level(int level, uint8_t *out, int max_segs) { return solve_run(RUN_LEVEL, level, 0, 9, out, max_segs); }
@@ -288,16 +291,18 @@ static void test_levels(void) {
   /* flipping all the time ends on the bike's head */
   int e = ride(RUN_ENDLESS, 0, 9, 60 * 60, 0);
   CHECK(e == END_CRASH, "holding the button for ever crashes (%d)", e);
-  /* the endless run: pieces keep coming, flips are counted */
-  int best = 0, flips = 0;
+  /* the endless run: pieces keep coming, flips are counted (a bot on every bike, then the search's ride) */
+  int far = 0;
   for (int s = 0; s < 20; s++) {
     rd_run *r = &run;
     run_start(r, RUN_ENDLESS, 0, s % NBIKES, 6 + s % 10, 100 + (uint32_t)s);
-    for (int i = 0; i < 60 * 90 && !r->ended; i++) run_step(r, bot(r, 1));
-    best = r->score > best ? r->score : best, flips += r->flips;
+    for (int i = 0; i < 60 * 90 && !r->ended; i++) run_step(r, bot(r, 0));
+    if (r->b.max_x > far) far = (int)r->b.max_x;
   }
-  printf("endless: best %d, %d flips in 20 runs\n", best, flips);
-  CHECK(flips > 0, "flips in the endless run");
+  for (uint32_t sd = 33; sd < 37 && !run.flips; sd++) solve_run(RUN_ENDLESS, 0, 0, sd, path, 60);
+  printf("endless: a bot as far as x %d; the search's ride: score %d, %d flips, %d perfect\n", far, run.score, run.flips, run.perfect);
+  CHECK(far > 3000, "the endless run goes on (%d)", far);
+  CHECK(run.flips > 0 && run.score + run.pending > 0, "flips counted in the endless run");
 }
 
 /* ---------------------------------------------------------------- the app, with keys */

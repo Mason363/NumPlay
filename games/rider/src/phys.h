@@ -83,6 +83,7 @@ bool ph_awake(const ph_body *b);
 bool ph_bounds(const ph_body *b, float *x0, float *y0, float *x1, float *y1); /* its fixtures' boxes, false if none */
 
 void ph_step(void);
+bool ph_polys_touch(const float *a, int na, const float *b, int nb);
 
 #ifdef __cplusplus
 }
