@@ -225,6 +225,11 @@ static void hit(Soldier *so) {
     go_home(so);
     return;
   }
+  if (so->kind == SK_ELEMENTAL) {   /* the elemental hits all around where it strikes */
+    special_elemental_hit(so);
+    if (!e->active) stop_fight(so);
+    return;
+  }
   if (!enemy_dodge(e)) {
     enemy_damage(e, special_soldier_damage(so, rnd_dmg(so->min_dmg, so->max_dmg)), ARM_P, 0);
     if (!e->active) stop_fight(so);
@@ -372,8 +377,8 @@ void soldier_step(Soldier *so) {
       so->charge_t = 0, so->charging = 0;
     } else if (++so->reload_t == so->reload) {
       play(so, kind_of(so->kind).an_fight);
-      special_soldier_attack_anim(so);
-      so->charging = 1, so->reload_t = 0;
+      so->reload_t = 0;
+      if (!special_soldier_attack_anim(so)) so->charging = 1;
     }
   } else
     go_home(so);

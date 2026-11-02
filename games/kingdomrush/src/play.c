@@ -336,7 +336,6 @@ void play_step(void) {
   }
   if (P.mode == M_PAUSE || P.mode == M_QUIT) return;
   battle_step();
-  eggs_step();
   if (B.pending_note) {
     int n = B.pending_note;
     B.pending_note = 0;
@@ -422,8 +421,9 @@ static void draw_spot(int s) {
   draw_tower(t, x, y);
   if (t->building) draw_bar(x - 7, SY(t->y - 45), 14, 30 - t->building, 30);
   if (t->ice) {
-    int an = t->ice == 1 ? AN_B_ICEBLOCK_START : t->ice == 2 ? AN_B_ICEBLOCK_IDLE : AN_B_ICEBLOCK_END;
-    spr_anim(an, t->ice == 2 ? 0 : t->ice_t, false, x, y, false);
+    static const int16_t an[7] = {0, AN_B_ICEBLOCK_START, AN_B_ICEBLOCK_IDLE, AN_B_ICEBLOCK_END, AN_B_VEZNANBLOCK_START,
+                                  AN_B_VEZNANBLOCK_IDLE, AN_B_VEZNANBLOCK_RELEASE};
+    spr_anim(an[t->ice], t->ice == 2 || t->ice == 5 ? (int)(B.frame & 255) : t->ice_t, t->ice == 2 || t->ice == 5, x, y, false);
   }
 }
 
@@ -492,7 +492,7 @@ static void draw_field(void) {
 static void draw_selection(void) {
   if (P.mode == M_SELECT) {
     Pt p = sel_pos();
-    int x = SX(p.x), y = SY(p.y);
+    int x = SX(p.x);
     if (P.sel_kind == SEL_SPOT) {
       Spot *t = &B.spot[P.sel];
       int ty = SY(t->y - (t->kind == TW_NONE ? 36 : 18));

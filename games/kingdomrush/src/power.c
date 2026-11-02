@@ -120,8 +120,37 @@ bool power_reinforce(Pt at) {
   return true;
 }
 
+/* ------------------------------------------------------------------ scorched earth: the meteors' fire on the ground */
+void special_scorched_earth(float x, float y) {
+  for (int k = 0; k < (int)(sizeof B.burn / sizeof B.burn[0]); k++)
+    if (!B.burn[k].on) {
+      B.burn[k].on = 1, B.burn[k].t = 0, B.burn[k].at = (Pt){x, y};
+      /* Blazing Earth: twice as long, hotter */
+      B.burn[k].dur = up_on(UP_RAIN, 4) ? S_powers_fireball_blazingEarthDuration : S_powers_fireball_scorchedEarthDuration;
+      return;
+    }
+}
+
+static void burn_step(void) {
+  bool blazing = up_on(UP_RAIN, 4);
+  int lo = blazing ? S_powers_fireball_blazingEarthMinDamage : S_powers_fireball_scorchedEarthMinDamage;
+  int hi = blazing ? S_powers_fireball_blazingEarthMaxDamage : S_powers_fireball_scorchedEarthMaxDamage;
+  int r = blazing ? S_powers_fireball_blazingEarthRange : S_powers_fireball_scorchedEarthRange;
+  for (int k = 0; k < (int)(sizeof B.burn / sizeof B.burn[0]); k++) {
+    if (!B.burn[k].on) continue;
+    if (++B.burn[k].t % FPS == 0)
+      for (int i = 0; i < MAX_ENEMIES; i++) {
+        Enemy *e = &B.en[i];
+        if (e->alive && e->active && !e->flying && ellipse_contains(B.burn[k].at.x, B.burn[k].at.y, (float)r, r * RANGE_RATIO, e->x, e->y))
+          enemy_damage(e, rnd_dmg(lo, hi), ARM_I, 0);
+      }
+    if (B.burn[k].t >= B.burn[k].dur) B.burn[k].on = 0;
+  }
+}
+
 /* ------------------------------------------------------------------ a frame */
 void power_step(void) {
+  burn_step();
   if (B.fire_open_t) B.fire_open_t--;
   else if (B.fire_on && B.fire_cd > 0) B.fire_cd--;
   if (B.reinf_open_t) B.reinf_open_t--;

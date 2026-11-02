@@ -6,6 +6,8 @@
  * how many, the frames between them, the frames before the next spawn, a fixed lane or a random one. */
 #include <string.h>
 #include "kr.h"
+#include "anim.h"
+#include "special.h"
 #include "res.h"
 
 Battle B;
@@ -116,6 +118,8 @@ void battle_start(int level, int mode) {
     static const uint8_t kinds[5] = {0, TW_ARCHER, TW_BARRACKS, TW_MAGE, TW_ENGINEER};
     spot_make(premade[k][0], kinds[premade[k][1] >> 4], premade[k][1] & 15);
   }
+  B.veznan = -1;
+  if (level == NLEVELS - 1 && mode == MODE_CAMPAIGN) veznan_spawn();   /* (Level12: he waits in his tower) */
 }
 
 /* ------------------------------------------------------------------ cash, lives */
@@ -237,7 +241,13 @@ static bool has_enemies(void) {
     return false;
   }
   for (int i = 0; i < MAX_ENEMIES; i++)
-    if (B.en[i].alive && (!B.en[i].boss || !B.en[i].dead)) return true;
+    if (B.en[i].alive && (!B.en[i].boss || !B.en[i].dead) && !(i == B.veznan && B.en[i].froze == 0)) return true;
+  /* Level12: the others gone, Vez'nan comes down himself */
+  Enemy *v = EN(B.veznan);
+  if (v && !v->dead) {
+    if (v->froze == 0) veznan_descend();
+    return true;
+  }
   B.ready_win = 1, B.ready_win_t = 0;
   return true;
 }
@@ -325,5 +335,8 @@ void battle_step(void) {
     if (B.bu[i].alive) bullet_step(&B.bu[i]);
   fx_step();
   power_step();
+  eggs_step();
+  portals_step();
+  vportals_step();
   if (B.state == LS_PRE_WIN && ++B.prewin_t > 30) B.state = LS_WIN;
 }

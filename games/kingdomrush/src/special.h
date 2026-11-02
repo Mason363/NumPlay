@@ -39,7 +39,12 @@ void special_elemental_stats(Soldier *so, int spot);
 bool special_soldier(Soldier *so);          /* runSpecial */
 void special_soldier_stop(Soldier *so);
 int special_soldier_damage(Soldier *so, int dmg);
-void special_soldier_attack_anim(Soldier *so);
+bool special_soldier_attack_anim(Soldier *so);   /* true: a holy strike instead of the blow */
+void portal_open(Pt at, int most, int nodes);
+void portals_step(void);
+void polymorph(Enemy *e);
+void special_elemental_hit(Soldier *so);
+void special_new_soldier(Soldier *so);       /* a paladin or barbarian gets its tower's abilities */
 void bomb_blast(Bullet *b);
 void special_draw_bullet(const Bullet *b, int x, int y);
 #endif

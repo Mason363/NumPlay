@@ -161,7 +161,141 @@ static bool yeti_boss(Enemy *e) {
   return false;
 }
 
-bool veznan_power(Enemy *e) { (void)e; return false; }
+/* ------------------------------------------------------------------ Vez'nan (EnemyVeznan, Level12) */
+/* his tower's spells by wave: [hold after s, towers held], [portals after s, 1, 2, 3 open, times] */
+static const uint8_t hold_timers[15][2] = {{0, 3}, {0, 3}, {0, 3}, {0, 3}, {0, 2}, {0, 2}, {0, 2}, {0, 2},
+                                          {13, 2}, {13, 3}, {14, 4}, {14, 5}, {16, 6}, {16, 7}, {18, 8}};
+static const uint8_t portal_timers[15][5] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+                                             {0, 0, 0, 0, 0}, {15, 1, 0, 0, 3}, {10, 1, 0, 0, 2}, {20, 0, 1, 0, 3},
+                                             {15, 1, 0, 0, 3}, {20, 1, 1, 0, 3}, {15, 1, 1, 0, 3}, {15, 1, 1, 0, 3},
+                                             {15, 0, 0, 1, 3}, {15, 1, 1, 1, 3}, {15, 1, 1, 1, 3}};
+static const int16_t portal_at[3][3] = {{362, 243, 103}, {362, 365, 148}, {362, 493, 228}};
+
+void veznan_spawn(void) {
+  int i = enemy_spawn(EN_VEZNAN, 0, 1, 0);
+  if (i < 0) return;
+  Enemy *e = &B.en[i];
+  e->x = 362, e->y = 70, e->active = 0, e->froze = 0, e->sp_n2 = -1;
+  e->anim = AN_E_VEZNAN_IDLEDOWN, e->anim_t = 0;
+  B.veznan = (int8_t)i;
+}
+
+/* the portals' demons: 50% 4 to 6 demon spawns, 30% 3 demon hounds, 20% 5 spawns and a demon lord */
+static void portals_open(const uint8_t *pt) {
+  for (int k = 0; k < 3; k++) {
+    if (!pt[1 + k]) continue;
+    for (int s = 0; s < (int)(sizeof B.vportal / sizeof B.vportal[0]); s++)
+      if (!B.vportal[s].on) {
+        float r = rnd();
+        B.vportal[s].on = 1, B.vportal[s].t = 0, B.vportal[s].k = (uint8_t)k, B.vportal[s].n = 0;
+        B.vportal[s].group = r <= 0.5f ? 1 : r <= 0.8f ? 2 : 3;
+        B.vportal[s].max = (uint8_t)(r <= 0.5f ? rnd_round(4, 6) : r <= 0.8f ? 3 : 6);
+        break;
+      }
+  }
+}
+
+void vportals_step(void) {
+  for (int s = 0; s < (int)(sizeof B.vportal / sizeof B.vportal[0]); s++) {
+    if (!B.vportal[s].on) continue;
+    if (++B.vportal[s].t % 30 == 0) {
+      int g = B.vportal[s].group, k = B.vportal[s].k;
+      int type = g == 2 ? EN_DEMONWOLF : g == 3 && B.vportal[s].n >= 5 ? EN_DEMONMAGE : EN_DEMON;
+      int lane = B.vportal[s].n % B.nlanes[0], node = portal_at[k][2];
+      if (node > path_len(0, lane) - 12) node = path_len(0, lane) - 12;
+      int j = enemy_spawn(type, 0, lane, node);
+      if (j >= 0) {
+        B.en[j].x = portal_at[k][0], B.en[j].y = portal_at[k][1], B.en[j].active = 1;
+        B.en[j].teleporting = 2, B.en[j].teleport_t = 0;
+      }
+      if (++B.vportal[s].n >= B.vportal[s].max) B.vportal[s].on = 0;
+    }
+  }
+}
+
+static void hold_towers(int n) {
+  int cand[MAX_SPOTS], nc = 0;
+  for (int s = 0; s < B.nspots; s++) {
+    Spot *t = &B.spot[s];
+    if (t->kind != TW_NONE && t->kind != 0xFF && !t->building && !t->disabled) cand[nc++] = s;
+  }
+  for (int k = 0; k < n && nc > 0; k++) {
+    int pick = (int)(rnd() * nc);
+    if (pick >= nc) pick = nc - 1;
+    Spot *t = &B.spot[cand[pick]];
+    t->disabled = 1, t->ice = 4, t->ice_t = 0;   /* VeznanBlock */
+    cand[pick] = cand[--nc];
+  }
+}
+
+/* he leaves his tower when every other enemy is gone */
+void veznan_descend(void) {
+  Enemy *e = EN(B.veznan);
+  if (!e || e->froze) return;
+  e->froze = 1, e->active = 1, e->node = 0, e->dir = 0;
+  Pt p = path_node(0, e->lane, 0);
+  e->x = p.x, e->y = p.y;
+  e->sp_t2 = 0, e->sp_n = 40, e->sp_state = 0;   /* (portals every 10 s from now) */
+}
+
+bool veznan_power(Enemy *e) {
+  int w = B.current_wave - 1;
+  if (w < 0) w = 0;
+  if (w > 14) w = 14;
+  if (e->froze == 0) {   /* in his tower: spells each wave */
+    if (e->sp_n2 != B.current_wave) {   /* (updateTimers at a wave's start) */
+      e->sp_n2 = B.current_wave, e->sp_t = 0, e->sp_t2 = 0, e->sp_n = portal_timers[w][4];
+    }
+    e->sp_t++, e->sp_t2++;
+    if (hold_timers[w][0] && e->sp_t == hold_timers[w][0] * FPS) {
+      e->anim = AN_E_VEZNAN_SPELLDOWN, e->anim_t = 0;
+      hold_towers(hold_timers[w][1]);
+    }
+    if (portal_timers[w][0] && e->sp_n > 0 && e->sp_t2 >= portal_timers[w][0] * FPS) {
+      e->anim = AN_E_VEZNAN_SPELL, e->anim_t = 0;
+      portals_open(portal_timers[w]);
+      e->sp_t2 = 0, e->sp_n--;
+    }
+    if (e->anim_t > 45) e->anim = AN_E_VEZNAN_IDLEDOWN, e->anim_t = 0;
+    return true;
+  }
+  if (e->froze == 2) {   /* becoming the demon */
+    if (++e->sp_c >= 34) {
+      e->froze = 3, e->dir = 0;
+      e->health = e->init_health = S_enemies_veznan_demonHealth * enemy_health_pct / 100;
+      e->speed = e->base_speed = S_enemies_veznan_demonSpeed, e->margin = e->speed + 0.1f;
+      e->charge = 53, e->reload = (int16_t)(S_enemies_veznan_demonAttackReloadTime - 53);
+      e->active = 1;
+      e->anim = AN_E_VEZNAN_WALKINGDEMON, e->anim_t = 0;
+    }
+    return true;
+  }
+  if (e->froze == 1) {
+    /* walking down: portals every 10 s, and his soul steal (tsung) every 5 s on the soldiers around */
+    if (++e->sp_t2 >= 10 * FPS && e->sp_n > 0) {
+      static const uint8_t all[5] = {10, 1, 1, 1, 40};
+      portals_open(all);
+      e->sp_t2 = 0, e->sp_n--;
+    }
+    if (++e->rage_t >= S_enemies_veznan_tsungReloadTime) {
+      int n = 0;
+      for (int i = 0; i < MAX_SOLDIERS && n < S_enemies_veznan_tsungMaxEnemies; i++) {
+        Soldier *so = &B.so[i];
+        if (!so->alive || !so->active || so->kind == SK_ELEMENTAL) continue;
+        if (!ellipse_contains(e->x, e->y, S_enemies_veznan_tsungRangeWidth, S_enemies_veznan_tsungRangeWidth * RANGE_RATIO, so->x, so->y)) continue;
+        float dx = so->x - e->x, dy = so->y - e->y;
+        if (sqrtf(dx * dx + dy * dy) <= S_enemies_veznan_tsungMinRange) continue;
+        soldier_damage(so, 30000, true);
+        n++;
+      }
+      if (n) {
+        e->anim = AN_E_VEZNAN_RANGEDATTACK, e->anim_t = 0;
+        e->rage_t = 0;
+      }
+    }
+  }
+  return false;
+}
 
 bool boss_power(Enemy *e) {
   switch (e->type) {

@@ -376,6 +376,10 @@ static void ice_step(Spot *t) {
     if (++t->ice_t == 25) t->disabled = 0;
     if (t->ice_t >= 44) t->ice = 0;
   }
+  /* VeznanBlock: 33 frames closing, held (towerHoldBlockTime), 10 opening */
+  else if (t->ice == 4 && ++t->ice_t >= 33) t->ice = 5, t->ice_t = 0;
+  else if (t->ice == 5 && ++t->ice_t >= S_enemies_veznan_towerHoldBlockTime) t->ice = 6, t->ice_t = 0;
+  else if (t->ice == 6 && ++t->ice_t >= 10) t->ice = 0, t->disabled = 0;
 }
 
 void tower_step(int s) {

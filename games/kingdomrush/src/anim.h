@@ -24,5 +24,8 @@ void summon_skeleton(struct Enemy *e, int k);
 void demon_explode(struct Enemy *e);
 bool boss_power(struct Enemy *e);
 bool veznan_power(struct Enemy *e);
+void veznan_spawn(void);
+void veznan_descend(void);
+void vportals_step(void);
 void enemy_armor_down(struct Enemy *e, int v);
 #endif

@@ -35,11 +35,21 @@ static void play(Enemy *e, int an) {
   e->anim = (uint16_t)an, e->anim_t = 0;
 }
 
+/* an enemy's animation (Vez'nan's demon has its own) */
+static int anim_of(const Enemy *e, int a) {
+  if (e->type == EN_VEZNAN && e->froze == 3) {
+    static const int16_t demon[6] = {AN_E_VEZNAN_WALKINGDEMON, AN_E_VEZNAN_WALKINGDEMON, AN_E_VEZNAN_WALKINGDOWNDEMON,
+                                     AN_E_VEZNAN_IDLEDEMON, AN_E_VEZNAN_FIGHTINGDEMON, AN_E_VEZNAN_DEAD};
+    return demon[a];
+  }
+  return ANIM(e->type, a);
+}
+
 /* getFacing: the walk for the road's direction */
 static void facing(Enemy *e) {
   if (e->fighting) {
     e->charge_t = 0;
-    play(e, ANIM(e->type, A_IDLE));
+    play(e, anim_of(e, A_IDLE));
     return;
   }
   Pt a = enemy_road(e, 0), b = enemy_road(e, 1);
@@ -53,8 +63,8 @@ static void facing(Enemy *e) {
   if (d == e->dir) return;
   e->dir = (uint8_t)d;
   if (d == 1 || d == 2) e->left = d == 2;
-  int an = ANIM(e->type, d == 3 ? A_UP : d == 4 ? A_DOWN : A_WALK);
-  if (an < 0) an = ANIM(e->type, A_WALK);
+  int an = anim_of(e, d == 3 ? A_UP : d == 4 ? A_DOWN : A_WALK);
+  if (an < 0) an = anim_of(e, A_WALK);
   play(e, an);
 }
 
@@ -124,7 +134,7 @@ void enemy_kill(Enemy *e, int how) {
     fx_add(e->flying ? AN_FX_DESINTEGRATEAIR : ST(e)->size == SZ_BIG ? AN_FX_DESINTEGRATEBIG : AN_FX_DESINTEGRATENORMAL,
            e->x, e->y, false, false);
     e->alive = 0;
-  } else {
+  } else if (how == 0) {
     fx_add(ST(e)->blood == 1 ? AN_B_BLOODGREEN : ST(e)->blood == 2 ? -1 : AN_B_BLOOD, e->x, e->y + 1, false, true);
   }
 }
@@ -147,6 +157,12 @@ void enemy_damage(Enemy *e, int dmg, int type, int pierce) {
     }
   }
   if (e->health <= 0) {
+    if (e->type == EN_VEZNAN && e->froze == 1) {   /* gotoDemon: the wizard falls, the demon rises */
+      e->health = 1, e->froze = 2, e->sp_c = 0, e->active = 0;
+      if (e->soldier >= 0) enemy_unblock(e);
+      play(e, AN_E_VEZNAN_TODEMON);
+      return;
+    }
     e->health = 0;
     enemy_kill(e, 0);
   }
@@ -163,7 +179,7 @@ bool enemy_dodge(Enemy *e) { return e->dodge && rnd() * 100.0f <= (float)e->dodg
 /* ------------------------------------------------------------------ soldiers */
 void enemy_block(Enemy *e, int soldier) {
   e->soldier = (int8_t)soldier, e->blocked = 1;
-  play(e, ANIM(e->type, A_IDLE));
+  play(e, anim_of(e, A_IDLE));
 }
 
 void enemy_unblock(Enemy *e) {   /* §_-Ef§ */
@@ -175,7 +191,7 @@ void enemy_unblock(Enemy *e) {   /* §_-Ef§ */
 void enemy_start_fighting(Enemy *e) {
   e->fighting = 1, e->dir = 0;
   e->y += 0.1f;
-  play(e, ANIM(e->type, A_FIGHT));
+  play(e, anim_of(e, A_FIGHT));
   e->charging = 1;
 }
 
@@ -277,12 +293,6 @@ static void debuffs(Enemy *e) {
 }
 
 /* ------------------------------------------------------------------ the specials */
-static int count_alive(int type) {
-  int n = 0;
-  for (int i = 0; i < MAX_ENEMIES; i++)
-    if (B.en[i].alive && !B.en[i].dead && B.en[i].type == type) n++;
-  return n;
-}
 
 /* a soldier for a ranged attack: in range, not too close (§_-F9§, §_-9s§) */
 static int ranged_target(Enemy *e, int range, int min_range) {
@@ -573,10 +583,14 @@ static bool special_move(Enemy *e) {
 void enemy_step(Enemy *e) {
   e->anim_t++;
   if (e->dead) {
-    if (e->dead_t == 0) play(e, ANIM(e->type, A_DEAD));
+    if (e->dead_t == 0) play(e, anim_of(e, A_DEAD));
     e->dead_t++;
     if ((e->type == EN_DEMON || e->type == EN_DEMONWOLF || e->type == EN_DEMONMAGE) && e->dead_t == 5) demon_explode(e);
     if (e->dead_t >= e->dead_time) e->alive = 0;
+    return;
+  }
+  if (e->type == EN_VEZNAN && (e->froze == 0 || e->froze == 2)) {   /* in his tower, or changing */
+    veznan_power(e);
     return;
   }
   if (special_move(e)) return;
@@ -605,11 +619,11 @@ void enemy_step(Enemy *e) {
       e->charge_t = 0;
       e->charging = 0;
       attack(e);
-      play(e, ANIM(e->type, A_IDLE));
+      play(e, anim_of(e, A_IDLE));
       so = SO(e->soldier);
       if (!so || so->dead) enemy_unblock(e);
     } else if (++e->reload_t == e->reload) {
-      play(e, ANIM(e->type, A_FIGHT));
+      play(e, anim_of(e, A_FIGHT));
       e->charging = 1;
       e->reload_t = 0;
     }

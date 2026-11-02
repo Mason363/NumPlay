@@ -82,7 +82,7 @@ typedef struct Enemy {
   float slow_speed;        /* the speed before a slow or a net */
   float base_speed;
   /* the specials: timers and counts, by enemy */
-  int16_t sp_t, sp_t2, sp_n, sp_n2, sp_state;
+  int16_t sp_t, sp_t2, sp_n, sp_n2, sp_state, sp_c;
   int16_t regen_t, rage_t, respawn_t;
   int16_t teleport_t, teleports, thorn_t, thorn_tick, thorns, thorn_dmg, thorn_len, thorn_every;
   uint8_t teleporting, thorned;
@@ -107,7 +107,10 @@ typedef struct Soldier {
   int16_t life_time, life_t, lifes;
   uint16_t anim, anim_t;
   int16_t sp_t, sp_t2;     /* specials' cooldowns */
-  uint8_t sp_state;
+  uint8_t sp_state;        /* the special under way: 1 healing, 2 holy strike, 3 a net, 4 an axe */
+  int16_t sp_c;
+  int8_t sp_target;
+  Pt sp_at;
   float home_x, home_y;    /* reinforcements: where they were called (§_-Fm§) */
 } Soldier;
 
@@ -129,10 +132,13 @@ typedef struct Spot {
   int8_t soldiers[3];
   uint8_t door;            /* 0 closed, 1 opening, 2 open, 3 closing */
   int16_t door_t;
-  /* specials: each ability's level and cooldown */
+  /* specials: each ability's level and cooldown, the one under way (sp_on: 1 + its index) and its count */
   uint8_t sp_lvl[3];
   int16_t sp_t[3];
-  uint8_t sp_flag;
+  uint8_t sp_flag, sp_on;
+  int16_t sp_c, poison_t;
+  int8_t sp_target;
+  Pt sp_at;
   int8_t elemental;
   uint8_t premade;         /* built by the level (iron mode), not bought */
   uint8_t disabled;        /* frozen, or held by Vez'nan */
@@ -142,7 +148,8 @@ typedef struct Spot {
 
 enum {
   BU_ARROW, BU_BOLT, BU_BOMB, BU_FIREBALL, BU_ARROW_ENEMY, BU_AXE, BU_AXE_ENEMY, BU_MISSILE, BU_MISSILE_ENEMY,
-  BU_RAY_ARCANE, BU_RAY_DEATH, BU_RAY_POLY, BU_RAY_TESLA, BU_BOLT_SORCERER, BU_BOLT_NECRO, BU_SPEAR, BU_SHOT
+  BU_RAY_ARCANE, BU_RAY_DEATH, BU_RAY_POLY, BU_RAY_TESLA, BU_BOLT_SORCERER, BU_BOLT_NECRO, BU_SPEAR, BU_SHOT,
+  BU_FIELD, BU_NET
 };
 typedef struct Bullet {
   uint8_t alive, kind, level, active, crit, first;
@@ -151,6 +158,9 @@ typedef struct Bullet {
   float x, y, x0, y0, tx, ty, xs, ys, acc, acc_max, g, rot;
   int16_t min_dmg, max_dmg, area, pierce, bombs;
   uint16_t anim, anim_t;
+  int16_t dmg;             /* a ray's whole damage, spread over its frames */
+  uint8_t jump, jump_max, shielded;
+  int8_t hitlist[6];       /* the tesla's arcs: whom they already hit */
 } Bullet;
 
 typedef struct Fx {
@@ -213,6 +223,12 @@ typedef struct {
   /* spider eggs (SpiderEgg): where, on which road, when they hatch */
   struct { uint8_t on, path, n; int16_t node, t; float x, y; } egg[12];
   int16_t skeletons;                  /* currentSkeletons */
+  /* the rain of fire's burning ground (ScorchedEarth) */
+  struct { uint8_t on; int16_t t, dur; Pt at; } burn[8];
+  int8_t veznan;                      /* Vez'nan, in the last stage's campaign */
+  struct { uint8_t on, k, n, group, max; int16_t t; } vportal[6];
+  /* the arcane wizards' portals (TeleportPortal) */
+  struct { uint8_t on; int16_t t, left, nodes; Pt at; } portal[4];
   uint32_t frame;
   int32_t gold_won;
   uint16_t kills;
