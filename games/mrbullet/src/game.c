@@ -28,7 +28,14 @@ static uint8_t pending_blast[MAX_OBJ];   /* explosives set off, going off in a f
 #define GRENADE_R 5.0f
 #define FUSE 150
 #define BLAST_R 160.0f
-#define KILL_SPEED 180.0f      /* a blow that kills a standing character (units/s) */
+/* blows to characters, as friction x friction x speed (m/s): one that knocks them over, one that kills */
+#define KNOCK_BLOW 0.06f
+#define KILL_BLOW 0.2f
+/* a bullet pushes what it hits by 3.5 m/s along its way (the original's levels need it: towers, planks and balls
+   knocked over by one bullet; the code that does it in the original was not found, the speed was fitted by the
+   bot in tests/play.c) */
+#define PUSH 3.5f
+#define BOUNCES 20             /* a bullet goes after its 20th wall */
 #define BREAK_SPEED 450.0f     /* a blow that breaks a breakable (7.5 m/s) */
 #define RAGDOLL_BYTES 9000     /* about what a ragdoll takes of Box2D's memory */
 
@@ -109,11 +116,11 @@ static void pose(const Char *c, int part, float *x, float *y, float *ang) {
 }
 
 bool game_part(const Char *c, int part, float *x, float *y, float *s, float *cs) {
-  if (!c->alive && c->part[part] >= 0 && world_alive(c->part[part])) {
+  if (c->limp && c->part[part] >= 0 && world_alive(c->part[part])) {
     world_xf(c->part[part], x, y, s, cs);
     return true;
   }
-  if (!c->alive && (c->body < 0 || !world_alive(c->body))) return false;
+  if (c->limp && (c->body < 0 || !world_alive(c->body))) return false;
   float a;
   pose(c, part, x, y, &a);
   *s = sinf(a), *cs = cosf(a);
@@ -134,7 +141,8 @@ static void fall(Char *c, int ci) {
   for (int p = 0; p < P_COUNT; p++) pose(c, p, &x[p], &y[p], &a[p]);
   float fx, fy, rx, ry, ux, uy, k = c->h / 80;
   frame_of(c, &fx, &fy, &rx, &ry, &ux, &uy);
-  c->alive = 0;
+  if (c->limp) return;
+  c->limp = 1;
   if (b2_heap_limit && b2_heap_now + RAGDOLL_BYTES > b2_heap_limit && c->body >= 0) {
     /* no room for its ragdoll: it falls stiff */
     world_set_fixed_rotation(c->body, false);
@@ -182,6 +190,7 @@ static void kill(int ci, float ix, float iy, float px, float py) {
   if (!c->alive) return;
   if (c->role == R_HERO && !c->hittable) return;
   fall(c, ci);
+  c->alive = 0;
   /* the blow goes to the piece nearest it */
   int best = -1;
   float bd = 1e9f;
@@ -526,6 +535,13 @@ void game_contact(int a, int b, int ba, int bb, float speed, float x, float y) {
 static bool is_hero_code(int code) { return KIND(code) == T_CHAR && INDEX(code) == g.hero; }
 
 bool game_contact_enabled(int a, int b) {
+  /* explosives meet only the static level, bullets and grenades */
+  for (int k = 0; k < 2; k++, a ^= b, b ^= a, a ^= b) {
+    if (KIND(a) != T_LEVEL || !(g.obj[INDEX(a)].flags & F_BE)) continue;
+    if (KIND(b) == T_SHOT || KIND(b) == T_SWITCH) continue;
+    if (KIND(b) == T_LEVEL && g.obj[INDEX(b)].body >= 0 && !world_dynamic(g.obj[INDEX(b)].body)) continue;
+    return false;
+  }
   /* his grenades don't touch the shooter */
   if (KIND(a) == T_SHOT && is_hero_code(b)) return false;
   if (KIND(b) == T_SHOT && is_hero_code(a)) return false;
@@ -558,8 +574,8 @@ static void blast(float x, float y) {
   for (int i = 0; i < g.nchar; i++) {
     Char *c = &g.ch[i];
     float cx, cy, s, cs;
-    if (c->alive) {
-      if (c->role == R_HERO && !c->hittable) continue;
+    if (c->role == R_HERO && !c->hittable) continue;
+    if (!c->limp) {
       game_part(c, P_TORSO, &cx, &cy, &s, &cs);
       float dx = cx - x, dy = cy - y, d = sqrtf(dx * dx + dy * dy);
       if (d < BLAST_R) {
@@ -575,6 +591,7 @@ static void blast(float x, float y) {
       if (d < BLAST_R) {
         float f = 0.4f * (1 - d / BLAST_R) / (d > 1 ? d : 1);
         world_impulse(c->part[p], dx * f, dy * f, cx, cy);
+        if (c->alive) kill(i, 0, 0, cx, cy);
       }
     }
   }
@@ -669,13 +686,23 @@ static void handle(const Event *e) {
     }
     if (ka == T_SHOT && g.shot[ia].body >= 0) {
       Shot *s = &g.shot[ia];
-      if (s->kind == 0 && kb == T_LEVEL) hit_level(ib, true, e->speed);
+      if (s->kind == 0 && kb == T_LEVEL) {
+        Obj *o = &g.obj[ib];
+        if (PUSH > 0 && o->body >= 0 && !o->gone && world_dynamic(o->body)) {
+          float push = PUSH * world_mass(o->body);
+          float v = sqrtf(s->vx * s->vx + s->vy * s->vy) + 1e-3f;
+          world_impulse(o->body, s->vx / v * push, s->vy / v * push, e->x, e->y);
+        }
+        hit_level(ib, true, e->speed);
+        if (++s->hits >= BOUNCES) s->life = 1;
+      }
       continue;
     }
-    if (ka == T_CHAR && g.ch[ia].alive && kb != T_SHOT && kb != T_SWITCH && e->speed > KILL_SPEED) {
-      bool other_still = kb == T_LEVEL && (g.obj[ib].body < 0 || !world_dynamic(g.obj[ib].body));
-      (void)other_still;
-      kill(ia, 0, 0, e->x, e->y);
+    if (ka == T_CHAR && g.ch[ia].alive && kb != T_SWITCH) {
+      /* a blow: friction (0.2, a grenade's 0.5) by friction (0.2) by speed (m/s) */
+      float blow = 0.2f * (kb == T_SHOT ? 0.5f : 0.2f) * e->speed / 60;
+      if (blow > KILL_BLOW) kill(ia, 0, 0, e->x, e->y);
+      else if (blow > KNOCK_BLOW && !(ia == g.hero && !g.ch[ia].hittable)) fall(&g.ch[ia], ia);
       continue;
     }
     if (ka == T_LEVEL && kb != T_SHOT && kb != T_SWITCH) hit_level(ia, false, e->speed);
@@ -700,6 +727,8 @@ void game_step(void) {
     if (o->kpos < 0) o->kpos = 0, o->kspeed = -o->kspeed;
     world_set_velocity(o->body, o->kdx * o->kspeed, o->kdy * o->kspeed);
   }
+  for (int i = 0; i < MAX_SHOT; i++)
+    if (g.shot[i].body >= 0) world_velocity(g.shot[i].body, &g.shot[i].vx, &g.shot[i].vy);
   nevents = 0;
   world_step();
   for (int i = 0; i < nevents; i++) handle(&events[i]);
@@ -735,7 +764,7 @@ void game_step(void) {
         int code = world_obj(hit[h]);
         if (KIND(code) != T_CHAR) continue;
         Char *c = &g.ch[INDEX(code)];
-        if (INDEX(code) == g.hero && !c->hittable) continue;
+        if (INDEX(code) == g.hero && (!c->hittable || !s->hits)) continue;
         if (c->alive) kill(INDEX(code), vx / v * 0.5f, vy / v * 0.5f, hx[h], hy[h]);
         else world_impulse(hit[h], vx / v * 0.15f, vy / v * 0.15f, hx[h], hy[h]);
       }
@@ -755,11 +784,8 @@ void game_step(void) {
   /* characters that fell out of the world */
   for (int i = 0; i < g.nchar; i++) {
     Char *c = &g.ch[i];
-    if (c->alive && c->body >= 0) {
-      float x, y, s, cs;
-      world_xf(c->body, &x, &y, &s, &cs);
-      if (y > 1500) kill(i, 0, 0, x, y);
-    }
+    float x, y, s, cs;
+    if (c->alive && game_part(c, P_TORSO, &x, &y, &s, &cs) && y > 1500) kill(i, 0, 0, x, y);
   }
   for (int i = 0; i < MAX_BOOM; i++)
     if (g.boom[i].t && ++g.boom[i].t > 24) g.boom[i].t = 0;

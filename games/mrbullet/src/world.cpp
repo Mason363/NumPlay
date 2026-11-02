@@ -361,17 +361,4 @@ extern "C" int world_query(float x0, float y0, float x1, float y1, int *out, int
 
 extern "C" int world_bodies(void) { return world ? world->GetBodyCount() : 0; }
 extern "C" int world_contacts(void) { return world ? world->GetContactCount() : 0; }
-#ifdef HOST
-#include <stdio.h>
-extern "C" void world_debug(void) {
-  int n = 0, touching = 0;
-  for (b2Contact *c = world->GetContactList(); c; c = c->GetNext()) {
-    n++;
-    if (c->IsTouching()) touching++;
-    if (n < 40 && c->IsTouching()) printf("contact %d-%d types %d %d touching %d\n", (int)(intptr_t)c->GetFixtureA()->GetBody()->GetUserData(),
-                       (int)(intptr_t)c->GetFixtureB()->GetBody()->GetUserData(), c->GetFixtureA()->GetType(),
-                       c->GetFixtureB()->GetType(), c->IsTouching());
-  }
-  printf("contacts %d touching %d bodies %d proxies %d\n", n, touching, world->GetBodyCount(), world->GetProxyCount());
-}
-#endif
+

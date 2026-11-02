@@ -48,6 +48,7 @@ typedef struct {
 
 typedef struct {
   uint8_t role, alive, left, hittable, obj;
+  uint8_t limp;                     /* fallen (a ragdoll, or stiff when there was no room for one) */
   float h;                          /* height */
   float fx, fy, tilt;               /* where it stood: feet and lean (at the start) */
   int16_t body;                     /* standing: one body */
@@ -55,10 +56,11 @@ typedef struct {
 } Char;
 
 typedef struct {
-  uint8_t kind, life_on;            /* kind 0 bullet, 1 grenade */
+  uint8_t kind, hits;               /* kind 0 bullet, 1 grenade; hits: walls it bounced off */
   int16_t body;
   int16_t life;                     /* steps left */
   float px, py;                     /* where it was the step before */
+  float vx, vy;                     /* its speed before the step */
   float tx[TRAIL], ty[TRAIL];
   uint8_t tn;
 } Shot;
