@@ -316,6 +316,11 @@ GAMES = {
                  presses((1500, "ok"), (2200, "ok"), (3000, "ok"), (4000, "ok"), (8000, "back"))
                  + [(5000, 7000, K["ok"])], 9000,
                  presses((1500, "ok"), (2500, "ok")) + [(3500, 5500, K["ok"])], 6500),
+    # the title's Play, Classic, the first level, how to play (the first time), then one bullet: the level cleared;
+    # Home keeps its three stars. Next time, from the copy, the same level without the guide, quit with On/Off
+    "mrbullet": ("MrBullet.nwa", "mrbullet.sav",
+                 presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "ok"), (4300, "ok")), 7500,
+                 presses((1500, "ok"), (2200, "ok"), (2900, "ok")), 4500),
     # a level, its message, then play; then back to the level select
     "portal": ("PortalReturns.nwa", "portal.sav",
                presses((1500, "ok"), (2500, "ok"), (3500, "ok")) + every(4000, 7000, 400, "right", 300), 8000,
@@ -386,7 +391,8 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
           "badtime": "badtime_saves.py", "mahjong": "mahjong_saves.py",
           "rider": "rider_saves.py", "snowrider": "snowrider_saves.py", "templerun": "templerun_saves.py",
-          "fnaf2": "fnaf2_saves.py", "fnaf3": "fnaf3_saves.py", "fnaf4": "fnaf4_saves.py", "famidash": "famidash_saves.py"}
+          "fnaf2": "fnaf2_saves.py", "fnaf3": "fnaf3_saves.py", "fnaf4": "fnaf4_saves.py", "famidash": "famidash_saves.py",
+          "mrbullet": "mrbullet_saves.py"}
 
 
 def paperclips_ok(v):
@@ -653,6 +659,9 @@ CHECKS = {
     # "FMD1", version 1: how to play read (flags at 5), time played (564); after the reinstall, from the copy, more
     "famidash": (lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 7000,
                  lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 12000),
+    # "MRB1", version 1, its size (1216): the first level's three stars (8), cleared (604), how to play read (1208);
+    # after the reinstall, from the copy, the same
+    "mrbullet": (lambda v: len(v) == 1216 and v[:4] == b"MRB1" and v[8] == 3 and v[604] == 1 and v[1208] == 1,) * 2,
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept

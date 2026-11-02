@@ -454,8 +454,10 @@ void draw_hud(const char *title, const char *keys1, const char *keys2) {
     int kind = i < g.shots ? 2 : (i == n - 1 ? 1 : 0);
     if (g.grenades) {
       if (y + 14 > gfx_y0 && y < gfx_y1) {
-        if (kind == 2) gfx_circle(x + 4, y + 8, 5, HEX(0x3A4756), 256);
-        else draw_pic(PIC_GRENADE, x - 2, y + 2);
+        /* a grenade: its body and lever (the last one gold, as the bullets) */
+        color_t c = kind == 2 ? HEX(0x3A4756) : kind == 1 ? HEX(0xF2B807) : HEX(0x55692F);
+        gfx_circle(x + 4, y + 10, 5, c, 256);
+        gfx_fill(x + 2, y + 2, 4, 3, kind == 2 ? HEX(0x3A4756) : HEX(0x2B3238));
       }
     } else if (y + 16 > gfx_y0 && y < gfx_y1) {
       bullet_icon(x, y, kind);
@@ -471,7 +473,7 @@ void draw_hud(const char *title, const char *keys1, const char *keys2) {
     }
   }
   if (g.grenades) {
-    int x = FIELD_X0 + FIELD_W + 8, y = 40, h = 100;
+    int x = FIELD_X0 + FIELD_W + 8, y = 30, h = 76;
     gfx_text(&np_font_small, x, y - 6, "Power", COL_MUTED, 256);
     gfx_rrect(x, y, 12, h, 3, COL_PANEL_LIGHT, 256);
     int f = (int)(g.power * (h - 4));

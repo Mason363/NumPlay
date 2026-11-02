@@ -68,7 +68,9 @@ static void save_ppm(const char *path) {
 static void scene(void *ctx) {
   (void)ctx;
   draw_world(true);
-  draw_hud("Level 1", "Left Right", g.grenades ? "power" : "turn");
+  char t[16];
+  snprintf(t, sizeof t, "Level %d", g.level - res_mode_first(g.mode) + 1);
+  draw_hud(t, "Left Right", g.grenades ? "power" : "turn");
 }
 static void picture(const char *name) {
   gfx_buf = (uint16_t *)strip;
@@ -256,6 +258,15 @@ int main(int argc, char **argv) {
           world_velocity(g.obj[i].body, &vx, &vy);
           printf("step %d: object %d at %.1f %.1f moving %.1f %.1f\n", s, i, x, y, vx, vy);
         }
+    }
+    return 0;
+  }
+  if (argc >= 5 && !strcmp(argv[1], "try")) {
+    /* which angles (degrees, by tenths) clear a level with one shot */
+    int l = atoi(argv[2]) - 1;
+    for (float a = (float)atof(argv[3]); a <= (float)atof(argv[4]); a += 0.5f) {
+      int stars;
+      printf("%.1f: %s\n", a, try_shot(l, a * 3.14159265f / 180, 0.55f, &stars) == ST_WON ? "cleared" : "-");
     }
     return 0;
   }

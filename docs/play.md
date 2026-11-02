@@ -807,6 +807,22 @@ Your icon moves on by itself: jump over the spikes and reach the end. Hold the b
 
 <br clear="right">
 
+## Mr Bullet
+
+<img src="../games/mrbullet/docs/shot.png" width="320" align="right" alt="Mr Bullet">
+
+| Key | What it does |
+| --- | --- |
+| **Up** and **Down** | Aim (hold to aim faster) |
+| **Left** and **Right** | Turn round (Grenades: how hard you throw) |
+| **OK** or **EXE** | Fire |
+| **Back** | Pause (Resume, Restart, Levels, How to play, Quit game) |
+| **Home** | Save and quit |
+
+Shoot every spy in the level. Bullets bounce off walls, so aim at a wall to reach a spy you can't see, or knock a crate onto him. Glass breaks, red boxes explode, and a coloured switch makes its blocks vanish or appear. Use as few bullets as the level needs for three stars; the gold bullet is the last one. Grenades go off after 2.5 seconds. Don't hit the hostages, and in Friendly Fire don't let your own bullet come back at you.
+
+<br clear="right">
+
 ## Portal Returns
 
 <img src="media/portal.gif" width="320" align="right" alt="Portal Returns: falling through a portal and flying across a test chamber">

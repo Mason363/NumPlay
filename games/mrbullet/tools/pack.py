@@ -246,7 +246,6 @@ for name, body, head, dead in SKINS:
 add('TITLE', pic_bytes(scaled(img('Misc/title.png'), 230 / 800.0)))
 bullet = img('Misc/bullet.png')
 add('BULLET', pic_bytes(scaled(bullet, 14 / 310.0), colours=7))
-add('GRENADE', pic_bytes(scaled(img('Misc/grenade.png'), 12 / 140.0), colours=7))
 star = img('Misc/star-md.png')
 add('STAR', pic_bytes(scaled(star, 20 / 162.0), colours=7))
 add('STAR_BIG', pic_bytes(scaled(star, 34 / 162.0), colours=11))

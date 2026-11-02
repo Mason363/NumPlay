@@ -1449,5 +1449,27 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/famidash",
     "default": false,
     "xl": true
+  },
+  {
+    "id": "mrbullet",
+    "rank": 37,
+    "title": "Mr Bullet",
+    "tagline": "Bounce the bullets, get the spies",
+    "credit": "Based on Mr Bullet by Lion Studios",
+    "top": "0x2AD4FF",
+    "bottom": "0x4B5459",
+    "accent": "0xE8392F",
+    "colors": 16,
+    "heap": 90112,
+    "records": [
+      "mrbullet.sav",
+      "mrbullet_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/mrbullet",
+    "default": false,
+    "xl": true
   }
 ]
