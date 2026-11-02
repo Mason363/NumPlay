@@ -61,8 +61,11 @@
  *    item draws are replayed, but not the enchanted book's enchantment draws
  *    (TODO, see dungeon_book), so after a dungeon chest the rest of that
  *    population draws differently from Minecraft (still a valid decoration).
- *  - Structures are not generated (see TODO below), which matches Minecraft
- *    only where no structure exists.
+ *  - Structures: NumBlocks.nwa (NB_DIMS) builds villages and desert temples in the
+ *    populations as 1.8.8 does (gen_struct.h) and strongholds after them
+ *    (gen_stronghold.h); NumPlay's NumBlocks has none, which matches Minecraft
+ *    only where no structure exists. Mineshafts, jungle temples, witch huts and
+ *    ocean monuments are not generated.
  * Slabs (gen_slab's y range)
  *  - Everything is computed for the whole height except where only the slab's
  *    rows can be affected; reads of C outside its slab come from the summary. The
@@ -71,8 +74,7 @@
  *    the row below; snowy grass under a snow layer above the slab's top row).
  *    c_top (gen_top) follows the writes of the populations including those above
  *    and below the slab, without their replace rules.
- * TODO: structures (villages, strongholds, mineshafts, temples, monuments);
- *       the enchanted book draws of dungeon chests.
+ * TODO: the other structures; the enchanted book draws of dungeon and temple chests.
  *
  * ---------------------------------------------------------------------------
  * HOW IT STAYS FAST AND SMALL (Cortex-M7, ~28 KB of static RAM, no malloc)
@@ -105,6 +107,12 @@ static int dims_slab(int cx, int cz, int y0, int h, uint8_t *out);   /* (gen_dim
 static int gd_dim;
 static void stronghold_slab(int cx, int cz, int y0, int h, uint8_t *out);   /* (gen_stronghold.h) */
 static int stronghold_prepare(int cx, int cz);
+/* (gen_struct.h) villages and desert temples: their pieces for the populations of gen_slab's chunk, kept in
+ * smem; built by each population; the cache of their regions */
+#define STRUCT_MEM 616
+static void structs_slab(int cx, int cz, void *smem);
+static int structs_populate(void);
+static void struct_cache(void *mem);
 #endif
 
 /* The float arithmetic here must be done as written (IEEE single precision, each operation
@@ -2466,6 +2474,20 @@ static void bflags_init(void) {
     bflags[B_PUMPKIN] = BF_OPAQUE | BF_SOLID | BF_BUILD | BF_CUBE;
     bflags[B_SANDSTONE_SLAB] = BF_SOLID | BF_BUILD;
     bflags[B_STONE_SLAB] = BF_SOLID | BF_BUILD;
+#if NB_DIMS
+    /* what villages are built of (gen_struct.h), as their materials are */
+    static const uint8_t thin[] = {B_GLASS_PANE, B_FENCE_OAK, B_DOOR_OAK_LOWER, B_DOOR_OAK_LOWER_S, B_DOOR_OAK_LOWER_W,
+                                   B_DOOR_OAK_LOWER_N, B_DOOR_OAK_UPPER};
+    for (unsigned i = 0; i < sizeof thin; i++) bflags[thin[i]] = BF_SOLID | BF_BUILD;
+    static const uint8_t stairs[] = {B_FARMLAND, B_OAK_STAIRS, B_OAK_STAIRS_W, B_OAK_STAIRS_S, B_OAK_STAIRS_N,
+                                     B_COBBLESTONE_STAIRS, B_COBBLESTONE_STAIRS_W, B_COBBLESTONE_STAIRS_S,
+                                     B_COBBLESTONE_STAIRS_N};
+    for (unsigned i = 0; i < sizeof stairs; i++) bflags[stairs[i]] = BF_OPAQUE | BF_SOLID | BF_BUILD;
+    static const uint8_t none[] = {B_TORCH, B_TORCH_E, B_TORCH_W, B_TORCH_S, B_TORCH_N, B_LADDER};
+    for (unsigned i = 0; i < sizeof none; i++) bflags[none[i]] = 0;
+    for (int i = B_WHEAT_0; i <= B_WHEAT_7; i++) bflags[i] = BF_PLANT;
+    for (int i = B_CARROTS_0; i <= B_POTATOES_3; i++) bflags[i] = BF_PLANT;
+#endif
 }
 
 #define IS_AIR(b) ((b) == B_AIR)
@@ -3163,7 +3185,12 @@ static SumEntry sumc_mem[NSUM];
 static SumEntry *sumc = sumc_mem;
 #else
 static SumEntry *sumc;   /* on main's stack (gen_set_cache): calculator software gives apps 32 KB of it apart */
-void gen_set_cache(void *mem) { sumc = mem; }
+void gen_set_cache(void *mem) {
+    sumc = mem;
+#if NB_DIMS
+    struct_cache((uint8_t *)mem + GEN_CACHE_BYTES);
+#endif
+}
 #endif
 static uint32_t sum_clock;
 
@@ -3344,6 +3371,17 @@ static void c_track(int i, int Y, uint8_t b) {
 }
 
 static int put_skip_c; /* set: put() updates the view only */
+#if NB_DIMS
+/* C's cell c (slab index): a block past 255 (gen_hi's bit) reads as one of 8 bits it acts like (the
+ * structures' sandstone stairs, iron bars, pressure plates: cobblestone, solid, it blocks the features) */
+static uint8_t c_blk(int c) { return gen_hi && (gen_hi[c >> 3] >> (c & 7) & 1) ? B_COBBLESTONE : c_out[c]; }
+static void c_low(int c) {
+    if (gen_hi) gen_hi[c >> 3] &= (uint8_t)~(1 << (c & 7));
+}
+#else
+#define c_blk(c) (c_out[c])
+#define c_low(c) ((void)0)
+#endif
 
 /* writes block b at world (X, Y, Z): into the view, and into C if the rule holds there */
 static void put(int X, int Y, int Z, uint8_t b, int rule) {
@@ -3388,9 +3426,10 @@ static void put(int X, int Y, int Z, uint8_t b, int rule) {
     if (!put_skip_c && cx >= 0 && cx < 16 && cz >= 0 && cz < 16) {
         int i = cz * 16 + cx;
         if (Y >= c_y0 && Y < c_y0 + c_h) {
-            uint8_t *o = &c_out[(Y - c_y0) * 256 + i];
-            if (!rule_ok(rule, *o)) return;
-            *o = b;
+            int c = (Y - c_y0) * 256 + i;
+            if (!rule_ok(rule, c_blk(c))) return;
+            c_out[c] = b;
+            c_low(c);
         }
         c_track(i, Y, b);
     }
@@ -3400,9 +3439,10 @@ static void put(int X, int Y, int Z, uint8_t b, int rule) {
 static void put_c(int X, int Y, int Z, uint8_t b, int rule) {
     int cx = X - c_cx * 16, cz = Z - c_cz * 16;
     if (cx < 0 || cx > 15 || cz < 0 || cz > 15 || Y < c_y0 || Y >= c_y0 + c_h) return;
-    uint8_t *o = &c_out[(Y - c_y0) * 256 + cz * 16 + cx];
-    if (rule_ok(rule, *o)) {
-        *o = b;
+    int c = (Y - c_y0) * 256 + cz * 16 + cx;
+    if (rule_ok(rule, c_blk(c))) {
+        c_out[c] = b;
+        c_low(c);
         c_track(cz * 16 + cx, Y, b);
     }
 }
@@ -3411,7 +3451,7 @@ static void put_c(int X, int Y, int Z, uint8_t b, int rule) {
 static uint8_t cget(int X, int Y, int Z) {
     int cx = X - c_cx * 16, cz = Z - c_cz * 16;
     if (cx >= 0 && cx < 16 && cz >= 0 && cz < 16 && Y >= c_y0 && Y < c_y0 + c_h)
-        return c_out[(Y - c_y0) * 256 + cz * 16 + cx];
+        return c_blk((Y - c_y0) * 256 + cz * 16 + cx);
     return vget(X, Y, Z);
 }
 
@@ -5286,12 +5326,16 @@ static void populate(int px, int pz, int biome) {
     const Biome *b = bio(biome);
     jr_seed(&PR, (i64)((u64)(i64)px * (u64)pop_mul_x + (u64)(i64)pz * (u64)pop_mul_z) ^ g_seed);
     pmemo_begin(px, pz);
-    /* TODO: structures (mineshafts, villages, strongholds, temples, monuments) would draw here */
-    if (b->id != BI_DESERT && b->id != BI_DESERT_HILLS && RI(4) == 0) {
+#if NB_DIMS
+    int vflag = structs_populate(); /* villages and desert temples (gen_struct.h); a village keeps lakes away */
+#else
+    int vflag = 0; /* (NumPlay's NumBlocks: no structures) */
+#endif
+    if (b->id != BI_DESERT && b->id != BI_DESERT_HILLS && !vflag && RI(4) == 0) {
         int x = PK + RI(16) + 8, y = RI(256), z = PL + RI(16) + 8;
         lake(B_WATER, x, y, z);
     }
-    if (RI(8) == 0) {
+    if (!vflag && RI(8) == 0) {
         int x = PK + RI(16) + 8, y = RI(RI(248) + 8), z = PL + RI(16) + 8;
         if (y < SEA || RI(10) == 0) lake(B_LAVA, x, y, z);
     }
@@ -5426,6 +5470,9 @@ void gen_init(int64_t seed) {
     memset(pmemo, 0, sizeof pmemo);
     memset(sum_pin, 0, sizeof sum_pin);
     last_cx = bc_cx = 0x7fffffff;
+#if NB_DIMS
+    struct_cache(0); /* (another world: what its regions hold forgotten) */
+#endif
 }
 
 /* Caves and ravines of chunk (cx, cz) into out (whole height: the c_top tracking needs it) */
@@ -5504,6 +5551,10 @@ void gen_slab(int cx, int cz, int y0, int h, uint8_t *out) {
         for (int y = 0; y < h; y++) memset(out + y * 256, flat_block(y0 + y), 256);
         return;
     }
+#if NB_DIMS
+    uint32_t smem[STRUCT_MEM / 4];
+    structs_slab(cx, cz, smem); /* (first: the layouts are made in U) */
+#endif
     c_out = out;
     c_y0 = y0;
     c_h = h;

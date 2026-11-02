@@ -148,7 +148,7 @@ static bool dims_use(int k, bool on_block, int x, int y, int z, int b) {
       int pb = it_place[h->id - 256];
       int way = (int)floorf(pl.yaw / 90 + 0.5f) & 3;
       static const int8_t st[4] = {2, 1, 3, 0};
-      if (pb == B_NETHER_BRICK_STAIRS_E || pb == B_QUARTZ_STAIRS_E) pb += st[way];
+      if (pb == B_NETHER_BRICK_STAIRS_E || pb == B_QUARTZ_STAIRS_E || pb == B_SANDSTONE_STAIRS_E) pb += st[way];
       if (pb == B_STONE_BUTTON_E) {   /* (on a side: 1.8.8's on floors and ceilings are not here) */
         static const uint16_t bt[6] = {0, 0, B_STONE_BUTTON_N, B_STONE_BUTTON_S, B_STONE_BUTTON_W, B_STONE_BUTTON_E};
         if (pl.hit_face < 2 || world_get(x, y, z) == B_AIR) return true;

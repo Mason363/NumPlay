@@ -154,6 +154,7 @@ static void known(Stack *s, int n) {
 }
 void tiles_for_numplay(void *t);
 void tiles_merge(const void *t);
+bool gen_old_chunk(int cx, int cz) { return false; }
 #endif
 
 bool save_world(void) {

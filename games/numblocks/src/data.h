@@ -319,7 +319,7 @@ extern const uint8_t it_place[N_ITEMS];   /* the block it places (255: none) */
 #endif
 typedef struct { uint16_t out; uint8_t n, w, h; uint16_t in[9]; } Recipe;   /* w 0: shapeless, h of them */
 #if NB_DIMS
-#define N_RECIPES 205
+#define N_RECIPES 208
 #else
 #define N_RECIPES 187
 #endif
@@ -383,8 +383,8 @@ extern const uint16_t img_row0[], img_pal[][16];
 #define TX_PORTAL_24 245
 #define TX_PORTAL_28 246
 #define TX_END_SKY 247
-#define SP_BOSS_BG 491
-#define SP_BOSS 492
+#define SP_BOSS_BG 497
+#define SP_BOSS 498
 enum { SKIN_ZOMBIE_PIGMAN = 9, SKIN_GHAST = 10, SKIN_GHAST_SHOOTING = 11, SKIN_BLAZE = 12, SKIN_MAGMACUBE = 13, SKIN_ENDERMAN = 14, SKIN_WITHER_SKELETON = 15 };
 extern const char end_text[];   /* the End poem, then the credits */
 extern const uint8_t skin_crystal_px[];   /* endercrystal/endercrystal.png, 4 bits a texel */

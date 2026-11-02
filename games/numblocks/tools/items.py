@@ -489,6 +489,11 @@ ditem('ENDER_PEARL', 'Ender Pearl', 'ender_pearl', 'ender_pearl', stack=16)
 ditem('ENDER_EYE', 'Eye of Ender', 'ender_eye', 'ender_eye')
 ditem('FIRE_CHARGE', 'Fire Charge', 'fireball', 'fire_charge')
 ditem('IRON_DOOR', 'Iron Door', 'door_iron', 'placer', place='IRON_DOOR_LOWER_E')
+# (villages' and desert temples' blocks: after the others, so that saved items keep their numbers)
+for n, lab, st in [('WOODEN_PRESSURE_PLATE', 'Wooden Pressure Plate', 'WOODEN_PRESSURE_PLATE'),
+                   ('STONE_PRESSURE_PLATE', 'Stone Pressure Plate', 'STONE_PRESSURE_PLATE'),
+                   ('SANDSTONE_STAIRS', 'Sandstone Stairs', 'SANDSTONE_STAIRS_E')]:
+    ditem(n, lab, None, 'dblock', place=st, icon_block=st)
 IDNAMES = [x['name'] for x in ID]
 I_ALL = I + ID
 DBNAMES = [s['name'] for s in blocks.D]
@@ -505,6 +510,8 @@ for d in 'EWSN':
     DITEM_OF[f'STONE_BUTTON_{d}'] = 'STONE_BUTTON'
 for d in ['E', 'S', 'W', 'N', 'E_OPEN', 'S_OPEN', 'W_OPEN', 'N_OPEN']:
     DITEM_OF[f'IRON_DOOR_LOWER_{d}'] = 'IRON_DOOR'
+for d in 'EWSN':
+    DITEM_OF[f'SANDSTONE_STAIRS_{d}'] = 'SANDSTONE_STAIRS'
 DITEM_OF['IRON_DOOR_UPPER'] = None
 for lv in (1, 3, 5, 7):
     DITEM_OF[f'FLOWING_LAVA_{lv}'] = None
@@ -555,10 +562,14 @@ RD.append(('IRON_BARS', 16, ['###', '###'], {'#': 'IRON_INGOT'}))
 RD.append(('IRON_DOOR', 3, ['##', '##', '##'], {'#': 'IRON_INGOT'}))
 RD.append(('STONE_BRICK_STAIRS', 4, ['#  ', '## ', '###'], {'#': 'STONE_BRICKS'}))
 RD.append(('STONE_BUTTON', 1, None, ['STONE']))
+RD.append(('WOODEN_PRESSURE_PLATE', 1, ['##'], {'#': 'G_PLANKS'}))
+RD.append(('STONE_PRESSURE_PLATE', 1, ['##'], {'#': 'STONE'}))
+RD.append(('SANDSTONE_STAIRS', 4, ['#  ', '## ', '###'], {'#': 'SANDSTONE'}))
 # the creative tabs: building blocks, decoration, materials, brewing, miscellaneous
 TAB_D = {'NETHER_BRICK_FENCE': 1, 'END_PORTAL_FRAME': 1, 'DRAGON_EGG': 1, 'NETHERBRICK': 10, 'QUARTZ': 10,
          'BLAZE_ROD': 10, 'NETHER_WART': 9, 'BLAZE_POWDER': 9, 'GHAST_TEAR': 9, 'MAGMA_CREAM': 9, 'ENDER_PEARL': 4,
-         'ENDER_EYE': 4, 'FIRE_CHARGE': 4, 'IRON_BARS': 1, 'IRON_DOOR': 2, 'STONE_BUTTON': 2}
+         'ENDER_EYE': 4, 'FIRE_CHARGE': 4, 'IRON_BARS': 1, 'IRON_DOOR': 2, 'STONE_BUTTON': 2,
+         'WOODEN_PRESSURE_PLATE': 2, 'STONE_PRESSURE_PLATE': 2}
 
 
 def tab_of_dims(iid):

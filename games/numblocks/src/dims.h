@@ -52,6 +52,11 @@ void throw_eye(int tx, int ty, int tz);   /* (mob.c) an eye of ender towards the
 bool gen_stronghold_near(int x, int z, int *out);   /* (gen.c) where an eye of ender flies to from there */
 int gen_stronghold_chest(int x, int y, int z);      /* (gen.c) a stronghold's chest there: its list (0: none) */
 int gen_stronghold_find(int s, int *out);           /* (gen.c, tests) stronghold s: where, its portal */
+int gen_struct_chest(int x, int y, int z);          /* (gen.c) a village's or a desert temple's chest there: 1, 2 */
+int gen_village_find(int rx, int rz, int *out);     /* (gen.c, tests) the village of a region of the grid */
+int gen_village_piece(int i, int *out);             /* (gen.c, tests) a piece of the village just found */
+int gen_temple_find(int rx, int rz, int *out);      /* (gen.c, tests) the temple grid's start there */
+bool gen_old_chunk(int cx, int cz);                 /* (save.c) a chunk made before the villages: none in it */
 extern uint8_t *gen_hi;                             /* (gen.c) the ninth bits of the slab gen_slab fills */
 void pearl_land(float x, float y, float z);
 void dims_explode(float x, float y, float z, float power, bool fire);   /* (mob.c) */

@@ -318,7 +318,13 @@ enum {
   B_FLOWING_LAVA_3 = 307,   /* 10:3 */
   B_FLOWING_LAVA_5 = 308,   /* 10:5 */
   B_FLOWING_LAVA_7 = 309,   /* 10:7 */
-  B_ALL = 310
+  B_WOODEN_PRESSURE_PLATE = 310,   /* 72:0 */
+  B_STONE_PRESSURE_PLATE = 311,   /* 70:0 */
+  B_SANDSTONE_STAIRS_E = 312,   /* 128:0 */
+  B_SANDSTONE_STAIRS_W = 313,   /* 128:1 */
+  B_SANDSTONE_STAIRS_S = 314,   /* 128:2 */
+  B_SANDSTONE_STAIRS_N = 315,   /* 128:3 */
+  B_ALL = 316
 };
 enum { M_PORTAL = 19, M_FRAME = 20, M_ENDPORTAL = 21, M_EGG = 22, M_BUTTON = 23 };
 #define B_N B_ALL
