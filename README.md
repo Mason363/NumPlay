@@ -286,6 +286,9 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 
 [Vote](https://github.com/Mason363/NumPlay/issues?q=is%3Aissue+is%3Aopen+label%3A%22on+roadmap%22+sort%3Areactions-%2B1-desc) with a 👍 on the game you want next. The most voted come first.
 
+<details>
+<summary><b>Done earlier: 47 more</b></summary>
+
 - [x] Celeste
 - [x] Hollow Knight
 - [x] Minecraft 1.8 (NumBlocks)
@@ -333,6 +336,9 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] Crossy Road: the characters and the prize machine
 - [x] Famidash: its newest and fullest version, HUGE, with 173 levels
 - [x] ColecoVision games in Retro-Go
+
+</details>
+
 - [x] Five Nights at Freddy's 3
 - [x] Five Nights at Freddy's 4
 - [x] Clash Royale, against bots
