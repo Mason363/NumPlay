@@ -323,7 +323,7 @@
     b.addEventListener('animationend', () => b.classList.remove(cls), { once: true });
   }
   function overflow(bytes) {
-    toast("That doesn't fit: " + size(bytes) + ' too much' + (st.cap === 'std' ? '. Epsilon 26 and Nwagra give more space' : ''));
+    toast("That doesn't fit: " + size(bytes) + ' too much' + (st.cap === 'std' ? '. Epsilon 26 and Nwagra give more space' : '. Take games out first'));
     $('#screen').classList.add('over');
     setTimeout(() => render(), 500);
   }
@@ -377,7 +377,9 @@
     const fit = (id) => spaces().some((s) => s.id === id && s.size >= alone);
     const needs = st.cap === 'std' && fit('e26') ? 'Epsilon 26 or Nwagra' : !nwagra() && fit(st.cap === 'e26' ? 'xl26' : 'xl') ? 'Nwagra'
       : st.cap === 'xl' && fit('xl26') ? SPACES.xl26 : '';
-    toast(r.name + ' is ' + mb(r.bytes.length) + (needs ? ': a game that big needs ' + needs : ', too big for the calculator'));
+    toast(r.name + ' is ' + mb(r.bytes.length) + ', more than ' + mb(capacity()) +
+      (needs ? '. On ' + needs + '? Pick it in the space for apps' : ': too big for the calculator'));
+    if (needs && popOpen !== $('#space-pop')) { renderSpaces(); openPop($('#space-pop'), $('#space-chip'), true); }
     $('#screen').classList.add('over');
     setTimeout(() => render(), 500);
     return true;
