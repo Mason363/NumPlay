@@ -119,6 +119,10 @@ void dw_step(void) {
     if (g_room == room_dark_chase1 && plot() < 16) room_queue_event(EV_CHASE1);
     if (g_room == room_dark_chase2 && plot() < 17) room_queue_event(EV_SLIDE);
   }
+  if (g_room == room_dark_chase1 && plot() == 16) {
+    Obj *l = obj_find(ACT_LANCER);
+    if (l) obj_walk_to(l, pl.x + 40, pl.y - 120, 3);
+  }
   /* the field's enemies come at Kris */
   for (int i = 0; i < MAX_OBJS; i++) {
     Obj *o = &objs[i];
@@ -204,16 +208,7 @@ static int ev_chase1(Ev *c) {
   WAIT(30);
   TALKF(FC_SUSIE, 9, obj_lancerchaseevent_slash_Step_0_gml_137_0);
   set_plot(16);
-  /* (he follows, at Kris's own pace) */
-  FREE(true);
-  for (;;) {
-    {
-      Obj *l = obj_get(ACT_LANCER);
-      obj_walk_to(l, pl.x + 40, pl.y - 120, 3);
-    }
-    if (g_room != room_dark_chase1) break;
-    WAIT(1);
-  }
+  /* (he follows, at Kris's own pace: dw_step) */
   EV_END;
 }
 

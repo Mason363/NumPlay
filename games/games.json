@@ -698,6 +698,34 @@
     "xl": true
   },
   {
+    "id": "deltarune",
+    "rank": 37,
+    "title": "Deltarune",
+    "tagline": "Chapter 1: into the Dark World",
+    "credit": "Based on Deltarune by Toby Fox",
+    "top": "0x2A1E46",
+    "bottom": "0x050308",
+    "accent": "0x2BD9F5",
+    "colors": 16,
+    "records": [
+      "deltarune.sav",
+      "drresume.sav",
+      "drconfig.sav",
+      "deltarune_saves.py"
+    ],
+    "reset": [
+      "deltarune.sav",
+      "drresume.sav",
+      "deltarune_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/deltarune",
+    "default": false,
+    "xl": true
+  },
+  {
     "id": "championisland",
     "rank": 24,
     "title": "Champion Island",

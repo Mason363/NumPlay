@@ -290,6 +290,24 @@ Name the fallen human, then walk and talk your way through the Ruins, Snowdin, W
 
 <br clear="right">
 
+## Deltarune
+
+<img src="media/gallery/deltarune.gif" width="320" align="right" alt="Deltarune: Kris, Susie and Ralsei fight a Rudinn, its diamonds fly at the SOUL">
+
+Deltarune comes as its own app, `Deltarune.nwa`: it is too big to share the calculator with NumPlay.
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** (or 4, 6, 8, 2) | Walk, move your SOUL, choose |
+| **OK**, **EXE** or 5 | Talk, read, confirm (Z in the game) |
+| **Back** or **⌫** | Cancel; hold it to run, or to show the whole text at once (X in the game) |
+| **toolbox**, **shift** or **var** | The menu (C in the game) |
+| **Home** | Keep the moment and quit |
+
+Chapter 1: Kris wakes up, goes to school, and falls into the Dark World with Susie. In a battle each of your party picks in turn: FIGHT (press **OK** as each bar reaches the line), ACT (Kris) or MAGIC (Susie and Ralsei), ITEM, SPARE or DEFEND. Defending, hitting well and letting bullets pass close by your SOUL (grazing) fill the TP bar, which pays for ACTs and spells. An enemy whose name turns yellow can be spared; one that's TIRED can be put to sleep by Ralsei's Pacify. Walk up to a SAVE point and press **OK** to save. Home keeps the moment you were at, and your save is also copied into `deltarune_saves.py`, so installing the app again doesn't erase it.
+
+<br clear="right">
+
 ## Doom
 
 <img src="media/doom.gif" width="320" align="right" alt="Doom: imps down a corridor of Phobos Lab, then zombiemen around the yellow key">

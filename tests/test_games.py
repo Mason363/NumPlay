@@ -178,6 +178,12 @@ GAMES = {
                           *[(5000 + 200 * i, "down") for i in range(8)], (6800, "right"), (7000, "right"),
                           (7300, "ok"), (8300, "right"), (8600, "ok"), (10500, "right", 1500)), 13000,
                   presses((1500, "left", 1000)), 4000),
+    # New game, the name "A" and END: Toriel wakes Kris up and her texts go by; Home keeps the moment, and the
+    # next start is back there
+    "deltarune": ("Deltarune.nwa", "drresume.sav",
+                  presses((1500, "ok"), (2500, "ok"), (3000, "down"), (3200, "down"), (3400, "down"), (3600, "down"),
+                          (3800, "right"), (4100, "ok"), (6000, "ok"), (7000, "ok"), (8000, "ok")), 11000,
+                  presses((1500, "left", 1000)), 4000),
     # how to play, the title, a run up the middle track through the first coins; Home banks them. Next time
     # straight from the title into another run, quit with On/Off
     "subway": ("SubwaySurfers.nwa", "subway.sav", presses((1500, "ok"), (2500, "ok")), 8000,
@@ -375,7 +381,8 @@ SEEDS = {
 # the app again, only the scripts are left, and the save must come back
 COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.py", "celeste": "celeste_saves.py",
           "hollowknight": "hollowknight_saves.py", "finalearth2": "finalearth2_saves.py",
-          "numpowder": "numpowder_saves.py", "undertale": "undertale_saves.py", "subway": "subway_saves.py",
+          "numpowder": "numpowder_saves.py", "undertale": "undertale_saves.py", "deltarune": "deltarune_saves.py",
+          "subway": "subway_saves.py",
           "fnaf": "fnaf_saves.py", "doom": "doom_saves.py", "isaac": "isaac_saves.py",
           "hillclimb": "hillclimb_saves.py", "pvz": "pvz_saves.py", "sonic": "sonic_saves.py",
           "cookieclicker": "cookieclicker_saves.py", "leveldevil": "leveldevil_saves.py",
@@ -477,6 +484,9 @@ CHECKS = {
     # the moment kept ("UT01", the frames played at 52); after the reinstall, from the copy, it goes on
     "undertale": (lambda v: v[:4] == b"UT01" and struct.unpack_from("<I", v, 52)[0] > 0,
                   lambda v: v[:4] == b"UT01" and struct.unpack_from("<I", v, 52)[0] > 60),
+    # the moment kept ("DR01", the frames played at 156); after the reinstall, from the copy, it goes on
+    "deltarune": (lambda v: v[:4] == b"DR01" and struct.unpack_from("<I", v, 156)[0] > 0,
+                  lambda v: v[:4] == b"DR01" and struct.unpack_from("<I", v, 156)[0] > 60),
     # the progress ("SUB1"): a run played, its coins banked (offset 8), runs at 20; then a second run
     "subway": (lambda v: v[:4] == b"SUB1" and struct.unpack_from("<I", v, 8)[0] > 0 and struct.unpack_from("<I", v, 20)[0] == 1,
                lambda v: v[:4] == b"SUB1" and struct.unpack_from("<I", v, 20)[0] == 2),
