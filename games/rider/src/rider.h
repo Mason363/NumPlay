@@ -185,6 +185,7 @@ typedef struct {
   int flips, perfect, doubles, gems;
   int best_flips_jump;
   int ended;            /* END_ */
+  bool broken;          /* (out of memory: the physics world is given up) */
   float end_ms;
   float finish_x;
   float bottom;         /* below this is out of the world */

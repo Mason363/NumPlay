@@ -26,7 +26,7 @@ BOX2D = $(wildcard src/Box2D/*/*.cpp src/Box2D/*/*/*.cpp)
 BOX2D_H = $(wildcard src/Box2D/*/*.h src/Box2D/*/*/*.h)
 PHYS = src/phys.cpp $(BOX2D)
 # the calculator's memory: Box2D's arena, its tree made once, small chunks and stack
-B2 = -DB2_TREE_NODES=320 -DB2_STACK_SIZE=4096 -DB2_CHUNK_SIZE=1024 -DB2_CHUNK_ARRAY_INCREMENT=64
+B2 = -DB2_TREE_NODES=320 -DB2_STACK_SIZE=16384 -DB2_CHUNK_SIZE=1024 -DB2_CHUNK_ARRAY_INCREMENT=64
 # (a computer's pointers are twice as big: room for that)
 DEVICE_ARENA = -DPH_ARENA=102400
 HOST_ARENA = -DPH_ARENA=163840 -DPH_DEVICE_ARENA=102400 -DB2_BLOCK_HOOK
@@ -70,7 +70,7 @@ OBJ = $(patsubst %.c,$(BUILD_DIR)/obj/%.o,$(notdir $(SRC)))
 PHYS_OBJ = $(patsubst src/%.cpp,$(BUILD_DIR)/phys/%.o,$(PHYS))
 $(BUILD_DIR)/rider.nwa: $(OBJ) $(PHYS_OBJ) $(BUILD_DIR)/icon.o
 	@echo "LD      $@"
-	$(Q) $(CC) $(CFLAGS) $(LDFLAGS) $^ -lm -o $@
+	$(Q) $(CC) $(CFLAGS) $(LDFLAGS) $(LDEXTRA) $^ -lm -o $@
 	$(Q) $(STRIP) $@
 
 $(BUILD_DIR)/icon.o: src/icon.png | $(BUILD_DIR)

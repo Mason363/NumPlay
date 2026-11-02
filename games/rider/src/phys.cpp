@@ -14,6 +14,10 @@
 #include <Box2D/Dynamics/b2World.h>
 #include <new>
 #include <string.h>
+#ifdef HOST
+#include <stdio.h>
+#include <stdlib.h>
+#endif
 
 #ifndef PH_ARENA
 #define PH_ARENA (72 * 1024)
@@ -22,6 +26,8 @@
 #define DEG 0.0174532925f
 
 /* ---------------------------------------------------------------- the arena: first fit, blocks behind 8 bytes (their size) */
+static ph_jmp *oom;
+void ph_on_full(ph_jmp *j) { oom = j; }
 typedef struct {
   uint32_t top, used, peak, pad;
 #ifdef B2_BLOCK_HOOK
@@ -54,7 +60,17 @@ static void *arena_alloc(int32 size, void *) {
     }
     at += sz;
   }
-  if (HEAD->top + need > PH_ARENA) return 0;
+  if (HEAD->top + need > PH_ARENA) {
+    if (oom) PH_LONGJMP(*oom); /* (the game gives up this world) */
+#ifdef HOST
+    extern b2World *ph_world_for_debug;
+    fprintf(stderr, "ph: arena full (%u bytes asked, %u in use; %d bodies, %d contacts, %d proxies)\n", (unsigned)size,
+            (unsigned)HEAD->used, ph_world_for_debug->GetBodyCount(), ph_world_for_debug->GetContactCount(),
+            ph_world_for_debug->GetProxyCount());
+    abort();
+#endif
+    return 0;
+  }
   uint32_t *h = (uint32_t *)(arena.b + HEAD->top);
   *h = need, HEAD->top += need, HEAD->used += need;
   if (HEAD->used > HEAD->peak) HEAD->peak = HEAD->used;
@@ -114,13 +130,19 @@ static int dev_size(int32 host) {
   default: return host;
   }
 }
+extern "C" size_t ph_device_peak(void);
 static void block_hook(int32 size, int32 d) {
   static const int cls[] = {16, 32, 64, 96, 128, 160, 192, 224, 256, 320, 384, 448, 512, 640};
   int dv = dev_size(size), k = 0;
   while (cls[k] < dv) k++;
   dev_live[k] += d;
   int per = B2_CHUNK_SIZE / cls[k], need = (dev_live[k] + per - 1) / per;
-  if (need > dev_chunks[k]) dev_chunks[k] = need;
+  if (need > dev_chunks[k]) {
+    dev_chunks[k] = need;
+#ifdef PH_DEVICE_ARENA
+    if (ph_device_peak() > PH_DEVICE_ARENA && oom) PH_LONGJMP(*oom); /* (the calculator would be out of memory here) */
+#endif
+  }
 }
 extern "C" void ph_device_classes(int *chunks) { for (int k = 0; k < 14; k++) chunks[k] = dev_chunks[k]; }
 extern "C" size_t ph_device_used(void) { /* (the blocks in use, not the chunks kept) */
@@ -137,6 +159,9 @@ extern "C" size_t ph_device_peak(void) {
 #endif
 
 static b2World *world;
+#ifdef HOST
+b2World *ph_world_for_debug;
+#endif
 static b2Body *ground;
 static Listener *listener;
 static union {
@@ -157,6 +182,9 @@ void ph_world_new(void) {
   /* (no destructor: the arena is simply started again) */
   world = new (arena_alloc(sizeof(b2World), 0)) b2World(b2Vec2(0.0f, 9.8f));
   world->SetAllowSleeping(true);
+#ifdef HOST
+  ph_world_for_debug = world;
+#endif
   listener = new (listener_mem.b) Listener();
   world->SetContactListener(listener);
   b2BodyDef bd;
@@ -164,6 +192,16 @@ void ph_world_new(void) {
   cbs = 0;
 }
 size_t ph_used(void) { return HEAD->used; }
+/* the arena's end never handed out yet: Box2D keeps its chunks for good, so this only goes down */
+#if defined(B2_BLOCK_HOOK) && defined(PH_DEVICE_ARENA)
+extern "C" size_t ph_device_peak(void);
+size_t ph_tail(void) {
+  size_t p = ph_device_peak();
+  return p < PH_DEVICE_ARENA ? PH_DEVICE_ARENA - p : 0;
+}
+#else
+size_t ph_tail(void) { return PH_ARENA - HEAD->top; }
+#endif
 /* what is free: the arena's end, its free blocks, and the free blocks in Box2D's chunks */
 #if defined(B2_BLOCK_HOOK) && defined(PH_DEVICE_ARENA)
 extern "C" size_t ph_device_used(void);

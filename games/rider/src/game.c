@@ -767,7 +767,8 @@ static void endless_more(rd_run *r) {
 }
 
 /* ---------------------------------------------------------------- the near track: in and out of the physics world */
-#define RESERVE 16000      /* arena bytes kept free: for the step, and the picture between steps */
+#define RESERVE 20000      /* arena bytes kept free in Box2D's blocks and the arena's end */
+#define TAIL 14000         /* the arena's untouched end kept: new chunks, the step past its stack, the picture */
 #define EMERGENCY 6000     /* short of memory: what is right round the bike still comes in above this */
 #define PROXY_BUDGET 140   /* fixtures in the physics world, at most (the tree holds B2_TREE_NODES / 2) */
 /* the bike goes 18 pixels a frame at most: what is this near comes in some frames before it can touch it; short of
@@ -781,7 +782,7 @@ static bool near_box(float x0, float y0, float x1, float y1, const box_t *w, flo
 }
 static void stream(rd_run *r, bool all) {
   rd_bikestate *b = &r->b;
-  tight = ph_free() < RESERVE;
+  tight = ph_free() < RESERVE || ph_tail() < TAIL;
   /* the windows: round the bike, and round anything falling free (awake) */
   box_t win[MAXDYN + 1];
   int nw = 0;
@@ -811,7 +812,7 @@ static void stream(rd_run *r, bool all) {
     if (l->dyn != NO_DYN) { /* a moving object: all of it */
       if (all) in = keep;
       if (!(l->st & ST_IN) && in) {
-        if (ph_proxies() >= PROXY_BUDGET || ph_free() < (tight ? EMERGENCY : RESERVE)) continue;
+        if (ph_proxies() >= PROXY_BUDGET || (tight ? ph_tail() < EMERGENCY : ph_free() < RESERVE)) continue;
         dyn_in(r, i);
         l->st |= ST_IN;
       } else if ((l->st & ST_IN) && !keep) {
@@ -838,7 +839,7 @@ static void stream(rd_run *r, bool all) {
       if (all) pin = pkeep;
       uint64_t bit = (uint64_t)1 << k;
       if (!(r->pmask[i] & bit) && pin) {
-        if (ph_proxies() >= PROXY_BUDGET || ph_free() < (tight ? EMERGENCY : RESERVE)) continue;
+        if (ph_proxies() >= PROXY_BUDGET || (tight ? ph_tail() < EMERGENCY : ph_free() < RESERVE)) continue;
         static_in(r, i, k, xy, n);
         r->pmask[i] |= bit;
       } else if ((r->pmask[i] & bit) && !pkeep) {
@@ -1006,6 +1007,9 @@ static void first_touches(rd_run *r, int seg) {
       }
     }
     if (touch) d->pivot_ms = r->ms + (o->delay >= 0 ? o->delay : 0);
+#ifdef HOST
+    if (getenv("TOUCHES")) printf("pivoted object %d at %.0f %.0f: %s\n", i, o->cx, o->cy, touch ? "touches, lets go" : "held");
+#endif
   }
 }
 
@@ -1055,7 +1059,29 @@ static void timers(rd_run *r) {
   b->accel_fresh = false;
 }
 
+static void bits_fall(rd_run *r) {
+  r->end_ms += DT_MS;
+  for (int i = 0; i < r->nbits; i++) {
+    rd_bit *p = &r->bits[i];
+    p->vy += 294 * 1.5f * (1.0f / 60), p->x += p->vx / 60, p->y += p->vy / 60, p->a += p->w / 60;
+  }
+  if (r->shake > 0) r->shake -= 1.0f / 60;
+}
+static void step_world(rd_run *r, bool held);
 void run_step(rd_run *r, bool held) {
+  if (r->broken) { bits_fall(r); return; }
+  static ph_jmp full;
+  if (PH_SETJMP(full)) { /* the calculator's memory ran out in Box2D: this world is given up, the bike breaks */
+    ph_on_full(0), ph_listen(0);
+    r->broken = true;
+    crash_why = "memory", crash(r);
+    return;
+  }
+  ph_on_full(&full);
+  step_world(r, held);
+  ph_on_full(0);
+}
+static void step_world(rd_run *r, bool held) {
   R = r;
   rd_bikestate *b = &r->b;
   ph_listen(&listener);
@@ -1086,14 +1112,7 @@ void run_step(rd_run *r, bool held) {
   /* enterFrame: the timers (the accelerate timer's tick among them) */
   timers(r);
   r->frame++;
-  if (r->ended) {
-    r->end_ms += DT_MS;
-    for (int i = 0; i < r->nbits; i++) {
-      rd_bit *p = &r->bits[i];
-      p->vy += 294 * 1.5f * (1.0f / 60), p->x += p->vx / 60, p->y += p->vy / 60, p->a += p->w / 60;
-    }
-    if (r->shake > 0) r->shake -= 1.0f / 60;
-  }
+  if (r->ended) bits_fall(r);
   if (!r->ended) {
     /* GameCharacter's enterFrame: the button's step by the way it goes, the wheels' damping */
     float vx, vy;

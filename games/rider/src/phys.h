@@ -5,6 +5,7 @@
  * All of Box2D's memory is one arena (ph_arena), so a whole world can be copied away and back (tests). */
 #ifndef PHYS_H
 #define PHYS_H
+#include <setjmp.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -35,6 +36,19 @@ typedef struct {
 void ph_world_new(void);
 size_t ph_used(void);
 size_t ph_free(void);
+size_t ph_tail(void); /* the end of the arena never used yet */
+/* where to go if the arena runs out (NULL: nowhere); the world is then lost. (GCC's own setjmp on the calculator:
+ * the C library's would bring in the C++ unwinder) */
+#ifdef HOST
+typedef jmp_buf ph_jmp;
+#define PH_SETJMP(b) setjmp(b)
+#define PH_LONGJMP(b) longjmp(b, 1)
+#else
+typedef void *ph_jmp[5];
+#define PH_SETJMP(b) __builtin_setjmp(b)
+#define PH_LONGJMP(b) __builtin_longjmp(b, 1)
+#endif
+void ph_on_full(ph_jmp *j);
 size_t ph_peak(void);
 size_t ph_arena_size(void);
 size_t ph_top(void); /* the arena in use is [0, ph_top()) */
