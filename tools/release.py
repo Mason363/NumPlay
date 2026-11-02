@@ -64,6 +64,7 @@ ALONE = {
     "fnaf3": ("Five Nights at Freddy's 3", "Fazbear's Fright's six nights with Springtrap and the phantoms: the lure, the vents, the maintenance panel"),
     "fnaf4": ("Five Nights at Freddy's 4", "the bedroom's nights with the Nightmares: listen at the doors, the closet, the bed, Fun with Plushtrap"),
     "famidash": ("Famidash", "TFDSoft's Geometry Dash for the NES, made for the calculator: the 173 levels of Famidash HUGE, every mode, practice mode"),
+    "kingdomrush": ("Kingdom Rush", "Ironhide's 2011 tower defense: its 12 stages with Heroic and Iron challenges, every tower, spell and boss"),
 }
 VARIANTS = [
     ("NumPlay-Invisible.nwa", "The same app, hidden: a blank icon with no name"),

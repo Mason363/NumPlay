@@ -1449,5 +1449,26 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/famidash",
     "default": false,
     "xl": true
+  },
+  {
+    "id": "kingdomrush",
+    "rank": 37,
+    "title": "Kingdom Rush",
+    "tagline": "Defend the realm with towers",
+    "credit": "Based on the game by Ironhide Game Studio",
+    "top": "0x4E7A22",
+    "bottom": "0x1A2A0A",
+    "accent": "0xF0B428",
+    "colors": 16,
+    "records": [
+      "kingdomrush.sav",
+      "kingdomrush_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/kingdomrush",
+    "default": false,
+    "xl": true
   }
 ]
