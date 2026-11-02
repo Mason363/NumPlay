@@ -15,6 +15,8 @@ const uint8_t *cr_bin;
 
 uint32_t perf_frames __attribute__((used));   /* read by tools/emu.py */
 uint32_t perf_updates __attribute__((used));
+uint32_t perf_max __attribute__((used));      /* the slowest frame's steps and drawing, ms */
+uint32_t perf_slow __attribute__((used));     /* frames over 33 ms */
 
 #ifdef CR_DEMO
 extern bool bot_plays_both;   /* (make EXTRA=-DCR_DEMO: a bot plays your side too, for timing many units) */
@@ -33,7 +35,8 @@ int main(void) {
   while (g.running) {
     /* the game's steps: drawn when caught up (at most 6 steps, two battle steps, for a drawing) */
     int n = 0;
-    uint32_t now = plat_millis() * 3;
+    uint32_t t0 = plat_millis();
+    uint32_t now = t0 * 3;
     while ((int32_t)(now - next) >= 0 && n < 6 && g.running) {
       game_step(plat_keys());
       perf_updates++;
@@ -45,6 +48,9 @@ int main(void) {
     if (n) {
       game_draw();
       perf_frames++;
+      uint32_t dt = plat_millis() - t0;
+      if (dt > perf_max) perf_max = dt;
+      if (dt > 33) perf_slow++;
     } else
       plat_sleep(1);
   }
