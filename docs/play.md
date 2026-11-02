@@ -101,6 +101,16 @@ Choose Start Game, then a save. Rest at benches to save and to change charms: **
 
 <br clear="right">
 
+## Hollow Knight: Fungal Wastes
+
+<img src="media/gallery/hkfungal.gif" width="320" align="right" alt="Hollow Knight: Fungal Wastes: the Knight in the Crossroads' last room, on the way down">
+
+The second part of Hollow Knight, `HollowKnightFungalWastes.nwa`, comes as its own app and shares Hollow Knight's saves. Each part fills the app space, so install one at a time.
+
+At the Crossroads' way down to the Fungal Wastes, Hollow Knight saves and asks for this app. Install it, choose Start Game and the same save, and the Knight walks in there. Going back up saves the same way, for Hollow Knight. The keys are Hollow Knight's.
+
+<br clear="right">
+
 ## Celeste
 
 <img src="media/celeste.gif" width="320" align="right" alt="Celeste: Madeline dashing through the Forsaken City">
