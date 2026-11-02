@@ -2,6 +2,11 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.2: Cat Ninja
+
+- **Cat Ninja:** CatNinja.nwa, Richman Stewart's Flash platformer with all 30 levels, its traps, the boss and the crystals, from the game's own files.
+- **Hollow Knight:** fog and light shafts draw 9% faster.
+
 ## 1.24.1: Clash Royale
 
 - **Clash Royale:** ClashRoyale.nwa, battles against a bot with 41 cards of the 2016 game, its seven arenas and trophies, with the game's own pictures and numbers.
