@@ -126,7 +126,18 @@ static void dead_status(Enemy *e) {
 
 void enemy_kill(Enemy *e, int how) {
   if (e->dead) return;
+  if (how != 3) grave_rise(e);   /* (toGraveyard) */
   dead_status(e);
+  if (e->type == EN_VEZNAN) {   /* EnemyVeznan.setDeadBasicStatus: the graveyard gone, and every other enemy */
+    B.grave = 0;
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+      Enemy *o = &B.en[i];
+      if (o != e && o->alive && !o->dead) {
+        dead_status(o);
+        fx_add(ST(o)->blood == 1 ? AN_B_BLOODGREEN : ST(o)->blood == 2 ? -1 : AN_B_BLOOD, o->x, o->y + 1, false, true);
+      }
+    }
+  }
   if (how == 1) {   /* blown up (EnemyExplode*) */
     fx_add(e->flying ? AN_FX_EXPLODEAIR : ST(e)->size == SZ_BIG ? AN_FX_EXPLODEBIG : AN_FX_EXPLODENORMAL, e->x, e->y, false, false);
     e->alive = 0;

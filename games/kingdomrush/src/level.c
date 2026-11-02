@@ -121,6 +121,7 @@ void battle_start(int level, int mode) {
   }
   B.veznan = -1;
   if (level == NLEVELS - 1 && mode == MODE_CAMPAIGN) veznan_spawn();   /* (Level12: he waits in his tower) */
+  B.grave = level == 9 ? 1 : level == 11 ? 2 : 0;   /* (Level10, Level12: a graveyard) */
 }
 
 /* ------------------------------------------------------------------ cash, lives */

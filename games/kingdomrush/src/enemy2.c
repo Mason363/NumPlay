@@ -45,7 +45,13 @@ void eggs_step(void) {
 }
 
 /* ------------------------------------------------------------------ skeletons */
-int skeletons(void) { return B.skeletons; }
+/* currentSkeletons: the necromancers' skeletons (no gold) still on the field */
+int skeletons(void) {
+  int n = 0;
+  for (int i = 0; i < MAX_ENEMIES; i++)
+    if (B.en[i].alive && (B.en[i].type == EN_SKELETON || B.en[i].type == EN_SKELETONBIG) && B.en[i].gold == 0) n++;
+  return n;
+}
 
 void summon_skeleton(Enemy *e, int k) {
   static const int8_t lanes[8] = {1, 2, 0, 1, 2, 0, 1, 2};
@@ -56,12 +62,45 @@ void summon_skeleton(Enemy *e, int k) {
   int len = path_len(e->path, lane);
   if (node < 11) node = 11;
   if (node > len - 12) node = len - 12;
-  int j = enemy_spawn(EN_SKELETON, e->path, lane, node);
+  bool big = rnd() < 0.05f;   /* (EnemyNecromancer.summonIt) */
+  int j = enemy_spawn(big ? EN_SKELETONBIG : EN_SKELETON, e->path, lane, node);
   if (j < 0) return;
   Enemy *s = &B.en[j];
+  s->respawn_t = 33, s->active = 0, s->gold = 0;
+  s->anim = big ? AN_E_SKELETONBIG_RESPAWNING : AN_E_SKELETON_RESPAWNING, s->anim_t = 0;
+}
+
+/* Graveyard (Level10, Level12): whoever dies there rises from a grave as a skeleton, a big one when it had
+ * limitLifeCondition (299) health or more; they walk from the grave to their road */
+static const struct {
+  uint8_t path;
+  int16_t node, pt[5][2];
+} graves[2] = {{0, 110, {{139, 199}, {121, 220}, {141, 215}, {120, 204}, {144, 204}}},
+               {2, 0, {{119, 343}, {95, 353}, {114, 352}, {102, 346}, {121, 352}}}};
+
+static bool can_skeleton(int type) {
+  switch (type) {
+  case EN_DEMONIMP: case EN_DEMONWOLF: case EN_GARGOYLE: case EN_ROCKETEER: case EN_SKELETON: case EN_SKELETONBIG:
+  case EN_SPIDER: case EN_SPIDERSMALL: case EN_SPIDERTINY: case EN_WHITEWOLF: case EN_WOLFSMALL: case EN_WOLF:
+    return false;
+  default:
+    return true;
+  }
+}
+
+void grave_rise(const Enemy *dead) {
+  if (!B.grave || !can_skeleton(dead->type)) return;
+  const int g = B.grave - 1, path = graves[g].path;
+  B.grave_lane = (uint8_t)(B.grave_lane >= 2 ? 0 : B.grave_lane + 1);
+  int lane = B.grave_lane < B.nlanes[path] ? B.grave_lane : 0;
+  bool big = dead->init_health >= 299;
+  int j = enemy_spawn(big ? EN_SKELETONBIG : EN_SKELETON, path, lane, graves[g].node);
+  if (j < 0) return;
+  Enemy *s = &B.en[j];
+  s->x = graves[g].pt[B.grave_k][0], s->y = graves[g].pt[B.grave_k][1];
+  B.grave_k = (uint8_t)((B.grave_k + 1) % 5);
   s->respawn_t = 33, s->active = 0;
-  s->anim = AN_E_SKELETON_RESPAWNING, s->anim_t = 0;
-  B.skeletons++;
+  s->anim = big ? AN_E_SKELETONBIG_RESPAWNING : AN_E_SKELETON_RESPAWNING, s->anim_t = 0;
 }
 
 /* ------------------------------------------------------------------ demons: their last blast */

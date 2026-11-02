@@ -224,7 +224,7 @@ typedef struct {
   struct { uint8_t on; int16_t t, dur; Pt at; } rain[2];
   /* spider eggs (SpiderEgg): where, on which road, when they hatch */
   struct { uint8_t on, path, n; int16_t node, t; float x, y; } egg[12];
-  int16_t skeletons;                  /* currentSkeletons */
+  uint8_t grave, grave_lane, grave_k;  /* Graveyard: 1 stage 10's, 2 stage 12's; the next lane and grave */
   /* the rain of fire's burning ground (ScorchedEarth) */
   struct { uint8_t on; int16_t t, dur; Pt at; } burn[8];
   int8_t veznan;                      /* Vez'nan, in the last stage's campaign */

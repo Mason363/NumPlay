@@ -21,6 +21,7 @@ void egg_lay(struct Enemy *e);
 void eggs_step(void);
 int skeletons(void);
 void summon_skeleton(struct Enemy *e, int k);
+void grave_rise(const struct Enemy *dead);
 void demon_explode(struct Enemy *e);
 bool boss_power(struct Enemy *e);
 bool veznan_power(struct Enemy *e);
