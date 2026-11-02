@@ -23,7 +23,8 @@ void room_menu(void);              /* C: the menu */
 void room_draw_over(void);         /* what a room draws over everything (a cutscene's) */
 int room_next(int room, int n);    /* n rooms after it in the original's order (before: n < 0) */
 void room_step(void);              /* each frame in the overworld: the room's own (its cutscenes start) */
-const char *room_title(int room);  /* the name the SAVE menu shows */
+const char *room_title(int room);
+void room_queue_event(int id);     /* the room's cutscene, started once nothing else runs */  /* the name the SAVE menu shows */
 
 /* each part's own (lw.c the Light World, dw.c the Dark World...) */
 void lw_setup(int room);
@@ -32,4 +33,5 @@ void lw_step(void);
 void dw_setup(int room);
 int dw_event(Ev *c);
 void dw_step(void);
+void dw_draw(void);
 #endif

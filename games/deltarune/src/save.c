@@ -4,6 +4,7 @@
  * comment line "#>name:base64" (the way NumPlay and its big games keep theirs). */
 #include <string.h>
 #include "game.h"
+#include "event.h"
 #include "plat.h"
 #include "save.h"
 #include "world.h"
@@ -138,6 +139,7 @@ bool save_load(void) {
   Save s;
   if (!read_file(SAVE_NAME, &s)) return false;
   sv = s;
+  event_cancel();
   g_mode = MODE_WORLD;
   world_enter(sv.room, sv.x, sv.y, sv.facing);
   return true;
@@ -159,6 +161,7 @@ bool save_resume_load(void) {
   plat_remove(RESUME_NAME);
   copy_write();
   sv = s;
+  event_cancel();
   g_mode = MODE_WORLD;
   world_enter(sv.room, sv.x, sv.y, sv.facing);
   return true;

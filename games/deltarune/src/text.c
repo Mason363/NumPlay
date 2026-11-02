@@ -9,25 +9,44 @@
 #include "world.h"
 
 /* ---------------------------------------------------------------- faces (obj_face's draw) */
+/* each face's expressions (global.fe): a sprite each, or one sprite and fe its frame (n 0) */
 typedef struct {
-  uint16_t first;     /* the sprite of expression 0 */
-  uint8_t n;          /* expressions as sprites (first + fe); 0: one sprite, fe its frame */
-  int8_t dx, dy;      /* (the original's offsets, in the screen's pixels) */
+  const uint16_t *sprs;
+  uint8_t n;
+  int8_t dx, dy;      /* (the original's offsets, in its units: halved in the Dark World) */
 } FaceDef;
 
+static const uint16_t f_susie[] = {spr_face_s0, spr_face_s1, spr_face_s2, spr_face_s3, spr_face_s4, spr_face_s5,
+                                   spr_face_s6, spr_face_s7, spr_face_s8, spr_face_s9, spr_face_sA, spr_face_sB,
+                                   spr_face_sC, spr_face_sD};
+static const uint16_t f_noelle[] = {spr_face_n0, spr_face_n1, spr_face_n2, spr_face_n3, spr_face_n4, spr_face_n5,
+                                    spr_face_n6, spr_face_n7, spr_face_n8, spr_face_n9};
+static const uint16_t f_toriel[] = {spr_face_t0, spr_face_t1, spr_face_t2, spr_face_t3, spr_face_t4, spr_face_t5,
+                                    spr_face_t6, spr_face_t7, spr_face_t8, spr_face_t9};
+static const uint16_t f_sans[] = {spr_face_sans0, spr_face_sans1, spr_face_sans2, spr_face_sans3, spr_face_sans4,
+                                  spr_face_sans5};
+static const uint16_t f_asgore[] = {spr_face_asgore0, spr_face_asgore1, spr_face_asgore2, spr_face_asgore3,
+                                    spr_face_asgore4, spr_face_asgore5, spr_face_asgore6};
+static const uint16_t f_berdly[] = {spr_face_b0, spr_face_b1, spr_face_b2, spr_face_b3, spr_face_b4, spr_face_b5};
+static const uint16_t f_c[] = {spr_face_c0, spr_face_c1, spr_face_c2};
+static const uint16_t f_jock[] = {spr_face_jock0, spr_face_jock1, spr_face_jock2, spr_face_jock3, spr_face_jock4,
+                                  spr_face_jock5, spr_face_jock6, spr_face_jock7, spr_face_jock8, spr_face_jock9};
+static const uint16_t f_one[] = {spr_face_susie_alt, spr_face_r_dark, spr_face_r_hood, spr_face_r_nohat, spr_face_l0,
+                                 spr_face_undyne, spr_alphysface, spr_face_rudy, spr_face_catty, spr_face_bratty,
+                                 spr_face_rurus, spr_face_burgerpants, spr_face_king};
+
 static const FaceDef *face_def(int fc) {
-  /* (offsets in the original's units: halved in the Dark World) */
-  static const FaceDef susie = {spr_face_s0, 14, -5, 0}, susie_alt = {spr_face_susie_alt, 0, -5, 0};
-  static const FaceDef ralsei = {spr_face_r_dark, 0, -15, -10}, ralsei_hood = {spr_face_r_hood, 0, -15, -10};
-  static const FaceDef ralsei_nohat = {spr_face_r_nohat, 0, -15, -10};
-  static const FaceDef noelle = {spr_face_n0, 10, -12, -10}, toriel = {spr_face_t0, 10, 0, 0};
-  static const FaceDef lancer = {spr_face_l0, 0, -15, -10}, sans = {spr_face_sans0, 6, 0, 0};
-  static const FaceDef undyne = {spr_face_undyne, 0, -10, 0}, asgore = {spr_face_asgore0, 7, -10, 0};
-  static const FaceDef alphys = {spr_alphysface, 0, -10, 0}, berdly = {spr_face_b0, 6, -10, 0};
-  static const FaceDef cface = {spr_face_c0, 3, -10, 0}, jock = {spr_face_jock0, 10, -10, 0};
-  static const FaceDef rudy = {spr_face_rudy, 0, -12, -10}, catty = {spr_face_catty, 0, -10, 0};
-  static const FaceDef bratty = {spr_face_bratty, 0, -5, 2}, rurus = {spr_face_rurus, 0, -10, 0};
-  static const FaceDef burgerpants = {spr_face_burgerpants, 0, -5, -5}, king = {spr_face_king, 0, -5, -5};
+  static const FaceDef susie = {f_susie, 14, -5, 0}, susie_alt = {f_one + 0, 0, -5, 0};
+  static const FaceDef ralsei = {f_one + 1, 0, -15, -10}, ralsei_hood = {f_one + 2, 0, -15, -10};
+  static const FaceDef ralsei_nohat = {f_one + 3, 0, -15, -10};
+  static const FaceDef noelle = {f_noelle, 10, -12, -10}, toriel = {f_toriel, 10, 0, 0};
+  static const FaceDef lancer = {f_one + 4, 0, -15, -10}, sans = {f_sans, 6, 0, 0};
+  static const FaceDef undyne = {f_one + 5, 0, -10, 0}, asgore = {f_asgore, 7, -10, 0};
+  static const FaceDef alphys = {f_one + 6, 0, -10, 0}, berdly = {f_berdly, 6, -10, 0};
+  static const FaceDef cface = {f_c, 3, -10, 0}, jock = {f_jock, 10, -10, 0};
+  static const FaceDef rudy = {f_one + 7, 0, -12, -10}, catty = {f_one + 8, 0, -10, 0};
+  static const FaceDef bratty = {f_one + 9, 0, -5, 2}, rurus = {f_one + 10, 0, -10, 0};
+  static const FaceDef burgerpants = {f_one + 11, 0, -5, -5}, king = {f_one + 12, 0, -5, -5};
   switch (fc) {
     case FC_SUSIE: return flag(29) ? &susie_alt : &susie;
     case FC_RALSEI: return flag(30) == 1 ? &ralsei_hood : flag(30) == 2 ? &ralsei_nohat : &ralsei;
@@ -58,11 +77,11 @@ static int fc_of_letter(char c) {
     case 'N': return FC_NOELLE;
     case 'T': return FC_TORIEL;
     case 'L': return FC_LANCER;
-    case 'A': return FC_ALPHYS;
-    case 'a': return FC_ASGORE;
+    case 'A': return FC_ASGORE;
+    case 'a': return FC_ALPHYS;
     case 'B': return FC_BERDLY;
     case 'r': return FC_RUDY;
-    case 'u': return FC_UNDYNE;
+    case 'u': return FC_RURUS;
     case 'K': return FC_KING;
     default: return FC_NONE;
   }
@@ -77,11 +96,11 @@ static void face_draw(int fc, int fe, int x, int y, bool talking, int t) {
   int s = world_scale();
   if (fc == FC_TORIEL) gfx_sprite(spr_face_tbody, 0, x - 7 / s, y + 29 / s, 0, 255);
   if (d->n) {
-    int spr = d->first + (fe < d->n ? fe : 0);
-    int fi = talking && spr_frames((uint16_t)spr) > 1 && (t / 3) % 2;
-    gfx_sprite((uint16_t)spr, fi, x + d->dx / s, y + d->dy / s, 0, 255);
+    uint16_t spr = d->sprs[fe < d->n ? fe : 0];
+    int fi = talking && spr_frames(spr) > 1 && (t / 3) % 2;
+    gfx_sprite(spr, fi, x + d->dx / s, y + d->dy / s, 0, 255);
   } else {
-    gfx_sprite(d->first, fe, x + d->dx / s, y + d->dy / s, 0, 255);
+    gfx_sprite(d->sprs[0], fe, x + d->dx / s, y + d->dy / s, 0, 255);
   }
 }
 

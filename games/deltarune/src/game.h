@@ -40,6 +40,7 @@ typedef struct {
   uint8_t facing;
   uint8_t darkzone;
   int16_t flag[NFLAGS];        /* global.flag[] */
+  uint8_t chased[64];          /* the overworld enemies already fought or spared (by room and place) */
 } Save;
 extern Save sv;
 extern int g_mode;

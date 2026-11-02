@@ -113,11 +113,13 @@ static bool is_door(int obj) {
 
 static void npc_setup(const Inst *in);
 static uint8_t reads[256];
+static int pending_ev;
 
 /* the instances every room places the same way */
 void room_setup(int room) {
   const RoomInfo *r = world_room_info();
   memset(reads, 0, sizeof reads);
+  pending_ev = 0;
   for (int i = 0; i < r->ninst; i++) {
     Inst in;
     room_inst(r, i, &in);
@@ -151,12 +153,22 @@ void room_setup(int room) {
   else lw_setup(room);
 }
 
+
+void room_queue_event(int id) { pending_ev = id; }
+
 void room_step(void) {
+  if (pending_ev && !event_running() && !world_fading()) {
+    int id = pending_ev;
+    pending_ev = 0;
+    event_start(id, NULL);
+  }
   if (world_dark()) dw_step();
   else lw_step();
 }
 
-void room_draw_over(void) {}
+void room_draw_over(void) {
+  if (world_dark()) dw_draw();
+}
 
 void room_menu(void) { menu_open(); }
 

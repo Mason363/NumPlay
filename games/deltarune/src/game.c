@@ -67,6 +67,7 @@ void game_new(void) {
   sv.lhp = sv.lmaxhp = 20;
   sv.lgold = 2;
   g_mode = MODE_WORLD;
+  event_cancel();
   world_enter(room_krisroom, 246, 97, DIR_LEFT);
 }
 
