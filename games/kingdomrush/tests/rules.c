@@ -180,7 +180,7 @@ static int play_battle(int level, int mode, bool full_upgrades, int *lives) {
   for (int t = 0; t < 30 * 60 * 60 && B.state != LS_WIN && B.state != LS_OVER; t++) {
     battle_step();
     if (t % 15 == 0) general();
-    if (B.pending_note) B.pending_note = 0;
+    B.pending_note = B.pending_more = 0;
     if (B.flags_up && (mode == MODE_IRON || alive_enemies() < 4)) battle_call_wave();   /* (the general is in a hurry) */
   }
   *lives = B.lives;
@@ -241,6 +241,11 @@ static void test_save(void) {
   memset(&g.p, 0, sizeof g.p);
   load_progress();
   CHECK(g.p.camp[0] == 3 && g.p.camp[1] == 2 && g.p.heroic[0] == 1 && g.p.ups[UP_RAIN] == 2, "the save comes back");
+  /* the file gone (apps installed from the website): back from the Python script */
+  remove("build/host-saves/kingdomrush.sav");
+  memset(&g.p, 0, sizeof g.p);
+  load_progress();
+  CHECK(g.p.camp[0] == 3 && g.p.camp[1] == 2 && g.p.heroic[0] == 1 && g.p.ups[UP_RAIN] == 2, "and from its copy");
   FILE *f = fopen("build/host-saves/kingdomrush.sav", "r+b");
   if (f) {
     fseek(f, 6, SEEK_SET);
@@ -251,6 +256,7 @@ static void test_save(void) {
   CHECK(g.p.camp[0] == 0 && g.p.difficulty == 1, "a broken save: a fresh start");
   CHECK(stars_won() == 0, "no stars");
   remove("build/host-saves/kingdomrush.sav");
+  remove("build/host-saves/kingdomrush_saves.py");
 }
 
 int main(int argc, char **argv) {
@@ -259,6 +265,7 @@ int main(int argc, char **argv) {
   system("mkdir -p build/host-saves");
   host_save_dir("build/host-saves");
   remove("build/host-saves/kingdomrush.sav");
+  remove("build/host-saves/kingdomrush_saves.py");
   game_init();
   if (argc > 1 && !strcmp(argv[1], "sizes")) {
     printf("Battle %zu: Enemy %zu x %d, Soldier %zu x %d, Bullet %zu x %d, Fx %zu x %d, Spot %zu\n", sizeof B, sizeof(Enemy),

@@ -181,6 +181,7 @@ typedef struct {
   int16_t between_t;
   int16_t ival_t, index_cant, index_swap;
   uint8_t cur_creep;
+  uint8_t note_sent;       /* notificationSent: the wave's second notification went out */
 } ActiveWave;
 
 typedef struct {
@@ -211,6 +212,7 @@ typedef struct {
   uint8_t fire_on, reinf_on;          /* unlocked */
   int16_t fire_open_t, reinf_open_t;
   uint8_t pending_note;               /* a notification to show (NOTE_*) */
+  uint8_t pending_more;               /* and one more after it */
   /* the field */
   uint8_t nspots;
   Spot spot[MAX_SPOTS];

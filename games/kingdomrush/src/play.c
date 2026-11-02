@@ -338,7 +338,7 @@ void play_step(void) {
   battle_step();
   if (B.pending_note) {
     int n = B.pending_note;
-    B.pending_note = 0;
+    B.pending_note = B.pending_more, B.pending_more = 0;
     if (!(g.p.seen_note[n >> 3] & (1 << (n & 7))) && note_text(n)) {
       g.p.seen_note[n >> 3] = (uint8_t)(g.p.seen_note[n >> 3] | 1 << (n & 7));
       P.note = (uint8_t)n, P.mode = M_NOTE;

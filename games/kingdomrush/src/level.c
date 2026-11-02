@@ -9,6 +9,7 @@
 #include "anim.h"
 #include "special.h"
 #include "res.h"
+#include "strings.h"
 
 Battle B;
 uint8_t upgrades[6];
@@ -151,6 +152,8 @@ bool tower_locked(int kind, int level) {
 }
 
 /* ------------------------------------------------------------------ waves */
+static void notify(int note);
+
 static bool spawn_step(ActiveWave *a) {
   const uint8_t *w = wave_at(a->wave), *s = w + WAVE_HDR + SPAWN_SZ * a->spawn;
   int creep = s[0], aux = s[1], max_same = s[2], cant = (int)rd16(s + 3), ival = (int)rd16(s + 5);
@@ -173,6 +176,12 @@ static bool spawn_step(ActiveWave *a) {
   if (lane < 0) lane = 0;
   if (lane >= B.nlanes[path]) lane = B.nlanes[path] - 1;
   enemy_spawn(a->cur_creep, path, lane, 0);
+  /* WaveSpawn: the second notification (a new enemy, or a tip) with the first of its kind; the original puts
+   * an icon at the side to open, here it opens itself, the first time only */
+  if (w[4] && !a->note_sent) {
+    int arg = -1, kind = note_pic(w[4], &arg);
+    if (kind == 0 || (kind == 1 && arg == a->cur_creep)) notify(w[4]), a->note_sent = 1;
+  }
   a->index_swap++, a->index_cant++, a->ival_t = 0;
   return true;
 }
@@ -226,7 +235,9 @@ static void show_flags(int wi) {
 static void notify(int note) {
   if (note == NOTE_POWERREINFORCEMENT) power_unlock_reinf();
   if (note == NOTE_POWERFIREBALL) power_unlock_fire();
-  if (note != NOTE_NONE) B.pending_note = (uint8_t)note;
+  if (note == NOTE_NONE || note == B.pending_note) return;
+  if (B.pending_note) B.pending_more = (uint8_t)note;
+  else B.pending_note = (uint8_t)note;
 }
 
 static bool has_enemies(void) {
