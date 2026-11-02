@@ -855,12 +855,11 @@ static void draw_pause(void) {
   static const char *const items[4] = {"Back to Game", "Restart Level", "Main Menu", "Quit Game"};
   for (int i = 0; i < 4; i++) draw_button(x + 30, y + 62 + i * 25, w - 60, items[i], i == sel);
   if (confirm) {
-    draw_dialog(50, 84, 220, 82);
-    gfx_paragraph(F_BODY, 160, 104, 200,
-                  confirm == 1 ? "Quit the game? This level is kept for next time." : "Restart this level from the start?",
-                  C_WHITE, GFX_OUTLINE);
-    draw_button(70, 138, 80, confirm == 1 ? "Quit" : "Restart", sel2 == 0);
-    draw_button(170, 138, 80, "Cancel", sel2 == 1);
+    draw_dialog(50, 91, 220, 68);
+    gfx_paragraph(F_BODY, 160, 109, 200, confirm == 1 ? "Quit the game?" : "Restart this level from the start?", C_WHITE,
+                  GFX_OUTLINE);
+    draw_button(70, 129, 80, confirm == 1 ? "Quit" : "Restart", sel2 == 0);
+    draw_button(170, 129, 80, "Cancel", sel2 == 1);
   }
 }
 

@@ -1021,13 +1021,14 @@ static void overlay(pc_ui *u) {
       const char *q = u->overlay == O_QUIT ? "Quit Universal Paperclips?"
                     : u->overlay == O_RESTART ? "Are you sure you want to restart?"
                                               : "Start a new game?";
-      const char *sub = u->overlay == O_QUIT ? "Your paperclips are saved." : "This game will be gone.";
       const char *yes = u->overlay == O_QUIT ? "Quit" : u->overlay == O_RESTART ? "Restart" : "New game";
-      box(66, 108);
-      center(BODY, 92, q, C_BLACK);
-      center(SMALL, 108, sub, C_DIM);
-      menu_item(120, yes, u->sel == 0);
-      menu_item(146, u->overlay == O_QUIT ? "Keep playing" : "Cancel", u->sel == 1);
+      bool quit = u->overlay == O_QUIT;
+      int y = quit ? 74 : 66;
+      box(y, quit ? 92 : 108);
+      center(BODY, y + (quit ? 22 : 26), q, C_BLACK);
+      if (!quit) center(SMALL, y + 42, "This game will be gone.", C_DIM);
+      menu_item(y + (quit ? 34 : 54), yes, u->sel == 0);
+      menu_item(y + (quit ? 60 : 80), quit ? "Keep playing" : "Cancel", u->sel == 1);
       break;
     }
     default: break;

@@ -71,11 +71,10 @@ static void pause_draw(int sel, bool confirm, int csel) {
     ui_text(120, 110, sel == 0 ? UI_YELLOW : UI_WHITE, 1, sel == 0 ? "> RESUME" : "  RESUME");
     ui_text(120, 126, sel == 1 ? UI_YELLOW : UI_WHITE, 1, sel == 1 ? "> QUIT GAME" : "  QUIT GAME");
   } else {
-    ui_box(64, 72, 192, 76, UI_DARK);
-    ui_text_centred(84, UI_WHITE, 1, "QUIT THE GAME?");
-    ui_text_centred(98, UI_WHITE, 1, "IT IS SAVED AT THIS ACT.");
-    ui_text(104, 124, csel == 0 ? UI_YELLOW : UI_WHITE, 1, csel == 0 ? "> YES" : "  YES");
-    ui_text(176, 124, csel == 1 ? UI_YELLOW : UI_WHITE, 1, csel == 1 ? "> NO" : "  NO");
+    ui_box(64, 80, 192, 60, UI_DARK);
+    ui_text_centred(92, UI_WHITE, 1, "QUIT THE GAME?");
+    ui_text(104, 120, csel == 0 ? UI_YELLOW : UI_WHITE, 1, csel == 0 ? "> YES" : "  YES");
+    ui_text(176, 120, csel == 1 ? UI_YELLOW : UI_WHITE, 1, csel == 1 ? "> NO" : "  NO");
   }
 }
 

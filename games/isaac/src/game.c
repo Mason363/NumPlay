@@ -423,15 +423,16 @@ static void stat_line(int x, int y, const char *name, float v) {
 static void draw_pause(void) {
   draw_room();
   gfx_rect(0, 0, SCREEN_W, SCREEN_H, C_BLACK, 16);
+  if (g_mode == MODE_CONFIRM) {
+    paper(100, 78, 120, 84);
+    gfx_text_c(FONT_UPHEAVAL, 160, 90, "QUIT?", INK, 2, false);
+    static const char *const yn[] = {"NO", "YES"};
+    menu_list(yn, 2, confirm_sel, 160, 116);
+    return;
+  }
   paper(20, 20, 280, 200);
   gfx_text_c(FONT_UPHEAVAL, 160, 28, "PAUSED", INK, 2, false);
   static const char *const opts[] = {"RESUME", "QUIT GAME"};
-  if (g_mode == MODE_CONFIRM) {
-    gfx_text_c(FONT_UPHEAVAL, 160, 70, "QUIT? YOUR RUN IS KEPT", INK, 1, false);
-    static const char *const yn[] = {"NO", "YES"};
-    menu_list(yn, 2, confirm_sel, 160, 92);
-    return;
-  }
   menu_list(opts, 2, pause_sel, 100, 58);
   /* his stats, as the game lists them */
   stat_line(190, 54, "DMG", pl.damage);

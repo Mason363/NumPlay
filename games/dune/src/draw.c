@@ -867,17 +867,16 @@ static void paused(void) {
   keyline("Up/Down choose   OK select   Back resume");
 }
 
-static void prompt_panel(void) {
+static void prompt_panel(int h) {
   dim(204);   /* the overlay: black at 0.8 */
-  round_rect(160 - 85, 118 - 87, 171, 174, 0, 0, C(0x0C2B61), 256);
+  round_rect(160 - 85, 118 - h / 2, 171, h, 0, 0, C(0x0C2B61), 256);
 }
 
 static void quit(void) {
-  prompt_panel();
-  center(&art_f21, W / 2, 80, "Quit the game?", WHITE, 256);
-  center(&art_f13, W / 2, 112, "Your coins and best are kept.", MUTED, 256);
-  button(160 - 36, 184, 53, 25, "No", V->sel == 0);
-  button(160 + 36, 184, 53, 25, "Yes", V->sel == 1);
+  prompt_panel(100);
+  center(&art_f21, W / 2, 101, "Quit the game?", WHITE, 256);
+  button(160 - 36, 136, 53, 25, "No", V->sel == 0);
+  button(160 + 36, 136, 53, 25, "Yes", V->sel == 1);
   keyline("Arrows choose   OK select   Back no");
 }
 
@@ -983,7 +982,7 @@ static const char *shop_keys(char *buf) {
 }
 
 static void buy(void) {
-  prompt_panel();
+  prompt_panel(174);
   int cat = V->shop_cat, i = V->shop_sel;
   char s[64], *p = s;
   const char *name = cat == SHOP_BALLS ? art_ball_info_[i].name : art_land_info_[i].name;

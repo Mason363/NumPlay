@@ -327,10 +327,9 @@ static void pause_body(app_t *a) {
 }
 
 static void quit_body(app_t *a) {
-  bold_c(160, 60, "QUIT THE GAME?", 32, 256);
-  item(160, 112, "KEEP PLAYING", a->sel == 0);
-  item(160, 150, "QUIT", a->sel == 1);
-  small_c(160, 196, "Your scores are saved.", MUTED);
+  bold_c(160, 55, "QUIT THE GAME?", 32, 256);
+  item(160, 107, "KEEP PLAYING", a->sel == 0);
+  item(160, 145, "QUIT", a->sel == 1);
   keyline("Up Down|choose|OK|select|Back|pause");
 }
 
