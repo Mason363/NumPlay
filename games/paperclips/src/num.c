@@ -476,7 +476,7 @@ static void commas_into(out_t *o, const char *s) {
     while (s[run] >= '0' && s[run] <= '9') run++;
     for (int i = 0; i < run; i++) {
       put(o, s[i]);
-      if (i < run - 1 && (run - 1 - i) % 3 == 0) put(o, ',');
+      if (i < run - 1 && (run - 1 - i) % 3 == 0) put(o, PC_SEP);
     }
     s += run;
   }
@@ -518,7 +518,7 @@ char *js_commas(double num, int decimal, char *out, int n) {
   if (num <= 999) puts_(&o, left);
   else commas_into(&o, left);
   if (decimal == 0) return out;
-  put(&o, '.');
+  put(&o, PC_POINT);
   int got = 0;
   if (dot)
     for (const char *p = dot + 1; *p && got < decimal; p++, got++) put(&o, *p);
@@ -547,6 +547,18 @@ static const char *const PLACE[] = {"", "thousand", "million", "billion", "trill
   "duononagintillion", "trenonagintillion", "quattuornonagintillion", "quinnonagintillion", "sexnonagintillion",
   "septnonagintillion", "octononagintillion", "novemnonagintillion", "centillion"};
 
+/* French: the decimal comma; and a name after 2 or more is plural (1,5 million, 2,5 millions) */
+char *js_point(char *s) {
+  for (char *p = s; *p; p++)
+    if (*p == '.') *p = PC_POINT;
+  return s;
+}
+static bool fr_plural(const char *s) {
+  int n = 0;
+  while (s[n] >= '0' && s[n] <= '9') n++;
+  return n > 1 || (n == 1 && s[0] >= '2');
+}
+
 char *js_spellf(double x, char *out, int n) {
   out_t o = {out, n};
   *out = 0;
@@ -573,9 +585,10 @@ char *js_spellf(double x, char *out, int n) {
   if (len >= 303) return out;
   int lead = len % 3 ? len % 3 : 3, place = (len - 1) / 3;
   for (int i = 0; i < lead; i++) put(&o, w[i]);
-  put(&o, '.');
+  put(&o, PC_POINT);
   put(&o, lead < len ? w[lead] : '0');
   if (place) put(&o, ' '), puts_(&o, PLACE[place]);
+  if (PC_FR && place >= 2 && fr_plural(out)) put(&o, 's');
   return out;
 }
 
@@ -612,10 +625,12 @@ char *js_cruncher(double number, int decimals, char *out, int n) {
     }
   if (!found && number < 1000) precision = 0;
   js_tofixed(number, precision, out, n);
+  if (PC_FR) js_point(out);
   if (*suffix) {
     out_t o = {out + strlen(out), n - (int)strlen(out)};
     put(&o, ' ');
     puts_(&o, suffix);
+    if (PC_FR && strcmp(suffix, STEP[sizeof STEP / sizeof STEP[0] - 1].name) && fr_plural(out)) put(&o, 's');
   }
   return out;
 }
@@ -636,7 +651,7 @@ char *js_locale(double x, char *out, int n) {
   if (dot) {
     *dot = 0;
     commas_into(&o, s);
-    put(&o, '.');
+    put(&o, PC_POINT);
     puts_(&o, dot + 1);
   } else {
     commas_into(&o, s);

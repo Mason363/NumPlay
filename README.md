@@ -210,11 +210,12 @@ To see your calculator's model and software, open **Settings**, then **About**. 
 | [NumPlay-Matrices.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Matrices.nwa) | The same app, in disguise: it looks like a math app called **Matrices**. |
 | [NumPlay-French.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-French.nwa) | NumPlay en français : tous les jeux, en français. |
 | [NumPlay-Chinese.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Chinese.nwa) | NumPlay 中文版：所有游戏，简体中文。 |
+| [UniversalPaperclips-French.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/UniversalPaperclips-French.nwa) | Universal Paperclips en français. |
 | [NumPlay-Upsilon.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Upsilon.nwa) | For calculators running **Upsilon**: the 24 games that fit in the memory it gives apps. |
 
 <img src="docs/media/home_invisible.png" width="240" alt="The home screen with NumPlay-Invisible: the spot after Settings looks empty"> <img src="docs/media/home_matrices.png" width="240" alt="The home screen with NumPlay-Matrices among the calculator's own apps">
 
-Install any of them instead of NumPlay.nwa: your progress is the same in each. A few things stay in English in French and Chinese: words drawn into pictures, level names, key names, NumBlocks' commands and Portal Returns' stories. The big games come in English only.
+Install any of them instead of NumPlay.nwa: your progress is the same in each. A few things stay in English in French and Chinese: words drawn into pictures, level names, key names, NumBlocks' commands and Portal Returns' stories. The big games come in English only, but Universal Paperclips also comes in French.
 
 **On Upsilon,** the NumWorks website doesn't install apps (it shows 0 KB free). Install [Node.js](https://nodejs.org), plug in the calculator, and run `npx nwlink install-nwa NumPlay-Upsilon.nwa` in the folder you downloaded it to. This needs an Upsilon that runs .nwa apps: its builds from June 2026 on. On an older one, like Upsilon 1.0.1, nwlink stops with "invalid length for memory": update Upsilon first from [its website](https://getupsilon.web.app).
 

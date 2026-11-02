@@ -9,6 +9,22 @@
 
 #define JS_E 2.718281828459045
 
+/* The French build (tools/french.py, -DPC_FR=1) writes numbers as French does, 1\xA0234,5 and 12\xA0$. */
+#ifndef PC_FR
+#define PC_FR 0
+#endif
+#if PC_FR
+#define PC_SEP '\xA0'
+#define PC_POINT ','
+#define PC_USD_PRE ""
+#define PC_USD_POST "\xA0$"
+#else
+#define PC_SEP ','
+#define PC_POINT '.'
+#define PC_USD_PRE "$"
+#define PC_USD_POST ""
+#endif
+
 double js_floor(double x);
 double js_ceil(double x);
 double js_round(double x);             /* Math.round: halves go up */
@@ -27,4 +43,5 @@ char *js_commas(double x, int decimals, char *out, int n); /* the game's formatW
 char *js_spellf(double x, char *out, int n);               /* spellf(): "1.2 million" */
 char *js_cruncher(double x, int decimals, char *out, int n); /* numberCruncher(): "1.23 million" */
 char *js_time(double ticks, char *out, int n);             /* timeCruncher(): "1 hour 2 minutes 3 seconds" */
+char *js_point(char *s);                                   /* its decimal point made PC_POINT */
 #endif

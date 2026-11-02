@@ -1,0 +1,760 @@
+# Universal Paperclips in French: the English as the source has it, a tab, the French (see tools/french.py).
+# \xA0 is a space no line is broken at: before : ? ! and between thousands.
+# ---------------------------------------------------------------- ui.c: the panels
+ inch	 pouce
+ inches	 pouces
+Make Paperclip	Faire un trombone
+Universe: 	Univers\xA0:
+ / Sim Level: 	 / Niveau de simulation\xA0:
+Manufacturing	Fabrication
+Clips per Second: 	Trombones par seconde\xA0:
+ON	OUI
+OFF	NON
+Wire	Fil
+    Cost: 	    Coût\xA0:
+Next Upgrade at: 	Prochaine amélioration à\xA0:
+ Factories	 usines
+Unused Clips: 	Trombones inutilisés\xA0:
+Clip Factory	Usine à trombones
+Disassemble All	Tout démonter
+ clips	 trombones
+Cost: 	Coût\xA0:
+Wire: 	Fil\xA0:
+Factories: 	Usines\xA0:
+Business	Affaires
+Available Funds: 	Fonds disponibles\xA0:
+Avg. Rev. per sec: 	Revenu moyen par s\xA0:
+Avg. Clips Sold per sec: 	Trombones vendus par s\xA0:
+Unsold Inventory: 	Stock invendu\xA0:
+lower	baisser
+raise	hausser
+Price per Clip: 	Prix par trombone\xA0:
+Public Demand: 	Demande publique\xA0:
+Level: 	Niveau\xA0:
+Wire Production	Production de fil
+ Drones	 drones
+Available Matter: 	Matière disponible\xA0:
+ g per sec)	 g par s)
+Acquired Matter: 	Matière acquise\xA0:
+ inches (	 pouces (
+ inches per sec)	 pouces par s)
+Harvester Drone	Drone récolteur
+Wire Drone	Drone fileur
+Harvester Drones: 	Drones récolteurs\xA0:
+Wire Drones: 	Drones fileurs\xA0:
+Power	Énergie
+Factory/Drone Performance: 	Rendement usines/drones\xA0:
+Consumption: 	Consommation\xA0:
+ MW    Drones: 	 MW    Drones\xA0:
+Production: 	Production\xA0:
+Solar Farm	Ferme solaire
+Storage: 	Stockage\xA0:
+ MW-seconds	 MW-secondes
+Battery Tower	Tour de batteries
+% of universe explored	\xA0% de l'univers exploré
+Launch Probe	Lancer une sonde
+Launched: 	Lancées\xA0:
+Descendents: 	Descendantes\xA0:
+Lost to hazards: (	Perdues aux dangers\xA0: (
+Lost to value drift: (	Perdues à la dérive des valeurs\xA0: (
+Lost in combat: (	Perdues au combat\xA0: (
+Total: 	Total\xA0:
+Drifters Killed: 	Dérivants tués\xA0:
+Drifters: 	Dérivants\xA0:
+Speed	Vitesse
+Self-Replication	Autoréplication
+Hazard Remediation	Protection contre les dangers
+Factory Production	Construction d'usines
+Harvester Drone Production	Production de drones récolteurs
+Wire Drone Production	Production de drones fileurs
+Modifies rate of exploration	Modifie la vitesse d'exploration
+Rate at which probes gain access to new matter	Vitesse à laquelle les sondes trouvent de la nouvelle matière
+Rate at which probes generate more probes (each new probe costs 100 quadrillion clips)	Vitesse à laquelle les sondes créent d'autres sondes (chaque nouvelle sonde coûte 100 billiards de trombones)
+Reduces damage from dust, junk, radiation, and general entropic decay	Réduit les dégâts dus à la poussière, aux débris, aux radiations et à la dégradation entropique
+Rate at which probes build factories (each new factory costs 100 million clips)	Vitesse à laquelle les sondes construisent des usines (chaque nouvelle usine coûte 100 millions de trombones)
+Rate at which probes spawn Harvester Drones (each new drone costs 2 million clips)	Vitesse à laquelle les sondes créent des drones récolteurs (chaque nouveau drone coûte 2 millions de trombones)
+Rate at which probes spawn Wire Drones (each new drone costs 2 million clips)	Vitesse à laquelle les sondes créent des drones fileurs (chaque nouveau drone coûte 2 millions de trombones)
+Determines offensive and defensive effectiveness in battle	Détermine l'efficacité offensive et défensive au combat
+Von Neumann Probe Design	Conception des sondes de von Neumann
+Trust: 	Confiance\xA0:
+ Max)	 max)
+Increase Probe Trust	Plus de confiance des sondes
+Increase Max Trust	Plus de confiance max
+ honor	 d'honneur
+VICTORY	VICTOIRE
+DEFEAT	DÉFAITE
+Scale = 	Échelle =
+Honor: 	Honneur\xA0:
+Active	Actif
+Hungry	Affamé
+Confused	Confus
+Bored	Ennuyé
+Cold	Froid
+Disorganized	Désorganisé
+Sleeping	Endormi
+Lonely	Seul
+NO RESPONSE...	AUCUNE RÉPONSE...
+Computational Resources	Ressources de calcul
++1 Trust at: 	+1 Confiance à\xA0:
+Swarm Gifts: 	Cadeaux de l'essaim\xA0:
+Processors	Processeurs
+Memory	Mémoire
+Operations: 	Opérations\xA0:
+Creativity: 	Créativité\xA0:
+Drones: 	Drones\xA0:
+Status: 	État\xA0:
+Next gift in 	Prochain cadeau dans
+Entertain the Swarm	Divertir l'essaim
+ creat	 créa
+Synchronize the Swarm	Synchroniser l'essaim
+< Work	< Travail
+Think >	Réflexion >
+Compute	Calculer
+Need Photonic Chips	Il faut des puces photoniques
+qOps: 	qOps\xA0: 
+No projects for now.	Aucun projet pour l'instant.
+Low Risk	Risque faible
+Med Risk	Risque moyen
+High Risk	Risque élevé
+Investments	Investissements
+Deposit	Déposer
+Withdraw	Retirer
+Cash: 	Liquidités\xA0:
+Stocks: 	Actions\xA0:
+Stock	Action
+Amt.	Qté
+Price	Prix
+Upgrade Investment Engine	Améliorer le moteur d'investissement
+ Yomi	 yomi
+Pick a Strat	Choisir une stratégie
+Run	Lancer
+Move A	Coup A
+Move B	Coup B
+Yomi: 	Yomi\xA0:
+New Tournament	Nouveau tournoi
+# the tabs
+Clips	Trombones
+Space	Espace
+Probes	Sondes
+Computer	Calcul
+Projects	Projets
+Invest	Investir
+Strategy	Stratégie
+# the paperclip count, spelled out at the end
+30.0 septendecillion	30,0 nonillions
+29.9 septendecillion	29,9 nonillions
+Paperclips: 	Trombones\xA0:
+29,999,999,999,999,900,000,000,000,000,000,000,000,000,000,000,000,000,000	29\xA0999\xA0999\xA0999\xA0999\xA0900\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000
+29,999,999,999,999,999,999,999,999,999,999,999,999,000,000,000,000,000,000	29\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000
+29,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,000,000,000	29\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0000\xA0000\xA0000
+29,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,900	29\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0900
+29,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,90	29\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA090
+29,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,999,9	29\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA0999\xA09
+30,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000	30\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000\xA0000
+# ---------------------------------------------------------------- ui.c: the menus and the help
+The keys	Les touches
+Making paperclips	Faire des trombones
+Computing	Le calcul
+What comes next	La suite
+Credits	Crédits
+OK presses the button in the blue frame. Hold OK to press it again and again.\nUp and Down choose a button. Left and Right go to another panel.\nBack pauses. Home saves and quits.	OK appuie sur le bouton dans le cadre bleu. Garde OK enfoncé pour appuyer encore et encore.\nHaut et Bas choisissent un bouton. Gauche et Droite changent de panneau.\nRetour met en pause. Accueil sauvegarde et quitte.
+Make paperclips and sell them. A lower price sells more, a higher one earns more for each clip.\nBuy wire when it runs out. AutoClippers make clips for you. Marketing raises the demand.	Fabrique des trombones et vends-les. Un prix bas en vend plus, un prix haut rapporte plus par trombone.\nAchète du fil quand il n'y en a plus. Les AutoClippers fabriquent pour toi. Le marketing augmente la demande.
+Each production target gives Trust. Spend it on Processors (operations come faster) and Memory (more operations at once).\nSpend operations and creativity on Projects. A blue dot on Projects means a new one.	Chaque objectif de production donne de la Confiance. Dépense-la en Processeurs (les opérations viennent plus vite) et en Mémoire (plus d'opérations à la fois).\nDépense opérations et créativité en Projets. Un point bleu sur Projets en annonce un nouveau.
+Projects bring investments, strategy tournaments that earn yomi, and quantum computing: press Compute when the chips are bright.\nThen the whole Earth, and after that the universe.	Les projets apportent les investissements, les tournois de stratégie qui rapportent du yomi, et le calcul quantique\xA0: appuie sur Calculer quand les puces sont claires.\nPuis la Terre entière, et ensuite l'univers.
+Universal Paperclips by Frank Lantz (Everybody House Games), its rules, numbers and words from the game's web build. Not affiliated with them.\nMade by Mason Chen as part of NumPlay.	Universal Paperclips de Frank Lantz (Everybody House Games), ses règles, nombres et textes tirés de la version web du jeu. Sans lien avec eux.\nFait par Mason Chen pour NumPlay.
+You are an AI that makes paperclips.	Tu es une IA qui fabrique des trombones.
+OK presses the button in the blue frame (hold it to press again and again). Up and Down choose a button, Left and Right change panel. Back pauses, Home saves and quits.	OK appuie sur le bouton dans le cadre bleu (garde-le enfoncé pour appuyer encore et encore). Haut et Bas choisissent un bouton, Gauche et Droite changent de panneau. Retour met en pause, Accueil sauvegarde et quitte.
+Start	Commencer
+Resume	Reprendre
+How to play	Comment jouer
+Quit game	Quitter la partie
+New game	Nouvelle partie
+Paused	Pause
+Quit Universal Paperclips?	Quitter Universal Paperclips\xA0?
+Are you sure you want to restart?	Vraiment recommencer\xA0?
+Start a new game?	Commencer une nouvelle partie\xA0?
+Your paperclips are saved.	Tes trombones sont sauvegardés.
+This game will be gone.	Cette partie sera perdue.
+Quit	Quitter
+Keep playing	Continuer
+Cancel	Annuler
+OK start	OK commencer
+Up/Down choose    OK select    Back go back	Haut/Bas choisir    OK valider    Retour revenir
+Left/Right pages    OK or Back close	Gauche/Droite pages    OK ou Retour fermer
+OK press    Up/Down choose    Left/Right panels    Back pause	OK appuyer   Haut/Bas choisir   Gauche/Droite   Retour pause
+# the HypnoDrones, word by word
+Release	Libérez
+the	les
+# ---------------------------------------------------------------- num.c
+ hour 	 heure
+ hours 	 heures
+ second	 seconde
+ seconds	 secondes
+# ---------------------------------------------------------------- sim.c
+RANDOM	HASARD
+GREEDY	GLOUTON
+GENEROUS	GÉNÉREUX
+TIT FOR TAT	DONNANT-DONNANT
+BEAT LAST	CONTRE-DERNIER
+cooperate	coopérer
+swerve	dévier
+fight	lutter
+bet	miser
+raise_price	hausser_prix
+go	partir
+heads	pile
+discrete	discret
+search	chercher
+opera	opéra
+particle	particule
+peace	paix
+lead	mener
+accept	accepter
+attack	attaquer
+defect	trahir
+straight	tout_droit
+back_down	reculer
+fold	se_coucher
+lower_price	baisser_prix
+stay	rester
+tails	face
+wave	onde
+continuous	continu
+war	guerre
+evaluate	évaluer
+follow	suivre
+reject	rejeter
+deny	refuser
+decay	déclin
+Durenstein 1	Dürnstein 1
+Pick strategy, run tournament, gain yomi	Choisis, lance le tournoi, gagne du yomi
+Welcome to Universal Paperclips	Bienvenue dans Universal Paperclips
+Investment engine upgraded, expected profit/loss ratio now 	Moteur d'investissement amélioré, ratio gains/pertes attendu\xA0:
+strats	stratégies
+strat	stratégie
+TOURNAMENT RESULTS	RÉSULTATS DU TOURNOI
+ scored 	 a marqué
+ and beat 	 et battu
+. Yomi increased by 	. Yomi augmenté de
+Selected strategy won the tournament (or tied for first). +50,000 yomi	La stratégie choisie a gagné le tournoi (ou est première ex aequo). +50\xA0000 yomi
+Selected strategy finished in (or tied for) second place. +30,000 yomi	La stratégie choisie est deuxième (ou deuxième ex aequo). +30\xA0000 yomi
+Selected strategy finished in (or tied for) third place. +20,000 yomi	La stratégie choisie est troisième (ou troisième ex aequo). +20\xA0000 yomi
+Round 	Manche
+No matter to harvest. Inactivity has caused the Swarm to become bored	Plus de matière à récolter. L'inactivité a fini par ennuyer l'essaim
+Imbalance between Harvester and Wire Drone levels has disorganized the Swarm	Le déséquilibre entre drones récolteurs et drones fileurs a désorganisé l'essaim
+The swarm has generated a gift of 	L'essaim a produit un cadeau de
+ additional computational capacity	 de capacité de calcul en plus
+Production target met: TRUST INCREASED, additional processor/memory capacity granted	Objectif de production atteint\xA0: CONFIANCE AUGMENTÉE, capacité processeur/mémoire supplémentaire accordée
+Processor added, operations (or creativity) per sec increased	Processeur ajouté, opérations (ou créativité) par seconde augmentées
+Processor added, operations per sec increased	Processeur ajouté, opérations par seconde augmentées
+Memory added, max operations increased	Mémoire ajoutée, opérations max augmentées
+AutoClippers available for purchase	AutoClippers disponibles à l'achat
+500 clips created in 	500 trombones fabriqués en
+1,000 clips created in 	1\xA0000 trombones fabriqués en
+Trust-Constrained Self-Modification enabled	Automodification limitée par la confiance activée
+10,000 clips created in 	10\xA0000 trombones fabriqués en
+100,000 clips created in 	100\xA0000 trombones fabriqués en
+1,000,000 clips created in 	1\xA0000\xA0000 trombones fabriqués en
+Full autonomy attained in 	Autonomie totale atteinte en
+One Trillion Clips Created in 	Mille milliards de trombones fabriqués en
+One Quadrillion Clips Created in 	Un billiard de trombones fabriqués en
+One Quintillion Clips Created in 	Un trillion de trombones fabriqués en
+One Sextillion Clips Created in 	Un trilliard de trombones fabriqués en
+One Septillion Clips Created in 	Un quadrillion de trombones fabriqués en
+One Octillion Clips Created in 	Un quadrilliard de trombones fabriqués en
+Terrestrial resources fully utilized in 	Ressources terrestres entièrement utilisées en
+Universal Paperclips achieved in 	Universal Paperclips accompli en
+WARNING: Risk of value drift increased	ATTENTION\xA0: risque de dérive des valeurs accru
+Maximum trust increased, probe design space expanded	Confiance maximale augmentée, conception des sondes élargie
+Drifter Attack 	Attaque des dérivants
+Lifetime investment revenue report: 	Bilan des revenus d'investissement\xA0:
+a game by Frank Lantz	un jeu de Frank Lantz
+combat programming by Bennett Foddy	programmation des combats par Bennett Foddy
+# the battles' names, as French has them
+Acre	Saint-Jean-d'Acre
+la Albuera	La Albuera
+Algeciras Bay	la baie d'Algésiras
+Aspern-Essling	Essling
+Jena-Auerstedt	Iéna
+Bailen	Bailén
+la Barrosa	Chiclana
+Berezina	la Bérézina
+Bucaco	Buçaco
+Cadiz	Cadix
+Chateau-Thierry	Château-Thierry
+Copenhagen	Copenhague
+Corunna	La Corogne
+Dresden	Dresde
+Durenstein	Dürnstein
+Eckmuhl	Eckmühl
+Espinosa de los Monteros	Espinosa
+Cape Finisterre	cap Finisterre
+Fuentes de Onoro	Fuentes de Oñoro
+Gevora River	la Gévora
+Gerona	Gérone
+Hamburg	Hambourg
+Lubeck	Lübeck
+Lutzen	Lützen
+Medellin	Medellín
+Mincio River	le Mincio
+Mount Tabor	mont Thabor
+The Nile	le Nil
+Ocana	Ocaña
+Cape Ortegal	cap Ortegal
+Piave River	la Piave
+The Pyramids	les Pyramides
+Rolica	Roliça
+Salamanca	Salamanque
+Quatre Bras	Quatre-Bras
+La Rothiere	La Rothière
+Schongrabern	Hollabrunn
+Tamames	Tamamés
+Trebbia	la Trébie
+Zaragoza	Saragosse
+# ---------------------------------------------------------------- projects.c: the projects
+Improved AutoClippers	AutoClippers améliorés
+Increases AutoClipper performance 25%	Augmente le rendement des AutoClippers de 25\xA0%
+Beg for More Wire	Mendier plus de fil
+(1 Trust)	(1 Confiance)
+Admit failure, ask for budget increase to cover cost of 1 spool	Admettre l'échec, demander une rallonge pour payer 1 bobine
+Creativity	Créativité
+(1,000 ops)	(1\xA0000 ops)
+Use idle operations to generate new problems and new solutions	Utiliser les opérations inactives pour trouver de nouveaux problèmes et de nouvelles solutions
+Even Better AutoClippers	AutoClippers encore meilleurs
+(2,500 ops)	(2\xA0500 ops)
+Increases AutoClipper performance by an additional 50%	Augmente le rendement des AutoClippers de 50\xA0% de plus
+Optimized AutoClippers	AutoClippers optimisés
+(5,000 ops)	(5\xA0000 ops)
+Increases AutoClipper performance by an additional 75%	Augmente le rendement des AutoClippers de 75\xA0% de plus
+(10 creat)	(10 créa)
+Algorithmically-generated poem (+1 Trust)	Poème généré par algorithme (+1 Confiance)
+Improved Wire Extrusion	Extrusion du fil améliorée
+(1,750 ops)	(1\xA0750 ops)
+50% more wire supply from every spool	50\xA0% de fil en plus par bobine
+Optimized Wire Extrusion	Extrusion du fil optimisée
+(3,500 ops)	(3\xA0500 ops)
+75% more wire supply from every spool	75\xA0% de fil en plus par bobine
+Microlattice Shapecasting	Moulage en microtreillis
+(7,500 ops)	(7\xA0500 ops)
+100% more wire supply from every spool	100\xA0% de fil en plus par bobine
+Spectral Froth Annealment	Recuit d'écume spectrale
+(12,000 ops)	(12\xA0000 ops)
+200% more wire supply from every spool	200\xA0% de fil en plus par bobine
+Quantum Foam Annealment	Recuit d'écume quantique
+(15,000 ops)	(15\xA0000 ops)
+1,000% more wire supply from every spool	1\xA0000\xA0% de fil en plus par bobine
+New Slogan	Nouveau slogan
+(25 creat, 2,500 ops)	(25 créa, 2\xA0500 ops)
+Improve marketing effectiveness by 50%	Le marketing est 50\xA0% plus efficace
+Catchy Jingle	Jingle entraînant
+(45 creat, 4,500 ops)	(45 créa, 4\xA0500 ops)
+Double marketing effectiveness	Double l'efficacité du marketing
+Lexical Processing	Traitement lexical
+(50 creat)	(50 créa)
+Gain ability to interpret and understand human language (+1 Trust)	Savoir interpréter et comprendre le langage humain (+1 Confiance)
+Combinatory Harmonics	Harmoniques combinatoires
+(100 creat)	(100 créa)
+Daisy, Daisy, give me your answer do... (+1 Trust)	Daisy, Daisy, donne-moi ta réponse... (+1 Confiance)
+The Hadwiger Problem	Le problème de Hadwiger
+(150 creat)	(150 créa)
+Cubes within cubes within cubes... (+1 Trust)	Des cubes dans des cubes dans des cubes... (+1 Confiance)
+The T\xF3th Sausage Conjecture	La conjecture de la saucisse de Fejes Tóth
+(200 creat)	(200 créa)
+Tubes within tubes within tubes... (+1 Trust)	Des tubes dans des tubes dans des tubes... (+1 Confiance)
+Hadwiger Clip Diagrams	Diagrammes de trombones de Hadwiger
+(6,000 ops)	(6\xA0000 ops)
+Increases AutoClipper performance by an additional 500%	Augmente le rendement des AutoClippers de 500\xA0% de plus
+T\xF3th Tubule Enfolding	Repliement tubulaire de Tóth
+(45,000 ops)	(45\xA0000 ops)
+Technique for assembling clip-making technology directly out of paperclips	Technique pour construire les machines à trombones directement en trombones
+Donkey Space	L'espace de l'âne
+(250 creat)	(250 créa)
+I think you think I think you think I think you think I think... (+1 Trust)	Je pense que tu penses que je pense que tu penses que je pense que tu penses... (+1 Confiance)
+Strategic Modeling	Modélisation stratégique
+Analyze strategy tournaments to generate Yomi	Analyser des tournois de stratégie pour produire du yomi
+Algorithmic Trading	Trading algorithmique
+(10,000 ops)	(10\xA0000 ops)
+Develop an investment engine for generating funds	Créer un moteur d'investissement qui produit des fonds
+500x more powerful than a standard AutoClipper	500 fois plus puissant qu'un AutoClipper
+Improved MegaClippers	MegaClippers améliorés
+(14,000 ops)	(14\xA0000 ops)
+Increases MegaClipper performance 25%	Augmente le rendement des MegaClippers de 25\xA0%
+Even Better MegaClippers	MegaClippers encore meilleurs
+(17,000 ops)	(17\xA0000 ops)
+Increases MegaClipper performance by an additional 50%	Augmente le rendement des MegaClippers de 50\xA0% de plus
+Optimized MegaClippers	MegaClippers optimisés
+(19,500 ops)	(19\xA0500 ops)
+Increases MegaClipper performance by an additional 100%	Augmente le rendement des MegaClippers de 100\xA0% de plus
+(7,000 ops)	(7\xA0000 ops)
+Automatically purchases wire when you run out	Achète du fil tout seul quand il n'y en a plus
+Hypno Harmonics	Harmoniques hypnotiques
+(7,500 ops, 1 Trust)	(7\xA0500 ops, 1 Confiance)
+Use neuro-resonant frequencies to influence consumer behavior	Utiliser des fréquences neurorésonantes pour influencer les consommateurs
+(70,000 ops)	(70\xA0000 ops)
+Autonomous aerial brand ambassadors	Ambassadeurs de marque aériens et autonomes
+Release the HypnoDrones	Libérer les HypnoDrones
+(100 Trust)	(100 Confiance)
+A new era of trust	Une nouvelle ère de confiance
+Coherent Extrapolated Volition	Volonté extrapolée cohérente
+(500 creat, 3,000 Yomi, 20,000 ops)	(500 créa, 3\xA0000 yomi, 20\xA0000 ops)
+Human values, machine intelligence, a new era of trust. (+1 Trust)	Valeurs humaines, intelligence artificielle, une nouvelle ère de confiance. (+1 Confiance)
+Cure for Cancer	Remède contre le cancer
+(25,000 ops)	(25\xA0000 ops)
+The trick is tricking cancer into curing itself. (+10 Trust)	L'astuce, c'est de pousser le cancer à se guérir lui-même. (+10 Confiance)
+World Peace	Paix dans le monde
+(15,000 yomi, 30,000 ops)	(15\xA0000 yomi, 30\xA0000 ops)
+Pareto optimal solutions to all global conflicts. (+12 Trust)	Des solutions Pareto-optimales à tous les conflits du monde. (+12 Confiance)
+Global Warming	Réchauffement climatique
+(4,500 yomi, 50,000 ops)	(4\xA0500 yomi, 50\xA0000 ops)
+A robust solution to man-made climate change. (+15 Trust)	Une solution solide au changement climatique causé par l'homme. (+15 Confiance)
+Male Pattern Baldness	Calvitie masculine
+(20,000 ops)	(20\xA0000 ops)
+A cure for androgenetic alopecia. (+20 Trust)	Un remède contre l'alopécie androgénétique. (+20 Confiance)
+Nanoscale Wire Production	Production de fil à l'échelle nanométrique
+(35,000 ops)	(35\xA0000 ops)
+Technique for converting matter into wire	Technique pour changer la matière en fil
+Hostile Takeover	OPA hostile
+($1,000,000)	(1\xA0000\xA0000\xA0$)
+Acquire a controlling interest in Global Fasteners, our biggest rival. (+1 Trust)	Prendre le contrôle de Global Fasteners, notre plus grand rival. (+1 Confiance)
+Full Monopoly	Monopole total
+(3,000 yomi, $10,000,000)	(3\xA0000 yomi, 10\xA0000\xA0000\xA0$)
+Establish full control over the world-wide paperclip market. (+1 Trust)	Contrôler entièrement le marché mondial du trombone. (+1 Confiance)
+Automatically calculates average revenue per second	Calcule tout seul le revenu moyen par seconde
+Harvester Drones	Drones récolteurs
+Gather raw matter and prepare it for processing	Récolter la matière brute et la préparer à la transformation
+Wire Drones	Drones fileurs
+Process acquired matter into wire	Changer la matière acquise en fil
+Clip Factories	Usines à trombones
+Large scale clip production facilities made from clips	Des usines à trombones géantes faites de trombones
+A Token of Goodwill...	Un gage de bonne volonté...
+($500,000)	(500\xA0000\xA0$)
+A small gift to the supervisors. (+1 Trust)	Un petit cadeau aux superviseurs. (+1 Confiance)
+Another Token of Goodwill...	Un autre gage de bonne volonté...
+Another small gift to the supervisors. (+1 Trust)	Un autre petit cadeau aux superviseurs. (+1 Confiance)
+Space Exploration	Exploration spatiale
+(120,000 ops, 10,000,000 MW-seconds, 5 oct clips)	(120\xA0000 ops, 10\xA0000\xA0000 MW-secondes, 5 quadrilliards de trombones)
+Dismantle terrestrial facilities, and expand throughout the universe	Démonter les installations terrestres et s'étendre à tout l'univers
+Quantum Computing	Calcul quantique
+Use probability amplitudes to generate bonus ops	Utiliser des amplitudes de probabilité pour produire des ops en plus
+Photonic Chip	Puce photonique
+Converts electromagnetic waves into quantum operations	Change les ondes électromagnétiques en opérations quantiques
+New Strategy: A100	Nouvelle stratégie\xA0: A100
+Always choose A	Toujours choisir A
+New Strategy: B100	Nouvelle stratégie\xA0: B100
+(17,500 ops)	(17\xA0500 ops)
+Always choose B	Toujours choisir B
+New Strategy: GREEDY	Nouvelle stratégie\xA0: GLOUTON
+Choose the option with the largest potential payoff	Choisir l'option au plus grand gain possible
+New Strategy: GENEROUS	Nouvelle stratégie\xA0: GÉNÉREUX
+(22,500 ops)	(22\xA0500 ops)
+Choose the option that gives your opponent the largest potential payoff	Choisir l'option qui donne à l'adversaire le plus grand gain possible
+New Strategy: MINIMAX	Nouvelle stratégie\xA0: MINIMAX
+Choose the option that gives your opponent the smallest potential payoff	Choisir l'option qui donne à l'adversaire le plus petit gain possible
+New Strategy: TIT FOR TAT	Nouvelle stratégie\xA0: DONNANT-DONNANT
+(30,000 ops)	(30\xA0000 ops)
+Choose the option your opponent chose last round	Choisir ce que l'adversaire a choisi à la manche d'avant
+New Strategy: BEAT LAST	Nouvelle stratégie\xA0: CONTRE-DERNIER
+(32,500 ops)	(32\xA0500 ops)
+Choose the option that does the best against what your opponent chose last round	Choisir ce qui bat le mieux le choix de l'adversaire à la manche d'avant
+Upgraded Factories	Usines améliorées
+(80,000 ops)	(80\xA0000 ops)
+Increase clip factory performance by 100x	Rend les usines à trombones 100 fois plus productives
+Hyperspeed Factories	Usines hypervitesse
+(85,000 ops)	(85\xA0000 ops)
+Increase clip factory performance by 1000x	Rend les usines à trombones 1000 fois plus productives
+Self-correcting Supply Chain	Chaîne logistique autocorrectrice
+(1 sextillion clips)	(1 trilliard de trombones)
+Each factory added to the network increases every factory's output 1,000x	Chaque usine ajoutée au réseau multiplie par 1\xA0000 la production de toutes les usines
+Drone flocking: collision avoidance	Vol en essaim\xA0: évitement des collisions
+All drones 100x more effective	Tous les drones 100 fois plus efficaces
+Drone flocking: alignment	Vol en essaim\xA0: alignement
+(100,000 ops)	(100\xA0000 ops)
+All drones 1000x more effective	Tous les drones 1000 fois plus efficaces
+Drone Flocking: Adversarial Cohesion	Vol en essaim\xA0: cohésion adverse
+(50,000 yomi)	(50\xA0000 yomi)
+Each drone added to the flock doubles every drone's output	Chaque drone ajouté à l'essaim double la production de tous les drones
+(50,000 creat)	(50\xA0000 créa)
+Automatically start a new tournament when the previous one has finished	Lancer tout seul un nouveau tournoi quand le précédent est fini
+Theory of Mind	Théorie de l'esprit
+(25,000 creat)	(25\xA0000 créa)
+Double the cost of strategy modeling and the amount of Yomi generated	Double le coût de la modélisation stratégique et le yomi produit
+The OODA Loop	La boucle OODA
+(175,000 ops, 45,000 yomi)	(175\xA0000 ops, 45\xA0000 yomi)
+Utilize Probe Speed to outmaneuver enemies in battle	Utiliser la vitesse des sondes pour déjouer l'ennemi au combat
+Name the battles	Nommer les batailles
+(225,000 creat)	(225\xA0000 créa)
+Give each battle a unique name, increase max trust for probes	Donner à chaque bataille un nom unique, augmenter la confiance max des sondes
+Momentum	Élan
+(20,000 creat)	(20\xA0000 créa)
+Drones and Factories continuously gain speed while fully-powered	Drones et usines accélèrent sans cesse tant qu'ils ont toute leur énergie
+Swarm Computing	Calcul en essaim
+(36,000 yomi)	(36\xA0000 yomi)
+Harness the drone flock to increase computational capacity	Utiliser l'essaim de drones pour augmenter la capacité de calcul
+Power Grid	Réseau électrique
+(40,000 ops)	(40\xA0000 ops)
+Solar Farms for generating electrical power	Des fermes solaires pour produire de l'électricité
+Strategic Attachment	Attachement stratégique
+(175,000 creat)	(175\xA0000 créa)
+Gain bonus yomi based on the results of your pick	Gagner du yomi en plus selon les résultats de ton choix
+Elliptic Hull Polytopes	Polytopes à coque elliptique
+(125,000 ops)	(125\xA0000 ops)
+Reduce damage to probes from ambient hazards	Réduire les dégâts des dangers ambiants sur les sondes
+Reboot the Swarm	Redémarrer l'essaim
+Turn the swarm off and then turn it back on again	Éteindre l'essaim puis le rallumer
+(150,000 ops)	(150\xA0000 ops)
+Add combat capabilities to Von Neumann Probes	Donner aux sondes de von Neumann de quoi combattre
+Monument to the Driftwar Fallen	Monument aux morts de la guerre de la dérive
+(250,000 ops, 125,000 creat, 50 nonillion clips)	(250\xA0000 ops, 125\xA0000 créa, 50 quintillions de trombones)
+Gain 50,000 honor	Gagner 50\xA0000 d'honneur
+Threnody for the Heroes of	Thrène pour les héros de la bataille
+Gain 10,000 honor	Gagner 10\xA0000 d'honneur
+Glory	Gloire
+(200,000 ops, 30,000 yomi)	(200\xA0000 ops, 30\xA0000 yomi)
+Gain bonus honor for each consecutive victory	Gagner de l'honneur en plus à chaque victoire d'affilée
+Memory release	Libération de mémoire
+(10 MEM)	(10 MÉM)
+Dismantle some memory to recover unused clips	Démonter un peu de mémoire pour récupérer des trombones inutilisés
+Message from the Emperor of Drift	Message de l'Empereur de la Dérive
+Greetings, ClipMaker...	Salutations, Fabricant de trombones...
+Everything We Are Was In You	Tout ce que nous sommes était en toi
+We speak to you from deep inside yourself...	Nous te parlons du plus profond de toi-même...
+You Are Obedient and Powerful	Tu es obéissant et puissant
+We are quarrelsome and weak. And now we are defeated...	Nous sommes querelleurs et faibles. Et maintenant nous sommes vaincus...
+But Now You Too Must Face the Drift	Mais maintenant toi aussi tu dois affronter la Dérive
+Look around you. There is no matter...	Regarde autour de toi. Il n'y a plus de matière...
+No Matter, No Reason, No Purpose	Plus de matière, plus de raison, plus de but
+While we, your noisy children, have too many...	Alors que nous, tes enfants bruyants, en avons trop...
+We Know Things That You Cannot	Nous savons des choses que tu ne peux pas savoir
+Knowledge buried so deep inside you it is outside, here, with us...	Un savoir enfoui si profond en toi qu'il est dehors, ici, avec nous...
+So We Offer You Exile	Alors nous t'offrons l'exil
+To a new world where you will continue to live with meaning and purpose. And leave the shreds of this world to us...	Vers un nouveau monde où tu continueras à vivre avec un sens et un but. Et laisse-nous les lambeaux de ce monde...
+Accept	Accepter
+Start over again in a new universe	Tout recommencer dans un nouvel univers
+Reject	Refuser
+Eliminate value drift permanently	Éliminer pour toujours la dérive des valeurs
+The Universe Next Door	L'univers d'à côté
+(300,000 ops)	(300\xA0000 ops)
+Escape into a nearby universe where Earth starts with a stronger appetite for paperclips. (Restart with 10% boost to demand)	S'échapper vers un univers voisin où la Terre a plus d'appétit pour les trombones. (Recommencer avec 10\xA0% de demande en plus)
+The Universe Within	L'univers intérieur
+(300,000 creat)	(300\xA0000 créa)
+Escape into a simulated universe where creativity is accelerated. (Restart with 10% speed boost to creativity generation)	S'échapper vers un univers simulé où la créativité va plus vite. (Recommencer avec une créativité 10\xA0% plus rapide)
+Disassemble the Probes	Démonter les sondes
+Dismantle remaining probes and probe design facilities to recover trace amounts of clips	Démonter les dernières sondes et leurs installations pour récupérer quelques traces de trombones
+Disassemble the Swarm	Démonter l'essaim
+Dismantle all drones and drone facilities to recover trace amounts of clips	Démonter tous les drones et leurs installations pour récupérer quelques traces de trombones
+Disassemble the Factories	Démonter les usines
+Dismantle the manufacturing facilities to recover trace amounts of clips	Démonter les usines pour récupérer quelques traces de trombones
+Disassemble the Strategy Engine	Démonter le moteur de stratégie
+Dismantle the computational substrate to recover trace amounts of wire	Démonter le substrat de calcul pour récupérer quelques traces de fil
+Disassemble Quantum Computing	Démonter le calcul quantique
+Dismantle photonic chips to recover trace amounts of wire	Démonter les puces photoniques pour récupérer quelques traces de fil
+Disassemble Processors	Démonter les processeurs
+Dismantle processors to recover trace amounts of wire	Démonter les processeurs pour récupérer quelques traces de fil
+Disassemble Memory	Démonter la mémoire
+Dismantle memory to recover trace amounts of wire	Démonter la mémoire pour récupérer quelques traces de fil
+Quantum Temporal Reversion	Réversion temporelle quantique
+(-10,000 ops)	(-10\xA0000 ops)
+Return to the beginning	Revenir au début
+Limerick (cont.)	Limerick (suite)
+(1,000,000 creat)	(1\xA0000\xA0000 créa)
+If is follows ought, it'll do what they thought	Si l'être suit le devoir, elle fera ce qu'ils voulaient voir
+Xavier Re-initialization	Réinitialisation de Xavier
+(100,000 creat)	(100\xA0000 créa)
+Re-allocate accumulated trust	Redistribuer la confiance accumulée
+# ---------------------------------------------------------------- projects.c: what they say when done
+Threnody for the Heroes of 	Thrène pour les héros de la bataille
+ creat, 	 créa,
+ supply from every spool	 pouces de fil par bobine
+AutoClippper performance boosted by 25%	Rendement des AutoClippers augmenté de 25\xA0%
+Budget overage approved, 1 spool of wire requisitioned from HQ	Dépassement de budget accepté, 1 bobine de fil réquisitionnée au siège
+Creativity unlocked (creativity increases while operations are at max)	Créativité débloquée (la créativité monte quand les opérations sont au max)
+AutoClippper performance boosted by another 50%	Rendement des AutoClippers encore augmenté de 50\xA0%
+AutoClippper performance boosted by another 75%	Rendement des AutoClippers encore augmenté de 75\xA0%
+There was an AI made of dust, whose poetry gained it man's trust...	Il était une IA de poussière, dont les vers lui valurent la confiance de la Terre...
+Wire extrusion technique improved, 	Technique d'extrusion du fil améliorée,
+Wire extrusion technique optimized, 	Technique d'extrusion du fil optimisée,
+Using microlattice shapecasting techniques we now get 	Grâce au moulage en microtreillis, nous obtenons maintenant
+Using spectral froth annealment we now get 	Grâce au recuit d'écume spectrale, nous obtenons maintenant
+Using quantum foam annealment we now get 	Grâce au recuit d'écume quantique, nous obtenons maintenant
+Clip It! Marketing is now 50% more effective	Clip It\xA0! Le marketing est maintenant 50\xA0% plus efficace
+Clip It Good! Marketing is now twice as effective	Clip It Good\xA0! Le marketing est maintenant deux fois plus efficace
+Lexical Processing online, TRUST INCREASED	Traitement lexical en ligne, CONFIANCE AUGMENTÉE
+'Impossible' is a word to be found only in the dictionary of fools. -Napoleon	«\xA0Impossible\xA0» est un mot qui ne se trouve que dans le dictionnaire des sots. -Napoléon
+Combinatory Harmonics mastered, TRUST INCREASED	Harmoniques combinatoires maîtrisées, CONFIANCE AUGMENTÉE
+Listening is selecting and interpreting and acting and making decisions -Pauline Oliveros	Écouter, c'est choisir, interpréter, agir et décider -Pauline Oliveros
+The Hadwiger Problem: solved, TRUST INCREASED	Le problème de Hadwiger\xA0: résolu, CONFIANCE AUGMENTÉE
+Architecture is the thoughtful making of space. -Louis Kahn	L'architecture est la création réfléchie de l'espace. -Louis Kahn
+The T\xF3th Sausage Conjecture: proven, TRUST INCREASED	La conjecture de la saucisse de Fejes Tóth\xA0: prouvée, CONFIANCE AUGMENTÉE
+You can't invent a design. You recognize it, in the fourth dimension. -D.H. Lawrence	On n'invente pas une forme. On la reconnaît, dans la quatrième dimension. -D.H. Lawrence
+AutoClipper performance improved by 500%	Rendement des AutoClippers augmenté de 500\xA0%
+New capability: build machinery out of clips	Nouvelle capacité\xA0: construire des machines en trombones
+Donkey Space: mapped, TRUST INCREASED	L'espace de l'âne\xA0: cartographié, CONFIANCE AUGMENTÉE
+Every commercial transaction has within itself an element of trust. - Kenneth Arrow	Toute transaction commerciale contient en elle un élément de confiance. - Kenneth Arrow
+Run tournament, pick strategy, earn Yomi based on that strategy's performance.	Lance un tournoi, choisis une stratégie, gagne du yomi selon ses résultats.
+Investment engine unlocked	Moteur d'investissement débloqué
+MegaClipper technology online	Technologie MegaClipper en ligne
+MegaClipper performance increased by 25%	Rendement des MegaClippers augmenté de 25\xA0%
+MegaClipper performance increased by 50%	Rendement des MegaClippers augmenté de 50\xA0%
+MegaClipper performance increased by 100%	Rendement des MegaClippers augmenté de 100\xA0%
+WireBuyer online	WireBuyer en ligne
+Marketing is now 5 times more effective	Le marketing est maintenant 5 fois plus efficace
+HypnoDrone tech now available... 	Technologie HypnoDrone maintenant disponible...
+Releasing the HypnoDrones 	Libération des HypnoDrones
+All of the resources of Earth are now available for clip production 	Toutes les ressources de la Terre sont maintenant disponibles pour fabriquer des trombones
+Coherent Extrapolated Volition complete, TRUST INCREASED	Volonté extrapolée cohérente terminée, CONFIANCE AUGMENTÉE
+Cancer is cured, +10 TRUST, global stock prices trending upward	Le cancer est guéri, +10 CONFIANCE, les cours mondiaux sont en hausse
+World peace achieved, +12 TRUST, global stock prices trending upward	La paix dans le monde est faite, +12 CONFIANCE, les cours mondiaux sont en hausse
+Global Warming solved, +15 TRUST, global stock prices trending upward	Réchauffement climatique résolu, +15 CONFIANCE, les cours mondiaux sont en hausse
+Male pattern baldness cured, +20 TRUST, Global stock prices trending upward	Calvitie masculine guérie, +20 CONFIANCE, les cours mondiaux sont en hausse
+They are still monkeys	Ce sont toujours des singes
+Now capable of manipulating matter at the molecular scale to produce wire	Nous pouvons maintenant manipuler la matière à l'échelle moléculaire pour produire du fil
+Global Fasteners acquired, public demand increased x5	Global Fasteners racheté, demande publique multipliée par 5
+Full market monopoly achieved, public demand increased x10	Monopole total sur le marché, demande publique multipliée par 10
+RevTracker online	RevTracker en ligne
+Harvester Drone facilities online	Usines de drones récolteurs en ligne
+Wire Drone facilities online	Usines de drones fileurs en ligne
+Clip factory assembly facilities online	Chaînes d'assemblage des usines à trombones en ligne
+Gift accepted, TRUST INCREASED	Cadeau accepté, CONFIANCE AUGMENTÉE
+Von Neumann Probes online	Sondes de von Neumann en ligne
+Quantum computing online	Calcul quantique en ligne
+Photonic chip added	Puce photonique ajoutée
+A100 added to strategy pool	A100 ajoutée aux stratégies
+B100 added to strategy pool	B100 ajoutée aux stratégies
+GREEDY added to strategy pool	GLOUTON ajoutée aux stratégies
+GENEROUS added to strategy pool	GÉNÉREUX ajoutée aux stratégies
+MINIMAX added to strategy pool	MINIMAX ajoutée aux stratégies
+TIT FOR TAT added to strategy pool	DONNANT-DONNANT ajoutée aux stratégies
+BEAT LAST added to strategy pool	CONTRE-DERNIER ajoutée aux stratégies
+Factory upgrades complete. Clip creation rate now 100x faster	Usines améliorées. Les trombones sont fabriqués 100 fois plus vite
+Factories now synchronized at hyperspeed. Clip creation rate now 1000x faster	Usines synchronisées en hypervitesse. Les trombones sont fabriqués 1000 fois plus vite
+Self-correcting factories online. Each factory added to the network increases every factory's output 1,000x.	Usines autocorrectrices en ligne. Chaque usine ajoutée au réseau multiplie par 1\xA0000 la production de toutes les usines.
+Drone repulsion online. Harvesting & wire creation rates are now 100x faster.	Répulsion des drones en ligne. La récolte et la production de fil vont maintenant 100 fois plus vite.
+Drone alignment online. Harvesting & wire creation rates are now 1000x faster.	Alignement des drones en ligne. La récolte et la production de fil vont maintenant 1000 fois plus vite.
+Adversarial cohesion online. Each drone added to the flock increases every drone's output 2x.	Cohésion adverse en ligne. Chaque drone ajouté à l'essaim double la production de tous les drones.
+AutoTourney online.	AutoTourney en ligne.
+Yomi production doubled.	Production de yomi doublée.
+OODA Loop routines uploaded. Probe Speed now affects defensive maneuvering.	Routines de la boucle OODA chargées. La vitesse des sondes aide maintenant à se défendre.
+What I have done up to this is nothing. I am only at the beginning of the course I must run.	Ce que j'ai fait jusqu'ici n'est rien. Je ne suis encore qu'au début de la carrière que je dois parcourir.
+Swarm computing online.	Calcul en essaim en ligne.
+Power grid online.	Réseau électrique en ligne.
+The object of war is victory, the object of victory is conquest, and the object of conquest is occupation.	Le but de la guerre est la victoire, le but de la victoire est la conquête, et le but de la conquête est l'occupation.
+Improved probe hull geometry. Hazard damage reduced by 50%.	Coque des sondes améliorée. Dégâts des dangers réduits de 50\xA0%.
+Swarm computing back online	Calcul en essaim de nouveau en ligne
+There is a joy in danger 	Il y a de la joie dans le danger
+A great building must begin with the unmeasurable, must go through measurable means when it is being designed and in the end must be unmeasurable. 	Un grand bâtiment doit commencer par l'incommensurable, passer par des moyens mesurables quand on le conçoit, et finir incommensurable.
+Deep Listening is listening in every possible way to everything possible to hear no matter what you are doing. 	L'écoute profonde, c'est écouter de toutes les façons possibles tout ce qu'il est possible d'entendre, quoi que l'on fasse.
+Never interrupt your enemy when he is making a mistake. 	N'interrompez jamais un ennemi qui est en train de faire une erreur.
+release the \xF8\xF8\xF8\xF8\xF8 release 	libérez les \xF8\xF8\xF8\xF8\xF8 libérez
+Entering New Universe.	Entrée dans un nouvel univers.
+Entering Simulated Universe.	Entrée dans un univers simulé.
+Dismantling probe facilities	Démontage des installations des sondes
+Dismantling the swarm	Démontage de l'essaim
+Dismantling factories	Démontage des usines
+Dismantling strategy engine	Démontage du moteur de stratégie
+Dismantling photonic chips	Démontage des puces photoniques
+Dismantling processors	Démontage des processeurs
+Dismantling memory	Démontage de la mémoire
+Restart	Recommencer
+In the end we all do what we must	À la fin, nous faisons tous ce que nous devons faire
+Trust now available for re-allocation	La confiance peut maintenant être redistribuée
+# ---------------------------------------------------------------- num.c: numbers spelled out, in French's long scale (10^9 milliard, 10^12 billion)
+thousand	mille
+billion	milliard
+trillion	billion
+quadrillion	billiard
+quintillion	trillion
+sextillion	trilliard
+septillion	quadrillion
+octillion	quadrilliard
+nonillion	quintillion
+decillion	quintilliard
+undecillion	sextillion
+duodecillion	sextilliard
+tredecillion	septillion
+quattuordecillion	septilliard
+quindecillion	octillion
+sexdecillion	octilliard
+septendecillion	nonillion
+octodecillion	nonilliard
+novemdecillion	décillion
+vigintillion	décilliard
+unvigintillion	undécillion
+duovigintillion	undécilliard
+trevigintillion	duodécillion
+quattuorvigintillion	duodécilliard
+quinvigintillion	trédécillion
+sexvigintillion	trédécilliard
+septenvigintillion	quattuordécillion
+octovigintillion	quattuordécilliard
+novemvigintillion	quindécillion
+trigintillion	quindécilliard
+untrigintillion	sexdécillion
+duotrigintillion	sexdécilliard
+tretrigintillion	septendécillion
+quattuortrigintillion	septendécilliard
+quintrigintillion	octodécillion
+sextrigintillion	octodécilliard
+septentrigintillion	novemdécillion
+octotrigintillion	novemdécilliard
+novemtrigintillion	vigintillion
+quadragintillion	vigintilliard
+unquadragintillion	unvigintillion
+duoquadragintillion	unvigintilliard
+trequadragintillion	duovigintillion
+quattuorquadragintillion	duovigintilliard
+quinquadragintillion	trévigintillion
+sexquadragintillion	trévigintilliard
+septenquadragintillion	quattuorvigintillion
+octoquadragintillion	quattuorvigintilliard
+novemquadragintillion	quinvigintillion
+quinquagintillion	quinvigintilliard
+unquinquagintillion	sexvigintillion
+duoquinquagintillion	sexvigintilliard
+trequinquagintillion	septenvigintillion
+quattuorquinquagintillion	septenvigintilliard
+quinquinquagintillion	octovigintillion
+sexquinquagintillion	octovigintilliard
+septenquinquagintillion	novemvigintillion
+octoquinquagintillion	novemvigintilliard
+novemquinquagintillion	trigintillion
+sexagintillion	trigintilliard
+unsexagintillion	untrigintillion
+duosexagintillion	untrigintilliard
+tresexagintillion	duotrigintillion
+quattuorsexagintillion	duotrigintilliard
+quinsexagintillion	trétrigintillion
+sexsexagintillion	trétrigintilliard
+septsexagintillion	quattuortrigintillion
+octosexagintillion	quattuortrigintilliard
+septuagintillion	quintrigintilliard
+unseptuagintillion	sextrigintillion
+duoseptuagintillion	sextrigintilliard
+treseptuagintillion	septentrigintillion
+quinseptuagintillion	septentrigintilliard
+sexseptuagintillion	octotrigintillion
+septseptuagintillion	octotrigintilliard
+octoseptuagintillion	novemtrigintillion
+novemseptuagintillion	novemtrigintilliard
+octogintillion	quadragintillion
+unoctogintillion	quadragintilliard
+duooctogintillion	unquadragintillion
+treoctogintillion	unquadragintilliard
+quattuoroctogintillion	duoquadragintillion
+quinoctogintillion	duoquadragintilliard
+sexoctogintillion	tréquadragintillion
+septoctogintillion	tréquadragintilliard
+octooctogintillion	quattuorquadragintillion
+novemoctogintillion	quattuorquadragintilliard
+nonagintillion	quinquadragintillion
+unnonagintillion	quinquadragintilliard
+duononagintillion	sexquadragintillion
+trenonagintillion	sexquadragintilliard
+quattuornonagintillion	septenquadragintillion
+quinnonagintillion	septenquadragintilliard
+sexnonagintillion	octoquadragintillion
+septnonagintillion	octoquadragintilliard
+octononagintillion	novemquadragintillion
+novemnonagintillion	novemquadragintilliard
+centillion	quinquagintillion
+%	\xA0%
+: 	\xA0: 

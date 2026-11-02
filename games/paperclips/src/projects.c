@@ -353,9 +353,9 @@ void pc_project_price(int i, char *out, int n) {
   out[0] = 0;
   switch (i) {
     case P40B:
-      strcpy(out, "($");
-      strncat(out, js_locale(g->bribe, a, sizeof a), (size_t)n - 4);
-      strcat(out, ")");
+      strcpy(out, "(" PC_USD_PRE);
+      strncat(out, js_locale(g->bribe, a, sizeof a), (size_t)n - 8);
+      strcat(out, PC_USD_POST ")");
       return;
     case P51:   /* with commas the first time only, as the game's page does */
       strcpy(out, "(");

@@ -13,6 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/Mason363/NumPlay/releases/latest/download/UniversalPaperclips.nwa"><b>Download UniversalPaperclips.nwa</b></a>
+  &nbsp;·&nbsp; <a href="https://github.com/Mason363/NumPlay/releases/latest/download/UniversalPaperclips-French.nwa">En français</a>
   &nbsp;·&nbsp; <a href="#controls">Controls</a>
 </p>
 

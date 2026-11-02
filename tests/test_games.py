@@ -655,6 +655,10 @@ CHECKS = {
 }
 
 
+# Universal Paperclips in French: the same game, the same keys and saves
+GAMES["paperclips-fr"] = ("UniversalPaperclips-French.nwa",) + GAMES["paperclips"][1:]
+COPIES["paperclips-fr"], CHECKS["paperclips-fr"] = COPIES["paperclips"], CHECKS["paperclips"]
+
 def records(buf):
     out, p = [], 0
     while p + 2 <= len(buf):

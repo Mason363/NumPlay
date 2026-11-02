@@ -42,16 +42,15 @@ static color_t strip[SCREEN_W * STRIP_H];
 
 static const np_font_t *const BODY = &np_font_body, *const SMALL = &np_font_small, *const TITLE = &np_font_title;
 
-/* ---------------------------------------------------------------- text, with the four letters past ASCII */
+/* ---------------------------------------------------------------- text, Windows-1252: past ASCII, the font's extra
+ * letters (np_font_extra, in code point order) */
 static int glyph_at(uint8_t b) {
   if (b >= 32 && b < 127) return b - 32;
-  switch (b) {
-    case 0xA9: return 95;   /* the font's extra letters, in code point order */
-    case 0xE9: return 96;
-    case 0xF3: return 97;
-    case 0xF8: return 98;
-    default: return '?' - 32;
-  }
+  if (b == 0xA0) return 0;   /* (a space no line is broken at) */
+  int cp = b == 0x9C ? 0x153 : b == 0x8C ? 0x152 : b;
+  for (int i = 0; i < np_font_extra_count; i++)
+    if (np_font_extra[i] == cp) return 95 + i;
+  return '?' - 32;
 }
 static int text_w(const np_font_t *f, const char *s) {
   int w = 0;
@@ -158,7 +157,19 @@ static const char *S(const char *a, const char *b, const char *c, const char *d,
 #define S3(a, b, c) S(a, b, c, 0, 0)
 static const char *cm(double v, int d) { return js_commas(v, d, P(120), 120); }
 static const char *sp(double v) { return js_spellf(v, P(80), 80); }
-static const char *num(double v) { return js_tostring(v, P(40), 40); }
+static const char *num(double v) {
+  char *s = js_tostring(v, P(40), 40);
+  return PC_FR ? js_point(s) : s;
+}
+static const char *fixed(double v, int d) {
+  char *s = js_tofixed(v, d, P(40), 40);
+  return PC_FR ? js_point(s) : s;
+}
+/* a number spelled out, before a noun: French puts "de" after a name (2 millions de trombones) */
+static const char *of(const char *n) {
+  size_t k = strlen(n);
+  return PC_FR && k && n[k - 1] >= 'a' && n[k - 1] <= 'z' ? S2(n, " de") : n;
+}
 static const char *cr(double v, int d) { return js_cruncher(v, d, P(60), 60); }
 
 /* ---------------------------------------------------------------- the panel being laid out */
@@ -218,7 +229,10 @@ static int button(int id, int x, const char *label) {
   if (nhits < (int)(sizeof hits / sizeof hits[0])) hits[nhits++] = (hit_t){(int16_t)id, (int16_t)x, (int16_t)cy, (int16_t)w, BTN_H};
   return x + w;
 }
-static void after(int x, const char *s) { text(BODY, x + 6, cy + 12, s, C_TEXT); }
+static void after(int x, const char *s) {   /* the text beside a button; under it when it doesn't fit there */
+  if (x + 6 + text_w(BODY, s) > LEFT + WIDTH) cy += BTN_H - 2, x = LEFT - 6;
+  text(BODY, x + 6, cy + 12, s, C_TEXT);
+}
 static void row_end(void) { cy += BTN_H + 4; }
 
 static const char *inches(double w) { return w == 1 ? " inch" : " inches"; }
@@ -241,16 +255,16 @@ static void tab_clips(void) {
       row_end();
     }
     x = button(B_WIRE, LEFT, "Wire");
-    after(x, S(cm(g->wire, 0), " inches", "    Cost: $", num(g->wireCost), 0));
+    after(x, S(cm(g->wire, 0), " inches", "    Cost: " PC_USD_PRE, num(g->wireCost), PC_USD_POST));
     row_end();
     if (g->autoClipperFlag != 0) {
       x = button(B_CLIPPER, LEFT, "AutoClippers");
-      after(x, S(num(g->clipmakerLevel), "    Cost: $", cm(g->clipperCost, 2), 0, 0));
+      after(x, S(num(g->clipmakerLevel), "    Cost: " PC_USD_PRE, cm(g->clipperCost, 2), PC_USD_POST, 0));
       row_end();
     }
     if (g->megaClipperFlag != 0) {
       x = button(B_MEGA, LEFT, "MegaClippers");
-      after(x, S(num(g->megaClipperLevel), "    Cost: $", cm(g->megaClipperCost, 2), 0, 0));
+      after(x, S(num(g->megaClipperLevel), "    Cost: " PC_USD_PRE, cm(g->megaClipperCost, 2), PC_USD_POST, 0));
       row_end();
     }
     return;
@@ -268,32 +282,32 @@ static void tab_clips(void) {
     after(x, num(g->factoryLevel));
     row_end();
     x = button(B_FACTORY_REBOOT, LEFT, "Disassemble All");
-    after(x, S3("+", sp(g->factoryBill), " clips"));
+    after(x, S3("+", of(sp(g->factoryBill)), " clips"));
     row_end();
-    line(S3("Cost: ", sp(g->factoryCost), " clips"));
+    line(S3("Cost: ", of(sp(g->factoryCost)), " clips"));
   }
   if (g->wireProductionFlag == 0 || g->dismantle >= 2)
-    line(S3("Wire: ", g->dismantle >= 4 ? cm(g->wire, 0) : sp(g->wire), inches(g->wire)));
+    line(S3("Wire: ", g->dismantle >= 4 ? cm(g->wire, 0) : of(sp(g->wire)), inches(g->wire)));
   if (g->spaceFlag == 1 && g->dismantle < 3) line(S2("Factories: ", sp(g->factoryLevel)));
 }
 
 static void tab_business(void) {
   heading("Business");
-  line(S2("Available Funds: $", cm(g->funds, 2)));
+  line(S3("Available Funds: " PC_USD_PRE, cm(g->funds, 2), PC_USD_POST));
   if (g->revPerSecFlag == 1) {
-    line(S2("Avg. Rev. per sec: $", cm(g->avgRev, 2)));
+    line(S3("Avg. Rev. per sec: " PC_USD_PRE, cm(g->avgRev, 2), PC_USD_POST));
     line(S2("Avg. Clips Sold per sec: ", cm(js_round(g->avgSales), 0)));
   }
   line(S2("Unsold Inventory: ", cm(g->unsoldClips, 0)));
   int x = button(B_LOWER, LEFT, "lower");
   x = button(B_RAISE, x + 6, "raise");
-  after(x, S2("Price per Clip: $", js_tofixed(g->margin, 2, P(40), 40)));
+  after(x, S3("Price per Clip: " PC_USD_PRE, fixed(g->margin, 2), PC_USD_POST));
   row_end();
   line(S3("Public Demand: ", cm(g->demand * 10, 0), "%"));
   x = button(B_ADS, LEFT, "Marketing");
   after(x, S2("Level: ", num(g->marketingLvl)));
   row_end();
-  line(S2("Cost: $", cm(g->adCost, 2)));
+  line(S3("Cost: " PC_USD_PRE, cm(g->adCost, 2), PC_USD_POST));
 }
 
 static void drone_rows(int b1, const char *name, double level, double bill, double cost) {
@@ -306,9 +320,9 @@ static void drone_rows(int b1, const char *name, double level, double bill, doub
   row_end();
   int reboot = b1 == B_FARM1 ? B_FARM_REBOOT : b1 == B_BATT1 ? B_BATT_REBOOT : b1 + 4;
   x = button(reboot, LEFT, "Disassemble All");
-  after(x, S3("+", sp(bill), " clips"));
+  after(x, S3("+", of(sp(bill)), " clips"));
   row_end();
-  line(S3("Cost: ", sp(cost), " clips"));
+  line(S3("Cost: ", of(sp(cost)), " clips"));
 }
 
 static void tab_wire(void) {
@@ -321,7 +335,7 @@ static void tab_wire(void) {
   if (g->spaceFlag == 1) line(S3("(", sp(g->mdps), " g per sec)"));
   line(S(
     "Acquired Matter: ", sp(g->acquiredMatter), " g (", g->maps == 0 ? "0" : sp(g->maps), " g per sec)"));
-  line(S("Wire: ", sp(g->wire), " inches (", g->wpps == 0 ? "0" : sp(g->wpps), " inches per sec)"));
+  line(S("Wire: ", of(sp(g->wire)), " inches (", g->wpps == 0 ? "0" : of(sp(g->wpps)), " inches per sec)"));
   if (g->spaceFlag == 0) {
     if (g->harvesterFlag == 1) drone_rows(B_HARV1, "Harvester Drone", g->harvesterLevel, g->harvesterBill, g->harvesterCost);
     if (g->wireDroneFlag == 1) drone_rows(B_WIRED1, "Wire Drone", g->wireDroneLevel, g->wireDroneBill, g->wireDroneCost);
@@ -354,9 +368,9 @@ static void tab_space(void) {
 }
 static void space_exploration(void) {
   heading("Space Exploration");
-  line(S2(js_tofixed(100 / (g->totalMatter / g->foundMatter), 12, P(40), 40), "% of universe explored"));
+  line(S2(fixed(100 / (g->totalMatter / g->foundMatter), 12), "% of universe explored"));
   int x = button(B_PROBE, LEFT, "Launch Probe");
-  after(x, S3("Cost: ", sp(g->probeCost), " clips"));
+  after(x, S3("Cost: ", of(sp(g->probeCost)), " clips"));
   row_end();
   line(S2("Launched: ", cm(g->probeLaunchLevel, 0)));
   line(S2("Descendents: ", sp(g->probeDescendents)));
@@ -559,9 +573,9 @@ static void tab_invest(void) {
   x = button(B_DEPOSIT, x + 10, "Deposit");
   button(B_WITHDRAW, x + 6, "Withdraw");
   row_end();
-  line(S2("Cash: $", cm(g->bankroll, 0)));
-  line(S2("Stocks: $", cm(g->secTotal, 0)));
-  line(S2("Total: $", cm(g->portTotal, 0)));
+  line(S3("Cash: " PC_USD_PRE, cm(g->bankroll, 0), PC_USD_POST));
+  line(S3("Stocks: " PC_USD_PRE, cm(g->secTotal, 0), PC_USD_POST));
+  line(S3("Total: " PC_USD_PRE, cm(g->portTotal, 0), PC_USD_POST));
   static const int16_t COL[5] = {LEFT, LEFT + 52, LEFT + 118, LEFT + 180, LEFT + 248};
   static const char *const HEAD[5] = {"Stock", "Amt.", "Price", "Total", "P/L"};
   cy += 2;
@@ -870,7 +884,7 @@ static void header(void) {
   } else {   /* the digits on two lines, cut after a comma */
     int n = (int)strlen(digits), cut = 0;
     for (int i = 0; i < n; i++)
-      if (digits[i] == ',' && text_w(SMALL, "Paperclips: ") + text_wn(SMALL, digits, i + 1) <= WIDTH) cut = i + 1;
+      if (digits[i] == PC_SEP && text_w(SMALL, "Paperclips: ") + text_wn(SMALL, digits, i + 1) <= WIDTH) cut = i + 1;
     char *a = P(cut + 1);
     memcpy(a, digits, (size_t)cut), a[cut] = 0;
     text(SMALL, LEFT, HDR_Y + 9, S2("Paperclips: ", a), C_BLACK);

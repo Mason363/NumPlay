@@ -72,6 +72,8 @@ LANGUAGES = [
     ("NumPlay-French.nwa", "NumPlay en français : tous les jeux, en français"),
     ("NumPlay-Chinese.nwa", "NumPlay 中文版：所有游戏，简体中文"),
 ]
+# big games in another language (in build/compiled/games)
+ALONE_LANGUAGES = [("UniversalPaperclips-French.nwa", "Universal Paperclips en français")]
 UPSILON = ("NumPlay-Upsilon.nwa", "For calculators running Upsilon (N0110, N0115): the 24 games that fit in the memory "
            "Upsilon gives apps. Install it with nwlink, see the README")
 
@@ -135,6 +137,9 @@ def main():
     notes += ["", "### In French and Chinese", "", "| File | |", "| --- | --- |"]
     for name, what in LANGUAGES:
         files.append((os.path.join(a.build, name), f"{name} · {what}"))
+        notes.append(f"| {link(name)} | {what} |")
+    for name, what in ALONE_LANGUAGES:
+        files.append((os.path.join(a.build, "games", name), f"{name} · {what}"))
         notes.append(f"| {link(name)} | {what} |")
     # the games too big to share the calculator with NumPlay, each its own app
     alone = [gid for gid in ALONE if gid in apps]

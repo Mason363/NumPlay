@@ -1443,7 +1443,7 @@ static void main_tick(void) {
     g->stockReportCounter++;
     if (g->stockReportCounter >= 10000) {
       char t[120];
-      pc_messagef("Lifetime investment revenue report: $", commas(g->ledger + g->portTotal, 0, t), 0);
+      pc_messagef("Lifetime investment revenue report: " PC_USD_PRE, commas(g->ledger + g->portTotal, 0, t), PC_USD_POST);
       g->stockReportCounter = 0;
     }
   }
