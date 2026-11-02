@@ -65,6 +65,7 @@ ALONE = {
     "famidash": ("Famidash", "TFDSoft's Geometry Dash for the NES, made for the calculator: the 173 levels of Famidash HUGE, every mode, practice mode"),
     "clashroyale": ("Clash Royale", "battles against a bot: 41 cards of the 2016 game, its seven arenas, elixir, crowns and trophies"),
     "catninja": ("Cat Ninja", "Richman Stewart's Flash platformer: its 30 levels of wall jumps and traps, the boss and the crystals"),
+    "kingdomrush": ("Kingdom Rush", "Ironhide's 2011 tower defense: its 12 stages with Heroic and Iron challenges, every tower, spell and boss"),
 }
 VARIANTS = [
     ("NumPlay-Invisible.nwa", "The same app, hidden: a blank icon with no name"),
