@@ -28,8 +28,10 @@ Keys, charms, benches and the rest are as in Hollow Knight: see its [controls](.
 
 ## What's in
 
-* **The way down:** the Crossroads' last room and the Fungal Wastes' first.
-* **Its creatures:** Fungoons and their gas, Funglings, Amblooms, Shrumelings and Fungified Husks, each with its own moves.
+* **The way down:** from the Crossroads' last room through the Fungal Wastes to Queen's Station.
+* **The Shrumal Ogres' fight:** two Ogres, one after the other, behind shut gates.
+* **Its creatures:** Shrumal Ogres, Sporgs and their Spore Bombs, Fungoons and their gas, Funglings, Amblooms, Shrumelings, Husk Hornheads and Fungified Husks, each with its own moves.
+* **Queen's Station:** its bench, its toll and bell, and the stag. Both apps' stags go to every station opened, and a ride to one of the other app saves for it.
 
 ## Good to know
 
