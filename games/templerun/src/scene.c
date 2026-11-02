@@ -19,6 +19,7 @@
 #define SMALL_FAR 350.0f     /* rocks, heads and ground patches seen this far */
 #define TREE_FAR FOG1        /* the rest of the scenery (past it, all fog) */
 #define SCENERY_POLYS 1080   /* the polygons a frame the scenery's reach is kept to (of the renderer's 1800) */
+#define INTRO_FAR 250.0f     /* the scenery's reach in the run's intro, the temple's front close by (half in the fog) */
 #define LOD_NEAR 70.0f       /* path pieces nearer than this are whole */
 #define VIEW (FOG1 + 20)     /* units seen ahead */
 #define PI 3.14159265f
@@ -276,6 +277,7 @@ static void draw_scenery(void) {
    * where it is, never by how many polygons came before it, so none comes and goes from one frame to the next. Past
    * SCENERY_POLYS a frame, scenery_far comes a little nearer each frame, and goes back out when there is room */
   float far2 = scenery_far * scenery_far;
+  if (intro_t < INTRO && !title && far2 > INTRO_FAR * INTRO_FAR) far2 = INTRO_FAR * INTRO_FAR;
   for (int ring = 0; ring <= SGRID / 2; ring++)
     for (int a = SGRID / 2 - ring; a <= SGRID / 2 + ring; a++)
       for (int b = SGRID / 2 - ring; b <= SGRID / 2 + ring; b += (a == SGRID / 2 - ring || a == SGRID / 2 + ring) ? 1 : 2 * ring) {
