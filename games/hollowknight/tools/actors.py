@@ -96,6 +96,18 @@ ENEMY_KINDS = [
     # (the Mender Bug: by the Crossroads' sign, now and then)
     ("mender", "Mender Bug Ctrl", ("sharedassets37.assets", 158), "MENDER", {"IDLE": "Idle", "A1": "Startle", "A2": "Fly"}),
 ]
+# the bigger game's (HK_XL: past Greenpath), after the others: theirs keep their numbers
+XL_KINDS = [
+    # (Fungal Wastes: Fungling, Ambloom)
+    ("fungling", "Fungoon baby", ("sharedassets167.assets", 180), "FUNGLING", {"IDLE": "Idle", "A1": "TurnToIdle",
+                                                                               "DEATH_AIR": "Death"}),
+    ("ambloom", "Walker", ("sharedassets168.assets", 48), "AMBLOOM", {"WALK": "Walk", "TURN": "Turn"}),
+    # (Fungified Husk: the Volatile Mosskin's FSM)
+    ("fungushusk", "Fungus Zombie Attack", ("sharedassets167.assets", 135), "SHAKER",
+     {"IDLE": "Idle", "WALK": "Walk", "TURN": "Turn", "A1": "Attack"}),
+]
+if os.environ.get("HK_XL") == "1":
+    ENEMY_KINDS += XL_KINDS
 ENEMY_CORPSE_LIBS = {}   # (name -> its corpse's library, if not its own)
 
 

@@ -7,7 +7,11 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#ifdef HK_XL
+#include "data_xl.h"   /* (the bigger game: the rooms past Greenpath too) */
+#else
 #include "data.h"
+#endif
 
 #define SCREEN_W 320
 #define SCREEN_H 240

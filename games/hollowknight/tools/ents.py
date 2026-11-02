@@ -19,7 +19,9 @@ AF_TRIGGER, AF_REVISIT, AF_RIGHT, AF_DOOR, AF_SUB, AF_AFTER_CROSSROADS = 1, 2, 4
 # (its area list: identifier -> area number, sub area, the PlayerData bool it sets on a first visit)
 AREAS = {"KINGSPASS": (0, True, None), "DIRTMOUTH": (1, False, "visitedDirtmouth"),
          "CROSSROADS": (2, False, "visitedCrossroads"), "EGGTEMPLE": (0, True, None),
-         "SHAMANTEMPLE": (0, True, None), "GREENPATH": (3, False, "visitedGreenpath")}
+         "SHAMANTEMPLE": (0, True, None), "GREENPATH": (3, False, "visitedGreenpath"),
+         "FUNGUS": (5, False, "visitedFungus"), "RUINS": (6, False, "visitedRuins"), "QUEENS_STATION": (0, True, None),
+         "MANTIS_VILLAGE": (0, True, None), "FUNGUS_CORE": (0, True, None), "MAGE_TOWER": (0, True, None)}
 # the battle gates' events (src/game.h: BG_*)
 BG_EVENTS = ["BG CLOSE", "BG QUICK CLOSE", "BG OPEN", "BG QUICK OPEN", "BG DESTROY"]
 # battle gates (BG Control: OK_BGATE's s0): closed at first, the bone ones' clips, gone once a PlayerData bool is set
@@ -1014,12 +1016,13 @@ def room(d, rooms, strings, persist, name, sprites=None, owners=None, rec_base=0
                                          splat["pos"][2] if splat else 0, 0),
                             (sprites.tk2d(*sp) if sp else -1, eclip, layer, order)))
         f = _fsm(o, ("Area Title Controller",))
-        if f and any(c.get("class") == "AreaTitleController" for c in o["c"]):
+        import text
+        ident = {k: x[1] for k, x in f["vars"].items()}.get("Area Event", "") if f else ""
+        # (one the game has no title for, or this part of it has not: none)
+        if f and any(c.get("class") == "AreaTitleController" for c in o["c"]) and ident in AREAS and ident in text.TITLES:
             # an area's title: its trigger (if it waits for one), its pauses, its area, its flags; the title; the bool
             # its first visit sets
-            import text
             v = {k: x[1] for k, x in f["vars"].items()}
-            ident = v.get("Area Event", "")
             num, sub, vis = AREAS[ident]
             fl = (AF_TRIGGER if v.get("Wait for Trigger") else 0) | (AF_REVISIT if v.get("Only On Revisit") else 0) | \
                  (AF_RIGHT if v.get("Display Right") else 0) | (AF_DOOR if v.get("Door Trigger") else 0) | \

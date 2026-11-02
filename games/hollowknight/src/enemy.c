@@ -18,7 +18,9 @@
 enum {
   EF_CRAWLER = 1, EF_BUZZER, EF_SHADE, EF_HUSK, EF_CLIMBER, EF_BOUNCER, EF_SPITTER, EF_ROLLER, EF_BLOCKER, EF_LEAPER, EF_GUARD,
   EF_FK, EF_FKHEAD, EF_GFLY, EF_HATCHER, EF_HATCHLING, EF_SLUG, EF_MOSSWALKER, EF_PIGEON, EF_PLANTTRAP, EF_SHAKER,
-  EF_MOSQUITO, EF_FATFLY, EF_MOSSCHARGER, EF_MOSSKNIGHT, EF_HORNET, EF_MENDER
+  EF_MOSQUITO, EF_FATFLY, EF_MOSSCHARGER, EF_MOSSKNIGHT, EF_HORNET, EF_MENDER,
+  /* (past Greenpath: HK_XL) */
+  EF_FUNGLING, EF_FUNGOON, EF_AMBLOOM
 };
 enum { R_IDLE, R_TURN, R_WALK, R_A1, R_A2, R_A3, R_A4, R_A5, R_A6, R_A7, R_A8, R_DEATH_AIR, R_DEATH_LAND, NUM_ROLES };
 typedef struct {
@@ -6311,9 +6313,18 @@ static void hornet_draw(const Enemy *e, int i, float z) {
   }
 }
 
+#ifdef HK_XL
+#include "enemy_xl.c"   /* (the kinds past Greenpath) */
+#endif
+
 /* the collisions a step brought (Collision2dEvent, ObjectBounce): the kinds that want them */
 static BodyEvent body_events[MAX_EVENTS];
-static bool wants_contacts(const Enemy *e) { return FSM(e) == EF_MOSQUITO || FSM(e) == EF_FATFLY || FSM(e) == EF_MOSSCHARGER; }
+static bool wants_contacts(const Enemy *e) {
+#ifdef HK_XL
+  if (xl_wants_contacts(e)) return true;
+#endif
+  return FSM(e) == EF_MOSQUITO || FSM(e) == EF_FATFLY || FSM(e) == EF_MOSSCHARGER;
+}
 
 static void enemy_contacts(Enemy *e, float pvx, float pvy, int had) {
   for (int i = 0; i < e->body.nevents; i++) {
@@ -6324,6 +6335,9 @@ static void enemy_contacts(Enemy *e, float pvx, float pvy, int had) {
       body_bounce(&e->body, pvx, pvy, had, 0.5f);   /* (ObjectBounce, at its speed as last sampled) */
       e->b1 = true;
     }
+#ifdef HK_XL
+    xl_contact(e, v);
+#endif
   }
 }
 
@@ -6367,6 +6381,9 @@ static void enemy_fsm_start(Enemy *e, const Ent *d) {
   else if (FSM(e) == EF_MOSSCHARGER) mosscharger_start(e);
   else if (FSM(e) == EF_MOSSKNIGHT) mossknight_start(e);
   else if (FSM(e) == EF_HORNET) hornet_start(e);
+#ifdef HK_XL
+  else xl_start(e, d);
+#endif
 }
 
 /* ActiveRegion (a 50 by 35 box round the camera) meets its collider: FSMActivator turns its FSMs on */
@@ -6584,6 +6601,9 @@ void enemies_fixed(void) {
       else if (FSM(e) == EF_FATFLY) fatfly_fixed(e);
       else if (FSM(e) == EF_MOSSCHARGER) mosscharger_fixed(e);
       else if (FSM(e) == EF_MOSSKNIGHT) mossknight_fixed(e);
+#ifdef HK_XL
+      else xl_fixed(e);
+#endif
       recoil_fixed(e);
       if (wants_contacts(e)) {
         float pvx = e->body.vx, pvy = e->body.vy, box[4] = {0};
@@ -6684,6 +6704,9 @@ void enemies_update(void) {
       else if (FSM(e) == EF_MOSSCHARGER) mosscharger_update(e);
       else if (FSM(e) == EF_MOSSKNIGHT) mossknight_update(e);
       else if (FSM(e) == EF_HORNET) hornet_update(e);
+#ifdef HK_XL
+      else xl_update(e);
+#endif
       if (FSM(e) == EF_FK) {
         /* (its Hitter: on till its FSM turns it off) */
         e->sub.events = 0;
