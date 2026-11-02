@@ -514,6 +514,7 @@ static void draw_both_progress_bars(void) {
 }
 
 static void enter_levels(void) {
+  cheated = 0;
   if (tempplat == 1) tempplat = 0, options |= platformer;
   bg_mode = BG_NAMETABLE;
   menu_banks(98);
@@ -626,7 +627,7 @@ static void play_input(void) {
   if (keys & PK_UP) h |= PAD_UP;
   if (keys & PK_LEFT) h |= PAD_LEFT;
   if (keys & PK_RIGHT) h |= PAD_RIGHT;
-  if (keys & PK_DOWN) h |= PAD_B;
+  if (keys & PK_DOWN) h |= DEBUG_MODE ? PAD_DOWN : PAD_B;
   if (keys & PK_DEL) h |= PAD_SELECT;
   joypad1.press = (uint8_t)(h & ~joypad1.hold);
   joypad1.release = (uint8_t)(~h & joypad1.hold);
@@ -677,6 +678,8 @@ static void play_tick(void) {
   case P_QUIT:
     joypad1.press = 0;
     if (hit & PK_BACK) { phase = P_RUN; return; }
+    if (DEBUG_MODE && (hit & PK_LEFT)) game_debug_gravity();
+    if (DEBUG_MODE && (hit & PK_RIGHT)) game_debug_mode();
     if (hit & PK_UP) pause_sel = (pause_sel + 2) % 3, phase = P_PAUSE;
     if (hit & PK_DOWN) pause_sel = (pause_sel + 1) % 3, phase = P_PAUSE;
     if (hit & (PK_OK | PK_EXE)) {
@@ -722,6 +725,7 @@ static void enter_done(void) {
   char j[8];
   snprintf(j, sizeof j, "%u", (unsigned)jumps);
   for (int i = 0; j[i]; i++) nt_put(0, 18 + i, 15, (uint8_t)(0xD0 + j[i] - '0'));
+  if (DEBUG_MODE || cheated) nt_padded(0, 7, 14, "CHEATER", 18, cmap_endlevel_charmap);
   done_state = 0, done_tmp5 = 0, done_tmp6 = 0xf000, done_tmp1 = 0, done_coin = 0, done_sel = 1;
   nt_scroll_x = 0, nt_scroll_y = 0xe8, nt_split_y0 = nt_split_y1 = -1;
 }
@@ -1044,11 +1048,13 @@ static void scene(void *ctx) {
   case S_SETTINGS: case S_FUN: keyline("Up Down: choose   OK: switch   Back: done"); break;
   case S_CREDITS: keyline("OK: next   Back: title"); break;
   case S_PLAY:
+    if (DEBUG_MODE) gfx_fill_alpha(0, 200, 320, 1, HEX(0x808080), 256);   /* (the game's gray line) */
     if (phase == P_PAUSE || phase == P_QUIT) {
       box(80, 52, 160, 124);
       text_c(&np_font_title, 160, 80, "Paused", W());
       const char *it[3] = {"Resume", practice_point_count ? "Practice off" : "Practice", phase == P_QUIT ? "Sure? OK quits" : "Quit game"};
       for (int i = 0; i < 3; i++) button(96, 92 + i * 26, 128, 22, it[i], pause_sel == i);
+      if (DEBUG_MODE) text_c(&np_font_small, 160, 214, "Debug   Left: gravity   Right: mode", DIM());
       keyline("Up Down: choose   OK: go   Back: resume");
     } else if (practice_point_count && phase == P_RUN) {
       if (frame < (uint32_t)auto_cp_seen + 240) keyline("Practice: Down places a checkpoint, backspace removes one");

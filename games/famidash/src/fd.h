@@ -75,6 +75,11 @@ void game_death_frame(int f);    /* the 30 frames of the explosion */
 void game_reset(void);           /* reset_level (after the fade) */
 void game_draw(void);            /* draw_sprites into the sprite list */
 void game_store_practice(void);  /* pause, B: practice mode on */
+/* the debug mode (Select, here backspace, with no checkpoints): no deaths, Right flips gravity, Down (here: Down in
+   it) the size, Select held a second ends the level; in the pause Left the gravity, Right the next mode */
+extern uint8_t DEBUG_MODE, cheated;
+void game_debug_gravity(void);
+void game_debug_mode(void);
 void update_level_completeness(void);
 void set_completion_data(void);
 uint8_t level_percent(void);

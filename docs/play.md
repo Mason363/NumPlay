@@ -799,6 +799,7 @@ Last from 12 to 6 AM in the bedroom. At a door, listen with the light off: breat
 | **Back** | Pause (with Resume, Practice and Quit game) |
 | **Down** | In practice mode: place a checkpoint |
 | **⌫** (backspace) | In practice mode: remove the last checkpoint |
+| **⌫** otherwise | The game's debug mode: no deaths, Right flips gravity, Down the size, held a second ends the level (not counted). In the pause, Left the gravity, Right the mode |
 | **Arrows** | Choose in the menus |
 | **Home** | Save and quit |
 

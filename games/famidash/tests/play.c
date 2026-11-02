@@ -298,6 +298,31 @@ static void test_physics(void) {
 }
 
 /* ---------------------------------------------------------------- Stereo Madness, played */
+/* the debug mode: Select (backspace) with no checkpoints; no deaths, Right flips gravity, Select held ends the
+   level and it isn't counted */
+static void test_debug(void) {
+  fresh_level(0);
+  DEBUG_MODE = 0;
+  step_keys(PAD_SELECT), step_keys(0);
+  CHECK(DEBUG_MODE == 1 && cheated, "Select: the debug mode");
+  uint8_t g0 = player_gravity[0];
+  step_keys(PAD_RIGHT), step_keys(0);
+  CHECK(player_gravity[0] != g0, "Right flips the gravity");
+  int f = 0;
+  while (f < 60 * 40 && !game_dead() && gameState != STATE_LVLDONE) step_keys(0), f++;
+  CHECK(!game_dead() && f > 600, "nothing kills (%d frames)", f);
+  step_keys(PAD_SELECT), step_keys(0);
+  CHECK(!DEBUG_MODE, "Select again: off");
+  for (int i = 0; i < 62 && gameState != STATE_LVLDONE; i++) step_keys(PAD_SELECT);   /* (on, then held) */
+  CHECK(DEBUG_MODE && gameState == STATE_LVLDONE, "Select held a second ends the level");
+  uint8_t was = prog.complete[0];
+  prog.complete[0] = 0;
+  set_completion_data();
+  CHECK(!prog.complete[0], "and it doesn't count");
+  prog.complete[0] = was;
+  DEBUG_MODE = 0, cheated = 0;
+}
+
 static void test_run(void) {
   memset(bot_hold, 0, sizeof bot_hold);
   for (unsigned i = 0; i < sizeof stereo_madness / sizeof stereo_madness[0]; i += 2)
@@ -612,6 +637,7 @@ int main(int argc, char **argv) {
   }
   if (!strcmp(mode, "test")) {
     test_physics();
+    test_debug();
     test_run();
     test_practice();
     test_saves();

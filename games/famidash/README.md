@@ -61,6 +61,7 @@ Each level hides three coins. They only count when you finish the level in one g
 | Back | Pause (Resume, Practice, Quit game) |
 | Down | In practice mode: place a checkpoint |
 | ⌫ (backspace) | In practice mode: remove the last checkpoint |
+| ⌫ (backspace) otherwise | The game's debug mode: no deaths, Right flips gravity, Down the size, held a second ends the level (not counted). In the pause, Left the gravity, Right the mode |
 | Left, Right | In the menus: choose. In platformer mode: walk |
 | Home | Save and quit |
 

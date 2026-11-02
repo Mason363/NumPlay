@@ -49,6 +49,7 @@ uint8_t icon, icon_colors[3] = {0x2A, 0x2C, 0x0F}, options, invisible, invisbloc
 #define color3 icon_colors[2]
 
 uint8_t practice_point_count, curr_practice_point;
+uint8_t DEBUG_MODE, cheated;
 static uint8_t latest_practice_point, practicebuffer, practice_sprite_x_pos;
 static uint16_t auto_practicepoint_timer;
 static struct {
@@ -2284,6 +2285,7 @@ void update_level_completeness(void) {
 }
 
 void set_completion_data(void) {
+  if (DEBUG_MODE) return;
   if (!practice_point_count) {
     if (!invisblocks) {
       prog.complete[level] = 1;
@@ -2468,6 +2470,11 @@ static void everything_else(void) {
     if (dashing[0]) currplayer_vel_y = 0;
     dashing[0] = 0;
   }
+  if ((joypad1.press & PAD_SELECT) && practice_point_count == 0) {   /* (DEBUG_MODE_ENABLED) */
+    DEBUG_MODE = !DEBUG_MODE;
+    cheated = 1;
+    cube_data[0] &= 2, cube_data[1] &= 2;
+  }
   if (practice_point_count > 1 && (joypad1.press & PAD_SELECT) && !(joypad1.hold & (PAD_UP | PAD_DOWN))) {
     curr_practice_point--;
     if (latest_practice_point) latest_practice_point--;
@@ -2482,6 +2489,15 @@ static void everything_else(void) {
       practicebuffer = 4;
     } else game_store_practice();
   }
+  if ((joypad1.press & PAD_RIGHT) && DEBUG_MODE && !(options & platformer) && !force_platformer) {
+    invert_gravity(currplayer_gravity);
+    update_currplayer_table_idx();
+  }
+  if ((joypad1.press & PAD_DOWN) && DEBUG_MODE) currplayer_mini ^= 1, update_currplayer_table_idx();
+  if ((joypad1.hold & PAD_SELECT) && DEBUG_MODE) {
+    if (++END_LEVEL_TIMER > 60) END_LEVEL_TIMER = 0, kandokidshack4 = 0, gameState = STATE_LVLDONE;   /* end_level_debug */
+  } else
+    END_LEVEL_TIMER = 0;
   decrement_was_on_slope();
   check_for_cube_data_2_set();
   if (orbed[currplayer] && !(controllingplayer->hold & (PAD_A | PAD_UP))) orbed[currplayer] = 0;
@@ -2560,7 +2576,14 @@ void game_step(void) {
 }
 
 bool game_platformer(void) { return force_platformer || (options & platformer); }
-bool game_dead(void) { return high_byte(player_relx[0]) > 0x20 && (cube_data[0] & 1 || cube_data[1] & 1); }
+bool game_dead(void) { return !DEBUG_MODE && high_byte(player_relx[0]) > 0x20 && (cube_data[0] & 1 || cube_data[1] & 1); }
+
+void game_debug_gravity(void) { gravity_mod == 4 ? gravity_mod = 0 : gravity_mod++; }
+void game_debug_mode(void) {
+  nocamlock = 1;
+  gamemode = gamemode == GAMEMODE_SWING ? GAMEMODE_CUBE : gamemode + 1;
+  cube_data[0] = 0;
+}
 
 /* ---------------------------------------------------------------- sprites: draw_sprites and the player */
 static uint8_t death_player;
