@@ -487,8 +487,8 @@ static int shop_first(int kind) {   /* the shop's events 56-62 */
 }
 
 static void shop_step(bool armor) {
-  if (pressed(UPS)) g.menu = (uint8_t)((g.menu + 2) % 3);
-  if (pressed(DOWNS)) g.menu = (uint8_t)((g.menu + 1) % 3);
+  if (pressed(UPS) || pressed(LEFTS)) g.menu = (uint8_t)((g.menu + 2) % 3);
+  if (pressed(DOWNS) || pressed(RIGHTS)) g.menu = (uint8_t)((g.menu + 1) % 3);
   if (pressed(K_BACK)) {
     save_file();
     go(SC_WORLD);
@@ -516,9 +516,8 @@ static void shop_step(bool armor) {
 }
 
 static void shop_band(bool armor) {
-  pic_part(PIC_MENU, 0, 0, 0, 0, 320, 240);
-  gfx_blend(0, 0, 320, 240, BLACK, 14);
-  gfx_text_c(FONT_BIG, 160, 6, armor ? "Mendo's Armor" : "Lolbit's Byte Store", WHITE);
+  /* the shop's frame: its three item boxes, "Tokens:", the shopkeeper (Lolbit, Mendo) */
+  if (gfx_y0 < 192) pic_part(armor ? PIC_ARMOR : PIC_SHOP, 0, 0, 0, 0, 320, 192);
   static const char *const DESC[8] = {"These Bytes shoot stingers at enemies for extra damage!",
                                       "These Medpods will heal you during battles!",
                                       "These Reapers have a chance to instantly kill enemies!",
@@ -526,39 +525,37 @@ static void shop_band(bool armor) {
                                       "These Shields block base damage from all attacks!",
                                       "These Bombs detonate once per battle for instant damage!",
                                       "These Eyebots work on bosses and steadily drain their life!", ""};
+  static const char *const AN[3] = {"Reinforced", "Steel", "Titanium"};
+  static const uint16_t AP[3] = {250, 1500, 9000};
   int first = shop_first(g.shop_kind);
   for (int i = 0; i < 3; i++) {
-    int y = 48 + 40 * i;
-    const char *name;
-    uint32_t price;
-    bool sold;
-    if (armor) {
-      static const char *const AN[3] = {"Reinforced", "Steel", "Titanium"};
-      static const uint16_t AP[3] = {250, 1500, 9000};
-      name = AN[i], price = AP[i], sold = g.f.armor_have[i + 1];
-    } else {
-      name = BYTE_NAME[first + i], price = BYTE_PRICE[first + i], sold = g.f.byte_have[first + i];
+    int x = 34 + 86 * i, y = 16;
+    const char *name = armor ? AN[i] : BYTE_NAME[first + i];
+    uint32_t price = armor ? AP[i] : BYTE_PRICE[first + i];
+    bool sold = armor ? g.f.armor_have[i + 1] : g.f.byte_have[first + i];
+    if (!armor) pic_part(ANIM_PICS[ANIMS[AN_BYTE1 + first + i - 1].first], x + 20, y + 2, 0, 0, 40, 34);
+    gfx_text_c(FONT_SMALL, x + 40, y + 34, name, WHITE);
+    char t[24];
+    num(t, (int32_t)price);
+    gfx_text_c(FONT_SMALL, x + 40, y + 46, t, RGB(0xFFD040));
+    if (sold) pic_draw(PIC_SOLDOUT, x + 40, y + 30);
+    if (g.menu == i) {
+      gfx_frame_rect(x - 2, y - 2, 84, 62, HILITE);
+      gfx_frame_rect(x - 3, y - 3, 86, 64, HILITE);
     }
-    gfx_fill(50, y, 220, 34, g.menu == i ? RGB(0x3A58B8) : RGB(0x1A2858));
-    if (g.menu == i) gfx_frame_rect(49, y - 1, 222, 36, HILITE);
-    if (!armor) pic_part(ANIM_PICS[ANIMS[AN_BYTE1 + first + i - 1].first], 56, y + 1, 0, 0, 40, 32);
-    gfx_text(FONT_TEXT, 100, y + 3, name, WHITE);
-    char s[24];
-    if (sold) strcpy(s, "Sold out");
-    else num(s, (int32_t)price), strcat(s, " tokens");
-    gfx_text(FONT_SMALL, 100, y + 19, s, sold ? RGB(0x90A0C0) : RGB(0xFFD040));
   }
-  if (!armor) {
-    int d = first == 1 ? 0 : first == 4 ? 1 : first == 7 ? 2 : first == 10 ? 3 : first == 13 ? 4 : first == 16 ? 5 : 6;
-    text_wrap(FONT_SMALL, 160, 170, 300, DESC[d], WHITE);
-  } else
-    gfx_text_c(FONT_SMALL, 160, 172, "Armor takes damage off every hit.", WHITE);
   char s[32];
   num(s, (int32_t)g.f.tokens);
-  strcat(s, " Faz Tokens");
-  gfx_text_c(FONT_TEXT, 160, 194, s, RGB(0xFFD040));
-  gfx_blend(0, 226, 320, 14, BLACK, 18);
-  gfx_text(FONT_SMALL, 4, 227, "Arrows pick  OK buy  Back leave", KEYS);
+  gfx_text(FONT_TEXT, 150, 81, s, RGB(0xFFD040));
+  if (gfx_y0 + BAND_H > 192) {
+    gfx_fill(0, 192, 320, 48, RGB(0x10183A));
+    if (!armor) {
+      int d = first == 1 ? 0 : first == 4 ? 1 : first == 7 ? 2 : first == 10 ? 3 : first == 13 ? 4 : first == 16 ? 5 : 6;
+      text_wrap(FONT_SMALL, 160, 194, 310, DESC[d], WHITE);
+    } else
+      gfx_text_c(FONT_SMALL, 160, 197, "Armor takes damage off every hit.", WHITE);
+    gfx_text(FONT_SMALL, 4, 227, "Arrows pick  OK buy  Back leave", KEYS);
+  }
 }
 
 /* ------------------------------------------------------------------ the endings (their frames' events) */

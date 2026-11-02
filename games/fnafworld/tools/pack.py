@@ -170,7 +170,7 @@ def battle():
                         ("STINGER", "stinger", 0), ("PBUBBLE", "P bubble", 0), ("SPARKLE", "sparkle1", 0),
                         ("VICTORY", "victory", 0), ("LEVELUP", "level up", 0), ("RUN", "run", 0),
                         ("CHALLENGER", "Active 26", 0), ("NEWMEMBER", "new member", 0), ("WALL", "wall", 0),
-                        ("BUBBLE", "bubble", 0), ("DOWN", "down", 0), ("DOWN2", "down", 12), ("DOWN3", "down", 13)):
+                        ("BUBBLE", "bubble", 0), ("DOWN", "down", 0), ("DOWN2", "down", 12), ("DOWN3", "down", 13), ("DEATH", "death", 0)):
         anim(key, obj, a)
     for k, a in enumerate((0, 12, 13, 14)):
         anim(f"BALLOON{k}", "balloon", a)
@@ -218,6 +218,13 @@ def menus():
         p = BANK.add(f"FACE{c}", np.pad(a, ((0, 4), (0, 4), (0, 0)), mode="edge"), None, "face")
         if c == 1:
             define("PIC_FACE1", p.index)
+    # the shops as they open: Lolbit's and Mendo's (the frames "shop" and "armor shop" at 0.4: all 800 of them)
+    for key, fr in (("SHOP", "shop"), ("ARMOR", "armor shop")):
+        c = composite(fr, skip=("character", "shop small", "Active 5", "set item 1", "set item 2", "set item 3",
+                                "Byte Icon", "sold out 1", "sold out 2", "sold out 3"))
+        define(f"PIC_{key}", BANK.add(key, arr(c.convert("RGB").resize((320, 192), Image.LANCZOS)), None, "face").index)
+    o = APP.find("sold out 1", "shop")[0]
+    define("PIC_SOLDOUT", spic(APP.anim(o, 0, 0)[0], 0.4, "face"))
     for k, n in enumerate(("trophy1", "trophy 2", "trophy 3", "pixel trophy", "spirit trophy", "end trophy", "trophy 4")):
         o = APP.find(n, "file setup")[0]
         define(f"PIC_TROPHY{k + 1}", spic(APP.anim(o, 0, 0)[0], 0.4, "face"))

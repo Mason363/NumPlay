@@ -949,7 +949,7 @@ static void special_step(void) {
       case 11:   /* 1820-1824: five scythes at the party, one at a time */
         B.screw_t = 0;
         for (int n = 0; n < 5; n++) {
-          Fx *f = fx_new(FX_DEATH, AN_SYTH, B.en[0].x - 3, B.en[0].y - 118);
+          Fx *f = fx_new(FX_DEATH, AN_DEATH, B.en[0].x - 3, B.en[0].y - 118);
           if (f) f->t = (int16_t)(-30 * n), f->b = (int16_t)rnd_n(4);
         }
         break;
