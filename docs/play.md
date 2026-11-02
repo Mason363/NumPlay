@@ -807,6 +807,24 @@ Your icon moves on by itself: jump over the spikes and reach the end. Hold the b
 
 <br clear="right">
 
+## Kingdom Rush
+
+<img src="../games/kingdomrush/docs/shot.png" width="320" align="right" alt="Kingdom Rush: towers and soldiers holding the Citadel's roads">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** | Hop between build spots, towers, wave flags and enemies |
+| **OK** or **EXE** | The tower menu: build, upgrade, sell, buy an ability, move the rally point |
+| **1** | Rain of Fire: aim with the arrows, OK to cast |
+| **2** | Reinforcements: aim, OK to call them |
+| **3** or **⌫** | The next wave now, for gold (or OK on its flag) |
+| **Back** | Close the menu, or pause |
+| **Home** | Save and quit |
+
+Enemies walk the roads, and each one that gets through costs lives. Archers and mages shoot, bombards blast what walks, barracks send soldiers to block the road. At level 4 a tower becomes one of two special towers, with abilities to buy. On the map, OK opens a stage and Left / Right picks Campaign, Heroic or Iron: 3 stars in the Campaign open the other two. **0** opens the upgrades: OK buys one with your stars, ⌫ gives them all back.
+
+<br clear="right">
+
 ## Portal Returns
 
 <img src="media/portal.gif" width="320" align="right" alt="Portal Returns: falling through a portal and flying across a test chamber">
