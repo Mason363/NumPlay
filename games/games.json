@@ -1153,27 +1153,7 @@
     "default": false,
     "xl": true
   },
-  {
-    "id": "turborush",
-    "rank": 22,
-    "title": "Turbo Rush",
-    "tagline": "Race seven rivals on six circuits",
-    "credit": "A game by Bobydeluxe",
-    "top": "0x3C8CCB",
-    "bottom": "0x1A2630",
-    "accent": "0xFFD052",
-    "colors": 16,
-    "records": [
-      "turborush.sav",
-      "turborush_saves.py"
-    ],
-    "shots": [
-      "docs/shot.png"
-    ],
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/turborush",
-    "default": false,
-    "xl": true
-  },
+
   {
     "id": "angrybirds",
     "rank": 5,

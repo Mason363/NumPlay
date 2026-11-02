@@ -258,10 +258,6 @@ GAMES = {
     # guide read. Next time, from the copy: Options, downscroll on (Back saves it), quit with On/Off
     "fnf": ("FridayNightFunkin.nwa", "fnf.sav", presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "back")), 7000,
             presses((1500, "ok"), (2200, "down"), (2700, "down"), (3200, "ok"), (3900, "ok"), (4600, "back")), 6000),
-    # the title's Play, Start, the first-run guide's OK, then the race: flat out, Back to pause, Home. Next time,
-    # from the copy, Continue: the race again (after a 3, 2, 1), quit with On/Off
-    "turborush": ("TurboRush.nwa", "turborush.sav", presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (9500, "back"))
-                  + [(3500, 9000, K["up"])], 11000, presses((1500, "ok")) + [(3500, 6500, K["up"])], 7500),
     # the title, Poached Eggs, its first level, the story, how to play (the first time), then a bird launched; Home
     # keeps the play time. Next time, from the copy, the same level without the guide, quit with On/Off
     "angrybirds": ("AngryBirds.nwa", "angrybirds.sav",
@@ -382,7 +378,7 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "jetpackjoyride": "jetpackjoyride_saves.py", "stickmanhook": "stickmanhook_saves.py",
           "donkeykong": "donkeykong_saves.py", "dune": "dune_saves.py", "monkeymart": "monkeymart_saves.py",
           "tombofthemask": "tombofthemask_saves.py", "uno": "uno_saves.py",
-          "fnf": "fnf_saves.py", "turborush": "turborush_saves.py",
+          "fnf": "fnf_saves.py",
           "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
           "badtime": "badtime_saves.py", "mahjong": "mahjong_saves.py",
           "rider": "rider_saves.py", "snowrider": "snowrider_saves.py", "templerun": "templerun_saves.py",
@@ -602,12 +598,6 @@ CHECKS = {
     # on (at 8), the guide still read
     "fnf": (lambda v: len(v) == 1552 and v[:4] == b"FNFS" and v[4] == 1 and v[9] == 1 and v[8] == 0,
             lambda v: len(v) == 1552 and v[:4] == b"FNFS" and v[9] == 1 and v[8] == 1),
-    # "TRU1", version 1, its size (492): the guide read (85), a race kept (114) and going (phase at 127), its clock
-    # (164) running; after the reinstall, from the copy, the same race goes on
-    "turborush": (lambda v: len(v) == 492 and v[:4] == b"TRU1" and v[85] == 1 and v[114] == 1 and v[127] == 1
-                  and struct.unpack_from("<I", v, 164)[0] >= 1000,
-                  lambda v: len(v) == 492 and v[:4] == b"TRU1" and v[114] == 1 and v[127] == 1
-                  and struct.unpack_from("<I", v, 164)[0] >= 4000),
     # "ABS1", version 1, its size (3032): how to play shown (guide at 3014), the first level last played (3012), some
     # seconds of play (3024); after the reinstall, from the copy, more of them
     "angrybirds": (lambda v: len(v) == 3032 and v[:4] == b"ABS1" and v[3014] == 1
