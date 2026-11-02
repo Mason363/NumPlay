@@ -101,7 +101,7 @@ static void files_step(void) {
       if (!load_file(g.slot, &g.f)) memset(&g.f, 0, sizeof g.f);
       break;
     case 1:
-      if (g.menu == 0) g.sub = 2, g.menu = 1;
+      if (g.menu == 0) g.sub = g.f.started ? 2 : 4, g.menu = g.f.started ? 1 : 0;   /* (an empty file: nothing to erase) */
       else if (g.f.started) start_play();
       break;
     case 2:

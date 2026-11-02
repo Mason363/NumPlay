@@ -310,11 +310,11 @@ GAMES = {
     # in it, paused
     "fnaf4": ("FiveNightsAtFreddys4.nwa", "fnaf4res.sav", presses((1500, "ok"), (2200, "ok")), 9000,
               presses((1500, "back")), 5000),
-    # the title, file 1, New Game, yes, Adventure, Normal, the party (0 done), the map; Home keeps the file. Next time,
+    # the title, file 1, New Game, Adventure, Normal, the party (0 done), the map; Home keeps the file. Next time,
     # from the copy: the title, file 1, Continue, the party, the map, quit with On/Off
     "fnafworld": ("FiveNightsAtFreddysWorld.nwa", "fnafw1.sav",
-                  presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "up"), (4100, "ok"), (4800, "ok"),
-                          (5500, "ok"), (6400, "0")) + [(7200, 9000, K["right"])], 11000,
+                  presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (3600, "ok"), (4300, "ok"),
+                          (5200, "0")) + [(6000, 8000, K["right"])], 10000,
                   presses((1500, "ok"), (2200, "ok"), (2900, "down"), (3400, "ok"), (4100, "0"))
                   + [(4800, 6400, K["left"])], 9000),
     # how to play (the first time: two pages), Play, Stereo Madness, OK held to jump, Back to pause; Home keeps the

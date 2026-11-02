@@ -29,7 +29,7 @@ static void new_game(int mode, int diff) {
   tap(K_OK);             /* the title */
   tap(K_OK);             /* file 1 */
   tap(K_OK);             /* new game */
-  tap(K_UP), tap(K_OK);  /* erase: yes */
+  if (g.sub == 2) tap(K_UP), tap(K_OK);  /* erase: yes */
   for (int i = 1; i < mode; i++) tap(K_DOWN);
   tap(K_OK);
   for (int i = 1; i < diff; i++) tap(K_DOWN);
