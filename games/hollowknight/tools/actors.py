@@ -114,6 +114,9 @@ FW_KINDS = [
     ("ogre", "Shroom Brawler", ("sharedassets169.assets", 223), "OGRE",
      {"IDLE": "Run", "TURN": "Turn", "A1": "Wake", "A2": "Spit", "A3": "Antic", "A4": "Smash Loop", "A5": "Smash to Run",
       "A6": "Bounce", "A7": "Sleep", "DEATH_AIR": "Death Air"}),
+    # (Sporg; its Spore Bombs' clips are its library's: CLIP_SPORG_IDLE_2, CLIP_SPORG_EXPLODE)
+    ("sporg", "Shroom Turret", ("sharedassets167.assets", 154), "SPORG",
+     {"IDLE": "Idle 1", "A1": "Sleep to Idle", "A2": "Attack", "A3": "Sleep", "DEATH_AIR": "Death"}, ["Idle 2", "Explode"]),
 ]
 if os.environ.get("HK_PART") == "2":
     ENEMY_KINDS += FW_KINDS
@@ -193,7 +196,7 @@ ACTORS["bgate"] = ("sharedassets9.assets", 197, ["BG Opened", "BG Close 1", "BG 
                                                  "Bone Gate Opened", "Bone Gate Close", "Bone Gate Closed", "Bone Gate Open"])
 # lifeblood cocoons and their scuttlers (HealthCocoon, ScuttlerControl); effects (splats)
 ACTORS["cocoon"] = ("sharedassets6.assets", 1092, ["Cocoon Idle", "Cocoon Sweat", "Scuttler Land", "Scuttler Run"])
-ACTORS["fx"] = ("resources.assets", 21298, ["Splat", "Splat2"])
+ACTORS["fx"] = ("resources.assets", 21298, ["Splat", "Splat2"] + (["Impact Lines"] if os.environ.get("HK_PART") == "2" else []))
 # Vengeful Spirit (Fireball Top's blast, Fireball: its ball, its end, its impact on a wall)
 ACTORS["fireball"] = ("resources.assets", 23262, ["Blast", "Ball", "Ball End", "Fireball Wall Impact"])
 # water drips (WaterDrip)

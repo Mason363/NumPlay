@@ -20,7 +20,7 @@ enum {
   EF_FK, EF_FKHEAD, EF_GFLY, EF_HATCHER, EF_HATCHLING, EF_SLUG, EF_MOSSWALKER, EF_PIGEON, EF_PLANTTRAP, EF_SHAKER,
   EF_MOSQUITO, EF_FATFLY, EF_MOSSCHARGER, EF_MOSSKNIGHT, EF_HORNET, EF_MENDER,
   /* (Hollow Knight: Fungal Wastes: HK_FW) */
-  EF_FUNGLING, EF_FUNGOON, EF_AMBLOOM, EF_SHRUMELING, EF_OGRE
+  EF_FUNGLING, EF_FUNGOON, EF_AMBLOOM, EF_SHRUMELING, EF_OGRE, EF_SPORG
 };
 enum { R_IDLE, R_TURN, R_WALK, R_A1, R_A2, R_A3, R_A4, R_A5, R_A6, R_A7, R_A8, R_DEATH_AIR, R_DEATH_LAND, NUM_ROLES };
 typedef struct {
@@ -6572,7 +6572,7 @@ void enemies_fixed(void) {
       continue;
     }
     if (e->mode == EM_ALIVE && (FSM(e) == EF_FKHEAD || (e->flags & 128))) continue;   /* (the head: its body's; off) */
-    if (e->mode == EM_ALIVE && ((FSM(e) == EF_MOSSWALKER && e->b1) || FSM(e) == EF_PIGEON || FSM(e) == EF_PLANTTRAP)) {
+    if (e->mode == EM_ALIVE && ((FSM(e) == EF_MOSSWALKER && e->b1) || FSM(e) == EF_PIGEON || FSM(e) == EF_PLANTTRAP || FSM(e) == EF_SPORG)) {
       /* (a kinematic body, a trigger, frames' colliders: nothing stops them) */
       recoil_fixed(e);
       if (FSM(e) == EF_MOSSWALKER) mosswalker_fixed(e);

@@ -520,6 +520,11 @@ def main():
     if PART == 2:
         # (the gas the Fungoons spit: their Gas Attack particles' texture, 4 units wide)
         fleurs["SPRITE_GAS"] = SPRITES.tex("sharedassets128.assets", 7, 4.0)
+        # (a Spore Bomb's Gas Explosion: its orange flash)
+        pge = unity.prefab("resources.assets", 5660)
+        of = next(o for o in pge["objects"] if o["name"] == "orange flash")
+        fleurs["SPRITE_GAS_FLASH"] = SPRITES.id(pge, next(c["v"] for c in of["c"] if c["type"] == "SpriteRenderer")["m_Sprite"],
+                                                of["lscale"][0])
     # (a soul orb: Soul Orb R's sprite, as stretched as it gets; its sorting)
     pso = unity.prefab(*vm.SOUL_ORB)
     fleurs["SPRITE_SOUL_ORB"] = SPRITES.id(pso, next(c["v"] for c in pso["objects"][0]["c"] if c["type"] == "SpriteRenderer")["m_Sprite"], 2)

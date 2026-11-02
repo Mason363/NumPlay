@@ -44,11 +44,11 @@ ENEMY_VARS = {"Zombie Swipe": (["Lunge Speed", "Idle Time"], ["Coward"]),
               "Zombie Leap": (["Idle Time"], []),
               "Zombie Guard": (["Chase Distance", "Roam Distance"], ["Start Facing Left"])}
 # enemies whose body is a trigger, whose body is only their frames' colliders, and other children that are ranges
-TRIGGER_BODIES = {"Pigeon"}
+TRIGGER_BODIES = {"Pigeon", "Shroom Turret"}
 FRAME_BODIES = {"Plant Trap Control", "Mossy Control"}
 RANGES = {"Moss Walker": ("Wake Range",), "Pigeon": ("Hero Range", "Enemy Range"), "Plant Trap Control": ("Detector",),
           "Moss Knight Control": ("Wake Box",), "Mender Bug Ctrl": ("Hero Detect",), "Fungus Flyer": ("Attack R", "Attack L"),
-          "Shroom Brawler": ("Smash Region",)}
+          "Shroom Brawler": ("Smash Region",), "Shroom Turret": ("Hero Detect",)}
 # (an arena's enemies its Start wakes (1) and its Wave 2 (2): WAKE sent to each, by _arenas)
 ARENA_WAKES = {}
 # (enemies whose attacks start with their colliders off: those still kept, off)
@@ -589,6 +589,11 @@ def _enemy(o, by_id, persist, name, d=None, strings=None, owners=None):
         wr = kid.get("Wake Region")
         bits = (1 if (var.get("Facing Right") or [0, False])[1] else 0) | (2 if wr and wr["self_active"] else 0)
         out.append(rec(ENT_BOX, ET_VARS, p=(sp[0], sp[1], ARENA_WAKES.get(o["id"], 0), 0), box=cbox, a=bits))
+    if fsm.get("name") == "Shroom Turret":
+        # (Sporg: its Fire Angle, its Spawn Point from it)
+        q = next((by_id[ch] for ch in o.get("children", []) if by_id[ch]["name"] == "Spawn Point"), None)
+        sp = (q["pos"][0] - o["pos"][0], q["pos"][1] - o["pos"][1]) if q else (0, 0)
+        out.append(rec(ENT_BOX, ET_VARS, p=(_angle(o) + 90, sp[0], sp[1], 0)))
     if fsm.get("name") == "Big Fly Control" and d is not None:
         # (Gruz Mother: where her young wait, Fly Spawn; her burster brings them there)
         fs = next((q for q in d["objects"] if q["name"] == "Fly Spawn"), None)

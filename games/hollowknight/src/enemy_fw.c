@@ -639,25 +639,216 @@ int enemies_wave_hp(int wave) {
   return -1;
 }
 
+/* ---------------------------------------------------------------- Spore Bombs: flung, they chase the Knight a while,
+ * then swell and burst in a Gas Explosion that hurts all about; the nail or the Knight touching one bursts it at once */
+#define MAX_BOMBS 6
+#define BOMB_R (0.19f * 1.5f)
+enum { BB_OFF, BB_WAIT, BB_CHASE, BB_READY, BB_BOOM };
+typedef struct {
+  uint8_t st;
+  float x, y, vx, vy, t, ang;
+  Anim anim, lines;
+} Bomb;
+static Bomb bombs[MAX_BOMBS];
+
+static void bomb_fire(float x, float y, float deg) {
+  for (int i = 0; i < MAX_BOMBS; i++)
+    if (bombs[i].st == BB_OFF) {
+      Bomb *b = &bombs[i];
+      memset(b, 0, sizeof *b);
+      float a = deg * (float)M_PI / 180;
+      b->st = BB_WAIT, b->x = x, b->y = y, b->vx = cosf(a) * 5.5f, b->vy = sinf(a) * 5.5f, b->t = 0.3f;
+      anim_play(&b->anim, CLIP_SPORG_IDLE_2);
+      return;
+    }
+}
+
+static void bomb_explode(Bomb *b) {
+  /* Explode: a Gas Explosion there (its collider on for 0.5 s, its flash fading in 1 s), a shake; the bomb gone */
+  b->st = BB_BOOM, b->t = 0, b->vx = b->vy = 0;
+  anim_play_from_frame(&b->lines, CLIP_FX_IMPACT_LINES, 0);
+  cam_shake(SHAKE_AVERAGE);
+}
+
+static void bombs_tick(void) {
+  for (int i = 0; i < MAX_BOMBS; i++) {
+    Bomb *b = &bombs[i];
+    if (b->st == BB_OFF) continue;
+    b->anim.events = 0, b->lines.events = 0;
+    anim_update(&b->anim, DT);
+    if (b->st == BB_BOOM) {
+      anim_update(&b->lines, DT);
+      if ((b->t += DT) >= 1.5f) b->st = BB_OFF;   /* (Collider End: 1 s more, then Recycle) */
+      continue;
+    }
+    if (b->st == BB_CHASE) {
+      /* ChaseObjectV2: a force towards the Knight, the speed held to 5 */
+      float dx = hero_x() - b->x, dy = hero_y() - b->y, l = sqrtf(dx * dx + dy * dy);
+      if (l > 1) dx /= l, dy /= l;
+      float sp = sqrtf(b->vx * b->vx + b->vy * b->vy);
+      if (sp > 5) b->vx *= 5 / sp, b->vy *= 5 / sp;
+      b->vx += dx * 8 * DT, b->vy += dy * 8 * DT;
+    } else if (b->st == BB_READY)
+      b->vx *= 0.95f, b->vy *= 0.95f;   /* (DecelerateV2) */
+    /* (ObjectBounce: off the terrain at its speed) */
+    float dx = b->vx * DT, dy = b->vy * DT;
+    if (dx != 0 && phys_ray(b->x, b->y, dx > 0 ? 1 : -1, 0, fabsf(dx) + BOMB_R, CF_SOLID, NULL)) b->vx = -b->vx, dx = 0;
+    if (dy != 0 && phys_ray(b->x, b->y, 0, dy > 0 ? 1 : -1, fabsf(dy) + BOMB_R, CF_SOLID, NULL)) b->vy = -b->vy, dy = 0;
+    b->x += dx, b->y += dy;
+    b->ang += b->vx * -50 * DT;   /* (Rotate By Speed) */
+    if ((b->t -= DT) > 0) continue;
+    if (b->st == BB_WAIT) b->st = BB_CHASE, b->t = 2.9f;
+    else if (b->st == BB_CHASE) {
+      /* Ready: slowing, swelling */
+      b->st = BB_READY, b->t = 0.6f;
+      anim_play_from_frame(&b->anim, CLIP_SPORG_EXPLODE, 0);
+    } else
+      bomb_explode(b);
+  }
+}
+
+static int bombs_touch(float x0, float y0, float x1, float y1, int *side) {
+  for (int i = 0; i < MAX_BOMBS; i++) {
+    Bomb *b = &bombs[i];
+    if (b->st == BB_CHASE && x1 > b->x - BOMB_R && x0 < b->x + BOMB_R && y1 > b->y - BOMB_R && y0 < b->y + BOMB_R)
+      bomb_explode(b);   /* (the HeroBox: COLLIDE) */
+    if (b->st != BB_BOOM || b->t >= 0.5f) continue;
+    /* (its circle, 3 across) */
+    float qx = b->x < x0 ? x0 : b->x > x1 ? x1 : b->x, qy = b->y < y0 ? y0 : b->y > y1 ? y1 : b->y;
+    if ((qx - b->x) * (qx - b->x) + (qy - b->y) * (qy - b->y) < 9) {
+      *side = b->x > (x0 + x1) / 2 ? SIDE_RIGHT : SIDE_LEFT;
+      return 2;
+    }
+  }
+  return 0;
+}
+
+static int bombs_nail(const float *pts, int npts) {
+  int out = 0;
+  for (int i = 0; i < MAX_BOMBS; i++) {
+    Bomb *b = &bombs[i];
+    if ((b->st == BB_WAIT || b->st == BB_CHASE) && box_meets_shape(b->x - BOMB_R, b->y - BOMB_R, b->x + BOMB_R, b->y + BOMB_R, pts, npts))
+      bomb_explode(b), out |= HB_RECOIL;   /* (the Attack layer: COLLIDE) */
+  }
+  return out;
+}
+
+static void bombs_draw(void) {
+  for (int i = 0; i < MAX_BOMBS; i++) {
+    const Bomb *b = &bombs[i];
+    Inst in;
+    if (b->st == BB_BOOM) {
+      /* its orange flash fading out over a second, its twelve Impact Lines about it */
+      int al = (int)(255 * (1 - b->t)) & ~15;
+      if (al > 0) {
+        sprite_inst(SPRITE_GAS_FLASH, b->x, b->y, -0.01f, 1, 1, gfx_dyn_tint(12 + i % 4, 255, 255, 255, (uint8_t)al), &in);
+        gfx_actor_minor(&in, SORT_KEY(0, 0));
+      }
+      if (b->lines.playing && b->lines.sprite >= 0) {
+        static const int16_t deg[12] = {0, 30, 60, 91, 124, 156, 189, 215, 242, 278, 310, 340};
+        for (int k = 0; k < 12; k++) {
+          sprite_inst_rot(b->lines.sprite, b->x, b->y, -0.011f, 1, 1, deg[k], 0, &in);
+          gfx_actor_minor(&in, SORT_KEY(0, 0));
+        }
+      }
+      continue;
+    }
+    if (b->st == BB_OFF || b->anim.sprite < 0) continue;
+    sprite_inst_rot(b->anim.sprite, b->x, b->y, -0.004f, 1.5f, 1.5f, b->ang, 0, &in);
+    gfx_actor_minor(&in, SORT_KEY(0, 0));
+  }
+}
+
+/* ---------------------------------------------------------------- Sporgs (Shroom Turret): asleep in the wall till the
+ * Knight comes near; then every 3.5 to 4.25 s a Spore Bomb out the way they face, while he is about */
+enum { SG_DORMANT, SG_WAKE, SG_IDLE, SG_ANTIC, SG_FIRE, SG_AWAY };
+/* (b0: the Knight in its Hero Detect; wait: Idle's) */
+static void sporg_start(Enemy *e) {
+  e->st = SG_DORMANT, e->b0 = false;
+  e->flags |= 1;   /* (its collider off) */
+  anim_play(&e->anim, CLIP(e, R_A3));
+}
+
+static void sporg_idle(Enemy *e, float t0, float t1) {
+  anim_play(&e->anim, CLIP(e, R_IDLE));
+  e->wait = rand_range(t0, t1), e->st = SG_IDLE;
+}
+
+/* the Knight in its Hero Detect: its box in its own axes, it turned as it is (its Fire Angle less 90) */
+static bool sporg_detect(const Enemy *e) {
+  const Ent *r = range_named(e, "Hero Detect"), *v = enemy_rec(e, ET_VARS);
+  if (!r || !v || g_hero.hidden) return false;
+  float a = (v->p0 - 90) * (float)M_PI / 180, c = cosf(a), s = sinf(a);
+  float dx = g_hero.body.x + g_hero.body.ox - e->body.x, dy = g_hero.body.y + g_hero.body.oy - e->body.y;
+  float lx = dx * c + dy * s, ly = -dx * s + dy * c;
+  return fabsf(lx - r->x0) < r->x1 + g_hero.body.hx && fabsf(ly - r->y0) < r->y1 + g_hero.body.hy;
+}
+
+static void sporg_update(Enemy *e) {
+  bool in = sporg_detect(e), enter = in && !e->b0, leave = !in && e->b0;
+  e->b0 = in;
+  bool done = (e->anim.events & ANIM_DONE) != 0;
+  if (leave) {
+    /* (HERO EXIT, from anywhere) Hero Away */
+    anim_play(&e->anim, CLIP(e, R_IDLE));
+    e->st = SG_AWAY;
+    return;
+  }
+  switch (e->st) {
+    case SG_DORMANT:
+      if (enter) {
+        /* Wake: Sleep to Idle, its collider on */
+        anim_play_from_frame(&e->anim, CLIP(e, R_A1), 0);
+        e->flags &= (uint8_t)~1;
+        e->st = SG_WAKE;
+      }
+      break;
+    case SG_WAKE:
+      if (done) sporg_idle(e, 0.5f, 0.5f);   /* First Idle */
+      break;
+    case SG_AWAY:
+      if (enter) sporg_idle(e, 0.5f, 0.5f);
+      break;
+    case SG_IDLE:
+      if ((e->wait -= DT) <= 0) anim_play_from_frame(&e->anim, CLIP(e, R_A2), 0), e->st = SG_ANTIC;   /* Attack Antic */
+      break;
+    case SG_ANTIC:
+      if (e->anim.events & ANIM_TRIGGER) {
+        /* Fire: a Spore Bomb from its Spawn Point, at its Fire Angle */
+        const Ent *v = enemy_rec(e, ET_VARS);
+        if (v) bomb_fire(e->body.x + v->p1, e->body.y + v->p2, v->p0);
+        e->st = SG_FIRE;
+      }
+      break;
+    case SG_FIRE:
+      if (done) sporg_idle(e, 3.5f, 4.25f);
+      break;
+  }
+}
+
 /* ---------------------------------------------------------------- the kinds' hooks (enemy.c) */
 static bool xl_wants_contacts(const Enemy *e) { return FSM(e) == EF_FUNGLING; }
 static void xl_enter(void) {
   memset(gas, 0, sizeof gas);
   memset(globs, 0, sizeof globs);
+  memset(bombs, 0, sizeof bombs);
 }
 static void xl_tick(void) {
   gas_tick();
   globs_tick();
+  bombs_tick();
 }
 static void xl_draw(void) {
   gas_draw();
   globs_draw();
+  bombs_draw();
 }
 static int xl_touch(float x0, float y0, float x1, float y1, int *side) {
   int d = gas_touch(x0, y0, x1, y1, side);
-  return d ? d : globs_touch(x0, y0, x1, y1, side);
+  if (!d) d = globs_touch(x0, y0, x1, y1, side);
+  return d ? d : bombs_touch(x0, y0, x1, y1, side);
 }
-static int xl_nail(const float *pts, int npts, float direction) { return ogres_nail(pts, npts, direction); }
+static int xl_nail(const float *pts, int npts, float direction) { return ogres_nail(pts, npts, direction) | bombs_nail(pts, npts); }
 static void xl_draw_enemy(const Enemy *e, float z, uint8_t tint) {
   if (FSM(e) == EF_FUNGOON && e->mode == EM_ALIVE) fungoon_draw(e, z, tint);
 }
@@ -675,6 +866,7 @@ static void xl_start(Enemy *e, const Ent *d) {
   else if (FSM(e) == EF_FUNGOON) fungoon_start(e);
   else if (FSM(e) == EF_SHRUMELING) shrumeling_start(e);
   else if (FSM(e) == EF_OGRE) ogre_start(e);
+  else if (FSM(e) == EF_SPORG) sporg_start(e);
 }
 
 static void xl_fixed(Enemy *e) {
@@ -683,6 +875,7 @@ static void xl_fixed(Enemy *e) {
   else if (FSM(e) == EF_FUNGOON) fungoon_fixed(e);
   else if (FSM(e) == EF_SHRUMELING) shrumeling_fixed(e);
   else if (FSM(e) == EF_OGRE) ogre_fixed(e);
+  else if (FSM(e) == EF_SPORG) e->body.vx = e->body.vy = 0;   /* (kinematic) */
 }
 
 static void xl_update(Enemy *e) {
@@ -691,4 +884,5 @@ static void xl_update(Enemy *e) {
   else if (FSM(e) == EF_FUNGOON) fungoon_update(e);
   else if (FSM(e) == EF_SHRUMELING) shrumeling_update(e);
   else if (FSM(e) == EF_OGRE) ogre_update(e);
+  else if (FSM(e) == EF_SPORG) sporg_update(e);
 }
