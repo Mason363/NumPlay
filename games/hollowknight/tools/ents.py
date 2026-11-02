@@ -31,7 +31,7 @@ BGF_START_CLOSED, BGF_BONE, BGF_PD = 1, 2, 4
 # arenas (Battle Control, but the False Knight's: OK_ARENA's a): started by its trigger (else by an enemy), its
 # Activate destroys the gates (else opens them at once), two waves (the second summoned), or no start (counting from
 # the first)
-ARF_TRIGGER, ARF_DESTROY_GATES, ARF_QUICK_OPEN, ARF_WAVES, ARF_NO_START = 1, 2, 4, 8, 16
+ARF_TRIGGER, ARF_DESTROY_GATES, ARF_QUICK_OPEN, ARF_WAVES, ARF_NO_START, ARF_WAKE = 1, 2, 4, 8, 16, 32
 # enemies (an OK_ENEMY's a: src/enemy.c), by their FSM and animation library
 import actors as _actors
 # enemies: by the FSM (or component) that runs them and their animation library -> their kind (actors.ENEMY_KINDS)
@@ -47,7 +47,10 @@ ENEMY_VARS = {"Zombie Swipe": (["Lunge Speed", "Idle Time"], ["Coward"]),
 TRIGGER_BODIES = {"Pigeon"}
 FRAME_BODIES = {"Plant Trap Control", "Mossy Control"}
 RANGES = {"Moss Walker": ("Wake Range",), "Pigeon": ("Hero Range", "Enemy Range"), "Plant Trap Control": ("Detector",),
-          "Moss Knight Control": ("Wake Box",), "Mender Bug Ctrl": ("Hero Detect",), "Fungus Flyer": ("Attack R", "Attack L")}
+          "Moss Knight Control": ("Wake Box",), "Mender Bug Ctrl": ("Hero Detect",), "Fungus Flyer": ("Attack R", "Attack L"),
+          "Shroom Brawler": ("Smash Region",)}
+# (an arena's enemies its Start wakes (1) and its Wave 2 (2): WAKE sent to each, by _arenas)
+ARENA_WAKES = {}
 # (enemies whose attacks start with their colliders off: those still kept, off)
 HITBOXES_OFF = {"Moss Knight Control"}
 # what follows an enemy's record: ENT_BOX records, tagged
@@ -575,6 +578,17 @@ def _enemy(o, by_id, persist, name, d=None, strings=None, owners=None):
         q = next((by_id[ch] for ch in o.get("children", []) if by_id[ch]["name"] == "Gas Hit Box"), None)
         if q:
             out.append(rec(ENT_BOX, ET_VARS, p=(q["lpos"][0] * abs(sx), q["lpos"][1] * abs(sy), q["lscale"][0], 0)))
+    if fsm.get("name") == "Shroom Brawler":
+        # (Shrumal Ogre: its Spit Point, which of its arena's waves wakes it (0: its Wake Region); its Cap Hit's box;
+        # Facing Right, its Wake Region on)
+        kid = {by_id[ch]["name"]: by_id[ch] for ch in o.get("children", [])}
+        sp = kid.get("Spit Point", {}).get("lpos", [0, 0])
+        cap = kid.get("Cap Hit")
+        cb = next((c["v"] for c in cap["c"] if c["type"] == "BoxCollider2D" and c.get("v")), None) if cap else None
+        cbox = (cb["m_Offset"]["x"], cb["m_Offset"]["y"], cb["m_Size"]["x"] / 2, cb["m_Size"]["y"] / 2) if cb else (0, 0, 0, 0)
+        wr = kid.get("Wake Region")
+        bits = (1 if (var.get("Facing Right") or [0, False])[1] else 0) | (2 if wr and wr["self_active"] else 0)
+        out.append(rec(ENT_BOX, ET_VARS, p=(sp[0], sp[1], ARENA_WAKES.get(o["id"], 0), 0), box=cbox, a=bits))
     if fsm.get("name") == "Big Fly Control" and d is not None:
         # (Gruz Mother: where her young wait, Fly Spawn; her burster brings them there)
         fs = next((q for q in d["objects"] if q["name"] == "Fly Spawn"), None)
@@ -699,6 +713,11 @@ def _props(d, o, by_id, rooms, strings, persist, sprites, owners, name):
     return None
 
 
+def _ev(v):
+    """An FSM action's event parameter -> its name"""
+    return v[1] if isinstance(v, list) and len(v) > 1 else v
+
+
 def _go_var(d, o, f, var, by_id):
     """An FSM's GameObject variable -> the object's id (a reference, or what FindGameObject or FindChild sets it to),
     or None."""
@@ -724,6 +743,7 @@ def _arenas(d, by_id):
     """The arenas (Battle Control, but the False Knight's) -> (the objects their Activate destroys or hides, the enemies
     they count: SetBattleScene's, those their Detect hides: there only once the fight is over)."""
     gone, counted, later = set(), set(), set()
+    ARENA_WAKES.clear()
     for o in d["objects"]:
         f = _fsm(o, ("Battle Control",)) if o["active"] else None
         if not f or "False Knight" in f["vars"]:
@@ -749,11 +769,21 @@ def _arenas(d, by_id):
                     later.add(q)
         for st in f["states"]:
             for a in st["actions"]:
-                if a["name"] == "SetBattleScene" and a.get("enabled", True):
+                if not a.get("enabled", True):
+                    continue
+                g = None
+                if a["name"] == "SetBattleScene":
                     g = _param(a, "target")
-                    q = _go_var(d, o, f, g[1:], by_id) if isinstance(g, str) and g.startswith("$") else None
+                elif a["name"] == "SetFsmGameObject" and _param(a, "variableName") == "Battle Scene":
+                    g = _param(a, "gameObject")   # (health_manager_enemy's Battle Scene: the same)
+                q = _go_var(d, o, f, g[1:], by_id) if isinstance(g, str) and g.startswith("$") else None
+                if q is not None:
+                    counted.add(q)
+                if a["name"] == "SendEventByName" and _param(a, "sendEvent") == "WAKE" and st["name"] in ("Start", "Wave 2"):
+                    t = (_param(a, "eventTarget") or {}).get("go")
+                    q = _go_var(d, o, f, t[1:], by_id) if isinstance(t, str) and t.startswith("$") else None
                     if q is not None:
-                        counted.add(q)
+                        ARENA_WAKES[q] = 1 if st["name"] == "Start" else 2
     return gone, counted, later
 
 
@@ -952,6 +982,21 @@ def room(d, rooms, strings, persist, name, sprites=None, owners=None, rec_base=0
                 fl |= ARF_WAVES
                 next_at = next((_param(a, "integer2") for a in acts("Wave 1") if a["name"] == "IntCompare"), 0)
                 pause = next((_param(a, "time") for a in acts("Wave Pause") if a["name"] == "Wait"), 0)
+            hp_at, give_up = 0, 0
+            if any(_param(a, "sendEvent") == "WAKE" for a in acts("Start") if a["name"] == "SendEventByName"):
+                # (its Start wakes its first enemy, its Wave 2 the next: once Battle Enemies is down to so many, after so
+                # long, or the first's HP below so much)
+                fl |= ARF_WAKE
+                for a in acts("Start"):
+                    ev = lambda k: _ev(_param(a, k))
+                    if a["name"] == "IntCompare" and ev("equal") == "NEXT" and _param(a, "integer1") == "$Battle Enemies":
+                        next_at = _param(a, "integer2") or 0
+                    elif a["name"] == "IntCompare" and ev("lessThan") == "NEXT":
+                        hp_at = _param(a, "integer2") or 0
+                    elif a["name"] == "Wait" and ev("finishEvent") == "NEXT":
+                        give_up = _param(a, "time") or 0
+                # (Drop Item: its wait before End)
+                wait += next((_param(a, "time") for a in acts("Drop Item") if a["name"] == "Wait"), 0)
             if _state(f, "Complete") and not _state(f, "Start"):
                 # (no start: done once its count is down, the gates opening a while after)
                 fl |= ARF_NO_START
@@ -962,7 +1007,7 @@ def room(d, rooms, strings, persist, name, sprites=None, owners=None, rec_base=0
             battles.append((len(recs), _go_var(d, o, f, "Camera Lock", by_id), None))
             recs.append(rec(ENT_OBJ, OK_ARENA, _trigger(o) or (0, 0, 0, 0), (-1, -1, count, wait), a=fl,
                             persist=persist.id(name, o["path"]) if persistent else NO_PERSIST,
-                            s0=int(round(pause * 100)), s1=int(next_at)))
+                            s0=int(round(pause * 100)), s1=int(next_at), group=int(give_up), group2=int(hp_at)))
         f = _fsm(o, ("summon",))
         if f and _go_var(d, o, f, "Buzzer", by_id) is not None:
             # a summoner: its place and way; the enemy it brings (fixed up below)

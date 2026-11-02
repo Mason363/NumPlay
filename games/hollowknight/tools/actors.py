@@ -110,6 +110,10 @@ FW_KINDS = [
     # (Fungified Husk: the Volatile Mosskin's FSM)
     ("fungushusk", "Fungus Zombie Attack", ("sharedassets167.assets", 135), "SHAKER",
      {"IDLE": "Idle", "WALK": "Walk", "TURN": "Turn", "A1": "Attack"}),
+    # (Shrumal Ogre; its Smash Hits plays Smash Loop: drawn as its own)
+    ("ogre", "Shroom Brawler", ("sharedassets169.assets", 223), "OGRE",
+     {"IDLE": "Run", "TURN": "Turn", "A1": "Wake", "A2": "Spit", "A3": "Antic", "A4": "Smash Loop", "A5": "Smash to Run",
+      "A6": "Bounce", "A7": "Sleep", "DEATH_AIR": "Death Air"}),
 ]
 if os.environ.get("HK_PART") == "2":
     ENEMY_KINDS += FW_KINDS
@@ -222,6 +226,9 @@ ACTORS["hornetcs"] = ("sharedassets19.assets", 91, ["Idle", "Jump Full", "Throw 
 
 # enemies' shots (EnemyBullet)
 ACTORS["bullet"] = ("sharedassets32.assets", 745, ["Idle", "Impact", "Shockwave Spurt"])
+if os.environ.get("HK_PART") == "2":
+    # (the Shrumal Ogres' spit: Vomit Glob)
+    ACTORS["glob"] = ("sharedassets34.assets", 1067, ["Idle", "Land"])
 
 # sprites of prefab objects the game draws itself: name -> (file, prefab, object, resolution)
 NAMED = {

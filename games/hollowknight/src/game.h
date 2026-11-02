@@ -152,6 +152,10 @@ void arena_set_activated(void);  /* Activated: its fight over (and saved) */
 bool arena_done(void);
 void enemies_summon(void);       /* SUMMON: the summoners bring their enemies */
 void enemies_battle_start(void); /* BATTLE START */
+#ifdef HK_FW
+void enemies_wake(int wave);      /* WAKE: an arena's enemies its wave wakes (ents.py: ARENA_WAKES) */
+int enemies_wave_hp(int wave);    /* (the HP of the first of them alive, else -1) */
+#endif
 void enemies_hornet_wake(void);  /* WAKE (to Hornet) */
 void enemies_hornet_saver(bool on);   /* her Hornet Saver's walls (ActivateAllChildren) */
 enum { HB_BOUNCE = 1, HB_RECOIL = 2 };    /* a hit box (ENT_BOX's flags): a down slash bounces off it, a slash recoils */

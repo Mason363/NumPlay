@@ -482,7 +482,7 @@ void gates_event(int ev) {
 }
 
 /* ---------------------------------------------------------------- arenas (Battle Control; the False Knight's is enemy.c's) */
-enum { ARF_TRIGGER = 1, ARF_DESTROY_GATES = 2, ARF_QUICK_OPEN = 4, ARF_WAVES = 8, ARF_NO_START = 16 };
+enum { ARF_TRIGGER = 1, ARF_DESTROY_GATES = 2, ARF_QUICK_OPEN = 4, ARF_WAVES = 8, ARF_NO_START = 16, ARF_WAKE = 32 };
 enum { AR_DETECT, AR_FIGHT, AR_WAVE_PAUSE, AR_WAVE2, AR_END_WAIT, AR_DONE };
 static struct {
   int16_t ent;   /* (-1: none) */
@@ -526,9 +526,12 @@ void arena_start(void) {
   /* Start (Wave 1): BATTLE START, the gates shut, its camera lock on */
   arena.count = (int16_t)e->p2;
   enemies_battle_start();
+#ifdef HK_FW
+  if (e->a & ARF_WAKE) enemies_wake(1);   /* (WAKE to its first) */
+#endif
   gates_event(BG_CLOSE);
   if (e->p0 >= 0) ent_set_enabled((int)e->p0, true);
-  arena.st = AR_FIGHT;
+  arena.st = AR_FIGHT, arena.t = 0;
 }
 
 void arena_enemy_died(void) {
@@ -551,6 +554,18 @@ static void arena_tick(void) {
       }
       break;
     case AR_FIGHT:
+#ifdef HK_FW
+      if (e->a & ARF_WAKE) {
+        /* (Start: CHECK, all down: End Wait; NEXT, down to so many, after so long or the first's HP low: Wave 2,
+         * WAKE to the next) */
+        int hp = enemies_wave_hp(1);
+        arena.t += DT;
+        if (arena.count <= 0) arena.st = AR_END_WAIT, arena.t = 0;
+        else if (arena.count <= (int)e->s1 || (e->group && arena.t >= e->group) || (hp >= 0 && hp < e->group2))
+          enemies_wake(2), arena.st = AR_WAVE2;
+        break;
+      }
+#endif
       if ((e->a & ARF_WAVES) && arena.count <= (int)e->s1) arena.st = AR_WAVE_PAUSE, arena.t = 0;
       else if (!(e->a & ARF_WAVES) && arena.count <= 0) {
         if (e->a & ARF_NO_START) persist_set(e->persist);   /* (Complete: Activated, the gates open after a while) */

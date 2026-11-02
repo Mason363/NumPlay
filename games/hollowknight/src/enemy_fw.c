@@ -332,12 +332,332 @@ static void shrumeling_update(Enemy *e) {
   }
 }
 
+/* ---------------------------------------------------------------- globs (Vomit Glob): flung, falling; landed, a puddle
+ * that hurts for a while, then shrinks away */
+#define MAX_GLOBS 12
+enum { GL_OFF, GL_AIR, GL_LANDED, GL_SHRINK };
+typedef struct {
+  uint8_t st;
+  float x, y, vx, vy, scale, t;
+  Anim anim;
+} Glob;
+static Glob globs[MAX_GLOBS];
+
+static void glob_fling(float x, float y, float vx, float vy) {
+  for (int i = 0; i < MAX_GLOBS; i++)
+    if (globs[i].st == GL_OFF) {
+      Glob *g = &globs[i];
+      memset(g, 0, sizeof *g);
+      /* Init: a scale of its own; Idle */
+      g->st = GL_AIR, g->x = x, g->y = y, g->vx = vx, g->vy = vy, g->scale = rand_range(1, 1.75f);
+      anim_play(&g->anim, CLIP_GLOB_IDLE);
+      return;
+    }
+}
+
+static void globs_tick(void) {
+  for (int i = 0; i < MAX_GLOBS; i++) {
+    Glob *g = &globs[i];
+    if (g->st == GL_OFF) continue;
+    g->anim.events = 0;
+    anim_update(&g->anim, DT);
+    if (g->st == GL_AIR) {
+      g->vy += -60 * 0.7f * DT;   /* (its Rigidbody2D's gravity) */
+      float hx = 0.295f * g->scale, hy = 0.305f * g->scale, cy = g->y + 0.37f * g->scale, dx = g->vx * DT, dy = g->vy * DT;
+      PhysHit h;
+      if (dx != 0 && phys_ray(g->x, cy, dx > 0 ? 1 : -1, 0, fabsf(dx) + hx, CF_SOLID, &h)) g->vx = 0, dx = 0;   /* (a wall) */
+      if (dy < 0 && phys_ray(g->x, cy, 0, -1, -dy + hy, CF_SOLID, &h)) {
+        /* Land: still, a little up; Land; its puddle hurting, for 1.25 to 1.75 s */
+        g->y = h.y - (0.37f * g->scale - hy) + 0.25f;
+        g->x += dx;
+        g->st = GL_LANDED, g->t = rand_range(1.25f, 1.75f);
+        anim_play_from_frame(&g->anim, CLIP_GLOB_LAND, 0);
+        continue;
+      }
+      g->x += dx, g->y += dy;
+      if (g->y < -10) g->st = GL_OFF;
+    } else if (g->st == GL_LANDED) {
+      if ((g->t -= DT) <= 0) g->st = GL_SHRINK, g->t = 0;
+    } else if ((g->t += DT) >= 0.25f + 1)
+      g->st = GL_OFF;   /* (Shrink: to a tenth in 0.25 s; Stop Steam: hidden, 1 s; Recycle) */
+  }
+}
+
+static int globs_touch(float x0, float y0, float x1, float y1, int *side) {
+  for (int i = 0; i < MAX_GLOBS; i++) {
+    const Glob *g = &globs[i];
+    float cx, cy, hx, hy;
+    if (g->st == GL_AIR) cx = g->x, cy = g->y + 0.37f * g->scale, hx = 0.295f * g->scale, hy = 0.305f * g->scale;
+    else if (g->st == GL_LANDED)   /* (its Puddle Box) */
+      cx = g->x - 0.0107f * g->scale, cy = g->y + 0.09f * g->scale, hx = 0.6387f * g->scale, hy = 0.132f * g->scale;
+    else
+      continue;
+    if (x1 > cx - hx && x0 < cx + hx && y1 > cy - hy && y0 < cy + hy) {
+      *side = g->x > (x0 + x1) / 2 ? SIDE_RIGHT : SIDE_LEFT;
+      return 1;
+    }
+  }
+  return 0;
+}
+
+static void globs_draw(void) {
+  for (int i = 0; i < MAX_GLOBS; i++) {
+    const Glob *g = &globs[i];
+    if (g->st == GL_OFF || g->anim.sprite < 0) continue;
+    float k = g->scale;
+    if (g->st == GL_SHRINK) {
+      if (g->t >= 0.25f) continue;
+      k *= 1 - 0.9f * (g->t / 0.25f);
+    }
+    Inst in;
+    sprite_inst(g->anim.sprite, g->x, g->y, -0.004f, k, k, 0, &in);
+    gfx_actor_minor(&in, SORT_KEY(0, 0));
+  }
+}
+
+/* ---------------------------------------------------------------- Shrumal Ogres (Shroom Brawler): asleep till woken
+ * (by their Wake Region, or by their arena), they roam about where they started, turning to face the Knight; every
+ * second and a half or so they spit globs at him or, if he is near, smash the ground before them. Their cap blocks
+ * the nail; awake, they are only hurt from the sides till they first attack, then only as they attack */
+enum { OG_SLEEP, OG_WAKE, OG_IDLE, OG_TURN, OG_SPIT_ANTIC, OG_SPIT, OG_SPIT_CD, OG_BOUNCE, OG_SMASH_ANTIC, OG_SMASHING,
+       OG_SMASH_RECOVER };
+#define OGF_RIGHT 1    /* (ET_VARS a: Facing Right; its Wake Region on) */
+#define OGF_REGION 2
+/* (b0: in its Wake Region; b1: Facing Right; ax, ay: Min X, Max X; qx: Move Speed; wait: Move Time's; t0: Wait Timer;
+ * t1: Wait Time; c0: its cap on) */
+static void ogre_set_speeds(Enemy *e, bool right) {
+  e->b1 = right;
+  set_scale_x(e, right ? -1 : 1);
+}
+
+static void ogre_start(Enemy *e) {
+  const Ent *v = enemy_rec(e, ET_VARS);
+  /* Init: Min X, Max X its Roam Distance (2) about it; Facing Right?; Sleep: its cap off, its collider off */
+  e->ax = e->body.x - 2, e->ay = e->body.x + 2;
+  ogre_set_speeds(e, v && (v->a & OGF_RIGHT));
+  e->st = OG_SLEEP, e->c0 = 0, e->b0 = false;
+  e->flags |= 1;
+  anim_play(&e->anim, CLIP(e, R_A7));
+}
+
+static void ogre_wake(Enemy *e) {
+  /* Wake: its collider and cap on, falling; invincible from above; Wake */
+  e->flags &= (uint8_t)~1;
+  e->c0 = 1;
+  e->body.gravity_scale = 1;
+  e->flags |= 4, e->inv_dir = 4;
+  anim_play_from_frame(&e->anim, CLIP(e, R_A1), 0);
+  e->st = OG_WAKE;
+}
+
+static void ogre_set_wait(Enemy *e) {
+  e->t1 = rand_range(1.5f, 1.75f), e->t0 = 0;   /* Set Wait Time */
+}
+
+static void ogre_idle(Enemy *e) {
+  /* Idle: Run, its Move Speed, for its Move Time */
+  anim_play(&e->anim, CLIP(e, R_IDLE));
+  e->body.vx = e->qx;
+  e->st = OG_IDLE;
+}
+
+static void ogre_change_movement(Enemy *e) {
+  /* Change Movement: a Move Time, a Move Speed; RIGHT: on at once; else the other way, a new wait */
+  e->wait = rand_range(1, 2), e->qx = rand_range(1, 3);
+  if (rand_range(0, 1) >= 0.5f) {
+    e->qx = -e->qx;
+    ogre_set_wait(e);
+  }
+  ogre_idle(e);
+}
+
+static void ogre_invincible(Enemy *e, bool on) {
+  /* (SetInvincible: from every way; SetCollider of its Cap Hit with it) */
+  if (on) e->flags |= 4, e->inv_dir = 0, e->c0 = 1;
+  else e->flags &= (uint8_t)~4, e->c0 = 0;
+}
+
+static void ogre_fixed(Enemy *e) {
+  if (e->st == OG_SLEEP) e->body.vx = e->body.vy = 0;
+  else if (e->st == OG_SMASHING) e->body.vx = e->b1 ? 0.85f : -0.85f;   /* (Smash Speed, every frame) */
+}
+
+static void ogre_update(Enemy *e) {
+  const Ent *v = enemy_rec(e, ET_VARS);
+  bool done = (e->anim.events & ANIM_DONE) != 0, blocked = (e->rc_flags & RF_BLOCKED) != 0;
+  if (e->st == OG_SLEEP) {
+    if (v && (v->a & OGF_REGION) && wake_region(e) > 0) ogre_wake(e);
+    return;
+  }
+  bool hero_left = hero_x() < e->body.x;
+  switch (e->st) {
+    case OG_WAKE:
+      if (done) ogre_change_movement(e);
+      break;
+    case OG_IDLE:
+      if (blocked) {
+        anim_play_from_frame(&e->anim, CLIP(e, R_A6), 0), e->st = OG_BOUNCE;   /* Bounce */
+        break;
+      }
+      if ((e->wait -= DT) <= 0) {
+        ogre_change_movement(e);   /* (CHANGE DIR) */
+        break;
+      }
+      if (e->body.x > e->ay) {
+        /* Return Left, Right: back the other way */
+        e->wait = rand_range(1, 2), e->qx = -rand_range(1, 3);
+        ogre_idle(e);
+        break;
+      }
+      if (e->body.x < e->ax) {
+        e->wait = rand_range(1, 2), e->qx = rand_range(1, 3);
+        ogre_idle(e);
+        break;
+      }
+      if (e->b1 == hero_left) {
+        /* Turn L, R: to the Knight */
+        ogre_set_speeds(e, !hero_left);
+        anim_play_from_frame(&e->anim, CLIP(e, R_TURN), 0);
+        e->st = OG_TURN;
+        break;
+      }
+      if ((e->t0 += DT) > e->t1) {
+        /* Spit Antic: too far, given up; near, Smash Antic; else still, open to the nail, Spit */
+        e->t1 = rand_range(1.25f, 1.5f);
+        float dx = hero_x() - e->body.x, dy = hero_y() - e->body.y;
+        if (dx * dx + dy * dy > 25 * 25) {
+          ogre_set_wait(e);
+          ogre_idle(e);
+        } else if (hero_in_range(e, "Smash Region")) {
+          anim_play_from_frame(&e->anim, CLIP(e, R_A3), 0);
+          e->body.vx = 0;
+          e->st = OG_SMASH_ANTIC;
+        } else {
+          ogre_invincible(e, false);
+          e->body.vx = 0;
+          anim_play_from_frame(&e->anim, CLIP(e, R_A2), 0);
+          e->t0 = 0;
+          e->st = OG_SPIT_ANTIC;
+        }
+      }
+      break;
+    case OG_TURN:
+      e->t0 += DT;
+      if (blocked) anim_play_from_frame(&e->anim, CLIP(e, R_A6), 0), e->st = OG_BOUNCE;
+      else if (done) ogre_idle(e);
+      break;
+    case OG_SPIT_ANTIC:
+      if (e->anim.events & ANIM_TRIGGER) {
+        /* Spit: invincible again; 2 to 4 globs at the Knight, up */
+        ogre_invincible(e, true);
+        float t = (hero_x() - e->body.x) * 0.8f, lo = e->b1 ? 2.5f : -13, hi = e->b1 ? 13 : -2.5f;
+        t = t < lo ? lo : t > hi ? hi : t;
+        float x, y;
+        enemy_at(e, v ? v->p0 : -1.95f, v ? v->p1 : 0.04f, &x, &y);
+        for (int n = (int)rand_range(2, 4.999f); n > 0; n--) glob_fling(x, y, rand_range(t - 1.5f, t + 1.5f), rand_range(23, 26));
+        e->st = OG_SPIT;
+      }
+      break;
+    case OG_SPIT:
+      if (blocked) anim_play_from_frame(&e->anim, CLIP(e, R_A6), 0), e->st = OG_BOUNCE;
+      else if (done) anim_play(&e->anim, CLIP(e, R_IDLE)), e->wait = 1, e->st = OG_SPIT_CD;   /* Spit CD */
+      break;
+    case OG_SPIT_CD:
+      if (blocked) anim_play_from_frame(&e->anim, CLIP(e, R_A6), 0), e->st = OG_BOUNCE;
+      else if ((e->wait -= DT) <= 0) {
+        e->wait = 0;   /* (Idle's Move Time: the last, run out) */
+        ogre_idle(e);
+      }
+      break;
+    case OG_BOUNCE:
+      if (done) ogre_idle(e);
+      break;
+    case OG_SMASH_ANTIC:
+      if (done) {
+        /* Smashing: its Smash Hits on, slowly forward, open to the nail, for 2.25 s or till the Knight is behind */
+        mk_hitbox(e, STR_SMASH_HITS, true);
+        anim_play_from_frame(&e->anim, CLIP(e, R_A4), 0);
+        ogre_invincible(e, false);
+        e->wait = 2.25f;
+        e->st = OG_SMASHING;
+      }
+      break;
+    case OG_SMASHING:
+      if ((e->wait -= DT) <= 0 || e->b1 == hero_left) {
+        /* Smash Recover */
+        mk_hitbox(e, STR_SMASH_HITS, false);
+        ogre_invincible(e, true);
+        anim_play_from_frame(&e->anim, CLIP(e, R_A5), 0);
+        e->body.vx = 0;
+        e->st = OG_SMASH_RECOVER;
+      }
+      break;
+    case OG_SMASH_RECOVER:
+      if (done) ogre_idle(e);
+      break;
+  }
+}
+
+/* its Cap Hit: the nail meeting it blocked, the Knight bounced off it */
+static int ogres_nail(const float *pts, int npts, float direction) {
+  int out = 0;
+  for (int i = 0; i < MAX_ENEMIES; i++) {
+    Enemy *e = &en[i];
+    if (e->mode != EM_ALIVE || FSM(e) != EF_OGRE || !e->c0) continue;
+    const Ent *v = enemy_rec(e, ET_VARS);
+    if (!v || v->x1 <= 0) continue;
+    float cx, cy;
+    enemy_at(e, v->x0, v->y0, &cx, &cy);
+    if (!box_meets_shape(cx - v->x1, cy - v->y1, cx + v->x1, cy + v->y1, pts, npts)) continue;
+    out |= HB_BOUNCE | HB_RECOIL;
+    if (swing_bits >> i & 1) continue;
+    swing_bits |= 1u << i;
+    int dir = cardinal(direction);
+    if (dir == 0) hero_recoil_left();
+    else if (dir == 2) hero_recoil_right();
+    FREEZE_MOMENT_1();
+  }
+  return out;
+}
+
+void enemies_wake(int wave) {
+  for (int i = 0; i < MAX_ENEMIES; i++) {
+    Enemy *e = &en[i];
+    if (e->mode != EM_ALIVE || FSM(e) != EF_OGRE || e->st != OG_SLEEP) continue;
+    const Ent *v = enemy_rec(e, ET_VARS);
+    if (v && (int)v->p2 == wave) ogre_wake(e);
+  }
+}
+
+int enemies_wave_hp(int wave) {
+  for (int i = 0; i < MAX_ENEMIES; i++) {
+    const Enemy *e = &en[i];
+    if (e->mode != EM_ALIVE || FSM(e) != EF_OGRE) continue;
+    const Ent *v = enemy_rec(e, ET_VARS);
+    if (v && (int)v->p2 == wave) return e->hp;
+  }
+  return -1;
+}
+
 /* ---------------------------------------------------------------- the kinds' hooks (enemy.c) */
 static bool xl_wants_contacts(const Enemy *e) { return FSM(e) == EF_FUNGLING; }
-static void xl_enter(void) { memset(gas, 0, sizeof gas); }
-static void xl_tick(void) { gas_tick(); }
-static void xl_draw(void) { gas_draw(); }
-static int xl_touch(float x0, float y0, float x1, float y1, int *side) { return gas_touch(x0, y0, x1, y1, side); }
+static void xl_enter(void) {
+  memset(gas, 0, sizeof gas);
+  memset(globs, 0, sizeof globs);
+}
+static void xl_tick(void) {
+  gas_tick();
+  globs_tick();
+}
+static void xl_draw(void) {
+  gas_draw();
+  globs_draw();
+}
+static int xl_touch(float x0, float y0, float x1, float y1, int *side) {
+  int d = gas_touch(x0, y0, x1, y1, side);
+  return d ? d : globs_touch(x0, y0, x1, y1, side);
+}
+static int xl_nail(const float *pts, int npts, float direction) { return ogres_nail(pts, npts, direction); }
 static void xl_draw_enemy(const Enemy *e, float z, uint8_t tint) {
   if (FSM(e) == EF_FUNGOON && e->mode == EM_ALIVE) fungoon_draw(e, z, tint);
 }
@@ -354,6 +674,7 @@ static void xl_start(Enemy *e, const Ent *d) {
   else if (FSM(e) == EF_AMBLOOM) walker_init(e);
   else if (FSM(e) == EF_FUNGOON) fungoon_start(e);
   else if (FSM(e) == EF_SHRUMELING) shrumeling_start(e);
+  else if (FSM(e) == EF_OGRE) ogre_start(e);
 }
 
 static void xl_fixed(Enemy *e) {
@@ -361,6 +682,7 @@ static void xl_fixed(Enemy *e) {
   else if (FSM(e) == EF_AMBLOOM) ambloom_fixed(e);
   else if (FSM(e) == EF_FUNGOON) fungoon_fixed(e);
   else if (FSM(e) == EF_SHRUMELING) shrumeling_fixed(e);
+  else if (FSM(e) == EF_OGRE) ogre_fixed(e);
 }
 
 static void xl_update(Enemy *e) {
@@ -368,4 +690,5 @@ static void xl_update(Enemy *e) {
   else if (FSM(e) == EF_AMBLOOM) walker_update(e);
   else if (FSM(e) == EF_FUNGOON) fungoon_update(e);
   else if (FSM(e) == EF_SHRUMELING) shrumeling_update(e);
+  else if (FSM(e) == EF_OGRE) ogre_update(e);
 }

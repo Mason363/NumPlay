@@ -784,7 +784,7 @@ def main():
     secs["RVAR"].b += rvar
     # (the children enemy.c knows by name)
     str_ids = {n: STRINGS.id(n) for n in ("Attack Range", "Evade Range", "Spit Range", "Wake Box", "Slash Hitbox",
-                                          "Slash2 Hitbox", "door_stagExit")}
+                                          "Slash2 Hitbox", "door_stagExit") + (("Smash Hits",) if PART == 2 else ())}
     secs["STR"].b += STRINGS.blob()
     secs["TEXT"].b += TEXTS.blob()
     secs["FONT"].b += TEXTS.fonts()

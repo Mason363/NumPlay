@@ -20,7 +20,7 @@ enum {
   EF_FK, EF_FKHEAD, EF_GFLY, EF_HATCHER, EF_HATCHLING, EF_SLUG, EF_MOSSWALKER, EF_PIGEON, EF_PLANTTRAP, EF_SHAKER,
   EF_MOSQUITO, EF_FATFLY, EF_MOSSCHARGER, EF_MOSSKNIGHT, EF_HORNET, EF_MENDER,
   /* (Hollow Knight: Fungal Wastes: HK_FW) */
-  EF_FUNGLING, EF_FUNGOON, EF_AMBLOOM, EF_SHRUMELING
+  EF_FUNGLING, EF_FUNGOON, EF_AMBLOOM, EF_SHRUMELING, EF_OGRE
 };
 enum { R_IDLE, R_TURN, R_WALK, R_A1, R_A2, R_A3, R_A4, R_A5, R_A6, R_A7, R_A8, R_DEATH_AIR, R_DEATH_LAND, NUM_ROLES };
 typedef struct {
@@ -6873,6 +6873,9 @@ static void grass_balls_hit(float x0, float y0, float x1, float y1) {
 
 int enemies_nail(const float *pts, int npts, float direction, int damage) {
   int out = mossknights_nail(pts, npts);
+#ifdef HK_FW
+  out |= xl_nail(pts, npts, direction);
+#endif
   if (hornet()) out |= hornet_nail(pts, npts, direction);
   float bx0, by0, bx1, by1;
   shape_bounds(pts, npts, &bx0, &by0, &bx1, &by1);
