@@ -769,7 +769,7 @@ Five Nights at Freddy's 2 comes as its own app, `FiveNightsAtFreddys2.nwa`. Last
 | **EXE** | The monitor down, the panel's Exit |
 | **Back** | Pause (Resume, Quit game) |
 
-Five Nights at Freddy's 3 comes as its own app, `FiveNightsAtFreddys3.nwa`. Last from 12 to 6 AM at Fazbear's Fright. Springtrap comes room by room: play the audio on a camera next to his and he follows it, and seal the vent he crawls into. Reboot the audio, the cameras and the ventilation on the maintenance panel when they fail; with the ventilation down the dark comes in waves and he comes closer. Look away from a phantom on a camera before it jumps out. Night 5 opens the 6th.
+Last from 12 to 6 AM at Fazbear's Fright. Springtrap comes room by room: play the audio on a camera next to his and he follows it, and seal the vent he crawls into. Reboot the audio, the cameras and the ventilation on the maintenance panel when they fail; with the ventilation down the dark comes in waves and he comes closer. Look away from a phantom on a camera before it jumps out. Night 5 opens the 6th.
 
 <br clear="right">
 ## Famidash

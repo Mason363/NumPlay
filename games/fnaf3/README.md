@@ -1,5 +1,3 @@
-> **Five Nights at Freddy's 3 is a [NumPlay](../../README.md) game that comes on its own.** It is too big to sit next to NumPlay. Get `FiveNightsAtFreddys3.nwa` from the [latest release](https://github.com/Mason363/NumPlay/releases/latest).
-
 <p align="center">
   <img src="src/icon.png" width="84" alt="Five Nights at Freddy's 3 icon">
 </p>
@@ -23,7 +21,7 @@
 * **The maintenance panel:** the audio, the cameras and the ventilation wear out. Reboot one or all. With the ventilation down the office flashes red, the cameras show him where he isn't, and the dark comes in waves.
 * **The phantoms:** BB, Mangle, Chica, Phantom Freddy, the Puppet and Foxy, when and where the game brings them, each once a night.
 * **Nights 1 to 5, then the 6th:** the 6th night and the Extras open once the game is beaten, a star for each ending.
-* **Saved like in the game:** the night you reached and your stars. Home keeps the night as it is, and the next start puts you back in it, paused. Your saves are also copied into `fnaf3_saves.py`, so installing the app again doesn't erase them.
+* **Home** keeps the night as it is, and the next start puts you back in it, paused.
 
 <table>
   <tr>
@@ -61,7 +59,7 @@ The phantoms don't kill you, but their scare brings the ventilation down and Spr
 
 ## Good to know
 
-* **One app at a time:** Five Nights at Freddy's 3 can't share the calculator's room for apps with NumPlay. Install it on its own; your saves in each one are kept.
+* **Too big to install next to NumPlay.** Your saves in each are kept.
 * **No sound:** the calculator has no speaker. What you would hear is written at the bottom left: the footsteps, the vents, BB's laugh, the alarm. Springtrap's hum, louder the closer he is, is the two bars at the top left.
 * **Left out:** the phone calls and the 8-bit minigames between nights, with the good ending they lead to. The cheats in Extras open with the good ending, so they stay shut.
 * **The pictures are the game's,** at half size: the screen shows 640 of its 800 pixels around where the game looks.
