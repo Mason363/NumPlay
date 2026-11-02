@@ -63,6 +63,7 @@ ALONE = {
     "fnaf2": ("Five Nights at Freddy's 2", "the new pizzeria's six nights and the Custom Night: the mask, the music box, the flashlight"),
     "fnaf3": ("Five Nights at Freddy's 3", "Fazbear's Fright's six nights with Springtrap and the phantoms: the lure, the vents, the maintenance panel"),
     "fnaf4": ("Five Nights at Freddy's 4", "the bedroom's nights with the Nightmares: listen at the doors, the closet, the bed, Fun with Plushtrap"),
+    "fnafworld": ("FNAF World", "the RPG: the overworld, battles with a party of eight, 48 characters, chips, bytes, bosses and endings (6 MB apps only)"),
     "famidash": ("Famidash", "TFDSoft's Geometry Dash for the NES, made for the calculator: the 173 levels of Famidash HUGE, every mode, practice mode"),
 }
 VARIANTS = [

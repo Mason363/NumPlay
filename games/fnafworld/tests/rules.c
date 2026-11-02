@@ -263,12 +263,42 @@ static void shots(const char *dir) {
   snprintf(p, sizeof p, "%s/chips.ppm", dir), host_shot(p);
 }
 
+/* frames for the gallery's GIF: the map, a battle to its victory (a frame each 5 steps: 12 a second) */
+static void gif(const char *dir) {
+  char p[512];
+  int n = 0;
+  new_game(1, 1);
+  tap(K_DIGIT(0));
+  g.w.x = 1700, g.w.y = 1023;
+  for (int i = 0; i < 100; i++) {
+    step(i < 50 ? K_RIGHT : K_DOWN);
+    if (i % 5 == 0) game_draw(), snprintf(p, sizeof p, "%s/f%04d.ppm", dir, n++), host_shot(p);
+  }
+  for (int c = 1; c <= 8; c++) g.f.lv[c] = 4;
+  battle_start(0);
+  g.scene = SC_BATTLE;
+  int picked = 0;
+  for (int i = 0; i < 60 * 40 && g.scene == SC_BATTLE; i++) {
+    uint32_t k = 0;
+    if (B.ready && !B.att_slot) {
+      if (++picked % 40 == 20) k = K_DOWN;
+      if (picked % 40 == 39) k = K_OK;
+    }
+    step(k);
+    if (i % 5 == 0) game_draw(), snprintf(p, sizeof p, "%s/f%04d.ppm", dir, n++), host_shot(p);
+  }
+}
+
 int main(int argc, char **argv) {
   static uint16_t band[SCREEN_W * BAND_H];
   gfx_set_band_memory(band);
   fnafw_bin = fnafw_data;
   host_save_dir("build/host-saves");
   system("mkdir -p build/host-saves");
+  if (argc > 2 && !strcmp(argv[1], "gif")) {
+    gif(argv[2]);
+    return 0;
+  }
   if (argc > 2 && !strcmp(argv[1], "shots")) {
     shots(argv[2]);
     return 0;
