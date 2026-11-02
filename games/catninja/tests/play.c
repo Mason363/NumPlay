@@ -10,6 +10,8 @@
 #include <math.h>
 #include <stdlib.h>
 
+void game_debug_goto(int lv);
+
 /* ---------------------------------------------------------------- the calculator, on a computer */
 static uint16_t screen_px[240][320];
 static void (*on_frame)(void);
@@ -129,7 +131,6 @@ static int goto_level_at = -2;
 static uint32_t scripted(void) {
   uint32_t k = 0;
   if (frame_no == 1 && goto_level_at >= -1) {
-    extern void game_debug_goto(int lv);
     game_debug_goto(goto_level_at);
   }
   for (int i = 0; i < n_steps_; i++)
@@ -204,9 +205,70 @@ static void at_level(int lv) {
 }
 
 
+/* ---------------------------------------------------------------- the README's GIF and pictures */
+static int film_t; /* (60ths of a second, over all the parts) */
+static void raw_frame(const char *dir) {
+  char path[256];
+  snprintf(path, sizeof path, "%s/f_%06d.raw", dir, film_t * 1000 / 60);
+  FILE *f = fopen(path, "wb");
+  if (!f) return;
+  fwrite(screen_px, 2, 320 * 240, f);
+  fclose(f);
+}
+/* a part: a level, the player (keys "frame:keys,..." or NULL for the little player), how long; every 4th frame */
+static void film_part(const char *dir, int lv, const char *keys, int frames, int every) {
+  game_new();
+  game_debug_goto(lv);
+  bot_dir = 1, bot_wait = 0, bot_climb = false, bot_held = 0;
+  if (keys) parse_keys(keys);
+  uint32_t held = 0;
+  for (frame_no = 1; (int)frame_no <= frames; frame_no++, film_t++) {
+    if (keys) {
+      uint32_t g = game_keys_of(scripted()), on = g & ~held, off = held & ~g;
+      for (int i = 0; i < 6; i++) {
+        if (off >> i & 1) key_release(i);
+        if (on >> i & 1) key_press(i);
+      }
+      held = g;
+      game_step();
+    } else {
+      bot_frame();
+    }
+    if (film_t % every == 0) {
+      draw_frame();
+      gfx_render(scene, NULL, 0, 240);
+      raw_frame(dir);
+    }
+  }
+}
+static void picture(const char *dir, const char *name, int lv, const char *keys, int frames) {
+  char path[256];
+  game_new();
+  game_debug_goto(lv);
+  bot_dir = 1, bot_wait = 0, bot_climb = false, bot_held = 0;
+  if (keys) parse_keys(keys);
+  uint32_t held = 0;
+  for (frame_no = 1; (int)frame_no <= frames; frame_no++) {
+    if (keys) {
+      uint32_t g = game_keys_of(scripted()), on = g & ~held, off = held & ~g;
+      for (int i = 0; i < 6; i++) {
+        if (off >> i & 1) key_release(i);
+        if (on >> i & 1) key_press(i);
+      }
+      held = g;
+      game_step();
+    } else {
+      bot_frame();
+    }
+  }
+  draw_frame();
+  gfx_render(scene, NULL, 0, 240);
+  snprintf(path, sizeof path, "%s/%s.ppm", dir, name);
+  ppm(path);
+}
+
 /* ---------------------------------------------------------------- the tests */
 static double trunc20(double v) { return (double)(int)(v * 20) / 20; } /* a display object's x: twips */
-extern void game_debug_goto(int lv);
 extern void mine_create(int x, int y, int g);
 static void press(int k) { key_press(k); }
 static void release(int k) { key_release(k); }
@@ -449,6 +511,25 @@ static void test_saves(void) {
 }
 
 int main(int argc, char **argv) {
+  if (argc >= 3 && !strcmp(argv[1], "gif")) { /* the README's GIF: raw frames for tools/record.py --frames */
+    gfx_buf = strip;
+    draw_init();
+    film_t = 0;
+    film_part(argv[2], -1, "100:r", 160, 5);        /* the title map, the title coming in */
+    film_part(argv[2], 1, 0, 300, 5);              /* level 2: the shaft, wall jump to wall jump */
+    film_part(argv[2], 4, "1:r,85:,200:l", 330, 5); /* level 5: the world turns over */
+    film_part(argv[2], 23, "1:r,170:", 270, 5);     /* level 24: the pill, and a death */
+    return 0;
+  }
+  if (argc >= 3 && !strcmp(argv[1], "docs")) { /* the README's pictures */
+    gfx_buf = strip;
+    draw_init();
+    picture(argv[2], "shot", 1, 0, 230);
+    picture(argv[2], "title", -1, 0, 120);
+    picture(argv[2], "gravity", 4, "1:r,85:,200:l", 116);
+    picture(argv[2], "pill", 23, "1:r", 130);
+    return 0;
+  }
   if (argc >= 2 && !strcmp(argv[1], "test")) {
     gfx_buf = strip;
     draw_init();
@@ -505,7 +586,6 @@ int main(int argc, char **argv) {
     draw_init();
     for (int lv = -1; lv < 30; lv++) {
       game_new();
-      extern void game_debug_goto(int lv);
       game_debug_goto(lv);
       for (int f = 0; f < 60; f++) game_step();
       draw_frame();
@@ -522,7 +602,6 @@ int main(int argc, char **argv) {
     parse_keys(argv[3]);
     int frames = argc >= 5 ? atoi(argv[4]) : (int)steps_[n_steps_ - 1].at + 1;
     game_new();
-    extern void game_debug_goto(int lv);
     game_debug_goto(atoi(argv[2]));
     uint32_t held = 0;
     for (frame_no = 1; (int)frame_no <= frames; frame_no++) {

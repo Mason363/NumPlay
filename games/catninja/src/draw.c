@@ -477,7 +477,7 @@ static void draw_screens(void) {
     if (s->text >= 0) {
       double cx, cy;
       to_screen(s->x + 60, s->y + 30, &cx, &cy);
-      text_draw(s->text, cx, cy, 80, snap_rot(world_rot + s->rot), 32, false, true, 0);
+      text_draw(s->text, cx, cy, 88, snap_rot(world_rot + s->rot), 32, false, true, 0);
     }
   }
 }
