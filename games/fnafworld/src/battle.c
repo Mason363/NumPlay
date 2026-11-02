@@ -1516,10 +1516,10 @@ void battle_draw_band_dim(void) {
       int p = 15;
       s[p] = 0;
       do s[--p] = (char)('0' + v % 10), v /= 10; while (v && p > 0);
-      gfx_text_c(FONT_BIG, 160, 30 + 50, s + p, WHITE);
+      gfx_text_c(FONT_TEXT, 160, 30 + 43, s + p, RGB(0xFFE060));
       v = B.tokens, p = 15;
       do s[--p] = (char)('0' + v % 10), v /= 10; while (v && p > 0);
-      gfx_text_c(FONT_BIG, 160, 30 + 80, s + p, WHITE);
+      gfx_text_c(FONT_TEXT, 160, 30 + 74, s + p, RGB(0xFFE060));
       for (int k = 0; k < 4; k++)
         if (B.leveled[k]) pic_draw(pic_of(AN_LEVELUP, 0), SX(B.pm[k].x + 4), SY(B.pm[k].y - 181));
     }

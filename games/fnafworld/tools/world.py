@@ -65,7 +65,7 @@ BARRIERS = {"barrier 1": 1, "barrier 2": 2, "barrier 3": 3, "fence block": 4, "A
             "final barrier 2": 7, "final barrier 3": 8, "final barrier 4": 9, "locked": 10}
 ZONES = {"+ 0": 0, "+2": 2, "+ 5": 5, "+ 8": 8, "+ 11": 11, "+ 14": 14, "+ 17": 17, "+ 20": 20, "+ 23": 23,
          "+ 26": 26, "+ 40": 50}
-KINDS = ["ZONE", "CHEST", "COINS", "BOSS", "SWITCH", "BARRIER", "SHOP", "KEY", "PORT"]
+KINDS = ["ZONE", "CHEST", "COINS", "BOSS", "SWITCH", "BARRIER", "SHOP", "KEY", "PORT", "END"]
 # the ways from place to place (events 1168-1185, 1395-1396, 1465-1504): touching (0), holding up a while (75 or
 # 25 frames: 1, 2) or pressing down (3) on the first sends the walker to the second's place plus (dx, dy)
 PORTS = [("enter mine", "mine entrance", 1, -43, 0), ("mine entrance", "enter mine", 28, 60, 0),
@@ -74,6 +74,7 @@ PORTS = [("enter mine", "mine entrance", 1, -43, 0), ("mine entrance", "enter mi
          ("mine entrance 4", "mine entrance 2", 0, 52, 0), ("mine entrance 5", "mine entrance 3", 29, 58, 0),
          ("whirlpool", "whirlpool 2", -1, -43, 0), ("whirlpool 2", "whirlpool", 0, 55, 0),
          ("Active 22", "circus entrance", 2, -46, 0), ("circus entrance", "Active 22", -1, 63, 0),
+         ("H portal", "final spawn", 0, 0, 4),
          ("secret", "secret 2", 77, 25, 0), ("secret 2", "secret", -25, 28, 0),
          ("enter tent", "circus dungeon entr", -1, -42, 1), ("circus dungeon entr", "enter tent", 0, 44, 0),
          ("layer 1", "layer 2", 0, -78, 1), ("layer 2", "layer 1", 1, 44, 3),
@@ -173,7 +174,7 @@ def build(app):
                 continue   # (made by events)
             elif name in BOSSES:
                 vis = app.visible[o]
-                objs.append((3, BOSSES[name], x0, y0, x1, y1, sprite(app, h) if vis else 0xFFFF, 0))
+                objs.append((3, BOSSES[name], x0, y0, x1, y1, sprite(app, h) if vis or name == "4" else 0xFFFF, 0))
             elif name.startswith("switch "):
                 a12 = anims.get((12, 0), anims[min(anims)])
                 objs.append((4, int(name.split()[1]), x0, y0, x1, y1, sprite(app, h), sprite(app, a12[0])))
@@ -183,12 +184,17 @@ def build(app):
                 objs.append((0, ZONES[name], x0, y0, x1, y1, 0xFFFF, 0))
             elif name in ("shop", "shop 2", "shop 3"):
                 objs.append((6, {"shop": 1, "shop 2": 2, "shop 3": 3}[name], x0, y0, x1, y1, sprite(app, h), 0))
+            elif name == "Active 31":   # the end of the road (1825-1826)
+                objs.append((9, 0, x0, y0, x1, y1, 0xFFFF, 0))
             elif name == "key":
                 objs.append((7, 1, x0, y0, x1, y1, sprite(app, h), 0))
             elif name in port_of:
                 tx, ty, mode = port_of[name]
                 objs.append((8, mode, x0, y0, x1, y1, tx, ty))
-                if app.visible[o] and not ink_hidden(app, o):
+                if mode == 4:
+                    defines.append(("SPR_HPORTAL", sprite(app, h)))
+                    defines.append(("HPORTAL_X", x0)), defines.append(("HPORTAL_Y", y0))
+                elif app.visible[o] and not ink_hidden(app, o):
                     inst.append((layer, 1, order, round(x0 * S), round(y0 * S), sprite(app, h)))
             elif app.visible[o] and not ink_hidden(app, o):
                 inst.append((layer, 1, order, round(x0 * S), round(y0 * S), sprite(app, h)))

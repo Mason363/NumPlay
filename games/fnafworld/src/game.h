@@ -53,6 +53,7 @@ typedef struct {
   uint8_t note_n;          /* (its chip, ...) */
   uint32_t enc_t, sec_t;   /* the encounter's every 2000 ms; the play clock */
   uint8_t warp_menu, warp_sel;
+  uint8_t final;           /* on the way to the last ("Active 31" B, Hard) */
 } World;
 
 /* an enemy ("target") */
@@ -162,7 +163,7 @@ typedef struct {
 
 enum {
   SC_TITLE, SC_FILES, SC_PARTY, SC_WORLD, SC_BATTLE, SC_PAUSE, SC_CHIPS, SC_BYTES, SC_SHOP, SC_ARMOR,
-  SC_GAMEOVER, SC_HOWTO, SC_WARP
+  SC_GAMEOVER, SC_HOWTO, SC_WARP, SC_ENDING
 };
 
 typedef struct {
@@ -180,6 +181,7 @@ typedef struct {
   uint8_t pick_slot, pick_mode;
   uint8_t shop_kind;       /* "what shop" */
   uint8_t confirm;
+  uint8_t ending;          /* 1 Normal's end, 2 the last, 3 Chipper's Revenge, 4 PurpleGeist */
   uint32_t now;            /* the game's clock: thirds of a millisecond, 50 a frame */
 } Game;
 

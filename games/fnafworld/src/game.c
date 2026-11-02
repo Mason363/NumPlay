@@ -38,6 +38,28 @@ void game_init(void) {
   go(SC_TITLE);
 }
 
+/* words over lines no wider than w, centred on cx */
+static void text_wrap(int font, int cx, int y, int w, const char *s, uint16_t c) {
+  char line[64];
+  while (*s) {
+    int n = 0, last = 0;
+    while (s[n] && n < 63) {
+      line[n] = s[n];
+      line[n + 1] = 0;
+      if (s[n] == ' ') last = n;
+      if (gfx_text_w(font, line) > w && last) break;
+      n++;
+    }
+    if (s[n] && last) n = last;
+    memcpy(line, s, (size_t)n);
+    line[n] = 0;
+    gfx_text_c(font, cx, y, line, c);
+    y += gfx_line_h(font);
+    s += n;
+    while (*s == ' ') s++;
+  }
+}
+
 static void num(char *out, int32_t v) {
   char t[12];
   int p = 11;
@@ -400,8 +422,7 @@ static void wear_step(bool bytes) {
   int n = bytes ? NBYTE : NCHIP;
   if (pressed(UPS)) g.menu = (uint8_t)((g.menu + n - 1) % n);
   if (pressed(DOWNS)) g.menu = (uint8_t)((g.menu + 1) % n);
-  if (pressed(LEFTS)) g.menu = (uint8_t)((g.menu + n - 7) % n);
-  if (pressed(RIGHTS)) g.menu = (uint8_t)((g.menu + 7) % n);
+  if (pressed(LEFTS) || pressed(RIGHTS)) g.menu = (uint8_t)(g.menu < 11 ? (g.menu + 11 < n ? g.menu + 11 : n - 1) : g.menu - 11);
   if (pressed(K_BACK)) {
     g.dirty = 1;
     go(SC_PAUSE);
@@ -429,23 +450,23 @@ static void wear_band(bool bytes) {
   gfx_blend(0, 0, 320, 240, BLACK, 16);
   const uint8_t *worn = bytes ? g.f.bytes : g.f.chip;
   int n = bytes ? NBYTE : NCHIP;
-  gfx_text_c(FONT_BIG, 160, 2, bytes ? "Bytes" : "Chips", WHITE);
+  int nworn = 0;
+  for (int k = 0; k < 4; k++) nworn += worn[k] != 0;
+  gfx_text(FONT_BIG, 6, 0, bytes ? "Bytes" : "Chips", WHITE);
+  char s[16] = "Worn _ of 4";
+  s[5] = (char)('0' + nworn);
+  gfx_text_r(FONT_TEXT, 314, 4, s, RGB(0xFFD040));
   for (int i = 0; i < n; i++) {
-    int col = i / 7, row = i % 7;
-    int x = 4 + 105 * col, y = 26 + 22 * row;
+    int col = i / 11, row = i % 11;
+    int x = 4 + 158 * col, y = 24 + 18 * row;
     int id = i + 1;
     bool have = bytes ? g.f.byte_have[id] : g.f.chest[id];
     bool on = false;
     for (int k = 0; k < 4; k++) on |= worn[k] == id;
-    gfx_fill(x, y, 102, 19, on ? RGB(0x2A7A3A) : RGB(0x1A2858));
-    if (g.menu == i) gfx_frame_rect(x - 1, y - 1, 104, 21, HILITE);
+    gfx_fill(x, y, 154, 16, on ? RGB(0x2A7A3A) : RGB(0x1A2858));
+    if (g.menu == i) gfx_frame_rect(x - 1, y - 1, 156, 18, HILITE);
     const char *name = have ? (bytes ? BYTE_NAME[id] : CHIP_NAME[id]) : "???";
-    gfx_text(FONT_SMALL, x + 3, y + 3, name, have ? WHITE : RGB(0x707890));
-  }
-  gfx_text(FONT_SMALL, 6, 184, "Worn:", WHITE);
-  for (int k = 0; k < 4; k++) {
-    const char *name = worn[k] ? (bytes ? BYTE_NAME[worn[k]] : CHIP_NAME[worn[k]]) : "-";
-    gfx_text(FONT_SMALL, 44 + 70 * k, 184, name, RGB(0xFFD040));
+    gfx_text(FONT_SMALL, x + 3, y + 2, name, have ? WHITE : RGB(0x707890));
   }
   gfx_blend(0, 226, 320, 14, BLACK, 18);
   gfx_text(FONT_SMALL, 4, 227, "Arrows pick  OK wear or take off  Back done", KEYS);
@@ -520,16 +541,16 @@ static void shop_band(bool armor) {
     }
     gfx_fill(50, y, 220, 34, g.menu == i ? RGB(0x3A58B8) : RGB(0x1A2858));
     if (g.menu == i) gfx_frame_rect(49, y - 1, 222, 36, HILITE);
-    if (!armor) pic_draw(ANIM_PICS[ANIMS[AN_BYTE1 + first + i - 1].first], 72, y + 17);
-    gfx_text(FONT_TEXT, 96, y + 3, name, WHITE);
+    if (!armor) pic_part(ANIM_PICS[ANIMS[AN_BYTE1 + first + i - 1].first], 56, y + 1, 0, 0, 40, 32);
+    gfx_text(FONT_TEXT, 100, y + 3, name, WHITE);
     char s[24];
     if (sold) strcpy(s, "Sold out");
     else num(s, (int32_t)price), strcat(s, " tokens");
-    gfx_text(FONT_SMALL, 96, y + 19, s, sold ? RGB(0x90A0C0) : RGB(0xFFD040));
+    gfx_text(FONT_SMALL, 100, y + 19, s, sold ? RGB(0x90A0C0) : RGB(0xFFD040));
   }
   if (!armor) {
     int d = first == 1 ? 0 : first == 4 ? 1 : first == 7 ? 2 : first == 10 ? 3 : first == 13 ? 4 : first == 16 ? 5 : 6;
-    gfx_text_c(FONT_SMALL, 160, 172, DESC[d], WHITE);
+    text_wrap(FONT_SMALL, 160, 170, 300, DESC[d], WHITE);
   } else
     gfx_text_c(FONT_SMALL, 160, 172, "Armor takes damage off every hit.", WHITE);
   char s[32];
@@ -538,6 +559,48 @@ static void shop_band(bool armor) {
   gfx_text_c(FONT_TEXT, 160, 194, s, RGB(0xFFD040));
   gfx_blend(0, 226, 320, 14, BLACK, 18);
   gfx_text(FONT_SMALL, 4, 227, "Arrows pick  OK buy  Back leave", KEYS);
+}
+
+/* ------------------------------------------------------------------ the endings (their frames' events) */
+static const char *const END1[] = {"Congratulations...",
+  "You beat an imaginary monster in an imaginary game, without taking any risks, and without finding anything interesting.",
+  "...on the easiest possible difficulty.",
+  "So great job. I am still in control of you, and I say that you are finished here. You did away with a pretty powerful creation, but as for me- I remain out of your reach.",
+  "But I believe a more generic and cliched statement of appreciation is in order for your lackluster accomplishment...",
+  "Thanks for playing! ;)", "the end", NULL};
+static const char *const END2[] = {"Ok. Alright. I get it.",
+  "Was this really the ending you wanted? Coming all the way here just to kill me?",
+  "Was I REALLY the villain in your mind? I mean sure, this is definitely one way to bring the story to a halt, but surely there was a more satisfying end.",
+  "I just do what is demanded of me! I fill your insatiable gullets with more and more and more! And now here you are to show your gratitude.",
+  "Well congratulations then. I haven't brought this story to an end; you did. So feel good about yourself for ending the story by killing the storyteller!",
+  "Ug. Grr... Zrr... GRAAAAAMMM!!", "THE END", NULL};
+static const char *const END3[] = {"This isn't fair...",
+  "It was never fair. It was supposed to be me. It was always supposed to be me!",
+  "My world was lush and beautiful, full of strange and colorful creatures! But no, that wasn't enough for you.",
+  "You wanted to be scared. You wanted to feel dread. And what happened to me? What happened to us? Obscurity...",
+  "You haven't seen the last of me. Freddy Fazbear isn't the one who will be sharpening his teeth on your bones. It will be me.",
+  "It will be me...", "The End", NULL};
+static const char *const END4[] = {"I'm impressed.", "What are you doing here? Can't you see that I'm busy?",
+  "You deactivated my games?", "I didn't know what else to do. I don't want to disappoint people.",
+  "But my mind isn't right. I've made something terrible.", "Her name is Baby.", "It's too late to deactivate her.",
+  "I'm sorry.", "To be continued...", NULL};
+static const char *const *ending_lines(void) {
+  return g.ending == 1 ? END1 : g.ending == 2 ? END2 : g.ending == 3 ? END3 : END4;
+}
+
+static void ending_band(void) {
+  gfx_fill(0, gfx_y0, 320, BAND_H, BLACK);
+  const char *const *l = ending_lines();
+  const char *s = l[g.menu];
+  if (!s) return;
+  int n = (int)(g.t / 2);   /* (typed out, as the game does) */
+  char buf[200];
+  int k = 0;
+  while (s[k] && k < n && k < 199) buf[k] = s[k], k++;
+  buf[k] = 0;
+  gfx_frame_rect(20, 60, 280, 110, WHITE);
+  text_wrap(FONT_TEXT, 160, 72, 260, buf, WHITE);
+  if (g.t > 40) gfx_text_c(FONT_SMALL, 160, 220, "OK go on", KEYS);
 }
 
 /* ------------------------------------------------------------------ how to play, game over */
@@ -611,9 +674,9 @@ void game_step(uint32_t keys) {
       battle_keys(g.pressed, g.keys);
       battle_step();
       if (!g.b.on && g.scene == SC_BATTLE) {
+        go(SC_WORLD);
         world_after_battle();
         save_file();
-        go(SC_WORLD);
       }
       break;
     case SC_PAUSE: pause_step(); break;
@@ -624,6 +687,17 @@ void game_step(uint32_t keys) {
     case SC_ARMOR: shop_step(true); break;
     case SC_HOWTO:
       if (pressed(K_BACK) || pressed(OKS)) go(SC_PAUSE), g.menu = P_HOWTO;
+      break;
+    case SC_ENDING:
+      if (g.t > 20 && pressed(OKS)) {
+        const char *s = ending_lines()[g.menu];
+        if (s && g.t / 2 < strlen(s)) g.t = 2 * (uint32_t)strlen(s) + 41;
+        else if (!ending_lines()[++g.menu]) {
+          save_file();
+          go(SC_TITLE);
+        } else
+          g.t = 0;
+      }
       break;
     case SC_GAMEOVER:   /* (the frame "game over", then the start again) */
       if (g.t > 60 && pressed(OKS)) {
@@ -649,6 +723,7 @@ static void scene_band(void) {
     case SC_ARMOR: shop_band(true); break;
     case SC_HOWTO: howto_band(); break;
     case SC_GAMEOVER: gameover_band(); break;
+    case SC_ENDING: ending_band(); break;
   }
 }
 

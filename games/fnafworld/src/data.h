@@ -50,9 +50,12 @@
 #define IMG_UP 0
 #define IMG_DOWN 1
 #define IMG_DEL 2
+#define SPR_HPORTAL 62
+#define HPORTAL_X 2049
+#define HPORTAL_Y 798
 #define SPR_WALK 101
 #define WALK_N 15
-#define SPR_STAND 61
+#define SPR_STAND 60
 #define SPR_LILLY 161
 #define LILLY_N 10
 #define HIT_W 23

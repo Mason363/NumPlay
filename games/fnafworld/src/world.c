@@ -14,7 +14,7 @@
 #define VW 800   /* the view, the game's pixels (320 x 240 at 0.4) */
 #define VH 600
 
-enum { O_ZONE, O_CHEST, O_COINS, O_BOSS, O_SWITCH, O_BARRIER, O_SHOP, O_KEY, O_PORT };
+enum { O_ZONE, O_CHEST, O_COINS, O_BOSS, O_SWITCH, O_BARRIER, O_SHOP, O_KEY, O_PORT, O_END };
 
 typedef struct { int16_t x, y; uint16_t w, h, spr; } Ground;
 static const uint8_t *wsec;
@@ -184,8 +184,19 @@ void world_step(void) {
           return;
         }
         break;
-      case O_BOSS:   /* 1543-1558 */
-        if (!(W.boss_won[i >> 3] >> (i & 7) & 1) && o.n != 10 && o.n != 6) {
+      case O_END:   /* 1825-1826: Normal, the end; Hard, on to the last */
+        if (g.f.diff != 2) {
+          world_save_pos();
+          g.ending = 1;
+          g.scene = SC_ENDING, g.t = 0, g.menu = 0;
+          return;
+        }
+        W.x = 1326, W.y = 507, W.final = 1;
+        return;
+      case O_BOSS:   /* 1543-1558 (Gold Endo: one second in four, 1547 and 1862) */
+        if (o.n == 10 && !W.final) break;
+        if (o.n == 6 && !(g.t % 60 == 0 && rnd_n(4) == 1)) break;
+        if (!(W.boss_won[i >> 3] >> (i & 7) & 1)) {
           W.boss_won[i >> 3] |= (uint8_t)(1 << (i & 7));
           battle_start(o.n);
           g.scene = SC_BATTLE;
@@ -195,7 +206,8 @@ void world_step(void) {
       case O_PORT: {   /* 1168-1185, 1393-1396, 1465-1504: to another place */
         any_port = true;
         bool go = false;
-        if (o.n == 0) go = !on_port;
+        if (o.n == 4 && !g.f.beat[1]) break;   /* (Halloween's portal: after Security, 2077-2084) */
+        if (o.n == 0 || o.n == 4) go = !on_port;
         else if (o.n == 3) go = (g.pressed & K_DOWN) != 0;
         else if (k & K_UP) go = ++hold > (o.n == 1 ? 75 : 25);
         else hold = 0;
@@ -226,7 +238,7 @@ void world_step(void) {
     enc_ms += 50;
     if (enc_ms >= 2000 * 3) {
       enc_ms -= 2000 * 3;
-      if (!W.grace && rnd_n(4) == 1) {
+      if (!W.grace && !W.final && rnd_n(4) == 1) {
         battle_start(0);
         g.scene = SC_BATTLE;
       }
@@ -238,6 +250,17 @@ void world_step(void) {
 void world_after_battle(void) {
   Battle *b = &g.b;
   memcpy(g.f.slot, b->slots, 8);
+  if (b->won && b->boss) {   /* 1081-1084, 1881-1883 */
+    if (b->boss == 14) g.f.beat[1] = 1;
+    int e = b->boss == 10 ? 2 : b->boss == 15 ? 3 : b->boss == 19 ? 4 : 0;
+    if (e) {
+      g.f.beat[e == 2 ? 2 : e == 3 ? 3 : 5] = 1;
+      g.f.resetpos = 1;
+      g.ending = (uint8_t)e;
+      g.scene = SC_ENDING, g.t = 0, g.menu = 0;
+      return;
+    }
+  }
   if (b->chal == 2 && b->chal_won) {
     if (!g.f.have[b->chal_c]) g.f.have[b->chal_c] = 1, note(N_MEMBER, b->chal_c);
     b->chal = 0;
@@ -284,11 +307,13 @@ void world_band_dim(void) {
     if (o.kind == O_BARRIER && !barrier_on(o.n)) continue;
     if (o.kind == O_KEY && g.f.key) continue;
     if (o.kind == O_BOSS && (W.boss_won[i >> 3] >> (i & 7) & 1)) continue;
+    if (o.kind == O_BOSS && o.n == 10 && !W.final) continue;
     if (o.kind == O_SWITCH && g.f.sw[o.n]) s = o.s1;
     int x = o.x0 * 2 / 5 - vx, y = o.y0 * 2 / 5 - vy;
     if (y >= gfx_y0 + BAND_H || y + gfx_spr_h(s) <= gfx_y0 || x >= SCREEN_W || x + gfx_spr_w(s) <= 0) continue;
     gfx_spr(s, x, y);
   }
+  if (g.f.beat[1]) gfx_spr(SPR_HPORTAL, HPORTAL_X * 2 / 5 - vx, HPORTAL_Y * 2 / 5 - vy);
   /* the walker ("Active 16" on the hitbox: anim 1 in its direction, anim 0 standing) */
   if (W.area == 8) {   /* 1161: on the lake, the raft ("lilly", at the walker -2, +9) */
     int s = SPR_LILLY + W.dir * LILLY_N + (W.img / 4) % LILLY_N;
@@ -312,11 +337,11 @@ void world_band_dim(void) {
     gfx_text_r(FONT_SMALL, 316 - gfx_text_w(FONT_SMALL, " tokens"), 1, t + p, RGB(0xFFD040));
     gfx_text_r(FONT_SMALL, 316, 1, " tokens", WHITE);
   }
-  if (gfx_y0 + BAND_H > 226) {
+  if (gfx_y0 + BAND_H > 226 && g.scene == SC_WORLD) {
     gfx_blend(0, 226, 320, 14, BLACK, 16);
     gfx_text_s(FONT_SMALL, 4, 227, "Arrows walk  Back menu  Home save and quit", RGB(0xD0D8F0));
   }
-  if (W.note_t > 0 && W.note) {
+  if (W.note_t > 0 && W.note && g.scene == SC_WORLD) {
     char s2[48];
     const char *a = "", *b = "";
     switch (W.note) {

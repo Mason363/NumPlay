@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../src/anims.h"
 #include "../src/game.h"
 #include "../src/gfx.h"
 #include "../src/plat.h"
@@ -128,6 +129,22 @@ static void battles(void) {
   g.scene = SC_WORLD;
   for (int c = 1; c <= 8; c++) g.f.lv[c] = 20;
   CHECK(play_battle(1, 60 * 300) && g.b.won, "Auto Chipper beaten at level 21");
+  /* the ends: Normal's at the end of the road (1825), the others after their bosses (1881-1883) */
+  g.w.note = 0, g.w.note_t = 0;
+  g.scene = SC_WORLD, g.w.x = 2350, g.w.y = 3150, g.f.diff = 1;
+  step(0);
+  CHECK(g.scene == SC_ENDING && g.ending == 1, "Normal: the end of the road is the end (%d)", g.scene);
+  for (int i = 0; i < 6000 && g.scene == SC_ENDING; i++) step(i % 8 == 0 ? K_OK : 0);
+  CHECK(g.scene == SC_TITLE, "the ending's lines, then the title");
+  g.scene = SC_WORLD, g.w.x = 2350, g.w.y = 3150, g.f.diff = 2;
+  step(0);
+  CHECK(g.scene == SC_WORLD && g.w.final && g.w.x == 1326, "Hard: on to the last");
+  battle_start(15);
+  B.won = 1, B.on = 0;
+  g.scene = SC_WORLD;
+  world_after_battle();
+  CHECK(g.scene == SC_ENDING && g.ending == 3 && g.f.beat[3], "Chipper's Revenge: its ending");
+  g.scene = SC_WORLD;
   /* every attack, at least once */
   for (int a = 1; a <= 60; a++) {
     battle_start(0);
@@ -210,6 +227,40 @@ static void shots(const char *dir) {
   steps(90, 0);
   game_draw();
   snprintf(p, sizeof p, "%s/boss.ppm", dir), host_shot(p);
+  /* a win: the victory, the levels */
+  g.w.area = 0;
+  battle_start(0);
+  g.scene = SC_BATTLE;
+  for (int i = 0; i < 60 * 60 && B.stage < 2; i++) step(B.ready && (i & 1) ? K_OK : 0);
+  steps(70, 0);
+  game_draw();
+  snprintf(p, sizeof p, "%s/victory.ppm", dir), host_shot(p);
+  /* attacks in the middle */
+  static const uint8_t att[] = {6, 9, 12, 20, 30, 36, 44, 47, 56};
+  for (unsigned i = 0; i < sizeof att; i++) {
+    battle_start(0);
+    g.scene = SC_BATTLE;
+    for (int k = 0; k < 4; k++) B.en[k].alive = k < 3;
+    steps(80, 0);
+    B.ready = 0;
+    B.att_slot = 1, B.used = att[i], B.att_an = AN_ATTACK1, B.att_img = 0, B.att_cnt = 0, B.cur_level = 5;
+    steps(30, 0);
+    game_draw();
+    snprintf(p, sizeof p, "%s/att%u.ppm", dir, i), host_shot(p);
+  }
+  /* the menus */
+  g.scene = SC_PAUSE, g.back = SC_WORLD, g.menu = 0;
+  game_draw();
+  snprintf(p, sizeof p, "%s/pause.ppm", dir), host_shot(p);
+  g.f.tokens = 500;
+  g.scene = SC_SHOP, g.shop_kind = 1, g.menu = 1;
+  game_draw();
+  snprintf(p, sizeof p, "%s/shop.ppm", dir), host_shot(p);
+  for (int c = 1; c <= 21; c++) g.f.chest[c] = c % 3 != 0;
+  g.f.chip[0] = 1, g.f.chip[1] = 5;
+  g.scene = SC_CHIPS, g.menu = 4;
+  game_draw();
+  snprintf(p, sizeof p, "%s/chips.ppm", dir), host_shot(p);
 }
 
 int main(int argc, char **argv) {
