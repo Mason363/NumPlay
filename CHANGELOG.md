@@ -2,6 +2,11 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.5: FNAF World
+
+- **FNAF World:** FiveNightsAtFreddysWorld.nwa, the adventure with all 48 characters, the whole map, the battles, chips, bytes, shops and four endings, from the game's own files. It needs the 6 MB of app space Nwagra gives.
+- **NumPlay Studio:** a game that needs Nwagra opens the space picker.
+
 ## 1.24.4: Deltarune, Rider's own physics and NumBlocks' villages
 
 - **Deltarune:** Deltarune.nwa, Chapter 1 from Kris's room, the drive to school and the Dark World to Castle Town, Lancer and the Field's first rooms, with the game's own pictures, texts and battles.
