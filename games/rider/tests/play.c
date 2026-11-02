@@ -181,6 +181,15 @@ static void snap_load(const snap_t *s) { run = s->run, memcpy(ph_arena(), s->mem
 static void snap_copy(snap_t *d, const snap_t *s) { d->run = s->run, d->n = s->n, memcpy(d->mem, s->mem, s->n); }
 static snap_t beam[BEAM], next_beam[BEAM * PAT];
 static int spread = 3; /* states kept at each stretch of track */
+static int ahead; /* (last: a state is kept only if the bot still rides that many frames on, after letting go a while) */
+static bool doomed(const snap_t *s) {
+  for (int k = 0; k < 5; k++) {
+    snap_load(s);
+    for (int f = 0; f < ahead && !run.ended; f++) run_step(&run, k == 4 || (f >= k * 12 && bot(&run, 0)));
+    if (run.ended != END_CRASH) return false;
+  }
+  return true;
+}
 static uint8_t paths[BEAM][1600], next_paths[BEAM * PAT][1600];
 static float worth(const rd_run *r) { /* (a loop takes the bike back over its x a while: how far it rode counts too) */
   return r->mode == RUN_ENDLESS ? (r->score + r->pending) * 2000.0f + r->perfect * 300 + r->b.x : r->b.max_x + 0.5f * r->b.odo;
@@ -209,6 +218,7 @@ static int solve_from(int mode, int level, int bike, uint32_t seed, uint8_t *out
           return sg + 1;
         }
         snap_save(&next_beam[nn]);
+        if (ahead && doomed(&next_beam[nn])) continue;
         memcpy(next_paths[nn], paths[i], (size_t)sg), next_paths[nn][sg] = (uint8_t)p;
         nn++;
       }
@@ -255,12 +265,13 @@ static int solve_from(int mode, int level, int bike, uint32_t seed, uint8_t *out
 static int solve_run(int mode, int level, int bike, uint32_t seed, uint8_t *out, int max_segs) {
   int n = 0;
   static const int lens[3] = {15, 11, 13};
-  for (int k = 0; k < (mode == RUN_LEVEL ? 6 : 1) && !n; k++) {
+  for (int k = getenv("SOLVE_K") ? atoi(getenv("SOLVE_K")) : 0; k < (mode == RUN_LEVEL ? 8 : 1) && !n; k++) {
     spread = k & 1 ? BEAM : 3; /* (then the plain furthest ones) */
-    seg_len = lens[k / 2];
+    ahead = k >= 6 ? 45 : 0;
+    seg_len = k < 6 ? lens[k / 2] : lens[k - 6];
     for (int w = 0; w < (mode == RUN_LEVEL ? 8 : 1) && !n; w++) n = solve_from(mode, level, bike, seed, out, max_segs * 15 / seg_len, w);
   }
-  spread = 3;
+  spread = 3, ahead = 0;
   if (!n) seg_len = 15;
   return n;
 }
@@ -499,7 +510,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < 60 * 40 && !r->ended; i++) { run_step(r, bot(r, fl)); if (i % 7 == 0) draw_run(r), draw_flush(0); if (ph_proxies() > mp) mp = ph_proxies(); if (ph_contacts() > mc) { mc = ph_contacts(); if (getenv("WHERE")) printf("  frame %d contacts %d fixtures %d bodies %d at x %.0f\n", i, mc, ph_proxies(), ph_bodies(), r->b.x); } }
         printf("  contacts at most %d\n", mc);
         if (mp > maxp) maxp = mp;
-        printf("level %2d bot %d: calculator %6zu bytes, %3d fixtures at most, ended %d at x %.0f\n", l, fl, ph_device_peak(), mp, r->ended, r->b.x);
+        printf("level %2d bot %d: calculator %6zu bytes, %3d fixtures at most, %u frames short, %s, ended %d at x %.0f\n", l, fl, ph_device_peak(), mp, (unsigned)r->tight_frames, r->broken ? "OUT OF MEMORY" : "fine", r->ended, r->b.x);
       }
     }
     printf("fixtures at most %d\n", maxp);

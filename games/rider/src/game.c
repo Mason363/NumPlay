@@ -783,6 +783,7 @@ static bool near_box(float x0, float y0, float x1, float y1, const box_t *w, flo
 static void stream(rd_run *r, bool all) {
   rd_bikestate *b = &r->b;
   tight = ph_free() < RESERVE || ph_tail() < TAIL;
+  r->tight_frames += tight;
   /* the windows: round the bike, and round anything falling free (awake) */
   box_t win[MAXDYN + 1];
   int nw = 0;

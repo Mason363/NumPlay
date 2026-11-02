@@ -186,6 +186,7 @@ typedef struct {
   int best_flips_jump;
   int ended;            /* END_ */
   bool broken;          /* (out of memory: the physics world is given up) */
+  uint32_t tight_frames;/* (frames short of memory, with only the track right round the bike) */
   float end_ms;
   float finish_x;
   float bottom;         /* below this is out of the world */
