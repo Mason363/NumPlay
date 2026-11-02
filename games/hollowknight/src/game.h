@@ -86,6 +86,10 @@ typedef struct {
   /* (save version 3 on) scenesVisited, scenesMapped (the quill's), scenesEncounteredCocoon (a lifeblood cocoon broken
    * there): by room, the map's own pieces from the last bit down */
   uint8_t rooms_visited[MAX_ROOM_BITS / 8], rooms_mapped[MAX_ROOM_BITS / 8], rooms_cocoon[MAX_ROOM_BITS / 8];
+  /* (the way the Knight last left this app for another part of Hallownest: the room's number among every part's
+   * rooms + 1 (0: none), the gate there he comes in by) */
+  uint8_t cross_room;
+  char cross_gate[15];
   /* (saved apart, by the objects' names: their states) */
   uint8_t persist[MAX_PERSIST / 8];
   /* (not saved) */
@@ -221,7 +225,7 @@ typedef struct {
   float hazard_t;
   /* a scene transition */
   uint8_t scene_phase;
-  int16_t next_room;
+  int32_t next_room;   /* (0x8000 and a room's number among every part's: a room of another part) */
   uint16_t next_entry;
   float scene_t, next_delay;
   /* the camera's fade to black */
@@ -437,6 +441,9 @@ void fx_dash_burst(float x, float y, bool facing_right, bool on_ground);
 void game_new(void);
 bool game_enter(int room, float x, float y, bool facing_right);
 bool game_enter_gate(int room, const char *gate);   /* (a new game: through its entry gate) */
+bool game_enter_home(void);   /* (the Knight come in where this part's world meets another's: CROSS_HOME) */
+bool game_enter_cross(void);  /* (a save from another part, the Knight gone from it into this one: by that way) */
+int room_part(int global);    /* (the part of Hallownest a room is in, by its number among all: 0 the first) */
 bool game_respawn(void);   /* the Knight at the save's respawn point (a loaded game, after dying) */
 void game_tick(uint32_t keys);   /* 1/50 s */
 void game_draw(void);
@@ -494,6 +501,7 @@ int text_fit(int text, float w, float room);   /* (a description's style: the fi
 int charm_cost(int id);         /* (charmCost_N) */
 bool charm_equipped(int id);
 bool menu_quit(void);
+void menu_cross(int part);   /* the Knight gone into another part of Hallownest (another app): the game saved, a note */
 
 /* ---------------------------------------------------------------- text (text.c) */
 #define TEXT_BR 10     /* (in a text: a line break, a page break) */

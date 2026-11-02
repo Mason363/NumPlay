@@ -7,8 +7,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#ifdef HK_XL
-#include "data_xl.h"   /* (the bigger game: the rooms past Greenpath too) */
+#ifdef HK_FW
+#include "data_fw.h"   /* (the second app: Hollow Knight: Fungal Wastes) */
 #else
 #include "data.h"
 #endif

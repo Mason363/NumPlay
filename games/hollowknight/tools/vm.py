@@ -87,6 +87,7 @@ def _piece(doc, q, rigid=True):
             "spin": spin, "mirror": mirror}
 PIECE_SPRITES = None   # (prepare: the sprites' id maker)
 ROOM_NAMES = []        # (prepare: the rooms, in their order)
+ROOM_BASE = [0]        # (the first's number among every part's rooms: pack.ROOM_BASE)
 
 
 def _fsm(name, start, vars_, states):
@@ -178,10 +179,10 @@ MAP_SCENES = {"Crossroads_21_b": "Crossroads_21"}
 MAX_ROOM_BITS = 128   # (src/game.h)
 
 
-def room_bits(rooms):
-    """Each room's bit in the save's lists (scenesVisited...), by its place in the list: the rooms, then the map's own
-    pieces (MAP_SCENES) from the last bit down (None: no room)"""
-    out = list(rooms) + [None] * (MAX_ROOM_BITS - len(rooms) - len(MAP_SCENES)) + list(MAP_SCENES)[::-1]
+def room_bits(rooms, base=0):
+    """Each room's bit in the save's lists (scenesVisited...), by its place in the list: the parts' rooms (this part's
+    from base: pack.ROOM_BASE), then the map's own pieces (MAP_SCENES) from the last bit down (None: none here)"""
+    out = [None] * base + list(rooms) + [None] * (MAX_ROOM_BITS - base - len(rooms) - len(MAP_SCENES)) + list(MAP_SCENES)[::-1]
     assert len(out) == MAX_ROOM_BITS
     return out
 # the grubs in this part of the game (Crossroads_03, Fungus1_21): the Grubfather's rewards past them never come
@@ -1339,7 +1340,7 @@ class Compiler:
             if beh == "GameManager" and m == "AddToScenesVisited":
                 names = self.string_values(args[0]["s"] if isinstance(args[0], dict) else args[0])
                 assert len(names) == 1 and names[0] in MAP_SCENES, names
-                return self.emit("SceneVisited", {"room": room_bits(ROOM_NAMES).index(names[0])})
+                return self.emit("SceneVisited", {"room": room_bits(ROOM_NAMES, ROOM_BASE[0]).index(names[0])})
             if beh == "GameMap" and m == "SetupMap":
                 return None   # (the map: drawn as PlayerData has it, src/map.c)
             if beh == "HeroPlatformStick" and m in ("Activate", "Deactivate"):

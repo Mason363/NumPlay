@@ -50,9 +50,9 @@ static void set_bit(uint8_t *b, int i) {
   if (i >= 0 && i < MAX_ROOM_BITS) b[i >> 3] |= (uint8_t)(1 << (i & 7));
 }
 
-void map_room_entered(void) { set_bit(g_pd.rooms_visited, g_room.id); }   /* (SceneManager: scenesVisited) */
+void map_room_entered(void) { set_bit(g_pd.rooms_visited, ROOM_BASE + g_room.id); }   /* (SceneManager: scenesVisited) */
 void map_scene_visited(int r) { set_bit(g_pd.rooms_visited, r); }          /* (AddToScenesVisited: a map piece) */
-void map_cocoon_broken(void) { set_bit(g_pd.rooms_cocoon, g_room.id); }   /* (AddToCocoonList) */
+void map_cocoon_broken(void) { set_bit(g_pd.rooms_cocoon, ROOM_BASE + g_room.id); }   /* (AddToCocoonList) */
 
 static bool have_area(int a) { return areas[a].have == -1 || (areas[a].have >= 0 && pd_flag(areas[a].have)); }
 
@@ -410,7 +410,7 @@ static void draw_area(int a, float ox, float oy, float k, bool quick) {
 static bool compass_at(float ox, float oy, float k, float *x, float *y) {
   for (int i = 0; i < NMROOMS; i++) {
     const MapRoom *r = &rooms[i];
-    if (r->room != g_room.id || r->w <= 0 || !g_room.h || g_room.h->w <= 0 || g_room.h->h <= 0) continue;
+    if (r->room != ROOM_BASE + g_room.id || r->w <= 0 || !g_room.h || g_room.h->w <= 0 || g_room.h->h <= 0) continue;
     *x = ox + (r->x - r->w / 2 + g_hero.body.x / g_room.h->w * r->w) * k;
     *y = oy + (r->y - r->h / 2 + g_hero.body.y / g_room.h->h * r->h) * k;
     return true;
@@ -423,7 +423,8 @@ static bool shade_at(float ox, float oy, float k, float *x, float *y) {
   if (!g_pd.soul_limited) return false;
   for (int i = 0; i < NMROOMS; i++) {
     const MapRoom *r = &rooms[i];
-    if (r->room == 255 || strcmp(room_name(r->room), g_pd.shade_scene)) continue;
+    int lr = r->room - ROOM_BASE;   /* (its number in this part) */
+    if (r->room == 255 || lr < 0 || lr >= NUM_ROOMS || strcmp(room_name(lr), g_pd.shade_scene)) continue;
     *x = ox + r->x * k, *y = oy + r->y * k;
     return true;
   }

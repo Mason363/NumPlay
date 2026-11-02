@@ -130,7 +130,7 @@ MSGS = {"FIREBALL": ("INV_NAME_SPELL_FIREBALL1", "GET_ITEM_INTRO2", "BUTTON_DESC
 TITLES = ["KINGSPASS", "DIRTMOUTH", "CROSSROADS", "EGGTEMPLE", "SHAMANTEMPLE", "GREENPATH", "BIGFLY", "FALSE_KNIGHT",
           "HORNET", "ELDERBUG", "SLY", "ISELDA", "CORNIFER", "QUIRREL", "SHAMAN", "STAG", "STAG2", "TISO_C", "TISO_NC",
           "CHARM_SLUG"]
-if os.environ.get("HK_XL") == "1":   # (the bigger game's, past Greenpath)
+if os.environ.get("HK_PART") == "2":   # (the second part's: Hollow Knight: Fungal Wastes)
     TITLES += ["FUNGUS", "QUEENS_STATION", "MANTIS_VILLAGE", "FUNGUS_CORE", "RUINS", "MAGE_TOWER"]
 
 

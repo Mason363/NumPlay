@@ -19,7 +19,7 @@ enum {
   EF_CRAWLER = 1, EF_BUZZER, EF_SHADE, EF_HUSK, EF_CLIMBER, EF_BOUNCER, EF_SPITTER, EF_ROLLER, EF_BLOCKER, EF_LEAPER, EF_GUARD,
   EF_FK, EF_FKHEAD, EF_GFLY, EF_HATCHER, EF_HATCHLING, EF_SLUG, EF_MOSSWALKER, EF_PIGEON, EF_PLANTTRAP, EF_SHAKER,
   EF_MOSQUITO, EF_FATFLY, EF_MOSSCHARGER, EF_MOSSKNIGHT, EF_HORNET, EF_MENDER,
-  /* (past Greenpath: HK_XL) */
+  /* (Hollow Knight: Fungal Wastes: HK_FW) */
   EF_FUNGLING, EF_FUNGOON, EF_AMBLOOM, EF_SHRUMELING
 };
 enum { R_IDLE, R_TURN, R_WALK, R_A1, R_A2, R_A3, R_A4, R_A5, R_A6, R_A7, R_A8, R_DEATH_AIR, R_DEATH_LAND, NUM_ROLES };
@@ -6313,14 +6313,14 @@ static void hornet_draw(const Enemy *e, int i, float z) {
   }
 }
 
-#ifdef HK_XL
-#include "enemy_xl.c"   /* (the kinds past Greenpath) */
+#ifdef HK_FW
+#include "enemy_fw.c"   /* (the kinds of Hollow Knight: Fungal Wastes) */
 #endif
 
 /* the collisions a step brought (Collision2dEvent, ObjectBounce): the kinds that want them */
 static BodyEvent body_events[MAX_EVENTS];
 static bool wants_contacts(const Enemy *e) {
-#ifdef HK_XL
+#ifdef HK_FW
   if (xl_wants_contacts(e)) return true;
 #endif
   return FSM(e) == EF_MOSQUITO || FSM(e) == EF_FATFLY || FSM(e) == EF_MOSSCHARGER;
@@ -6335,7 +6335,7 @@ static void enemy_contacts(Enemy *e, float pvx, float pvy, int had) {
       body_bounce(&e->body, pvx, pvy, had, 0.5f);   /* (ObjectBounce, at its speed as last sampled) */
       e->b1 = true;
     }
-#ifdef HK_XL
+#ifdef HK_FW
     xl_contact(e, v);
 #endif
   }
@@ -6381,7 +6381,7 @@ static void enemy_fsm_start(Enemy *e, const Ent *d) {
   else if (FSM(e) == EF_MOSSCHARGER) mosscharger_start(e);
   else if (FSM(e) == EF_MOSSKNIGHT) mossknight_start(e);
   else if (FSM(e) == EF_HORNET) hornet_start(e);
-#ifdef HK_XL
+#ifdef HK_FW
   else xl_start(e, d);
 #endif
 }
@@ -6539,7 +6539,7 @@ void enemies_enter(void) {
   memset(&sh, 0, sizeof sh);
   memset(balls, 0, sizeof balls);
   memset(bullets, 0, sizeof bullets);
-#ifdef HK_XL
+#ifdef HK_FW
   xl_enter();
 #endif
   memset(waves, 0, sizeof waves);
@@ -6604,7 +6604,7 @@ void enemies_fixed(void) {
       else if (FSM(e) == EF_FATFLY) fatfly_fixed(e);
       else if (FSM(e) == EF_MOSSCHARGER) mosscharger_fixed(e);
       else if (FSM(e) == EF_MOSSKNIGHT) mossknight_fixed(e);
-#ifdef HK_XL
+#ifdef HK_FW
       else xl_fixed(e);
 #endif
       recoil_fixed(e);
@@ -6650,7 +6650,7 @@ void enemies_fixed(void) {
   geo_tick();
   balls_tick();
   bullets_tick();
-#ifdef HK_XL
+#ifdef HK_FW
   xl_tick();
 #endif
   waves_tick();
@@ -6710,7 +6710,7 @@ void enemies_update(void) {
       else if (FSM(e) == EF_MOSSCHARGER) mosscharger_update(e);
       else if (FSM(e) == EF_MOSSKNIGHT) mossknight_update(e);
       else if (FSM(e) == EF_HORNET) hornet_update(e);
-#ifdef HK_XL
+#ifdef HK_FW
       else xl_update(e);
 #endif
       if (FSM(e) == EF_FK) {
@@ -6775,12 +6775,12 @@ void enemies_draw(void) {
       sprite_inst(sh.slash.sprite, e->body.x - 0.0486f * e->sx, e->body.y - 0.0117f, z - 0.001f, 1.27f * e->sx, 1, 0, &in);
       gfx_actor(&in, SORT_KEY(0, 0));
     }
-#ifdef HK_XL
+#ifdef HK_FW
     xl_draw_enemy(e, z, flash_tint(e, 2 + i % 5));
 #endif
   }
   bullets_draw();
-#ifdef HK_XL
+#ifdef HK_FW
   xl_draw();
 #endif
   spurts_draw();
@@ -6936,7 +6936,7 @@ int enemies_touch_hero(float x0, float y0, float x1, float y1, int *side) {
   }
   int dmg = bullets_touch_hero(x0, y0, x1, y1, side);
   if (dmg) return dmg;
-#ifdef HK_XL
+#ifdef HK_FW
   if ((dmg = xl_touch(x0, y0, x1, y1, side))) return dmg;
 #endif
   dmg = spurts_touch(x0, y0, x1, y1, side);
@@ -6966,7 +6966,7 @@ void enemies_debug(void) {
   int ng = 0;
   for (int i = 0; i < MAX_GEO; i++) ng += geo[i].on;
   printf("   geo %d pieces, %d in purse, mp %d\n", ng, g_pd.geo, g_pd.mp);
-#ifdef HK_XL
+#ifdef HK_FW
   int ngas = 0;
   for (int i = 0; i < MAX_GAS; i++) ngas += gas[i].on;
   printf("   gas %d\n", ngas);

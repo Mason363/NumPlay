@@ -80,7 +80,7 @@ bool game_enter_gate(int room, const char *gate) {
   for (int i = 0; i < n; i++)
     if (es[i].type == ENT_GATE && !strcmp(str_at(es[i].s0), gate)) {
       hero_init(es[i].x0, es[i].y0, true);
-      g_game.next_room = (int16_t)room, g_game.next_entry = es[i].s0, g_game.next_delay = 0;
+      g_game.next_room = room, g_game.next_entry = es[i].s0, g_game.next_delay = 0;
       scene_load();
       return g_room.id == room;
     }
@@ -125,6 +125,27 @@ bool game_respawn(void) {
   return true;
 }
 
+/* the parts of Hallownest (each an app), by their first rooms' numbers among all of theirs */
+static const uint8_t part_base[] = PART_BASES;
+int room_part(int global) {
+  int k = 0;
+  while (k + 1 < (int)sizeof part_base && global >= part_base[k + 1]) k++;
+  return k;
+}
+
+bool game_enter_home(void) { return CROSS_HOME_GATE[0] && game_enter_gate(CROSS_HOME_ROOM, CROSS_HOME_GATE); }
+
+/* a save made as the Knight went from another part into this one: by the gate he went to */
+bool game_enter_cross(void) {
+  int r = (int)g_pd.cross_room - 1 - ROOM_BASE;
+  if (!g_pd.cross_room || r < 0 || r >= NUM_ROOMS) return false;
+  char gate[sizeof g_pd.cross_gate];
+  memcpy(gate, g_pd.cross_gate, sizeof gate);
+  gate[sizeof gate - 1] = 0;
+  g_pd.cross_room = 0;
+  return game_enter_gate(r, gate);
+}
+
 const Ent *room_ents(int *n) {
   *n = g_room.h->nent;
   return (const Ent *)(const void *)(section(SEC_RBLOB) + g_room.h->ents);
@@ -150,9 +171,9 @@ void game_fade_scene_in(void) { game_fade(0, 0.5f, 0.1f); }
 
 void game_transition(int room, int entry, int gate, float delay, bool without_input) {
   Game *g = &g_game;
-  if (g->scene_phase != SP_NONE || room < 0) return;
+  if (g->scene_phase != SP_NONE || room < 0 || room == 0xFFFF) return;
   g->scene_phase = SP_LEAVING, g->scene_t = 0;
-  g->next_room = (int16_t)room, g->next_entry = (uint16_t)entry, g->next_delay = delay;
+  g->next_room = room, g->next_entry = (uint16_t)entry, g->next_delay = delay;
   g_hero.enter_without_input = without_input;
   hero_leave_scene(gate);
   cam_freeze();
@@ -182,6 +203,15 @@ static void gate_touched(const Ent *e) {
 static void scene_load(void) {
   Game *g = &g_game;
   g->scene_phase = SP_NONE;
+  if (g->next_room & 0x8000) {
+    /* (a room of another part of Hallownest: the way there kept, the game saved, a note) */
+    g_pd.cross_room = (uint8_t)((g->next_room & 0x7FFF) + 1);
+    strncpy(g_pd.cross_gate, str_at(g->next_entry), sizeof g_pd.cross_gate - 1);
+    g_pd.cross_gate[sizeof g_pd.cross_gate - 1] = 0;
+    save_game();
+    menu_cross(room_part(g->next_room & 0x7FFF));
+    return;
+  }
   if (!room_load(g->next_room)) return;
   room_entered();
   int n;

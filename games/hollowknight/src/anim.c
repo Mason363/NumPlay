@@ -51,6 +51,7 @@ static void warp(Anim *a, const ClipRec *c, float t) {
 }
 
 void anim_play_from(Anim *a, int clip, float start) {
+  if (clip < 0) return;   /* (none: a clip the object does not have, as tk2dSpriteAnimator.Play of an empty name) */
   const ClipRec *c = clip_rec(clip);
   if (!c->n) {
     a->events |= ANIM_DONE, a->playing = false;
@@ -77,7 +78,9 @@ void anim_play_from(Anim *a, int clip, float start) {
 }
 
 void anim_play(Anim *a, int clip) { anim_play_from(a, clip, 0); }
-void anim_play_from_frame(Anim *a, int clip, int frame) { anim_play_from(a, clip, (frame + 0.001f) / clip_rec(clip)->fps); }
+void anim_play_from_frame(Anim *a, int clip, int frame) {
+  if (clip >= 0) anim_play_from(a, clip, (frame + 0.001f) / clip_rec(clip)->fps);
+}
 bool anim_is_playing(const Anim *a, int clip) { return a->playing && a->clip == clip; }
 
 /* the frames from prev (exclusive) to f (inclusive), their events */

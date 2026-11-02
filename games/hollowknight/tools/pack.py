@@ -7,14 +7,35 @@ sys.path.insert(0, HERE)
 import unity, scene, visible, art, actors, coll, ents, font, text, vm
 
 SRC = os.environ.get("HK_OUT") or os.path.join(HERE, "..", "src")
-# HK_XL=1: the bigger game, the rooms past Greenpath too (rooms_xl.txt, after the others: theirs keep their numbers),
-# into data_xl.bin and data_xl.h
-XL = os.environ.get("HK_XL") == "1"
-OUT = "data_xl" if XL else "data"
-ALL_ROOMS = [l.strip() for f in ["rooms.txt"] + ([os.environ.get("HK_XL_ROOMS", "rooms_xl.txt")] if XL else [])
-             for l in open(os.path.join(HERE, f)) if l.strip() and not l.startswith("#")]
-# (scenes loaded with others are part of those: two variants of the room, by a PlayerData bool)
-ROOMS = [r for r in ALL_ROOMS if r not in scene.additive_scenes(ALL_ROOMS)]
+# the game in apps of the calculator's usual size, each its part of Hallownest (its rooms' list), sharing the saves:
+# HK_PART=2 the second, Hollow Knight: Fungal Wastes (rooms_fw.txt), into data_fw.bin and data_fw.h. The parts' rooms
+# are numbered as one list (their bits in the saves), the first's first: ROOM_BASE, a part's first
+PART = int(os.environ.get("HK_PART") or 1)
+PART_ROOMS = ["rooms.txt", "rooms_fw.txt"]
+OUT = ["data", "data_fw"][PART - 1]
+
+
+def _room_list(f):
+    rooms = [l.strip() for l in open(os.path.join(HERE, f)) if l.strip() and not l.startswith("#")]
+    return rooms, [r for r in rooms if r not in scene.additive_scenes(rooms)]
+
+
+ALL_ROOMS, ROOMS = _room_list(PART_ROOMS[PART - 1])
+GLOBAL_ROOMS = [r for f in PART_ROOMS for r in _room_list(f)[1]]   # (every part's, in their order)
+ROOM_BASE = GLOBAL_ROOMS.index(ROOMS[0])
+ents.GLOBAL_ROOMS[:] = GLOBAL_ROOMS
+vm.ROOM_BASE[0] = ROOM_BASE
+
+
+def cross_home():
+    """Where this part's world leads into another's (the first gate of its rooms to a room of another part): its
+    room, its gate; where a save from another part comes in when its bench is not here"""
+    for i, r in enumerate(ROOMS):
+        for o in unity.scene(r)["objects"]:
+            v = next((c.get("v") for c in o["c"] if c.get("class") == "TransitionPoint" and c.get("v")), None)
+            if v and v.get("targetScene") in GLOBAL_ROOMS and v["targetScene"] not in ROOMS:
+                return i, o["name"]
+    return 0, ""
 VARIANT_ROOMS = [r for r in ROOMS if scene.additive(r)]
 STRINGS = ents.Strings()
 PERSIST = ents.Persist()
@@ -496,7 +517,7 @@ def main():
     # (a Moss Knight's grass ball: a Unity sprite)
     pgb = unity.prefab("sharedassets149.assets", 34)
     fleurs["SPRITE_GRASS_BALL"] = SPRITES.id(pgb, next(c["v"] for c in pgb["objects"][0]["c"] if c["type"] == "SpriteRenderer")["m_Sprite"], 1)
-    if XL:
+    if PART == 2:
         # (the gas the Fungoons spit: their Gas Attack particles' texture, a unit wide)
         fleurs["SPRITE_GAS"] = SPRITES.tex("sharedassets128.assets", 7, 1.0)
     # (a soul orb: Soul Orb R's sprite, as stretched as it gets; its sorting)
@@ -577,7 +598,7 @@ def main():
     fleurs.update(collect.build())
     fleurs.update(stag.build(SPRITES, TEXTS, hud_res, actors.clip_id, ents.pd_flags(), vm.STR.id, ROOMS))
     import gamemap
-    fleurs.update(gamemap.build(SPRITES, TEXTS, hud_res, vm.room_bits(ROOMS), ents.pd_flags(),
+    fleurs.update(gamemap.build(SPRITES, TEXTS, hud_res, vm.room_bits(ROOMS, ROOM_BASE), ents.pd_flags(),
                                 lambda r: scene.settings(unity.scene(vm.MAP_SCENES.get(r, r))).get("map_zone") or 0))
     fleurs["ROOM_ZONES"] = "{%s}" % ", ".join(str(scene.settings(unity.scene(r)).get("map_zone") or 0) for r in ROOMS)
     for i, item in enumerate(text.MSGS):
@@ -796,7 +817,11 @@ def main():
         f.write("/* made by tools/pack.py */\n#pragma once\n")
         for i, k in enumerate(SECTIONS):
             f.write("#define SEC_%s %d\n" % (k, i))
-        f.write("#define NUM_ROOMS %d\n" % len(ROOMS))
+        f.write("#define NUM_ROOMS %d\n#define ROOM_BASE %d\n#define HK_PART_N %d\n" % (len(ROOMS), ROOM_BASE, PART))
+        home = cross_home()
+        f.write("#define CROSS_HOME_ROOM %d\n#define CROSS_HOME_GATE \"%s\"\n" % home)
+        bases = [GLOBAL_ROOMS.index(_room_list(r)[1][0]) for r in PART_ROOMS]
+        f.write("#define PART_BASES {%s}\n" % ", ".join(str(b) for b in bases))
         for i, r in enumerate(ROOMS):
             f.write("#define ROOM_%s %d\n" % (r.upper(), i))
         for i, c in enumerate(clips):

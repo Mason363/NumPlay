@@ -112,5 +112,7 @@ def build(sprites, texts, res, actor_clip, pd_flags, str_id, rooms):
         out["TXT_STAG_" + key] = texts.add(text.clean(sh["UI"][key]), "MSG")
     # (the rides: the scripts' scene names, the rooms they are)
     out["STAG_SCENES_STR"] = "{%s}" % ", ".join(str(str_id(s)) for s in SCENES)
-    out["STAG_SCENES_ROOM"] = "{%s}" % ", ".join(str(rooms.index(s)) for s in SCENES)
+    # (a station in another part of the game: 0x8000 and its room's number among them all)
+    out["STAG_SCENES_ROOM"] = "{%s}" % ", ".join(str(rooms.index(s) if s in rooms else 0x8000 | ents.GLOBAL_ROOMS.index(s))
+                                                 for s in SCENES)
     return out

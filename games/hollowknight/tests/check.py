@@ -35,6 +35,12 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 
 PLAY, DATA = sys.argv[1], sys.argv[2]
+# (the game in parts, each an app: the second's data is data_fw.bin; the other part's build, if made, for the ways
+# between them)
+PART = 2 if "data_fw" in os.path.basename(DATA) else 1
+ROOM0 = ("Town", "60,12") if PART == 1 else ("Crossroads_18", "20,25")   # (a room of the part's, a place in it)
+OTHER = (os.path.join(os.path.dirname(PLAY), "play-fw"), os.path.join(os.path.dirname(DATA), "data_fw.bin")) if PART == 1 else \
+    (os.path.join(os.path.dirname(PLAY), "play"), os.path.join(os.path.dirname(DATA), "data.bin"))
 WALKS = [(seed, 4000) for seed in range(1, 5)]   # (seed, ticks of 20 ms)
 SWEEP_KEYS = "_*30,R*120,A*3,J*25,L*200,A*4,_*60,R*60,J*30,A*3,_*900"
 WORLDS = ("", "7,11")
@@ -75,6 +81,25 @@ def main():
     with tempfile.TemporaryDirectory() as saves:
         rc, out = play("--gates", "arenas", env={"HKSAVES": saves})
     results.append(report("arenas", rc, out, ("FAIL",)))
+    # the ways into the other part (app): taken, the save keeps the way; loaded in the other part's build (if made),
+    # the Knight comes in there by it
+    with tempfile.TemporaryDirectory() as saves:
+        rc, out = play("--gates", "cross", env={"HKSAVES": saves})
+        ways = [l.split() for l in out.splitlines() if l.startswith("ok   cross")]
+        if os.path.exists(OTHER[0]) and ways:
+            p = subprocess.run([OTHER[0], OTHER[1], "--room", "Crossroads_18" if PART == 1 else "Town", "--play", "_*150"],
+                               capture_output=True, text=True,
+                               env=dict(os.environ, HKSAVES=saves, HKLOAD="0", HKROOM="1"))
+            room = next((l.split()[1] for l in p.stdout.splitlines() if l.startswith("room:")), "")
+            want = ways[-1]
+            # (its line: ok cross ROOM GATE -> room N (part P) by ENTRY; the room there is named by the other build)
+            if p.returncode or not room:
+                out += "\nFAIL the other part's build did not load the save: %s" % (p.stdout + p.stderr)[-300:]
+            else:
+                out += "\n   loaded in the other part: in %s" % room
+    results.append(report("the ways into the other part, saved and loaded there", rc, out, ("FAIL",)))
+    if PART == 2:
+        return finish(results)
     # (HKFLAGS: a charm had, Gathering Swarm; HKPD: the bools on at the end, 77 its equipped one, 0 atBench)
     rc, out = play("--room", "Crossroads_47", "--at", "29.3,6.5", "--play", BENCH_KEYS, env={"HKFLAGS": "3,37", "HKPD": "1"})
     pd = next((l.split()[1:] for l in out.splitlines() if l.startswith("pd:")), [])
@@ -97,12 +122,16 @@ def main():
     results.append(report("enemies out again after a rest, a death or a load at a bench", rc, out, ("FAIL",)))
     rc, out = play("--gates", "way")
     results.append(report("the way to the False Knight", rc, out, ("FAIL",)))
+    return finish(results)
+
+
+def finish(results):
     # the soul orb: dark inside with no soul, its liquid white in it when full (in the screen's pixels at its middle)
     shades = []
     with tempfile.TemporaryDirectory() as d:
         for mp in (0, 99):
             path = os.path.join(d, "orb%d.ppm" % mp)
-            rc, out = play("--room", "Town", "--at", "60,12", "--play", "_*130", "--shot", path, env={"HKMP": str(mp)})
+            rc, out = play("--room", ROOM0[0], "--at", ROOM0[1], "--play", "_*130", "--shot", path, env={"HKMP": str(mp)})
             with open(path, "rb") as f:
                 _, size, _, px = f.read().split(b"\n", 3)
             w = int(size.split()[0])
@@ -116,9 +145,11 @@ def main():
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "save_v2.sav"), "rb") as f, \
                 open(os.path.join(saves, "hk1.sav"), "wb") as g:
             g.write(f.read())
-        rc, out = play("--room", "Crossroads_47", "--play", "*20", env={"HKSAVES": saves, "HKLOAD": "0", "HKPD": "1"})
+        rc, out = play("--room", ROOM0[0], "--play", "*20", env={"HKSAVES": saves, "HKLOAD": "0", "HKPD": "1"})
     rooms = next((l for l in out.splitlines() if l.startswith("rooms:")), "")
-    results.append(report("a version 2 save", rc, out if rooms == "rooms: 19 20m 127m" else out + "\nFAIL " + rooms, ("FAIL",)))
+    # (the second part: in at its first room too, where it meets the first)
+    want = "rooms: 19 20m 127m" if PART == 1 else "rooms: 19 20m 38 127m"
+    results.append(report("a version 2 save", rc, out if rooms == want else out + "\nFAIL " + rooms, ("FAIL",)))
     with ThreadPoolExecutor(JOBS) as pool:
         walks = list(pool.map(lambda w: play("--gates", "wander:all:%d:%d" % w, env={"HKFAST": "1"} if w[0] % 2 else None), WALKS))
     for (seed, ticks), (rc, out) in zip(WALKS, walks):

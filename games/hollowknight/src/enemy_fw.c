@@ -1,4 +1,4 @@
-/* The enemies past Greenpath (HK_XL: the bigger game), each kind's FSM as the game has it. Part of enemy.c: its
+/* The enemies of the second app, Hollow Knight: Fungal Wastes (HK_FW), each kind's FSM as the game has it. Part of enemy.c: its
  * helpers are theirs. */
 
 /* a range of an enemy's by its name (ET_RANGE: a child's trigger), or NULL */

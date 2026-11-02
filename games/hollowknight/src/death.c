@@ -153,12 +153,14 @@ void death_tick(void) {
   }
   if (dd.fading && dd.game_t >= DEATH_WAIT + 0.8f) {
     death_reset();
-    if (!game_respawn()) {
-      /* (a save names its rooms: never; then King's Pass) */
+    bool home = false;
+    if (!game_respawn() && !(home = game_enter_home())) {
+      /* (his bench in another part of Hallownest: where this part's world meets it; else King's Pass) */
       strcpy(g_pd.respawn_scene, "Tutorial_01");
       g_pd.respawn_type = 0;
       game_respawn();
     }
+    if (home) hero_charm_update(), g_pd.mp = 0;   /* (as a respawn: health back, soul gone) */
   }
 }
 
