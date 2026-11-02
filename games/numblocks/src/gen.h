@@ -10,7 +10,7 @@
 void gen_init(int64_t seed);
 #define GEN_CACHE_BYTES (25 * 528)   /* the summary cache: on main's stack on the calculator (gen_set_cache) */
 #if NB_DIMS
-#define GEN_STRUCT_BYTES 112 /* NumBlocks.nwa: after it, what the villages' and temples' regions hold */
+#define GEN_STRUCT_BYTES 432 /* NumBlocks.nwa: after it, what the villages' and temples' regions hold */
 #else
 #define GEN_STRUCT_BYTES 0
 #endif

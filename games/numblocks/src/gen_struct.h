@@ -52,6 +52,16 @@ typedef struct {
 #define NSC 8
 static SCache *scache;
 static uint8_t sc_next;
+/* and which cells of GenLayerRiverMix's 1:4 grid are plains, desert or savanna, in tiles of 16 x 16 cells, the
+ * last 8 (a village's layout looks at the same cells again and again) */
+typedef struct {
+    int16_t tx, tz;
+    uint8_t ok, pad[3];
+    uint32_t bits[8];
+} VTile;
+#define NVT 8
+static VTile *vtile;
+static uint8_t vt_next;
 
 /* the pieces gen_slab builds (the four populations'), on its stack (STRUCT_MEM) */
 typedef struct {
@@ -65,35 +75,31 @@ typedef struct {
 } TS;
 #define NTS 4
 _Static_assert(NTP * sizeof(TP) + NTS * sizeof(TS) <= STRUCT_MEM, "gen.c's STRUCT_MEM holds the pieces");
-_Static_assert(NSC * sizeof(SCache) <= GEN_STRUCT_BYTES, "gen.h's GEN_STRUCT_BYTES holds the struct cache");
+_Static_assert(NSC * sizeof(SCache) + NVT * sizeof(VTile) <= GEN_STRUCT_BYTES, "gen.h's GEN_STRUCT_BYTES holds them");
 static TP *tp;
 static TS *ts;
 static int ntp, nts;
 #ifdef HOST
-static SCache sc_mem[NSC];
+static uint32_t sc_mem[GEN_STRUCT_BYTES / 4];
 #endif
 static void struct_cache(void *mem) {
 #ifdef HOST
     if (!mem) mem = sc_mem;
 #endif
-    if (mem) scache = mem;
-    if (scache) memset(scache, 0, NSC * sizeof *scache);
+    if (mem) scache = mem, vtile = (VTile *)(void *)((uint8_t *)mem + NSC * sizeof(SCache));
+    if (scache) memset(scache, 0, NSC * sizeof(SCache) + NVT * sizeof(VTile));
 }
 
 /* ======================================================================== */
 /* the biomes there                                                         */
 /* ======================================================================== */
+static int v_cell(int cx, int cz);
 /* WorldChunkManager.areBiomesViable(x, z, r, plains, desert, savanna): every cell of GenLayerRiverMix's 1:4
- * grid from (x - r) >> 2 to (x + r) >> 2. Run in U past `used` bytes (the layout before it). */
-static int v_biomes(int x, int z, int r, size_t used) {
-    int x0 = (x - r) >> 2, z0 = (z - r) >> 2, w = ((x + r) >> 2) - x0 + 1, h = ((z + r) >> 2) - z0 + 1;
-    i32 *out = (i32 *)(void *)((uint8_t *)&U + ((used + 3) & ~(size_t)3));
-    lay_mem = out + w * h;
-    lay_cap = (int)((sizeof U - (size_t)((uint8_t *)lay_mem - (uint8_t *)&U)) / sizeof(i32));
-    lay_top = 0;
-    layers_rivermix(x0, z0, w, h, out);
-    for (int i = 0; i < w * h; i++)
-        if (out[i] != BI_PLAINS && out[i] != BI_DESERT && out[i] != BI_SAVANNA) return 0;
+ * grid from (x - r) >> 2 to (x + r) >> 2 */
+static int v_biomes(int x, int z, int r) {
+    for (int cz = (z - r) >> 2; cz <= (z + r) >> 2; cz++)
+        for (int cx = (x - r) >> 2; cx <= (x + r) >> 2; cx++)
+            if (!v_cell(cx, cz)) return 0;
     return 1;
 }
 
@@ -142,7 +148,33 @@ static int v_add(const int16_t *b, int type, int face, int depth) {
 static int v_viable(int i) {
     const FPiece *p = &VL->p[i];
     int k = p->x1 - p->x0, l = p->z1 - p->z0, m = k > l ? k : l;
-    return v_biomes((p->x0 + p->x1) / 2, (p->z0 + p->z1) / 2, m / 2 + 4, sizeof(Vill));
+    return v_biomes((p->x0 + p->x1) / 2, (p->z0 + p->z1) / 2, m / 2 + 4);
+}
+
+/* cell (cx, cz) of the 1:4 grid is plains, desert or savanna: its tile's, made in U past the layout */
+static int v_cell(int cx, int cz) {
+    int tx = cx >> 4, tz = cz >> 4, i = 0;
+    while (i < NVT && !(vtile[i].ok && vtile[i].tx == tx && vtile[i].tz == tz)) i++;
+    VTile *t = i < NVT ? &vtile[i] : &vtile[vt_next++ % NVT];
+    if (i == NVT) {
+        i32 *out = (i32 *)(void *)((uint8_t *)&U + ((sizeof(Vill) + 3) & ~(size_t)3));
+        lay_mem = out + 256;
+        lay_cap = (int)((sizeof U - (size_t)((uint8_t *)lay_mem - (uint8_t *)&U)) / sizeof(i32));
+        lay_top = lay_peak = 0;
+        layers_rivermix(tx * 16, tz * 16, 16, 16, out);
+#ifdef HOST
+        if (lay_peak > lay_cap) {
+            extern int printf(const char *, ...);
+            printf("gen_struct.h: the layers needed %d ints of %d\n", lay_peak, lay_cap);
+        }
+#endif
+        memset(t->bits, 0, sizeof t->bits);
+        for (int k = 0; k < 256; k++)
+            if (out[k] == BI_PLAINS || out[k] == BI_DESERT || out[k] == BI_SAVANNA) t->bits[k >> 5] |= 1u << (k & 31);
+        t->tx = (int16_t)tx, t->tz = (int16_t)tz, t->ok = 1;
+    }
+    int k = (cz & 15) * 16 + (cx & 15);
+    return t->bits[k >> 5] >> (k & 31) & 1;
 }
 
 /* func_176065_a: a house of weight t there, if it fits, with what it draws when made */
@@ -380,7 +412,7 @@ static void villages_near(int cx, int cz, const int *a) {
             if (!c) {
                 c = sc_new(rx, rz, 1);
                 /* MapGenVillage.canSpawnStructureAtCoords: the start chunk's middle */
-                if (!v_biomes(sx * 16 + 8, sz * 16 + 8, 0, 0)) continue;
+                if (!v_biomes(sx * 16 + 8, sz * 16 + 8, 0)) continue;
             }
             int desert = gen_biome(sx * 16 + 2, sz * 16 + 2);   /* (Start: the biome at the well) */
             desert = desert == BI_DESERT || desert == BI_DESERT_HILLS;
@@ -689,7 +721,7 @@ int gen_village_find(int rx, int rz, int *out) {
     int sx, sz;
     grid_start(rx, rz, 10387312, &sx, &sz);
     out[0] = sx, out[1] = sz, out[2] = 0;
-    if (g_flat || gd_dim || !v_biomes(sx * 16 + 8, sz * 16 + 8, 0, 0)) return 0;
+    if (g_flat || gd_dim || !v_biomes(sx * 16 + 8, sz * 16 + 8, 0)) return 0;
     out[2] = v_layout(sx, sz);
     for (int k = 0; k < 6; k++) out[3 + k] = VL->bb[k];
     out[9] = VL->n;
