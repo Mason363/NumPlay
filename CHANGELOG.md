@@ -2,6 +2,13 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.4: Deltarune, Rider's own physics and NumBlocks' villages
+
+- **Deltarune:** Deltarune.nwa, Chapter 1 from Kris's room, the drive to school and the Dark World to Castle Town, Lancer and the Field's first rooms, with the game's own pictures, texts and battles.
+- **Rider:** the game's own physics engine, LiquidFun 1.1.0 (Box2D 2.3.0), set up as the game sets it up. The bike fits through level 1's loop and holds to level 2's tipping bowls.
+- **NumBlocks:** villages with villagers, desert temples with their trap, mineshafts and working dungeon spawners, laid out as Minecraft 1.8.8 does. Your worlds keep their look where you've been.
+- **Quit dialogs** ask only the question, in 16 games.
+
 ## 1.24.3: Kingdom Rush
 
 - **Kingdom Rush:** KingdomRush.nwa, the 2011 tower defense with its 12 stages, Heroic and Iron challenges, every tower, upgrade and boss, from the game's own files.

@@ -332,6 +332,7 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] Cat Ninja
 - [x] A tower defense game: Kingdom Rush
 - [x] Deltarune: Chapter 1's start, from Kris's room to Castle Town, Lancer and the Field's first rooms
+- [x] Villages, desert temples and mineshafts in NumBlocks
 - [ ] Full Minecraft 1.18.2 as a standalone app
 - [ ] Among Us, against bots
 - [ ] Into the Breach
