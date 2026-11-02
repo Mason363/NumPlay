@@ -22,7 +22,7 @@
 static uint8_t bg_mem[288 * 240];
 
 enum { M_SELECT, M_RING, M_AIM, M_PAUSE, M_NOTE, M_RESULT, M_QUIT };
-enum { AIM_FIRE, AIM_REINF, AIM_RALLY };
+enum { AIM_FIRE, AIM_REINF, AIM_RALLY, AIM_SUNRAY };
 enum { SEL_SPOT, SEL_FLAG, SEL_ENEMY };
 
 static struct {
@@ -31,6 +31,7 @@ static struct {
   float cx, cy;             /* the cursor (the game's coordinates) */
   RingItem ring[6];
   int16_t aim_spot;
+  int16_t ray;              /* the Sunray's target */
   int16_t msg_t;
   char msg[48];
   uint8_t note;
@@ -155,7 +156,27 @@ static void ring_do(void) {
   RingItem *it = &P.ring[P.ring_sel];
   int s = P.sel;
   if (it->locked) {
-    say("Not yet: it comes in a later stage");
+    switch (B.spot[s].kind) {
+    case TW_CAVE: say("Frozen solid ages ago..."); break;
+    case TW_ELF: say("Four elves at most"); break;
+    case TW_SASQ: say("The Sasquatch is out"); break;
+    case TW_TEMPLE: say(it->action == RA_SITE_RAY ? (site_mages(s) ? "Charging" : "Call a sorcerer first") : "Four sorcerers at most"); break;
+    default: say("Not yet: it comes in a later stage");
+    }
+    return;
+  }
+  if (it->action == RA_SITE_RAY) {   /* TowerTempleCrosshair: an enemy to aim at */
+    int best = -1;
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+      Enemy *e = &B.en[i];
+      if (!e->alive || !e->active || e->dead) continue;
+      if (best < 0 || path_len(e->path, e->lane) - e->node < path_len(B.en[best].path, B.en[best].lane) - B.en[best].node) best = i;
+    }
+    if (best < 0) {
+      say("No enemy to aim at");
+      return;
+    }
+    P.mode = M_AIM, P.aim = AIM_SUNRAY, P.aim_spot = (int16_t)s, P.ray = (int16_t)best;
     return;
   }
   if (it->action == RA_RALLY) {
@@ -181,7 +202,12 @@ static void ring_do(void) {
   else if (it->action == RA_UPGRADE) spot_upgrade(s, 0);
   else if (it->action == RA_SPECIAL1) spot_upgrade(s, 1);
   else if (it->action == RA_SPECIAL2) spot_upgrade(s, 2);
-  else if (it->action >= RA_ABILITY0) spot_buy_ability(s, it->action - RA_ABILITY0);
+  else if (it->action == RA_SITE_BUY) {   /* (the menu stays: more elves, more sorcerers) */
+    site_buy(s);
+    P.nring = (uint8_t)ring_items(s, P.ring);
+    if (P.ring_sel >= P.nring) P.ring_sel = 0;
+    return;
+  } else if (it->action >= RA_ABILITY0) spot_buy_ability(s, it->action - RA_ABILITY0);
   /* abilities keep the menu open, as the game's (closeOnExcec false) */
   if (it->action >= RA_ABILITY0) {
     P.nring = (uint8_t)ring_items(s, P.ring);
@@ -235,6 +261,23 @@ static void start_aim(int which) {
   P.cx = p.x, P.cy = p.y;
 }
 
+/* the Sunray's aim: the enemy nearest that way (from -1: any) */
+static int ray_next(int from, int dx, int dy) {
+  Enemy *f = EN(from);
+  float best = 1e9f;
+  int bi = from;
+  for (int i = 0; i < MAX_ENEMIES; i++) {
+    Enemy *e = &B.en[i];
+    if (!e->alive || !e->active || e->dead || i == from) continue;
+    if (!f) return i;
+    float vx = e->x - f->x, vy = e->y - f->y;
+    float along = vx * dx + vy * dy, across = fabsf(vx * dy - vy * dx);
+    if (along <= 0) continue;
+    if (along + 2 * across < best) best = along + 2 * across, bi = i;
+  }
+  return bi;
+}
+
 static int dir_key(int *dx, int *dy) {
   *dx = *dy = 0;
   if (play_key(K_LEFT)) *dx = -1;
@@ -281,6 +324,14 @@ void play_step(void) {
       if (dir_key(&dx, &dy)) ring_hop(dx, dy);
       if (ok) ring_do();
       if (B.spot[P.sel].kind == 0xFF || B.spot[P.sel].disabled) P.mode = M_SELECT;
+    } else if (P.mode == M_AIM && P.aim == AIM_SUNRAY) {
+      if (!EN(P.ray) || !B.en[P.ray].active) P.ray = (int16_t)ray_next(-1, 0, 0);
+      if (P.ray < 0) P.mode = M_SELECT;
+      else if (dir_key(&dx, &dy)) P.ray = (int16_t)ray_next(P.ray, dx, dy);
+      else if (ok) {
+        site_ray(P.aim_spot, P.ray);
+        P.mode = M_SELECT;
+      }
     } else if (P.mode == M_AIM) {
       if (dir_key(&dx, &dy)) aim_move(dx, dy);
       if (ok) {
@@ -447,6 +498,7 @@ static void draw_fx(Fx *f) {
 }
 
 static void draw_range(Pt c, int w, uint16_t col) {
+  if (w <= 0) return;
   gfx_ellipse(SX(c.x), SY(c.y), (int)lroundf(w * 0.2f), (int)lroundf(w * RANGE_RATIO * 0.2f), col, 24);
 }
 
@@ -508,7 +560,16 @@ static void draw_selection(void) {
     }
   } else if (P.mode == M_RING)
     draw_ring(P.ring, P.nring, P.ring_sel, SX(B.spot[P.sel].x), SY(B.spot[P.sel].y - 25), B.cash);
-  else if (P.mode == M_AIM) {
+  else if (P.mode == M_AIM && P.aim == AIM_SUNRAY) {   /* the crosshair on the enemy */
+    Enemy *e = EN(P.ray);
+    if (e) {
+      int x = SX(e->x), y = SY(e->y + enemy_stats[e->type].y_adj);
+      uint16_t c = RGB(0xFFC83A);
+      gfx_ellipse(x, y, 7, 7, c, 32);
+      gfx_fill(x - 10, y, 6, 1, c), gfx_fill(x + 5, y, 6, 1, c);
+      gfx_fill(x, y - 10, 1, 6, c), gfx_fill(x, y + 5, 1, 6, c);
+    }
+  } else if (P.mode == M_AIM) {
     int x = SX(P.cx), y = SY(P.cy);
     Pt at = {P.cx, P.cy};
     bool good = P.aim == AIM_FIRE || (P.aim == AIM_REINF ? power_reinforce_ok(at) : spot_rally_ok(P.aim_spot, at));
@@ -520,8 +581,10 @@ static void draw_selection(void) {
     }
     if (P.aim == AIM_RALLY) {
       Spot *t = &B.spot[P.aim_spot];
+      Pt c = {t->x, t->y - 10};
       int r = t->kind == TW_SORCERER ? S_mages_sorcerer_elementalRallyRange : barrack_stat(TW_BARRACKS, 1).rally;
-      draw_range((Pt){t->x, t->y - 10}, r, RGB(0xFFFFFF));
+      if (site_kind(t->kind)) r = site_rally_range(P.aim_spot, &c);
+      draw_range(c, r, RGB(0xFFFFFF));
     }
     uint16_t c = good ? RGB(0xFFE14D) : RGB(0xFF3030);
     gfx_fill(x - 6, y, 13, 1, c);
@@ -541,7 +604,10 @@ static void draw_keys(void) {
   const char *k;
   switch (P.mode) {
   case M_RING: k = P.ring[P.ring_sel].name; break;
-  case M_AIM: k = P.aim == AIM_RALLY ? "Arrows move  OK set rally point  Back cancel" : "Arrows aim  OK cast  Back cancel"; break;
+  case M_AIM:
+    k = P.aim == AIM_RALLY ? "Arrows move  OK set rally point  Back cancel"
+        : P.aim == AIM_SUNRAY ? "Arrows pick an enemy  OK fire  Back cancel" : "Arrows aim  OK cast  Back cancel";
+    break;
   default:
     if (P.sel_kind == SEL_FLAG) k = "OK call the wave now (gold for it)";
     else if (P.sel_kind == SEL_SPOT && B.spot[P.sel].ice == 2) k = "OK break the ice (3 hits)";

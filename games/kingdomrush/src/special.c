@@ -797,7 +797,7 @@ void special_bullet(Bullet *b) {
     return;
   }
   default:
-    b->alive = 0;
+    if (!site_bullet(b)) b->alive = 0;
   }
 }
 
@@ -840,6 +840,9 @@ void special_draw_bullet(const Bullet *b, int x, int y) {
     break;
   case BU_NET:
     gfx_ellipse(x, y, 3, 2, RGB(0xD8C8A0), 32);
+    break;
+  case BU_SUNRAY:
+    site_draw_bullet(b);
     break;
   }
 }

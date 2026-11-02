@@ -150,6 +150,12 @@ static void general(void) {
   for (int s = 0; s < B.nspots; s++) {
     Spot *t = &B.spot[s];
     if (t->kind == 0xFF || t->building || t->disabled) continue;
+    if (site_kind(t->kind)) {   /* the stages' buildings: repair, hire, fire the Sunray */
+      int c = site_buy_cost(s);
+      if (c > 0 && c <= B.cash - 60) site_buy(s);
+      if (site_ray_ready(s) && best >= 0) site_ray(s, best);
+      continue;
+    }
     if (t->kind == TW_NONE) {
       int k = mix[(s + bot_style) % 4];
       int c = spot_cost(s, (int[]){0, 1, 2, 3, 4}[k == TW_ARCHER ? 1 : k == TW_BARRACKS ? 2 : k == TW_MAGE ? 3 : 4]);
@@ -233,6 +239,93 @@ static void test_fuzz(int sessions) {
   CHECK(1, "fuzz");
 }
 
+/* ------------------------------------------------------------------ the stages' buildings */
+static int find_kind(int kind) {
+  for (int s = 0; s < B.nspots; s++)
+    if (B.spot[s].kind == kind) return s;
+  return -1;
+}
+static int near_enemy(int s, int type) {   /* an enemy on the road nearest the spot */
+  Spot *t = &B.spot[s];
+  int bp = 0, bn = 20;
+  float best = 1e9f;
+  for (int p = 0; p < B.npaths; p++)
+    for (int k = 12; k < path_len(p, 0) - 12; k++) {
+      Pt q = path_node(p, 0, k);
+      float d = (q.x - t->x) * (q.x - t->x) + (q.y - t->y) * (q.y - t->y);
+      if (d < best) best = d, bp = p, bn = k;
+    }
+  int i = enemy_spawn(type, bp, 0, bn);
+  if (i >= 0) B.en[i].active = 1;
+  return i;
+}
+
+static void test_sites(void) {
+  /* Silveroak Forest: the ruin, repaired for 100, four elves at 100 who come out and shoot */
+  battle_start(4, MODE_CAMPAIGN);
+  int s = find_kind(TW_ELFRUIN);
+  CHECK(s >= 0 && site_buy_cost(s) == 100, "the elves' ruin, its repair 100");
+  B.cash = 1000;
+  site_buy(s);
+  CHECK(B.spot[s].kind == TW_ELF && B.cash == 900, "repaired");
+  for (int k = 0; k < 5; k++) site_buy(s);
+  CHECK(site_soldiers(s) == 4 && B.cash == 500 && site_buy_cost(s) == -2, "four elves at most (%d)", site_soldiers(s));
+  for (int t = 0; t < 150; t++) battle_step();
+  int out = 0;
+  for (int i = 0; i < MAX_SOLDIERS; i++) out += B.so[i].alive && B.so[i].kind == SK_ELF && B.so[i].active;
+  CHECK(out == 4, "the elves out (%d)", out);
+  near_enemy(s, EN_OGRE);
+  int arrows = 0;
+  for (int t = 0; t < 120 && !arrows; t++) {
+    battle_step();
+    for (int i = 0; i < MAX_BULLETS; i++) arrows += B.bu[i].alive && B.bu[i].kind == BU_ARROW && B.bu[i].level == 5;
+  }
+  CHECK(arrows, "elves' arrows");
+  CHECK(spot_cost(s, 0) == -1, "no tower menu for the hall");
+  battle_start(4, MODE_IRON);
+  int ruins = 0;
+  for (int k = 0; k < B.nspots; k++) ruins += B.spot[k].kind == TW_ELFRUIN;
+  CHECK(ruins == 2, "iron: two ruins (%d)", ruins);
+
+  /* Icewind Pass: the cave frozen until fire falls on its ice, then the Sasquatch for 500 */
+  battle_start(7, MODE_CAMPAIGN);
+  s = find_kind(TW_CAVE);
+  CHECK(s >= 0 && site_buy_cost(s) == -2, "the frozen cave");
+  power_unlock_fire();
+  B.fire_open_t = 0, B.fire_cd = 0;
+  power_fire((Pt){201, 201});
+  for (int t = 0; t < 150; t++) battle_step();
+  CHECK(B.spot[s].kind == TW_SASQ && B.spot[s].x == 202, "the rain of fire breaks the ice");
+  B.cash = 600;
+  site_buy(s);
+  CHECK(site_soldiers(s) == 1 && B.cash == 100 && site_buy_cost(s) == -2, "the Sasquatch, one");
+  Soldier *sq = 0;
+  for (int i = 0; i < MAX_SOLDIERS; i++)
+    if (B.so[i].alive && B.so[i].kind == SK_SASQ) sq = &B.so[i];
+  for (int t = 0; t < 300 && sq && !(sq->active && !sq->walking); t++) battle_step();
+  CHECK(sq && sq->active && sq->init_health == 2500, "out of its cave, 2500 health");
+  /* (reinforcements could break it too, but the road runs 100 pixels from the ice, beyond their reach) */
+
+  /* Stormcloud Temple: a sorcerer readies the Sunray, its ray hurts, then it charges for 570 frames */
+  battle_start(8, MODE_CAMPAIGN);
+  for (int t = 0; t < 40; t++) battle_step();
+  s = find_kind(TW_TEMPLE);
+  CHECK(s >= 0 && !site_ray_ready(s) && site_buy_cost(s) == 100, "the Sunray Tower, no sorcerer");
+  B.cash = 1000;
+  site_buy(s);
+  CHECK(site_ray_ready(s) && B.spot[s].reload == 570, "one sorcerer: ready, reload %d", B.spot[s].reload);
+  int e = near_enemy(s, EN_DARKKNIGHT);
+  int hp = B.en[e].health;
+  site_ray(s, e);
+  for (int t = 0; t < 20; t++) battle_step();
+  CHECK(B.en[e].health < hp || B.en[e].dead, "the ray hurts (%d of %d)", B.en[e].health, hp);
+  CHECK(!site_ray_ready(s) && B.spot[s].sp_flag == 1, "then it charges");
+  for (int t = 0; t < 600; t++) battle_step();
+  CHECK(site_ray_ready(s), "ready again");
+  for (int k = 0; k < 4; k++) site_buy(s);
+  CHECK(site_mages(s) == 4 && B.spot[s].reload == 300 && site_buy_cost(s) == -2, "four sorcerers: reload %d", B.spot[s].reload);
+}
+
 /* ------------------------------------------------------------------ the save */
 static void test_save(void) {
   game_init();
@@ -284,6 +377,39 @@ int main(int argc, char **argv) {
         printf("  #%d %s node %d/%d active %d dead %d held %d blocked %d fighting %d sp %d tele %d thorn %d resp %d froze %d hp %d speed %.2f slow %d net %d (%.0f,%.0f)\n",
                i, enemy_name(e->type), e->node, path_len(e->path, e->lane), e->active, e->dead, e->held, e->blocked, e->fighting,
                e->sp_state, e->teleporting, e->thorned, e->respawn_t, e->froze, (int)e->health, e->speed, e->slow_t, e->net_t, e->x, e->y);
+    }
+    return 0;
+  }
+  if (argc > 2 && !strcmp(argv[1], "sites")) {   /* the stages' buildings at work */
+    char p[512];
+    static const int lv[3] = {4, 7, 8};
+    for (int k = 0; k < 3; k++) {
+      play_start(lv[k], MODE_CAMPAIGN);
+      memset(g.p.seen_note, 0xFF, sizeof g.p.seen_note);
+      for (int t = 0; t < 40; t++) step(0);
+      int s = find_kind(k == 0 ? TW_ELFRUIN : k == 1 ? TW_CAVE : TW_TEMPLE);
+      game_draw();
+      snprintf(p, sizeof p, "%s/site%d_a.ppm", argv[2], k);
+      host_shot(p);
+      B.cash = 3000;
+      if (k == 1) {
+        power_unlock_fire();
+        B.fire_open_t = 0, B.fire_cd = 0;
+        power_fire((Pt){201, 201});
+        for (int t = 0; t < 100; t++) step(0);
+      }
+      for (int n = 0; n < 5; n++) site_buy(s);
+      for (int t = 0; t < (k == 1 ? 330 : 120); t++) step(0);
+      int e = near_enemy(s, EN_DARKKNIGHT);
+      near_enemy(s, EN_TROLL);
+      if (k == 2) {
+        site_ray(s, e);
+        for (int t = 0; t < 4; t++) step(0);
+      } else
+        for (int t = 0; t < 40; t++) step(0);
+      game_draw();
+      snprintf(p, sizeof p, "%s/site%d_b.ppm", argv[2], k);
+      host_shot(p);
     }
     return 0;
   }
@@ -357,6 +483,7 @@ int main(int argc, char **argv) {
   }
   test_numbers();
   test_level1();
+  test_sites();
   test_save();
   test_fuzz(argc > 1 && !strcmp(argv[1], "quick") ? 20 : 150);
   if (!(argc > 1 && !strcmp(argv[1], "quick"))) test_all();

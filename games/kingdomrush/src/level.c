@@ -98,7 +98,7 @@ void battle_start(int level, int mode) {
     s->rally = (Pt){(float)rds16(p + 6), (float)rds16(p + 8)};
     s->target = -1, s->elemental = -1;
     for (int k = 0; k < 3; k++) s->soldiers[k] = -1;
-    if (p[0] == 0xFF) s->kind = 0xFF;   /* (a level's special building: not here) */
+    if (p[0] == 0xFF) site_init(i < MAX_SPOTS ? i : MAX_SPOTS - 1, p[1]);   /* (a stage's building) */
     else if (p[0] >= 1 && p[0] <= 4 && npre < MAX_SPOTS) premade[npre][0] = i, premade[npre][1] = p[0] << 4 | p[1], npre++;
   }
   B.lives = B.init_lives = (int16_t)rd16(p);

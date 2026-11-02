@@ -45,7 +45,10 @@ enum { ARM_P, ARM_M, ARM_E, ARM_I };   /* physical, magic, explosive, true damag
 /* ------------------------------------------------------------------ towers */
 enum {
   TW_NONE, TW_ARCHER, TW_BARRACKS, TW_MAGE, TW_ENGINEER,
-  TW_RANGER, TW_MUSKETEER, TW_PALADIN, TW_BARBARIAN, TW_ARCANE, TW_SORCERER, TW_BFG, TW_TESLA
+  TW_RANGER, TW_MUSKETEER, TW_PALADIN, TW_BARBARIAN, TW_ARCANE, TW_SORCERER, TW_BFG, TW_TESLA,
+  /* the stages' buildings (site.c): the elves' ruined hall and the hall, the Sasquatch's frozen cave and the cave,
+   * the Sunray Tower */
+  TW_ELFRUIN, TW_ELF, TW_CAVE, TW_SASQ, TW_TEMPLE
 };
 typedef struct {
   int16_t cost, range, min_dmg, max_dmg, reload, area;
@@ -149,7 +152,7 @@ typedef struct Spot {
 enum {
   BU_ARROW, BU_BOLT, BU_BOMB, BU_FIREBALL, BU_ARROW_ENEMY, BU_AXE, BU_AXE_ENEMY, BU_MISSILE, BU_MISSILE_ENEMY,
   BU_RAY_ARCANE, BU_RAY_DEATH, BU_RAY_POLY, BU_RAY_TESLA, BU_BOLT_SORCERER, BU_BOLT_NECRO, BU_SPEAR, BU_SHOT,
-  BU_FIELD, BU_NET
+  BU_FIELD, BU_NET, BU_SUNRAY
 };
 typedef struct Bullet {
   uint8_t alive, kind, level, active, crit, first;
@@ -295,8 +298,28 @@ void soldier_free(Soldier *so);
 static inline Soldier *SO(int i) { return i >= 0 && i < MAX_SOLDIERS && B.so[i].alive ? &B.so[i] : 0; }
 enum {
   SK_L1, SK_L2, SK_L3, SK_PALADIN, SK_BARBARIAN, SK_FARMER, SK_REINF2, SK_REINF3, SK_REINF4, SK_ELEMENTAL,
-  SK_IMPERIAL
+  SK_IMPERIAL, SK_ELF, SK_SASQ
 };
+
+/* site.c: the stages' buildings */
+static inline bool site_kind(int k) { return k >= TW_ELFRUIN && k <= TW_TEMPLE; }
+void site_init(int s, int site);           /* 1 the elves' ruin, 2 the frozen cave, 3 the Sunray Tower */
+void site_step(int s);
+int site_buy_cost(int s);                  /* repair, an elf, the Sasquatch, a sorcerer; -1 none, -2 not now */
+void site_buy(int s);
+bool site_ray_ready(int s);
+void site_ray(int s, int enemy);           /* the Sunray at an enemy */
+int site_mages(int s);
+int site_soldiers(int s);
+void site_rally(int s, Pt p);
+int site_rally_range(int s, Pt *centre);
+void site_ice_hit(float x, float y, float w, float h);   /* fire on the cave's ice */
+void site_reinforcement(const Soldier *so);              /* a reinforcement with nothing to fight */
+bool site_soldier(Soldier *so);            /* the elves' arrows, the Sasquatch's way out */
+bool site_soldier_hit(Soldier *so);        /* the Sasquatch's blow: all around */
+void site_respawn(Soldier *so);
+bool site_bullet(Bullet *b);
+void site_draw_bullet(const Bullet *b);
 
 /* bullet.c */
 Bullet *bullet_new(int kind);

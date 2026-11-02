@@ -212,6 +212,7 @@ void bullet_step(Bullet *b) {
             ellipse_contains(b->tx, b->ty, (float)r, r * RANGE_RATIO, e->x + enemy_stats[e->type].x_adj, e->y + enemy_stats[e->type].y_adj))
           enemy_damage(e, b->min_dmg, ARM_I, 0);
       }
+      site_ice_hit(b->tx, b->ty, (float)r, r * RANGE_RATIO);   /* (damageStaticEnemies: the Sasquatch's ice) */
       fx_add(AN_B_BOMBDECAL, b->tx, b->ty, false, true);
       if (b->pierce) special_scorched_earth(b->tx, b->ty);
       b->active = 0, b->fade = 30, b->anim_t = 0;

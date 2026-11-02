@@ -266,6 +266,19 @@ static const char *const tw[][2] = {
   {"POWER_REINFORCEMENTS_DESCRIPTION", "Summon reinforcements to block and fight enemies."},
   {"POWER_LIGHTNING_NAME", "Lightning Bolt"},
   {"POWER_LIGHTNING_DESCRIPTION", "Casts a bolt of lightning at one enemy."},
+  {"SPECIAL_ELF_REPAIR_NAME", "Repair"},
+  {"SPECIAL_ELF_REPAIR_DESCRIPTION", "This elven building was once a training hall of Sylvan elf warriors"},
+  {"SPECIAL_ELF_NAME", "Sylvan Elf"},
+  {"SPECIAL_ELF_NAME_DESCRIPTION", "Sylvan elves are masters of bow and blade. They will join your cause... for a price."},
+  {"SPECIAL_SASQUASH_REPAIR_NAME", "Mysterious Cave"},
+  {"SPECIAL_SASQUASH_REPAIR_DESCRIPTION", "This cave has been frozen solid ages ago..."},
+  {"SPECIAL_SASQUASH_NAME", "sasquatch"},
+  {"SPECIAL_SASQUASH_DESCRIPTION", "The legendary Sasquatch will help you for an offering in food, gold and sometimes women."},
+  {"SPECIAL_SUNRAY_NAME", "Sunray Tower"},
+  {"SPECIAL_SUNRAY_MAGE_NAME", "Sunray Sorcerer"},
+  {"SPECIAL_SUNRAY_MAGE_DESCRIPTION", "Harness the power of the sun. Call a sorcerer to charge the sunray tower."},
+  {"SPECIAL_SUNRAY_CROSSHAIR_NAME", "Fire the Sunray"},
+  {"SPECIAL_SUNRAY_CROSSHAIR_DESCRIPTION", "Fire the sunray at target enemy. Press SPACE to Cancel."},
 };
 const char *tower_text(const char *key) {
   for (unsigned i = 0; i < sizeof tw / sizeof tw[0]; i++) {
