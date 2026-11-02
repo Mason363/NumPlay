@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Makes src/hud.c and src/hud.h: Temple Run's own interface pictures and its golden lettering, for the run's
-screen (the totem with its coin meter and emblems, the vines, the score and coin plates, the idol, the bonus
-pictures, the distance board and the messages), from the game's Android package (1.0.8, by Imangi Studios).
+"""Makes src/hud.c and src/hud.h: Temple Run's own interface pictures and its golden and white lettering, for the
+run's screen (the totem with its coin meter and emblems, the vines, the score and coin plates, the idol, the bonus
+pictures, the distance board and the messages), its menus and its alert box, from the game's Android package (1.0.8,
+by Imangi Studios).
 
     python3 -I tools/hud.py DATA [SRC]     (DATA: the package's assets/bin/Data, unzipped; UnityPy, NumPy, Pillow)
 
@@ -64,6 +65,13 @@ MENU = [
 ]
 # lettering: (name, characters, scale)
 FONTS = [("gold", "".join(chr(c) for c in range(32, 127)), 0.30), ("gold_small", " 0123456789,mx", 0.22)]
+# the game's alert box (its AlertView: the plate and its buttons), cut after the palette is made from the others (so
+# theirs stay as they were) and matched to it
+ALERT = [("ALERT_BG", "egUI_Buttons2x", "imangiAlertViewBg@2x.png", 0.45),
+         ("ALERT_BUTTON", "egUI_Buttons2x", "imangiAlertViewButton@2x.png", 0.45)]
+# the game's lettering in white, which its labels colour (Cheboygan, the same as the gold one): only how much each
+# pixel shows, hud_white_px
+WHITE = ("".join(chr(c) for c in range(32, 127)), 0.26)
 
 
 def scripts_of(env):
@@ -117,8 +125,9 @@ def atlas_sprites(env, scripts, texture):
     raise SystemExit(f"no atlas for {texture}")
 
 
-def gold_font(env, scripts):
-    """Cheboygan in gold: its place in FontAtlas2x and {char: (x, y, w, h, ox, oy, advance)} (the UIFont there)"""
+def gold_font(env, scripts, gold=True):
+    """Cheboygan in gold (or white): its place in FontAtlas2x and {char: (x, y, w, h, ox, oy, advance)} (the UIFont
+    there)"""
     for o in env.objects:
         if o.type.name != "MonoBehaviour":
             continue
@@ -129,7 +138,7 @@ def gold_font(env, scripts):
         off += 8
         uv = struct.unpack_from("<4f", raw, off)
         off += 16
-        if uv[0] < 0.25:   # (the white ones start at the left; the gold one half way across)
+        if (uv[0] < 0.25) == gold:   # (the white ones start at the left; the gold one half way across)
             continue
         n = struct.unpack_from("<I", raw, off)[0]
         off += 4
@@ -230,6 +239,27 @@ def main():
             line = max(line, round((oy + h) * s))
         fonts.append((fname, first, last - first + 1, start, line))
     cent, w = palette([it[1] for it in items])
+    for name, t, sprite, sc in ALERT:
+        if t not in atl:
+            atl[t], tex[t] = atlas_sprites(env, scripts, t), texture(env, t)
+        x, y, w_, h_ = atl[t][sprite]
+        items.append((f"HP_{name}", smaller(tex[t].crop((x, y, x + w_, y + h_)), sc), 0, 0, 0))
+    worigin, wglyphs = gold_font(env, scripts, gold=False)
+    wchars, ws = WHITE
+    wfirst, wlast = ord(min(wchars)), ord(max(wchars))
+    white_px, white_rows, wline = bytearray(), [], 0
+    for c in range(wfirst, wlast + 1):
+        g = wglyphs.get(chr(c))
+        if not g or not g[2] or not g[3]:
+            white_rows.append((1, 1, 0, 0, round((g[6] if g else 20) * ws), len(white_px)))
+            white_px += b"\0"
+            continue
+        gx, gy, gw, gh, ox, oy, adv = g
+        img = fa.crop((worigin[0] + gx, worigin[1] + gy, worigin[0] + gx + gw, worigin[1] + gy + gh))
+        a = smaller(img, ws)[:, :, 3]
+        white_rows.append((a.shape[1], a.shape[0], round(ox * ws), round(oy * ws), round(adv * ws), len(white_px)))
+        white_px += bytes(np.clip(a * 255 + 0.5, 0, 255).astype(np.uint8).reshape(-1))
+        wline = max(wline, round((oy + gh) * ws))
     data_px, rows = bytearray(), []
     for name, p, ox, oy, adv in items:
         flat = p.reshape(-1, 4)
@@ -246,9 +276,12 @@ def main():
          "typedef struct {", "  uint8_t w, h;", "  int8_t ox, oy;", "  uint8_t advance;", "  uint32_t off : 24;", "} HudPic;", "",
          "typedef struct {", "  uint8_t first, count, line;   /* its letters, and the height of a line */", "  uint16_t at;   /* hud_pics[at ..] */",
          "} HudFont;", "", "enum {"]
-    h += [f"  {r[0]}," for r in rows if r[0]] + ["};", "",
+    h += [f"  {r[0]}," if i == k else f"  {r[0]} = {i}," for k, (i, r) in enumerate((i, r) for i, r in enumerate(rows) if r[0])] + ["};", "",
           "extern const HudPic hud_pics[];", "extern const uint16_t hud_pal[256];", "extern const uint8_t hud_alpha[256], hud_px[];",
-          "extern const HudFont " + ", ".join(f"hud_{f[0]}" for f in fonts) + ";", "#endif", ""]
+          "extern const HudFont " + ", ".join(f"hud_{f[0]}" for f in fonts) + ";", "",
+          "/* the white lettering: each letter's picture is how much its pixels show, hud_white_px[off ..] */",
+          "extern const HudPic hud_white_pics[];", "extern const uint8_t hud_white_px[];",
+          "extern const HudFont hud_white;", "#endif", ""]
     c = ["/* Made by tools/hud.py: Temple Run's own interface pictures and golden Cheboygan lettering (Imangi Studios). */",
          '#include "hud.h"', "",
          "const uint16_t hud_pal[256] = {0," + ",".join(str(v) for v in pal) + "};",
@@ -262,6 +295,14 @@ def main():
     c.append("};")
     for fname, first, count, start, line in fonts:
         c.append(f"const HudFont hud_{fname} = {{{first}, {count}, {line}, {start}}};")
+    c.append(f"const uint8_t hud_white_px[{len(white_px)}] = {{")
+    for i in range(0, len(white_px), 40):
+        c.append(",".join(str(b) for b in white_px[i:i + 40]) + ",")
+    c += ["};", "const HudPic hud_white_pics[] = {"]
+    for w_, h_, ox, oy, adv, off in white_rows:
+        c.append(f"  {{{w_}, {h_}, {ox}, {oy}, {adv}, {off}}},")
+    c.append("};")
+    c.append(f"const HudFont hud_white = {{{wfirst}, {wlast - wfirst + 1}, {wline}, 0}};")
     c.append("")
     open(os.path.join(src, "hud.h"), "w").write("\n".join(h))
     open(os.path.join(src, "hud.c"), "w").write("\n".join(c))

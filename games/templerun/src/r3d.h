@@ -44,7 +44,7 @@ static inline V3 r_view(V3 p) {
 }
 /* a mesh's corner moved once for all its triangles: camera space, and where it lies on the screen from its middle
  * (when it is in front of the near plane, R_NEAR) */
-#define R_NEAR 0.35f
+#define R_NEAR 0.95f   /* (the game's camera: 5 units) */
 typedef struct {
   float x, y, z, sx, sy;
 } SV;
@@ -120,13 +120,16 @@ __attribute__((always_inline)) static inline uint16_t r_mix565(uint16_t a, uint1
   return (uint16_t)(x | x >> 16);
 }
 
-/* draws the frame: bg fills each band's colours (sky, ground), the polygons go over it, then
- * overlay draws flat things over the band (both may be NULL) */
+/* the ground far below, seen where no polygon lies nearer: for row y, where the row meets it (z metres ahead, 0: it
+ * does not, the sky) and its picture's texel there at the row's first pixel and the step a pixel (16.16) */
+typedef struct {
+  float z;
+  int32_t u, v, du, dv;
+} RGround;
+typedef void (*r_ground_fn)(int y, RGround *g);
+/* draws the frame, band by band: the polygons, then the ground (tex, as ground finds it) and the sky where none lies
+ * nearer, all fogged by depth, the see-through polygons over that, and overlay draws flat things over the band (ground
+ * and overlay may be NULL) */
 typedef void (*r_band_fn)(void);
-void r_render(r_band_fn bg, r_band_fn overlay);
-/* for bg: a surface it draws hides what is behind it. Row y of the band, pixels [x0, x1), lies at depth d:
- * r_floor_depth(z) for a floor seen at z metres ahead of the camera (a hair farther, so that what lies on it,
- * a shadow, is still drawn) */
-uint16_t r_floor_depth(float z);
-void r_band_depth(int y, int x0, int x1, uint16_t d);
+void r_render(const Texture *tex, r_ground_fn ground, r_band_fn overlay);
 #endif

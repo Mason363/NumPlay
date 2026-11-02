@@ -3,7 +3,8 @@
 #   make check      link it like the calculator does (output/templerun.bin)
 #   make host       build/play: the game on a computer, for tests and screenshots
 #   make test       the game played on a computer (tests/check.py, with the sanitizers)
-#   make bench      how fast it draws a run at an N0110's speed (tools/bench.py, on NumPlay's emulator tools/emu.py)
+#   make bench      how fast it draws a run at an N0110's speed (tools/bench.py, on NumPlay's emulator tools/emu.py;
+#                   MODEL=n0120 for an N0120's memory)
 #   make data DATA=DIR   src/data.c and src/data.h again: the game's own models, from its Android package (DIR: its
 #                   assets/bin/Data; tools/apk.py: UnityPy, NumPy, Pillow; the package is only read)
 #   make models     src/data.c and src/data.h as the port's stand-ins instead (tools/models.py: Python)
@@ -20,6 +21,7 @@ NWLINK ?= npx --yes -- nwlink@1.0.0
 STRIP ?= $(BIN)arm-none-eabi-strip --strip-unneeded
 SIZE = $(BIN)arm-none-eabi-size
 BUILD_DIR = output
+MODEL ?= n0110
 
 # the drawing runs every frame at -O2; the rest is small at -Os (each file says so)
 SRC = $(filter-out src/plat_host.c,$(wildcard src/*.c))
@@ -69,7 +71,7 @@ test: build/play
 
 bench:
 	$(Q) $(MAKE) --no-print-directory build BUILD_DIR=build/bench EXTRA=-DTR_BENCH NWLINK="$(NWLINK)" TOOLCHAIN="$(TOOLCHAIN)"
-	python3 tools/bench.py build/bench/templerun.nwa
+	python3 tools/bench.py build/bench/templerun.nwa --model $(MODEL)
 
 models:
 	python3 tools/models.py src

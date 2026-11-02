@@ -442,12 +442,12 @@ void path_start(void) {
   grow(i, DEPTH, root_origin);
 }
 
-void path_advance(int to) {
+void path_advance(int to, bool prune) {
   int r = path_root, d = -1;
   for (int k = 0; k < 4; k++)
     if (tiles[r].next[k] == to) d = k;
   if (d < 0) return;
-  for (int k = 0; k < 4; k++)
+  for (int k = 0; k < 4 && prune; k++)
     if (k != d && tiles[r].next[k] >= 0) {
       destroy(tiles[r].next[k], OPP(k));
       tiles[r].next[k] = -1;
