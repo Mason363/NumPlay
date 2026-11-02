@@ -754,6 +754,24 @@ Temple Run comes as its own app, `TempleRun.nwa`. Run from the temple and don't 
 | **Back** | Pause (Resume, How to play, Quit night) |
 
 Five Nights at Freddy's 2 comes as its own app, `FiveNightsAtFreddys2.nwa`. Last from 12 to 6 AM. Your office has no doors: a hallway in front and a vent on each side. Keep the music box on CAM 11 wound or the Puppet comes, and nothing stops it. When someone stands in the hallway or a vent, put the mask on; if one is in the office when the monitor comes down, the mask at once. The mask doesn't fool Withered Foxy: flash the hallway at him. Balloon Boy takes your lights, and the flashlight's battery doesn't come back. Night 5 opens the 6th, and the 6th the Custom Night, with its ten modes.
+## Five Nights at Freddy's 3
+
+<img src="../games/fnaf3/docs/shot.png" width="320" align="right" alt="Five Nights at Freddy's 3: Springtrap at the office's window">
+
+| Key | What it does |
+| --- | --- |
+| **Left / Right** (or 4 / 6) | Look left and right |
+| **OK**, **EXE** or **Up** | The monitor up |
+| **Down** | The maintenance panel up |
+| **Arrows**, **0** to **9** | On the monitor: a camera |
+| **OK** | On the monitor: play the audio (the vent map: seal the vent) |
+| **Backspace** | On the monitor: the camera map or the vent map |
+| **EXE** | The monitor down, the panel's Exit |
+| **Back** | Pause (Resume, Quit game) |
+
+Five Nights at Freddy's 3 comes as its own app, `FiveNightsAtFreddys3.nwa`. Last from 12 to 6 AM at Fazbear's Fright. Springtrap comes room by room: play the audio on a camera next to his and he follows it, and seal the vent he crawls into. Reboot the audio, the cameras and the ventilation on the maintenance panel when they fail; with the ventilation down the dark comes in waves and he comes closer. Look away from a phantom on a camera before it jumps out. Night 5 opens the 6th.
+
+<br clear="right">
 ## Famidash
 
 <img src="../games/famidash/docs/shot.png" width="320" align="right" alt="Famidash">

@@ -1386,6 +1386,28 @@
     "xl": true
   },
   {
+    "id": "fnaf3",
+    "rank": 35,
+    "title": "Five Nights at Freddy's 3",
+    "tagline": "Survive Fazbear's Fright",
+    "credit": "Based on the game by Scott Cawthon",
+    "top": "0x2E3A22",
+    "bottom": "0x080C06",
+    "accent": "0x8FBF4A",
+    "colors": 16,
+    "records": [
+      "fnaf3.sav",
+      "fnaf3res.sav",
+      "fnaf3_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/fnaf3",
+    "default": false,
+    "xl": true
+  },
+  {
     "id": "famidash",
     "rank": 34,
     "title": "Famidash",

@@ -304,6 +304,8 @@ GAMES = {
     # paused: Back, and the night goes on
     "fnaf2": ("FiveNightsAtFreddys2.nwa", "fnaf2res.sav", presses((1500, "down"), (1800, "ok")), 9000,
               presses((1500, "back")), 5000),
+    # New Game: the first night's card, then the office; Home keeps the night, the next start is back in it, paused
+    "fnaf3": ("FiveNightsAtFreddys3.nwa", "fnaf3res.sav", presses((1500, "ok")), 9000, presses((1500, "back")), 5000),
     # how to play (the first time: two pages), Play, Stereo Madness, OK held to jump, Back to pause; Home keeps the
     # guide read and the time played. Next time, from the copy, Play straight away, quit with On/Off
     "famidash": ("Famidash.nwa", "famidash.sav",
@@ -380,7 +382,7 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
           "badtime": "badtime_saves.py", "mahjong": "mahjong_saves.py",
           "rider": "rider_saves.py", "snowrider": "snowrider_saves.py", "templerun": "templerun_saves.py",
-          "fnaf2": "fnaf2_saves.py", "famidash": "famidash_saves.py"}
+          "fnaf2": "fnaf2_saves.py", "fnaf3": "fnaf3_saves.py", "famidash": "famidash_saves.py"}
 
 
 def paperclips_ok(v):
@@ -638,6 +640,9 @@ CHECKS = {
     # the night kept ("FNF2", its seconds at 96); after the reinstall, from the copy, it goes on
     "fnaf2": (lambda v: v[:4] == b"FNF2" and struct.unpack_from("<f", v, 96)[0] > 2,
               lambda v: v[:4] == b"FNF2" and struct.unpack_from("<f", v, 96)[0] > 6.5),
+    # the night kept ("FNF3", its steps at 148); after the reinstall, from the copy, it goes on
+    "fnaf3": (lambda v: v[:4] == b"FNF3" and struct.unpack_from("<I", v, 148)[0] > 120,
+              lambda v: v[:4] == b"FNF3" and struct.unpack_from("<I", v, 148)[0] > 300),
     # "FMD1", version 1: how to play read (flags at 5), time played (564); after the reinstall, from the copy, more
     "famidash": (lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 7000,
                  lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 12000),
