@@ -2,6 +2,10 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.8: NumPico, your own PICO-8 carts
+
+- **NumPico:** drop your .p8 and .p8.png carts on NumPlay Studio and they play in your NumPlay, with PICO-8's pause menu and cart saves.
+
 ## 1.24.7: Temple Run fixed, Kingdom Rush's stage buildings
 
 - **Temple Run:** the game's own intro, with the path whole and the runner close at the start. No more flicker or scenery popping in, the camera stays out of the trees, and the runner and monkeys move at the game's own pace. The quit question is in the game's own alert box. 5% faster on average.
