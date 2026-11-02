@@ -302,6 +302,15 @@ for v, d, bx in [(1, 'E', (0, 6, 5, 2, 10, 11)), (2, 'W', (14, 6, 5, 16, 10, 11)
 # the Nether's lava runs a level a block (BlockDynamicLiquid), so it has the odd levels too
 for lv in (1, 3, 5, 7):
     bd(f'FLOWING_LAVA_{lv}', 10, lv, model='liquid', tex='lava_flow', light=15, hard=100)
+# what villages and desert temples are built of past NumPlay's blocks (StructureVillagePieces,
+# ComponentScatteredFeaturePieces): pressure plates (a box on the floor) and sandstone stairs
+bd('WOODEN_PRESSURE_PLATE', 72, model='button', tex='planks_oak', hard=0.5, box=[(1, 0, 1, 15, 1, 15)])
+bd('STONE_PRESSURE_PLATE', 70, model='button', tex='stone', hard=0.5, tool='pickaxe', box=[(1, 0, 1, 15, 1, 15)])
+for v, d in [(0, 'E'), (1, 'W'), (2, 'S'), (3, 'N')]:
+    bd(f'SANDSTONE_STAIRS_{d}', 128, v, model='stairs', tex=tsb('sandstone_top', 'sandstone_normal', 'sandstone_bottom'),
+       hard=0.8, tool='pickaxe')
+# mineshafts' rails running east to west
+bd('RAIL_X', 66, 1, model='flat', tex='@rail_x', hard=0.7, tool='pickaxe')
 
 MODELS_DIMS = MODELS + ['portal', 'frame', 'endportal', 'egg', 'button']
 # every state of NumBlocks.nwa, by number: S, unused numbers (never a block), then D

@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>29 free games for your NumWorks calculator, in one app.</b><br>
-  Plus 36 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.
+  Plus 41 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.
 </p>
 
 <p align="center">
@@ -134,30 +134,39 @@ These are too big to fit next to NumPlay, so each one is its own app. Install it
   <tr>
     <td align="center"><a href="games/uno/README.md"><img src="docs/media/thumb_uno.png" width="200" alt="UNO"><br><b>UNO</b></a><br><sub>The card game against one to three bots, to 500 points</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/UNO.nwa">Download</a></td>
     <td align="center"><a href="games/fnf/README.md"><img src="docs/media/thumb_fnf.png" width="200" alt="Friday Night Funkin'"><br><b>Friday Night Funkin'</b></a><br><sub>Every week and its songs, on the beat, without the sound</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FridayNightFunkin.nwa">Download</a></td>
-    <td align="center"><a href="games/turborush/README.md"><img src="docs/media/thumb_turborush.png" width="200" alt="Turbo Rush"><br><b>Turbo Rush</b></a><br><sub>An arcade racer: six circuits, seven rivals and a Grand Prix</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/TurboRush.nwa">Download</a></td>
+    <td align="center"><a href="games/angrybirds/README.md"><img src="docs/media/thumb_angrybirds.png" width="200" alt="Angry Birds"><br><b>Angry Birds</b></a><br><sub>The Chrome edition: 429 levels, seven birds and the Mighty Eagle</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/AngryBirds.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center"><a href="games/angrybirds/README.md"><img src="docs/media/thumb_angrybirds.png" width="200" alt="Angry Birds"><br><b>Angry Birds</b></a><br><sub>The Chrome edition: 429 levels, seven birds and the Mighty Eagle</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/AngryBirds.nwa">Download</a></td>
     <td align="center"><a href="games/polytrack/README.md"><img src="docs/media/thumb_polytrack.png" width="200" alt="PolyTrack"><br><b>PolyTrack</b></a><br><sub>Time trials on all 17 tracks, loops and wall rides included</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/PolyTrack.nwa">Download</a></td>
     <td align="center"><a href="games/paperclips/README.md"><img src="docs/media/thumb_paperclips.png" width="200" alt="Universal Paperclips"><br><b>Universal Paperclips</b></a><br><sub>An AI making paperclips, from the first clip to the whole universe</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/UniversalPaperclips.nwa">Download</a></td>
+    <td align="center"><a href="games/badtime/README.md"><img src="docs/media/thumb_badtime.png" width="200" alt="Bad Time Simulator"><br><b>Bad Time Simulator</b></a><br><sub>The Sans fight: all 24 attacks, KR and the blue heart</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/BadTimeSimulator.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center"><a href="games/badtime/README.md"><img src="docs/media/thumb_badtime.png" width="200" alt="Bad Time Simulator"><br><b>Bad Time Simulator</b></a><br><sub>The Sans fight: all 24 attacks, KR and the blue heart</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/BadTimeSimulator.nwa">Download</a></td>
     <td align="center"><a href="games/mahjong/README.md"><img src="docs/media/thumb_mahjong.png" width="200" alt="Mahjong"><br><b>Mahjong</b></a><br><sub>Mahjong solitaire: 144 tiles, four layouts, every deal winnable</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Mahjong.nwa">Download</a></td>
     <td align="center"><a href="games/rider/README.md"><img src="docs/media/thumb_rider.png" width="200" alt="Rider"><br><b>Rider</b></a><br><sub>The neon bike game: 48 levels, the endless run and 55 bikes</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Rider.nwa">Download</a></td>
+    <td align="center"><a href="games/snowrider/README.md"><img src="docs/media/thumb_snowrider.png" width="200" alt="Snow Rider 3D"><br><b>Snow Rider 3D</b></a><br><sub>The endless sled run: its slope, 11 sleds and gifts to buy them</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/SnowRider3D.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center"><a href="games/snowrider/README.md"><img src="docs/media/thumb_snowrider.png" width="200" alt="Snow Rider 3D"><br><b>Snow Rider 3D</b></a><br><sub>The endless sled run: its slope, 11 sleds and gifts to buy them</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/SnowRider3D.nwa">Download</a></td>
     <td align="center"><a href="games/templerun/README.md"><img src="docs/media/thumb_templerun.png" width="200" alt="Temple Run"><br><b>Temple Run</b></a><br><sub>Run from the temple: turn, jump, slide and lean</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/TempleRun.nwa">Download</a></td>
     <td align="center"><a href="games/fnaf2/README.md"><img src="docs/media/thumb_fnaf2.png" width="200" alt="Five Nights at Freddy's 2"><br><b>Five Nights at Freddy's 2</b></a><br><sub>The new pizzeria: six nights, the mask, the music box and the Custom Night</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys2.nwa">Download</a></td>
-  </tr>
-  <tr>
     <td align="center"><a href="games/famidash/README.md"><img src="docs/media/thumb_famidash.png" width="200" alt="Famidash"><br><b>Famidash</b></a><br><sub>Geometry Dash for the NES: 173 levels, every mode, practice mode</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Famidash.nwa">Download</a></td>
-    <td align="center"><a href="games/fnaf3/README.md"><img src="docs/media/thumb_fnaf3.png" width="200" alt="Five Nights at Freddy's 3"><br><b>Five Nights at Freddy's 3</b></a><br><sub>Fazbear's Fright: Springtrap, the phantoms, the lure and the vents</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys3.nwa">Download</a></td>
-    <td align="center"><a href="games/fnaf4/README.md"><img src="docs/media/thumb_fnaf4.png" width="200" alt="Five Nights at Freddy's 4"><br><b>Five Nights at Freddy's 4</b></a><br><sub>The bedroom: listen at the doors, the closet, the bed, Fun with Plushtrap</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys4.nwa">Download</a></td>
   </tr>
   <tr>
+    <td align="center"><a href="games/fnaf3/README.md"><img src="docs/media/thumb_fnaf3.png" width="200" alt="Five Nights at Freddy's 3"><br><b>Five Nights at Freddy's 3</b></a><br><sub>Fazbear's Fright: Springtrap, the phantoms, the vents and the 8-bit minigames</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys3.nwa">Download</a></td>
+    <td align="center"><a href="games/fnaf4/README.md"><img src="docs/media/thumb_fnaf4.png" width="200" alt="Five Nights at Freddy's 4"><br><b>Five Nights at Freddy's 4</b></a><br><sub>The bedroom: listen at the doors, the closet, the bed, Fun with Plushtrap</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys4.nwa">Download</a></td>
+    <td align="center"><a href="games/clashroyale/README.md"><img src="docs/media/thumb_clashroyale.png" width="200" alt="Clash Royale"><br><b>Clash Royale</b></a><br><sub>Battles against a bot: 41 cards, seven arenas, trophies</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/ClashRoyale.nwa">Download</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="games/catninja/README.md"><img src="docs/media/thumb_catninja.png" width="200" alt="Cat Ninja"><br><b>Cat Ninja</b></a><br><sub>The Flash platformer: 30 levels of wall jumps, traps and crystals</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/CatNinja.nwa">Download</a></td>
+    <td align="center"><a href="games/kingdomrush/README.md"><img src="docs/media/thumb_kingdomrush.png" width="200" alt="Kingdom Rush"><br><b>Kingdom Rush</b></a><br><sub>The 2011 tower defense: 12 stages, Heroic and Iron challenges, every tower and boss</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/KingdomRush.nwa">Download</a></td>
+    <td align="center"><a href="games/deltarune/README.md"><img src="docs/media/thumb_deltarune.png" width="200" alt="Deltarune"><br><b>Deltarune</b></a><br><sub>Chapter 1, from Kris's room into the Dark World and its first battles</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Deltarune.nwa">Download</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="games/fnafworld/README.md"><img src="docs/media/thumb_fnafworld.png" width="200" alt="FNAF World"><br><b>FNAF World</b></a><br><sub>The adventure: walk the world, battle with a party of eight (6 MB apps)</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddysWorld.nwa">Download</a></td>
+    <td align="center"><a href="games/mrbullet/README.md"><img src="docs/media/thumb_mrbullet.png" width="200" alt="Mr Bullet"><br><b>Mr Bullet</b></a><br><sub>596 spy puzzles: bounce the bullets, get the spies</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/MrBullet.nwa">Download</a></td>
     <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-64"><b>Super Mario 64</b></a><br><sub>In a repository of its own: NumWorks-Super-Mario-64</sub></td>
+  </tr>
+  <tr>
     <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-Bros"><b>Super Mario Bros.</b></a><br><sub>All 32 stages, in a repository of its own: NumWorks-Super-Mario-Bros</sub></td>
     <td align="center"><a href="#roadmap"><b>More on the way</b></a><br><sub>Minecraft 1.18.2 and more: see the roadmap</sub></td>
   </tr>
@@ -323,10 +332,15 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] ColecoVision games in Retro-Go
 - [x] Five Nights at Freddy's 3
 - [x] Five Nights at Freddy's 4
+- [x] Clash Royale, against bots
+- [x] Cat Ninja
+- [x] A tower defense game: Kingdom Rush
+- [x] Deltarune: Chapter 1's start, from Kris's room to Castle Town, Lancer and the Field's first rooms
+- [x] Villages, desert temples and mineshafts in NumBlocks
+- [x] FNAF World
+- [x] Mr. Bullet
 - [ ] Full Minecraft 1.18.2 as a standalone app
 - [ ] Among Us, against bots
-- [ ] Cat Ninja
-- [ ] A tower defense game: Kingdom Rush or Bloons TD
 - [ ] Into the Breach
 - [ ] A racing game: F1 or GT3
 - [ ] Ori and the Blind Forest
@@ -334,23 +348,20 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Hades
 - [ ] Super Smash Bros
 - [ ] Rocket League
-- [ ] Deltarune: Chapter 1, and each later chapter as an app of its own
+- [ ] Deltarune: the rest of Chapter 1 (Ralsei's lessons, the Field's puzzles, shops, the Great Board, the Forest, the Card Castle, Jevil, the King), and each later chapter as an app of its own
 - [ ] Hollow Knight: more of Hallownest after Greenpath
 - [ ] Hill Climb Racing: the stages and vehicles added after version 1.10.2
 - [ ] Tower Destiny Survive
 - [ ] My Little Universe
-- [ ] Mr. Bullet
 - [ ] Hungry Shark Evolution and Hungry Shark World
 - [ ] Castle Crashers
 - [ ] Hotline Miami
 - [ ] More of Retro-Go: Game & Watch, SNES and Mega Drive
-- [ ] FNAF World
 - [ ] Brawl Stars, against bots
 - [ ] Papers, Please, with the story and Endless
 - [ ] Mario Kart
 - [ ] OMORI
 - [ ] The Legend of Zelda: Ocarina of Time
-- [ ] Clash Royale, against bots
 - [ ] florr.io
 - [ ] Rider Worlds
 - [ ] Hollow Knight: Godhome, its boss fights in an app of their own
@@ -396,13 +407,12 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 - **Tomb of the Mask** by Playgendary inspired NumPlay's Tomb of the Mask, which follows the rules of the game's web version and uses its stages, pictures and pixel font. **Bobydeluxe** brought it to NumPlay. Not affiliated with Playgendary.
 - **UNO** by Mattel inspired NumPlay's UNO, which plays by the official rules with cards drawn for the calculator. **Bobydeluxe** brought it to NumPlay. Not affiliated with Mattel.
 - **Friday Night Funkin'** by the Funkin' Crew (ninjamuffin99, PhantomArcade, evilsk8r, Kawai Sprite) inspired NumPlay's Friday Night Funkin', which follows the game's open source code (Apache-2.0) and builds its charts and pictures from the game's own files when it's built. **Bobydeluxe** brought it to NumPlay. Not affiliated with the Funkin' Crew.
-- **[Turbo Rush](https://jeux.w-production.fr/#/jeu/turborush)** by W Production inspired NumPlay's Turbo Rush, an arcade racer of its own written in C for NumPlay, with circuits, cars and landscapes made for it. **Bobydeluxe** brought it to NumPlay. Not affiliated with W Production.
 - **Angry Birds** by Rovio Entertainment inspired NumPlay's Angry Birds, which plays the Chrome edition's 429 levels with its own pictures, read from its web build, and follows its rules and numbers. Its physics is **Box2D 2.2.1** by Erin Catto (zlib license, [license](games/angrybirds/src/box2d/License.txt)), the engine the game runs on. **Bobydeluxe** brought it to NumPlay. Not affiliated with Rovio.
 - **[PolyTrack](https://www.kodub.com/apps/polytrack)** by Kodub inspired NumPlay's PolyTrack, which drives the game's 17 tracks with its own physics numbers, models, colours and logo, read from its web build. Its 3D engine grew out of **Boris-TH**'s PolyGT 3D. Not affiliated with Kodub.
 - **[Universal Paperclips](https://www.decisionproblem.com/paperclips/)** by Frank Lantz (Everybody House Games), with combat programming by Bennett Foddy, inspired NumPlay's Universal Paperclips, which plays the whole game with its rules, numbers, projects and messages, read from its web build. Not affiliated with them.
 - **[Bad Time Simulator](https://github.com/jcw87/c2-sans-fight)** by jcw87, Undertale's Sans fight remade, inspired NumPlay's Bad Time Simulator, which plays its 24 attack scripts with its sprites (Undertale's, by Toby Fox), words and numbers, read from its project, and the **Pixel Operator** font. Not affiliated with jcw87 or Toby Fox.
 - **Mahjong solitaire**, first made by Brodie Lockard (Mah-Jongg, 1981) and made famous by Activision's **Shanghai** (1986), inspired NumPlay's Mahjong, written in C for NumPlay with its tiles drawn from scratch. Its layouts are [KMahjongg](https://apps.kde.org/kmahjongg/)'s, by the KDE Games team, and the characters on its tiles come from the **Fusion Pixel** font by TakWolf (SIL Open Font License, [license](LICENSES/OFL-1.1-Fusion-Pixel.txt)). Not affiliated with them.
-- **Rider** by Ketchapp inspired NumPlay's Rider, which rides the game's own levels, track pieces and collision shapes with its physics numbers, bikes, challenges and colours, read from the game's files, with the bikes drawn again as outlines. Not affiliated with Ketchapp.
+- **Rider** by Ketchapp inspired NumPlay's Rider, which rides the game's own levels, track pieces and collision shapes with its physics numbers, bikes, challenges and colours, read from the game's files, with the bikes drawn again as outlines. Its physics is **LiquidFun 1.1.0** (Box2D 2.3.0) by Erin Catto and Google (zlib license, [license](LICENSES/Zlib-LiquidFun.txt)), the engine the game runs on. Not affiliated with Ketchapp.
 - **Snow Rider 3D** inspired NumPlay's Snow Rider 3D, which makes its slope, sleds, gifts and camera the way the game does, with its models, colours, numbers and logo read from its Unity project ([q8j-dev/snow-rider-3d](https://github.com/q8j-dev/snow-rider-3d)). **[dennisimoo](https://github.com/dennisimoo)** brought it to NumPlay. Not affiliated with its makers.
 - **Temple Run** by Imangi Studios inspired NumPlay's Temple Run, which follows the game's rules and numbers (its path, piece for piece, and its pacing, speeds, coins, power-ups, upgrades and objectives) and uses its own models (Guy Dangerous, the demon monkeys, the path, the coins and the scenery), its pictures and light maps, its camera, fog and interface art, and its Cheboygan lettering, all read from its Android package (version 1.0.8), and the **Lilita One** font (SIL Open Font License, [license](LICENSES/OFL-1.1-LilitaOne.txt)). Not affiliated with Imangi Studios.
 - **[Famidash](https://github.com/tfdsoft/famidash)** by TFDSoft, Geometry Dash made for the NES, inspired NumPlay's Famidash, which turns the game's own code into C and plays the 173 levels of its HUGE version with its graphics, menu screens, icons and numbers (MIT License, [license](LICENSES/MIT-Famidash.txt)). Famidash is made by Zephyrside (UserSniper), kandowontu, Ficus mcHousePlant, dajinkosa, ElAngel378, SeaGlowingPro, KawaiiDawn and the rest of its team. Its levels are named after songs by ForeverBound, DJVI, Step, Waterflame, Dj-Nate and OcularNebula, which are not in the app. Not affiliated with TFDSoft or RobTop Games.
@@ -410,6 +420,12 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 - **Five Nights at Freddy's 2** by Scott Cawthon inspired NumPlay's Five Nights at Freddy's 2, which uses the game's own pictures, from its Clickteam HTML5 build as the fan port [fnaf-2_html5](https://github.com/VocalNutria9174/fnaf-2_html5) (VocalNutria9174) keeps it, two of them from fredtheking's [FNaF2-RaylibCs](https://github.com/fredtheking/FNaF2-RaylibCs), and the DejaVu fonts ([license](LICENSES/DejaVu.txt)). Its AI levels, paths, music box, flashlight and Withered Foxy follow what the game's players read out of its events, written down on the [Technical FNaF Wiki](https://technicalfnaf.fandom.com) and the [Five Nights at Freddy's Wiki](https://freddy-fazbears-pizza.fandom.com). Not affiliated with Scott Cawthon.
 - **Five Nights at Freddy's 3** by Scott Cawthon inspired NumPlay's Five Nights at Freddy's 3, which uses the game's own pictures and runs its nights as the game's own events do, both read from its Android package. Not affiliated with Scott Cawthon.
 - **Five Nights at Freddy's 4** by Scott Cawthon inspired NumPlay's Five Nights at Freddy's 4, which uses the game's own pictures and runs its nights as the game's own events do, both read from its iOS package. Not affiliated with Scott Cawthon.
+- **Clash Royale** by Supercell inspired NumPlay's Clash Royale, which plays the 2016 game's cards, towers and rules with their own numbers and uses its arenas, troops, buildings, card art and fonts (Supercell-Magic, CCBackBeat), read from its Android package. Its bot is NumPlay's own. Not affiliated with Supercell.
+- **[Cat Ninja](https://jayisgames.com/review/cat-ninja.php)** by Richman Stewart, published by TrackMill, inspired NumPlay's Cat Ninja, which turns the game's own ActionScript into C and plays its 30 levels with its own pictures and its two fonts, read from CatNinja.swf as BlueMaxima's Flashpoint keeps it. Not affiliated with Richman Stewart or TrackMill.
+- **[Kingdom Rush](https://armorgames.com/play/12141/kingdom-rush)** by Ironhide Game Studio, published by Armor Games in 2011, inspired NumPlay's Kingdom Rush, which reads its rules, numbers, stages, waves and pictures out of the game's Flash file. Its numbers use the Lilita One font (SIL Open Font License). Not affiliated with Ironhide Game Studio or Armor Games.
+- **Deltarune** by Toby Fox inspired NumPlay's Deltarune, which uses the pictures, fonts, rooms and texts of Chapter 1's own files. Not affiliated with Toby Fox.
+- **FNAF World** by Scott Cawthon inspired NumPlay's FNAF World, which uses the game's own pictures and map and runs its battles as the game's own events do, all read from its Windows release. Not affiliated with Scott Cawthon.
+- **Mr Bullet - Spy Puzzles** by Lion Studios and 1Button inspired NumPlay's Mr Bullet, which plays the game's Classic, Grenades, Hostages and Friendly Fire levels with its own pictures, read from its Android release, and follows its rules and numbers. Its physics is **Box2D 2.3.1** by Erin Catto (zlib license, [license](LICENSES/Zlib-Box2D.txt)), the engine the game runs on. Not affiliated with Lion Studios.
 
 - **Pong** by Atari (1972) inspired NumPlay's 2 Players, with air hockey, tanks in a maze in the spirit of Tank Trouble and the light cycles of Tron. All four are written in C for NumPlay and drawn from shapes, with no code or art from them.
 - **[Cookie Clicker](https://orteil.dashnet.org/cookieclicker/)** by Orteil and Opti (DashNet) inspired NumPlay's Cookie Clicker, which uses the game's own pictures, texts and numbers (version 2.058, from its public mirror [ozh/cookieclicker](https://github.com/ozh/cookieclicker)) and the **Merriweather**, **Kavoon** and **Noto Sans** fonts (SIL Open Font License: [Merriweather](LICENSES/OFL-1.1-Merriweather.txt), [Kavoon](LICENSES/OFL-1.1-Kavoon.txt), [Noto Sans](LICENSES/OFL-1.1-NotoSans.txt)). Not affiliated with Orteil or DashNet.
@@ -438,7 +454,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 
 NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyright (c) 2026 Mason Chen. Code and fonts from others keep their own licenses: the `UNLICENSE` files in the games' folders and the [LICENSES](LICENSES) folder. The names, artwork and music of the games NumPlay is inspired by belong to their makers and are not covered by it.
 
-<sub>Unofficial fan games, not affiliated with NumWorks, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale), jcw87 (Bad Time Simulator), Imangi Studios (Temple Run), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's, Five Nights at Freddy's 2, Five Nights at Freddy's 3, Five Nights at Freddy's 4), SEGA (Sonic the Hedgehog, Master System, Game Gear, SG-1000), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), W Production (Turbo Rush), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), the makers of Snow Rider 3D, Ketchapp (Rider), TFDSoft (Famidash), Brodie Lockard or Activision (Shanghai), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Oakever Games (Meowdoku), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go), Coleco (ColecoVision). Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System, Game Gear and SG-1000 of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
+<sub>Unofficial fan games, not affiliated with NumWorks, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale, Deltarune), jcw87 (Bad Time Simulator), Imangi Studios (Temple Run), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's, Five Nights at Freddy's 2, Five Nights at Freddy's 3, Five Nights at Freddy's 4, FNAF World), SEGA (Sonic the Hedgehog, Master System, Game Gear, SG-1000), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), the makers of Snow Rider 3D, Ketchapp (Rider), TFDSoft (Famidash), Brodie Lockard or Activision (Shanghai), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Oakever Games (Meowdoku), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go), Coleco (ColecoVision), Supercell (Clash Royale), Richman Stewart or TrackMill (Cat Ninja), Ironhide Game Studio or Armor Games (Kingdom Rush), Lion Studios (Mr Bullet). Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System, Game Gear and SG-1000 of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, Clash Royale of Supercell, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
 
 ## Gallery
 
@@ -531,26 +547,35 @@ NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyri
   <tr>
     <td align="center"><img src="docs/media/gallery/uno.gif" alt="UNO: a hand against three bots, a Draw Two and a colour called"><br><a href="games/uno/README.md"><b>UNO</b></a></td>
     <td align="center"><img src="docs/media/gallery/fnf.gif" alt="Friday Night Funkin': Ready, Set, Go, then the first notes of a song"><br><a href="games/fnf/README.md"><b>Friday Night Funkin'</b></a></td>
-    <td align="center"><img src="docs/media/gallery/turborush.gif" alt="Turbo Rush: racing along Sunset Coast, passing rivals before a bend"><br><a href="games/turborush/README.md"><b>Turbo Rush</b></a></td>
+    <td align="center"><img src="docs/media/gallery/angrybirds.gif" alt="Angry Birds: the first level, aimed, fired and knocked down with one bird"><br><a href="games/angrybirds/README.md"><b>Angry Birds</b></a></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/media/gallery/angrybirds.gif" alt="Angry Birds: the first level, aimed, fired and knocked down with one bird"><br><a href="games/angrybirds/README.md"><b>Angry Birds</b></a></td>
     <td align="center"><img src="docs/media/gallery/polytrack.gif" alt="PolyTrack: Desert 4, through the tube and on to the finish"><br><a href="games/polytrack/README.md"><b>PolyTrack</b></a></td>
     <td align="center"><img src="docs/media/gallery/paperclips.gif" alt="Universal Paperclips: the first clips, a strategy tournament, the HypnoDrones, a battle against the drifters and the last clips"><br><a href="games/paperclips/README.md"><b>Universal Paperclips</b></a></td>
+    <td align="center"><img src="docs/media/gallery/badtime.gif" alt="Bad Time Simulator: Sans slams the blue heart into bones, then Gaster Blasters fire across the box"><br><a href="games/badtime/README.md"><b>Bad Time Simulator</b></a></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/media/gallery/badtime.gif" alt="Bad Time Simulator: Sans slams the blue heart into bones, then Gaster Blasters fire across the box"><br><a href="games/badtime/README.md"><b>Bad Time Simulator</b></a></td>
     <td align="center"><img src="docs/media/gallery/mahjong.gif" alt="Mahjong: pairs taken from the Turtle, a hint lights up two tiles, then a pair is undone"><br><a href="games/mahjong/README.md"><b>Mahjong</b></a></td>
     <td align="center"><img src="docs/media/gallery/rider.gif" alt="Rider: the endless run, jumps off glowing ramps with double flips and perfect landings"><br><a href="games/rider/README.md"><b>Rider</b></a></td>
+    <td align="center"><img src="docs/media/gallery/snowrider.gif" alt="Snow Rider 3D: sledding through the snowmen and stumps"><br><a href="games/snowrider/README.md"><b>Snow Rider 3D</b></a></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/media/gallery/snowrider.gif" alt="Snow Rider 3D: sledding through the snowmen and stumps"><br><a href="games/snowrider/README.md"><b>Snow Rider 3D</b></a></td>
     <td align="center"><img src="docs/media/gallery/templerun.gif" alt="Temple Run: the runner bursts out of the temple's door and the camera goes after him along the path"><br><a href="games/templerun/README.md"><b>Temple Run</b></a></td>
     <td align="center"><img src="docs/media/gallery/fnaf2.gif" alt="Five Nights at Freddy's 2: the light down the hallway, the music box wound on CAM 11, Toy Bonnie in the right vent and the mask on"><br><a href="games/fnaf2/README.md"><b>Five Nights at Freddy's 2</b></a></td>
+    <td align="center"><img src="docs/media/gallery/famidash.gif" alt="Famidash: in Stereo Madness the cube jumps from pillar to pillar, through a portal and past a coin"><br><a href="games/famidash/README.md"><b>Famidash</b></a></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/media/gallery/famidash.gif" alt="Famidash: in Stereo Madness the cube jumps from pillar to pillar, through a portal and past a coin"><br><a href="games/famidash/README.md"><b>Famidash</b></a></td>
     <td align="center"><img src="docs/media/gallery/fnaf3.gif" alt="Five Nights at Freddy's 3: the office, the monitor up, CAM 07 and the audio lure played"><br><a href="games/fnaf3/README.md"><b>Five Nights at Freddy's 3</b></a></td>
     <td align="center"><img src="docs/media/gallery/fnaf4.gif" alt="Five Nights at Freddy's 4: the bedroom, a run to the left door, the flashlight down the hall, then the bed"><br><a href="games/fnaf4/README.md"><b>Five Nights at Freddy's 4</b></a></td>
+    <td align="center"><img src="docs/media/gallery/clashroyale.gif" alt="Clash Royale: Archers, a Giant and a Valkyrie go to the bridge against the bot's Goblin Hut"><br><a href="games/clashroyale/README.md"><b>Clash Royale</b></a></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/media/gallery/catninja.gif" alt="Cat Ninja: the title map, the cat wall jumps up a shaft in level 2, the world turns over in level 5, then the hallucination pill tilts level 24 and the cat dies on spikes"><br><a href="games/catninja/README.md"><b>Cat Ninja</b></a></td>
+    <td align="center"><img src="docs/media/gallery/kingdomrush.gif" alt="Kingdom Rush: towers built at Southport, the first goblins and their notification"><br><a href="games/kingdomrush/README.md"><b>Kingdom Rush</b></a></td>
+    <td align="center"><img src="docs/media/gallery/deltarune.gif" alt="Deltarune: Castle Town with Ralsei and a battle with Rudinn"><br><a href="games/deltarune/README.md"><b>Deltarune</b></a></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/media/gallery/fnafworld.gif" alt="FNAF World: a walk through Fazbear Hills, then a battle against Gearrats won"><br><a href="games/fnafworld/README.md"><b>FNAF World</b></a></td>
+    <td align="center"><img src="docs/media/gallery/mrbullet.gif" alt="Mr Bullet: the first three levels, the third cleared with one bullet off the stairs"><br><a href="games/mrbullet/README.md"><b>Mr Bullet</b></a></td>
   </tr>
 </table>

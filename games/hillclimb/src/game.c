@@ -53,17 +53,16 @@ static void pause_frame(uint32_t pressed) {
 static void pause_draw(void) {
   run_draw(true);
   gfx_fill(0, 0, SCREEN_W, SCREEN_H, C_BLACK, 130);
-  gfx_rrect(90, 44, 140, 156, 10, rgb565(0x2A2D33), 240);
+  gfx_rrect(90, 44, 140, pause_ask ? 138 : 156, 10, rgb565(0x2A2D33), 240);
   gfx_rrect(90, 44, 140, 30, 10, rgb565(0x4A4F57), 255);
   gfx_fill(90, 64, 140, 10, rgb565(0x4A4F57), 255);
   gfx_text(FONT_L, 160, 67, "PAUSED", C_WHITE, C_BLACK, 1);
   if (pause_ask) {
     gfx_text(FONT_M, 160, 110, "Quit the game?", C_WHITE, C_BLACK, 1);
-    gfx_text(FONT_S, 160, 130, "Your coins are kept.", rgb565(0xC8CDD4), C_BLACK, 1);
-    gfx_rrect(104, 150, 54, 26, 6, rgb565(0x3DAA3D), 255);
-    gfx_rrect(162, 150, 54, 26, 6, rgb565(0x8A2E2E), 255);
-    gfx_text(FONT_M, 131, 169, "OK", C_WHITE, C_BLACK, 1);
-    gfx_text(FONT_M, 189, 169, "BACK", C_WHITE, C_BLACK, 1);
+    gfx_rrect(104, 132, 54, 26, 6, rgb565(0x3DAA3D), 255);
+    gfx_rrect(162, 132, 54, 26, 6, rgb565(0x8A2E2E), 255);
+    gfx_text(FONT_M, 131, 151, "OK", C_WHITE, C_BLACK, 1);
+    gfx_text(FONT_M, 189, 151, "BACK", C_WHITE, C_BLACK, 1);
     return;
   }
   for (int i = 0; i < 4; i++) {

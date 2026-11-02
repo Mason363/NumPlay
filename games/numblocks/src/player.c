@@ -953,6 +953,7 @@ void player_tick(uint32_t keys, uint32_t pressed) {
 #if NB_DIMS
   dims_player_tick();
   buttons_tick();
+  plates_tick();
 #endif
   effects_tick();
   if (pl.mode == 0) food_tick();

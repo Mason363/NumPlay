@@ -2,6 +2,42 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.6: Mr Bullet
+
+- **Mr Bullet:** MrBullet.nwa, 596 spy puzzles in Classic, Grenades, Hostages and Friendly Fire, with the game's own levels, pictures and physics.
+
+## 1.24.5: FNAF World
+
+- **FNAF World:** FiveNightsAtFreddysWorld.nwa, the adventure with all 48 characters, the whole map, the battles, chips, bytes, shops and four endings, from the game's own files. It needs the 6 MB of app space Nwagra gives.
+- **NumPlay Studio:** a game that needs Nwagra opens the space picker.
+
+## 1.24.4: Deltarune, Rider's own physics and NumBlocks' villages
+
+- **Deltarune:** Deltarune.nwa, Chapter 1 from Kris's room, the drive to school and the Dark World to Castle Town, Lancer and the Field's first rooms, with the game's own pictures, texts and battles.
+- **Rider:** the game's own physics engine, LiquidFun 1.1.0 (Box2D 2.3.0), set up as the game sets it up. The bike fits through level 1's loop and holds to level 2's tipping bowls.
+- **NumBlocks:** villages with villagers, desert temples with their trap, mineshafts and working dungeon spawners, laid out as Minecraft 1.8.8 does. Your worlds keep their look where you've been.
+- **Quit dialogs** ask only the question, in 16 games.
+
+## 1.24.3: Kingdom Rush
+
+- **Kingdom Rush:** KingdomRush.nwa, the 2011 tower defense with its 12 stages, Heroic and Iron challenges, every tower, upgrade and boss, from the game's own files.
+
+## 1.24.2: Cat Ninja
+
+- **Cat Ninja:** CatNinja.nwa, Richman Stewart's Flash platformer with all 30 levels, its traps, the boss and the crystals, from the game's own files.
+- **Hollow Knight:** fog and light shafts draw 9% faster.
+
+## 1.24.1: Clash Royale
+
+- **Clash Royale:** ClashRoyale.nwa, battles against a bot with 41 cards of the 2016 game, its seven arenas and trophies, with the game's own pictures and numbers.
+- **Temple Run:** the game's own icon.
+- **NumPlay Studio:** search the games. Apps with an .eh_frame section come in, and a Game Boy game too big for the space picked opens the space picker.
+- **Turbo Rush** is no longer in NumPlay.
+
+## 1.24.0: Five Nights at Freddy's 3's minigames
+
+- **Five Nights at Freddy's 3:** the 8-bit minigames after each night, BB's Air Adventure on CAM 08 and the good ending. All six are in Extras once the game is beaten.
+
 ## 1.23.0: Five Nights at Freddy's 3 and 4, Famidash HUGE, ColecoVision games and Universal Paperclips in French
 
 - **Five Nights at Freddy's 3:** FiveNightsAtFreddys3.nwa, nights 1 to 6 with Springtrap, the phantoms, the lure, the vents and the maintenance panel, the game's own pictures and rules.

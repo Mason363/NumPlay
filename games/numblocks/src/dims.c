@@ -120,6 +120,11 @@ int dims_can_stay(int b, int x, int y, int z) {
     int u = world_get(x, y - 1, z);
     return world_get(x, y + 1, z) == B_IRON_DOOR_UPPER && ((blk_flags[u] & BF_OPAQUE) || u == B_GLASS);
   }
+  /* BlockBasePressurePlate: on a solid top, or a fence (the villages' tables) */
+  if (b == B_WOODEN_PRESSURE_PLATE || b == B_STONE_PRESSURE_PLATE) {
+    int u = world_get(x, y - 1, z);
+    return (blk_flags[u] & BF_OPAQUE) || u == B_FENCE_OAK || u == B_NETHER_BRICK_FENCE;
+  }
   /* BlockButton: on a whole block behind it */
   if (b >= B_STONE_BUTTON_E && b <= B_STONE_BUTTON_N) {
     static const int8_t bx[4] = {-1, 1, 0, 0}, bz[4] = {0, 0, -1, 1};   /* (facing east, west, south, north) */

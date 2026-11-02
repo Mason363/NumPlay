@@ -77,7 +77,6 @@ Soft reset	软重置
 Hard reset	硬重置
 Reset Emulation?	重置游戏？
 Quit game?	退出游戏？
-The battery save is kept.	卡带存档会保留。
 This cartridge type isn't supported.	不支持这种卡带。
 This game needs more memory than the calculator has.	这个游戏需要的内存超过了计算器的容量。
 This file isn't a game Retro-Go can read.	Retro-Go 无法读取这个文件。

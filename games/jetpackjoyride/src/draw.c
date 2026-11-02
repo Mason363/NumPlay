@@ -485,9 +485,8 @@ static void paused(void) {
 
 static void confirm(void) {
   dim(170);
-  panel(48, 70, 224, 88);
-  center(&np_font_title, 102, V->sel ? "Quit this run?" : "Retry this run?", WHITE);
-  center(&np_font_small, 128, "Coins you grabbed are kept.", MUTED);
+  panel(64, 84, 192, 60);
+  center(&np_font_title, 119, V->sel ? "Quit this run?" : "Retry this run?", WHITE);
   keyline("OK yes   Back no");
 }
 

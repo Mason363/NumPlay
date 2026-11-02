@@ -9,7 +9,7 @@
   const SHT_PROGBITS = 1, SHT_SYMTAB = 2, SHT_STRTAB = 3, SHT_RELA = 4, SHT_NOBITS = 8, SHT_REL = 9;
   const SHT_ARM_ATTRIBUTES = 0x70000003;
   const SHF_ALLOC = 2, SHF_EXECINSTR = 4, SHF_INFO_LINK = 0x40;
-  const STB_LOCAL = 0, STB_GLOBAL = 1;
+  const STB_LOCAL = 0, STB_GLOBAL = 1, STB_WEAK = 2;
   const STT_NOTYPE = 0, STT_OBJECT = 1, STT_SECTION = 3, STT_FILE = 4;
   const SHN_UNDEF = 0, SHN_ABS = 0xFFF1;
   const R_ARM_ABS32 = 2;
@@ -223,7 +223,8 @@
     const attrs = e.secs.find((s) => s.type === SHT_ARM_ATTRIBUTES);
     if (attrs) bodies.push({ name: '.ARM.attributes', type: SHT_ARM_ATTRIBUTES, flags: 0, data: attrs.data, link: 0, info: 0, align: 1, entsize: 0 });
     return { obj: writeElf(e.flags, bodies), code: code.length, data: dataSize, bss: bssSize, ramAlign,
-             undefined: [...undef.keys()].sort() };
+             // (what it needs: a weak one may stay undefined, as crtbegin.o's __register_frame_info)
+             undefined: [...undef.values()].filter((u) => u.bind !== STB_WEAK).map((u) => u.name).sort() };
   }
 
   // ------------------------------------------------------------------ the app's name and icon

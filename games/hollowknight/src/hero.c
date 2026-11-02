@@ -754,10 +754,12 @@ static void animation(void) {
 }
 
 /* ---------------------------------------------------------------- the tick */
+static void entering_stop(void);
 void hero_init(float x, float y, bool facing_right) {
   Hero *h = &g_hero;
   static BodyEvent events[MAX_EVENTS];
   memset(h, 0, sizeof *h);
+  entering_stop();   /* (a way into a room not finished: over) */
   spell_reset();
   h->entry_gate = -1;
   h->body.events = events;
@@ -1029,6 +1031,7 @@ static struct {
 } en;
 
 static void entering_wait(float t) { en.t = t; }
+static void entering_stop(void) { memset(&en, 0, sizeof en); }
 
 void hero_enter_scene(int gate_ent, int gate, float gx, float gy, float ox, float oy, uint8_t flags, float delay) {
   Hero *h = &g_hero;

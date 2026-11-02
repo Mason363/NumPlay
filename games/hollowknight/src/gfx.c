@@ -1139,6 +1139,33 @@ static void run_soft(const Ctx *c, int y, int a, int b, const uint32_t *tx, uint
     }
     return;
   }
+  if (mono) {
+    /* turned, one color: along the row, within one texel cell, the mix is a quadratic (bilinear on a line): stepped
+     * by its differences, the cell's four texels read once */
+    while (x < e) {
+      int cx = u0 >> 16, rr = v0 >> 16;
+      int n = steps_in(u0, dux, cx << 16, (cx + 1) << 16), nv = steps_in(v0, dvx, rr << 16, (rr + 1) << 16);
+      n = n < nv ? n : nv;
+      n = n < e - x ? n : e - x;
+      const uint8_t *p0 = al + rr * W + cx, *p1 = p0 + W;
+      float t0 = p0[0], t1 = p0[1], t2 = p1[0], t3 = p1[1], k = t0 - t1 - t2 + t3;
+      float fu = (float)(u0 & 0xFFFF) * (1.0f / 65536), fv = (float)(v0 & 0xFFFF) * (1.0f / 65536);
+      float du = (float)dux * (1.0f / 65536), dv = (float)dvx * (1.0f / 65536), q = (float)ta * 256;
+      /* (f(j) = f0 + f1 j + f2 j^2; its alpha x ta / 256 in 16.16) */
+      float f0 = t0 + (t1 - t0) * fu + (t2 - t0) * fv + k * fu * fv;
+      float f1 = (t1 - t0) * du + (t2 - t0) * dv + k * (fu * dv + fv * du), f2 = k * du * dv;
+      int32_t F = (int32_t)(f0 * q), D1 = (int32_t)((f1 + f2) * q), D2 = (int32_t)(2 * f2 * q);
+      u0 += dux * n, v0 += dvx * n;
+      for (int xe = x + n; x < xe; x++, p++, F += D1, D1 += D2) {
+        int32_t aa = F >> 16;
+        if (aa <= 0) continue;
+        if (aa > 255) aa = 255;
+        uint32_t s = (uint32_t)aa << 24 | ((crb * (uint32_t)aa >> 8) & 0xFF00FF) | ((cg * (uint32_t)aa >> 8) & 0xFF00);
+        TAKE(row, x, p, s);
+      }
+    }
+    return;
+  }
   for (; x < e; x++, p++, u0 += dux, v0 += dvx) {
     int cx = u0 >> 16, rr = v0 >> 16;
     uint32_t fu = (uint32_t)(u0 >> 8) & 255, fv = (uint32_t)(v0 >> 8) & 255, s;
