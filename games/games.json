@@ -1449,5 +1449,27 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/famidash",
     "default": false,
     "xl": true
+    },
+  {
+    "id": "clashroyale",
+    "rank": 37,
+    "title": "Clash Royale",
+    "tagline": "Knock down the towers",
+    "credit": "Based on the game by Supercell",
+    "top": "0x2E5CB8",
+    "bottom": "0x0C1A3C",
+    "accent": "0xFFC832",
+    "colors": 16,
+    "records": [
+      "clashroyale.sav",
+      "crresume.sav",
+      "clashroyale_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/clashroyale",
+    "default": false,
+    "xl": true
   }
 ]

@@ -807,6 +807,23 @@ Your icon moves on by itself: jump over the spikes and reach the end. Hold the b
 
 <br clear="right">
 
+## Clash Royale
+
+<img src="../games/clashroyale/docs/shot.png" width="320" align="right" alt="Clash Royale: troops at the bridge, the bot's towers on the right">
+
+| Key | What it does |
+| --- | --- |
+| **1** to **4** | Pick a card of your hand |
+| **Left / Right**, **OK** | Pick a card, then take it to the field |
+| **Arrows** | Move the card on the field |
+| **OK** | Drop it there |
+| **Back** | Put the card back; in the hand, pause |
+| **Home** | Keep the battle and quit |
+
+Knock down the bot's towers before it knocks down yours: a Princess tower is a crown, the King tower is three and ends the battle. Elixir fills up by itself and pays for your cards; a played card goes to the back of your deck and the next takes its place. Troops and buildings go on your side of the river, spells anywhere. The last minute gives double elixir; even crowns at the end bring overtime, where the next crown wins. Wins give trophies, and trophies open the next arena. Build your deck of eight from the 41 cards in Deck.
+
+<br clear="right">
+
 ## Portal Returns
 
 <img src="media/portal.gif" width="320" align="right" alt="Portal Returns: falling through a portal and flying across a test chamber">

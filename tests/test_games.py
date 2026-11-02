@@ -320,6 +320,11 @@ GAMES = {
     "portal": ("PortalReturns.nwa", "portal.sav",
                presses((1500, "ok"), (2500, "ok"), (3500, "ok")) + every(4000, 7000, 400, "right", 300), 8000,
                presses((1500, "ok")), 4000),
+    # Battle: how to play (the first time), then the battle: a card dropped at the bridge; Home keeps the battle and the
+    # profile. Next time, from the copy, Battle goes straight in, quit with On/Off
+    "clashroyale": ("ClashRoyale.nwa", "clashroyale.sav",
+                    presses((1500, "ok"), (2200, "ok"), (4000, "1"), (4400, "ok"), (6500, "2"), (6900, "ok")), 9000,
+                    presses((1500, "ok")), 5000),
 }
 
 
@@ -386,7 +391,8 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "angrybirds": "angrybirds_saves.py", "polytrack": "polytrack_saves.py", "paperclips": "paperclips_saves.py",
           "badtime": "badtime_saves.py", "mahjong": "mahjong_saves.py",
           "rider": "rider_saves.py", "snowrider": "snowrider_saves.py", "templerun": "templerun_saves.py",
-          "fnaf2": "fnaf2_saves.py", "fnaf3": "fnaf3_saves.py", "fnaf4": "fnaf4_saves.py", "famidash": "famidash_saves.py"}
+          "fnaf2": "fnaf2_saves.py", "fnaf3": "fnaf3_saves.py", "fnaf4": "fnaf4_saves.py", "famidash": "famidash_saves.py",
+          "clashroyale": "clashroyale_saves.py"}
 
 
 def paperclips_ok(v):
@@ -417,6 +423,16 @@ def famidash_ok(v):
     for x in v[:-4]:
         h = (h ^ x) * 16777619 & 0xFFFFFFFF
     return struct.unpack_from("<I", v, len(v) - 4)[0] == h
+
+
+def clashroyale_ok(v):
+    """Clash Royale's profile: "CRY1", version 1, 48 bytes, an FNV-1a sum of the rest at the end"""
+    if len(v) != 48 or v[:4] != b"CRY1" or struct.unpack_from("<HH", v, 4) != (1, 48):
+        return False
+    h = 2166136261
+    for x in v[:-4]:
+        h = (h ^ x) * 16777619 & 0xFFFFFFFF
+    return struct.unpack_from("<I", v, 44)[0] == h
 
 
 def badtime_ok(v):
@@ -653,6 +669,8 @@ CHECKS = {
     # "FMD1", version 1: how to play read (flags at 5), time played (564); after the reinstall, from the copy, more
     "famidash": (lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 7000,
                  lambda v: famidash_ok(v) and v[5] & 1 and struct.unpack_from("<I", v, 2100)[0] >= 12000),
+    # "CRY1", version 1, its size (48): how to play read (guide at 40); after the reinstall, from the copy
+    "clashroyale": (lambda v: clashroyale_ok(v) and v[40] == 1,) * 2,
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept
