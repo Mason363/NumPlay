@@ -17,6 +17,7 @@ enum { S_HELP, S_TITLE, S_RUN, S_PAUSE, S_SAVEME, S_RESULTS, S_SHOP, S_MISSIONS,
 bool app_running = true;
 static int state, back_to;      /* the screen, and where Back goes from the shop, the missions or Quit */
 static int sel;                 /* the button in focus */
+static int qsel;                /* the quit question's (the screen behind keeps its own) */
 static float clock, intro, saveme_t, state_t;
 static bool new_best;
 static int shop_tab, shop_sel, shop_top;
@@ -204,7 +205,7 @@ void app_step(uint32_t keys, uint32_t pressed) {
       if (sel == 0) {
         if (pressed & K_OK) start_run();
         else if (pressed & K_DOWN) sel = 1;
-        else if (pressed & K_BACK) back_to = S_TITLE, go(S_QUIT), sel = 0;
+        else if (pressed & K_BACK) back_to = S_TITLE, go(S_QUIT), qsel = 0;
       } else {
         if (pressed & K_LEFT && sel > 1) sel--;
         if (pressed & K_RIGHT && sel < 3) sel++;
@@ -246,7 +247,7 @@ void app_step(uint32_t keys, uint32_t pressed) {
       if (pressed & (K_LEFT | K_UP)) sel = 1;
       if (pressed & (K_RIGHT | K_DOWN)) sel = 0;
       if (pressed & K_BACK || (pressed & K_OK && sel == 0)) go(S_RUN);
-      else if (pressed & K_OK) back_to = S_PAUSE, go(S_QUIT);
+      else if (pressed & K_OK) back_to = S_PAUSE, go(S_QUIT), qsel = 0, sel = 1;
       break;
     case S_SAVEME:
       saveme_t += DT;
@@ -288,9 +289,9 @@ void app_step(uint32_t keys, uint32_t pressed) {
       break;
     case S_QUIT:
       /* QUIT (1) on the left, stay (0) on the right */
-      if (pressed & (K_LEFT | K_UP)) sel = 1;
-      if (pressed & (K_RIGHT | K_DOWN)) sel = 0;
-      if (pressed & K_BACK || (pressed & K_OK && sel == 0)) {
+      if (pressed & (K_LEFT | K_UP)) qsel = 1;
+      if (pressed & (K_RIGHT | K_DOWN)) qsel = 0;
+      if (pressed & K_BACK || (pressed & K_OK && qsel == 0)) {
         int b = back_to;
         go(b);
         if (b == S_PAUSE) sel = 1;
@@ -723,8 +724,8 @@ static void quit_overlay(void) {
   popup(30, 64, 260, 114, "Quit");
   const char *q = title ? "Quit Subway Surfers?" : "Quit this run?";
   if (band(96, 24)) d_text(&font_mid, 160 - d_text_width(&font_mid, q) / 2, 112, q, C(0x243D5E), 255);
-  button(48, 132, 100, 30, &sl_red, "QUIT", sel == 1);
-  button(172, 132, 100, 30, &sl_green, title ? "STAY" : "PLAY ON", sel == 0);
+  button(48, 132, 100, 30, &sl_red, "QUIT", qsel == 1);
+  button(172, 132, 100, 30, &sl_green, title ? "STAY" : "PLAY ON", qsel == 0);
   if (band(186, 16)) hint(160, 188, "Left Right", "choose", "OK", "confirm");
 }
 
