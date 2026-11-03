@@ -43,115 +43,127 @@ The games with a blue ring are all in one app, **NumPlay.nwa**. The others are b
 
 <table>
   <tr>
-    <td align="center" width="25%"><a href="games/numblocks/README.md"><img src="docs/media/readme/thumb_numblocks.png" width="170" alt="NumBlocks"><br><b>NumBlocks</b></a><br><sub>Mine, craft, survive</sub></td>
-    <td align="center" width="25%"><a href="games/celeste/README.md"><img src="docs/media/readme/thumb_celeste.png" width="170" alt="Celeste"><br><b>Celeste</b></a><br><sub>The whole climb, with every B-side and C-side</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Celeste.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/hollowknight/README.md"><img src="docs/media/readme/thumb_hollowknight.png" width="170" alt="Hollow Knight"><br><b>Hollow Knight</b></a><br><sub>From King's Pass to Hornet in Greenpath</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/HollowKnight.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/balatro/README.md"><img src="docs/media/readme/thumb_balatro.png" width="170" alt="Balatro"><br><b>Balatro</b></a><br><sub>Poker hands, wild jokers</sub></td>
+    <td align="center" width="33%"><a href="games/numblocks/README.md"><img src="docs/media/readme/thumb_numblocks.png" width="240" alt="NumBlocks"><br><b>NumBlocks</b></a></td>
+    <td align="center" width="33%"><a href="games/celeste/README.md"><img src="docs/media/readme/thumb_celeste.png" width="240" alt="Celeste"><br><b>Celeste</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Celeste.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/hollowknight/README.md"><img src="docs/media/readme/thumb_hollowknight.png" width="240" alt="Hollow Knight"><br><b>Hollow Knight</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/HollowKnight.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/buckshot/README.md"><img src="docs/media/readme/thumb_buckshot.png" width="170" alt="Buckshot Roulette"><br><b>Buckshot Roulette</b></a><br><sub>You, the Dealer, one shotgun</sub></td>
-    <td align="center" width="25%"><a href="games/numdash/README.md"><img src="docs/media/readme/thumb_numdash.png" width="170" alt="NumDash"><br><b>NumDash</b></a><br><sub>Jump to the beat</sub></td>
-    <td align="center" width="25%"><a href="games/snowrider/README.md"><img src="docs/media/readme/thumb_snowrider.png" width="170" alt="Snow Rider 3D"><br><b>Snow Rider 3D</b></a><br><sub>The endless sled run: its slope, 11 sleds and gifts to buy them</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/SnowRider3D.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/templerun/README.md"><img src="docs/media/readme/thumb_templerun.png" width="170" alt="Temple Run"><br><b>Temple Run</b></a><br><sub>Run from the temple: turn, jump, slide and lean</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/TempleRun.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/balatro/README.md"><img src="docs/media/readme/thumb_balatro.png" width="240" alt="Balatro"><br><b>Balatro</b></a></td>
+    <td align="center" width="33%"><a href="games/buckshot/README.md"><img src="docs/media/readme/thumb_buckshot.png" width="240" alt="Buckshot Roulette"><br><b>Buckshot Roulette</b></a></td>
+    <td align="center" width="33%"><a href="games/numdash/README.md"><img src="docs/media/readme/thumb_numdash.png" width="240" alt="NumDash"><br><b>NumDash</b></a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/polytrack/README.md"><img src="docs/media/readme/thumb_polytrack.png" width="170" alt="PolyTrack"><br><b>PolyTrack</b></a><br><sub>Time trials on all 17 tracks, loops and wall rides included</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/PolyTrack.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/subway/README.md"><img src="docs/media/readme/thumb_subway.png" width="170" alt="Subway Surfers"><br><b>Subway Surfers</b></a><br><sub>The endless run down the tracks, in 3D</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/SubwaySurfers.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/clashroyale/README.md"><img src="docs/media/readme/thumb_clashroyale.png" width="170" alt="Clash Royale"><br><b>Clash Royale</b></a><br><sub>Battles against a bot: 41 cards, seven arenas, trophies</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/ClashRoyale.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/undertale/README.md"><img src="docs/media/readme/thumb_undertale.png" width="170" alt="Undertale"><br><b>Undertale</b></a><br><sub>The whole Underground, from the golden flowers to the barrier and the neutral ending</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Undertale.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/snowrider/README.md"><img src="docs/media/readme/thumb_snowrider.png" width="240" alt="Snow Rider 3D"><br><b>Snow Rider 3D</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/SnowRider3D.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/templerun/README.md"><img src="docs/media/readme/thumb_templerun.png" width="240" alt="Temple Run"><br><b>Temple Run</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/TempleRun.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/polytrack/README.md"><img src="docs/media/readme/thumb_polytrack.png" width="240" alt="PolyTrack"><br><b>PolyTrack</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/PolyTrack.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/deltarune/README.md"><img src="docs/media/readme/thumb_deltarune.png" width="170" alt="Deltarune"><br><b>Deltarune</b></a><br><sub>Chapter 1, from Kris's room into the Dark World and its first battles</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Deltarune.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/fnaf/README.md"><img src="docs/media/readme/thumb_fnaf.png" width="170" alt="Five Nights at Freddy's"><br><b>Five Nights at Freddy's</b></a><br><sub>All five nights, the 6th and the Custom Night</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/fnaf2/README.md"><img src="docs/media/readme/thumb_fnaf2.png" width="170" alt="Five Nights at Freddy's 2"><br><b>Five Nights at Freddy's 2</b></a><br><sub>The new pizzeria: six nights, the mask, the music box and the Custom Night</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys2.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/fnaf3/README.md"><img src="docs/media/readme/thumb_fnaf3.png" width="170" alt="Five Nights at Freddy's 3"><br><b>Five Nights at Freddy's 3</b></a><br><sub>Fazbear's Fright: Springtrap, the phantoms, the vents and the 8-bit minigames</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys3.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/subway/README.md"><img src="docs/media/readme/thumb_subway.png" width="240" alt="Subway Surfers"><br><b>Subway Surfers</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/SubwaySurfers.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/clashroyale/README.md"><img src="docs/media/readme/thumb_clashroyale.png" width="240" alt="Clash Royale"><br><b>Clash Royale</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/ClashRoyale.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/undertale/README.md"><img src="docs/media/readme/thumb_undertale.png" width="240" alt="Undertale"><br><b>Undertale</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Undertale.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/fnaf4/README.md"><img src="docs/media/readme/thumb_fnaf4.png" width="170" alt="Five Nights at Freddy's 4"><br><b>Five Nights at Freddy's 4</b></a><br><sub>The bedroom: listen at the doors, the closet, the bed, Fun with Plushtrap</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys4.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/fnafworld/README.md"><img src="docs/media/readme/thumb_fnafworld.png" width="170" alt="FNAF World"><br><b>FNAF World</b></a><br><sub>The adventure: walk the world, battle with a party of eight (6 MB apps)</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddysWorld.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/crossyroad/README.md"><img src="docs/media/readme/thumb_crossyroad.png" width="170" alt="Crossy Road"><br><b>Crossy Road</b></a><br><sub>Hop, dodge, survive</sub></td>
-    <td align="center" width="25%"><a href="games/rider/README.md"><img src="docs/media/readme/thumb_rider.png" width="170" alt="Rider"><br><b>Rider</b></a><br><sub>The neon bike game: 48 levels, the endless run and 55 bikes</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Rider.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/deltarune/README.md"><img src="docs/media/readme/thumb_deltarune.png" width="240" alt="Deltarune"><br><b>Deltarune</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Deltarune.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/fnaf/README.md"><img src="docs/media/readme/thumb_fnaf.png" width="240" alt="Five Nights at Freddy's"><br><b>Five Nights at Freddy's</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/fnaf2/README.md"><img src="docs/media/readme/thumb_fnaf2.png" width="240" alt="Five Nights at Freddy's 2"><br><b>Five Nights at Freddy's 2</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys2.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/numdrive/README.md"><img src="docs/media/readme/thumb_numdrive.png" width="170" alt="NumDrive"><br><b>NumDrive</b></a><br><sub>Drive, flip, finish</sub></td>
-    <td align="center" width="25%"><a href="games/leveldevil/README.md"><img src="docs/media/readme/thumb_leveldevil.png" width="170" alt="Level Devil"><br><b>Level Devil</b></a><br><sub>Unept's troll platformer: the game's 80 rooms, with their own traps</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/LevelDevil.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/hillclimb/README.md"><img src="docs/media/readme/thumb_hillclimb.png" width="170" alt="Hill Climb Racing"><br><b>Hill Climb Racing</b></a><br><sub>Thirteen stages, thirteen vehicles and all their upgrades</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/HillClimbRacing.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/pvz/README.md"><img src="docs/media/readme/thumb_pvz.png" width="170" alt="Plants vs. Zombies"><br><b>Plants vs. Zombies</b></a><br><sub>The whole Adventure, from the front lawn to the roof and Dr. Zomboss</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/PlantsVsZombies.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/fnaf3/README.md"><img src="docs/media/readme/thumb_fnaf3.png" width="240" alt="Five Nights at Freddy's 3"><br><b>Five Nights at Freddy's 3</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys3.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/fnaf4/README.md"><img src="docs/media/readme/thumb_fnaf4.png" width="240" alt="Five Nights at Freddy's 4"><br><b>Five Nights at Freddy's 4</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys4.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/fnafworld/README.md"><img src="docs/media/readme/thumb_fnafworld.png" width="240" alt="FNAF World"><br><b>FNAF World</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddysWorld.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/famidash/README.md"><img src="docs/media/readme/thumb_famidash.png" width="170" alt="Famidash"><br><b>Famidash</b></a><br><sub>Geometry Dash for the NES: 173 levels, every mode, practice mode</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Famidash.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/doom/README.md"><img src="docs/media/readme/thumb_doom.png" width="170" alt="Doom"><br><b>Doom</b></a><br><sub>Knee-Deep in the Dead: all nine levels of the shareware episode</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Doom.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/isaac/README.md"><img src="docs/media/readme/thumb_isaac.png" width="170" alt="The Binding of Isaac"><br><b>The Binding of Isaac</b></a><br><sub>A whole run: the Basement to Mom, her heart, Sheol and the Cathedral</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/BindingOfIsaac.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/cookieclicker/README.md"><img src="docs/media/readme/thumb_cookieclicker.png" width="170" alt="Cookie Clicker"><br><b>Cookie Clicker</b></a><br><sub>The whole game with its own pictures: ascension, the dragon, the Grimoire and the Pantheon</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/CookieClicker.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/crossyroad/README.md"><img src="docs/media/readme/thumb_crossyroad.png" width="240" alt="Crossy Road"><br><b>Crossy Road</b></a></td>
+    <td align="center" width="33%"><a href="games/rider/README.md"><img src="docs/media/readme/thumb_rider.png" width="240" alt="Rider"><br><b>Rider</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Rider.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/numdrive/README.md"><img src="docs/media/readme/thumb_numdrive.png" width="240" alt="NumDrive"><br><b>NumDrive</b></a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/jetpackjoyride/README.md"><img src="docs/media/readme/thumb_jetpackjoyride.png" width="170" alt="Jetpack Joyride"><br><b>Jetpack Joyride</b></a><br><sub>Barry's run through the lab, with the vehicles and the Final Spin</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/JetpackJoyride.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/angrybirds/README.md"><img src="docs/media/readme/thumb_angrybirds.png" width="170" alt="Angry Birds"><br><b>Angry Birds</b></a><br><sub>The Chrome edition: 429 levels, seven birds and the Mighty Eagle</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/AngryBirds.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/fnf/README.md"><img src="docs/media/readme/thumb_fnf.png" width="170" alt="Friday Night Funkin'"><br><b>Friday Night Funkin'</b></a><br><sub>Every week and its songs, on the beat, without the sound</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FridayNightFunkin.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/kingdomrush/README.md"><img src="docs/media/readme/thumb_kingdomrush.png" width="170" alt="Kingdom Rush"><br><b>Kingdom Rush</b></a><br><sub>The 2011 tower defense: 12 stages, Heroic and Iron challenges, every tower and boss</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/KingdomRush.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/leveldevil/README.md"><img src="docs/media/readme/thumb_leveldevil.png" width="240" alt="Level Devil"><br><b>Level Devil</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/LevelDevil.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/hillclimb/README.md"><img src="docs/media/readme/thumb_hillclimb.png" width="240" alt="Hill Climb Racing"><br><b>Hill Climb Racing</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/HillClimbRacing.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/pvz/README.md"><img src="docs/media/readme/thumb_pvz.png" width="240" alt="Plants vs. Zombies"><br><b>Plants vs. Zombies</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/PlantsVsZombies.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/mrbullet/README.md"><img src="docs/media/readme/thumb_mrbullet.png" width="170" alt="Mr Bullet"><br><b>Mr Bullet</b></a><br><sub>596 spy puzzles: bounce the bullets, get the spies</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/MrBullet.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/sonic/README.md"><img src="docs/media/readme/thumb_sonic.png" width="170" alt="Sonic the Hedgehog"><br><b>Sonic the Hedgehog</b></a><br><sub>The whole 1991 game: six zones, the Final Zone, the Special Stages and the ending</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/SonicTheHedgehog.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/portal/README.md"><img src="docs/media/readme/thumb_portal.png" width="170" alt="Portal Returns"><br><b>Portal Returns</b></a><br><sub>Think with portals</sub></td>
-    <td align="center" width="25%"><a href="games/stickmanhook/README.md"><img src="docs/media/readme/thumb_stickmanhook.png" width="170" alt="Stickman Hook"><br><b>Stickman Hook</b></a><br><sub>Swing from hook to hook: the 39 levels, then no end</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/StickmanHook.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/famidash/README.md"><img src="docs/media/readme/thumb_famidash.png" width="240" alt="Famidash"><br><b>Famidash</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Famidash.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/doom/README.md"><img src="docs/media/readme/thumb_doom.png" width="240" alt="Doom"><br><b>Doom</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Doom.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/isaac/README.md"><img src="docs/media/readme/thumb_isaac.png" width="240" alt="The Binding of Isaac"><br><b>The Binding of Isaac</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/BindingOfIsaac.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/blockblast/README.md"><img src="docs/media/readme/thumb_blockblast.png" width="170" alt="Block Blast"><br><b>Block Blast</b></a><br><sub>Fit the blocks, blast the lines</sub></td>
-    <td align="center" width="25%"><a href="games/suika/README.md"><img src="docs/media/readme/thumb_suika.png" width="170" alt="Suika Game"><br><b>Suika Game</b></a><br><sub>Merge the fruit into a watermelon</sub></td>
-    <td align="center" width="25%"><a href="games/tombofthemask/README.md"><img src="docs/media/readme/thumb_tombofthemask.png" width="170" alt="Tomb of the Mask"><br><b>Tomb of the Mask</b></a><br><sub>Dash through the tomb: the arcade climb and all 200 stages</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/TombOfTheMask.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/monkeymart/README.md"><img src="docs/media/readme/thumb_monkeymart.png" width="170" alt="Monkey Mart"><br><b>Monkey Mart</b></a><br><sub>Run a grocery mart as a monkey: both marts, their crops, animals and workers</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/MonkeyMart.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/cookieclicker/README.md"><img src="docs/media/readme/thumb_cookieclicker.png" width="240" alt="Cookie Clicker"><br><b>Cookie Clicker</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/CookieClicker.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/jetpackjoyride/README.md"><img src="docs/media/readme/thumb_jetpackjoyride.png" width="240" alt="Jetpack Joyride"><br><b>Jetpack Joyride</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/JetpackJoyride.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/angrybirds/README.md"><img src="docs/media/readme/thumb_angrybirds.png" width="240" alt="Angry Birds"><br><b>Angry Birds</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/AngryBirds.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/badtime/README.md"><img src="docs/media/readme/thumb_badtime.png" width="170" alt="Bad Time Simulator"><br><b>Bad Time Simulator</b></a><br><sub>The Sans fight: all 24 attacks, KR and the blue heart</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/BadTimeSimulator.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/catninja/README.md"><img src="docs/media/readme/thumb_catninja.png" width="170" alt="Cat Ninja"><br><b>Cat Ninja</b></a><br><sub>The Flash platformer: 30 levels of wall jumps, traps and crystals</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/CatNinja.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/championisland/README.md"><img src="docs/media/readme/thumb_championisland.png" width="170" alt="Champion Island"><br><b>Champion Island</b></a><br><sub>The whole island and its seven sports</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/ChampionIsland.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/numpowder/README.md"><img src="docs/media/readme/thumb_numpowder.png" width="170" alt="NumPowder"><br><b>NumPowder</b></a><br><sub>The Powder Toy: 175 materials to mix, melt, burn and blow up</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPowder.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/fnf/README.md"><img src="docs/media/readme/thumb_fnf.png" width="240" alt="Friday Night Funkin'"><br><b>Friday Night Funkin'</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FridayNightFunkin.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/kingdomrush/README.md"><img src="docs/media/readme/thumb_kingdomrush.png" width="240" alt="Kingdom Rush"><br><b>Kingdom Rush</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/KingdomRush.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/mrbullet/README.md"><img src="docs/media/readme/thumb_mrbullet.png" width="240" alt="Mr Bullet"><br><b>Mr Bullet</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/MrBullet.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/finalearth2/README.md"><img src="docs/media/readme/thumb_finalearth2.png" width="170" alt="The Final Earth 2"><br><b>The Final Earth 2</b></a><br><sub>Build a city on floating islands in space</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FinalEarth2.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/paperclips/README.md"><img src="docs/media/readme/thumb_paperclips.png" width="170" alt="Universal Paperclips"><br><b>Universal Paperclips</b></a><br><sub>An AI making paperclips, from the first clip to the whole universe</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/UniversalPaperclips.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/dune/README.md"><img src="docs/media/readme/thumb_dune.png" width="170" alt="Dune"><br><b>Dune</b></a><br><sub>Roll down the dunes and fly over the line: 26 balls, 7 landscapes</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Dune.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/flappybird/README.md"><img src="docs/media/readme/thumb_flappybird.png" width="170" alt="Flappy Bird"><br><b>Flappy Bird</b></a><br><sub>Flap through the pipes</sub></td>
+    <td align="center" width="33%"><a href="games/sonic/README.md"><img src="docs/media/readme/thumb_sonic.png" width="240" alt="Sonic the Hedgehog"><br><b>Sonic the Hedgehog</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/SonicTheHedgehog.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/portal/README.md"><img src="docs/media/readme/thumb_portal.png" width="240" alt="Portal Returns"><br><b>Portal Returns</b></a></td>
+    <td align="center" width="33%"><a href="games/stickmanhook/README.md"><img src="docs/media/readme/thumb_stickmanhook.png" width="240" alt="Stickman Hook"><br><b>Stickman Hook</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/StickmanHook.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/doodlejump/README.md"><img src="docs/media/readme/thumb_doodlejump.png" width="170" alt="Doodle Jump"><br><b>Doodle Jump</b></a><br><sub>Bounce as high as you can</sub></td>
-    <td align="center" width="25%"><a href="games/dinorun/README.md"><img src="docs/media/readme/thumb_dinorun.png" width="170" alt="Chrome Dino"><br><b>Chrome Dino</b></a><br><sub>Jump, duck, survive</sub></td>
-    <td align="center" width="25%"><a href="games/tetris/README.md"><img src="docs/media/readme/thumb_tetris.png" width="170" alt="Tetris"><br><b>Tetris</b></a><br><sub>Stack and clear lines</sub></td>
-    <td align="center" width="25%"><a href="games/pacman/README.md"><img src="docs/media/readme/thumb_pacman.png" width="170" alt="Pac-Man"><br><b>Pac-Man</b></a><br><sub>Eat dots, dodge ghosts</sub></td>
+    <td align="center" width="33%"><a href="games/blockblast/README.md"><img src="docs/media/readme/thumb_blockblast.png" width="240" alt="Block Blast"><br><b>Block Blast</b></a></td>
+    <td align="center" width="33%"><a href="games/suika/README.md"><img src="docs/media/readme/thumb_suika.png" width="240" alt="Suika Game"><br><b>Suika Game</b></a></td>
+    <td align="center" width="33%"><a href="games/tombofthemask/README.md"><img src="docs/media/readme/thumb_tombofthemask.png" width="240" alt="Tomb of the Mask"><br><b>Tomb of the Mask</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/TombOfTheMask.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/donkeykong/README.md"><img src="docs/media/readme/thumb_donkeykong.png" width="170" alt="Donkey Kong"><br><b>Donkey Kong</b></a><br><sub>The 1981 arcade game: barrels, pies, elevators and rivets</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/DonkeyKong.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/flappydunk/README.md"><img src="docs/media/readme/thumb_flappydunk.png" width="170" alt="Flappy Dunk"><br><b>Flappy Dunk</b></a><br><sub>Flap the ball down through every hoop</sub></td>
-    <td align="center" width="25%"><a href="games/towerblock/README.md"><img src="docs/media/readme/thumb_towerblock.png" width="170" alt="Tower Blocks"><br><b>Tower Blocks</b></a><br><sub>Stack the blocks as high as you can</sub></td>
-    <td align="center" width="25%"><a href="games/coreball/README.md"><img src="docs/media/readme/thumb_coreball.png" width="170" alt="Core Ball"><br><b>Core Ball</b></a><br><sub>Stick every ball to the spinning core</sub></td>
+    <td align="center" width="33%"><a href="games/monkeymart/README.md"><img src="docs/media/readme/thumb_monkeymart.png" width="240" alt="Monkey Mart"><br><b>Monkey Mart</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/MonkeyMart.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/badtime/README.md"><img src="docs/media/readme/thumb_badtime.png" width="240" alt="Bad Time Simulator"><br><b>Bad Time Simulator</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/BadTimeSimulator.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/catninja/README.md"><img src="docs/media/readme/thumb_catninja.png" width="240" alt="Cat Ninja"><br><b>Cat Ninja</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/CatNinja.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/uno/README.md"><img src="docs/media/readme/thumb_uno.png" width="170" alt="UNO"><br><b>UNO</b></a><br><sub>The card game against one to three bots, to 500 points</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/UNO.nwa">Download</a></td>
-    <td align="center" width="25%"><a href="games/twoplayer/README.md"><img src="docs/media/readme/thumb_twoplayer.png" width="170" alt="2 Players"><br><b>2 Players</b></a><br><sub>Pong and more, side by side</sub></td>
-    <td align="center" width="25%"><a href="games/chess/README.md"><img src="docs/media/readme/thumb_chess.png" width="170" alt="Chess"><br><b>Chess</b></a><br><sub>Bots, puzzles, 2 players</sub></td>
-    <td align="center" width="25%"><a href="games/invaders/README.md"><img src="docs/media/readme/thumb_invaders.png" width="170" alt="Space Invaders"><br><b>Space Invaders</b></a><br><sub>Stop the invasion, one cannon</sub></td>
+    <td align="center" width="33%"><a href="games/championisland/README.md"><img src="docs/media/readme/thumb_championisland.png" width="240" alt="Champion Island"><br><b>Champion Island</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/ChampionIsland.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/numpowder/README.md"><img src="docs/media/readme/thumb_numpowder.png" width="240" alt="NumPowder"><br><b>NumPowder</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPowder.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/finalearth2/README.md"><img src="docs/media/readme/thumb_finalearth2.png" width="240" alt="The Final Earth 2"><br><b>The Final Earth 2</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FinalEarth2.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/breakout/README.md"><img src="docs/media/readme/thumb_breakout.png" width="170" alt="Block Breaker"><br><b>Block Breaker</b></a><br><sub>Break every brick</sub></td>
-    <td align="center" width="25%"><a href="games/snake/README.md"><img src="docs/media/readme/thumb_snake.png" width="170" alt="Snake"><br><b>Snake</b></a><br><sub>Eat apples, grow long</sub></td>
-    <td align="center" width="25%"><a href="games/connectfour/README.md"><img src="docs/media/readme/thumb_connectfour.png" width="170" alt="Connect Four"><br><b>Connect Four</b></a><br><sub>Four in a row wins</sub></td>
-    <td align="center" width="25%"><a href="games/mahjong/README.md"><img src="docs/media/readme/thumb_mahjong.png" width="170" alt="Mahjong"><br><b>Mahjong</b></a><br><sub>Mahjong solitaire: 144 tiles, four layouts, every deal winnable</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Mahjong.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/paperclips/README.md"><img src="docs/media/readme/thumb_paperclips.png" width="240" alt="Universal Paperclips"><br><b>Universal Paperclips</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/UniversalPaperclips.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/dune/README.md"><img src="docs/media/readme/thumb_dune.png" width="240" alt="Dune"><br><b>Dune</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Dune.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/flappybird/README.md"><img src="docs/media/readme/thumb_flappybird.png" width="240" alt="Flappy Bird"><br><b>Flappy Bird</b></a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/g2048/README.md"><img src="docs/media/readme/thumb_g2048.png" width="170" alt="2048"><br><b>2048</b></a><br><sub>Slide, merge, reach 2048</sub></td>
-    <td align="center" width="25%"><a href="games/solitaire/README.md"><img src="docs/media/readme/thumb_solitaire.png" width="170" alt="Solitaire"><br><b>Solitaire</b></a><br><sub>The classic card game</sub></td>
-    <td align="center" width="25%"><a href="games/minesweeper/README.md"><img src="docs/media/readme/thumb_minesweeper.png" width="170" alt="Minesweeper"><br><b>Minesweeper</b></a><br><sub>Clear the field, flag the mines</sub></td>
-    <td align="center" width="25%"><a href="games/uttt/README.md"><img src="docs/media/readme/thumb_uttt.png" width="170" alt="Ultimate Tic-Tac-Toe"><br><b>Ultimate Tic-Tac-Toe</b></a><br><sub>Tic-tac-toe in tic-tac-toe</sub></td>
+    <td align="center" width="33%"><a href="games/doodlejump/README.md"><img src="docs/media/readme/thumb_doodlejump.png" width="240" alt="Doodle Jump"><br><b>Doodle Jump</b></a></td>
+    <td align="center" width="33%"><a href="games/dinorun/README.md"><img src="docs/media/readme/thumb_dinorun.png" width="240" alt="Chrome Dino"><br><b>Chrome Dino</b></a></td>
+    <td align="center" width="33%"><a href="games/tetris/README.md"><img src="docs/media/readme/thumb_tetris.png" width="240" alt="Tetris"><br><b>Tetris</b></a></td>
   </tr>
   <tr>
-    <td align="center" width="25%"><a href="games/sudoku/README.md"><img src="docs/media/readme/thumb_sudoku.png" width="170" alt="Sudoku"><br><b>Sudoku</b></a><br><sub>Fill the grid, 1 to 9</sub></td>
-    <td align="center" width="25%"><a href="games/sokoban/README.md"><img src="docs/media/readme/thumb_sokoban.png" width="170" alt="Sokoban"><br><b>Sokoban</b></a><br><sub>Push every box home</sub></td>
-    <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-64"><b>Super Mario 64</b></a><br><sub>In a repository of its own: NumWorks-Super-Mario-64</sub></td>
-    <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-Bros"><b>Super Mario Bros.</b></a><br><sub>All 32 stages, in a repository of its own: NumWorks-Super-Mario-Bros</sub></td>
+    <td align="center" width="33%"><a href="games/pacman/README.md"><img src="docs/media/readme/thumb_pacman.png" width="240" alt="Pac-Man"><br><b>Pac-Man</b></a></td>
+    <td align="center" width="33%"><a href="games/donkeykong/README.md"><img src="docs/media/readme/thumb_donkeykong.png" width="240" alt="Donkey Kong"><br><b>Donkey Kong</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/DonkeyKong.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/flappydunk/README.md"><img src="docs/media/readme/thumb_flappydunk.png" width="240" alt="Flappy Dunk"><br><b>Flappy Dunk</b></a></td>
   </tr>
   <tr>
-    <td align="center"><a href="#roadmap"><b>More on the way</b></a><br><sub>Minecraft 1.18.2 and more: see the roadmap</sub></td>
+    <td align="center" width="33%"><a href="games/towerblock/README.md"><img src="docs/media/readme/thumb_towerblock.png" width="240" alt="Tower Blocks"><br><b>Tower Blocks</b></a></td>
+    <td align="center" width="33%"><a href="games/coreball/README.md"><img src="docs/media/readme/thumb_coreball.png" width="240" alt="Core Ball"><br><b>Core Ball</b></a></td>
+    <td align="center" width="33%"><a href="games/uno/README.md"><img src="docs/media/readme/thumb_uno.png" width="240" alt="UNO"><br><b>UNO</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/UNO.nwa">Download</a></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><a href="games/twoplayer/README.md"><img src="docs/media/readme/thumb_twoplayer.png" width="240" alt="2 Players"><br><b>2 Players</b></a></td>
+    <td align="center" width="33%"><a href="games/chess/README.md"><img src="docs/media/readme/thumb_chess.png" width="240" alt="Chess"><br><b>Chess</b></a></td>
+    <td align="center" width="33%"><a href="games/invaders/README.md"><img src="docs/media/readme/thumb_invaders.png" width="240" alt="Space Invaders"><br><b>Space Invaders</b></a></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><a href="games/breakout/README.md"><img src="docs/media/readme/thumb_breakout.png" width="240" alt="Block Breaker"><br><b>Block Breaker</b></a></td>
+    <td align="center" width="33%"><a href="games/snake/README.md"><img src="docs/media/readme/thumb_snake.png" width="240" alt="Snake"><br><b>Snake</b></a></td>
+    <td align="center" width="33%"><a href="games/connectfour/README.md"><img src="docs/media/readme/thumb_connectfour.png" width="240" alt="Connect Four"><br><b>Connect Four</b></a></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><a href="games/mahjong/README.md"><img src="docs/media/readme/thumb_mahjong.png" width="240" alt="Mahjong"><br><b>Mahjong</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Mahjong.nwa">Download</a></td>
+    <td align="center" width="33%"><a href="games/g2048/README.md"><img src="docs/media/readme/thumb_g2048.png" width="240" alt="2048"><br><b>2048</b></a></td>
+    <td align="center" width="33%"><a href="games/solitaire/README.md"><img src="docs/media/readme/thumb_solitaire.png" width="240" alt="Solitaire"><br><b>Solitaire</b></a></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><a href="games/minesweeper/README.md"><img src="docs/media/readme/thumb_minesweeper.png" width="240" alt="Minesweeper"><br><b>Minesweeper</b></a></td>
+    <td align="center" width="33%"><a href="games/uttt/README.md"><img src="docs/media/readme/thumb_uttt.png" width="240" alt="Ultimate Tic-Tac-Toe"><br><b>Ultimate Tic-Tac-Toe</b></a></td>
+    <td align="center" width="33%"><a href="games/sudoku/README.md"><img src="docs/media/readme/thumb_sudoku.png" width="240" alt="Sudoku"><br><b>Sudoku</b></a></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><a href="games/sokoban/README.md"><img src="docs/media/readme/thumb_sokoban.png" width="240" alt="Sokoban"><br><b>Sokoban</b></a></td>
+    <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-64"><b>Super Mario 64</b></a></td>
+    <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-Bros"><b>Super Mario Bros.</b></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="#roadmap"><b>More on the way</b></a></td>
   </tr>
 </table>
 

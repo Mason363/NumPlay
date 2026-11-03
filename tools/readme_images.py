@@ -2,8 +2,9 @@
 """The README's pictures, all with the same rounded corners (a radius of 6% of their width; outside it they're
 transparent, so they sit right on GitHub's light and dark pages).
 
-- docs/media/readme/thumb_<id>.png: each game's thumbnail, made from docs/media/thumb_<id>.png (left as it is). The
-  games in NumPlay.nwa by default (games.json: not "xl", "default" not false) get a blue ring.
+- docs/media/readme/thumb_<id>.png: each game's thumbnail at 320 x 240 (from docs/media/thumb_<id>.png, left as it
+  is, or the screenshot it was made from). The games in NumPlay.nwa by default (games.json: not "xl", "default" not
+  false) get a blue ring.
 - The README's GIFs and other pictures in docs/media (the gallery, the real-calculator clips, the launcher, NumPlay
   Studio's picture): rounded where they are. Those already rounded are left alone, so it can run again any time.
 
@@ -15,7 +16,7 @@ import subprocess
 import sys
 import tempfile
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageStat
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 MEDIA = os.path.join(ROOT, "docs", "media")
@@ -39,8 +40,22 @@ def rounded(path):
     return im.getpixel((0, 0))[3] == 0
 
 
+def source(gid):
+    """the thumbnail at 320 x 240: the game's own screenshot when the thumbnail is that screenshot made smaller,
+    else the thumbnail made twice as big"""
+    t = Image.open(os.path.join(MEDIA, f"thumb_{gid}.png")).convert("RGBA")
+    shot = os.path.join(ROOT, "games", gid, "docs", "shot.png")
+    if os.path.exists(shot):
+        s = Image.open(shot).convert("RGBA")
+        if s.size == (320, 240):
+            d = ImageChops.difference(t.convert("RGB"), s.convert("RGB").resize(t.size, Image.BOX))
+            if sum(ImageStat.Stat(d).mean) / 3 < 6:
+                return s
+    return t.resize((t.width * 2, t.height * 2), Image.LANCZOS)
+
+
 def thumb(gid, ring):
-    im = Image.open(os.path.join(MEDIA, f"thumb_{gid}.png")).convert("RGBA")
+    im = source(gid)
     w, h = im.size
     if ring:
         d = ImageDraw.Draw(im)
