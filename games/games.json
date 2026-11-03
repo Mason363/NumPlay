@@ -1592,5 +1592,26 @@
     "default": false,
     "xl": true,
     "carts": true
+  },
+  {
+    "id": "motox3m",
+    "rank": 44,
+    "title": "Moto X3M",
+    "tagline": "Flip the bike, beat the clock",
+    "credit": "Based on Moto X3M by Madpuffers",
+    "top": "0xF0B040",
+    "bottom": "0x10304A",
+    "accent": "0x2A9AD8",
+    "colors": 16,
+    "records": [
+      "motox3m.sav",
+      "motox3m_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/motox3m",
+    "default": false,
+    "xl": true
   }
 ]

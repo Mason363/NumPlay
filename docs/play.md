@@ -864,6 +864,23 @@ Shoot every spy in the level. Bullets bounce off walls, so aim at a wall to reac
 
 <br clear="right">
 
+## Moto X3M
+
+<img src="../games/motox3m/docs/shot.png" width="320" align="right" alt="Moto X3M">
+
+| Key | What it does |
+| --- | --- |
+| **Up** | Gas |
+| **Down** | Brake |
+| **Left** and **Right** | Lean (flip in the air) |
+| **OK** | Go on after a crash |
+| **Back** | Pause (Resume, Restart, Levels, Quit game) |
+| **Home** | Save and quit |
+
+Ride to the finish as fast as you can. Lean to land on your wheels, and keep leaning in the air to flip: each flip takes half a second off your time. If your head hits the ground, or you touch spikes, a saw or water, you crash and go on from the last checkpoint. Beat a level's times for up to three stars. Stars open new bikes in the bike shop.
+
+<br clear="right">
+
 ## NumPico
 
 <img src="../games/numpico/docs/shot.png" width="320" align="right" alt="NumPico playing Combo Pool">

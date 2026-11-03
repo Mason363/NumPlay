@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>29 free games for your NumWorks calculator, in one app.</b><br>
-  Plus 41 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.
+  Plus 42 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.
 </p>
 
 <p align="center">
@@ -75,94 +75,95 @@ The games with a blue ring are all in one app, **NumPlay.nwa**. The others are b
   <tr>
     <td align="center" width="33%"><a href="games/crossyroad/README.md"><img src="docs/media/readme/thumb_crossyroad.png" width="240" alt="Crossy Road"><br><b>Crossy Road</b></a></td>
     <td align="center" width="33%"><a href="games/rider/README.md"><img src="docs/media/readme/thumb_rider.png" width="240" alt="Rider"><br><b>Rider</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Rider.nwa">Download</a></td>
-    <td align="center" width="33%"><a href="games/numdrive/README.md"><img src="docs/media/readme/thumb_numdrive.png" width="240" alt="NumDrive"><br><b>NumDrive</b></a></td>
+    <td align="center" width="33%"><a href="games/motox3m/README.md"><img src="docs/media/readme/thumb_motox3m.png" width="240" alt="Moto X3M"><br><b>Moto X3M</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/MotoX3M.nwa">Download</a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/numdrive/README.md"><img src="docs/media/readme/thumb_numdrive.png" width="240" alt="NumDrive"><br><b>NumDrive</b></a></td>
     <td align="center" width="33%"><a href="games/leveldevil/README.md"><img src="docs/media/readme/thumb_leveldevil.png" width="240" alt="Level Devil"><br><b>Level Devil</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/LevelDevil.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/hillclimb/README.md"><img src="docs/media/readme/thumb_hillclimb.png" width="240" alt="Hill Climb Racing"><br><b>Hill Climb Racing</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/HillClimbRacing.nwa">Download</a></td>
-    <td align="center" width="33%"><a href="games/pvz/README.md"><img src="docs/media/readme/thumb_pvz.png" width="240" alt="Plants vs. Zombies"><br><b>Plants vs. Zombies</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/PlantsVsZombies.nwa">Download</a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/pvz/README.md"><img src="docs/media/readme/thumb_pvz.png" width="240" alt="Plants vs. Zombies"><br><b>Plants vs. Zombies</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/PlantsVsZombies.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/famidash/README.md"><img src="docs/media/readme/thumb_famidash.png" width="240" alt="Famidash"><br><b>Famidash</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Famidash.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/doom/README.md"><img src="docs/media/readme/thumb_doom.png" width="240" alt="Doom"><br><b>Doom</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Doom.nwa">Download</a></td>
-    <td align="center" width="33%"><a href="games/isaac/README.md"><img src="docs/media/readme/thumb_isaac.png" width="240" alt="The Binding of Isaac"><br><b>The Binding of Isaac</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/BindingOfIsaac.nwa">Download</a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/isaac/README.md"><img src="docs/media/readme/thumb_isaac.png" width="240" alt="The Binding of Isaac"><br><b>The Binding of Isaac</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/BindingOfIsaac.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/cookieclicker/README.md"><img src="docs/media/readme/thumb_cookieclicker.png" width="240" alt="Cookie Clicker"><br><b>Cookie Clicker</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/CookieClicker.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/jetpackjoyride/README.md"><img src="docs/media/readme/thumb_jetpackjoyride.png" width="240" alt="Jetpack Joyride"><br><b>Jetpack Joyride</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/JetpackJoyride.nwa">Download</a></td>
-    <td align="center" width="33%"><a href="games/angrybirds/README.md"><img src="docs/media/readme/thumb_angrybirds.png" width="240" alt="Angry Birds"><br><b>Angry Birds</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/AngryBirds.nwa">Download</a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/angrybirds/README.md"><img src="docs/media/readme/thumb_angrybirds.png" width="240" alt="Angry Birds"><br><b>Angry Birds</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/AngryBirds.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/fnf/README.md"><img src="docs/media/readme/thumb_fnf.png" width="240" alt="Friday Night Funkin'"><br><b>Friday Night Funkin'</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FridayNightFunkin.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/kingdomrush/README.md"><img src="docs/media/readme/thumb_kingdomrush.png" width="240" alt="Kingdom Rush"><br><b>Kingdom Rush</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/KingdomRush.nwa">Download</a></td>
-    <td align="center" width="33%"><a href="games/mrbullet/README.md"><img src="docs/media/readme/thumb_mrbullet.png" width="240" alt="Mr Bullet"><br><b>Mr Bullet</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/MrBullet.nwa">Download</a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/mrbullet/README.md"><img src="docs/media/readme/thumb_mrbullet.png" width="240" alt="Mr Bullet"><br><b>Mr Bullet</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/MrBullet.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/sonic/README.md"><img src="docs/media/readme/thumb_sonic.png" width="240" alt="Sonic the Hedgehog"><br><b>Sonic the Hedgehog</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/SonicTheHedgehog.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/portal/README.md"><img src="docs/media/readme/thumb_portal.png" width="240" alt="Portal Returns"><br><b>Portal Returns</b></a></td>
-    <td align="center" width="33%"><a href="games/stickmanhook/README.md"><img src="docs/media/readme/thumb_stickmanhook.png" width="240" alt="Stickman Hook"><br><b>Stickman Hook</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/StickmanHook.nwa">Download</a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/stickmanhook/README.md"><img src="docs/media/readme/thumb_stickmanhook.png" width="240" alt="Stickman Hook"><br><b>Stickman Hook</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/StickmanHook.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/blockblast/README.md"><img src="docs/media/readme/thumb_blockblast.png" width="240" alt="Block Blast"><br><b>Block Blast</b></a></td>
     <td align="center" width="33%"><a href="games/suika/README.md"><img src="docs/media/readme/thumb_suika.png" width="240" alt="Suika Game"><br><b>Suika Game</b></a></td>
-    <td align="center" width="33%"><a href="games/tombofthemask/README.md"><img src="docs/media/readme/thumb_tombofthemask.png" width="240" alt="Tomb of the Mask"><br><b>Tomb of the Mask</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/TombOfTheMask.nwa">Download</a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/tombofthemask/README.md"><img src="docs/media/readme/thumb_tombofthemask.png" width="240" alt="Tomb of the Mask"><br><b>Tomb of the Mask</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/TombOfTheMask.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/monkeymart/README.md"><img src="docs/media/readme/thumb_monkeymart.png" width="240" alt="Monkey Mart"><br><b>Monkey Mart</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/MonkeyMart.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/badtime/README.md"><img src="docs/media/readme/thumb_badtime.png" width="240" alt="Bad Time Simulator"><br><b>Bad Time Simulator</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/BadTimeSimulator.nwa">Download</a></td>
-    <td align="center" width="33%"><a href="games/catninja/README.md"><img src="docs/media/readme/thumb_catninja.png" width="240" alt="Cat Ninja"><br><b>Cat Ninja</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/CatNinja.nwa">Download</a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/catninja/README.md"><img src="docs/media/readme/thumb_catninja.png" width="240" alt="Cat Ninja"><br><b>Cat Ninja</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/CatNinja.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/championisland/README.md"><img src="docs/media/readme/thumb_championisland.png" width="240" alt="Champion Island"><br><b>Champion Island</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/ChampionIsland.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/numpowder/README.md"><img src="docs/media/readme/thumb_numpowder.png" width="240" alt="NumPowder"><br><b>NumPowder</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPowder.nwa">Download</a></td>
-    <td align="center" width="33%"><a href="games/finalearth2/README.md"><img src="docs/media/readme/thumb_finalearth2.png" width="240" alt="The Final Earth 2"><br><b>The Final Earth 2</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FinalEarth2.nwa">Download</a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/finalearth2/README.md"><img src="docs/media/readme/thumb_finalearth2.png" width="240" alt="The Final Earth 2"><br><b>The Final Earth 2</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FinalEarth2.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/paperclips/README.md"><img src="docs/media/readme/thumb_paperclips.png" width="240" alt="Universal Paperclips"><br><b>Universal Paperclips</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/UniversalPaperclips.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/dune/README.md"><img src="docs/media/readme/thumb_dune.png" width="240" alt="Dune"><br><b>Dune</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Dune.nwa">Download</a></td>
-    <td align="center" width="33%"><a href="games/flappybird/README.md"><img src="docs/media/readme/thumb_flappybird.png" width="240" alt="Flappy Bird"><br><b>Flappy Bird</b></a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/flappybird/README.md"><img src="docs/media/readme/thumb_flappybird.png" width="240" alt="Flappy Bird"><br><b>Flappy Bird</b></a></td>
     <td align="center" width="33%"><a href="games/doodlejump/README.md"><img src="docs/media/readme/thumb_doodlejump.png" width="240" alt="Doodle Jump"><br><b>Doodle Jump</b></a></td>
     <td align="center" width="33%"><a href="games/dinorun/README.md"><img src="docs/media/readme/thumb_dinorun.png" width="240" alt="Chrome Dino"><br><b>Chrome Dino</b></a></td>
-    <td align="center" width="33%"><a href="games/tetris/README.md"><img src="docs/media/readme/thumb_tetris.png" width="240" alt="Tetris"><br><b>Tetris</b></a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/tetris/README.md"><img src="docs/media/readme/thumb_tetris.png" width="240" alt="Tetris"><br><b>Tetris</b></a></td>
     <td align="center" width="33%"><a href="games/pacman/README.md"><img src="docs/media/readme/thumb_pacman.png" width="240" alt="Pac-Man"><br><b>Pac-Man</b></a></td>
     <td align="center" width="33%"><a href="games/donkeykong/README.md"><img src="docs/media/readme/thumb_donkeykong.png" width="240" alt="Donkey Kong"><br><b>Donkey Kong</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/DonkeyKong.nwa">Download</a></td>
-    <td align="center" width="33%"><a href="games/flappydunk/README.md"><img src="docs/media/readme/thumb_flappydunk.png" width="240" alt="Flappy Dunk"><br><b>Flappy Dunk</b></a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/flappydunk/README.md"><img src="docs/media/readme/thumb_flappydunk.png" width="240" alt="Flappy Dunk"><br><b>Flappy Dunk</b></a></td>
     <td align="center" width="33%"><a href="games/towerblock/README.md"><img src="docs/media/readme/thumb_towerblock.png" width="240" alt="Tower Blocks"><br><b>Tower Blocks</b></a></td>
     <td align="center" width="33%"><a href="games/coreball/README.md"><img src="docs/media/readme/thumb_coreball.png" width="240" alt="Core Ball"><br><b>Core Ball</b></a></td>
-    <td align="center" width="33%"><a href="games/uno/README.md"><img src="docs/media/readme/thumb_uno.png" width="240" alt="UNO"><br><b>UNO</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/UNO.nwa">Download</a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/uno/README.md"><img src="docs/media/readme/thumb_uno.png" width="240" alt="UNO"><br><b>UNO</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/UNO.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/twoplayer/README.md"><img src="docs/media/readme/thumb_twoplayer.png" width="240" alt="2 Players"><br><b>2 Players</b></a></td>
     <td align="center" width="33%"><a href="games/chess/README.md"><img src="docs/media/readme/thumb_chess.png" width="240" alt="Chess"><br><b>Chess</b></a></td>
-    <td align="center" width="33%"><a href="games/invaders/README.md"><img src="docs/media/readme/thumb_invaders.png" width="240" alt="Space Invaders"><br><b>Space Invaders</b></a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/invaders/README.md"><img src="docs/media/readme/thumb_invaders.png" width="240" alt="Space Invaders"><br><b>Space Invaders</b></a></td>
     <td align="center" width="33%"><a href="games/breakout/README.md"><img src="docs/media/readme/thumb_breakout.png" width="240" alt="Block Breaker"><br><b>Block Breaker</b></a></td>
     <td align="center" width="33%"><a href="games/snake/README.md"><img src="docs/media/readme/thumb_snake.png" width="240" alt="Snake"><br><b>Snake</b></a></td>
-    <td align="center" width="33%"><a href="games/connectfour/README.md"><img src="docs/media/readme/thumb_connectfour.png" width="240" alt="Connect Four"><br><b>Connect Four</b></a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/connectfour/README.md"><img src="docs/media/readme/thumb_connectfour.png" width="240" alt="Connect Four"><br><b>Connect Four</b></a></td>
     <td align="center" width="33%"><a href="games/mahjong/README.md"><img src="docs/media/readme/thumb_mahjong.png" width="240" alt="Mahjong"><br><b>Mahjong</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Mahjong.nwa">Download</a></td>
     <td align="center" width="33%"><a href="games/g2048/README.md"><img src="docs/media/readme/thumb_g2048.png" width="240" alt="2048"><br><b>2048</b></a></td>
-    <td align="center" width="33%"><a href="games/solitaire/README.md"><img src="docs/media/readme/thumb_solitaire.png" width="240" alt="Solitaire"><br><b>Solitaire</b></a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/solitaire/README.md"><img src="docs/media/readme/thumb_solitaire.png" width="240" alt="Solitaire"><br><b>Solitaire</b></a></td>
     <td align="center" width="33%"><a href="games/minesweeper/README.md"><img src="docs/media/readme/thumb_minesweeper.png" width="240" alt="Minesweeper"><br><b>Minesweeper</b></a></td>
     <td align="center" width="33%"><a href="games/uttt/README.md"><img src="docs/media/readme/thumb_uttt.png" width="240" alt="Ultimate Tic-Tac-Toe"><br><b>Ultimate Tic-Tac-Toe</b></a></td>
-    <td align="center" width="33%"><a href="games/sudoku/README.md"><img src="docs/media/readme/thumb_sudoku.png" width="240" alt="Sudoku"><br><b>Sudoku</b></a></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><a href="games/sudoku/README.md"><img src="docs/media/readme/thumb_sudoku.png" width="240" alt="Sudoku"><br><b>Sudoku</b></a></td>
     <td align="center" width="33%"><a href="games/sokoban/README.md"><img src="docs/media/readme/thumb_sokoban.png" width="240" alt="Sokoban"><br><b>Sokoban</b></a></td>
     <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-64"><b>Super Mario 64</b></a></td>
-    <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-Bros"><b>Super Mario Bros.</b></a></td>
   </tr>
   <tr>
+    <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-Bros"><b>Super Mario Bros.</b></a></td>
     <td align="center"><a href="#roadmap"><b>More on the way</b></a></td>
   </tr>
 </table>
@@ -330,10 +331,10 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] Crossy Road: the characters and the prize machine
 - [x] Famidash: its newest and fullest version, HUGE, with 173 levels
 - [x] ColecoVision games in Retro-Go
+- [x] Five Nights at Freddy's 3
 
 </details>
 
-- [x] Five Nights at Freddy's 3
 - [x] Five Nights at Freddy's 4
 - [x] Clash Royale, against bots
 - [x] Cat Ninja
@@ -343,6 +344,7 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] FNAF World
 - [x] Mr. Bullet
 - [x] A PICO-8 emulator, NumPico: add your own .p8 games on the website
+- [x] Moto X3M
 - [ ] Full Minecraft 1.18.2 as a standalone app
 - [ ] Among Us, against bots
 - [ ] Into the Breach
@@ -431,6 +433,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 - **Deltarune** by Toby Fox inspired NumPlay's Deltarune, which uses the pictures, fonts, rooms and texts of Chapter 1's own files. Not affiliated with Toby Fox.
 - **FNAF World** by Scott Cawthon inspired NumPlay's FNAF World, which uses the game's own pictures and map and runs its battles as the game's own events do, all read from its Windows release. Not affiliated with Scott Cawthon.
 - **Mr Bullet - Spy Puzzles** by Lion Studios and 1Button inspired NumPlay's Mr Bullet, which plays the game's Classic, Grenades, Hostages and Friendly Fire levels with its own pictures, read from its Android release, and follows its rules and numbers. Its physics is **Box2D 2.3.1** by Erin Catto (zlib license, [license](LICENSES/Zlib-Box2D.txt)), the engine the game runs on. Not affiliated with Lion Studios.
+- **Moto X3M** by Madpuffers inspired NumPlay's Moto X3M, which plays the game's 50 levels with its own pictures and its **Impact** and **CF Crack and Bold** fonts, read from its web release, and follows its rules and numbers. Its physics is **[Nape](https://github.com/deltaluca/nape)** by Luca Deltodesco (BSD license, [license](LICENSES/BSD-2-Clause-Nape.txt)), the engine the game runs on, ported to C. Not affiliated with Madpuffers.
 - **PICO-8** by Lexaloffle inspired NumPlay's NumPico, which runs PICO-8 carts with **[femto8](https://github.com/benbaker76/femto8)** by Ben Baker (MIT license, [license](LICENSES/MIT-femto8.txt)) and its Lua, z8lua by Sam Hocevar (WTFPL) on Lua 5.2 (MIT license), and unpacks .p8.png carts with Lexaloffle's own algorithms (MIT and zlib licenses). Its pictures show [Combo Pool](https://www.lexaloffle.com/bbs/?pid=combopool-0) by NuSan (CC4-BY-NC-SA), which isn't in NumPlay. Not affiliated with Lexaloffle.
 - **Pong** by Atari (1972) inspired NumPlay's 2 Players, with air hockey, tanks in a maze in the spirit of Tank Trouble and the light cycles of Tron. All four are written in C for NumPlay and drawn from shapes, with no code or art from them.
 - **[Cookie Clicker](https://orteil.dashnet.org/cookieclicker/)** by Orteil and Opti (DashNet) inspired NumPlay's Cookie Clicker, which uses the game's own pictures, texts and numbers (version 2.058, from its public mirror [ozh/cookieclicker](https://github.com/ozh/cookieclicker)) and the **Merriweather**, **Kavoon** and **Noto Sans** fonts (SIL Open Font License: [Merriweather](LICENSES/OFL-1.1-Merriweather.txt), [Kavoon](LICENSES/OFL-1.1-Kavoon.txt), [Noto Sans](LICENSES/OFL-1.1-NotoSans.txt)). Not affiliated with Orteil or DashNet.
@@ -468,7 +471,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 
 NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyright (c) 2026 Mason Chen. Code and fonts from others keep their own licenses: the `UNLICENSE` files in the games' folders and the [LICENSES](LICENSES) folder. The names, artwork and music of the games NumPlay is inspired by belong to their makers and are not covered by it.
 
-<sub>Unofficial fan games, not affiliated with NumWorks, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale, Deltarune), jcw87 (Bad Time Simulator), Imangi Studios (Temple Run), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's, Five Nights at Freddy's 2, Five Nights at Freddy's 3, Five Nights at Freddy's 4, FNAF World), SEGA (Sonic the Hedgehog, Master System, Game Gear, SG-1000), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), the makers of Snow Rider 3D, Ketchapp (Rider), TFDSoft (Famidash), Brodie Lockard or Activision (Shanghai), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Oakever Games (Meowdoku), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go), Coleco (ColecoVision), Supercell (Clash Royale), Richman Stewart or TrackMill (Cat Ninja), Ironhide Game Studio or Armor Games (Kingdom Rush), Lion Studios (Mr Bullet), Lexaloffle (PICO-8). Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System, Game Gear and SG-1000 of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, Clash Royale of Supercell, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
+<sub>Unofficial fan games, not affiliated with NumWorks, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale, Deltarune), jcw87 (Bad Time Simulator), Imangi Studios (Temple Run), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's, Five Nights at Freddy's 2, Five Nights at Freddy's 3, Five Nights at Freddy's 4, FNAF World), SEGA (Sonic the Hedgehog, Master System, Game Gear, SG-1000), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), the makers of Snow Rider 3D, Ketchapp (Rider), TFDSoft (Famidash), Brodie Lockard or Activision (Shanghai), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Oakever Games (Meowdoku), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go), Coleco (ColecoVision), Supercell (Clash Royale), Richman Stewart or TrackMill (Cat Ninja), Ironhide Game Studio or Armor Games (Kingdom Rush), Lion Studios (Mr Bullet), Lexaloffle (PICO-8), Madpuffers (Moto X3M). Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System, Game Gear and SG-1000 of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, Clash Royale of Supercell, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
 
 ## Gallery
 
@@ -592,5 +595,8 @@ NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyri
     <td align="center"><img src="docs/media/gallery/fnafworld.gif" alt="FNAF World: a walk through Fazbear Hills, then a battle against Gearrats won"><br><a href="games/fnafworld/README.md"><b>FNAF World</b></a></td>
     <td align="center"><img src="docs/media/gallery/mrbullet.gif" alt="Mr Bullet: the first three levels, the third cleared with one bullet off the stairs"><br><a href="games/mrbullet/README.md"><b>Mr Bullet</b></a></td>
     <td align="center"><img src="docs/media/gallery/numpico.gif" alt="NumPico: Combo Pool's balls roll and bounce on a tiled table"><br><a href="games/numpico/README.md"><b>NumPico</b></a></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/media/gallery/motox3m.gif" alt="Moto X3M: level 2 on the beach, a back flip over the pit and its half second off the clock"><br><a href="games/motox3m/README.md"><b>Moto X3M</b></a></td>
   </tr>
 </table>
