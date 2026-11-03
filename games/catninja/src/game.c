@@ -1267,6 +1267,11 @@ void game_get_resume(int *lvl, int *x, int *y, int *rot) {
 }
 
 /* a level straight away, its start the checkpoint (the tests, and pictures) */
+/* (tests) the level's teleporters: start and end tiles */
+int game_debug_teleports(int out[16][4]) {
+  for (int k = 0; k < n_tps; k++) out[k][0] = tps[k].sx, out[k][1] = tps[k].sy, out[k][2] = tps[k].ex, out[k][3] = tps[k].ey;
+  return n_tps;
+}
 void game_debug_goto(int lv) {
   level = lv;
   target_dir = 4, target_respawn = false;

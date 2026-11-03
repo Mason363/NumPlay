@@ -219,6 +219,12 @@ int main(void) {
   {
     extern void game_debug_goto(int lv);
     game_debug_goto(PERF_LEVEL), sv.flags |= 1;
+#ifdef PERF_TP /* (and the cat on that teleporter of the level) */
+    extern int game_debug_teleports(int out[16][4]);
+    for (int i = 0; i < 30; i++) game_step();
+    int t[16][4];
+    if (game_debug_teleports(t) > PERF_TP) P.x = t[PERF_TP][0] * 20 + 10, P.y = t[PERF_TP][1] * 20 + 10, P.speedx = 0;
+#endif
   }
 #endif
   if (!(sv.flags & 1)) ov = OV_HELP, help_back = OV_NONE, sv.flags |= 1;
