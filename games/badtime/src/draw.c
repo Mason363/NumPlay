@@ -170,24 +170,28 @@ static void draw_stab(const stab_t *s, const clip_t *k) {
     for (int y = y0; y < y1; y += 6) bone(x0, y, x1, y + 5 < y1 ? y + 5 : y1, false, WHITE, k);
 }
 
-static void draw_heart(const world_t *w) {
-  int x = S(w->hx) + ox_, y = S(w->hy) + oy_;
-  color_t c = w->heart_mode == HEART_BLUE ? SOUL_BLUE : RED;
-  int dir = w->heart_mode == HEART_BLUE ? w->heart_dir : DIR_DOWN;
-  /* turned with its gravity: its point towards the floor it falls to */
-  const art_t *a = &ART_HEART[0];
-  for (int yy = 0; yy < 8; yy++) {
-    int sy = y - 4 + yy;
+/* a heart picture turned k quarters clockwise, centred on (x, y): the pictures point east, as the game's do, and the
+ * game turns its heart 90 degrees (pointing down) and, slammed, towards the floor it falls to */
+static void heart_art(const art_t *a, int x, int y, int k, color_t c) {
+  int dw = k & 1 ? a->h : a->w, dh = k & 1 ? a->w : a->h, x0 = x - dw / 2, y0 = y - dh / 2;
+  for (int yy = 0; yy < dh; yy++) {
+    int sy = y0 + yy;
     if (sy < gfx_y0 || sy >= gfx_y1) continue;
-    for (int xx = 0; xx < 8; xx++) {
-      int sx = x - 4 + xx, u = xx, v = yy;
-      if (dir == DIR_UP) u = 7 - xx, v = 7 - yy;
-      else if (dir == DIR_LEFT) u = yy, v = 7 - xx;
-      else if (dir == DIR_RIGHT) u = 7 - yy, v = xx;
-      if (u >= a->w || v >= a->h || sx < 0 || sx >= SCREEN_W) continue;
+    for (int xx = 0; xx < dw; xx++) {
+      int sx = x0 + xx, u = xx, v = yy;
+      if (k == 1) u = yy, v = a->h - 1 - xx;
+      else if (k == 2) u = a->w - 1 - xx, v = a->h - 1 - yy;
+      else if (k == 3) u = a->w - 1 - yy, v = xx;
+      if (sx < 0 || sx >= SCREEN_W) continue;
       if (art_px(a, u, v)) *px(sx, sy) = c;
     }
   }
+}
+
+static void draw_heart(const world_t *w) {
+  color_t c = w->heart_mode == HEART_BLUE ? SOUL_BLUE : RED;
+  int dir = w->heart_mode == HEART_BLUE ? w->heart_dir : DIR_DOWN;
+  heart_art(&ART_HEART[0], S(w->hx) + ox_, S(w->hy) + oy_, dir, c);   /* (DIR_RIGHT .. DIR_UP: 0 to 3 quarters) */
 }
 
 /* ---------------------------------------------------------------- Sans */
@@ -485,7 +489,7 @@ static void fight_scene(void *ctx) {
         gfx_fill(x, y, 2, t ? 2 : 1, RED), gfx_fill(x + (t ? 0 : 1), y + 1, 1, 1, RED);
       }
     } else if (f->state == FS_DEATH && f->death_t >= 20) {
-      blit(&ART_HEART[1], S(w->hx), S(w->hy), false, RED, true);
+      heart_art(&ART_HEART[1], S(w->hx), S(w->hy), DIR_DOWN, RED);
     } else draw_heart(w);
   }
   if (f->banner_t > 0 && f->banner)
@@ -512,11 +516,7 @@ typedef struct {
   const screen_t *s;
 } screen_ctx_t;
 
-static void heart_cursor(int x, int y) {
-  for (int yy = 0; yy < ART_HEART[0].h; yy++)
-    for (int xx = 0; xx < ART_HEART[0].w; xx++)
-      if (art_px(&ART_HEART[0], xx, yy)) gfx_fill(x + xx, y + yy, 1, 1, RED);
-}
+static void heart_cursor(int x, int y) { heart_art(&ART_HEART[0], x + 4, y + 4, DIR_DOWN, RED); }
 
 static void screen_scene(void *ctx) {
   const screen_t *s = ((const screen_ctx_t *)ctx)->s;
