@@ -375,6 +375,17 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Getting Over It
 - [ ] Hill Climb Racing 2
 - [ ] Hill Climb Racing in 3D, with a scooter, a BMX, a skateboard and roller skates
+- [ ] Advance Wars
+- [ ] Half-Life
+- [ ] circloO
+- [ ] Retro-Go: ROMs trimmed of their padding, so more of them fit
+- [ ] Dog Hotel
+- [ ] Kingdom Rush: Frontiers, Origins and Vengeance
+- [ ] Kingdom Rush: the heroes
+- [ ] Cult of the Lamb
+- [ ] Zombie Tsunami
+- [ ] 2 3 4 Player Games, with teams
+- [ ] Bread & Fred, for two players
 
 ## Credits
 
