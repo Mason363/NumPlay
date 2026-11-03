@@ -867,13 +867,17 @@ def main():
     ap.add_argument("--game")
     ap.add_argument("--out", default="build/test_games")
     ap.add_argument("--numplay", help="play the games inside this NumPlay.nwa instead")
+    ap.add_argument("--shard", default="1/1", help="K/N: only every Nth app, from the Kth (CI's parts, tests/ci.py)")
     a = ap.parse_args()
+    k, n = map(int, a.shard.split("/"))
     order = [g["id"] for g in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "games",
                                                           "games.json"))) if g.get("default", True)]
     os.makedirs(a.out, exist_ok=True)
     failed = False
-    for name in GAMES:
+    for i, name in enumerate(GAMES):
         if a.game and a.game != name or a.numplay and name not in order:  # (a big game: on its own only)
+            continue
+        if i % n != k - 1:
             continue
         if a.numplay:  # (NumPlay keeps its own copy, packed: tests/test_progress.py)
             problems, stack, recs = play(name, a.numplay, a.out, order.index(name))

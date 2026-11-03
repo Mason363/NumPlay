@@ -1,0 +1,27 @@
+name: Tools
+description: The ARM toolchain, Node with nwlink, Python with the build's packages, pngquant and Rust's ARM target
+runs:
+  using: composite
+  steps:
+    - name: ARM toolchain
+      shell: bash
+      run: |
+        v=15.2.1-1.1
+        curl -sSL "https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/download/v$v/xpack-arm-none-eabi-gcc-$v-linux-x64.tar.gz" | tar -xz -C "$RUNNER_TEMP"
+        echo "$RUNNER_TEMP/xpack-arm-none-eabi-gcc-$v/bin" >> "$GITHUB_PATH"
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Packages
+      shell: bash
+      run: |
+        sudo apt-get update -q && sudo apt-get install -yq pngquant
+        pip install pillow numpy zopfli pyelftools unicorn==2.1.4
+        npm install -g nwlink@1.0.0
+        rustup target add thumbv7em-none-eabihf
