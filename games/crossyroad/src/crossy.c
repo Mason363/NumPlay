@@ -2072,7 +2072,8 @@ static void load_save(void) {
   const uint8_t *d = f + 2 + sizeof(save_name);
   uint32_t v[5];
   for (int i = 0; i < 5; i++) v[i] = d[4 * i] | d[4 * i + 1] << 8 | d[4 * i + 2] << 16 | (uint32_t)d[4 * i + 3] << 24;
-  if (v[0] > 999999999 || v[1] > 999999999) return;
+  /* (coins below zero: what the prize machine left from the characters' screen before 1.24.12; they come back as 0) */
+  if (v[0] > 999999999 || (v[1] > 999999999 && v[1] < 0x80000000u)) return;
   if (rd16(f) == 2 + sizeof(save_name) + SAVE_LEN1) {
     if (save_sum(v[0], v[1]) != v[2]) return;
   } else if (save_sum(save_sum(v[0], v[1]), v[2] * 31u + v[3]) != v[4] || v[3] >= NCHARS || !(v[2] >> v[3] & 1)) {
@@ -2082,7 +2083,7 @@ static void load_save(void) {
     chr = (int)v[3];
   }
   top_score = (int)v[0];
-  coins = (int)v[1];
+  coins = v[1] > 999999999 ? 0 : (int)v[1];
 }
 
 static NOINLINE void write_save(void) {
@@ -2271,7 +2272,7 @@ int main(int argc, char *argv[]) {
         chr = browse;
         write_save();
         restarting = 1, restart_t = 0;
-      } else if (ok && prize == 0) {  // 100 coins: one not won yet, at random, played from now on
+      } else if (state == ST_PRIZE && ok && prize == 0 && coins >= 100) {  // 100 coins: one not won yet, at random, played from now on
         int left = 0, k = 0;
         for (int c = 0; c < NCHARS; c++) left += !(owned >> c & 1);
         int r = irand(left);
@@ -2281,10 +2282,10 @@ int main(int argc, char *argv[]) {
         coins -= 100;
         write_save();
         prize = 1, st_time = 0;
-      } else if (ok && prize == 2) {
+      } else if (state == ST_PRIZE && ok && prize == 2) {
         build_char(won);
         prize = 3, st_time = 0;
-      } else if (ok && prize == 3 && st_time > 0.5f) {
+      } else if (state == ST_PRIZE && ok && prize == 3 && st_time > 0.5f) {
         restarting = 1, restart_t = 0;
       }
       dir = -1;
