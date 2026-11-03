@@ -2,6 +2,10 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.10: Moto X3M
+
+- **Moto X3M:** MotoX3M.nwa, all 50 levels of the bike racing game with its flips, stars and six bikes, on the game's own pictures and physics.
+
 ## 1.24.9: Ralsei's lessons in Deltarune
 
 - **Deltarune:** Ralsei's lessons with the Dummy, every one of his comments, and the Dummy's hugs. Dialogue keeps the game's own letter spacing.
