@@ -188,7 +188,7 @@ Walk up to a star and press OK to SAVE and fill your HP. The C menu (toolbox) sh
 | Arrows (or 4, 6, 8, 2) | Walk, move your SOUL, choose |
 | OK, EXE or 5 | Talk, read, confirm (Z in the game) |
 | Back or ⌫ | Cancel, show the whole text at once (X in the game) |
-| Toolbox, Shift or Var | The menu: ITEM, STAT, CELL (C in the game), SETUP |
+| Toolbox, Shift or Var | The menu: ITEM, STAT, CELL (C in the game), SETUP (Quit game is there) |
 | Home | Keep the moment and quit: the next start is back there |
 
 ## Good to know
