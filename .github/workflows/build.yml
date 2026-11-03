@@ -14,6 +14,12 @@ permissions:
   contents: write
   actions: write
 
+# One run of main at a time: a push waits for the run before it, and a newer push replaces one still waiting
+# (tags and pull requests each have their own)
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -106,16 +112,21 @@ jobs:
 
 
       - name: Kit for the website
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         # NumPlay Studio (customize/) links a NumPlay of your own from the kit (make kit): it goes on the
-        # branch "kit", one commit, and the site is deployed again with it. Only from main's newest commit: a run
-        # for an older one can end last and would put an older kit back
+        # branch "kit", one commit, and the site is deployed again with it. Any run of a commit newer than the
+        # kit's makes it, so the Studio has every game as soon as one build of it ends; a run of an older commit
+        # that ends last leaves the newer kit alone
         run: |
-          if [ "$(git ls-remote origin refs/heads/main | cut -f1)" != "$GITHUB_SHA" ]; then
-            echo "(main has moved on: its newest commit's run makes the kit)"
-            exit 0
+          kit=$(gh api "repos/$GITHUB_REPOSITORY/commits/kit" --jq .commit.message 2>/dev/null | grep -o '[0-9a-f]\{40\}' | tail -1)
+          if [ -n "$kit" ]; then
+            how=$(gh api "repos/$GITHUB_REPOSITORY/compare/$kit...$GITHUB_SHA" --jq .status 2>/dev/null || echo unknown)
+            if [ "$how" != ahead ]; then
+              echo "(the kit is from $kit, which this commit isn't newer than: $how)"
+              exit 0
+            fi
           fi
           cd build/data/site-kit
           git init -q -b kit
