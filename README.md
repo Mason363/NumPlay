@@ -386,6 +386,7 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Zombie Tsunami
 - [ ] 2 3 4 Player Games, with teams
 - [ ] Bread & Fred, for two players
+- [ ] The big games in French and Chinese too
 
 ## Credits
 
