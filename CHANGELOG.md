@@ -2,6 +2,14 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.11: Fixes
+
+- **Mr Bullet:** TNT crates go off when shot, so level 7 and the others with TNT can be cleared.
+- **Bad Time Simulator:** the heart points down.
+- **Undertale:** Quit game in the menu's SETUP.
+- **Subway Surfers:** the quit question no longer moves the title's buttons.
+- **Rider:** long challenges fit on the screen.
+
 ## 1.24.10: Moto X3M
 
 - **Moto X3M:** MotoX3M.nwa, all 50 levels of the bike racing game with its flips, stars and six bikes, on the game's own pictures and physics.
