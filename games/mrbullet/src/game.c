@@ -3,7 +3,7 @@
  * As in the game (gamesrc spec): level parts of density 2.1 (heavy x3), restitution 0.35, friction 0.2; characters'
  * pieces 2.0, 0.35, 0.2; bullets circles of radius 2, density 0.1, restitution 1, no friction and no gravity, sent
  * by an impulse of 0.008 and kept 300 steps; grenades of density 0.8, restitution 0.4, friction 0.5, that go off
- * after 150 steps. Breakables (bo, br) break at the first bullet or a blow of 7.5 m/s; explosives (be) go off. */
+ * after 150 steps. Glass (br) breaks at the first bullet or a blow of 7.5 m/s; explosives (be, and bo: TNT) go off. */
 #include <math.h>
 #include <string.h>
 #include "game.h"
@@ -23,6 +23,10 @@ static uint8_t pending_blast[MAX_OBJ];   /* explosives set off, going off in a f
 #define KIND(c) ((c) >> 8)
 #define INDEX(c) ((c) & 255)
 
+/* what goes off when shot or hit hard: be, and bo, the TNT crates (Classic's level 7 is one crate between the two);
+   br breaks (glass) */
+#define F_EXPL (F_BE | F_BO)
+#define F_BREAK F_BR
 #define BULLET_R 2.0f
 #define BULLET_SPEED (0.008f / (0.1f * PI * (BULLET_R / 60) * (BULLET_R / 60)) * 60)   /* units/s */
 #define GRENADE_R 5.0f
@@ -616,8 +620,8 @@ static void blast(float x, float y) {
     }
     float d = sqrtf(dx * dx + dy * dy);
     if (d >= BLAST_R) continue;
-    if (o->flags & F_BE) { if (!pending_blast[i]) pending_blast[i] = 6; continue; }
-    if (o->flags & (F_BO | F_BR)) { remove_obj(i); continue; }
+    if (o->flags & F_EXPL) { if (!pending_blast[i]) pending_blast[i] = 6; continue; }
+    if (o->flags & F_BREAK) { remove_obj(i); continue; }
     if (!world_dynamic(o->body)) continue;
     float m = world_mass(o->body), f = 3.0f * (1 - d / BLAST_R) / (d > 1 ? d : 1);
     float cap = m * 12.0f / (f * (d > 1 ? d : 1) + 1e-6f);
@@ -668,9 +672,9 @@ static void switch_on(int si) {
 static void hit_level(int oi, bool by_bullet, float speed) {
   Obj *o = &g.obj[oi];
   if (o->gone) return;
-  if (o->flags & F_BE) {
+  if (o->flags & F_EXPL) {
     if ((by_bullet || speed > BREAK_SPEED) && !pending_blast[oi]) pending_blast[oi] = 1;
-  } else if (o->flags & (F_BO | F_BR)) {
+  } else if (o->flags & F_BREAK) {
     if (by_bullet || speed > BREAK_SPEED) remove_obj(oi);
   }
 }
