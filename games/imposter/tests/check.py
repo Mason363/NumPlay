@@ -190,6 +190,9 @@ st = state(out)
 check(st and st["names"] == ["Ana", "Bo"], "a player removed after the question: %s" % (st and st["names"]))
 out, _ = walk("ok")
 check(out.strip().splitlines()[-2].startswith("DRAW players"), "Start with 2 players opens Players")
+out, _ = walk("ok ok " + typed("zoe") + " home")
+st = state(out)
+check(st and st["names"] == ["Ana", "Bo", "Zoe"], "Home while typing a name keeps it: %s" % (st and st["names"]))
 
 # ---- the rules: a word comes again only once its category has run out
 PLAYERS = "Ann,Bob,Cal,Dee"
@@ -300,6 +303,29 @@ sessions = sum(int(m) for o in outs for m in re.findall(r"FUZZ sessions (\d+)", 
 reached = sum("phase 3" in o or "phase 2" in o or "phase 1" in o for o in outs)
 check(not [f for f in failed if "crashed" in f], "%d random-key runs (%d sessions, %d with rounds): no crash" %
       (FUZZ, sessions, reached))
+
+# ---- the computer build (make port TARGET=sdl), if it's there: a whole round on the screen's letters
+SDL = os.path.join(os.path.dirname(PLAY), "sdl", "imposter")
+if os.path.exists(SDL):
+    d = os.path.join(WORK, "sdl")
+    os.makedirs(d)
+    t, keys = 400, []
+    for k in "ok ok ok ok exe right ok exe down down ok exe back back ok".split() + ["ok", "w", "ok", "w"] * 3 + \
+            ["ok", "ok"]:
+        if k == "w":
+            t += 400
+            continue
+        keys.append("%d-%d:%s" % (t, t + 90, k))
+        t += 300
+    env = dict(os.environ, NP_HEADLESS="1", NP_SAVES=d, NP_KEYS=",".join(keys), NP_QUIT_MS=str(t + 300),
+               NP_SHOTS="%d:%s/reveal.ppm" % (t + 100, d))
+    r = subprocess.run([SDL], env=env, capture_output=True, text=True, timeout=120)
+    store = open(os.path.join(d, "imposter.files"), "rb").read() if os.path.exists(os.path.join(d, "imposter.files")) else b""
+    ok = r.returncode == 0 and os.path.exists(os.path.join(d, "reveal.ppm")) and b"imposter.sav" in store
+    if ok:
+        r2, g2, b2 = pixel(os.path.join(d, "reveal.ppm"), 4, 120)
+        ok = b2 > r2  # (the reveal's indigo, not a role's red)
+    check(ok, "the computer build plays a round to the reveal and keeps its save")
 
 shutil.rmtree(WORK, ignore_errors=True)
 if failed:

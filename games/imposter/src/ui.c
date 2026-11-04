@@ -814,6 +814,7 @@ bool app_step(uint32_t keys, uint32_t letters, uint32_t now) {
   uint32_t dt = now - u.now;
   u.now = now;
   if (keys & KB_HOME) {
+    if (u.screen == SC_NAME) name_done(false); /* (the name typed so far, kept as Back keeps it) */
     game_save();
     return false;
   }
