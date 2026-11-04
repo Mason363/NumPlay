@@ -1076,7 +1076,9 @@
   const other = () => st.calc !== 'numworks';
   const known = (t) => Object.prototype.hasOwnProperty.call(CALCS, t);
   const portList = (t = st.calc) => (ports && known(t) && ports.targets[t]) || null;
-  const calcReady = (t) => t === 'numworks' || (!!portList(t) && Object.keys(portList(t)).some((id) => buttons.has(id)));
+  const SOON = ['ti84ce'];  // (built, but not fast enough on the calculator yet)
+  const calcReady = (t) => t === 'numworks' ||
+    (!SOON.includes(t) && !!portList(t) && Object.keys(portList(t)).some((id) => buttons.has(id)));
   const onCalc = (id) => !other() || !!portList()[id];
   const portPicks = () => st.order.filter((id) => st.port[st.calc].has(id) && buttons.has(id) && onCalc(id));
   const portFiles = (e) => e.files || [e.file];
