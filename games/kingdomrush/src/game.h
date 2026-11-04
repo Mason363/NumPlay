@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-enum { SCR_TITLE, SCR_MAP, SCR_UPGRADES, SCR_BATTLE, SCR_HELP };
+enum { SCR_TITLE, SCR_MAP, SCR_UPGRADES, SCR_BATTLE, SCR_HELP, SCR_HEROES };
 
 typedef struct {
   uint8_t camp[12];        /* the campaign's stars (0: not won) */
@@ -13,7 +13,11 @@ typedef struct {
   uint8_t difficulty;      /* 0 casual, 1 normal, 2 veteran */
   uint8_t guide_seen;
   uint8_t seen_note[8];    /* notifications already shown, a bit each */
+  /* (version 2) */
+  uint8_t hero_room;       /* the Hero Room opened (heroRoomEnabled: 15 stars) */
+  uint8_t hero;            /* the hero picked (selectedHero: 1 to 7, 0 none) */
 } Progress;
+#define PROGRESS_V1 (sizeof(Progress) - 2)
 
 typedef struct {
   bool running;
@@ -54,4 +58,7 @@ void upgrades_step(void);
 void upgrades_draw(void);
 void help_step(void);
 void help_draw(void);
+void heroes_open(void);
+void heroes_step(void);
+void heroes_draw(void);
 #endif

@@ -3,6 +3,7 @@
 #include <string.h>
 #include "anim.h"
 #include "kr.h"
+#include "hero.h"
 #include "settings.h"
 
 #define ST(e) (&enemy_stats[(e)->type])
@@ -228,6 +229,7 @@ static void attack(Enemy *e) {
     }
     return;
   }
+  if (hero_block(so)) return;   /* Gerald's shield */
   soldier_damage(so, dmg, false);
 }
 
@@ -608,6 +610,10 @@ void enemy_step(Enemy *e) {
   if (e->dead) return;
   debuffs(e);
   if (e->dead || !e->alive) return;
+  if (e->stun_t > 0) {   /* Malik's earthquake */
+    if (--e->stun_t == 0) e->dir = 0;
+    return;
+  }
   if (e->rage_t > 0 && (e->type == EN_TROLL || e->type == EN_TROLLAXETHROWER || e->type == EN_TROLLCHIEFTAIN) && --e->rage_t == 0) {   /* the chieftain's rage ends */
     e->min_dmg = (int16_t)(e->min_dmg - S_enemies_trollChieftain_rageAddedMinDamage);
     e->max_dmg = (int16_t)(e->max_dmg - S_enemies_trollChieftain_rageAddedMaxDamage);

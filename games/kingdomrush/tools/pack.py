@@ -36,7 +36,7 @@ import codec as C  # noqa: E402
 
 SRC = os.path.join(HERE, "..", "src")
 KR = os.path.expanduser(sys.argv[1] if len(sys.argv) > 1 else "~/Documents/Assets/gamesrc/kingdomrush")
-SECTIONS = ["HUFF", "QUANT", "PICS", "TABLE", "BANK", "BGPAL", "SPAL", "FRAMES", "ANIMS", "FONTS", "LEVELS"]
+SECTIONS = ["HUFF", "QUANT", "PICS", "TABLE", "BANK", "BGPAL", "SPAL", "FRAMES", "ANIMS", "FONTS", "LEVELS", "HEROES"]
 QUALITY = {"terrain": 86}
 SCALE = 0.4
 FONT_DIRS = [os.environ.get("FONTS", ""), os.path.expanduser("~/Documents/Assets/gamesrc/fonts"),
@@ -326,8 +326,81 @@ def ui_sprites():
                                                            "musketeer": 1260}[n], None, 1)
 
 
+# ------------------------------------------------------------------ the heroes (the later Flash build's Hero Room)
+HERO_SPR = None
+HERO_NAMES = ["gerald", "malik", "alleria", "bolin", "magnus", "ignus", "denas"]
+OLD_PIXELS = 0   # the sprites' colours come from the sprites before the heroes (theirs stay as they were)
+
+
+def hero_set(prefix, name, step=2):
+    """a hero-build sprite (render/h/<name>, labels in spec/data/hero_sprites.json) as AN_<prefix>_<LABEL>"""
+    sp = HERO_SPR[name]
+    n, marks = sp["frames"], sp["labels"]
+    names = {l for _, l in marks}
+    starts = [(f, l) for f, l in marks if not (l.endswith("End") and l[:-3] in names)]
+    segs = [] if starts else [("", 1, n)]
+    for k, (f, l) in enumerate(starts):
+        end = next((g for g, m in marks if m == l + "End" and g >= f), None)
+        nxt = starts[k + 1][0] - 1 if k + 1 < len(starts) else n
+        last = end if end is not None else nxt
+        if l in ("running", "travel", "mine") and end is not None and end > f:
+            last = end - 1
+        segs.append((l, f, max(f, min(last, n))))
+    for l, f0, f1 in segs:
+        st = step if f1 - f0 + 1 >= 6 else 1
+        idx = [add_frame(*load_frame(f"{KR}/render/h/{name}/{f}.png")) for f in range(f0, f1 + 1, st)]
+        anim(f"{prefix}_{l.upper()}" if l else prefix, idx, st)
+
+
+def hero_sprites():
+    global HERO_SPR, OLD_PIXELS
+    HERO_SPR = json.load(open(f"{KR}/spec/data/hero_sprites.json"))
+    OLD_PIXELS = len(SPRITE_PIXELS)
+    for h in HERO_NAMES + ["illusion", "wildcat"]:
+        hero_set("H_" + h.upper(), h)
+    for name, st in (("tar", 1), ("tarbomb", 1), ("mine", 2), ("minebomb", 1), ("frenzy", 1), ("rock", 1),
+                     ("thrown1", 1), ("thrown2", 1), ("thrown3", 1), ("thrown4", 1), ("inspire", 2), ("bolt", 1),
+                     ("drop", 1), ("rain", 2), ("fissure", 1), ("smash", 1), ("multiarrow", 1), ("courage", 2)):
+        hero_set("HB_" + name.upper(), name, st)
+    anim("HB_RALLY", [add_frame(*load_frame(f"{KR}/render/h/rally/1.png"))], 1)
+    # the HUD's faces (the portrait's frames 1 to 7), the Hero Room's cards and its stat bars (0 to 8)
+    anim("H_FACES", [add_frame(*load_frame(f"{KR}/render/h/portrait/{f}.png")) for f in range(1, 8)], 1)
+    anim("H_CARDS", [add_frame(*load_frame(f"{KR}/render/h/big/{f}.png")) for f in range(1, 8)], 1)
+    anim("H_STATBAR", [add_frame(*load_frame(f"{KR}/render/h/statbar/{f}.png")) for f in range(1, 10)], 1)
+    anim("H_SEL", [add_frame(*load_frame(f"{KR}/render/h/sel/1.png"))], 1)
+
+
+def hero_room_pic(mp):
+    """the Hero Room's panel (its menuOn frame, the buttons and words hidden) over the darkened map"""
+    room = Image.open(f"{KR}/render/h/room2/2.png").convert("RGBA")
+    x0, _, x1, y1 = room.getbbox()
+    panel = room.crop((x0, 292, x1, y1))   # (below the chains)
+    k = 236 / panel.height
+    panel = panel.resize((round(panel.width * k), 236), Image.LANCZOS)
+    dark = Image.blend(mp.convert("RGB"), Image.new("RGB", mp.size, (0, 0, 0)), 0.55).convert("RGBA")
+    dark.alpha_composite(panel, ((320 - panel.width) // 2, 2))
+    define("HROOM_X", (320 - panel.width) // 2)
+    define("HROOM_SCALE1000", round(k * 1000))
+    pic("HEROROOM", dark.convert("RGB"))
+
+
+def pack_heroes():
+    """HEROES: for each level 48 rows of 7 bytes (bit x of row y: the 12.5 px cell is walkable), then the hero's
+    spawn (s16 x, y) and whether it comes in every mode (u8)"""
+    hd = json.load(open(f"{KR}/spec/data/heroes.json"))
+    out = bytearray()
+    for n in range(1, NLEVELS + 1):
+        lv = hd[str(n)]
+        for row in lv["grid"]:
+            out += sum(1 << x for x, c in enumerate(row) if c == "1").to_bytes(7, "little")
+        x, y = lv["defense"][0]
+        out += struct.pack("<hhB", x, y, int(lv["heroAnyMode"]))
+    define("HERO_LEVEL_BYTES", 48 * 7 + 5)
+    return bytes(out)
+
+
 def pack_sprites():
-    px = np.concatenate(SPRITE_PIXELS).astype(np.uint8)
+    px = np.concatenate(SPRITE_PIXELS[:OLD_PIXELS or len(SPRITE_PIXELS)]).astype(np.uint8)
     strip = Image.fromarray(px.reshape(1, -1, 3))
     q = strip.quantize(255, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
     pal = np.array((q.getpalette() + [0] * 768)[:765]).reshape(255, 3)
@@ -765,8 +838,10 @@ def main():
     dark.alpha_composite(up, (UPG_X, 0))
     pic("UPGRADES", dark.convert("RGB"))
     define("UPG_X", UPG_X)
+    hero_room_pic(mp)
     huff, quant, pics, table, bank, bgpal = encode_pics()
     sprites()
+    hero_sprites()
     write_stats()
     spal, frames, anims = pack_sprites()
     print(f"sprites: {len(FRAMES)} frames, {len(frames)} bytes, {len(ANIMS)} animations")
@@ -776,7 +851,14 @@ def main():
              ttf_font(ImageFont.truetype(find_font("DejaVuSans.ttf"), 11))]          # FONT_TEXT
     levels = pack_levels()
     write_strings()
-    sections = [huff, quant, pics, table, bank, bgpal, spal, frames, anims, pack_fonts(fonts), levels]
+    fsec = pack_fonts(fonts)
+    keep = os.environ.get("KR_FONTS_FROM")   # the fonts as an earlier data.bin has them (FreeType versions differ)
+    if keep:
+        d = open(keep, "rb").read()
+        o = struct.unpack(f"<{struct.unpack('<I', d[4:8])[0]}I", d[8:8 + 4 * struct.unpack('<I', d[4:8])[0]])
+        k = SECTIONS.index("FONTS")
+        fsec = d[o[k]:o[k + 1]]
+    sections = [huff, quant, pics, table, bank, bgpal, spal, frames, anims, fsec, levels, pack_heroes()]
     head = b"KRSH" + struct.pack("<I", len(sections))
     off = len(head) + 4 * len(sections)
     body = b""

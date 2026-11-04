@@ -44,6 +44,7 @@ void game_step(uint32_t keys) {
   case SCR_UPGRADES: upgrades_step(); break;
   case SCR_BATTLE: play_step(); break;
   case SCR_HELP: help_step(); break;
+  case SCR_HEROES: heroes_step(); break;
   }
 }
 
@@ -54,5 +55,6 @@ void game_draw(void) {
   case SCR_UPGRADES: upgrades_draw(); break;
   case SCR_BATTLE: play_draw(); break;
   case SCR_HELP: help_draw(); break;
+  case SCR_HEROES: heroes_draw(); break;
   }
 }

@@ -6,6 +6,7 @@
  * how many, the frames between them, the frames before the next spawn, a fixed lane or a random one. */
 #include <string.h>
 #include "kr.h"
+#include "hero.h"
 #include "anim.h"
 #include "special.h"
 #include "res.h"
@@ -114,6 +115,7 @@ void battle_start(int level, int mode) {
   B.fearless = 1;
   B.state = LS_STARTING;
   power_init();
+  hero_battle_start();
   rnd_seed(0x5EED0000u ^ (uint32_t)(level * 977 + mode * 131) ^ battle_seed);
   for (int k = 0; k < npre; k++) {
     static const uint8_t kinds[5] = {0, TW_ARCHER, TW_BARRACKS, TW_MAGE, TW_ENGINEER};
@@ -351,6 +353,7 @@ void battle_step(void) {
     if (B.so[i].alive) soldier_step(&B.so[i]);
   for (int i = 0; i < MAX_BULLETS; i++)
     if (B.bu[i].alive) bullet_step(&B.bu[i]);
+  hero_step();
   fx_step();
   power_step();
   eggs_step();

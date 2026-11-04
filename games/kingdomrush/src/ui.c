@@ -10,6 +10,7 @@
 #include "special.h"
 #include "strings.h"
 #include "ui.h"
+#include "hero.h"
 
 #define C_PANEL RGB(0x2A1C10)
 #define C_EDGE RGB(0x8A6A3A)
@@ -294,6 +295,10 @@ static void line_dir(int x, int y, float rot, int len, uint16_t shaft, uint16_t 
 }
 
 void draw_bullet(const Bullet *b, int x, int y) {
+  if (b->kind >= BU_HERO) {
+    hero_draw_bullet(b, x, y);
+    return;
+  }
   switch (b->kind) {
   case BU_ARROW: case BU_ARROW_ENEMY:
     if (b->active) line_dir(x, y, b->rot, 7, b->kind == BU_ARROW ? RGB(0x8A5A2A) : RGB(0x3A2A4A), RGB(0xE0E0E0));
@@ -315,6 +320,7 @@ void draw_bullet(const Bullet *b, int x, int y) {
     static const int16_t hit[4] = {AN_B_BOMBCOMMON_HIT, AN_B_BOMBCOMMON_HIT, AN_B_BOMBDYNAMITE_HIT, AN_B_BOMBBLACK_HIT};
     int l = b->level > 3 ? 3 : b->level;
     int ia = b->bombs == 9 ? AN_B_BOMBBFG_IDLE : idle[l], ha = b->bombs == 9 ? AN_B_BOMBBFG_HIT : hit[l];
+    if (b->bombs == 11) ia = AN_HB_ROCK_IDLE, ha = AN_HB_ROCK_HIT;   /* King Denas' catapults */
     if (b->active) spr_anim(ia, 0, false, x, y, false);
     else spr_anim(ha, b->anim_t, false, x, y, false);
     break;
