@@ -241,33 +241,6 @@ typedef struct { int x, y, z, u, v; } CV;   /* camera space, Q14; u, v the texel
 
 static int lerp12(int a, int b, int t) { return a + (int)((int32_t)(b - a) * t >> 12); }
 
-/* clipping in 2D against x >= 0 (k 0), x <= W (1), y >= 0 (2), y <= H (3) */
-static int clip2(SV *in, int n, SV *out, int k) {
-  int m = 0;
-  for (int i = 0; i < n; i++) {
-    SV *a = &in[i], *b = &in[i + 1 == n ? 0 : i + 1];
-    int da, db;
-    switch (k) {
-      case 0: da = a->x, db = b->x; break;
-      case 1: da = RW * 16 - a->x, db = RW * 16 - b->x; break;
-      case 2: da = a->y, db = b->y; break;
-      default: da = RH * 16 - a->y, db = RH * 16 - b->y;
-    }
-    if (da >= 0) out[m++] = *a;
-    if ((da >= 0) != (db >= 0)) {
-#ifdef HOST
-      { extern unsigned long st_c2; st_c2++; }
-#endif
-      int t = (int)(((int32_t)da << 12) / (da - db));   /* 0..4096 */
-      SV *o = &out[m++];
-      o->u = lerp12(a->u, b->u, t), o->v = lerp12(a->v, b->v, t);
-      if (k < 2) o->x = k ? RW * 16 : 0, o->y = lerp12(a->y, b->y, t);
-      else o->y = k == 2 ? 0 : RH * 16, o->x = lerp12(a->x, b->x, t);
-    }
-  }
-  return m;
-}
-
 static void raster(SV *p, int n) {
   static SV buf_a[16], buf_b[16];
   int xmin = p[0].x, xmax = p[0].x, ymin = p[0].y, ymax = p[0].y;
@@ -280,10 +253,10 @@ static void raster(SV *p, int n) {
   if (xmax <= 0 || ymax <= 0 || xmin >= RW * 16 || ymin >= RH * 16) return;
   if (xmin < 0 || ymin < 0 || xmax > RW * 16 || ymax > RH * 16) {
     SV *a = p, *b = buf_a;
-    if (xmin < 0) n = clip2(a, n, b, 0), a = b, b = a == buf_a ? buf_b : buf_a;
-    if (xmax > RW * 16 && n) n = clip2(a, n, b, 1), a = b, b = a == buf_a ? buf_b : buf_a;
-    if (ymin < 0 && n) n = clip2(a, n, b, 2), a = b, b = a == buf_a ? buf_b : buf_a;
-    if (ymax > RH * 16 && n) n = clip2(a, n, b, 3), a = b, b = a == buf_a ? buf_b : buf_a;
+    if (xmin < 0) n = rs_clip2(a, (uint8_t)n, b, 0), a = b, b = a == buf_a ? buf_b : buf_a;
+    if (xmax > RW * 16 && n) n = rs_clip2(a, (uint8_t)n, b, 1), a = b, b = a == buf_a ? buf_b : buf_a;
+    if (ymin < 0 && n) n = rs_clip2(a, (uint8_t)n, b, 2), a = b, b = a == buf_a ? buf_b : buf_a;
+    if (ymax > RH * 16 && n) n = rs_clip2(a, (uint8_t)n, b, 3), a = b, b = a == buf_a ? buf_b : buf_a;
     if (n < 3) return;
     p = a;
   }

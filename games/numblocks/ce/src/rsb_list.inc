@@ -52,4 +52,11 @@
 	\m	Lxp_cell
 	\m	Lxp_next
 	\m	Lxp_show
+	\m	_rs_clip2
+	\m	c2_d
+	\m	c2_put
+	\m	c2_abs
+	\m	c2_lerp
+	\m	Lc2_edge
+	\m	Lc2_next
 	.endm

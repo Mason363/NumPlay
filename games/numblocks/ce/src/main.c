@@ -268,6 +268,24 @@ int main(void) {
       plat_exit();
     }
 #endif
+#if NB_BENCH == 10
+    {
+      /* rs_clip2 against its C twin */
+      extern uint8_t rsc_rs_clip2(const SV *in, uint8_t n, SV *out, uint8_t k);
+      static SV in[4] = {{-300, 100, 0, 0}, {900, -50, 65535, 0}, {1200, 700, 65535, 65535}, {-40, 900, 0, 65535}};
+      static SV oa[16], ob[16];
+      for (uint8_t k = 0; k < 4; k++) {
+        uint8_t na = rs_clip2(in, 4, oa, k), nb = rsc_rs_clip2(in, 4, ob, k);
+        n += sprintf(out + n, "k%d n %d %d\n", k, na, nb);
+        for (int i = 0; i < na && i < nb; i++)
+          if (memcmp(&oa[i], &ob[i], sizeof(SV)))
+            n += sprintf(out + n, " %d: %d %d %d %d / %d %d %d %d\n", i, oa[i].x, oa[i].y, oa[i].u, oa[i].v, ob[i].x,
+                         ob[i].y, ob[i].u, ob[i].v);
+      }
+      plat_save("NBBENCH", out, (unsigned)n, 0, 0);
+      plat_exit();
+    }
+#endif
 #if NB_BENCH == 9
     {
       /* the picture with the archive's loops and without: the same? */

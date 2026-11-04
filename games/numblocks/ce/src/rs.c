@@ -21,6 +21,7 @@ uint8_t RS(rs_hidden)(int x, int y, int z, int r);
 int RS(rs_code)(int x, int y, int z);
 void RS(rs_compose)(uint8_t *dst, const uint8_t *a, const uint8_t *f);
 int RS(rs_lerp)(int a, int b, int f);
+uint8_t RS(rs_clip2)(const SV *in, uint8_t n, SV *out, uint8_t k);
 void RS(rs_shade)(uint8_t *p, const uint8_t *row);
 void RS(rs_expand)(const uint8_t *src, uint8_t *dst, const uint8_t *sky, const uint8_t *hud);
 void RS(rs_shade)(uint8_t *p, const uint8_t *row) {
@@ -220,6 +221,38 @@ void RS(rs_poly)(const SV *p, uint8_t n) {
     if (!--l->rows && !edge(l, p, n, l == &a ? 1 : n - 1)) return;
     if (!--r->rows && !edge(r, p, n, r == &a ? 1 : n - 1)) return;
   }
+}
+
+static int32_t c2_d(const SV *v, uint8_t k) {
+  return k == 0 ? v->x : k == 1 ? RW * 16 - v->x : k == 2 ? v->y : RH * 16 - v->y;
+}
+uint8_t RS(rs_clip2)(const SV *in, uint8_t n, SV *out, uint8_t k) {
+  uint8_t m = 0;
+  for (int i = 0; i < n; i++) {
+    const SV *a = &in[i], *b = &in[i + 1 == n ? 0 : i + 1];
+    int32_t da = c2_d(a, k), db = c2_d(b, k);
+    if (da >= 0) out[m++] = *a;
+    if ((da < 0) != (db < 0)) {
+      /* t: the share before the side, 4096ths, bit by bit; the values as mulhi rounds, the side's exact */
+      int32_t kk = da - db, r = da < 0 ? -da : da;
+      if (kk < 0) kk = -kk;
+      uint32_t t = 0;
+      for (int j = 0; j < 12; j++) {
+        r <<= 1, t <<= 1;
+        if (r >= kk) r -= kk, t |= 1;
+      }
+      uint32_t tt = t << 12;
+      SV o;
+      o.x = W24(a->x + mulhi(W24(b->x - a->x), tt)), o.y = W24(a->y + mulhi(W24(b->y - a->y), tt));
+      o.u = W24(a->u + mulhi(W24(b->u - a->u), tt)), o.v = W24(a->v + mulhi(W24(b->v - a->v), tt));
+      if (k == 0) o.x = 0;
+      else if (k == 1) o.x = RW * 16;
+      else if (k == 2) o.y = 0;
+      else o.y = RH * 16;
+      out[m++] = o;
+    }
+  }
+  return m;
 }
 
 /* 1371 << 12 / (256 + i) */

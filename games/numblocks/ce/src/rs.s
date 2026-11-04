@@ -60,6 +60,8 @@ _rs_build:	.d24	RSF_BUILD
 	.set	_w_expose, t__w_expose
 	.global	_rs_shade
 	.set	_rs_shade, t__rs_shade
+	.global	_rs_clip2
+	.set	_rs_clip2, t__rs_clip2
 
 	.section	.data._rs_vars
 	.global	r_tex
@@ -157,6 +159,28 @@ r_ku:	.ds	48
 r_kv:	.ds	48
 	.global	kt_base
 kt_base:	.d24	0
+	.global	c2_k
+c2_k:	.db	0
+	.global	c2_left
+c2_left:	.db	0
+	.global	c2_m
+c2_m:	.db	0
+	.global	c2_in
+c2_in:	.d24	0
+	.global	c2_out
+c2_out:	.d24	0
+	.global	c2_a
+c2_a:	.d24	0
+	.global	c2_b
+c2_b:	.d24	0
+	.global	c2_da
+c2_da:	.d24	0
+	.global	c2_db
+c2_db:	.d24	0
+	.global	c2_tt
+c2_tt:	.d24	0
+	.global	c2_o
+c2_o:	.ds	12
 	.global	h_r
 h_r:	.d24	0
 	.global	h_c

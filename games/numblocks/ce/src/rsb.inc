@@ -2260,3 +2260,212 @@ b__rs_shade:
 	ret
 
 ; ------------------------------------------------------------------------------------------------- data
+
+; ------------------------------------------------------------------------------------------------- rs_clip2
+; uint8_t rs_clip2(const SV *in, uint8_t n, SV *out, uint8_t k)
+; the polygon cut to a side of the screen (k 0: x >= 0, 1: x <= 2560, 2: y >= 0, 3: y <= 1920): its corners into
+; out, how many. Where an edge crosses: t = its share before the side, in 4096ths (bit by bit), the other values
+; a + (b - a) t (mulhi), the side's own exactly
+	.equ	SV_X, 0
+	.equ	SV_Y, 3
+	.equ	SV_U, 6
+	.equ	SV_V, 9
+	.equ	SV_SIZE, 12
+b__rs_clip2:
+	push	ix
+	ld	ix, 0
+	add	ix, sp
+	ld	a, (ix+15)
+	ld	(c2_k), a
+	ld	hl, (ix+12)
+	ld	(c2_out), hl
+	ld	hl, (ix+6)
+	ld	(c2_in), hl
+	ld	(c2_a), hl
+	ld	a, (ix+9)
+	ld	(c2_left), a
+	xor	a, a
+	ld	(c2_m), a
+	ld	iy, (c2_a)
+	call	t_c2_d
+	ld	(c2_da), hl
+b_Lc2_edge:
+.Lc2_edge:
+	; b: the next corner (the first after the last)
+	ld	hl, (c2_a)
+	ld	de, SV_SIZE
+	add	hl, de
+	ld	a, (c2_left)
+	dec	a
+	ld	(c2_left), a
+	jr	nz, .Lc2_b
+	ld	hl, (c2_in)
+.Lc2_b:
+	ld	(c2_b), hl
+	push	hl
+	pop	iy
+	call	t_c2_d
+	ld	(c2_db), hl
+	; a inside: kept
+	ld	a, (c2_da+2)
+	bit	7, a
+	jr	nz, .Lc2_aout
+	ld	hl, (c2_a)
+	call	t_c2_put
+.Lc2_aout:
+	; a and b on either side: where the edge crosses
+	ld	a, (c2_da+2)
+	ld	c, a
+	ld	a, (c2_db+2)
+	xor	a, c
+	bit	7, a
+	jp	z, t_Lc2_next
+	; k = |da - db|, r = |da|: t = r 4096 / k, 12 bits
+	ld	hl, (c2_da)
+	ld	de, (c2_db)
+	or	a, a
+	sbc	hl, de
+	call	t_c2_abs
+	ex	de, hl
+	ld	hl, (c2_da)
+	call	t_c2_abs
+	ld	bc, 0
+	ld	a, 12
+.Lc2_div:
+	add	hl, hl
+	sla	c
+	rl	b
+	or	a, a
+	sbc	hl, de
+	jr	c, .Lc2_back
+	inc	c
+	jr	.Lc2_divn
+.Lc2_back:
+	add	hl, de
+.Lc2_divn:
+	dec	a
+	jr	nz, .Lc2_div
+	; t << 12 for mulhi
+	push	bc
+	pop	hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	ld	(c2_tt), hl
+	; each value: a + (b - a) t
+	ld	iy, (c2_a)
+	ld	ix, (c2_b)
+	ld	hl, (ix+SV_X)
+	ld	de, (iy+SV_X)
+	call	t_c2_lerp
+	ld	(c2_o+SV_X), hl
+	ld	hl, (ix+SV_Y)
+	ld	de, (iy+SV_Y)
+	call	t_c2_lerp
+	ld	(c2_o+SV_Y), hl
+	ld	hl, (ix+SV_U)
+	ld	de, (iy+SV_U)
+	call	t_c2_lerp
+	ld	(c2_o+SV_U), hl
+	ld	hl, (ix+SV_V)
+	ld	de, (iy+SV_V)
+	call	t_c2_lerp
+	ld	(c2_o+SV_V), hl
+	; the side's own value
+	ld	a, (c2_k)
+	or	a, a
+	sbc	hl, hl
+	cp	a, 1
+	jr	c, .Lc2_x			; (k 0: x = 0)
+	jr	nz, .Lc2_y01
+	ld	hl, RW * 16
+.Lc2_x:
+	ld	(c2_o+SV_X), hl
+	jr	.Lc2_put
+.Lc2_y01:
+	cp	a, 2
+	jr	z, .Lc2_y
+	ld	hl, 120 * 16
+.Lc2_y:
+	ld	(c2_o+SV_Y), hl
+.Lc2_put:
+	ld	hl, c2_o
+	call	t_c2_put
+b_Lc2_next:
+.Lc2_next:
+	ld	hl, (c2_b)
+	ld	(c2_a), hl
+	ld	hl, (c2_db)
+	ld	(c2_da), hl
+	ld	a, (c2_left)
+	or	a, a
+	jp	nz, t_Lc2_edge
+	ld	a, (c2_m)
+	pop	ix
+	ret
+
+; hl: how far the corner at iy is inside side c2_k (>= 0 inside)
+b_c2_d:
+	ld	a, (c2_k)
+	cp	a, 2
+	jr	nc, .Lc2d_y
+	ld	hl, (iy+SV_X)
+	or	a, a
+	ret	z
+	ex	de, hl
+	ld	hl, RW * 16
+	or	a, a
+	sbc	hl, de
+	ret
+.Lc2d_y:
+	ld	hl, (iy+SV_Y)
+	ret	z
+	ex	de, hl
+	ld	hl, 120 * 16
+	or	a, a
+	sbc	hl, de
+	ret
+
+; the corner at hl to c2_out, on
+b_c2_put:
+	ld	de, (c2_out)
+	ld	bc, SV_SIZE
+	ldir
+	ld	(c2_out), de
+	ld	hl, c2_m
+	inc	(hl)
+	ret
+
+; hl = |hl| (de kept)
+b_c2_abs:
+	ld	(m_t), hl
+	ld	a, (m_t+2)
+	bit	7, a
+	ret	z
+	push	de
+	ex	de, hl
+	or	a, a
+	sbc	hl, hl
+	sbc	hl, de
+	pop	de
+	ret
+
+; hl = de + (hl - de) t (c2_tt: t << 12), as mulhi rounds
+b_c2_lerp:
+	push	de
+	or	a, a
+	sbc	hl, de
+	ld	de, (c2_tt)
+	call	t_mulhi
+	pop	de
+	add	hl, de
+	ret

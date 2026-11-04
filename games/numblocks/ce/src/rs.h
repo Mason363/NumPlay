@@ -23,6 +23,8 @@ uint8_t rs_hidden(int x, int y, int z, int r);
 int rs_code(int x, int y, int z);
 /* dst[i] = f[a[i]] for the 256 bytes, all three 256-byte aligned */
 void rs_compose(uint8_t *dst, const uint8_t *a, const uint8_t *f);
+/* the polygon cut to a side of the screen (k 0: x >= 0, 1: x <= 2560, 2: y >= 0, 3: y <= 1920): into out, how many */
+uint8_t rs_clip2(const SV *in, uint8_t n, SV *out, uint8_t k);
 /* p[i] = row[p[i]] for 256 bytes, row 256-byte aligned */
 void rs_shade(uint8_t *p, const uint8_t *row);
 /* a + floor((b - a) f / 256), a and b 0..255, f 0..256 */
