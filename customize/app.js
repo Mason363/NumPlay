@@ -113,7 +113,11 @@
   // what a NumPlay of these games (and Game Boy, NES and Sega games, and your own apps) takes
   // (NumPico's carts: its table's head, then each one, npPico.cartBytes)
   const cartsBytes = (carts) => 12 + carts.reduce((a, c) => a + npPico.cartBytes(c), 0);
+  // Retro-Go on its own (with a Mega Drive game): its app and the games, nothing else
+  const rgApp = () => (rg && (rg.appFlash || flash(rg.id))) + ROM_HEAD;
+  const romsBytes = (roms) => roms.reduce((a, r) => a + romBytes(r), 0);
   function total(ids, roms = st.roms, apps = st.apps, carts = st.carts) {
+    if (rg && roms.some((r) => r.sys === MD)) return rgApp() + romsBytes(roms);
     let n = own(ids, roms);
     for (const id of ids) n += flash(id);
     if (rg && roms.length) n += flash(rg.id) + ROM_HEAD + roms.reduce((a, r) => a + romBytes(r), 0);
@@ -131,6 +135,9 @@
   const items = () => (other() ? portPicks().map((id) => ({ key: id, id, name: byId[id].title, bytes: portList()[id].size,
     color: hex(byId[id].top), icon: byId[id].icon ? KIT + 'icons/' + id + '.png' : null })) : nwItems());
   function nwItems() {
+    if (rgAlone())
+      return [{ key: rg.id, id: rg.id, name: rg.title, bytes: rgApp(), color: hex(rg.top), icon: rg.icon ? KIT + 'icons/' + rg.id + '.png' : null }]
+        .concat(st.roms.map((r) => ({ key: 'rom' + r.key, rom: r, name: r.name, bytes: romBytes(r), color: SYS[r.sys].color, tag: SYS[r.sys].tag })));
     const s = solo();
     if (s) {
       const g = byId[s];
@@ -287,7 +294,7 @@
     $('#space-chip-label').textContent = mb(cap);
     $('#space-chip').dataset.tip = SPACES[space().id] + '|your calculator\'s space for apps';
     // (a game on its own has its own icon, name and language)
-    const s = solo(), file = s ? game(s).alone.file : 'NumPlay.nwa';
+    const s = solo(), file = s ? game(s).alone.file : rgAlone() ? 'RetroGo.nwa' : 'NumPlay.nwa';
     for (const c of [$('#app-chip'), $('#lang-chip')]) c.disabled = !!s;
     $('#download').setAttribute('aria-label', 'Download ' + file);
     $('#download').dataset.tip = 'Download ' + file;

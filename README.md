@@ -200,12 +200,12 @@ The games with a blue ring are all in one app, **NumPlay.nwa**. The others are b
 
 <table>
   <tr>
-    <td align="center" width="33%"><a href="games/retrogo/README.md"><img src="docs/media/readme/thumb_retrogo.png" width="200" alt="Retro-Go"><br><b>Retro-Go</b></a><br><sub>Game Boy, Game Boy Color, NES, Master System and Game Gear games, with Retro-Go's menus and save slots</sub></td>
+    <td align="center" width="33%"><a href="games/retrogo/README.md"><img src="docs/media/readme/thumb_retrogo.png" width="200" alt="Retro-Go"><br><b>Retro-Go</b></a><br><sub>Game Boy, NES, Sega, Game & Watch and Mega Drive games, with Retro-Go's menus and save slots</sub></td>
     <td align="center" width="33%"><a href="games/numpico/README.md"><img src="docs/media/readme/thumb_numpico.png" width="200" alt="NumPico"><br><b>NumPico</b></a><br><sub>Your own PICO-8 carts</sub></td>
   </tr>
 </table>
 
-Retro-Go plays the Game Boy, Game Boy Color, NES, Master System, Game Gear, SG-1000 and ColecoVision games you choose: games you own, or free ones like homebrew games. It isn't in NumPlay.nwa. Drop your games on [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) and you get a NumPlay with Retro-Go and your games inside. Big games, like the 2 MB Game Boy Color ones, need the extra space of Epsilon 26 or Nwagra: pick it in NumPlay Studio.
+Retro-Go plays the Game Boy, Game Boy Color, NES, Master System, Game Gear, SG-1000, ColecoVision, Game & Watch and Mega Drive games you choose: games you own, or free ones like homebrew games. It isn't in NumPlay.nwa. Drop your games on [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) and you get a NumPlay with Retro-Go and your games inside. Big games, like the 2 MB Game Boy Color ones, need the extra space of Epsilon 26 or Nwagra: pick it in NumPlay Studio. Mega Drive games come in Retro-Go on its own, RetroGo.nwa, without NumPlay.
 
 NumPico plays the PICO-8 carts you choose: drop your .p8 and .p8.png files on [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) and you get a NumPlay with NumPico and your carts inside. Most carts fit; the biggest need more memory than the calculator has.
 
@@ -367,11 +367,11 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] A tower defense game: Kingdom Rush
 - [x] Deltarune: Chapter 1's start, from Kris's room to Castle Town, Lancer, Ralsei's lessons and the Field's first rooms
 - [x] Villages, desert temples and mineshafts in NumBlocks
+- [x] FNAF World
+- [x] Mr. Bullet
 
 </details>
 
-- [x] FNAF World
-- [x] Mr. Bullet
 - [x] A PICO-8 emulator, NumPico: add your own .p8 games on the website
 - [x] Moto X3M
 - [x] Among Us, against bots
@@ -380,6 +380,8 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] Hollow Knight: Fungal Wastes (Queen's Station, Mantis Village and the Mantis Lords)
 - [x] circloO
 - [x] Kingdom Rush: the heroes
+- [x] Retro-Go: ROMs trimmed of their padding, so more of them fit
+- [x] More of Retro-Go: Game & Watch and Mega Drive
 - [ ] Full Minecraft 1.18.2 as a standalone app
 - [ ] Into the Breach
 - [ ] A racing game: F1 or GT3
@@ -395,7 +397,6 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Hungry Shark Evolution and Hungry Shark World
 - [ ] Castle Crashers
 - [ ] Hotline Miami
-- [ ] More of Retro-Go: Game & Watch, SNES and Mega Drive
 - [ ] Brawl Stars, against bots
 - [ ] Papers, Please, with the story and Endless
 - [ ] Mario Kart
@@ -411,7 +412,6 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Hill Climb Racing in 3D, with a scooter, a BMX, a skateboard and roller skates
 - [ ] Advance Wars
 - [ ] Half-Life
-- [ ] Retro-Go: ROMs trimmed of their padding, so more of them fit
 - [ ] Dog Hotel
 - [ ] Kingdom Rush: Frontiers, Origins and Vengeance
 - [ ] Cult of the Lamb
@@ -490,7 +490,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 - **Meowdoku** by [Oakever Games](https://play.google.com/store/apps/details?id=com.oakever.meowdoku) inspired NumPlay's Meowdoku, which uses the game's own puzzles, cats, fish, lamp and colors from its Android package (version 1.23.0), and the **Nunito** font. Not affiliated with Oakever Games.
 - **[The Final Earth 2](https://store.steampowered.com/app/1180130/The_Final_Earth_2/)** by [Florian van Strien](https://florianvanstrien.nl) inspired NumPlay's The Final Earth 2, which uses the game's own pictures, fonts and texts, with additional sprites by LukXD99. Not affiliated with him.
 - **Buckshot Roulette** by Mike Klubnika inspired NumPlay's Buckshot Roulette, whose scenes are rendered from the game through the Open Buckshot Roulette project (1503Dev). Fonts: Fake Receipt by Ray Larabie and Dot Matrix by Dionaea.
-- **[Retro-Go](https://github.com/ducalex/retro-go)** by ducalex inspired NumPlay's Retro-Go, whose launcher, menus and frame skipping are written again for NumPlay with no code copied from it. Its emulators are **[gnuboy](https://github.com/rofl0r/gnuboy)** by Laguna and Gilgamesh (GNU GPL v2 or later) for the Game Boy and **nofrendo** by Matthew Conte (GNU LGPL v2, used under the GPL) for the NES; the Master System and Game Gear are NumPlay's own, around **[superzazu's z80](https://github.com/superzazu/z80)** by Nicolas Allemand (MIT License). Its tests use Blargg's test ROMs, Matt Currie's dmg-acid2 and cgb-acid2, kevtris's nestest and Frank Cringle's zexdoc and zexall. Not affiliated with them.
+- **[Retro-Go](https://github.com/ducalex/retro-go)** by ducalex inspired NumPlay's Retro-Go, whose launcher, menus and frame skipping are written again for NumPlay with no code copied from it. Its emulators are **[gnuboy](https://github.com/rofl0r/gnuboy)** by Laguna and Gilgamesh (GNU GPL v2 or later) for the Game Boy and **nofrendo** by Matthew Conte (GNU LGPL v2, used under the GPL) for the NES; the Master System and Game Gear are NumPlay's own, around **[superzazu's z80](https://github.com/superzazu/z80)** by Nicolas Allemand (MIT License). Game & Watch is **[LCD-Game-Emulator](https://github.com/bzhxx/LCD-Game-Emulator)** by bzhxx (GNU GPL v3), with MAME's Sharp SM5xx cores by hap (BSD-3-Clause), and the Mega Drive is **[gwenesis](https://github.com/bzhxx/gwenesis)** by bzhxx (GNU GPL v3), with **Musashi** by Karl Stenerud (MIT License). Its tests use Blargg's test ROMs, Matt Currie's dmg-acid2 and cgb-acid2, kevtris's nestest and Frank Cringle's zexdoc and zexall. Not affiliated with them.
 
 </details>
 
@@ -519,7 +519,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 
 NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyright (c) 2026 Mason Chen. Code and fonts from others keep their own licenses: the `UNLICENSE` files in the games' folders and the [LICENSES](LICENSES) folder. The names, artwork and music of the games NumPlay is inspired by belong to their makers and are not covered by it.
 
-<sub>Unofficial fan games, not affiliated with NumWorks, Texas Instruments, Casio, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale, Deltarune), jcw87 (Bad Time Simulator), Imangi Studios (Temple Run), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's, Five Nights at Freddy's 2, Five Nights at Freddy's 3, Five Nights at Freddy's 4, FNAF World), SEGA (Sonic the Hedgehog, Master System, Game Gear, SG-1000), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), the makers of Snow Rider 3D, Ketchapp (Rider), TFDSoft (Famidash), Brodie Lockard or Activision (Shanghai), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Oakever Games (Meowdoku), Florian van Strien (The Final Earth 2, circloO), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go), Coleco (ColecoVision), Supercell (Clash Royale), Richman Stewart or TrackMill (Cat Ninja), Ironhide Game Studio or Armor Games (Kingdom Rush), Lion Studios (Mr Bullet), Lexaloffle (PICO-8), Madpuffers (Moto X3M), Innersloth (Among Us), JindoBlu (2 3 4 Player Games). TI-84 Plus CE, TI-83 Premium CE and TI-Nspire are trademarks of Texas Instruments, fx-CG50, Graph 90+E and Graph 35+E II of Casio, Raspberry Pi of Raspberry Pi Ltd. Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System, Game Gear and SG-1000 of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, Clash Royale of Supercell, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
+<sub>Unofficial fan games, not affiliated with NumWorks, Texas Instruments, Casio, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale, Deltarune), jcw87 (Bad Time Simulator), Imangi Studios (Temple Run), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's, Five Nights at Freddy's 2, Five Nights at Freddy's 3, Five Nights at Freddy's 4, FNAF World), SEGA (Sonic the Hedgehog, Master System, Game Gear, SG-1000), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), the makers of Snow Rider 3D, Ketchapp (Rider), TFDSoft (Famidash), Brodie Lockard or Activision (Shanghai), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Oakever Games (Meowdoku), Florian van Strien (The Final Earth 2, circloO), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go), Coleco (ColecoVision), Supercell (Clash Royale), Richman Stewart or TrackMill (Cat Ninja), Ironhide Game Studio or Armor Games (Kingdom Rush), Lion Studios (Mr Bullet), Lexaloffle (PICO-8), Madpuffers (Moto X3M), Innersloth (Among Us), JindoBlu (2 3 4 Player Games), bzhxx (LCD-Game-Emulator, gwenesis). TI-84 Plus CE, TI-83 Premium CE and TI-Nspire are trademarks of Texas Instruments, fx-CG50, Graph 90+E and Graph 35+E II of Casio, Raspberry Pi of Raspberry Pi Ltd. Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System, Game Gear and SG-1000 of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, Clash Royale of Supercell, and Donkey Kong, Game Boy, Game Boy Color, NES and Game & Watch of Nintendo, Mega Drive and Genesis of SEGA.</sub>
 
 ## Gallery
 

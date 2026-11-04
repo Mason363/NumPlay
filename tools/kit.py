@@ -63,6 +63,12 @@ def sections(path):
     return out
 
 
+def app_flash(i):
+    """The installed size of a game's app on its own, games/<id>/output/<id>.nwa, if it was built."""
+    p = os.path.join(ROOT, "games", i, "output", i + ".nwa")
+    return installed_size(p) if os.path.exists(p) else None
+
+
 def installed_size(nwa):
     """Bytes the installer writes to flash for an .nwa: its 32 byte header, then its sections
     in the order of nwlink's script (the name, the icon, code, read-only data, the data image)."""
@@ -203,6 +209,8 @@ def main():
             "flash": flash, "ram": ram, "heap": g.get("heap", 0), "default": i in default, "upsilon": i in upsilon,
             "roms": bool(g.get("roms")), "systems": g.get("systems"), "xl": bool(g.get("xl")), "carts": bool(g.get("carts")),
             "bytes": os.path.getsize(os.path.join(O, "games", i + ".o.gz")),
+            # (a game that takes your files and can also go on its own, Retro-Go: that app's own size, without them)
+            "appFlash": app_flash(i) if g.get("roms") else None,
             "icon": bool(icon), "thumb": os.path.exists(thumb), "preview": preview})
 
     # ---- check: the default games, linked from the kit, are NumPlay.nwa on the calculator

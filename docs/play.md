@@ -1329,9 +1329,11 @@ NumVisuals comes on its own, as NumVisuals.nwa, or in a NumPlay of your own from
 | **Back** | Back to the systems. In a game: **B** (**1**) |
 | **shift** / **EXE** | In a game: **Select** / **Start** (the Master System's **Pause**) |
 | **0** to **9**, **×**, **÷** | The ColecoVision's keypad (**×** is \*, **÷** is #) |
+| **1** **2** **3** **4**, **0** | Game & Watch: Game A, Game B, Time, Alarm, ACL |
+| **OK** / **Back** / **shift** | Mega Drive: **C** / **B** / **A** |
 | **Backspace** | Retro-Go's menu: save, load, reset, options |
 | **Home** | Save and quit |
 
-Game Boy, Game Boy Color, NES, Master System, Game Gear, SG-1000 and ColecoVision games you pick on NumPlay's customizer website. Open a game for New game, or Resume game from one of its 4 save slots. In a game, Backspace opens Retro-Go's menu: Save & Continue, Save & Quit, Load game, Reset, Options, where the picture can be 1x, Fit or Full screen, and Controls, where you give any button the key you want: pick it, press **OK**, then its new key. The cartridges' own saves are kept as well.
+Game Boy, Game Boy Color, NES, Master System, Game Gear, SG-1000, ColecoVision, Game & Watch and Mega Drive games you pick on NumPlay's customizer website. Game & Watch games are .gw files made with LCD-Game-Shrinker. Mega Drive games play in RetroGo.nwa on its own. Open a game for New game, or Resume game from one of its 4 save slots. In a game, Backspace opens Retro-Go's menu: Save & Continue, Save & Quit, Load game, Reset, Options, where the picture can be 1x, Fit or Full screen, and Controls, where you give any button the key you want: pick it, press **OK**, then its new key. The cartridges' own saves are kept as well.
 
 <br clear="right">
