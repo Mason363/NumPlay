@@ -1,4 +1,5 @@
 /* Portal Returns for NumWorks: title screen, menus, help, saving. */
+#include <limits.h>
 #include <string.h>
 #include "../../common/epsilon_app.h"
 #include "../../common/epsilon_files.h"
@@ -57,7 +58,7 @@ int wait_key(void) {
     prev_keys = keys;
     if (fresh) {
       uint32_t lo = (uint32_t)fresh; /* 32-bit ctz: no libgcc helper in the module */
-      int k = lo ? __builtin_ctz(lo) : 32 + __builtin_ctz((uint32_t)(fresh >> 32));
+      int k = lo ? __builtin_ctzl(lo) : 32 + __builtin_ctzl((uint32_t)(fresh >> 32));
       rep = k <= eadk_key_right ? k : -1;
       rep_at = now + 350;
       return k;
@@ -458,7 +459,7 @@ static void sign_draw(void) {
 /* Where the sign hides the least: over plain wall rather than open air,
  * doors, droppers or fields, as near the middle as possible. */
 static int sign_place(int w) {
-  int best = 0, best_cost = 1 << 30;
+  int best = 0, best_cost = INT_MAX;
   for (int x = 0; x + w <= 320; x += 2) {
     int cost = 0;
     for (int c = x / 16; c <= (x + w - 1) / 16; c++) {
