@@ -5,6 +5,7 @@
 #include "game.h"
 #include "gfx.h"
 #include "plat.h"
+#include "res.h"
 #include "world.h"
 
 Game g;
@@ -497,11 +498,16 @@ static int32_t copy_get(const char *name, uint8_t *out, uint32_t cap) {
   return (int32_t)o;
 }
 
-/* packed game: the head, then the game LZ-packed */
-static uint8_t packed[sizeof(Game) + sizeof(Game) / 8 + 64];
+/* packed game: the head, then the game LZ-packed; the room for it borrowed from the pictures' (res.c) */
+#define PACKED_MAX ((sizeof(Game) + sizeof(Game) / 8 + 64 + 3) & ~3u)
+#define COPY_MAX (1 + sizeof copy_head + 64 + (PACKED_MAX + 2) / 3 * 4 + 64)
+static uint8_t *packed;
 
 static uint32_t pack_game(void) {
-  static uint16_t table[NP_LZ_HASH];
+  uint32_t room;
+  packed = scratch_borrow(&room);
+  if (room < PACKED_MAX + 2 * NP_LZ_HASH + COPY_MAX) return 0;   /* (never: the tests check it) */
+  uint16_t *table = (uint16_t *)(void *)(packed + PACKED_MAX);
   SaveHead h = {MAGIC_G, VERSION, 0, sizeof(Game)};
   memcpy(packed, &h, sizeof h);
   return sizeof h + np_lz_pack((const uint8_t *)&g, sizeof(Game), packed + sizeof h, table);
@@ -514,8 +520,9 @@ typedef struct {
 } SetFile;
 
 static void write_copy(uint32_t glen, const SetFile *s) {
-  static uint8_t o[1 + sizeof copy_head + 64 + (sizeof packed + 2) / 3 * 4 + (sizeof(SetFile) + 2) / 3 * 4];
-  uint8_t *p = o;
+  uint32_t room;
+  uint8_t *base = scratch_borrow(&room);
+  uint8_t *o = base + PACKED_MAX + 2 * NP_LZ_HASH, *p = o;   /* (after the packed game) */
   *p++ = 0;
   memcpy(p, copy_head, sizeof copy_head - 1), p += sizeof copy_head - 1;
   memcpy(p, "#>" SAVE_SET ":", 2 + sizeof SAVE_SET), p += 2 + sizeof SAVE_SET;
@@ -573,6 +580,7 @@ static void settings_load(void) {
 
 bool game_save(void) {
   uint32_t len = pack_game();
+  if (!len) return false;
   bool ok = plat_save(SAVE_GAME, packed, len);
   set_file.h = (SaveHead){MAGIC_S, VERSION, 0, sizeof(SetFile)};
   set_file.opt = g.opt;
@@ -605,12 +613,14 @@ static bool game_sane(const Game *G) {
 }
 
 bool game_load(void) {
-  uint32_t n;
+  uint32_t n, room;
   const uint8_t *d = plat_load(SAVE_GAME, &n);
-  static uint8_t buf[sizeof packed];
-  if (d && n <= sizeof buf) memcpy(buf, d, n);
+  uint8_t *buf = scratch_borrow(&room);
+  if (room < 2 * PACKED_MAX) return false;
+  Game *tmp = (Game *)(void *)(buf + PACKED_MAX);
+  if (d && n <= PACKED_MAX) memcpy(buf, d, n);
   else {
-    int32_t m = copy_get(SAVE_GAME, buf, sizeof buf);
+    int32_t m = copy_get(SAVE_GAME, buf, PACKED_MAX);
     if (m < 0) return false;
     n = (uint32_t)m;
   }
@@ -618,10 +628,9 @@ bool game_load(void) {
   if (n < sizeof h) return false;
   memcpy(&h, buf, sizeof h);
   if (h.magic != MAGIC_G || h.version != VERSION || h.size != sizeof(Game)) return false;
-  static Game tmp;
-  if (np_lz_unpack(buf + sizeof h, n - sizeof h, (uint8_t *)&tmp, sizeof tmp) != (int32_t)sizeof tmp) return false;
-  if (!game_sane(&tmp)) return false;
-  g = tmp;
+  if (np_lz_unpack(buf + sizeof h, n - sizeof h, (uint8_t *)tmp, sizeof *tmp) != (int32_t)sizeof *tmp) return false;
+  if (!game_sane(tmp)) return false;
+  g = *tmp;
   return true;
 }
 

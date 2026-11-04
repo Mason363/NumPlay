@@ -13,7 +13,7 @@ void hud_keys(const char *s);
 #define BLACK 0x0000
 
 void mg_keys(const char *s) { hud_keys(s); }
-void mg_bg(int blob_id) { gfx_tiles(tilepic(blob_id), MG_X, MG_Y); }
+void mg_bg(int blob_id) { gfx_tiles((const TilePic *)unpacked(blob_id, 0), MG_X, MG_Y); }
 void mg_status(const char *s, int y, uint16_t c) { gfx_text(FONT_MID, MG_X, y, s, c, BLACK, 1, 1); }
 
 static int kind_of(int cons, int task) {

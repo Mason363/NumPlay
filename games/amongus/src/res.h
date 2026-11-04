@@ -18,6 +18,10 @@ enum { P_4BIT = 1, P_OPAQUE = 2, P_MIX = 4 };
 
 const Pic *pic(int id);
 const void *blob(int id);
+/* a packed blob unpacked into RAM (slot 0: a panel, 1 and 2: small pictures), kept until something else needs it */
+const void *unpacked(int id, int slot);
+/* that RAM for something else for a moment (the saves) */
+uint8_t *scratch_borrow(uint32_t *size);
 static inline const uint16_t *pic_pal(const Pic *p) { return (const uint16_t *)(const void *)(p + 1); }
 static inline const uint8_t *pic_alpha(const Pic *p) {
   return (const uint8_t *)(pic_pal(p) + (p->ncolors ? p->ncolors : 256));

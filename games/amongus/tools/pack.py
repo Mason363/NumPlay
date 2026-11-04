@@ -11,6 +11,7 @@ import math
 import os
 import struct
 import sys
+import zlib
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -289,6 +290,14 @@ def seg_cross(p, q, segs):
     return bool((((d1 > 0) != (d2 > 0)) & ((d3 > 0) != (d4 > 0))).any())
 
 
+def zpack(blob):
+    """packed with DEFLATE (unpacked when shown): its size, then the raw stream"""
+    c = zlib.compressobj(9, zlib.DEFLATED, -15)
+    z = c.compress(blob) + c.flush()
+    z = struct.pack("<I", len(blob)) + z
+    return z + b"\0" * (-len(z) % 4)
+
+
 def fl(v):
     t = "%.6g" % float(v)
     return (t if ("." in t or "e" in t) else t + ".0") + "f"
@@ -503,10 +512,53 @@ def main():
     for i in range(1, 8):
         mixframe("getinVent%04d" % i)
     mixframe("idle", 0.7, "idle_big")
+    # the screens' pictures (extract_ui.py), the meeting's players and votes coloured like the players
+    ui = json.load(open(os.path.join(REF, "ui.json")))
+
+    def uiim(name):
+        return Image.open(os.path.join(REF, "ui", name + ".png")).convert("RGBA")
+
+    def uipic(name, bits=8):
+        pid = pics.add("ui_" + name, uiim(name), (ui[name]["px"], ui[name]["py"]), bits=bits)
+        D("#define PIC_UI_%s %d" % (cname(name), pid))
+    for name in ["noshadow", "playerVoteResults"]:
+        k = (0.375 * 0.8) if name == "noshadow" else 0.375
+        mixframe(name, k)
     mix_table, nmix = mix.pack(pics)
+    D("#define PIC_PLATE_PLAYER %d\n#define PIC_VOTE_ICON %d" % (pics.ids["noshadow"], pics.ids["playerVoteResults"]))
+    for name in ["useButton", "reportButton", "killButton", "vent", "sabotage", "mapAdmin", "security", "votePlayerBase",
+                 "reported", "deadX_border", "i_voted", "voteConfirm", "voteCancel", "button_skipVote_edit",
+                 "skippedVotingTally", "sabotage_Doors", "sabotage_O2", "sabotage_comms", "sabotage_electricity",
+                 "sabotage_reactor", "task", "beforeVoting_deadBody", "bannerLogo_AmongUs"]:
+        uipic(name)
+    for name in ["map", "beforeVoting_deadBodyText", "beforeVoting_EMText", "no_shh"]:
+        uipic(name, 4)
+    tiles.append(("MEETING", zpack(make_tiles(uiim("base"), (ui["base"]["px"], ui["base"]["py"]), name="meeting"))))
+    tiles.append(("KILLBG", zpack(make_tiles(uiim("killBG"), (ui["killBG"]["px"], ui["killBG"]["py"]), name="killbg"))))
+    D("#define MAP_SCALE %s\n#define MEET_SCALE %s" % (fl(ui["_map_scale"]), fl(ui["_meeting_scale"])))
+    # the tongue kill: its own mix table (the two players' colours made when it plays)
+    kmix = Mix()
+    for part, n in ui["_kill"]:
+        for k in range(n):
+            nm = "kill_%s%02d" % (part, k)
+            kmix.add(nm, uiim(nm), (ui[nm]["px"], ui[nm]["py"]))
+        D("#define N_KILL_%s %d" % (part.upper(), n))
+    kmix_table, nkmix = kmix.pack(pics)
+    D("#define PIC_KILL_IMP %d\n#define PIC_KILL_VICTIM %d\n#define N_KMIX %d" % (
+        pics.ids["kill_imp00"], pics.ids["kill_victim00"], nkmix))
+    tiles.append(("KMIX", kmix_table))
+    # (the kill's frames packed: two are unpacked at a time)
+    kill_max = 0
+    for part, n in ui["_kill"]:
+        for k in range(n):
+            i = pics.ids["kill_%s%02d" % (part, k)]
+            kill_max = max(kill_max, len(pics.blobs[i]))
+            pics.blobs[i] = zpack(pics.blobs[i])
+    D("#define KILL_PIC_MAX %d" % kill_max)
 
     # the minigames: a tiled background, its moving parts, more frames
     mg = json.load(open(os.path.join(REF, "mg.json")))
+    mg_max = 0
     for name, m in mg.items():
         N = cname(name)
         if m["bg"]:
@@ -516,7 +568,9 @@ def main():
             x0, y0 = max(0, int(bx - MG_X)), max(0, int(by - MG_Y))
             x1, y1 = min(im.width, int(bx + SCREEN_W_PX - MG_X)), min(im.height, int(by + 228 - MG_Y))
             im = im.crop((x0, y0, x1, y1))
-            tiles.append(("MG_" + N, make_tiles(im, (bx - x0, by - y0), name="mg " + name)))
+            t = make_tiles(im, (bx - x0, by - y0), name="mg " + name)
+            mg_max = max(mg_max, len(t))
+            tiles.append(("MG_" + N, zpack(t)))
         for key, p in m["parts"].items():
             im = Image.open(os.path.join(REF, "mg", "%s_%s.png" % (name, key)))
             pid = pics.add("mg_%s_%s" % (name, key), im, (p["px"], p["py"]), bits=8 if im.width * im.height < 6000 else 4)
@@ -530,6 +584,7 @@ def main():
             im = Image.open(os.path.join(REF, "mg", "%s_x_%s.png" % (name, nm)))
             pid = pics.add("x_" + nm, im, (e["px"], e["py"]), bits=8 if im.width * im.height < 6000 else 4)
             D("#define PIC_X_%s %d" % (cname(nm), pid))
+    D("#define BIG_UNPACKED %d" % mg_max)
     # fonts
     fdir = os.path.join(REF, "fonts")
     fonts = [make_font(os.path.join(fdir, "LiberationSans-Regular.ttf"), 10),
