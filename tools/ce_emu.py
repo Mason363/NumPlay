@@ -4,7 +4,11 @@
   python3 tools/ce_emu.py PROG.8xp [VARS.8xv ...] [--keys ...] [--shots ...] [--ms N] [--out DIR]
   python3 tools/ce_emu.py game ID [same options]       a NumPlay game's CE build (games/ID/build/ti84ce)
   python3 tools/ce_emu.py sheet [ID ...] [--ms N] [-j N] [--out DIR]
-                                                       every CE build (games.json "ports"), a sheet of screens
+                                                       every CE build (games.json "ports") for 40 s: OK twice,
+                                                       the arrows, a sheet of screens (build/ce_emu/sheet.png)
+  python3 tools/ce_emu.py autotest DIR/autotest.json ...
+                                                       CE toolchain tests (CEmu's autotester JSON): their keys
+                                                       and delays, their screens' CRCs checked
 
 Options:
   --keys "1500-1600:2nd,3000:clear"   keys held from one time to another (ms; one time alone: 100 ms). CE names:

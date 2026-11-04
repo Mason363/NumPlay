@@ -10,10 +10,17 @@
  * --out DIR         where pictures go (.)
  * --ram NAME,...    these variables in RAM; the others where their file puts them (the archive, mostly)
  * --frame ADDR      a frame each time the CPU reaches ADDR (eadk_display_wait_for_vblank's, say)
+ * --frame-drawn     only when what the LCD shows changed since the last one (a key scan as the marker)
+ * --frames-from MS  frames counted from then on
+ * --idle ADDR       a function the program waits in (ticksleep): the time inside isn't work
  * --vars-out DIR    the programs and appvars at the end, as files
  * --report FILE     a JSON report (else a summary on stdout)
  * --rev pre-a|i|m   the ASIC revision (m: every CE since 2019, the Python ones)
  * --names INC       ti84pceg.inc, for the routines' names
+ * --script FILE     CEmu autotester steps (delay MS, key GROUP BIT, hash ID START SIZE TIMEOUT CRCS)
+ * --float-scale X   TI's float routines cost X times os.c's estimates
+ * --profile FILE    the PC every 0.1 ms, counted, into FILE
+ * --screen-memory   pictures from the LCD controller's memory rather than the panel
  * --trace           every OS call on stderr
  *
  * It stops at a crash (a protection fault: a write to flash, to the stack limit, out in unprivileged code; the
