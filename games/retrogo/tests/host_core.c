@@ -1,7 +1,8 @@
 /* Retro-Go's emulators on a computer: runs a ROM for some frames, with random keys if asked,
  * and writes the last frame as a PPM picture.
  *   host_core ROM FRAMES OUT.ppm [SEED] [SCRIPT]   (SEED: random pad presses; 0 for none)
- * The system comes from the file's extension (.gb .gbc .nes .sms .gg .sg .col). */
+ * The system comes from the file's extension (.gb .gbc .nes .sms .gg .sg .col .gw, .md .gen .bin:
+ * a Mega Drive game, plain, its bytes swapped here as tools/romtable.py does). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,14 +11,19 @@
 #include "../src/gb/gb.h"
 #include "../src/nes/nes_core.h"
 #include "../src/sms/sms.h"
+#include "../src/gw/gw.h"
+#include "../src/md/md.h"
+#include "../src/pack.h"
 
 static uint8_t heap[RG_HEAP_SIZE] __attribute__((aligned(8)));
 static uint32_t used;
+static int pages_used;
 bool rg_drawing = true;
-static uint16_t frame[256 * 240];
+#define FW 320 /* (the widest picture: the Game & Watch's) */
+static uint16_t frame[FW * 240];
 static int lines_seen;
 /* the three emulators behind the same few calls */
-static enum { GB, NES, SMS } kind;
+static enum { GB, NES, SMS, GW, MD } kind;
 
 void *rg_alloc(uint32_t size) {
   size = (size + 7) & ~7u;
@@ -27,29 +33,46 @@ void *rg_alloc(uint32_t size) {
   memset(p, 0, size);
   return p;
 }
-void rg_alloc_reset(void) { used = 0; }
+void rg_alloc_reset(void) { used = 0, pages_used = 0; }
+/* (the Mega Drive's RAM pages: on the calculator from three places, here from a block of their own) */
+static uint8_t pages[MD_PAGES * MD_PAGE] __attribute__((aligned(8)));
+void *rg_alloc_page(void) {
+  if (used + MD_PAGE <= sizeof heap) return rg_alloc(MD_PAGE);
+  if (pages_used >= MD_PAGES) return NULL;
+  memset(pages + pages_used * MD_PAGE, 0, MD_PAGE);
+  return pages + MD_PAGE * pages_used++;
+}
 
 void rg_line(int y, const uint16_t *px) {
   if (y < 0 || y >= 240) {
     fprintf(stderr, "line %d out of the picture\n", y);
     abort();
   }
-  memcpy(frame + y * 256, px, (size_t)(kind == GB ? 160 : 256) * 2);
+  int vx, vy, vw, vh;
+  if (kind == MD) md_view(&vx, &vy, &vw, &vh);
+  memcpy(frame + y * FW, px, (size_t)(kind == GB ? 160 : kind == GW ? 320 : kind == MD ? vw : 256) * 2);
   lines_seen++;
 }
 
 /* the ROM, read only as the calculator's flash is: a write into it stops the test (and a read
    past its end too: the page after it isn't there) */
-static uint8_t *load(const char *path, uint32_t *size) {
+static uint8_t *load(const char *path, uint32_t *size, bool md) {
   FILE *f = fopen(path, "rb");
   if (!f) return NULL;
   fseek(f, 0, SEEK_END);
   long n = ftell(f);
   fseek(f, 0, SEEK_SET);
   size_t pages = ((size_t)n + 4095) / 4096 * 4096 + 4096;
+  if (md) { /* (the Mega Drive core reads up to the size rounded up to a power of two) */
+    size_t p2 = 4096;
+    while (p2 < (size_t)n) p2 <<= 1;
+    pages = p2 + 4096;
+  }
   uint8_t *d = mmap(NULL, pages, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
   if (d == MAP_FAILED || fread(d, 1, (size_t)n, f) != (size_t)n) return NULL;
   fclose(f);
+  if (md)
+    for (long i = 0; i + 1 < n; i += 2) { uint8_t t = d[i]; d[i] = d[i + 1], d[i + 1] = t; }
   mprotect(d, pages - 4096, PROT_READ);
   mprotect(d + pages - 4096, 4096, PROT_NONE);
   *size = (uint32_t)n;
@@ -65,27 +88,51 @@ static uint32_t crc32(const uint8_t *p, uint32_t n) {
   return ~c;
 }
 
-static void set_pad(int p) { kind == NES ? nes_set_pad(p) : kind == SMS ? sms_set_pad(p) : gb_set_pad(p); }
-static void run_frame(void) { kind == NES ? nes_run_frame(true) : kind == SMS ? sms_run_frame(true) : gb_run_frame(true); }
-static int chunks(rg_chunk_t *c) { return kind == NES ? nes_state_chunks(c) : kind == SMS ? sms_state_chunks(c) : gb_state_chunks(c); }
-static void loaded(void) { kind == NES ? nes_state_loaded() : kind == SMS ? sms_state_loaded() : gb_state_loaded(); }
-static void redraw(void) { kind == NES ? nes_redraw() : kind == SMS ? sms_redraw() : gb_redraw(); }
+/* (the Game & Watch: the pad in the low byte, its console's buttons, GW_KEY_*, in the next) */
+static void set_pad(int p) {
+  kind == NES ? nes_set_pad(p) : kind == SMS ? sms_set_pad(p) : kind == GW ? gw_set_pad(p & 0xFF, p >> 8)
+  : kind == MD ? md_set_pad(p) : gb_set_pad(p);
+}
+static int draw_every = 1, frame_no; /* (DRAW=n: one frame drawn in n, as the frame skipping does) */
+static void run_frame(void) {
+  bool d = ++frame_no % draw_every == 0;
+  kind == NES ? nes_run_frame(d) : kind == SMS ? sms_run_frame(d) : kind == GW ? gw_run_frame(d)
+  : kind == MD ? md_run_frame(d) : gb_run_frame(d);
+}
+static int chunks(rg_chunk_t *c) {
+  return kind == NES ? nes_state_chunks(c) : kind == SMS ? sms_state_chunks(c) : kind == GW ? gw_state_chunks(c)
+       : kind == MD ? md_state_chunks(c) : gb_state_chunks(c);
+}
+static void loaded(void) {
+  kind == NES ? nes_state_loaded() : kind == SMS ? sms_state_loaded() : kind == GW ? gw_state_loaded()
+  : kind == MD ? md_state_loaded() : gb_state_loaded();
+}
+static void redraw(void) {
+  kind == NES ? nes_redraw() : kind == SMS ? sms_redraw() : kind == GW ? gw_redraw() : kind == MD ? md_redraw() : gb_redraw();
+}
 static void view(int *x, int *y, int *w, int *h) {
   if (kind == SMS) sms_view(x, y, w, h);
-  else *x = 0, *y = 0, *w = kind == NES ? 256 : 160, *h = kind == NES ? 240 : 144;
+  else if (kind == MD) md_view(x, y, w, h);
+  else *x = 0, *y = 0, *w = kind == NES ? 256 : kind == GW ? 320 : 160, *h = kind == GB ? 144 : 240;
 }
 
 int main(int argc, char **argv) {
   if (argc < 4) return fprintf(stderr, "usage: host_core ROM FRAMES OUT.ppm [SEED] [SCRIPT]\n"), 2;
   uint32_t size;
-  uint8_t *rom = load(argv[1], &size);
+  const char *ext0 = strrchr(argv[1], '.');
+  bool md = ext0 && (!strcmp(ext0, ".md") || !strcmp(ext0, ".gen") || !strcmp(ext0, ".bin"));
+  uint8_t *rom = load(argv[1], &size, md);
+  if (getenv("DRAW")) draw_every = atoi(getenv("DRAW")) > 0 ? atoi(getenv("DRAW")) : 1;
   if (!rom) return fprintf(stderr, "can't read %s\n", argv[1]), 1;
   int frames = atoi(argv[2]);
   unsigned seed = argc > 4 ? (unsigned)atoi(argv[4]) : 0;
   const char *ext = strrchr(argv[1], '.');
   bool col = ext && !strcmp(ext, ".col");
-  kind = ext && !strcmp(ext, ".nes") ? NES : ext && (!strcmp(ext, ".sms") || !strcmp(ext, ".gg") || !strcmp(ext, ".sg") || col) ? SMS : GB;
+  kind = ext && !strcmp(ext, ".nes") ? NES : ext && (!strcmp(ext, ".sms") || !strcmp(ext, ".gg") || !strcmp(ext, ".sg") || col) ? SMS
+         : ext && !strcmp(ext, ".gw") ? GW : md ? MD : GB;
   int r = kind == NES ? nes_load(rom, size)
+          : kind == GW ? gw_load(rom, size)
+          : kind == MD ? md_load(rom, size)
           : kind == SMS ? sms_load(rom, size, crc32(rom, size),
                                    !strcmp(ext, ".gg") ? SMS_GG : !strcmp(ext, ".sg") ? SMS_SG : col ? SMS_CV : SMS_SMS)
                         : gb_load(rom, size);
@@ -115,10 +162,10 @@ int main(int argc, char **argv) {
   if (getenv("STATE")) {
     rg_chunk_t parts[RG_MAX_CHUNKS];
     int n = chunks(parts);
-    static uint8_t copy[RG_HEAP_SIZE + 65536];
+    static uint8_t copy[RG_HEAP_SIZE + MD_PAGES * MD_PAGE + 65536];
     uint32_t at = 0;
     for (int i = 0; i < n; i++) memcpy(copy + at, parts[i].at, parts[i].size), at += parts[i].size;
-    static uint16_t first[256 * 240];
+    static uint16_t first[FW * 240];
     for (int pass = 0; pass < 2; pass++) {
       if (pass) {
         n = chunks(parts);
@@ -133,6 +180,13 @@ int main(int argc, char **argv) {
       if (!pass) memcpy(first, frame, sizeof first);
     }
     printf("state %s\n", memcmp(first, frame, sizeof first) ? "differs" : "same");
+    { /* (what it takes in the calculator's storage, packed as main.c saves it) */
+      static uint16_t table[RG_PACK_HASH];
+      uint32_t packed = 0, raw = 0;
+      n = chunks(parts);
+      for (int i = 0; i < n; i++) packed += rg_pack(parts[i].at, parts[i].size, NULL, table) + 8, raw += parts[i].size;
+      printf("state packs to %u bytes (%u raw)\n", packed, raw);
+    }
     for (int k = 0; k < 30; k++) {
       n = chunks(parts);
       for (int i = 0; i < n; i++)
@@ -148,19 +202,19 @@ int main(int argc, char **argv) {
     view(&vx, &vy, &vw, &vh);
   }
   if (getenv("REDRAW")) {
-    static uint16_t last[256 * 240];
+    static uint16_t last[FW * 240];
     memcpy(last, frame, sizeof last);
     redraw();
     int differ = 0;
     for (int y = vy; y < vy + vh; y++)
-      for (int x = vx; x < vx + vw; x++) differ += last[y * 256 + x] != frame[y * 256 + x];
+      for (int x = vx; x < vx + vw; x++) differ += last[y * FW + x] != frame[y * FW + x];
     printf("redraw: %d pixels differ\n", differ);
   }
   FILE *o = fopen(argv[3], "wb");
   fprintf(o, "P6\n%d %d\n255\n", vw, vh);
   for (int y = vy; y < vy + vh; y++)
     for (int x = vx; x < vx + vw; x++) {
-      uint16_t c = frame[y * 256 + x];
+      uint16_t c = frame[y * FW + x];
       fputc((c >> 11) << 3 | (c >> 13), o);
       fputc(((c >> 5) & 63) << 2 | ((c >> 9) & 3), o);
       fputc((c & 31) << 3 | ((c >> 2) & 7), o);

@@ -354,7 +354,7 @@ int nes_load(const uint8_t *data, uint32_t size)
    r->sram = rg_alloc(0x2000);
    r->vram = r->vrom_banks ? NULL : rg_alloc(0x2000);
    nes6502_null_page = rg_alloc(NES6502_BANKSIZE);
-   if (!ram || !r->sram || (!r->vrom_banks && !r->vram) || !nes6502_null_page)
+   if (!ram || !r->sram || (!r->vrom_banks && !r->vram) || !nes6502_null_page || !nes_ppu_alloc())
       return RG_ERR_MEMORY;
    if (r->flags & ROM_FLAG_TRAINER)
       memcpy(r->sram + 0x1000, data + 16, 512);

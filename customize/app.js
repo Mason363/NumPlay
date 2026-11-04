@@ -19,8 +19,11 @@
     5: { tag: 'GG', name: 'Game Gear', color: '#3b3b3b', shell: '#c8c8cc' },
     6: { tag: 'SG', name: 'SG-1000', color: '#c0392b', shell: '#2b2b2e' },
     7: { tag: 'COL', name: 'ColecoVision', color: '#2c3e50', shell: '#1d1d1f' },
+    8: { tag: 'GW', name: 'Game & Watch', color: '#b8932e', shell: '#d8c8a0' },
+    9: { tag: 'MD', name: 'Mega Drive', color: '#2d2d2d', shell: '#1a1a1c' },
   };
-  const EXT = { gb: 1, gbc: 2, nes: 3, sms: 4, gg: 5, sg: 6, col: 7 };
+  const EXT = { gb: 1, gbc: 2, nes: 3, sms: 4, gg: 5, sg: 6, col: 7, gw: 8, md: 9, gen: 9, bin: 9, smd: 9 };
+  const MD = 9;  // (Mega Drive games play in Retro-Go on its own: inside NumPlay, the RAM they need isn't there)
   const ROM_ENTRY = 52, ROM_HEAD = 12;
   const PRESETS = { 'NumPlay': ['NumPlay', 'NumPlay'], 'NumPlay-Invisible': ['Invisible', ' '], 'NumPlay-Matrices': ['Matrices', 'Matrices'] };
   const LANGS = { en: ['EN', 'English'], fr: ['FR', 'Français'], zh: ['中文', '中文'] };
@@ -435,6 +438,54 @@
     return n < bytes.length ? bytes.slice(0, n) : bytes;
   }
 
+  // A .gw file packed with LZ4 (an LZ4 frame, as LCD-Game-Shrinker writes them) unpacked: Retro-Go reads them in
+  // place (tools/romtable.py's lz4_unpack)
+  function lz4Unpack(d) {
+    if (d.length < 7 || d[0] !== 0x04 || d[1] !== 0x22 || d[2] !== 0x4d || d[3] !== 0x18) return d;
+    const flg = d[4], rd = (i) => (d[i] | d[i + 1] << 8 | d[i + 2] << 16 | d[i + 3] << 24) >>> 0;
+    let i = 7 + (flg & 8 ? 8 : 0) + (flg & 1 ? 4 : 0), out = new Uint8Array(1 << 20), o = 0;
+    const need = (n) => { if (o + n > out.length) { const b = new Uint8Array(Math.max(out.length * 2, o + n)); b.set(out); out = b; } };
+    while (i + 4 <= d.length) {
+      const h = rd(i); i += 4;
+      if (!h) break;
+      const n = h & 0x7fffffff, end = i + n;
+      if (end > d.length) throw new Error('a broken LZ4 file');
+      if (h & 0x80000000) { need(n); out.set(d.subarray(i, end), o); o += n; i = end + (flg & 0x10 ? 4 : 0); continue; }
+      while (i < end) {
+        const tok = d[i++];
+        let lit = tok >> 4;
+        if (lit === 15) for (let b = 255; b === 255 && i < end;) lit += (b = d[i++]);
+        need(lit); out.set(d.subarray(i, i + lit), o); o += lit; i += lit;
+        if (i >= end) break;
+        const off = d[i] | d[i + 1] << 8;
+        i += 2;
+        let ml = (tok & 15) + 4;
+        if ((tok & 15) === 15) for (let b = 255; b === 255 && i < end;) ml += (b = d[i++]);
+        if (!off || off > o) throw new Error('a broken LZ4 file');
+        need(ml);
+        for (let k = 0; k < ml; k++, o++) out[o] = out[o - off];
+      }
+      i = end + (flg & 0x10 ? 4 : 0);
+    }
+    return out.slice(0, o);
+  }
+  // A Mega Drive game as Retro-Go reads it in place: plain (an .smd file's header dropped and its 16 KB blocks put back in
+  // order), its bytes swapped in pairs, a zero added to an odd size (tools/romtable.py's mega_drive)
+  function megaDrive(d, smd) {
+    if ((smd || (d.length > 0x200 && d[1] === 3 && d[8] === 0xaa && d[9] === 0xbb)) && d.length % 0x4000 === 0x200) {
+      const body = d.subarray(0x200), plain = new Uint8Array(body.length);
+      for (let k = 0; k < body.length; k += 0x4000)
+        for (let j = 0; j < 0x2000; j++) { plain[k + 2 * j] = body[k + 0x2000 + j]; plain[k + 2 * j + 1] = body[k + j]; }
+      d = plain;
+    }
+    const out = new Uint8Array(d.length + (d.length & 1));
+    for (let k = 0; k + 1 < out.length; k += 2) { out[k] = d[k + 1] || 0; out[k + 1] = d[k]; }
+    return out;
+  }
+  const romBytesOf = (bytes, sys, file) => sys === 8 ? lz4Unpack(bytes) : sys === MD ? megaDrive(bytes, /\.smd$/i.test(file)) : trimRom(bytes, sys);
+  // with a Mega Drive game, the download is Retro-Go on its own with all the games, not NumPlay
+  const rgAlone = () => !!(rg && st.roms.some((r) => r.sys === MD));
+
   async function addRoms(files) {
     if (solo()) { bump($('#drop'), 'shake'); toast(byId[solo()].title + " takes the whole calculator, so there's no room for Retro-Go"); return; }
     const ok = new Set(rg && rg.systems ? rg.systems : [1, 2, 3]);
@@ -444,7 +495,9 @@
         toast('Retro-Go plays ' + [...ok].map((s) => SYS[s].name).join(', ').replace(/, ([^,]*)$/, ' and $1') + ' games');
         continue;
       }
-      const bytes = trimRom(new Uint8Array(await f.arrayBuffer()), sys);
+      let bytes;
+      try { bytes = romBytesOf(new Uint8Array(await f.arrayBuffer()), sys, f.name); } catch (e) { toast(f.name + " isn't a game Retro-Go can read"); continue; }
+      if (sys === MD && !rgAlone()) toast('Mega Drive games play in Retro-Go on its own: you get RetroGo.nwa with your games, without NumPlay');
       const r = { key: ++romKey, sys, bytes, name: romName(f.name) };
       const over = total(ordered(), st.roms.concat([r])) - capacity();
       if (over > 0) { bump($('#drop'), 'shake'); tooBig(r) || overflow(over); continue; }
@@ -885,7 +938,24 @@
     return at;
   }
 
+  // Retro-Go on its own (kit apps/RetroGo-app.o.gz, linked without its games) and its table of games, as
+  // games/retrogo's Makefile links RetroGo.nwa: ld -r -T roms.ld, then stripped
+  async function buildRetroGo() {
+    const [t, app] = await Promise.all([loadTools(), fetchBytes(KIT + 'apps/RetroGo-app.o.gz')]);
+    const files = { 'app.o': app, 'roms.o': romObject(romTable(st.roms)),
+      'roms.ld': 'SECTIONS {\n  .rodata.np_roms : { KEEP(*(.rodata.np_roms)) np_retrogo_end = .; }\n}\n' };
+    const l = await run(t.ld, ['-r', '-T', 'roms.ld', 'app.o', 'roms.o', '-o', 'out.nwa'], files);
+    if (l.code) throw new Error(l.log || 'ld ' + l.code);
+    const s = await run(t.oc, ['--strip-unneeded', 'in.nwa', 'out.nwa'], { 'in.nwa': l.m.FS.readFile('out.nwa') });
+    if (s.code) throw new Error(s.log || 'objcopy ' + s.code);
+    const nwa = s.m.FS.readFile('out.nwa');
+    const n = installedSize(nwa);
+    if (n > capacity()) throw new Error("That's " + size(n - capacity()) + ' more than the calculator holds');
+    return { bytes: nwa, file: 'RetroGo.nwa' };
+  }
+
   async function build() {
+    if (rgAlone()) return buildRetroGo();
     const one = solo();
     if (one) return { bytes: await fetchBytes(KIT + 'apps/' + one + '.nwa.gz'), file: game(one).alone.file };
     await loadKit(st.lang);

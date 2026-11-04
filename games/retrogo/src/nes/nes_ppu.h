@@ -108,7 +108,12 @@ typedef struct ppu_s
    bool vram_present;
 } ppu_t;
 
-extern ppu_t ppu;
+/* (Retro-Go on NumPlay: in Retro-Go's heap, nes_ppu_alloc, not in the app's RAM: the
+   Mega Drive takes it when it runs) */
+extern ppu_t *nes_ppu_p;
+#define ppu (*nes_ppu_p)
+/* the PPU's memory taken from Retro-Go's heap; false if it is full */
+bool nes_ppu_alloc(void);
 extern bool ppu_pages_changed;
 extern bool ppu_limit_sprites;          /* 8 sprites a line at most, as the NES (an option) */
 extern const uint16 *nes_palette565;    /* the 64 NES colours in RGB565 */

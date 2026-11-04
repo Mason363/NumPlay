@@ -77,10 +77,17 @@ static const uint8_t cyc_ddfd[256] = {4, 4, 4, 4, 4, 4, 4, 4, 4, 15, 4, 4, 4, 4,
 // get bit "n" of number "val"
 #define GET_BIT(n, val) (((val) >> (n)) & 1)
 
+#ifndef Z80_READ
 static inline uint8_t rb(z80* const z, uint16_t addr) {
   (void)z;
   return z80_rmap[addr >> 10][addr & 0x3FF];
 }
+#else /* (the Mega Drive's Z80, md/md_z80.c: its own reads) */
+static inline uint8_t rb(z80* const z, uint16_t addr) {
+  (void)z;
+  return Z80_READ(addr);
+}
+#endif
 
 static inline void wb(z80* const z, uint16_t addr, uint8_t val) {
   (void)z;

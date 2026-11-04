@@ -116,3 +116,11 @@ Keypad	Clavier
 0 to 9	0 à 9
 * and #	* et #
 x and /	x et /
+Time	Heure
+Game A	Jeu A
+Game B	Jeu B
+Alarm	Alarme
+Z80 emulation	Émulation du Z80
+Game A, B, Time, Alarm	Jeu A, B, Heure, Alarme
+ColecoVision, Game & Watch, Mega Drive.	ColecoVision, Game & Watch et Mega Drive.
+Mega Drive games play in Retro-Go on its own.	Les jeux Mega Drive se jouent dans Retro-Go seul.

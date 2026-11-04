@@ -23,7 +23,7 @@ typedef struct {
   void *at;
   uint32_t size;
 } rg_chunk_t;
-#define RG_MAX_CHUNKS 16
+#define RG_MAX_CHUNKS 40 /* (the Mega Drive: 39) */
 
 /* The cores' failures when loading a game, shown by the screens. */
 enum {
