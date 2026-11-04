@@ -24,18 +24,6 @@ int bias_add(int b, int amount) {
   return b > 4000000 ? 4000000 : b < -4000000 ? -4000000 : b;
 }
 
-int isqrt24(int v) {   /* v < 2^23 */
-  if (v <= 0) return 0;
-  unsigned r = 0, b = 1u << 22, x = (unsigned)v;
-  while (b > x) b >>= 2;
-  while (b) {
-    if (x >= r + b) x -= r + b, r = (r >> 1) + b;
-    else r >>= 1;
-    b >>= 2;
-  }
-  return (int)r;
-}
-
 int isqrt(int32_t v) {
   if (v <= 0) return 0;
   uint32_t r = 0, b = 1ul << 30, x = (uint32_t)v;

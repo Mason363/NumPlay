@@ -10,7 +10,7 @@ DESCRIPTION = "Celeste"
 COMPRESSED = YES
 COMPRESSED_MODE = zx0
 ARCHIVED = YES
-CFLAGS = -Wall -Wextra -Wno-unused-parameter -Oz
+CFLAGS = -Wall -Wextra -Wno-unused-parameter -Oz $(BENCH)
 HAS_PRINTF = NO
 
 include $(shell cedev-config --makefile)

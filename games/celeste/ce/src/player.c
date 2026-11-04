@@ -956,15 +956,17 @@ static void hair_update(void) {   /* PlayerHair.AfterUpdate (1/256 px): the node
   P->hairy[0] = (E->y - 9 * P->scale_y / 1024 + (int8_t)m[1]) * 256;
   int tx = P->hairx[0] - fac * 128, ty = P->hairy[0] + 512;
   for (int i = 1; i < P->hair_count; i++) {
+    /* (lengths from 1/16 px: their squares stay in 24 bits) */
     int dx = tx - P->hairx[i], dy = ty - P->hairy[i];
     if (iabs(dx) > 32 * 256 || iabs(dy) > 32 * 256) P->hairx[i] = tx, P->hairy[i] = ty, dx = dy = 0;
-    int l = isqrt((int32_t)dx * dx + (int32_t)dy * dy);
+    int l = isqrt24((dx >> 4) * (dx >> 4) + (dy >> 4) * (dy >> 4)) << 4;
     int mv = (256 - i * 128 / P->hair_count) * 64 / 60;
     if (l <= mv) P->hairx[i] = tx, P->hairy[i] = ty;
-    else P->hairx[i] += (int)((int32_t)dx * mv / l), P->hairy[i] += (int)((int32_t)dy * mv / l);
+    else P->hairx[i] += dx * mv / l, P->hairy[i] += dy * mv / l;
     dx = P->hairx[i] - P->hairx[i - 1], dy = P->hairy[i] - P->hairy[i - 1];
-    l = isqrt((int32_t)dx * dx + (int32_t)dy * dy);
-    if (l > 768) P->hairx[i] = P->hairx[i - 1] + (int)((int32_t)dx * 768 / l), P->hairy[i] = P->hairy[i - 1] + (int)((int32_t)dy * 768 / l);
+    if (iabs(dx) > 32 * 256 || iabs(dy) > 32 * 256) P->hairx[i] = P->hairx[i - 1], P->hairy[i] = P->hairy[i - 1], dx = dy = 0;
+    l = isqrt24((dx >> 4) * (dx >> 4) + (dy >> 4) * (dy >> 4)) << 4;
+    if (l > 768) P->hairx[i] = P->hairx[i - 1] + dx * 768 / l, P->hairy[i] = P->hairy[i - 1] + dy * 768 / l;
     tx = P->hairx[i] - fac * 128, ty = P->hairy[i] + 512;
   }
 }
@@ -1223,58 +1225,20 @@ void player_before_down_transition(void) {
 /* PlayerHair.Render: the bangs, then circles shrinking down the hair (hair00, scaled 0.25 + (1 - i / n) * 0.75), each
  * outlined in black by drawing it a pixel off in four directions first. A circle's rows come from its mask, a row at a
  * time (the scale's samples: no division per pixel). */
-static void hline(int y, int x0, int x1, uint8_t c) {   /* view pixels [x0, x1] of row y */
-  if ((unsigned)y >= VIEW_H) return;
-  if (x0 < 0) x0 = 0;
-  if (x1 >= VIEW_W) x1 = VIEW_W - 1;
-  if (x0 <= x1) memset(g_fb + (VIEW_Y + y) * 320 + x0, c, (unsigned)(x1 - x0 + 1));
-}
-static void hair_draw(bool outline) {
+/* PlayerHair.Render: the bangs, then circles shrinking down the hair (hair00, scaled 0.25 + (1 - i / n) * 0.75), each
+ * outlined in black by drawing it a pixel off in four directions first: all outlines, then the hair from its end.
+ * Each piece is a picture of its own (tools/pack_ce.py: S_hair_disc, S_hair_bangs; its place at (8, 8)). */
+static void hair_draw(void) {
   const uint8_t *m = player_meta(cur_sprite());
   if (!(m[2] & 0x80)) return;
   int n = P->hair_count, bangs = m[2] & 0x7F;
-  for (int i = outline ? 0 : n - 1; outline ? i < n : i >= 0; i += outline ? 1 : -1) {
-    int cx = (i == 0 ? P->hairx[0] >> 8 : (P->hairx[i] + 128) >> 8) - g_camx;
-    int cy = (i == 0 ? P->hairy[0] >> 8 : (P->hairy[i] + 128) >> 8) - g_camy;
-    if (i == 0) {   /* the bangs: their own picture, both shades, unscaled */
-      const uint16_t *mask = hair_mask(1 + (bangs < 3 ? bangs : 0));
-      bool flip = P->facing < 0;
-      for (int v = 0; v < 10; v++) {
-        unsigned bits = mask[v], dark = mask[10 + v];
-        if (!bits) continue;
-        int y = cy - 5 + v;
-        for (int u = 0; u < 10; u++) {
-          if (!(bits >> u & 1)) continue;
-          int x = cx + (flip ? 4 - u : u - 5);
-          if (outline) {
-            hline(y, x - 1, x + 1, BLACK);
-            hline(y - 1, x, x, BLACK), hline(y + 1, x, x, BLACK);
-          } else
-            hline(y, x, x, dark >> u & 1 ? HAIR_DARK : HAIR);
-        }
-      }
-      continue;
+  int disc = S_hair_disc + ((n - 1) * (n - 2) >> 1) * 2 - 2;   /* (+ 2 * i) */
+  int b = S_hair_bangs + (2 * (bangs < 3 ? bangs : 0) + (P->facing < 0)) * 2;
+  for (int pass = 1; pass >= 0; pass--)   /* (the outlines, then the hair) */
+    for (int i = pass ? 0 : n - 1; pass ? i < n : i >= 0; i += pass ? 1 : -1) {
+      int x = i == 0 ? P->hairx[0] >> 8 : (P->hairx[i] + 128) >> 8, y = i == 0 ? P->hairy[0] >> 8 : (P->hairy[i] + 128) >> 8;
+      draw_sprite(sprite((i == 0 ? b : disc + 2 * i) + pass), x - 8, y - 8, 0);
     }
-    /* a circle: hair00's rows (an 8 x 8 disc in a 10 x 10 frame), scaled by k (1/256) around the frame's middle */
-    const uint16_t *mask = hair_mask(0);
-    int k = 64 + (256 - i * 256 / n) * 3 / 4;
-    int half = (5 * k + 128) >> 8;
-    for (int dy = -half; dy < half; dy++) {
-      int v = 5 + fdiv(dy * 256 + 128, k);
-      if ((unsigned)v >= 10) continue;
-      unsigned bits = mask[v];
-      if (!bits) continue;
-      int u0 = 0, u1 = 9;
-      while (!(bits >> u0 & 1)) u0++;
-      while (!(bits >> u1 & 1)) u1--;
-      int x0 = cx + fdiv((u0 - 5) * k, 256), x1 = cx + fdiv((u1 - 4) * k - 1, 256);
-      if (outline) {
-        hline(cy + dy, x0 - 1, x1 + 1, BLACK);
-        hline(cy + dy - 1, x0, x1, BLACK), hline(cy + dy + 1, x0, x1, BLACK);
-      } else
-        hline(cy + dy, x0, x1, HAIR);
-    }
-  }
 }
 
 static void death_effect(int x, int y, int t) {   /* DeathEffect: 8 hair circles flying out, t 0..256 */
@@ -1297,14 +1261,13 @@ void player_render(void) {
     else if (P->death_t >= 0 && P->death_t <= TIM(.834f)) death_effect(E->x, E->y - 6, P->death_t * 256 / TIM(.834f));
     return;
   }
-  palette_hair(P->hair_rgb);
+  palette_hair(P->hair_rgb);   /* (measured or drawn: once a frame at least) */
   if (P->state == ST_INTRORESPAWN) {
     int t = imin(P->intro_t * 256 / TIM(.6f), 256);
     death_effect(E->x + P->respawn_fromx * (256 - t) / 256, E->y - 6 + P->respawn_fromy * (256 - t) / 256, 256 - t);
     return;
   }
-  hair_draw(true);
-  hair_draw(false);
+  hair_draw();
   extern const uint8_t *g_remap;
   extern const uint8_t *g_remap_red;
   if (is_tired() && P->flash) g_remap = g_remap_red;   /* (Color.Red: tired) */

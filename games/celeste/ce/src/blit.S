@@ -14,11 +14,11 @@ _blit_row:
 	ld	iy, 0
 	add	iy, sp
 	ld	ix, (iy + 6)		; the cells
-	ld	a, (iy + 9)		; n
 	ld	de, (iy + 12)		; dst
-	ld	c, (iy + 15)		; rows
 	exx
-	ld	d, c			; rows (D')
+	ld	a, (iy + 15)
+	ld	d, a			; rows (D')
+	ld	a, (iy + 9)
 	ld	c, a			; cells left (C')
 	exx
 .Lw_cell:
@@ -313,4 +313,92 @@ _blit_rect:
 	dec	a
 	jr	nz, .Lq_row
 	pop	ix
+	ret
+
+/* void blit_rle_flip(uint8_t *dst, const uint8_t *rows, unsigned nrows): as blit_rle, mirrored: dst is where the top
+ * row's first stored pixel goes (its rightmost), each run going leftwards */
+	.global	_blit_rle_flip
+	.type	_blit_rle_flip, @function
+_blit_rle_flip:
+	push	ix
+	ld	iy, 0
+	add	iy, sp
+	ld	ix, (iy + 6)		; the row's first pixel's place
+	ld	hl, (iy + 9)		; the rows
+	ld	a, (iy + 12)		; rows left
+.Lf_row:
+	exx
+	ld	e, a
+	exx
+	lea	de, ix + 0
+	ld	a, (hl)			; runs
+	inc	hl
+	or	a, a
+	jr	z, .Lf_next
+.Lf_run:
+	ex	af, af'
+	ld	bc, 0
+	ld	c, (hl)			; skip
+	inc	hl
+	ex	de, hl
+	or	a, a
+	sbc	hl, bc
+	ex	de, hl
+	ld	b, (hl)			; n
+	inc	hl
+.Lf_px:
+	ld	a, (hl)
+	inc	hl
+	ld	(de), a
+	dec	de
+	djnz	.Lf_px
+	ex	af, af'
+	dec	a
+	jr	nz, .Lf_run
+.Lf_next:
+	ld	bc, 320
+	add	ix, bc
+	exx
+	ld	a, e
+	exx
+	dec	a
+	jr	nz, .Lf_row
+	pop	ix
+	ret
+
+/* int isqrt24(int v): the integer square root of 0 <= v < 2^23, two bits at a time from the top (shifts left only) */
+	.global	_isqrt24
+	.type	_isqrt24, @function
+_isqrt24:
+	ld	iy, 0
+	add	iy, sp
+	ld	iy, (iy + 3)		; v
+	ld	hl, 0			; what is left
+	ld	de, 0			; the root so far
+	ld	b, 12
+.Ls_loop:
+	add	iy, iy
+	adc	hl, hl
+	add	iy, iy
+	adc	hl, hl			; left = left * 4 + v's next two bits
+	push	hl
+	ex	de, hl
+	add	hl, hl			; root * 2
+	push	hl
+	add	hl, hl
+	inc	hl			; root * 4 + 1
+	ex	de, hl
+	or	a, a
+	sbc	hl, de
+	pop	de			; root * 2
+	jr	c, .Ls_less
+	inc	de			; root * 2 + 1, left - (root * 4 + 1)
+	pop	af
+	djnz	.Ls_loop
+	ex	de, hl
+	ret
+.Ls_less:
+	pop	hl
+	djnz	.Ls_loop
+	ex	de, hl
 	ret

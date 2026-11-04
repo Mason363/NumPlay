@@ -505,6 +505,8 @@
 /* banks' origins: mode (0 none, 1 pixels, 2 justify x256), x, y */
 #define BANK_ORIGINS {{1, 16, 32}, {2, 128, 128}, {2, 128, 128}, {2, 128, 128}, {2, 128, 128}}
 #define NBANKS 5
+#define S_hair_disc 438
+#define S_hair_bangs 480
 #define COMMON 96
 #define HAIR 1
 #define HAIR_DARK 2

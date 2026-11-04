@@ -10,14 +10,16 @@ uint8_t *g_cell_cache;   /* draw.c's */
 uint8_t g_cells_gen;
 
 /* the RAM plat_ram gives: the entities, the two rooms' grids and tile tables */
+static uint8_t *g_dirty;   /* the view's cells to draw again: a byte each, a row of COLS at a time */
 bool level_ram(void) {
-  unsigned n = sizeof(Ent) * MAX_ENTS + 2 * (GRID_BYTES + 256 * sizeof(TEnt)) + 1024 + CELL_CACHE;
+  unsigned n = sizeof(Ent) * MAX_ENTS + 2 * (GRID_BYTES + 256 * sizeof(TEnt)) + 1024 + CELL_CACHE + CROWS * COLS;
   uint8_t *m = plat_ram(n);
   if (!m) return false;
   memset(m, 0, n);
   g_ents = (Ent *)(void *)m, m += sizeof(Ent) * MAX_ENTS;
   g_scratch = m, m += 1024;
   g_cell_cache = m, m += CELL_CACHE;
+  g_dirty = m, m += CROWS * COLS;
   for (int k = 0; k < 2; k++) {
     g_level.rooms[k].tab = (TEnt *)(void *)m, m += 256 * sizeof(TEnt);
     grid_mem[k] = m, m += GRID_BYTES;
@@ -362,13 +364,150 @@ void level_update(void) {
   }
 }
 
-void level_render(void) {
+/* ---------------------------------------------------------------- drawing what changed */
+/* Each of the two buffers still has what was drawn in it two frames ago. While the camera and the rooms' tiles are
+ * where they were then, only the cells where something changed are drawn again (an entity's box then and now, what
+ * went, the animated decals), every layer in its order, clipped to them. */
+static struct { int camx, camy, frame; uint8_t gen, ok; } was[2];
+static int buf;                     /* the buffer drawn now */
+static bool any_dirty;
+#define MAX_GONE 8
+static int16_t gone[2][MAX_GONE][4];
+static uint8_t ngone[2];
+static bool gone_full[2];
+void draw_gone_buf(int k, int x0, int y0, int x1, int y1) {
+  if (ngone[k] == MAX_GONE) { gone_full[k] = true; return; }
+  int16_t *g = gone[k][ngone[k]++];
+  g[0] = (int16_t)x0, g[1] = (int16_t)y0, g[2] = (int16_t)x1, g[3] = (int16_t)y1;
+}
+void draw_gone(int x0, int y0, int x1, int y1) { draw_gone_buf(0, x0, y0, x1, y1), draw_gone_buf(1, x0, y0, x1, y1); }
+static void mark(int x0, int y0, int x1, int y1) {   /* view pixels [x0, x1) x [y0, y1) */
+  x0 = imax(x0, 0), y0 = imax(y0, 0), x1 = imin(x1, VIEW_W), y1 = imin(y1, VIEW_H);
+  if (x0 >= x1 || y0 >= y1) return;
+  int ca = (x0 + g_offx) >> 3, cb = (x1 - 1 + g_offx) >> 3, ra = (y0 + g_offy) >> 3, rb = (y1 - 1 + g_offy) >> 3;
+  uint8_t *d = g_dirty + ra * COLS + ca;
+  for (int r = ra; r <= rb; r++, d += COLS) memset(d, 1, (size_t)(cb - ca + 1));
+  any_dirty = true;
+}
+static void changed(const int16_t *a, const int *b) {
+  mark(a[0], a[1], a[2], a[3]);
+  mark(b[0], b[1], b[2], b[3]);
+}
+static void render_cells(int ca, int cb, int ra, int rb) {
+  g_clip_x0 = imax(ca * 8 - g_offx, 0), g_clip_x1 = imin(cb * 8 + 8 - g_offx, VIEW_W);
+  g_clip_y0 = imax(ra * 8 - g_offy, 0), g_clip_y1 = imin(rb * 8 + 8 - g_offy, VIEW_H);
+  draw_layers_back(ca, cb, ra, rb);
+  BENCH(4);
+  draw_decals(0);
+  BENCH(10);
+  ents_render(32767, -10000);
+  BENCH(5);
+  draw_layer_fg(ca, cb, ra, rb);
+  BENCH(6);
+  draw_decals(1);
+  BENCH(10);
+  ents_render(-10000, -32768);
+  BENCH(5);
+}
+void level_render(bool whole) {
   g_camx = (g_level.camx >> 8) + g_level.shakex;
   g_camy = (g_level.camy >> 8) + g_level.shakey;
-  draw_layers_back();
-  draw_decals(0);
-  ents_render(32767, -10000);
-  draw_layer_fg();
-  draw_decals(1);
-  ents_render(-10000, -32768);
+#ifdef CEL_BENCH   /* back and forth across the room at 90 px/s (Madeline's run), and up and down at half that */
+  {
+    static int t;
+    int sx = g_level.room->w - VIEW_W, sy = g_level.room->h - VIEW_H;
+    t += 3;
+    int a = t / 2 % (2 * sx + 1), b = t / 4 % (2 * sy + 1);
+    g_camx = g_level.room->x + (a > sx ? 2 * sx - a : a), g_camy = g_level.room->y + (b > sy ? 2 * sy - b : b);
+  }
+#endif
+  draw_cells_update();
+  ents_order();
+  BENCH(2);
+  if (whole || gone_full[buf] || !was[buf].ok || was[buf].camx != g_camx || was[buf].camy != g_camy ||
+      was[buf].gen != g_cells_gen) {
+    render_cells(0, COLS - 1, 0, CROWS - 1);
+    ents_record(buf);
+    BENCH(3);
+  } else {
+    memset(g_dirty, 0, CROWS * COLS);
+    any_dirty = false;
+    ents_measure(buf, changed);
+    for (int i = 0; i < ngone[buf]; i++) mark(gone[buf][i][0], gone[buf][i][1], gone[buf][i][2], gone[buf][i][3]);
+    if ((unsigned)g_level.frame / 5 != (unsigned)was[buf].frame / 5) decals_mark(mark);
+    BENCH(3);
+    g_cull_buf = buf;
+    if (any_dirty) {   /* runs of dirty cells in a row, each grown down over the rows dirty all along it */
+      uint8_t *row = g_dirty;
+      for (int r = 0; r < CROWS; r++, row += COLS)
+        for (int c = 0; c < COLS;) {
+          if (!row[c]) { c++; continue; }
+          int e = c;
+          while (e + 1 < COLS && row[e + 1]) e++;
+          int rb = r;
+          for (uint8_t *nx = row + COLS; rb + 1 < CROWS; nx += COLS) {
+            int k = c;
+            while (k <= e && nx[k]) k++;
+            if (k <= e) break;
+            memset(nx + c, 0, (size_t)(e - c + 1));
+            rb++;
+          }
+          render_cells(c, e, r, rb);
+          c = e + 1;
+        }
+    }
+    g_cull_buf = -1;
+#ifndef __TICE__
+    {   /* CEL_VERIFY: each such frame against the whole view drawn again */
+      extern char *getenv(const char *);
+      static int verify = -1, bad;
+      if (verify < 0) verify = getenv("CEL_VERIFY") != NULL;
+      if (verify) {
+        static uint8_t keep[320 * VIEW_H];
+        uint8_t *v = g_fb + VIEW_Y * 320;
+        memcpy(keep, v, sizeof keep);
+        render_cells(0, COLS - 1, 0, CROWS - 1);
+        int n = 0, fx = -1, fy = -1;
+        for (int i = 0; i < 320 * VIEW_H; i++)
+          if (keep[i] != v[i]) { if (!n) fx = i % 320, fy = i / 320; n++; }
+        if (n && !bad && getenv("CEL_OUT")) {   /* the first: both pictures */
+          extern void png(const char *, const uint8_t *);
+          extern int sprintf(char *, const char *, ...);
+          static uint8_t fb2[320 * 240];
+          char path[512];
+          memcpy(fb2, g_fb, sizeof fb2);
+          sprintf(path, "%s/verify_full.png", getenv("CEL_OUT"));
+          png(path, fb2);
+          memcpy(fb2 + VIEW_Y * 320, keep, sizeof keep);
+          sprintf(path, "%s/verify_part.png", getenv("CEL_OUT"));
+          png(path, fb2);
+          extern int printf(const char *, ...);
+          printf("ents:");
+          for (int i = 0; i < g_nents; i++)
+            if (g_ents[i].type != 255)
+              printf(" %d(%d,%d d%d bb %d %d %d %d / %d %d %d %d)", g_ents[i].type, g_ents[i].x - g_camx, g_ents[i].y - g_camy,
+                     g_ents[i].depth, g_ents[i].bb[0][0], g_ents[i].bb[0][1], g_ents[i].bb[0][2], g_ents[i].bb[0][3],
+                     g_ents[i].bb[1][0], g_ents[i].bb[1][1], g_ents[i].bb[1][2], g_ents[i].bb[1][3]);
+          printf("\n");
+        }
+        if (n && bad++ < 20) {
+          extern int printf(const char *, ...);
+          printf("verify: frame %u: %d pixels differ, first at (%d, %d)\n", (unsigned)g_level.frame, n, fx, fy);
+        }
+        memcpy(v, keep, sizeof keep);
+        static int parts;
+        if (++parts % 100 == 0) {
+          extern int printf(const char *, ...);
+          printf("verify: %d frames drawn in part, %d wrong\n", parts, bad);
+        }
+      }
+    }
+#endif
+  }
+  g_clip_x0 = 0, g_clip_y0 = 0, g_clip_x1 = VIEW_W, g_clip_y1 = VIEW_H;
+  ngone[buf] = 0, gone_full[buf] = false;
+  was[buf].camx = g_camx, was[buf].camy = g_camy, was[buf].gen = g_cells_gen, was[buf].frame = (int)g_level.frame;
+  was[buf].ok = !whole;
+  buf ^= 1;
 }
+void level_render_forget(void) { was[0].ok = was[1].ok = 0; }

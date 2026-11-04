@@ -10,6 +10,10 @@ enum { SC_TITLE, SC_CHAPTERS, SC_PLAY, SC_PAUSE, SC_COMPLETE };
 static int screen = SC_TITLE, sel, chapter = 1;
 static int screen_t;
 static bool full_redraw = true;
+#ifdef CEL_BENCH
+unsigned long g_bench[16], g_bench_last;
+static int selftest;
+#endif
 
 /* ---------------------------------------------------------------- the save (appvar CELSAVE) */
 #define NCHAPTERS 10
@@ -92,6 +96,7 @@ static void hud_draw(void) {
     num(buf + 1, (uint32_t)(berries_of(chapter)));
     draw_sprite(sprite(S_collectables_strawberry_normal00), g_camx + 2, g_camy + 2, 0);
     draw_text(buf, 22, VIEW_Y + 8, WHITE);
+    draw_gone(0, 0, 22 + text_width(buf), 20);   /* (drawn over the view: both buffers draw it again) */
   }
 }
 
@@ -154,7 +159,7 @@ static void wipe_draw(void) {   /* AngledWipe: black bands sliding across, 24 fr
 }
 
 void game_draw(void) {
-  if (full_redraw) draw_clear_screen(0), full_redraw = false;
+  if (full_redraw) draw_clear_screen(0), full_redraw = false, level_render_forget();
   switch (screen) {
     case SC_TITLE:
       draw_clear_screen(0);
@@ -174,9 +179,36 @@ void game_draw(void) {
     }
     case SC_PLAY:
     case SC_PAUSE:
-      level_render();
+      level_render(screen == SC_PAUSE || g_level.wipe || g_level.completed);
       hud_draw();
       wipe_draw();
+      BENCH(7);
+#ifdef CEL_BENCH
+      {   /* thousands of cycles a frame (over the last 32 frames): update, wait, cells, measure, back, entities, fg,
+           * hud, swap, rest */
+        static unsigned frames;
+        static unsigned shown[16];
+        if (++frames % 32 == 0) {
+          for (int k = 0; k < 16; k++) shown[k] = (unsigned)(g_bench[k] / 32000);
+          memset(g_bench, 0, sizeof g_bench);
+        }
+        draw_rect_screen(0, -VIEW_Y, 320, VIEW_Y, 0);
+        char buf[96], *q = buf;
+        for (int k = 0; k < 16; k++) {
+          if (k == 10) *q++ = '/', *q++ = ' ';
+          unsigned v = shown[k];
+          char tmp[8];
+          int n = 0;
+          do tmp[n++] = (char)('0' + v % 10), v /= 10; while (v);
+          while (n) *q++ = tmp[--n];
+          *q++ = ' ';
+        }
+        *q = 0;
+        draw_text(buf, 2, 4, WHITE);
+        if (q - buf > 52) draw_text(buf + 52, 2, 14, WHITE);
+        draw_text(selftest ? "BAD" : "ok", 290, 14, WHITE);
+      }
+#endif
       if (screen == SC_PAUSE) {
         static const char *items[] = {"Resume", "Retry", "Save & Quit"};
         draw_rect_screen(100, 50, 120, 80, 0);
@@ -212,6 +244,13 @@ void game_start_room(int ch, const char *room, int x, int y) {
 void game_init(void) {
   save_read();
   palette_apply(256);
+#ifdef CEL_BENCH   /* a test build (tests/bench.sh): straight into that room, the camera going about it */
+#define STR_(x) #x
+#define STR(x) STR_(x)
+  extern int draw_selftest(void);
+  selftest = draw_selftest();
+  game_start_room(1, STR(CEL_BENCH), 0, 0);
+#endif
 #ifndef __TICE__
   {
     extern char *getenv(const char *);

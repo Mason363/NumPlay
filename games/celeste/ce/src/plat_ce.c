@@ -19,6 +19,11 @@ void plat_init(void) {
   timer_Disable(2);
   timer_Set(2, 0);
   timer_Enable(2, TIMER_32K, TIMER_NOINT, TIMER_UP);
+#ifdef CEL_BENCH
+  timer_Disable(1);
+  timer_Set(1, 0);
+  timer_Enable(1, TIMER_CPU, TIMER_NOINT, TIMER_UP);
+#endif
   kb_DisableOnLatch();
 }
 /* The RAM the game takes besides its program and static data: an appvar, CELRAM, made last (the save before it, in
@@ -108,3 +113,13 @@ bool plat_load(const char *name, void *data, unsigned n) {
   return ok;
 }
 void plat_unpack(void *dst, const void *src) { zx0_Decompress(dst, src); }
+
+#ifdef CEL_BENCH
+unsigned long plat_cycles(void) {   /* its low 24 bits, read twice until the reads agree (a byte may carry mid-read) */
+  volatile unsigned *t = (volatile unsigned *)TIMER_COUNT_ADDR(1);
+  for (;;) {
+    unsigned a = *t, b = *t;
+    if (((b - a) & 0xFFFFFF) < 200) return b;
+  }
+}
+#endif

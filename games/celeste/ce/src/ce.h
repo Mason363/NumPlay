@@ -93,6 +93,18 @@ extern const uint8_t *g_remap, *g_remap_red, *g_remap_half;   /* sprites drawn t
 enum { DF_FLIPX = 1, DF_FLIPY = 2, DF_SOLID = 4 };
 enum { TF_OPAQUE = 1 };               /* a tile without see-through pixels */   /* DF_SOLID: every pixel in one colour (draw_color) */
 extern int g_camx, g_camy;            /* the view's top left in the world */
+/* drawing happens inside the clip only (view pixels); while g_dry, nothing is drawn: the box of what would be (g_bb,
+ * view pixels) and a sum of it (g_bb_sum) grow instead (level.c: what changed since a buffer was drawn) */
+extern int g_clip_x0, g_clip_y0, g_clip_x1, g_clip_y1;
+extern bool g_dry;
+extern int g_bb[4];
+extern unsigned g_bb_sum;
+void bb_add(int x0, int y0, int x1, int y1, unsigned what);
+static inline bool dry_box(int x0, int y0, int x1, int y1, unsigned what) {   /* true: measured, not to be drawn */
+  if (!g_dry) return false;
+  bb_add(x0, y0, x1, y1, what);
+  return true;
+}
 extern uint8_t g_draw_color;
 void draw_sprite(const uint8_t *spr, int x, int y, uint8_t flags);   /* (x, y): the frame's top left, world */
 void draw_sprite_scaled(const uint8_t *spr, int x, int y, int sx, int sy, int ox, int oy, uint8_t flags);
@@ -104,9 +116,12 @@ void draw_pixel(int x, int y, uint8_t c);
 void draw_circle_fill(int cx, int cy, int r, uint8_t c);
 void draw_text(const char *s, int x, int y, uint8_t c);   /* screen coordinates (0..320, 0..240) */
 int text_width(const char *s);
-void draw_layers_back(void);          /* background, bg tiles */
-void draw_layer_fg(void);             /* fg tiles */
+void draw_cells_update(void);          /* the view's cells, for the camera now */
+extern int g_offx, g_offy;            /* the camera in its cell */
+void draw_layers_back(int ca, int cb, int ra, int rb);   /* background, bg tiles: the view's cells [ca, cb] x [ra, rb] */
+void draw_layer_fg(int ca, int cb, int ra, int rb);      /* fg tiles */
 void draw_decals(int fg);
+void decals_mark(void (*mark)(int x0, int y0, int x1, int y1));   /* the animated ones' boxes (view) */
 void draw_clear_screen(uint8_t c);
 /* src/blit.S (host/blit.c) */
 typedef struct { uint8_t opaque, drawn; const uint8_t *tile; } Cell;   /* a tile to draw: its rows' masks, its data */
@@ -121,6 +136,7 @@ void blit_clip(const Cell *cell, uint8_t *dst, unsigned a, unsigned b, unsigned 
 void blit_copy(uint8_t *dst, const uint8_t *src, unsigned n);
 void blit_rect(uint8_t *dst, const uint8_t *src, unsigned w, unsigned h, unsigned src_step);
 void blit_rle(uint8_t *dst, const uint8_t *rows, unsigned nrows);
+void blit_rle_flip(uint8_t *dst, const uint8_t *rows, unsigned nrows);   /* mirrored: dst the top row's rightmost */
 void build_cells(const uint8_t *fg, const uint8_t *bg, const TEnt *table, Cell *ofg, Cell *obg, uint8_t *vis, unsigned n);
 /* the view's cells (draw.c), kept while the camera stays in the same ones: 41 x 24 */
 #define COLS 41
@@ -151,7 +167,7 @@ int fdiv(int a, int b);               /* floor(a / b), b > 0 */
 int round_mu(int c, int dir);         /* c / MU rounded as Celeste's floats round it (util.c) */
 int bias_add(int b, int amount);      /* the bias round_mu needs, kept within 24 bits */
 int isqrt(int32_t v);
-int isqrt24(int v);                   /* v < 2^23 */
+int isqrt24(int v);                   /* 0 <= v < 2^23 (src/blit.S) */
 int sin15(int a);                     /* a: 1024 a turn, result * 32768 */
 static inline int sin256(int a) { return sin15(a) >> 7; }
 static inline int cos256(int a) { return sin15(a + 256) >> 7; }
@@ -194,6 +210,8 @@ struct Ent {
   int16_t a0, a1, a2, a3;
   void *ptr;
   f32 ptr2;
+  int16_t bb[2][4];         /* what it drew in each buffer (view pixels; empty if bb[k][0] >= bb[k][2]) */
+  unsigned sum[2];
 };
 #define MAX_ENTS 96
 extern Ent *g_ents;                   /* (in the RAM plat_ram gives) */
@@ -206,7 +224,11 @@ Ent *ent_new(int type, int x, int y);
 void ent_free(Ent *e);
 void ents_spawn_room(int slot);
 void ents_update(void);
+void ents_order(void);                /* the order they draw in (by depth), for this frame */
 void ents_render(int dmax, int dmin);   /* depths in (dmin, dmax] */
+extern int g_cull_buf;                /* >= 0: ents_render skips those whose box there misses the clip */
+void ents_measure(int buf, void (*changed)(const int16_t *was, const int *now));   /* each one's box against buf's */
+void ents_record(int buf);            /* what each one draws now, for buf */
 void ents_remove_room(int slot);
 void ents_clear(void);
 bool rect_hits(int l, int t, int r, int b, const Ent *o);
@@ -253,7 +275,18 @@ extern Level g_level;
 bool level_load(int chapter, int room, int intro);
 bool level_ram(void);                 /* the RAM the rooms and entities take; false if there is not enough */
 void level_update(void);
-void level_render(void);
+void level_render(bool whole);        /* whole: the view all over (else what changed since this buffer was drawn) */
+void level_render_forget(void);
+#ifdef CEL_BENCH   /* (tests/bench.sh) the CPU's time in each part of a frame, shown on the screen */
+unsigned long plat_cycles(void);
+extern unsigned long g_bench[16];
+extern unsigned long g_bench_last;
+#define BENCH(k) do { unsigned long t_ = plat_cycles(); g_bench[k] += (t_ - g_bench_last) & 0xFFFFFF; g_bench_last = t_; } while (0)
+#else
+#define BENCH(k) do { } while (0)
+#endif       /* both buffers drawn whole next */
+void draw_gone(int x0, int y0, int x1, int y1);   /* view pixels drawn over that went: both buffers draw them again */
+void draw_gone_buf(int k, int x0, int y0, int x1, int y1);
 bool solid_at(int l, int t, int r, int b, const Ent *self);   /* tiles or solid entities over [l, r) x [t, b) */
 Ent *solid_first(int l, int t, int r, int b, const Ent *self);
 Ent *jumpthru_first_outside(const Ent *e, int x, int y);

@@ -444,6 +444,56 @@ class Common:
         for f in family("collectables/strawberry/wings"):
             self.image(f.path)
 
+    def hair_sprites(self):
+        """Madeline's hair as src/player.c draws it: circles down it (hair00 scaled 0.25 + (1 - i / n) * 0.75, for 2-7
+        pieces) and the bangs (bangs00-02, both ways), each also outlined (itself a pixel off each way, black). 16 x 16,
+        the piece's place at (8, 8): S_hair_disc + 2 * ((n - 1) * (n - 2) / 2 + i - 1) (+1 outlined), S_hair_bangs +
+        2 * (2 * bangs + flipped) (+1 outlined)."""
+        def masks(p):
+            img = self.images[p]
+            on = [[img[y, x, 3] >= 128 for x in range(10)] for y in range(10)]
+            dark = [[on[y][x] and img[y, x, 0] < 200 for x in range(10)] for y in range(10)]
+            return on, dark
+
+        def outlined(f):
+            o = np.zeros_like(f)
+            m = f != 0
+            for dx, dy in ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)):
+                o[np.roll(np.roll(m, dy, 0), dx, 1)] = BLACK
+            return o
+
+        disc, _ = masks("characters/player/hair00")
+        first = None
+        for n in range(2, 8):
+            for i in range(1, n):
+                k = 64 + (256 - i * 256 // n) * 3 // 4
+                half = (5 * k + 128) >> 8
+                f = np.zeros((16, 16), np.uint8)
+                for dy in range(-half, half):
+                    v = 5 + (dy * 256 + 128) // k
+                    if not 0 <= v < 10 or not any(disc[v]):
+                        continue
+                    us = [u for u in range(10) if disc[v][u]]
+                    x0, x1 = (us[0] - 5) * k // 256, ((us[-1] - 4) * k - 1) // 256
+                    f[dy + 8, x0 + 8:x1 + 9] = HAIR
+                a = self.sprites.add(("hair disc", n, i), f)
+                assert self.sprites.add(("hair disc outlined", n, i), outlined(f)) == a + 1
+                first = a if first is None else first
+        H.append(f"#define S_hair_disc {first}")
+        first = None
+        for b in range(3):
+            on, dark = masks(f"characters/player/bangs0{b}")
+            for flip in (0, 1):
+                f = np.zeros((16, 16), np.uint8)
+                for v in range(10):
+                    for u in range(10):
+                        if on[v][u]:
+                            f[v - 5 + 8, (4 - u if flip else u - 5) + 8] = HAIR_DARK if dark[v][u] else HAIR
+                a = self.sprites.add(("hair bangs", b, flip), f)
+                assert self.sprites.add(("hair bangs outlined", b, flip), outlined(f)) == a + 1
+                first = a if first is None else first
+        H.append(f"#define S_hair_bangs {first}")
+
     def palette(self):
         counts = collections.Counter()
         for k, img in self.images.items():
@@ -465,6 +515,7 @@ class Common:
         for k in self.images:
             H.append(f"#define S_{cname(k)} {self.sprites.ids[k]}")
         anims = self.anims.write(self.blob, self.sprites)
+        self.hair_sprites()
         # Madeline's frames: hair x, y (signed), bangs frame | has hair << 7, one each sprite id (0 for the others)
         meta = self.blob.item("player meta")
         n = len(self.sprites.list)

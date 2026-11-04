@@ -4,6 +4,17 @@
 
 int g_camx, g_camy;
 uint8_t g_draw_color;
+int g_clip_x0, g_clip_y0, g_clip_x1 = VIEW_W, g_clip_y1 = VIEW_H;
+bool g_dry;
+int g_bb[4];
+unsigned g_bb_sum;
+void bb_add(int x0, int y0, int x1, int y1, unsigned what) {
+  if (x0 < g_bb[0]) g_bb[0] = x0;
+  if (y0 < g_bb[1]) g_bb[1] = y0;
+  if (x1 > g_bb[2]) g_bb[2] = x1;
+  if (y1 > g_bb[3]) g_bb[3] = y1;
+  g_bb_sum = (g_bb_sum << 2) + what + (unsigned)x0 + ((unsigned)y0 << 6) + ((unsigned)(x1 - x0) << 3);   /* (adds only) */
+}
 #define FB(x, y) (g_fb + (VIEW_Y + (y)) * 320 + (x))
 
 /* a sprite at view (x, y) (its frame's top left), clipped to the view */
@@ -13,13 +24,13 @@ static void blit_sprite(const uint8_t *s, int x, int y, uint8_t flags) {
   bool fx = flags & DF_FLIPX, fy = flags & DF_FLIPY, solid = flags & DF_SOLID;
   uint8_t col = g_draw_color;
   int left = fx ? x + fw - x0 - w : x + x0;   /* the stored part's left on the view */
-  if (left >= VIEW_W || left + w <= 0 || !h) return;
+  if (left >= g_clip_x1 || left + w <= g_clip_x0 || !h) return;
   int vy = fy ? y + fh - 1 - y0 : y + y0, dy = fy ? -1 : 1;
   uint8_t *row = g_fb + (VIEW_Y + vy) * 320;
   int step = fy ? -320 : 320;
   for (int r = 0; r < h; r++, vy += dy, row += step) {
     int n = *p++;
-    if (vy < 0 || vy >= VIEW_H) {   /* skip the row */
+    if (vy < g_clip_y0 || vy >= g_clip_y1) {   /* skip the row */
       while (n--) p += 2 + p[1];
       continue;
     }
@@ -31,8 +42,8 @@ static void blit_sprite(const uint8_t *s, int x, int y, uint8_t flags) {
       p += 2 + len;
       if (!fx) {
         int dx = x + x0 + at, a = 0, b = len;
-        if (dx < 0) a = -dx;
-        if (dx + b > VIEW_W) b = VIEW_W - dx;
+        if (dx < g_clip_x0) a = g_clip_x0 - dx;
+        if (dx + b > g_clip_x1) b = g_clip_x1 - dx;
         if (a < b) {
           if (solid) memset(row + dx + a, col, b - a);
           else if (g_remap)
@@ -44,7 +55,7 @@ static void blit_sprite(const uint8_t *s, int x, int y, uint8_t flags) {
         int base = x + fw - 1 - x0 - at;
         uint8_t *d = row + base;
         for (int i = 0; i < len; i++, d--)
-          if ((unsigned)(base - i) < VIEW_W) *d = solid ? col : g_remap ? g_remap[px[i]] : px[i];
+          if (base - i >= g_clip_x0 && base - i < g_clip_x1) *d = solid ? col : g_remap ? g_remap[px[i]] : px[i];
       }
       at += len;
     }
@@ -53,10 +64,19 @@ static void blit_sprite(const uint8_t *s, int x, int y, uint8_t flags) {
 
 void draw_sprite(const uint8_t *s, int x, int y, uint8_t flags) {
   x -= g_camx, y -= g_camy;
-  int l = x + s[2], t = y + s[3];
-  if (!flags && !g_remap && l >= 0 && t >= 0 && l + s[4] <= VIEW_W && t + s[5] <= VIEW_H) {
-    if (s[5]) blit_rle(g_fb + (VIEW_Y + t) * 320 + l, s + 6, s[5]);   /* (all of it on the view) */
+  if (g_dry) {
+    int l = (flags & DF_FLIPX) ? x + s[0] - s[2] - s[4] : x + s[2], t = (flags & DF_FLIPY) ? y + s[1] - s[3] - s[5] : y + s[3];
+    bb_add(l, t, l + s[4], t + s[5], (unsigned)(uintptr_t)s + flags + g_draw_color + (g_remap ? 77u : 0u));
     return;
+  }
+  if (!(flags & ~DF_FLIPX) && !g_remap && s[5]) {   /* all of it in the clip: at once */
+    int l = (flags & DF_FLIPX) ? x + s[0] - s[2] - s[4] : x + s[2], t = y + s[3];
+    if (l >= g_clip_x0 && t >= g_clip_y0 && l + s[4] <= g_clip_x1 && t + s[5] <= g_clip_y1) {
+      uint8_t *d = g_fb + (VIEW_Y + t) * 320 + l;
+      if (flags) blit_rle_flip(d + s[4] - 1, s + 6, s[5]);
+      else blit_rle(d, s + 6, s[5]);
+      return;
+    }
   }
   blit_sprite(s, x, y, flags);
 }
@@ -67,24 +87,10 @@ void draw_sprite_scaled(const uint8_t *s, int x, int y, int sx, int sy, int ox, 
     draw_sprite(s, x - ((flags & DF_FLIPX) ? s[0] - ox : ox), y - oy, flags);
     return;
   }
-  /* decode into a buffer, then sample it */
-  extern uint8_t *g_scratch;
-  uint8_t *buf = g_scratch;   /* (32 x 32) */
   int fw = s[0], fh = s[1], x0 = s[2], y0 = s[3], h = s[5];
   if (fw > 32 || fh > 32) {
     draw_sprite(s, x - ((flags & DF_FLIPX) ? fw - ox : ox), y - oy, flags);
     return;
-  }
-  memset(buf, 0, (size_t)fw * fh);
-  const uint8_t *p = s + 6;
-  for (int r = 0; r < h; r++) {
-    int n = *p++, at = 0;
-    while (n--) {
-      at += p[0];
-      memcpy(buf + (y0 + r) * fw + x0 + at, p + 2, p[1]);
-      at += p[1];
-      p += 2 + p[1];
-    }
   }
   bool fx = flags & DF_FLIPX;
   /* view pixel vx shows frame column u = ox + (rel * 256 + 128) / sx (rel from the origin, mirrored if flipped): a
@@ -96,8 +102,26 @@ void draw_sprite_scaled(const uint8_t *s, int x, int y, int sx, int sy, int ox, 
     int a = bx - fdiv((fw - ox) * sx + 255, 256) + 1, b = bx - fdiv(-ox * sx, 256) + 1;
     dx0 = a, dx1 = b;
   }
-  dx0 = imax(dx0, 0), dx1 = imin(dx1, VIEW_W);
+  if (dry_box(dx0, dy0, dx1, dy1, (unsigned)(uintptr_t)s + (unsigned)sx * 3 + (unsigned)sy * 5 + flags + (g_remap ? 77u : 0u)))
+    return;
+  dx0 = imax(dx0, g_clip_x0), dx1 = imin(dx1, g_clip_x1);
   if (dx1 - dx0 > 64) dx1 = dx0 + 64;
+  int ya = imax(dy0, g_clip_y0), yb = imin(dy1, g_clip_y1);
+  if (dx0 >= dx1 || ya >= yb) return;
+  /* decode into a buffer, then sample it */
+  extern uint8_t *g_scratch;
+  uint8_t *buf = g_scratch;   /* (32 x 32) */
+  memset(buf, 0, (size_t)fw * fh);
+  const uint8_t *p = s + 6;
+  for (int r = 0; r < h; r++) {
+    int n = *p++, at = 0;
+    while (n--) {
+      at += p[0];
+      memcpy(buf + (y0 + r) * fw + x0 + at, p + 2, p[1]);
+      at += p[1];
+      p += 2 + p[1];
+    }
+  }
   int8_t us[64];
   for (int vx = dx0; vx < dx1; vx++) {
     int rel = vx - bx;
@@ -105,8 +129,8 @@ void draw_sprite_scaled(const uint8_t *s, int x, int y, int sx, int sy, int ox, 
     int u = ox + fdiv(rel * 256 + 128, sx);
     us[vx - dx0] = (int8_t)((unsigned)u < (unsigned)fw ? u : -1);
   }
-  uint8_t *row = g_fb + (VIEW_Y + imax(dy0, 0)) * 320;
-  for (int vy = imax(dy0, 0); vy < imin(dy1, VIEW_H); vy++, row += 320) {
+  uint8_t *row = g_fb + (VIEW_Y + ya) * 320;
+  for (int vy = ya; vy < yb; vy++, row += 320) {
     int v = oy + fdiv((vy - by) * 256 + 128, sy);
     if (v < 0 || v >= fh) continue;
     const uint8_t *src = buf + v * fw;
@@ -122,10 +146,11 @@ void draw_sprite_scaled(const uint8_t *s, int x, int y, int sx, int sy, int ox, 
 /* a tile at view (x, y), clipped */
 static void blit_tile(const uint8_t *t, int x, int y, bool opaque) {
   int a = 0, b = 8, r0 = 0, r1 = 8;
-  if (x < 0) a = -x;
-  if (x + 8 > VIEW_W) b = VIEW_W - x;
-  if (y < 0) r0 = -y;
-  if (y + 8 > VIEW_H) r1 = VIEW_H - y;
+  if (dry_box(x, y, x + 8, y + 8, (unsigned)(uintptr_t)t)) return;
+  if (x < g_clip_x0) a = g_clip_x0 - x;
+  if (x + 8 > g_clip_x1) b = g_clip_x1 - x;
+  if (y < g_clip_y0) r0 = g_clip_y0 - y;
+  if (y + 8 > g_clip_y1) r1 = g_clip_y1 - y;
   if (a >= b || r0 >= r1) return;
   for (int r = r0; r < r1; r++) {
     uint8_t *d = FB(x, y + r);
@@ -151,16 +176,18 @@ void draw_rect_screen(int x, int y, int w, int h, uint8_t c) {
 }
 void draw_rect(int x, int y, int w, int h, uint8_t c) {
   x -= g_camx, y -= g_camy;
-  if (x < 0) w += x, x = 0;
-  if (y < 0) h += y, y = 0;
-  if (x + w > VIEW_W) w = VIEW_W - x;
-  if (y + h > VIEW_H) h = VIEW_H - y;
+  if (dry_box(x, y, x + w, y + h, c)) return;
+  if (x < g_clip_x0) w -= g_clip_x0 - x, x = g_clip_x0;
+  if (y < g_clip_y0) h -= g_clip_y0 - y, y = g_clip_y0;
+  if (x + w > g_clip_x1) w = g_clip_x1 - x;
+  if (y + h > g_clip_y1) h = g_clip_y1 - y;
   if (w <= 0 || h <= 0) return;
   for (int r = 0; r < h; r++) memset(FB(x, y + r), c, w);
 }
 void draw_pixel(int x, int y, uint8_t c) {
   x -= g_camx, y -= g_camy;
-  if ((unsigned)x < VIEW_W && (unsigned)y < VIEW_H) *FB(x, y) = c;
+  if (dry_box(x, y, x + 1, y + 1, c)) return;
+  if (x >= g_clip_x0 && y >= g_clip_y0 && x < g_clip_x1 && y < g_clip_y1) *FB(x, y) = c;
 }
 void draw_line(int x0, int y0, int x1, int y1, uint8_t c) {
   int dx = iabs(x1 - x0), dy = -iabs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, err = dx + dy;
@@ -174,7 +201,7 @@ void draw_line(int x0, int y0, int x1, int y1, uint8_t c) {
 }
 void draw_circle_fill(int cx, int cy, int r, uint8_t c) {
   for (int y = -r; y <= r; y++) {
-    int w = isqrt((int32_t)r * r - (int32_t)y * y);
+    int w = isqrt24(r * r - y * y);
     draw_rect(cx - w, cy + y, 2 * w + 1, 1, c);
   }
 }
@@ -207,39 +234,44 @@ static void cells_build(int c0, int r0) {
   cache_c0 = c0, cache_r0 = r0, cache_gen = g_cells_gen;
 }
 
-/* a row of cells of a layer: the 39 inside the view at once, the two at its sides clipped */
-static void layer_row(const Cell *cells, uint8_t *line, int offx, unsigned rows) {
-  blit_row(cells + 1, COLS - 2, line + 8 - offx, rows);
-  blit_clip(cells, line - offx, (unsigned)offx, 8, rows);
-  if (offx) blit_clip(cells + COLS - 1, line + 320 - offx, 0, (unsigned)offx, rows);
+/* cells [ca, cb] of a row of a layer: those inside the view at once, those at its sides clipped */
+int g_offx, g_offy;
+static void layer_row(const Cell *cells, uint8_t *line, int ca, int cb, unsigned rows) {
+  int a = imax(ca, 1), b = imin(cb, COLS - 2);
+  if (a <= b) blit_row(cells + a, (unsigned)(b - a + 1), line + a * 8 - g_offx, rows);
+  if (ca == 0) blit_clip(cells, line - g_offx, (unsigned)g_offx, 8, rows);
+  if (cb == COLS - 1 && g_offx) blit_clip(cells + COLS - 1, line + 320 - g_offx, 0, (unsigned)g_offx, rows);
 }
 
-static int view_offy;
 static unsigned rows_mask(int r, uint8_t **line) {   /* row r of cells: its rows in the view, and its top's place */
-  int vy = r * 8 - view_offy;
+  int vy = r * 8 - g_offy;
   int r0 = vy < 0 ? -vy : 0, r1 = vy + 8 > VIEW_H ? VIEW_H - vy : 8;
   *line = g_fb + (VIEW_Y + vy) * 320;
   return r0 >= r1 ? 0 : (0xFFu << r0) & (0xFFu >> (8 - r1));
 }
 
-void draw_layers_back(void) {
-  int c0 = g_camx >> 3, r0 = g_camy >> 3, offx = g_camx & 7;
-  view_offy = g_camy & 7;
+void draw_cells_update(void) {
+  int c0 = g_camx >> 3, r0 = g_camy >> 3;
+  g_offx = g_camx & 7, g_offy = g_camy & 7;
   if (c0 != cache_c0 || r0 != cache_r0 || g_cells_gen != cache_gen) cells_build(c0, r0);
+}
+
+void draw_layers_back(int ca, int cb, int ra, int rb) {
+  int offx = g_offx;
   /* the background's picture: view pixel (x, y) is its ((x + ox) % 320, y + oy), rows outside it the edge's */
   int ox = fdiv((g_camx - g_bg_refx) * g_bg_scrollx, 256), oy = fdiv((g_camy - g_bg_refy) * g_bg_scrolly, 256);
   ox %= 320;
   if (ox < 0) ox += 320;
-  for (int r = 0; r < CROWS; r++) {
+  for (int r = ra; r <= rb; r++) {
     uint8_t *line;
     unsigned rows = rows_mask(r, &line);
     if (!rows) continue;
     CellRow *row = cells_row(r);
-    int vy = r * 8 - view_offy, y0 = imax(vy, 0), y1 = imin(vy + 8, VIEW_H);
-    for (int c = 0; c < COLS;) {   /* the background, in runs of cells it shows in */
+    int vy = r * 8 - g_offy, y0 = imax(vy, 0), y1 = imin(vy + 8, VIEW_H);
+    for (int c = ca; c <= cb;) {   /* the background, in runs of cells it shows in */
       if (!row->vis[c]) { c++; continue; }
       int e = c + 1;
-      while (e < COLS && row->vis[e]) e++;
+      while (e <= cb && row->vis[e]) e++;
       int xa = imax(c * 8 - offx, 0), xb = imin(e * 8 - offx, VIEW_W);
       c = e;
       if (xa >= xb) continue;
@@ -263,17 +295,15 @@ void draw_layers_back(void) {
         y += k, d += 320 * k;
       }
     }
-    layer_row(row->bg, line, offx, rows);
+    layer_row(row->bg, line, ca, cb, rows);
   }
 }
 
-void draw_layer_fg(void) {
-  int offx = g_camx & 7;
-  view_offy = g_camy & 7;
-  for (int r = 0; r < CROWS; r++) {
+void draw_layer_fg(int ca, int cb, int ra, int rb) {
+  for (int r = ra; r <= rb; r++) {
     uint8_t *line;
     unsigned rows = rows_mask(r, &line);
-    if (rows) layer_row(cells_row(r)->fg, line, offx, rows);
+    if (rows) layer_row(cells_row(r)->fg, line, ca, cb, rows);
   }
 }
 
@@ -290,8 +320,25 @@ void draw_decals(int fg) {
       if (frames > 1) id += (int)(g_level.frame / 5 % (unsigned)frames);   /* 12 a second */
       const uint8_t *s = csprite(id);
       int x = rm->x + S16(p + 2) - s[0] / 2, y = rm->y + S16(p + 4) - s[1] / 2;
-      if (x - g_camx >= VIEW_W || y - g_camy >= VIEW_H || x + s[0] - g_camx <= 0 || y + s[1] - g_camy <= 0) continue;
+      if (x - g_camx >= g_clip_x1 || y - g_camy >= g_clip_y1 || x + s[0] - g_camx <= g_clip_x0 || y + s[1] - g_camy <= g_clip_y0)
+        continue;
       draw_sprite(s, x, y, p[6] & 3);
+    }
+  }
+}
+/* the animated decals' boxes, when their frame has changed since the last time this buffer was drawn (5 updates a
+ * frame of theirs) */
+void decals_mark(void (*mark)(int x0, int y0, int x1, int y1)) {
+  for (int k = 0; k < 2; k++) {
+    Room *rm = &g_level.rooms[k];
+    if (rm->index < 0) continue;
+    const uint8_t *d = rm->decals;
+    const uint8_t *p = d + 2;
+    for (int i = d[0] + d[1]; i > 0; i--, p += 8) {
+      if (p[7] <= 1) continue;
+      const uint8_t *s = csprite((int)R16(p));
+      int x = rm->x + S16(p + 2) - s[0] / 2 - g_camx, y = rm->y + S16(p + 4) - s[1] / 2 - g_camy;
+      mark(x, y, x + s[0], y + s[1]);
     }
   }
 }
@@ -323,3 +370,26 @@ void draw_text(const char *s, int x, int y, uint8_t c) {
     }
   }
 }
+
+#ifdef CEL_BENCH
+/* the assembly against the C (tests/bench.sh): 0 when they agree */
+int draw_selftest(void) {
+  int bad = 0;
+  for (int v = 0; v < (1 << 23); v += 99991)
+    if (isqrt24(v) != isqrt(v)) bad |= 1;
+  for (int k = 1; k < 2896; k++)
+    if (isqrt24(k * k) != k || isqrt24(k * k - 1) != k - 1) bad |= 1;
+  g_camx = g_camy = 0;
+  for (int id = 0; id < S_hair_bangs + 12; id++) {
+    const uint8_t *s = sprite(id);
+    if (s[0] > 80 || s[1] > 100 || !s[5]) continue;
+    memset(g_fb + VIEW_Y * 320, 0, 320 * s[1]);
+    draw_sprite(s, 0, 0, DF_FLIPX);
+    blit_sprite(s, 100, 0, DF_FLIPX);
+    for (int y = 0; y < s[1]; y++)
+      if (memcmp(g_fb + (VIEW_Y + y) * 320, g_fb + (VIEW_Y + y) * 320 + 100, s[0])) bad |= 2;
+  }
+  memset(g_fb, 0, 320 * 240);
+  return bad;
+}
+#endif

@@ -42,3 +42,24 @@ void build_cells(const uint8_t *fg, const uint8_t *bg, const TEnt *table, Cell *
 void blit_rect(uint8_t *dst, const uint8_t *src, unsigned w, unsigned h, unsigned src_step) {
   for (unsigned r = 0; r < h; r++, dst += 320, src += src_step) memcpy(dst, src, w);
 }
+void blit_rle_flip(uint8_t *dst, const uint8_t *rows, unsigned nrows) {
+  for (; nrows; nrows--, dst += 320) {
+    int runs = *rows++, at = 0;
+    while (runs--) {
+      at += rows[0];
+      for (int i = 0; i < rows[1]; i++) dst[-(at + i)] = rows[2 + i];
+      at += rows[1];
+      rows += 2 + rows[1];
+    }
+  }
+}
+int isqrt24(int v) {
+  unsigned left = 0, root = 0, x = (unsigned)v << 8;
+  for (int i = 0; i < 12; i++) {
+    left = left * 4 + (x >> 30), x <<= 2;
+    unsigned t = root * 4 + 1;
+    root *= 2;
+    if (left >= t) left -= t, root++;
+  }
+  return (int)root;
+}

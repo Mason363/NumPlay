@@ -37,17 +37,21 @@ int main(void) {
     last = now;
     if (acc > 32768 * 6) acc = 32768 * 6;   /* far behind: no rush */
     int n = 0;
+    BENCH(9);
     while (acc >= 32768 && n < 3 && g_running) {
       game_frame();
       g_perf_updates++;
       acc -= 32768;
       n++;
     }
+    BENCH(0);
     if (!g_running) break;
     if (n) {
       plat_begin_draw();
+      BENCH(1);
       game_draw();
       plat_frame();
+      BENCH(8);
       g_perf_frames++;
     } else
       plat_wait((unsigned)(32768 - acc) / 60);

@@ -60,7 +60,7 @@ void plat_init(void) {
 }
 void plat_exit(void) {}
 
-static void png(const char *path, const uint8_t *fb) {
+void png(const char *path, const uint8_t *fb) {
   static uint8_t raw[240 * (1 + 320 * 3)];
   uint8_t *p = raw;
   for (int y = 0; y < 240; y++) {
@@ -222,3 +222,7 @@ new_offset:
   if (bit()) goto new_offset;
   goto literals;
 }
+
+#ifdef CEL_BENCH
+unsigned long plat_cycles(void) { return 0; }
+#endif

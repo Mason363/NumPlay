@@ -35,6 +35,8 @@ Ent *ent_new(int type, int x, int y) {
   return e;
 }
 void ent_free(Ent *e) {
+  for (int k = 0; k < 2; k++)   /* what it drew goes */
+    if (e->bb[k][0] < e->bb[k][2]) draw_gone_buf(k, e->bb[k][0], e->bb[k][1], e->bb[k][2], e->bb[k][3]);
   e->type = 255;
   e->flags = 0;
   while (g_nents && g_ents[g_nents - 1].type == 255) g_nents--;
@@ -467,9 +469,12 @@ static void crumble_render(Ent *e) {
     if (e->t3 > TIM(.25f)) tiles_render(e, n, n, n, 0, 0);
     return;
   }
-  for (int i = 0; i < n; i++) {
+  for (int i = 0; i < n; i++) {   /* shaking: each piece a pixel off at random (from the frame: drawing twice gives the same) */
     int sx = 0, sy = 0;
-    if (e->t2 > 0) sx = rndn(3) - 1, sy = rndn(3) - 1;
+    if (e->t2 > 0) {
+      unsigned h = ((unsigned)g_level.frame * 37u + (unsigned)i * 11u + (unsigned)e->x) * 0x9E37u;
+      sx = (int)(h >> 9 & 0xFF) % 3 - 1, sy = (int)(h >> 3 & 0xFF) % 3 - 1;
+    }
     draw_tile(rec_val(e->rec, i), e->x + i * 8 + sx, e->y + sy);
   }
 }
@@ -801,8 +806,9 @@ void ents_update(void) {
   for (int i = 0; i < g_nents; i++) {
     Ent *e = &g_ents[i];
     if (e->type == 255 || !(e->flags & EF_ACTIVE)) continue;
+    BENCH(11);
     switch (e->type) {
-      case ET_player: player_update(); break;
+      case ET_player: player_update(); BENCH(12); break;
       case ET_strawberry: case ET_goldenBerry: berry_update(e); break;
       case ET_spring: case ET_wallSpringLeft: case ET_wallSpringRight: spring_update(e); break;
       case ET_refill: refill_update(e); break;
@@ -812,10 +818,12 @@ void ents_update(void) {
       case ET_zipMover: zip_update(e); break;
       case 200: points_update(e); break;
     }
+    BENCH(13);
   }
   leader_update();
   extern void player_after_update(void);
   player_after_update();
+  BENCH(14);
 }
 /* PlayerCollider and triggers: what Madeline (her hurt box) touches */
 void ents_player_touch(Ent *p) {
@@ -840,38 +848,80 @@ void ents_player_touch(Ent *p) {
     }
   }
 }
-void ents_render(int dmax, int dmin) {
-  /* back to front: higher depths first, then the order they came in */
-  int last = 0x7FFFFF;
-  for (;;) {
-    int d = -0x7FFFFF;
-    for (int i = 0; i < g_nents; i++) {
-      Ent *e = &g_ents[i];
-      if (e->type != 255 && (e->flags & EF_VISIBLE) && e->depth < last && e->depth > d && e->depth <= dmax && e->depth > dmin)
-        d = e->depth;
+static void ent_draw(Ent *e) {
+  switch (e->type) {
+    case ET_player: player_render(); break;
+    case ET_spikesUp: case ET_spikesDown: case ET_spikesLeft: case ET_spikesRight: spikes_render(e); break;
+    case ET_jumpThru: jumpthru_render(e); break;
+    case ET_strawberry: case ET_goldenBerry: berry_render(e); break;
+    case ET_spring: case ET_wallSpringLeft: case ET_wallSpringRight: spring_render(e); break;
+    case ET_refill: refill_render(e); break;
+    case ET_crumbleBlock: crumble_render(e); break;
+    case ET_fallingBlock: case ET_dashBlock: block_render(e); break;
+    case ET_fakeWall: case ET_coverupWall: fakewall_render(e); break;
+    case ET_zipMover: zip_render(e); break;
+    case 200: {
+      const uint8_t *s = sprite(anim_sprite(e));
+      draw_sprite(s, e->x - s[0] / 2, e->y - s[1] / 2, 0);
+      break;
     }
-    if (d == -0x7FFFFF) return;
-    for (int i = 0; i < g_nents; i++) {
-      Ent *e = &g_ents[i];
-      if (e->type == 255 || !(e->flags & EF_VISIBLE) || e->depth != d) continue;
-      switch (e->type) {
-        case ET_player: player_render(); break;
-        case ET_spikesUp: case ET_spikesDown: case ET_spikesLeft: case ET_spikesRight: spikes_render(e); break;
-        case ET_jumpThru: jumpthru_render(e); break;
-        case ET_strawberry: case ET_goldenBerry: berry_render(e); break;
-        case ET_spring: case ET_wallSpringLeft: case ET_wallSpringRight: spring_render(e); break;
-        case ET_refill: refill_render(e); break;
-        case ET_crumbleBlock: crumble_render(e); break;
-        case ET_fallingBlock: case ET_dashBlock: block_render(e); break;
-        case ET_fakeWall: case ET_coverupWall: fakewall_render(e); break;
-        case ET_zipMover: zip_render(e); break;
-        case 200: {
-          const uint8_t *s = sprite(anim_sprite(e));
-          draw_sprite(s, e->x - s[0] / 2, e->y - s[1] / 2, 0);
-          break;
-        }
-      }
-    }
-    last = d;
   }
+}
+
+int g_cull_buf = -1;
+/* back to front: higher depths first, then the order they came in */
+static uint8_t order[MAX_ENTS], norder;
+void ents_order(void) {
+  norder = 0;
+  for (int i = 0; i < g_nents; i++) {
+    Ent *e = &g_ents[i];
+    if (e->type == 255 || !(e->flags & EF_VISIBLE)) continue;
+    int k = norder++, d = e->depth;
+    while (k > 0 && g_ents[order[k - 1]].depth < d) order[k] = order[k - 1], k--;
+    order[k] = (uint8_t)i;
+  }
+}
+void ents_render(int dmax, int dmin) {
+  int cb = g_cull_buf;
+  for (int k = 0; k < norder; k++) {
+    Ent *e = &g_ents[order[k]];
+    if (e->depth > dmax || e->depth <= dmin) continue;
+    if (cb >= 0 && (e->bb[cb][0] >= g_clip_x1 || e->bb[cb][2] <= g_clip_x0 || e->bb[cb][1] >= g_clip_y1 ||
+                    e->bb[cb][3] <= g_clip_y0))
+      continue;
+    ent_draw(e);
+  }
+}
+
+/* what each one would draw (its box and sum), drawing nothing */
+static void measure(Ent *e) {
+  g_bb[0] = g_bb[1] = 0x7FFF, g_bb[2] = g_bb[3] = -0x7FFF, g_bb_sum = 0;
+  if (e->flags & EF_VISIBLE) ent_draw(e);
+  for (int k = 0; k < 4; k++) g_bb[k] = iclamp(g_bb[k], -0x7FFF, 0x7FFF);
+}
+void ents_measure(int buf, void (*changed)(const int16_t *was, const int *now)) {
+  g_dry = true;
+  for (int i = 0; i < g_nents; i++) {
+    Ent *e = &g_ents[i];
+    if (e->type == 255) continue;
+    measure(e);
+    int16_t *bb = e->bb[buf];
+    if (e->sum[buf] != g_bb_sum || bb[0] != g_bb[0] || bb[1] != g_bb[1] || bb[2] != g_bb[2] || bb[3] != g_bb[3]) {
+      changed(bb, g_bb);
+      for (int k = 0; k < 4; k++) bb[k] = (int16_t)g_bb[k];
+      e->sum[buf] = g_bb_sum;
+    }
+  }
+  g_dry = false;
+}
+void ents_record(int buf) {
+  g_dry = true;
+  for (int i = 0; i < g_nents; i++) {
+    Ent *e = &g_ents[i];
+    if (e->type == 255) continue;
+    measure(e);
+    for (int k = 0; k < 4; k++) e->bb[buf][k] = (int16_t)g_bb[k];
+    e->sum[buf] = g_bb_sum;
+  }
+  g_dry = false;
 }

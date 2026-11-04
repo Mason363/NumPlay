@@ -84,15 +84,19 @@ static uint16_t shade(uint16_t c, int fade) {
 }
 static int cur_fade = 256;
 static uint32_t cur_hair = 0xAC3232;
+static bool hair_set;
 void palette_apply(int fade) {
   uint16_t out[256];
   cur_fade = fade;
   out[0] = 0;
   for (int i = 1; i < 256; i++) out[i] = shade(pal[i], fade);
   plat_palette(out, 0, 256);
+  hair_set = false;
   palette_hair(cur_hair);
 }
 void palette_hair(uint32_t rgb) {
+  if (hair_set && rgb == cur_hair) return;
+  hair_set = true;
   cur_hair = rgb;
   int r = rgb >> 16 & 255, g = rgb >> 8 & 255, b = rgb & 255;
   uint16_t h[2];
