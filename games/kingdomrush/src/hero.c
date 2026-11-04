@@ -243,13 +243,21 @@ static bool path_walk(Soldier *so) {   /* SoldierHero.walk on its path; false wh
   return true;
 }
 
-/* the road node nearest a point, within 30 (§_-JL§: lane 0 of every road) */
+/* Level7 and Level8's tunnels: a road's nodes underground (from, to), where no hero goes */
+static bool tunnel(int r, int i) {
+  if (B.index == 6) return (r == 1 && i >= 71 && i <= 203) || (r == 2 && i >= 71 && i <= 223);
+  if (B.index == 7) return r == 1 && i >= 70 && i <= 174;
+  return false;
+}
+
+/* the road node nearest a point, within 30 (§_-JL§: lane 0 of every road, not in a tunnel) */
 static bool road_near(Pt p, int *path, int *node) {
   float best = 0;
   bool got = false;
   for (int r = 0; r < B.npaths; r++) {
     int n = path_len(r, 0);
     for (int i = 0; i < n; i++) {
+      if (tunnel(r, i)) continue;
       Pt q = path_node(r, 0, i);
       float d = dist(q.x, q.y, p.x, p.y);
       if (d < 30 && (!got || best > d)) best = d, *path = r, *node = i, got = true;
