@@ -1,7 +1,7 @@
 /* Retro-Go's emulators on a computer: runs a ROM for some frames, with random keys if asked,
  * and writes the last frame as a PPM picture.
  *   host_core ROM FRAMES OUT.ppm [SEED] [SCRIPT]   (SEED: random pad presses; 0 for none)
- * The system comes from the file's extension (.gb .gbc .nes .sms .gg .sg .col). */
+ * The system comes from the file's extension (.gb .gbc .nes .sms .gg .sg .col .gw). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,14 +10,16 @@
 #include "../src/gb/gb.h"
 #include "../src/nes/nes_core.h"
 #include "../src/sms/sms.h"
+#include "../src/gw/gw.h"
 
 static uint8_t heap[RG_HEAP_SIZE] __attribute__((aligned(8)));
 static uint32_t used;
 bool rg_drawing = true;
-static uint16_t frame[256 * 240];
+#define FW 320 /* (the widest picture: the Game & Watch's) */
+static uint16_t frame[FW * 240];
 static int lines_seen;
 /* the three emulators behind the same few calls */
-static enum { GB, NES, SMS } kind;
+static enum { GB, NES, SMS, GW } kind;
 
 void *rg_alloc(uint32_t size) {
   size = (size + 7) & ~7u;
@@ -34,7 +36,7 @@ void rg_line(int y, const uint16_t *px) {
     fprintf(stderr, "line %d out of the picture\n", y);
     abort();
   }
-  memcpy(frame + y * 256, px, (size_t)(kind == GB ? 160 : 256) * 2);
+  memcpy(frame + y * FW, px, (size_t)(kind == GB ? 160 : kind == GW ? 320 : 256) * 2);
   lines_seen++;
 }
 
@@ -65,14 +67,23 @@ static uint32_t crc32(const uint8_t *p, uint32_t n) {
   return ~c;
 }
 
-static void set_pad(int p) { kind == NES ? nes_set_pad(p) : kind == SMS ? sms_set_pad(p) : gb_set_pad(p); }
-static void run_frame(void) { kind == NES ? nes_run_frame(true) : kind == SMS ? sms_run_frame(true) : gb_run_frame(true); }
-static int chunks(rg_chunk_t *c) { return kind == NES ? nes_state_chunks(c) : kind == SMS ? sms_state_chunks(c) : gb_state_chunks(c); }
-static void loaded(void) { kind == NES ? nes_state_loaded() : kind == SMS ? sms_state_loaded() : gb_state_loaded(); }
-static void redraw(void) { kind == NES ? nes_redraw() : kind == SMS ? sms_redraw() : gb_redraw(); }
+/* (the Game & Watch: the pad in the low byte, its console's buttons, GW_KEY_*, in the next) */
+static void set_pad(int p) {
+  kind == NES ? nes_set_pad(p) : kind == SMS ? sms_set_pad(p) : kind == GW ? gw_set_pad(p & 0xFF, p >> 8) : gb_set_pad(p);
+}
+static void run_frame(void) {
+  kind == NES ? nes_run_frame(true) : kind == SMS ? sms_run_frame(true) : kind == GW ? gw_run_frame(true) : gb_run_frame(true);
+}
+static int chunks(rg_chunk_t *c) {
+  return kind == NES ? nes_state_chunks(c) : kind == SMS ? sms_state_chunks(c) : kind == GW ? gw_state_chunks(c) : gb_state_chunks(c);
+}
+static void loaded(void) {
+  kind == NES ? nes_state_loaded() : kind == SMS ? sms_state_loaded() : kind == GW ? gw_state_loaded() : gb_state_loaded();
+}
+static void redraw(void) { kind == NES ? nes_redraw() : kind == SMS ? sms_redraw() : kind == GW ? gw_redraw() : gb_redraw(); }
 static void view(int *x, int *y, int *w, int *h) {
   if (kind == SMS) sms_view(x, y, w, h);
-  else *x = 0, *y = 0, *w = kind == NES ? 256 : 160, *h = kind == NES ? 240 : 144;
+  else *x = 0, *y = 0, *w = kind == NES ? 256 : kind == GW ? 320 : 160, *h = kind == GB ? 144 : 240;
 }
 
 int main(int argc, char **argv) {
@@ -84,8 +95,10 @@ int main(int argc, char **argv) {
   unsigned seed = argc > 4 ? (unsigned)atoi(argv[4]) : 0;
   const char *ext = strrchr(argv[1], '.');
   bool col = ext && !strcmp(ext, ".col");
-  kind = ext && !strcmp(ext, ".nes") ? NES : ext && (!strcmp(ext, ".sms") || !strcmp(ext, ".gg") || !strcmp(ext, ".sg") || col) ? SMS : GB;
+  kind = ext && !strcmp(ext, ".nes") ? NES : ext && (!strcmp(ext, ".sms") || !strcmp(ext, ".gg") || !strcmp(ext, ".sg") || col) ? SMS
+         : ext && !strcmp(ext, ".gw") ? GW : GB;
   int r = kind == NES ? nes_load(rom, size)
+          : kind == GW ? gw_load(rom, size)
           : kind == SMS ? sms_load(rom, size, crc32(rom, size),
                                    !strcmp(ext, ".gg") ? SMS_GG : !strcmp(ext, ".sg") ? SMS_SG : col ? SMS_CV : SMS_SMS)
                         : gb_load(rom, size);
@@ -118,7 +131,7 @@ int main(int argc, char **argv) {
     static uint8_t copy[RG_HEAP_SIZE + 65536];
     uint32_t at = 0;
     for (int i = 0; i < n; i++) memcpy(copy + at, parts[i].at, parts[i].size), at += parts[i].size;
-    static uint16_t first[256 * 240];
+    static uint16_t first[FW * 240];
     for (int pass = 0; pass < 2; pass++) {
       if (pass) {
         n = chunks(parts);
@@ -148,19 +161,19 @@ int main(int argc, char **argv) {
     view(&vx, &vy, &vw, &vh);
   }
   if (getenv("REDRAW")) {
-    static uint16_t last[256 * 240];
+    static uint16_t last[FW * 240];
     memcpy(last, frame, sizeof last);
     redraw();
     int differ = 0;
     for (int y = vy; y < vy + vh; y++)
-      for (int x = vx; x < vx + vw; x++) differ += last[y * 256 + x] != frame[y * 256 + x];
+      for (int x = vx; x < vx + vw; x++) differ += last[y * FW + x] != frame[y * FW + x];
     printf("redraw: %d pixels differ\n", differ);
   }
   FILE *o = fopen(argv[3], "wb");
   fprintf(o, "P6\n%d %d\n255\n", vw, vh);
   for (int y = vy; y < vy + vh; y++)
     for (int x = vx; x < vx + vw; x++) {
-      uint16_t c = frame[y * 256 + x];
+      uint16_t c = frame[y * FW + x];
       fputc((c >> 11) << 3 | (c >> 13), o);
       fputc(((c >> 5) & 63) << 2 | ((c >> 9) & 3), o);
       fputc((c & 31) << 3 | ((c >> 2) & 7), o);

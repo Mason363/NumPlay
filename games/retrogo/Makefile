@@ -21,9 +21,10 @@ GB_SRC = $(addprefix src/gb/,cpu.c hw.c mem.c lcdc.c rtc.c lcd.c gb.c)
 NES_SRC = $(addprefix src/nes/,nes6502.c nes_ppu.c nes_mmc.c mmclist.c nes_apu.c nes.c) \
   $(sort $(wildcard src/nes/mappers/*.c))
 SMS_SRC = src/sms/z80.c src/sms/sms.c src/sms/coleco_bios.c
-CORE_SRC = $(GB_SRC) $(NES_SRC) $(SMS_SRC)
+GW_SRC = $(addprefix src/gw/,gw.c gw_state.c gw_system.c sm510base.c sm510core.c sm510op.c sm511core.c sm500core.c sm500op.c sm5acore.c)
+CORE_SRC = $(GB_SRC) $(NES_SRC) $(SMS_SRC) $(GW_SRC)
 APP_SRC = src/main.c src/romtable.c src/pack.c
-CORE_H = $(wildcard src/*.h src/gb/*.h src/nes/*.h src/sms/*.h)
+CORE_H = $(wildcard src/*.h src/gb/*.h src/nes/*.h src/sms/*.h src/gw/*.h)
 HEADERS = $(CORE_H) ../common/epsilon_app.h ../common/epsilon_files.h ../common/np_text.h \
   ../../launcher/src/gfx.h ../../launcher/src/np.h ../../launcher/src/font.h
 

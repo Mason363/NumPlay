@@ -24,6 +24,7 @@
 #include "gb/gb.h"
 #include "nes/nes_core.h"
 #include "sms/sms.h"
+#include "gw/gw.h"
 
 #if NP_MODULE /* (np_file_read, np_file_write, np_storage_delete: NumPlay's, launcher/src/np.h) */
 #define np_app_begin()
@@ -98,10 +99,15 @@ static struct {
   uint8_t tab, browse;
   uint8_t cursor[8];               /* each system's game chosen (room for the systems to come) */
   uint8_t keys[8];                 /* the calculator's key for each of the pad's buttons, in pad_bits' order */
+  uint8_t cursor_more[4];          /* (version 3) the game chosen of the systems from 8: Game & Watch, Mega Drive */
+  uint8_t md_z80;                  /* (version 3) the Mega Drive's Z80 run (Retro-Go's "Z80 emulation") */
+  uint8_t spare[3];
 } cfg;
 #define CFG_NAME "retrogo.cfg"
 #define CFG_V1_SIZE 19 /* (version 1: the same up to the five systems' games, without the keys) */
-_Static_assert(RG_SYS_COUNT <= 8, "cfg.cursor");
+#define CFG_V2_SIZE 35 /* (version 2: up to the keys) */
+_Static_assert(RG_SYS_COUNT <= 12, "cfg.cursor_more");
+static uint8_t *cursor_of(int sys) { return sys < 8 ? &cfg.cursor[sys] : &cfg.cursor_more[sys - 8]; }
 
 /* ------------------------------------------------------------ the keys */
 /* the pad's buttons: the D-pad, then A, B, Select and Start */
@@ -135,27 +141,30 @@ static bool keys_ok(const uint8_t *k) {
 
 static void cfg_defaults(void) {
   memset(&cfg, 0, sizeof cfg);
-  cfg.magic = 'R', cfg.version = 2;
+  cfg.magic = 'R', cfg.version = 3;
   cfg.scaling = SCALE_FIT, cfg.speed = 1;
   cfg.gb_palette = GB_PAL_DMG, cfg.nes_palette = NES_PAL_NTSC;
   cfg.overscan = 1, cfg.crop_sides = 0, cfg.sprite_limit = 1, cfg.autosave = 10;
   memcpy(cfg.keys, default_keys, sizeof cfg.keys);
+  cfg.md_z80 = 1;
 }
 
 static void cfg_load(void) {
   uint32_t len = 0;
   const uint8_t *d = np_file_read(CFG_NAME, &len);
   cfg_defaults();
-  if (!d || d[0] != 'R' || (!(len == sizeof cfg && d[1] == 2) && !(len == CFG_V1_SIZE && d[1] == 1))) return;
+  if (!d || d[0] != 'R' ||
+      (!(len == sizeof cfg && d[1] == 3) && !(len == CFG_V2_SIZE && d[1] == 2) && !(len == CFG_V1_SIZE && d[1] == 1)))
+    return;
   memcpy(&cfg, d, len);
-  cfg.version = 2;
+  cfg.version = 3;
   if (!keys_ok(cfg.keys)) memcpy(cfg.keys, default_keys, sizeof cfg.keys);
   /* whatever it holds, settings Retro-Go has */
   if (cfg.scaling >= SCALE_COUNT) cfg.scaling = SCALE_FIT;
   if (cfg.speed > 4) cfg.speed = 1;
   if (cfg.gb_palette >= GB_PAL_COUNT) cfg.gb_palette = 0;
   if (cfg.nes_palette >= NES_PAL_COUNT) cfg.nes_palette = 0;
-  cfg.overscan &= 1, cfg.sprite_limit &= 1, cfg.browse &= 1;
+  cfg.overscan &= 1, cfg.sprite_limit &= 1, cfg.browse &= 1, cfg.md_z80 &= 1;
   if (cfg.crop_sides > 2) cfg.crop_sides = 0;
   if (cfg.autosave > 99) cfg.autosave = 10;
 }
@@ -166,13 +175,14 @@ static void cfg_save(void) { np_file_write(CFG_NAME, &cfg, sizeof cfg); }
 static rg_rom_t roms[RG_MAX_ROMS];
 static int nroms;
 /* Retro-Go's tabs, in its order */
-static const uint8_t tab_order[] = {RG_SYS_NES, RG_SYS_GB, RG_SYS_GBC, RG_SYS_SMS, RG_SYS_GG, RG_SYS_SG, RG_SYS_CV};
+static const uint8_t tab_order[] = {RG_SYS_NES, RG_SYS_GB, RG_SYS_GBC, RG_SYS_SMS, RG_SYS_GG, RG_SYS_SG, RG_SYS_CV, RG_SYS_GW, RG_SYS_MD};
 static uint8_t tabs[sizeof tab_order], ntabs;
-static const char *const sys_short[RG_SYS_COUNT] = {"", "GB", "GBC", "NES", "SMS", "GG", "SG", "COL"};
+static const char *const sys_short[RG_SYS_COUNT] = {"", "GB", "GBC", "NES", "SMS", "GG", "SG", "COL", "GW", "MD"};
 /* the tab's banner: the maker, then the system, as Retro-Go's banners show them */
-static const char *const sys_maker[RG_SYS_COUNT] = {"", "Nintendo", "Nintendo", "Nintendo", "SEGA", "SEGA", "SEGA", "Coleco"};
+static const char *const sys_maker[RG_SYS_COUNT] = {"", "Nintendo", "Nintendo", "Nintendo", "SEGA", "SEGA", "SEGA", "Coleco", "Nintendo", "SEGA"};
 static const char *const sys_model[RG_SYS_COUNT] = {"Retro-Go", "Game Boy", "Game Boy Color", "Entertainment System",
-                                                    "Master System", "Game Gear", "SG-1000", "ColecoVision"};
+                                                    "Master System", "Game Gear", "SG-1000", "ColecoVision",
+                                                    "Game & Watch", "Mega Drive"};
 static bool is_sega(int sys) { return sys == RG_SYS_SMS || sys == RG_SYS_GG || sys == RG_SYS_SG; }
 static bool is_z80(int sys) { return is_sega(sys) || sys == RG_SYS_CV; } /* (the Master System's machine runs them) */
 
@@ -264,7 +274,7 @@ static struct {
   int src_x, src_y, src_w, src_h; /* the part of the core's picture shown */
   int x, y, w, h;                 /* where, on the screen */
 } view;
-static uint8_t xmap[SCREEN_W];     /* screen column -> picture column */
+static uint16_t xmap[SCREEN_W];    /* screen column -> picture column */
 static uint8_t row_first[241];     /* picture row -> its first screen row */
 static uint32_t line_sum[240];     /* each picture row as it was last pushed (Retro-Go's partial updates) */
 static bool redraw_all;
@@ -308,6 +318,7 @@ void rg_line(int y, const uint16_t *px) {
 
 /* the picture's place for the game running (Retro-Go's update_viewport_scaling) */
 static int sys_now;
+#define KEYLINE_H 16
 static void set_view(void) {
   int sx = 0, sy = 0, sw = 160, sh = 144;
   if (sys_now == RG_SYS_NES) {
@@ -316,6 +327,8 @@ static void set_view(void) {
     sw = NES_WIDTH - 2 * sx, sh = NES_HEIGHT - 2 * sy;
   } else if (is_z80(sys_now)) {
     sms_view(&sx, &sy, &sw, &sh); /* (the Game Gear's screen, or the taller pictures of some games) */
+  } else if (sys_now == RG_SYS_GW) {
+    sw = GW_WIDTH, sh = GW_HEIGHT;
   }
   view.src_x = sx, view.src_y = sy, view.src_w = sw, view.src_h = sh;
   int w = sw, h = sh;
@@ -328,7 +341,9 @@ static void set_view(void) {
   w &= ~1, h &= ~1;
   view.w = NP_MIN(w, SCREEN_W), view.h = NP_MIN(h, SCREEN_H);
   view.x = (SCREEN_W - view.w) / 2, view.y = (SCREEN_H - view.h) / 2;
-  for (int x = 0; x < view.w; x++) xmap[x] = (uint8_t)(x * sw / view.w);
+  if (sys_now == RG_SYS_GW && cfg.scaling == SCALE_FIT) /* (the Game & Watch's keys in a line below its LCD) */
+    view.h = SCREEN_H - KEYLINE_H, view.w = (view.h * 4 / 3) & ~1, view.x = (SCREEN_W - view.w) / 2, view.y = 0;
+  for (int x = 0; x < view.w; x++) xmap[x] = (uint16_t)(x * sw / view.w);
   for (int y = 0; y <= sh; y++) row_first[y] = (uint8_t)((y * view.h + sh - 1) / sh);
   redraw_all = true;
 }
@@ -361,6 +376,13 @@ static const shape_t cv_shape[] = { /* the console, its cartridge slot and vents
 static const shape_t gg_shape[] = {
   {-140, -62, 140, 62, 40, 0}, {-56, -46, 56, 40, 6, 1}, {-112, -12, -84, 0, 2, 1}, {-104, -20, -92, 8, 2, 1},
   {84, -8, 100, 8, 8, 1}, {106, -18, 122, -2, 8, 1}};
+static const shape_t gw_shape[] = { /* the wide Game & Watch: its LCD, the cross on the left, Time and Game, A on the right */
+  {-140, -72, 140, 72, 10, 0}, {-78, -52, 78, 44, 4, 1}, {-122, -6, -94, 4, 1, 1}, {-113, -15, -103, 13, 1, 1},
+  {-26, 54, -6, 60, 2, 1},     {6, 54, 26, 60, 2, 1},    {96, -6, 120, 18, 12, 1}};
+static const shape_t md_shape[] = { /* the Mega Drive: its body, the round top with the slot, its vents and buttons */
+  {-150, -50, 150, 50, 14, 0}, {-70, -42, 70, 42, 42, 1}, {-40, -6, 40, 2, 2, 0},
+  {-136, -30, -90, -26, 1, 1}, {-136, -18, -90, -14, 1, 1}, {-136, -6, -90, -2, 1, 1},
+  {92, 16, 112, 26, 3, 1},     {118, 16, 138, 26, 3, 1}};
 static const look_t looks[RG_SYS_COUNT] = {
   {0x202020, 0x303030, "", gb_shape, 0},
   {0xE8811F, 0xDF6C10, "1989", gb_shape, sizeof gb_shape / sizeof gb_shape[0]},
@@ -370,6 +392,8 @@ static const look_t looks[RG_SYS_COUNT] = {
   {0x0EA186, 0x13BC9D, "1990", gg_shape, sizeof gg_shape / sizeof gg_shape[0]},
   {0xC0392B, 0xA93226, "1983", sg_shape, sizeof sg_shape / sizeof sg_shape[0]},
   {0x2C3E50, 0x22313F, "1982", cv_shape, sizeof cv_shape / sizeof cv_shape[0]},
+  {0xB8932E, 0xA17F22, "1980", gw_shape, sizeof gw_shape / sizeof gw_shape[0]},
+  {0x2D2D2D, 0x3E3E3E, "1988", md_shape, sizeof md_shape / sizeof md_shape[0]},
 };
 
 static bool in_shape(const shape_t *s, int u, int v) {
@@ -414,7 +438,13 @@ static void header(int sys, int y) {
   gfx_rrect(1, y + 1, LOGO_W - 2, HEADER_H - 2, 4, WHITE, 256);
   gfx_rrect_outline(1, y + 1, LOGO_W - 2, HEADER_H - 2, 4, 1, HEX(0x9AA0A6), 256);
   /* a little console: the body, its screen or its pad */
-  if (sys == RG_SYS_NES || sys == RG_SYS_SMS || sys == RG_SYS_SG || sys == RG_SYS_CV) {
+  if (sys == RG_SYS_GW) { /* (a little Game & Watch: wide, its LCD, the cross and a button) */
+    gfx_rrect(5, y + 7, 36, 23, 3, gfx_rgb(l->bg), 256);
+    gfx_fill(14, y + 10, 18, 13, HEX(0xC8C8A8));
+    gfx_fill(7, y + 17, 5, 1, HEX(0x303030));
+    gfx_fill(9, y + 15, 1, 5, HEX(0x303030));
+    gfx_circle(37, y + 18, 2, HEX(0xA0204A), 256);
+  } else if (sys == RG_SYS_NES || sys == RG_SYS_SMS || sys == RG_SYS_SG || sys == RG_SYS_CV || sys == RG_SYS_MD) {
     gfx_fill(7, y + 11, 32, 15, HEX(0x8C8C8C));
     gfx_fill(7, y + 22, 32, 4, HEX(0x3C3C3C));
     gfx_fill(10, y + 14, 12, 4, HEX(0xD8D8D8));
@@ -748,27 +778,30 @@ static int session_slot = -1;        /* the slot this game was loaded from or sa
 static int frameskip = 1, skip;      /* Retro-Go's frame skipping */
 static uint32_t autosave_at;         /* when the battery save is due, 0 none */
 
-/* the three emulators: gnuboy, nofrendo, and the Master System's (for the Game Gear and the SG-1000 too) */
-enum { CORE_GB, CORE_NES, CORE_SMS };
+/* the emulators: gnuboy, nofrendo, the Master System's (for the Game Gear, the SG-1000 and the
+   ColecoVision too) and LCD-Game-Emulator */
+enum { CORE_GB, CORE_NES, CORE_SMS, CORE_GW };
 static int core;
 static bool is_gb(void) { return core == CORE_GB; }
 
 static int core_chunks(rg_chunk_t *c) {
-  return core == CORE_GB ? gb_state_chunks(c) : core == CORE_NES ? nes_state_chunks(c) : sms_state_chunks(c);
+  return core == CORE_GB ? gb_state_chunks(c) : core == CORE_NES ? nes_state_chunks(c) : core == CORE_GW ? gw_state_chunks(c)
+                                                                                     : sms_state_chunks(c);
 }
 
 /* the battery RAM, NULL if none (a Sega cartridge's only once the game has turned it on) */
 static uint8_t *core_sram(uint32_t *size) {
+  if (core == CORE_GW) return *size = 0, NULL; /* (no battery RAM: the state is the save) */
   if (core == CORE_SMS) return sms_sram(size);
   return core == CORE_GB ? gb_sram(size) : nes_sram(size);
 }
 static bool core_sram_dirty(void) {
-  return core == CORE_GB ? gb_sram_dirty() : core == CORE_NES ? nes_sram_dirty() : sms_sram_dirty();
+  return core == CORE_GB ? gb_sram_dirty() : core == CORE_NES ? nes_sram_dirty() : core == CORE_SMS && sms_sram_dirty();
 }
 static void core_sram_saved(void) {
   if (core == CORE_GB) gb_sram_saved();
   else if (core == CORE_NES) nes_sram_saved();
-  else sms_sram_saved();
+  else if (core == CORE_SMS) sms_sram_saved();
 }
 
 static void core_redraw(void) {
@@ -776,6 +809,7 @@ static void core_redraw(void) {
   pend_n = 0;
   if (core == CORE_GB) gb_redraw();
   else if (core == CORE_NES) nes_redraw();
+  else if (core == CORE_GW) gw_redraw();
   else sms_redraw();
   flush();
   redraw_all = false;
@@ -853,6 +887,7 @@ static bool state_load(int slot) {
   if (r > 0) {
     if (core == CORE_GB) gb_state_loaded();
     else if (core == CORE_NES) nes_state_loaded();
+    else if (core == CORE_GW) gw_state_loaded();
     else sms_state_loaded();
     last_slot = session_slot = slot, skip = 0;
     return true;
@@ -867,6 +902,7 @@ static bool state_load(int slot) {
 static void core_reset(bool hard) {
   if (core == CORE_GB) gb_reset(hard);
   else if (core == CORE_NES) nes_reset_machine(hard);
+  else if (core == CORE_GW) gw_reset(hard); /* (soft: the ACL button) */
   else sms_reset(hard);
   skip = 0;
 }
@@ -890,6 +926,10 @@ static const char *button_name(int k) {
   if (sys_now == RG_SYS_CV) {
     static const char *const cv[] = {T("Joystick"), T("Left button"), T("Right button"), NULL, NULL};
     return cv[k];
+  }
+  if (sys_now == RG_SYS_GW) { /* (Retro-Go's: Select is Time, Start is Game) */
+    static const char *const gw[] = {T("D-pad"), "A", "B", T("Time"), T("Game A")};
+    return gw[k];
   }
   if (!sega) return names[k];
   static const char *const sms[] = {T("D-pad"), "2", "1", NULL, T("Pause")};
@@ -925,8 +965,31 @@ static void borders_scene(void *ctx) {
     gfx_text_right(&np_font_small, view.x - 6, y + 9, keys[i][1], WHITE, 256);
   }
 }
+/* the Game & Watch's own buttons on the calculator's digits, those the game has (gw_keys) */
+static const struct { uint8_t key, gw; const char *name; } gw_buttons[] = {
+  {eadk_key_one, GW_KEY_GAME_A, T("Game A")}, {eadk_key_two, GW_KEY_GAME_B, T("Game B")},
+  {eadk_key_three, GW_KEY_TIME, T("Time")},   {eadk_key_four, GW_KEY_ALARM, T("Alarm")}};
+static void keyline_scene(void *ctx) {
+  (void)ctx;
+  int y = SCREEN_H - KEYLINE_H;
+  gfx_fill(0, y, SCREEN_W, KEYLINE_H, BLACK);
+  const char *k[6][2];
+  int n = 0, have = gw_keys(), w = 0;
+  for (unsigned i = 0; i < sizeof gw_buttons / sizeof gw_buttons[0]; i++)
+    if (have & gw_buttons[i].gw) k[n][0] = key_names[gw_buttons[i].key], k[n++][1] = gw_buttons[i].name;
+  k[n][0] = "0", k[n++][1] = "ACL";
+  k[n][0] = T("Backspace"), k[n++][1] = T("menu");
+  for (int i = 0; i < n; i++) w += gfx_text_width(&np_font_small, k[i][0]) + gfx_text_width(&np_font_small, k[i][1]) + 4;
+  int gap = NP_MIN(16, NP_MAX(6, (SCREEN_W - 8 - w) / NP_MAX(1, n - 1))), x = NP_MAX(4, (SCREEN_W - w - gap * (n - 1)) / 2);
+  for (int i = 0; i < n; i++) { /* (gfx_text gives the pen's place after the text) */
+    x = gfx_text(&np_font_small, x, y + 11, k[i][0], WHITE, 256) + 4;
+    x = gfx_text(&np_font_small, x, y + 11, k[i][1], HEX(0x9AA0A6), 256) + gap;
+  }
+}
 static void game_screen(void) {
-  if (view.y > 0) fill_screen(0, 0, SCREEN_W, view.y, BLACK), fill_screen(0, view.y + view.h, SCREEN_W, SCREEN_H - view.y - view.h, BLACK);
+  if (sys_now == RG_SYS_GW && view.y + view.h < SCREEN_H) render_rect(keyline_scene, NULL, 0, view.y + view.h, SCREEN_W, SCREEN_H);
+  else if (view.y > 0) fill_screen(0, view.y + view.h, SCREEN_W, SCREEN_H - view.y - view.h, BLACK);
+  if (view.y > 0) fill_screen(0, 0, SCREEN_W, view.y, BLACK);
   if (view.x > 0) {
     render_rect(borders_scene, NULL, 0, view.y, view.x, view.y + view.h);
     fill_screen(view.x + view.w, view.y, SCREEN_W - view.x - view.w, view.h, BLACK);
@@ -1070,6 +1133,7 @@ static int emulator_options_cb(item_t *it, int ev) {
 static int options_menu(void) {
   item_t items[] = {OPTION(T("Scaling"), scaling_cb, 0), OPTION(T("Speed"), speed_cb, 0),
                     {1, T("Emulator options"), "", IT_NORMAL, 0, emulator_options_cb, 0}};
+  if (core == CORE_GW) items[2].flags = IT_DISABLED; /* (nothing to set) */
   int r = dialog_run(T("Options"), items, game ? 3 : 1, 0);
   cfg_save();
   return r;
@@ -1108,7 +1172,7 @@ static int default_keys_cb(item_t *it, int ev) {
   return CB_NONE;
 }
 static int controls(void) {
-  item_t items[9];
+  item_t items[11];
   for (int i = 0; i < 5; i++) {
     const char *label = button_name(i);
     items[i] = (item_t){0, label ? label : "", "", label ? IT_NORMAL : IT_HIDDEN, 1, key_cb, i ? i + 3 : 0};
@@ -1117,11 +1181,16 @@ static int controls(void) {
     items[3] = (item_t){0, T("Keypad"), "", IT_MESSAGE, 1, NULL, 0}, strcpy(items[3].value, T("0 to 9"));
     items[4] = (item_t){0, T("* and #"), "", IT_MESSAGE, 1, NULL, 0}, strcpy(items[4].value, T("x and /"));
   }
-  items[5] = (item_t){0, T("Menu"), "", IT_MESSAGE, 1, NULL, 0}, strcpy(items[5].value, T("Backspace"));
-  items[6] = (item_t){0, T("Quit"), "", IT_MESSAGE, 1, NULL, 0}, strcpy(items[6].value, T("Home (saves)"));
-  items[7] = (item_t){0, T("Default keys"), "", IT_NORMAL, 0, default_keys_cb, 0};
-  items[8] = (item_t)ITEM(1, T("OK"));
-  int r = dialog_run(T("Controls"), items, 9, 8);
+  int n = 5;
+  if (sys_now == RG_SYS_GW && game) { /* (its own buttons on the digits; Select and Start are Time and Game A too) */
+    items[n] = (item_t){0, T("Game A, B, Time, Alarm"), "", IT_MESSAGE, 1, NULL, 0}, strcpy(items[n++].value, "1 2 3 4");
+    items[n] = (item_t){0, "ACL", "", IT_MESSAGE, 1, NULL, 0}, strcpy(items[n++].value, "0");
+  }
+  items[n] = (item_t){0, T("Menu"), "", IT_MESSAGE, 1, NULL, 0}, strcpy(items[n++].value, T("Backspace"));
+  items[n] = (item_t){0, T("Quit"), "", IT_MESSAGE, 1, NULL, 0}, strcpy(items[n++].value, T("Home (saves)"));
+  items[n++] = (item_t){0, T("Default keys"), "", IT_NORMAL, 0, default_keys_cb, 0};
+  items[n++] = (item_t)ITEM(1, T("OK"));
+  int r = dialog_run(T("Controls"), items, n, n - 1);
   cfg_save();
   return r;
 }
@@ -1130,9 +1199,10 @@ static int about(void) {
   item_t items[] = {
     {0, T("Retro-Go"), "ducalex", IT_MESSAGE, 1, NULL, 0}, {0, "Game Boy", "gnuboy", IT_MESSAGE, 1, NULL, 0},
     {0, "NES", "nofrendo", IT_MESSAGE, 1, NULL, 0},        {0, "SMS, GG, SG, COL", T("z80 by superzazu"), IT_MESSAGE, 1, NULL, 0},
+    {0, "Game & Watch", "LCD-Game-Emulator", IT_MESSAGE, 1, NULL, 0},
     {0, T("Port"), "NumPlay", IT_MESSAGE, 1, NULL, 0},     MESSAGE(T("Not affiliated with Retro-Go")),
     ITEM(1, T("OK"))};
-  return dialog_run(T("About Retro-Go"), items, 7, 6);
+  return dialog_run(T("About Retro-Go"), items, 8, 7);
 }
 
 /* Retro-Go's save slots: 0 to 3; the slot, DLG_BACK or DLG_HOME */
@@ -1230,11 +1300,12 @@ uint32_t perf_frames, perf_drawn;
 
 static int play(const rg_rom_t *r, int slot) {
   sys_now = r->system;
-  core = sys_now == RG_SYS_NES ? CORE_NES : is_z80(sys_now) ? CORE_SMS : CORE_GB;
+  core = sys_now == RG_SYS_NES ? CORE_NES : is_z80(sys_now) ? CORE_SMS : sys_now == RG_SYS_GW ? CORE_GW : CORE_GB;
   game = r;
   game_crc = rom_crc(r);
   int err = core == CORE_GB    ? gb_load(r->data, r->size)
             : core == CORE_NES ? nes_load(r->data, r->size)
+            : core == CORE_GW  ? gw_load(r->data, r->size)
                                : sms_load(r->data, r->size, game_crc,
                                           sys_now == RG_SYS_GG   ? SMS_GG
                                           : sys_now == RG_SYS_SG ? SMS_SG
@@ -1266,7 +1337,8 @@ static int play(const rg_rom_t *r, int slot) {
 
   /* a frame: the Game Boy's 70224 clocks at 4.194304 MHz, the NES's 29780.5 at 1.789773 MHz, the
      Master System's 59736 at 3.579545 MHz (or 50 a second) */
-  const uint32_t frame_us = core == CORE_GB ? 16742 : core == CORE_NES ? 16639 : sms_frame_us();
+  const uint32_t frame_us = core == CORE_GB ? 16742 : core == CORE_NES ? 16639 : core == CORE_GW ? 15625 : sms_frame_us();
+  bool acl_held = false;
   uint32_t next_us = millis() * 1000u, second = millis(), frames = 0, busy = 0;
   int result = GAME_ON;
   frameskip = NP_MAX(1, cfg.speed * 3 / 2), skip = 0, autosave_at = 0;
@@ -1300,10 +1372,21 @@ static int play(const rg_rom_t *r, int slot) {
         if ((k & KEY(pad_keys[i])) && !memchr(cfg.keys, pad_keys[i], sizeof cfg.keys)) key = i;
       sms_set_keypad(key);
     }
+    int gw_keys_held = 0;
+    if (core == CORE_GW) { /* the console's buttons: Start and 1 Game A, Select and 3 Time, 2 Game B, 4 Alarm; 0 ACL */
+      if (pad & RG_PAD_START) gw_keys_held |= GW_KEY_GAME_A;
+      if (pad & RG_PAD_SELECT) gw_keys_held |= GW_KEY_TIME;
+      for (unsigned i = 0; i < sizeof gw_buttons / sizeof gw_buttons[0]; i++)
+        if ((k & KEY(gw_buttons[i].key)) && !memchr(cfg.keys, gw_buttons[i].key, sizeof cfg.keys)) gw_keys_held |= gw_buttons[i].gw;
+      bool acl = (k & KEY(eadk_key_zero)) && !memchr(cfg.keys, eadk_key_zero, sizeof cfg.keys);
+      if (acl && !acl_held) gw_reset(false);
+      acl_held = acl;
+    }
     uint32_t t0 = millis();
     bool draw = skip == 0;
     if (core == CORE_GB) gb_set_pad(pad), gb_run_frame(draw);
     else if (core == CORE_NES) nes_set_pad(pad), nes_run_frame(draw);
+    else if (core == CORE_GW) gw_set_pad(pad, gw_keys_held), gw_run_frame(draw);
     else sms_set_pad(pad), sms_run_frame(draw);
     if (draw) flush(), redraw_all = false, perf_drawn++;
     if (core == CORE_SMS) { /* (a game that changes the picture's height) */
@@ -1359,11 +1442,11 @@ static void picker_scene(void *ctx) {
 #ifdef NP_PORT
     const char *const lines[] = {T("Welcome to Retro-Go!"), "", "Add games to this folder:", rg_port_folder_shown(),
                                  T("Game Boy, Game Boy Color, NES,"), T("Master System, Game Gear, SG-1000,"),
-                                 T("ColecoVision."), T("Home: quit")};
+                                 T("ColecoVision, Game & Watch."), T("Home: quit")};
 #else
     static const char *const lines[] = {T("Welcome to Retro-Go!"), "", T("Add games on NumPlay's"),
                                         T("customizer website:"), T("Game Boy, Game Boy Color, NES,"), T("Master System, Game Gear, SG-1000,"),
-                                        T("ColecoVision."), T("Home: quit")};
+                                        T("ColecoVision, Game & Watch."), T("Home: quit")};
 #endif
     for (int i = 0; i < 8; i++) gfx_text(&np_font_body, 8, 80 + 18 * i, lines[i], i ? 0xAD55 : WHITE, 256);
     return;
@@ -1477,7 +1560,7 @@ int main(void) {
     if (tab_count(tab_order[i])) tabs[ntabs++] = tab_order[i];
   tab = cfg.tab < ntabs ? cfg.tab : 0;
   browse = cfg.browse;
-  cursor = ntabs ? tab_first(tabs[tab]) + NP_MIN(cfg.cursor[tabs[tab]], tab_count(tabs[tab]) - 1) : 0;
+  cursor = ntabs ? tab_first(tabs[tab]) + NP_MIN(*cursor_of(tabs[tab]), tab_count(tabs[tab]) - 1) : 0;
   restore_behind = launcher_menu_redraw;
   picker_draw();
   wait_release();
@@ -1513,7 +1596,7 @@ int main(void) {
       if (hit & KEY(eadk_key_right)) change = 1;
       if (hit & KEY(eadk_key_back)) browse = false, redraw = true;
       if (hit & (KEY(eadk_key_ok) | KEY(eadk_key_exe))) {
-        cfg.tab = (uint8_t)tab, cfg.browse = browse, cfg.cursor[sys] = (uint8_t)(cursor - first);
+        cfg.tab = (uint8_t)tab, cfg.browse = browse, *cursor_of(sys) = (uint8_t)(cursor - first);
         wait_release();
         int r = file_menu(&roms[cursor]);
         restore_behind = launcher_menu_redraw;
@@ -1524,17 +1607,17 @@ int main(void) {
       }
     }
     if (change && ntabs > 1) {
-      cfg.cursor[sys] = (uint8_t)(cursor - first);
+      *cursor_of(sys) = (uint8_t)(cursor - first);
       tab = (tab + change + ntabs) % ntabs;
       sys = tabs[tab];
-      cursor = tab_first(sys) + NP_MIN(cfg.cursor[sys], tab_count(sys) - 1);
+      cursor = tab_first(sys) + NP_MIN(*cursor_of(sys), tab_count(sys) - 1);
       redraw = true;
     }
     if (redraw) picker_draw();
   }
   if (ntabs) {
     int sys = tabs[tab];
-    cfg.tab = (uint8_t)tab, cfg.browse = browse, cfg.cursor[sys] = (uint8_t)(cursor - tab_first(sys));
+    cfg.tab = (uint8_t)tab, cfg.browse = browse, *cursor_of(sys) = (uint8_t)(cursor - tab_first(sys));
   }
   cfg_save();
   gfx_buf = their_strip;

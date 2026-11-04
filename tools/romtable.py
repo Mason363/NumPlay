@@ -5,7 +5,8 @@ The table (the customizer website makes the same one; games/retrogo reads it in 
 is one read-only section, .rodata.np_roms, 4-byte aligned, global symbol np_roms:
   u32 magic 0x4D52504E ("NPRM"), u32 version 1, u32 count;
   count entries of 52 bytes: u32 offset (from the start of np_roms to the ROM's bytes), u32 size,
-    u8 system (1 Game Boy, 2 Game Boy Color, 3 NES, 4 Master System, 5 Game Gear, 6 SG-1000, 7 ColecoVision), u8 reserved[3]
+    u8 system (1 Game Boy, 2 Game Boy Color, 3 NES, 4 Master System, 5 Game Gear, 6 SG-1000, 7 ColecoVision,
+    8 Game & Watch, 9 Mega Drive), u8 reserved[3]
     (zero), char name[40] (UTF-8, zero-padded);
   then the ROMs' bytes, each starting 4-byte aligned.
 All numbers are little-endian. To be the same byte for byte as the website's for the same files:
@@ -13,7 +14,13 @@ All numbers are little-endian. To be the same byte for byte as the website's for
   each next one at the end of the one before rounded up to a multiple of 4, zeros in between;
 - the table ends with the last ROM's bytes, then zeros up to a multiple of 4 (no ROMs: the 12-byte
   header with count 0);
-- the system comes from the file's extension, in any case: .gb 1, .gbc 2, .nes 3, .sms 4, .gg 5, .sg 6, .col 7;
+- the system comes from the file's extension, in any case: .gb 1, .gbc 2, .nes 3, .sms 4, .gg 5, .sg 6, .col 7,
+  .gw 8, .md .gen .bin .smd 9;
+- the bytes are the file's, but: Game Boy and Sega 8-bit files lose their padding (trim below); a .gw
+  file packed with LZ4 (an LZ4 frame, as LCD-Game-Shrinker writes them) is unpacked; a Mega Drive
+  game is made plain (an .smd file's 512-byte header dropped and its 16 KB blocks put back in order,
+  as gwenesis does) and its bytes swapped in pairs (the emulator reads its 16-bit words as they are,
+  on a little-endian processor), padded with a zero to an even size;
 - the name is the file's name without its last extension, its UTF-8 bytes cut to the longest
   start of at most 40 bytes that ends on a whole letter, zero-padded to 40 (no ending zero when it
   takes all 40).
@@ -29,7 +36,84 @@ import struct
 import sys
 
 MAGIC, VERSION, ENTRY, NAME = 0x4D52504E, 1, 52, 40
-SYSTEMS = {".gb": 1, ".gbc": 2, ".nes": 3, ".sms": 4, ".gg": 5, ".sg": 6, ".col": 7}
+SYSTEMS = {".gb": 1, ".gbc": 2, ".nes": 3, ".sms": 4, ".gg": 5, ".sg": 6, ".col": 7, ".gw": 8,
+           ".md": 9, ".gen": 9, ".bin": 9, ".smd": 9}
+
+
+def lz4_unpack(data):
+    """an LZ4 frame's bytes (its block and content checksums not checked)"""
+    if data[:4] != b"\x04\x22\x4d\x18":
+        return data
+    flg = data[4]
+    i = 7 + (8 if flg & 0x08 else 0) + (4 if flg & 0x01 else 0)
+    out = bytearray()
+    while i + 4 <= len(data):
+        n = struct.unpack_from("<I", data, i)[0]
+        i += 4
+        if n == 0:
+            break
+        raw, n = n & 0x80000000, n & 0x7FFFFFFF
+        blk = data[i:i + n]
+        i += n + (4 if flg & 0x10 else 0)
+        if raw:
+            out += blk
+            continue
+        j = 0
+        while j < len(blk):
+            tok = blk[j]
+            j += 1
+            lit = tok >> 4
+            if lit == 15:
+                while True:
+                    b = blk[j]
+                    j += 1
+                    lit += b
+                    if b != 255:
+                        break
+            out += blk[j:j + lit]
+            j += lit
+            if j >= len(blk):
+                break
+            off = blk[j] | blk[j + 1] << 8
+            j += 2
+            ml = (tok & 15) + 4
+            if (tok & 15) == 15:
+                while True:
+                    b = blk[j]
+                    j += 1
+                    ml += b
+                    if b != 255:
+                        break
+            if not 0 < off <= len(out):
+                sys.exit("romtable: a broken LZ4 file")
+            for _ in range(ml):
+                out.append(out[-off])
+    return bytes(out)
+
+
+def mega_drive(data, smd):
+    """a Mega Drive game as gwenesis reads it in place: plain (not .smd), its bytes swapped in pairs"""
+    if (smd or (len(data) > 0x200 and data[1] == 3 and data[8] == 0xAA and data[9] == 0xBB)) and len(data) % 0x4000 == 0x200:
+        body, plain = data[0x200:], bytearray()
+        for k in range(0, len(body), 0x4000):
+            blk = body[k:k + 0x4000]
+            for j in range(0x2000):
+                plain += bytes((blk[0x2000 + j], blk[j]))
+        data = bytes(plain)
+    if len(data) % 2:
+        data += b"\0"
+    swapped = bytearray(len(data))
+    swapped[0::2], swapped[1::2] = data[1::2], data[0::2]
+    return bytes(swapped)
+
+
+def rom_bytes(path, system):
+    data = open(path, "rb").read()
+    if system == 8:
+        return lz4_unpack(data)
+    if system == 9:
+        return mega_drive(data, path.lower().endswith(".smd"))
+    return trim(data, system)
 
 
 def entry_name(path):
@@ -60,8 +144,8 @@ def table(paths):
     for p in paths:
         ext = os.path.splitext(p)[1].lower()
         if ext not in SYSTEMS:
-            sys.exit(f"romtable: {p}: not a .gb, .gbc, .nes, .sms, .gg, .sg or .col file")
-        roms.append((trim(open(p, "rb").read(), SYSTEMS[ext]), SYSTEMS[ext], entry_name(p)))
+            sys.exit(f"romtable: {p}: not a .gb, .gbc, .nes, .sms, .gg, .sg, .col, .gw, .md, .gen, .bin or .smd file")
+        roms.append((rom_bytes(p, SYSTEMS[ext]), SYSTEMS[ext], entry_name(p)))
     out = bytearray(struct.pack("<III", MAGIC, VERSION, len(roms)))
     out += bytes(ENTRY * len(roms))
     for i, (data, system, name) in enumerate(roms):
