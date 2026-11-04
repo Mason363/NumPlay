@@ -138,12 +138,9 @@ void bg_update(float dt, int rows) {
 
 void bg_row(C *dst, int y, int x0, int x1) { (void)dst, (void)y, (void)x0, (void)x1; }
 
-/* two pixels a byte into their palette entries, from an even x0 */
+/* two pixels a byte into their palette entries (n pixels, even) */
 static void unpack(uint8_t *dst, const uint8_t *src, int n) {
-  for (; n > 0; n -= 2, src++) {
-    *dst++ = (uint8_t)(CE_SWIRL0 + (*src & 15));
-    *dst++ = (uint8_t)(CE_SWIRL0 + (*src >> 4));
-  }
+  if (n > 0) ce_unpack(dst, src, (unsigned)n / 2);
 }
 
 void ce_bg_row(uint8_t *dst, int y, int x0) {

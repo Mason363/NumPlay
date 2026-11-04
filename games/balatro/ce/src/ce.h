@@ -16,6 +16,10 @@ void ce_set_palette(int first, int n, const uint16_t *c);  /* colours as the CE'
 const uint8_t *ce_appvar(const char *name, size_t *size);  /* an appvar's content, where it is (flash), or NULL */
 uint32_t ce_ms(void);                                      /* milliseconds */
 
+/* ---- the busiest loops (blit.S; C on a computer, in gfx_ce.c) */
+void ce_shade(uint8_t *d, const uint8_t *tab, unsigned n);  /* d[i] = tab[d[i]]: tab 256-byte aligned, n > 0 */
+void ce_unpack(uint8_t *d, const uint8_t *s, unsigned n);   /* n bytes of two levels into 2n indices from 192 */
+
 /* ---- colours (gfx_ce.c) */
 uint8_t ce_pal(C c);                    /* the palette index showing c: a fixed colour, or one taken for it */
 const uint8_t *ce_shade_tab(int alpha); /* every index darkened by alpha/32 */

@@ -55,6 +55,16 @@ void *g_scratch(int *size) {
 }
 void g_bg_cover(int x) { bg_cover_x = x; }
 
+#ifdef NP_HOST
+/* (blit.S on the calculator) */
+void ce_shade(uint8_t *d, const uint8_t *tab, unsigned n) {
+  while (n--) *d = tab[*d], d++;
+}
+void ce_unpack(uint8_t *d, const uint8_t *s, unsigned n) {
+  for (; n; n--, s++) *d++ = (uint8_t)(CE_SWIRL0 + (*s & 15)), *d++ = (uint8_t)(CE_SWIRL0 + (*s >> 4));
+}
+#endif
+
 C darken(C a, int t) { return mix565(a, 0, t); }
 C lighten(C a, int t) { return mix565(a, 0xFFFF, t); }
 
@@ -124,8 +134,8 @@ uint8_t ce_pal(C c) {
 static const int8_t bank_dark[CE_BANKS] = CE_BANK_DARK;
 static struct {
   uint8_t alpha, ok;
-  uint8_t t[256];
 } stabs[NSTAB];
+static uint8_t stab_t[NSTAB][256] __attribute__((aligned(256))); /* (ce_shade looks up by the low byte) */
 static uint8_t stab_next;
 static void shade_tabs_reset(void) {
   for (int i = 0; i < NSTAB; i++) stabs[i].ok = 0;
@@ -134,10 +144,10 @@ const uint8_t *ce_shade_tab(int alpha) {
   if (alpha < 0) alpha = 0;
   if (alpha > 32) alpha = 32;
   for (int i = 0; i < NSTAB; i++)
-    if (stabs[i].ok && stabs[i].alpha == alpha) return stabs[i].t;
+    if (stabs[i].ok && stabs[i].alpha == alpha) return stab_t[i];
   int i = stab_next;
   stab_next = (uint8_t)((stab_next + 1) % NSTAB);
-  uint8_t *t = stabs[i].t;
+  uint8_t *t = stab_t[i];
   memcpy(t, ce_lut + LUT_SHADE + alpha * CE_NSTATIC, CE_NSTATIC);
   uint16_t used = frame_dyn;
   for (int s = 0; s < NSTRIP; s++) used |= strip_dyn[s];
@@ -521,7 +531,7 @@ static void draw_sprite(item_t *it, int y0, int ra, int rb, int cx0, int cx1) {
         int a = x < xa ? xa : x, b = x + n > xb ? xb : x + n;
         if (a < b) {
           if (tab)
-            for (int i = a; i < b; i++) d[i] = tab[d[i]];
+            ce_shade(d + a, tab, (unsigned)(b - a));
           else
             memcpy(d + a, p + (a - x), (size_t)(b - a));
         }
@@ -602,7 +612,7 @@ static void draw_rrect(item_t *it, int y0, int ra, int rb, int cx0, int cx1, int
     }
     if (ma < mb) {
       if (shade)
-        for (int xx = ma; xx < mb; xx++) d[xx] = tab[d[xx]];
+        ce_shade(d + ma, tab, (unsigned)(mb - ma));
       else
         memset(d + ma, c, (size_t)(mb - ma));
     }
