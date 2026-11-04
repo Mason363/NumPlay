@@ -35,6 +35,7 @@ bool text_active(void);
 void text_update(uint32_t pressed, uint32_t held);
 void text_draw(void);
 int text_choice(void);                        /* the last choice: 0-3 */
+int text_choosing(void);                      /* a choice showing: its number of options (0 none) */
 int text_cue(void);                           /* the last \M cue (global.flag[20]) */
 void text_set_cue(int v);
 int text_msgno(void);                         /* the message shown now */

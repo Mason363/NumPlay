@@ -50,6 +50,7 @@ void field_setup(int room) {
   Inst in;
   memset(&F, 0, sizeof F);
   npc_at_event();
+  board_setup(room);
   switch (room) {
     case room_field2:
       if (plot() < 34) room_queue_event(EV_F2_LANCER);
@@ -176,6 +177,7 @@ static bool idle(void) { return !event_running() && !text_active() && !world_fad
 
 void field_step(void) {
   F.siner++;
+  board_step();
   switch (g_room) {
     case room_field2A: case room_field_puzzle1: {
       Obj *t = obj_find(ACT_X5);
@@ -228,6 +230,7 @@ void field_step(void) {
 }
 
 void field_draw(void) {
+  board_draw();
   if (g_room == room_field_puzzletutorial) {
     /* the puzzle pieces (obj_npc_puzzlemaster2's draw): a body, a face and beanies in their colours */
     static const uint32_t blends[4] = {0xFF0000, 0xFFA040, 0xFFFF00, 0x800080};
@@ -792,6 +795,7 @@ static int ev_secret_spikes(Ev *c) {
 }
 
 int field_event(Ev *c) {
+  if (c->id >= EV_FIELD_FIRST + 50) return board_event(c);
   switch (c->id) {
     case EV_F2_LANCER: return ev_f2_lancer(c);
     case EV_HATHYFIGHT: return ev_hathyfight(c);

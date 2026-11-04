@@ -170,6 +170,7 @@ int main(int argc, char **argv) {
   int frames = 300, room = -1, ax = 0, ay = 0, plotv = -1, battle = -1, every = 0;
   unsigned fuzz = 0;
   bool all = false, mash = false, trace = false, perfect = false;
+  int choose = 0;
   int bars_t = -1, mk_wait = 0;
   const char *menukeys = NULL;
   const char *out = "build/shots", *shots = "";
@@ -198,6 +199,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(a, "--battle")) battle = atoi(v), i++;
     else if (!strcmp(a, "--fuzz")) fuzz = (unsigned)atoi(v), i++;
     else if (!strcmp(a, "--mash")) mash = true;
+    else if (!strcmp(a, "--choose")) choose = atoi(v), i++;
     else if (!strcmp(a, "--perfect")) perfect = true;
     else if (!strcmp(a, "--menukeys")) menukeys = v, i++;
     else if (!strcmp(a, "--trace")) trace = true;
@@ -240,6 +242,10 @@ int main(int argc, char **argv) {
       k = bars_t == 29 ? K_Z : 0;
       bars_t++;
     } else if (!k && (k = path_keys())) {
+    } else if (mash && !k && text_choosing()) {
+      /* a choice: the one --choose says (0 left, 1 right, 2 up, 3 down), then Z */
+      static const uint32_t dirs[4] = {K_LEFT, K_RIGHT, K_UP, K_DOWN};
+      k = f % 4 == 0 ? K_Z : dirs[choose & 3];
     } else if (mash && !k && f % 4 == 0) {
       k = K_Z;
     }

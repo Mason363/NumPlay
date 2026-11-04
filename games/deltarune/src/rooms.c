@@ -209,7 +209,7 @@ void room_step(void) {
 }
 
 void room_draw_under(void) {
-  if (world_dark()) puzzles_draw_under();
+  if (world_dark()) puzzles_draw_under(), board_draw_under();
 }
 
 void room_draw_over(void) {
@@ -446,7 +446,8 @@ static void npc_setup(const Inst *in) {
   obj_set_box(o, 0, h / 2, w, h - h / 2);
 }
 
-/* obj_savepoint's texts, by the room */
+/* obj_savepoint's texts, by the room (-1: save_extra, a text made here) */
+static const char *save_extra;
 static int c_talked;   /* (the eye puzzle's SAVE point talks once) */
 static int save_text(int *ids) {
   int n = 0;
@@ -479,6 +480,32 @@ static int save_text(int *ids) {
       else
         ids[n++] = obj_savepoint_slash_Other_10_gml_66_0, ids[n++] = obj_savepoint_slash_Other_10_gml_67_0;
       break;
+    case room_field_checkers3: {
+      /* the team's name (flag 214, from Lancer's question) */
+      static char power[96];
+      static const uint16_t names[4] = {obj_savepoint_slash_Other_10_gml_92_0, obj_savepoint_slash_Other_10_gml_93_0,
+                                        obj_savepoint_slash_Other_10_gml_94_0, obj_savepoint_slash_Other_10_gml_95_0};
+      const char *f = str(obj_savepoint_slash_Other_10_gml_96_0), *nm = str(names[flag(214) & 3]);
+      int k = 0;
+      for (int i = 0; f[i] && k < 90; i++) {
+        if (f[i] == '~' && f[i + 1] == '1') {
+          for (const char *q = nm; *q && k < 90; q++) power[k++] = *q;
+          i++;
+        } else {
+          power[k++] = f[i];
+        }
+      }
+      power[k] = 0;
+      ids[n++] = -1;
+      save_extra = power;
+      break;
+    }
+    case room_forest_savepoint1:
+      ids[n++] = obj_savepoint_slash_Other_10_gml_102_0, ids[n++] = obj_savepoint_slash_Other_10_gml_103_0;
+      break;
+    case room_forest_savepoint2:
+      ids[n++] = obj_savepoint_slash_Other_10_gml_110_0, ids[n++] = obj_savepoint_slash_Other_10_gml_111_0;
+      break;
     case room_field_shop1:
       if (!have_char(CH_SUSIE))
         ids[n++] = obj_savepoint_slash_Other_10_gml_84_0, ids[n++] = obj_savepoint_slash_Other_10_gml_85_0;
@@ -500,7 +527,7 @@ static int ev_save(Ev *c) {
       if (sv.hp[i] < sv.maxhp[i]) sv.hp[i] = sv.maxhp[i];
     if (n) {
       text_clear();
-      for (int i = 0; i < n; i++) text_add(str((uint16_t)ids[i]));
+      for (int i = 0; i < n; i++) text_add(ids[i] < 0 ? save_extra : str((uint16_t)ids[i]));
       text_open();
     }
   }

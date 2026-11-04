@@ -52,6 +52,11 @@ void field_setup(int room);
 void field_step(void);
 void field_draw(void);
 int field_event(Ev *c);
+void board_setup(int room);           /* the Great Board (board.c) */
+void board_step(void);
+void board_draw(void);
+void board_draw_under(void);
+int board_event(Ev *c);
 void forest_setup(int room);
 void forest_step(void);
 void forest_draw(void);

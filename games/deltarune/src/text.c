@@ -453,9 +453,22 @@ void text_addf(const char *fmt, ...) {
 
 void text_face(int fc, int fe) { start_fc = (uint8_t)fc, start_fe = (uint8_t)fe; }
 void text_side(int side) { box_side = side; }
+/* (GameMaker's "#" is a new line: the choices are kept with it made one) */
 void text_set_choices(const char *a, const char *b, const char *c, const char *d) {
-  g_choices[0] = a, g_choices[1] = b, g_choices[2] = c, g_choices[3] = d;
+  static char bufs[4][48];
+  const char *in[4] = {a, b, c, d};
+  for (int i = 0; i < 4; i++) {
+    if (!in[i]) {
+      g_choices[i] = NULL;
+      continue;
+    }
+    int n = 0;
+    for (const char *p = in[i]; *p && n < 47; p++) bufs[i][n++] = *p == '#' ? '\n' : *p;
+    bufs[i][n] = 0;
+    g_choices[i] = bufs[i];
+  }
 }
+int text_choosing(void) { return box_open ? g_choice_n : 0; }
 
 /* the box goes on with the messages a choice's hook gave */
 static bool box_refill(void) {
