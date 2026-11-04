@@ -759,6 +759,9 @@ static int think(void) {
     }
   /* deeper paranoid searches only get gloomier with three players */
   int lv = V.level, maxd = lv == 0 ? 1 : lv == 1 ? 9 - np * 2 : np == 2 ? 42 - nh : 4, best = root;
+#ifdef __TICE__
+  if (maxd > 8) maxd = 8; /* the TI-84 CE's 4 KB stack holds 8 moves of the search */
+#endif
   noise = lv == 0 ? 50 : lv == 1 ? 6 : 1;
   for (int d = lv == 2 ? 1 : maxd; d <= maxd; d++) { /* deeper while there is time */
     int v = search(me, d, -INF, INF, t);
