@@ -489,18 +489,21 @@ static void draw_name(void) {
   int base = 58 + cap * s / 512;
   big_run(u.name, u.name_len, x, base, s, WHITE);
   gfx_fill(x + w + 3, base - cap * s / 256, 3, cap * s / 256, GOLD); /* where the next letter goes */
+  bool next = u.name_new && u.name_idx < MAX_PLAYERS - 1; /* (Done opens the next player's) */
   for (int r = 0; r < 6; r++)
     for (int c = 0; c < grid_cols[r]; c++) {
       int cell = grid_first[r] + c, x0 = 16 + c * 288 / grid_cols[r], cw = 288 / grid_cols[r] - 3, y = 86 + r * 22;
       bool on = u.gr == r && u.gc == c;
       gfx_rrect(x0, y, cw, 20, 7, on ? GOLD : CARD, 256);
       char l[2] = {(char)('A' + cell), 0};
-      const char *label = cell == CELL_SPACE ? "Space" : cell == CELL_ERASE ? "Erase" : cell == CELL_DONE ? "Done" : l;
+      const char *label = cell == CELL_SPACE ? "Space" : cell == CELL_ERASE ? "Erase" :
+                          cell == CELL_DONE ? (next ? "Next" : "Done") : l;
       const np_font_t *f = cell < CELL_SPACE ? &np_font_title : &np_font_body;
       gfx_text_center(f, x0 + cw / 2, y + (cell < CELL_SPACE ? 17 : 14), label, on ? INK : WHITE, 256);
     }
-  if (plat_typing()) KEYS("Letter keys", "type", "Backspace", "erase", "EXE", "done");
-  else KEYS("OK", "pick", "Backspace", "erase", "EXE", "done");
+  const char *first = plat_typing() ? "Letter keys" : "OK", *what = plat_typing() ? "type" : "pick";
+  if (next) KEYS(first, what, "EXE", "next player", "Back", "done");
+  else KEYS(first, what, "Backspace", "erase", "EXE", "done");
 }
 
 /* ---- Categories: two columns, ten rows shown */
