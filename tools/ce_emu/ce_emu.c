@@ -139,7 +139,24 @@ static uint64_t cycles_now(void) { return sched_total_cycles(); }
 uint64_t emu_ms(void) { return now_ms; }
 bool emu_key_held(int group, int bit) { return group >= 0 && group < 8 && bit >= 0 && bit < 8 && held[group][bit]; }
 uint32_t emu_key_presses(int group, int bit) { return group >= 0 && group < 8 && bit >= 0 && bit < 8 ? presses[group][bit] : 0; }
-void emu_charge(uint32_t cycles) { debug.cpuCycles += cycles; }
+/* an OS routine's time: in steps of a millisecond, the scheduler's events between them (timers, the LCD, the
+ * seconds), as they go on while a calculator runs a long routine such as archiving; charged at once, a second's
+ * worth left events behind the second and stopped the core (sched_second's assertion) */
+static bool in_hook;
+void emu_charge(uint32_t cycles) {
+  if (!in_hook) {
+    debug.cpuCycles += cycles;
+    return;
+  }
+  cpu.cycles = debug.cpuCycles;
+  while (cycles) {
+    uint32_t step = cycles < 48000 ? cycles : 48000;
+    cpu.cycles += step, cycles -= step;
+    sched_process_pending_events();
+  }
+  /* (what the debugger puts back after the hook: these, and the events looked at again at once) */
+  debug.cpuCycles = cpu.cycles, debug.cpuBaseCycles = cpu.baseCycles, debug.cpuNext = 0;
+}
 void emu_jump(uint32_t pc) { debug_set_pc(pc); }
 
 void emu_stop(const char *st, const char *fmt, ...) {
@@ -204,7 +221,13 @@ asic_rev_t gui_handle_reset(const boot_ver_t *boot_ver, asic_rev_t loaded_rev, a
   return !strcmp(opt.rev, "pre-a") ? ASIC_REV_PRE_A : !strcmp(opt.rev, "i") ? ASIC_REV_I : ASIC_REV_M;
 }
 void gui_debug_close(void) {}
+static void debug_hook(int reason, uint32_t data);
 void gui_debug_open(int reason, uint32_t data) {
+  in_hook = true;
+  debug_hook(reason, data);
+  in_hook = false;
+}
+static void debug_hook(int reason, uint32_t data) {
   uint32_t pc = cpu.registers.PC, sp = cpu.registers.SPL;
   switch (reason) {
   case DBG_BREAKPOINT:
