@@ -67,7 +67,7 @@ ALONE = {
     "famidash": ("Famidash", "TFDSoft's Geometry Dash for the NES, made for the calculator: the 173 levels of Famidash HUGE, every mode, practice mode"),
     "clashroyale": ("Clash Royale", "battles against a bot: 41 cards of the 2016 game, its seven arenas, elixir, crowns and trophies"),
     "catninja": ("Cat Ninja", "Richman Stewart's Flash platformer: its 30 levels of wall jumps and traps, the boss and the crystals"),
-    "kingdomrush": ("Kingdom Rush", "Ironhide's 2011 tower defense: its 12 stages with Heroic and Iron challenges, every tower, spell and boss"),
+    "kingdomrush": ("Kingdom Rush", "Ironhide's 2011 tower defense: its 12 stages with Heroic and Iron challenges, every tower, spell and boss, the seven heroes"),
     "mrbullet": ("Mr Bullet", "Lion Studios' spy puzzles: 596 levels of Classic, Grenades, Hostages and Friendly Fire, read from the game's own files"),
     "motox3m": ("Moto X3M", "Madpuffers' stunt bike racing: all 50 levels, the flips, the stars and the six bikes, on the game's own physics"),
     "amongus": ("Among Us", "Innersloth's game on the Skeld against up to 9 bots: every task, sabotages, vents, kills, meetings and votes"),
