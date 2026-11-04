@@ -118,6 +118,9 @@ static void act(void) {
       if (!s) break;
       loading("Building terrain");
       uint32_t seed = plat_ms() * 2654435761u ^ (uint32_t)rnd(0x7FFFFF);
+#ifdef NB_SEED
+      seed = NB_SEED;   /* (tests: a world known in advance) */
+#endif
       new_world(s, cur_name, seed, new_mode);
       save_world();
       start_game();

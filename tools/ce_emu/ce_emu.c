@@ -11,7 +11,7 @@
  * --ram NAME,...    these variables in RAM; the others where their file puts them (the archive, mostly)
  * --frame ADDR      a frame each time the CPU reaches ADDR (eadk_display_wait_for_vblank's, say)
  * --frame-drawn     only when what the LCD shows changed since the last one (a key scan as the marker)
- * --frames-from MS  frames counted from then on
+ * --frames-from MS  frames counted from then on (and the profile)
  * --idle ADDR       a function the program waits in (ticksleep): the time inside isn't work
  * --vars-out DIR    the programs and appvars at the end, as files
  * --report FILE     a JSON report (else a summary on stdout)
@@ -611,7 +611,7 @@ int main(int argc, char **argv) {
     if (opt.profile) { /* the PC every 0.1 ms */
       for (int k = 0; k < 10 && !stopping; k++) {
         emu_run(1);
-        if (started) samples[cpu.registers.PC & 0xFFFFFF]++;
+        if (started && now_ms >= opt.frames_from) samples[cpu.registers.PC & 0xFFFFFF]++;
       }
     } else {
       emu_run(1);

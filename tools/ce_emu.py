@@ -23,7 +23,7 @@ Options:
                                       ~/Documents/Assets/toolchains/ce-libs)
   --frame SYMBOL|ADDR                 a frame each time the CPU gets there (default: eadk_display_wait_for_vblank
                                       or eadk_keyboard_scan when the program has them, from its .obj next to it)
-  --frames-from MS                    count frames from then on (past a slow title)
+  --frames-from MS                    count frames (and profile) from then on (past a slow title)
   --profile N                         the N functions the CPU was found in most
   --vars-out DIR                      the appvars and programs at the end, as files
   --rev m|i|pre-a                     the hardware revision (m, every CE since 2019)
