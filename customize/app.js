@@ -1076,7 +1076,9 @@
   const other = () => st.calc !== 'numworks';
   const known = (t) => Object.prototype.hasOwnProperty.call(CALCS, t);
   const portList = (t = st.calc) => (ports && known(t) && ports.targets[t]) || null;
-  const calcReady = (t) => t === 'numworks' || (!!portList(t) && Object.keys(portList(t)).some((id) => buttons.has(id)));
+  const SOON = ['ti84ce'];  // (built, but not fast enough on the calculator yet)
+  const calcReady = (t) => t === 'numworks' ||
+    (!SOON.includes(t) && !!portList(t) && Object.keys(portList(t)).some((id) => buttons.has(id)));
   const onCalc = (id) => !other() || !!portList()[id];
   const portPicks = () => st.order.filter((id) => st.port[st.calc].has(id) && buttons.has(id) && onCalc(id));
   const portFiles = (e) => e.files || [e.file];
@@ -1095,7 +1097,10 @@
     words.textContent = o ? 'Real games, rebuilt for the ' : lede;
     if (o) {  // (its name in one piece: "fx-CG50" doesn't break at its hyphen)
       words.appendChild(el('span', 'name')).textContent = c.name;
-      words.append('. Choose yours and download them.');
+      words.append('. Choose yours and download them. ');
+      const beta = words.appendChild(el('a', 'beta'));
+      Object.assign(beta, { href: 'https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml',
+        target: '_blank', rel: 'noopener', textContent: 'Beta: tell us how they run' });
     }
     $('#small-head').textContent = o ? 'Games' : 'Games in NumPlay';
     document.querySelector('.side > .row-head').hidden = o && ![...$('#big').children].some((b) => !b.classList.contains('away'));

@@ -79,6 +79,70 @@ def convex_parts(p):
     return [[v for xy in s for v in xy]]
 
 
+def boundary(parts):
+    """A static shape's edges as the game's physics has them: the outline of its convex parts put together (their
+    edges met by no other part's), loops of points; None when they don't close (then its drawn outline stands in)"""
+    def key(x, y): return (q(x), q(y))
+    polys = []
+    for part in parts:
+        ps = [key(part[i], part[i + 1]) for i in range(0, len(part), 2)]
+        ps = [v for i, v in enumerate(ps) if v != ps[i - 1]]
+        if len(ps) < 3 or area(ps) == 0: continue
+        polys.append(ps if area(ps) > 0 else ps[::-1])
+    verts = {v for ps in polys for v in ps}
+    edges = {}
+    for ps in polys:
+        for i in range(len(ps)):
+            a, b = ps[i], ps[(i + 1) % len(ps)]
+            # (split where another part's corner lies on it)
+            d2 = (b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2
+            on = sorted((((v[0] - a[0]) * (b[0] - a[0]) + (v[1] - a[1]) * (b[1] - a[1])) / d2, v) for v in verts
+                        if v != a and v != b and abs((b[0] - a[0]) * (v[1] - a[1]) - (b[1] - a[1]) * (v[0] - a[0])) <= 0.5 * d2 ** 0.5)
+            seq = [a] + [v for t, v in on if 0 < t < 1] + [b]
+            for j in range(len(seq) - 1):
+                edges[seq[j], seq[j + 1]] = edges.get((seq[j], seq[j + 1]), 0) + 1
+    for (a, b) in list(edges):
+        m = min(edges[a, b], edges.get((b, a), 0))
+        if m: edges[a, b] -= m; edges[b, a] -= m
+    nxt = {}
+    for (a, b), n in sorted(edges.items()):
+        nxt.setdefault(a, []).extend([b] * n)
+    loops = []
+    while any(nxt.values()):
+        start = min(a for a, l in nxt.items() if l)
+        loop, a = [start], start
+        while True:
+            if not nxt.get(a): return None
+            a = nxt[a].pop()
+            if a == start: break
+            loop.append(a)
+            if len(loop) > 255: return None
+        loops.append([c / 8 for v in thin(loop) for c in v])
+    return loops
+
+
+def thin(loop):
+    """Fewer points on the rounded corners (runs of edges under 3 units, each point an edge in Box2D's broad phase):
+    a run keeps its ends and every other point from each end inwards, so that a shape the same both ways stays so
+    (a ball on a peak stays on it)"""
+    n = len(loop)
+    short = [((loop[(i + 1) % n][0] - loop[i][0]) ** 2 + (loop[(i + 1) % n][1] - loop[i][1]) ** 2) < (3 * 8) ** 2
+             for i in range(n)]
+    if all(short): return loop
+    keep = [True] * n
+    s = next(i for i in range(n) if not short[i])   # (a long edge: the runs start after one)
+    i, done = (s + 1) % n, 0
+    while done < n:
+        run = [i]
+        while short[run[-1]]: run.append((run[-1] + 1) % n)   # (the run's points: its edges' ends)
+        k = len(run)
+        for j in range(k):
+            keep[run[j]] = min(j, k - 1 - j) % 2 == 0
+        done += k
+        i = (run[-1] + 1) % n
+    return [v for v, kp in zip(loop, keep) if kp]
+
+
 def split8(part):
     """a convex part of more than 8 points as fans of at most 8 (Box2D's polygons hold 8)"""
     pts = [(part[i], part[i + 1]) for i in range(0, len(part), 2)]
@@ -103,13 +167,14 @@ def level_bytes(c):
             if p.get(name): bits |= 1 << k
         parts = p['p']
         is_char = any(p.get(k) for k in ('ki', 'gki', 'hki', 'hgki', 'vi', 'hs'))
-        if is_char and len(parts) == 1 and len(parts[0]) > 4:
-            parts = [parts[0][:4]]   # (a few have the editor's stray points after feet and head)
+        if (is_char or p.get('b')) and len(parts) == 1 and len(parts[0]) > 4:
+            parts = [parts[0][:4]]   # (a few have the editor's stray points after feet and head, centre and rim)
         if not is_char and not p.get('f') and not p.get('b') and len(parts) > 1:
             parts = convex_parts(p)
         if not is_char and not p.get('b') and (len(parts) > 1 or len(parts[0]) > 4):
             if p.get('f'):
-                parts = []   # static: its outline is its shape (a loop of edges, game.c)
+                # static: its shape is loops of edges (game.c), its parts' outline (or the drawn one)
+                parts = boundary(parts) or []
             else:
                 parts = [q for part in parts for q in split8(part)]
         if not parts: kind = 0
@@ -126,7 +191,7 @@ def level_bytes(c):
         else:
             out += struct.pack('<B', len(parts))
             for part in parts:
-                assert 3 <= len(part) // 2 <= 8, len(part)
+                assert 3 <= len(part) // 2 <= (255 if p.get('f') else 8), len(part)
                 out += struct.pack('<B', len(part) // 2)
                 pts(out, part)
             tp = p.get('tp')
@@ -141,7 +206,9 @@ def level_bytes(c):
     for p in pins:
         cx, cy = p['ce']
         v = p['v'][2:]
-        out += struct.pack('<BbbB', p['t'], p.get('pia', -1), p.get('pib', -1), 1 if p.get('m') else 0)
+        # (a motor, turning clockwise: mcw)
+        out += struct.pack('<BbbB', p['t'], p.get('pia', -1), p.get('pib', -1),
+                           (1 if p.get('m') else 0) | (2 if p.get('m') and p.get('mcw') else 0))
         out += struct.pack('<hh', q(cx), q(cy))
         out += struct.pack('<B', len(v) // 2)
         pts(out, v)

@@ -80,7 +80,7 @@ jobs:
         run: |
           # shellcheck disable=SC2086
           if [ -n "$RUNTIME" ]; then sudo apt-get update -q && sudo apt-get install -yq $RUNTIME; fi
-          pip install -q pillow
+          pip install -q pillow numpy zopfli
           export ${{ matrix.toolchain }}
           python3 tools/ports.py build "$TARGET" -j 4
           python3 tools/ports.py pack "$TARGET" "build/ports/$ZIP"
@@ -135,6 +135,7 @@ jobs:
         run: |
           # shellcheck source=/dev/null
           source ~/emsdk/emsdk_env.sh
+          pip install -q pillow numpy zopfli
           python3 tools/ports.py build web -j 4
           python3 tools/ports.py pack web build/ports/NumPlay-Web.zip
 
@@ -190,7 +191,7 @@ jobs:
           echo "LD_LIBRARY_PATH=$HOME/sdl3/lib" >> "$GITHUB_ENV"
           export PKG_CONFIG_PATH="$HOME/sdl3/lib/pkgconfig"
           pkg-config --modversion sdl3
-          pip install -q pillow
+          pip install -q pillow numpy zopfli
           python3 tools/ports.py build sdl -j 4
 
       - name: Run

@@ -77,6 +77,8 @@ int world_query(float x0, float y0, float x1, float y1, int *out, int max);
 void game_contact(int obj_a, int obj_b, int body_a, int body_b, float speed, float px, float py);
 bool game_contact_enabled(int obj_a, int obj_b);
 
+/* the nearest point of a body's shapes' boxes to (x, y): how far, and where */
+float world_nearest(int b, float x, float y, float *nx, float *ny);
 int world_bodies(void);
 int world_contacts(void);
 #ifdef __cplusplus
