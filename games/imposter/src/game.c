@@ -14,6 +14,12 @@ const uint8_t timer_minutes[N_TIMERS] = {0, 1, 2, 3, 5};
 /* ---- chance */
 static uint32_t seed = 1;
 void rnd_seed(uint32_t s) { seed = s ? s : 0x9E3779B9u; }
+/* the moment a key is pressed adds to the chance */
+void rnd_stir(uint32_t v) {
+  seed ^= v * 2654435761u;
+  if (!seed) seed = 1;
+  rnd();
+}
 uint32_t rnd(void) {
   seed ^= seed << 13;
   seed ^= seed >> 17;
@@ -52,22 +58,21 @@ int word_text(uint16_t w, char *out) {
 }
 
 /* a word of the chosen categories not played yet, every one as likely; a category played through starts again
- * (without the word just played) */
+ * (but not with the word just played) */
 static uint16_t pick_word(void) {
   int total = 0;
   for (int c = 0; c < N_CATS; c++) {
     if (!cat_on(c)) continue;
-    if (!unused_count(c)) {
-      memset(sv.used + c * 8, 0, 8);
-      if (sv.last != NO_WORD && sv.last >> 6 == c) use(c, sv.last & 63);
-    }
+    if (!unused_count(c)) memset(sv.used + c * 8, 0, 8);
     total += unused_count(c);
   }
+  uint16_t skip = NO_WORD;
+  if (sv.last != NO_WORD && cat_on(sv.last >> 6) && !used(sv.last >> 6, sv.last & 63) && total > 1) skip = sv.last, total--;
   int r = rnd_below(total);
   for (int c = 0; c < N_CATS; c++) {
     if (!cat_on(c)) continue;
     for (int i = 0, k = word_count(c); i < k; i++)
-      if (!used(c, i) && r-- == 0) {
+      if (!used(c, i) && (uint16_t)(c << 6 | i) != skip && r-- == 0) {
         use(c, i);
         return (uint16_t)(c << 6 | i);
       }

@@ -686,11 +686,11 @@ static void draw_reveal(void) {
   }
   gfx_text_center(&np_font_body, 160, 154, k > 1 ? "The imposters were" : "The imposter was", SOFT, 256);
   big_text(who, 160, 186, 296, 50, 560, RED_TEXT);
-  KEYS("OK", "next round", "Back", "setup");
+  KEYS("OK", "next round", "Back", "settings");
 }
 
 /* ------------------------------------------------------------ dialogs */
-static const char *const pause_items[] = {"Resume", "New round", "Setup", "Quit game"};
+static const char *const pause_items[] = {"Resume", "New round", "Settings", "Quit game"};
 static const char *const quit_items[] = {"Quit", "Cancel"};
 static const char *const reveal_items[] = {"Reveal", "Not yet"};
 static const char *const remove_items[] = {"Remove", "Cancel"};
@@ -831,6 +831,7 @@ bool app_step(uint32_t keys, uint32_t letters, uint32_t now) {
   hit &= ~(uint32_t)KB_ANY;
   if (!hit && !lhit) return true;
   u.dirty = true;
+  rnd_stir(now);
   if (u.dialog) return dialog_key(hit);
   switch (u.screen) {
     case SC_HELP: return help_key(hit);

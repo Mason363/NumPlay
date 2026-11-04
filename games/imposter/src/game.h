@@ -47,4 +47,5 @@ void round_new(void);
 void round_end(void);
 uint32_t rnd(void);
 void rnd_seed(uint32_t s);
+void rnd_stir(uint32_t v);
 #endif

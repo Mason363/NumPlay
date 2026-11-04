@@ -2,11 +2,13 @@
  *
  *   play [--frames N] [--keys "10:ok,20-30:down,..."] [--shots "40:setup.ppm,..."] [--out DIR] [--saves DIR]
  *        [--trace] [--no-typing] [--fuzz SEED] [--seed N] [--words] [--rounds N]
+ *        [--players Ana,Ben,...] [--cats MASK] [--imposters N] [--hint 0|1] [--timer N] [--round WORD]
  *
  * A frame is 20 ms. Keys: left right up down ok exe back home erase, a to z (the letter keys), space. "a-b:key"
  * holds the key from frame a to b, "a:key" for one frame. --trace prints what each drawing shows (DRAW ...).
  * --fuzz presses random keys (Home now and then ends a session, the next one starts from the save).
- * --words checks the word lists; --rounds plays N rounds' draws straight away (ROUND ...).
+ * --words checks the word lists; --rounds plays N rounds' draws straight away (ROUND ...). --players and the
+ * settings after it change the save before the game starts.
  * At the end: STATE ... (the save). */
 #include <stdio.h>
 #include <stdlib.h>
@@ -136,7 +138,9 @@ static int check_words(void) {
 }
 
 int main(int argc, char **argv) {
-  int frames = 600, fuzz = -1, rounds = 0;
+  int frames = 600, fuzz = -1, rounds = 0, imposters = -1, hint = -1, timer = -1, word = -1;
+  const char *players = NULL;
+  long cats = -1;
   uint32_t seed = 1;
   char saves[512] = "build/host-saves";
   for (int i = 1; i < argc; i++) {
@@ -151,6 +155,12 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[i], "--seed") && i + 1 < argc) seed = (uint32_t)strtoul(argv[++i], 0, 10);
     else if (!strcmp(argv[i], "--words")) return check_words();
     else if (!strcmp(argv[i], "--rounds") && i + 1 < argc) rounds = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--players") && i + 1 < argc) players = argv[++i];
+    else if (!strcmp(argv[i], "--cats") && i + 1 < argc) cats = strtol(argv[++i], 0, 0);
+    else if (!strcmp(argv[i], "--imposters") && i + 1 < argc) imposters = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--hint") && i + 1 < argc) hint = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--timer") && i + 1 < argc) timer = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--round") && i + 1 < argc) word = atoi(argv[++i]);
     else {
       fprintf(stderr, "unknown option %s\n", argv[i]);
       return 2;
@@ -160,6 +170,31 @@ int main(int argc, char **argv) {
   host_seed = seed ? seed : 1;
   host_time = 1000;
   app_init(host_time);
+  invariants(-1); /* (whatever the files held) */
+  if (players) { /* (a new game's players: no round on) */
+    char *buf = strdup(players);
+    sv.nplayers = 0, sv.phase = PH_NONE;
+    memset(sv.names, 0, sizeof sv.names);
+    for (char *t = strtok(buf, ","); t && sv.nplayers < MAX_PLAYERS; t = strtok(NULL, ","))
+      snprintf(sv.names[sv.nplayers++], NAME_MAX + 1, "%s", t);
+    free(buf);
+  }
+  if (cats >= 0) sv.cats = (uint32_t)cats;
+  if (imposters >= 0) sv.imposters = (uint8_t)imposters;
+  if (hint >= 0) sv.hint = (uint8_t)hint;
+  if (timer >= 0) sv.timer = (uint8_t)timer;
+  if (players || cats >= 0 || imposters >= 0 || hint >= 0 || timer >= 0) {
+    sv.flags |= 1;
+    game_save();
+    app_init(host_time); /* (from that save) */
+    invariants(-1);
+  }
+  if (word >= 0) { /* a round with this word (screenshots) */
+    round_new();
+    sv.word = sv.last = (uint16_t)word;
+    game_save();
+    app_init(host_time);
+  }
   if (rounds) { /* the rules alone: the save's players and categories */
     for (int r = 0; r < rounds; r++) {
       round_new();
@@ -191,6 +226,7 @@ int main(int argc, char **argv) {
       }
       k |= fkeys, l |= fletters;
     }
+    if (!host_typing) l = 0; /* (the keys carry no letters there) */
     host_keys = k, host_letters = l;
     if (!app_step(k, l, host_time)) {
       printf("QUIT frame %d\n", f);
