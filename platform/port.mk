@@ -65,7 +65,7 @@ port: $(PORT_DEPS)
 else
 port: $(CE_DIR)/bin/$(CE_NAME).8xp
 endif
-$(CE_DIR)/bin/$(CE_NAME).8xp: $(PORT_SRC) $(PORT_DEPS) $(wildcard $(NP_PLATFORM)/include/*.h) $(NP_PLATFORM)/ti84ce/np_ce.c \
+$(CE_DIR)/bin/$(CE_NAME).8xp: $(PORT_SRC) $(PORT_DEPS) $(wildcard $(NP_PLATFORM)/include/*.h) $(wildcard $(NP_PLATFORM)/ti84ce/*.c) \
   $(NP_PLATFORM)/ti84ce/check.py
 	@rm -rf $(CE_DIR)/src && mkdir -p $(CE_DIR)/src
 	@n=0; for f in $(CE_ALL); do n=$$((n+1)); echo "#include \"$$f\"" > $(CE_DIR)/src/f$$n.c; done

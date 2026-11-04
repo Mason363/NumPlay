@@ -191,6 +191,12 @@ static float sin10(int a) { /* the sine of a in tenths of a degree */
 }
 static void put(int x, int y, color_t c, int a32) {
   if ((unsigned)x < SCREEN_W && y >= gfx_y0 && y < gfx_y1 && a32 > 0) {
+#ifdef __TICE__
+    if (gfx_listing) { /* (its strip is drawn every time) */
+      gfx_list_rows(y, y + 1);
+      return;
+    }
+#endif
     color_t *p = gfx_buf + (y - gfx_y0) * SCREEN_W + x;
     *p = gfx_mix(*p, c, a32 > 32 ? 32 : a32);
   }

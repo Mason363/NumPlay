@@ -6,6 +6,9 @@
  * a few rows at a time, and every letter comes from one small stroke font (a
  * handful of points and curves each) drawn with a round pen at any size. */
 #include <eadk.h>
+#ifdef __TICE__
+#include <string.h>
+#endif
 #include <stdbool.h>
 #include <stdint.h>
 #include "../../common/epsilon_app.h"
@@ -74,6 +77,27 @@ static int bx0, by0, bx1, by1;
 
 /* Colours spread out as 0x0GGRRBB-ish words, so one multiply blends all three */
 #define SPREAD(c) (((c) | (uint32_t)(c) << 16) & 0x07E0F81F)
+#ifdef __TICE__ /* the TI-84 Plus CE: its own mixing (the same colours), fills by the C library */
+#include <wchar.h>
+#include "../../../platform/ti84ce/ce_draw.h"
+__attribute__((naked)) static color ce_mix(color a, color b, unsigned t) { __asm__(CE_MIX_ASM); }
+__attribute__((naked)) static void ce_blend(color *p, unsigned n, const uint8_t *t) { __asm__(CE_BLEND_ASM); }
+static uint8_t tab_mem[CE_TABLES + 255];
+static void put(color *p, color c, int v) {
+  if (v >= 32) *p = c;
+  else if (v > 0) *p = ce_mix(*p, c, (unsigned)v);
+}
+static void span(color *p, int n, color c) {
+  if (n > 0) wmemset((wchar_t *)p, (wchar_t)c, (size_t)n);
+}
+static void blend(color *p, int n, color c, int v) {
+  static color tc;
+  static int tv = -1;
+  uint8_t *m = (uint8_t *)(((unsigned)tab_mem + 255) & ~255u);
+  if (tc != c || tv != v) ce_tables(m, c, (unsigned)v), tc = c, tv = v;
+  for (; n > 0; n -= 255, p += 255) ce_blend(p, (unsigned)(n > 255 ? 255 : n), m);
+}
+#else
 /* c over the pixel at p; v from 0 (none) to 32 (all c). Inlined: it runs for
    every smooth or see-through pixel. */
 static inline __attribute__((always_inline)) void put(color *p, color c, int v) {
@@ -100,6 +124,7 @@ static void blend(color *p, int n, color c, int v) {
     *p = (color)(y | y >> 16);
   }
 }
+#endif
 static bool hits(float x, float y, float w, float h) { return x < bx1 && x + w > bx0 && y < by1 && y + h > by0; }
 static color *row(int y) { return buf + (y - by0) * (bx1 - bx0) - bx0; }
 
@@ -347,6 +372,58 @@ static void mplot(int x, int y, void *ctx) { /* a pixel of a Chinese letter */
 }
 #endif
 
+#ifdef __TICE__
+/* the TI-84 Plus CE: a stroke in whole numbers, its distances growing by the same steps from pixel to pixel (in
+   256ths of a pixel; t, how far along, in 65536ths): float only once a stroke */
+static int isqrt(int v) { /* (rounded down) */
+  int r = 0, b = 1 << 22;
+  while (b > v) b >>= 2;
+  for (; b; b >>= 2)
+    if (v >= r + b) v -= r + b, r = (r >> 1) + b;
+    else r >>= 1;
+  return r;
+}
+static void seg_ce(float ax, float ay, float bx, float by, int x0, int x1, int y0, int y1) {
+  float ex = bx - ax, ey = by - ay, l2 = ex * ex + ey * ey;
+  if (l2 < 1e-4f) ex = 1, ey = 0, l2 = 1e9f; /* (a dot: its end caps) */
+  float il = 1 / __builtin_sqrtf(l2), qx = x0 + 0.5f - ax, qy = y0 + 0.5f - ay;
+  int ro = (int)((pen + 0.5f) * 256), ri = (int)((pen - 0.5f) * 256);
+  int dp = (int)((qx * ey - qy * ex) * il * 256), dpi = (int)(ey * il * 256), dpj = (int)(-ex * il * 256);
+  int tt = (int)((qx * ex + qy * ey) / l2 * 65536), tti = (int)(ex / l2 * 65536), ttj = (int)(ey / l2 * 65536);
+  int ax8 = (int)(ax * 256), ay8 = (int)(ay * 256), bx8 = (int)(bx * 256), by8 = (int)(by * 256);
+  int ro2 = ro >> 4, ri2 = ri > 0 ? ri >> 4 : -1;
+  ro2 *= ro2, ri2 = ri2 > 0 ? ri2 * ri2 : -1; /* (squares in 16ths) */
+  for (int j = y0; j < y1; j++, dp += dpj, tt += ttj) {
+    uint8_t *m = mk + (j - my0) * mw - mx0;
+    int d = dp, t = tt, py = j * 256 + 128, i0 = x0, i1 = x1;
+    if (dpi) { /* only the pixels less than ro across from its line */
+      int a = (-ro - dp) / dpi, b = (ro - dp) / dpi;
+      if (a > b) {
+        int c = a;
+        a = b, b = c;
+      }
+      if (x0 + a - 1 > i0) i0 = x0 + a - 1;
+      if (x0 + b + 2 < i1) i1 = x0 + b + 2;
+      d += dpi * (i0 - x0), t += tti * (i0 - x0);
+    } else if (dp >= ro || dp <= -ro) {
+      continue;
+    }
+    for (int i = i0; i < i1; i++, d += dpi, t += tti) {
+      int v;
+      if (t > 0 && t < 65536) { /* beside it */
+        int a = d < 0 ? -d : d;
+        if (a >= ro) continue;
+        v = a <= ri ? 32 : (ro - a) >> 3;
+      } else { /* round, past an end */
+        int ux = (i * 256 + 128 - (t <= 0 ? ax8 : bx8)) >> 4, uy = (py - (t <= 0 ? ay8 : by8)) >> 4, q = ux * ux + uy * uy;
+        if (q >= ro2) continue;
+        v = q <= ri2 ? 32 : (ro - isqrt(q) * 16) >> 3;
+      }
+      if (v > m[i]) m[i] = (uint8_t)v;
+    }
+  }
+}
+#endif
 static void seg(float ax, float ay, float bx, float by) {
   float ro = pen + 0.5f, ri = pen - 0.5f, ro2 = ro * ro, ri2 = ri > 0 ? ri * ri : -1;
   int x0 = fl((ax < bx ? ax : bx) - ro), x1 = fl((ax > bx ? ax : bx) + ro) + 1;
@@ -355,6 +432,10 @@ static void seg(float ax, float ay, float bx, float by) {
   if (x1 > mx0 + mw) x1 = mx0 + mw;
   if (y0 < my0) y0 = my0;
   if (y1 > my0 + mh) y1 = my0 + mh;
+#ifdef __TICE__
+  if (x1 > x0 && y1 > y0) seg_ce(ax, ay, bx, by, x0, x1, y0, y1);
+  return;
+#endif
   float ex = bx - ax, ey = by - ay, l2 = ex * ex + ey * ey, inv = l2 > 1e-4f ? 1 / l2 : 0;
   for (int j = y0; j < y1; j++) {
     uint8_t *m = mk + (j - my0) * mw - mx0;
@@ -449,6 +530,40 @@ static void text(const char *s, float x, float y, float u, float wt, color c, in
   float w = tw_u(s, u, wt) * u, h = (15 + wt) * u, t = y;
   if (NP_TEXT_EXTRA) t -= 7 * u + 2, h += 7 * u + 4; /* accents over capitals, Chinese letters */
   if (a <= 0 || !hits(x, t, w, h)) return;
+#ifdef __TICE__ /* (the TI-84 Plus CE: each text's whole mask made once, its strokes being float sums a pixel) */
+  static uint8_t pool[16384];
+  static struct {
+    float x, y, u, wt;
+    char s[24];
+    uint16_t at;
+    int16_t x0, y0, w, h;
+  } kept[32];
+  static int used, nkept;
+  int n = 0, X = fl(x), Y = fl(y);
+  while (s[n] && n < 24) n++;
+  x = X + fl((x - X) * 8 + 0.5f) * 0.125f, y = Y + fl((y - Y) * 8 + 0.5f) * 0.125f, t = y; /* (to an eighth of a pixel) */
+  X = fl(x), Y = fl(y);
+  float fx = x - X, fy = y - Y;
+  for (int i = 0; i < nkept; i++)
+    if (kept[i].x == fx && kept[i].y == fy && kept[i].u == u && kept[i].wt == wt && !memcmp(kept[i].s, s, (size_t)n) &&
+        (n == 24 || !kept[i].s[n])) {
+      blit(pool + kept[i].at, X + kept[i].x0, Y + kept[i].y0, kept[i].w, kept[i].h, c, a);
+      return;
+    }
+  int x0 = fl(x), y0 = fl(t), mw_ = fl(x + w) + 1 - x0, mh_ = fl(t + h) + 1 - y0;
+  if (n < 24 && mw_ * mh_ <= (int)sizeof pool) {
+    if (used + mw_ * mh_ > (int)sizeof pool || nkept == 32) used = nkept = 0;
+    mx0 = x0, my0 = y0, mw = mw_, mh = mh_, mk = pool + used;
+    raster(s, x, y, u, wt);
+    kept[nkept].x = fx, kept[nkept].y = fy, kept[nkept].u = u, kept[nkept].wt = wt;
+    memset(kept[nkept].s, 0, sizeof kept[nkept].s), memcpy(kept[nkept].s, s, (size_t)n);
+    kept[nkept].at = (uint16_t)used, kept[nkept].x0 = (int16_t)(x0 - X), kept[nkept].y0 = (int16_t)(y0 - Y);
+    kept[nkept].w = (int16_t)mw_, kept[nkept].h = (int16_t)mh_;
+    nkept++, used += mw_ * mh_;
+    blit(mk, x0, y0, mw_, mh_, c, a);
+    return;
+  }
+#endif
   mx0 = fl(x), my0 = fl(t), mw = fl(x + w) + 1, mh = fl(t + h) + 1;
   if (mx0 < bx0) mx0 = bx0;
   if (my0 < by0) my0 = by0;
@@ -645,6 +760,24 @@ static void tile(const geo_t *g, int e, float x, float y, float s, int a) {
   if (g->cell < 16 || s < 0.5f) return; /* a tile still too small for its number */
   color col = e <= 2 ? INK : LIGHT;
   bool keep = s == 1 && g == &gb;
+#ifdef __TICE__ /* (the TI-84 Plus CE: growing or popping, the number's kept mask scaled, not drawn again) */
+  if (!keep && g == &gb && tc_at[e]) {
+    int w = (int)(tc_w[e] * s + 0.5f), hh = (int)(tc_h[e] * s + 0.5f);
+    float mx = tc_x[e] + tc_w[e] * 0.5f - c * 0.5f, my = tc_y[e] + tc_h[e] * 0.5f - c * 0.5f;
+    int x0 = fl(x + c * 0.5f + mx * s - w * 0.5f + 0.5f), y0 = fl(y + c * 0.5f + my * s - hh * 0.5f + 0.5f);
+    if (w < 1 || hh < 1 || w > 255) return;
+    uint8_t col_of[256];
+    for (int i = 0; i < w; i++) col_of[i] = (uint8_t)(i * tc_w[e] / w);
+    const uint8_t *m = tcm + tc_at[e] - 1;
+    for (int j = y0 < by0 ? by0 : y0; j < y0 + hh && j < by1; j++) {
+      color *p = row(j);
+      const uint8_t *q = m + (j - y0) * tc_h[e] / hh * tc_w[e];
+      for (int i = x0 < bx0 ? bx0 : x0; i < x0 + w && i < bx1; i++)
+        if (q[col_of[i - x0]]) put(p + i, col, q[col_of[i - x0]] * a >> 5);
+    }
+    return;
+  }
+#endif
   if (!(keep && tc_at[e])) {
     /* Cirulli's sizes for 1, 2, 3, 4... digits; small tiles have no room to
        spare, so there every number is as big as it fits */

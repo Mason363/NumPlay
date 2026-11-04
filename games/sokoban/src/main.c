@@ -278,6 +278,9 @@ int main(void) {
   np_app_begin();
   color_t *their_strip = gfx_buf;
   gfx_buf = strip;
+#ifdef __TICE__
+  gfx_pure = true; /* (draws only with gfx_*) */
+#endif
   uint32_t len = 0;
   const uint8_t *d = np_file_read(SAVE_NAME, &len);
   if (d && len == sizeof sv && d[0] == 'S' && d[1] == 1) memcpy(&sv, d, len);

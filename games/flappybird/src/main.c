@@ -60,16 +60,44 @@ static int16_t sn[256]; /* sine, -256..256 */
 #define COS(a) sn[((a) + 64) & 255]
 
 /* f over b; a from 0 (all b) to 32 (all f) */
+#ifdef __TICE__ /* the TI-84 Plus CE: its own mixing (the same colours) */
+#include "../../../platform/ti84ce/ce_draw.h"
+__attribute__((naked)) static color ce_mix(color a, color b, unsigned t) { __asm__(CE_MIX_ASM); }
+#endif
 static color mix(color f, color b, int a) {
+#ifdef __TICE__
+  return ce_mix(b, f, (unsigned)a);
+#else
   uint32_t x = (f | (uint32_t)f << 16) & 0x07E0F81F, y = (b | (uint32_t)b << 16) & 0x07E0F81F;
   y = (y + ((x - y) * (uint32_t)a >> 5)) & 0x07E0F81F;
   return (color)(y | y >> 16);
+#endif
 }
 
 /* ------------------------------------------------------------------ drawing */
+#ifdef __TICE__ /* (the TI-84 Plus CE: rows filled by the C library, or mixed through tables) */
+#include <wchar.h>
+__attribute__((naked)) static void ce_blend(color *p, unsigned n, const uint8_t *t) { __asm__(CE_BLEND_ASM); }
+static uint8_t tab_mem[CE_TABLES + 255];
+#endif
 static void shade(int x, int y, int w, int h, color c, int a) {
   int x0 = imax(x, rx), x1 = imin(x + w, rx + rw), y0 = imax(y, ry), y1 = imin(y + h, ry + rh);
   if (x0 >= x1) return;
+#ifdef __TICE__
+  if (a <= 0) return;
+  if (a >= 32) {
+    for (int j = y0; j < y1; j++) wmemset((wchar_t *)buf + (j - ry) * rw + (x0 - rx), (wchar_t)c, (size_t)(x1 - x0));
+    return;
+  }
+  static color tc;
+  static int ta = -1;
+  uint8_t *m = (uint8_t *)(((unsigned)tab_mem + 255) & ~255u);
+  if (tc != c || ta != a) ce_tables(m, c, (unsigned)a), tc = c, ta = a;
+  for (int j = y0; j < y1; j++)
+    for (int i = x0; i < x1; i += 255)
+      ce_blend(buf + (j - ry) * rw + (i - rx), (unsigned)imin(x1 - i, 255), m);
+  return;
+#endif
   for (int j = y0; j < y1; j++)
     for (color *p = buf + (j - ry) * rw + (x0 - rx), *e = p + (x1 - x0); p < e; p++) *p = a >= 32 ? c : mix(c, *p, a);
 }
@@ -265,6 +293,45 @@ static void letters(const char *s, int k, int drop, color top, color bot) {
   lw = n * a - a + 5 * k + 1 + 2 * p, lh = 8 * k + 2 * p + drop;
 #endif
   uint8_t *hd = (uint8_t *)buf; /* distance to the nearest letter pixel in the row */
+#if defined(__TICE__) && !NP_TEXT_EXTRA /* (the TI-84 Plus CE: the divisions and squares from tables) */
+  static uint8_t ua[LMW], uc[LMW], ck[64], vk[64], sq[64];
+  for (int x = 0, q = 0, c = 0; x < lw; x++)
+    if (x >= p) {
+      ua[x] = (uint8_t)q, uc[x] = (uint8_t)c;
+      if (++c == a) c = 0, q++;
+    }
+  for (int i = 0, q = 0, r = 0; i < 64; i++, r++) {
+    if (r == k) r = 0, q++;
+    ck[i] = vk[i] = (uint8_t)q, sq[i] = (uint8_t)(i * i < 255 ? i * i : 255);
+  }
+  for (int y = 0; y < lh; y++) {
+    uint8_t *h = hd + y * lw;
+    int d = R, v = y - p;
+    for (int x = 0; x < lw; x++) {
+      int c = uc[x];
+      bool on = x >= p && v >= 0 && v < 8 * k &&
+                (fpix(s[ua[x]], ck[c], vk[v]) || (c && fpix(s[ua[x]], ck[c - 1], vk[v])));
+      d = on ? 0 : imin(d + 1, R);
+      h[x] = (uint8_t)d;
+    }
+    for (int x = lw - 2; x >= 0; x--) h[x] = (uint8_t)imin(h[x], h[x + 1] + 1);
+  }
+  for (int i = 0; i < LMW * LMH / 4; i++) lmap[i] = 0;
+  for (int y = 0, i = 0; y < lh; y++)
+    for (int x = 0; x < lw; x++, i++) {
+      int da = 99, db = 99;
+      for (int dy = imax(-R, -drop - 3); dy <= imin(R, 3); dy++) { /* (farther, no square is under 13) */
+        int yy = y + dy;
+        if (yy < 0 || yy >= lh) continue;
+        int e = sq[hd[yy * lw + x]], v = dy < 0 ? imax(-dy - drop, 0) : dy;
+        da = imin(da, e + sq[dy < 0 ? -dy : dy]);
+        db = imin(db, e + sq[v]);
+      }
+      int c = !da ? 3 : da <= 2 ? 2 : db <= 12 ? 1 : 0;
+      lmap[i >> 2] |= (uint8_t)(c << (i & 3) * 2);
+    }
+  if (0)
+#endif
   for (int y = 0; y < lh; y++) {
     uint8_t *h = hd + y * lw;
     int d = R;
@@ -280,6 +347,10 @@ static void letters(const char *s, int k, int drop, color top, color bot) {
     }
     for (int x = lw - 2; x >= 0; x--) h[x] = (uint8_t)imin(h[x], h[x + 1] + 1);
   }
+#if defined(__TICE__) && !NP_TEXT_EXTRA
+  if (0)
+#endif
+  {
   for (int i = 0; i < LMW * LMH / 4; i++) lmap[i] = 0;
   for (int y = 0; y < lh; y++)
     for (int x = 0; x < lw; x++) {
@@ -294,6 +365,7 @@ static void letters(const char *s, int k, int drop, color top, color bot) {
       int i = y * lw + x, c = !da ? 3 : da <= 2 ? 2 : db <= 12 ? 1 : 0;
       lmap[i >> 2] |= (uint8_t)(c << (i & 3) * 2);
     }
+  }
   for (int y = 0; y < lh; y++) {
     int t = clamp((y - p) * 32 / (7 * k), 0, 32);
     lfill[y] = mix(bot, top, t);
@@ -366,6 +438,27 @@ static void ground_row(color *d, int y) {
   for (int x = 0; x < rw; x++) d[x] = c;
 }
 static void background(void) {
+#ifdef __TICE__ /* (the TI-84 Plus CE: a column at a time, its runs of one colour filled straight) */
+  int ye = imin(ry + rh, GY);
+  for (int x = rx; x < rx + rw && ye > ry; x++) {
+    color *d = buf + (x - rx);
+    int y = ry, c2 = ct[x], c3 = bt[x], b = imin(c2, c3), c1 = imin(cl[x], b), f = bf[x]; /* (the bushes first, then
+                                                                                          the buildings, the clouds) */
+    for (int e = imin(c1, ye); y < e; y++, d += rw) *d = th[0];
+    if (y == cl[x] && y < imin(b, ye)) *d = th[2], y++, d += rw;
+    for (int e = imin(b, ye); y < e; y++, d += rw) *d = th[1];
+    for (int e = imin(c3, ye); y < e; y++, d += rw) {
+      int t = y - c2, i = 3;
+      if (!t || (f & 1)) i = 4;
+      else if ((f & 2) && (t & 3) >= 2) i = night && ((x >> 2) * 7 + (t >> 2) * 5 + c2) % 4 == 0 ? 6 : 5;
+      *d = th[i];
+    }
+    if (y == c3 && y < ye) *d = th[8], y++, d += rw;
+    for (; y < ye; y++, d += rw) *d = th[7];
+  }
+  for (int y = imax(ry, GY); y < ry + rh; y++) ground_row(buf + (y - ry) * rw, y);
+  return;
+#endif
   for (int y = ry; y < ry + rh; y++) {
     color *d = buf + (y - ry) * rw;
     if (y >= GY) {

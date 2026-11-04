@@ -276,11 +276,27 @@ static void step(void) {
 
 /* ------------------------------------------------------------ drawing */
 static inline void px(int x, int y, color_t c) {
-  if ((unsigned)x < SCREEN_W && y >= gfx_y0 && y < gfx_y1) gfx_buf[(y - gfx_y0) * SCREEN_W + x] = c;
+  if ((unsigned)x < SCREEN_W && y >= gfx_y0 && y < gfx_y1) {
+#ifdef __TICE__
+    if (gfx_listing) { /* (its strip is drawn every time) */
+      gfx_list_rows(y, y + 1);
+      return;
+    }
+#endif
+    gfx_buf[(y - gfx_y0) * SCREEN_W + x] = c;
+  }
 }
 static void line(float x0, float y0, float x1, float y1, color_t c) {
   float dx = x1 - x0, dy = y1 - y0, n = fabs_(dx) > fabs_(dy) ? fabs_(dx) : fabs_(dy);
   if ((y0 < gfx_y0 - 1 && y1 < gfx_y0 - 1) || (y0 > gfx_y1 && y1 > gfx_y1)) return;
+#ifdef __TICE__ /* (the TI-84 Plus CE: the same points, stepping in 65536ths of a pixel) */
+  {
+    int32_t fx = (int32_t)(x0 * 65536), fy = (int32_t)(y0 * 65536), m = (int)n;
+    int32_t sx = (int32_t)(dx / (n + 0.01f) * 65536), sy = (int32_t)(dy / (n + 0.01f) * 65536);
+    for (int i = 0; i <= m; i++, fx += sx, fy += sy) px((int)(fx >> 16), (int)(fy >> 16), c);
+    return;
+  }
+#endif
   for (int i = 0; i <= (int)n; i++) px((int)(x0 + dx * i / (n + 0.01f)), (int)(y0 + dy * i / (n + 0.01f)), c);
 }
 
@@ -356,6 +372,34 @@ static void ball_at(int cx, int cy, float rad, int skin, float rc, float rs) {
   col[4] = HEX(0x111111);
   int n = (int)rad + 2;
   float inv = 1.0f / rad;
+#ifdef __TICE__ /* (the TI-84 Plus CE: in 32nds of a pixel, the same tests squared: no float, no square root) */
+  {
+    int RC = (int)(rc * 32), RS = (int)(rs * 32), r32 = (int)(rad * 32), w = 16; /* (w: half a pixel) */
+    int in2 = (r32 - 32) * (r32 - 32), out2 = r32 * r32, cx1 = (int)(1.1f * r32), ar = (int)(0.78f * r32);
+    int lo = (ar - w) * (ar - w), hi = (ar + w) * (ar + w), l1 = (int)(0.35f * rad * 160), l2 = (int)(-0.3f * rad * 160);
+    for (int y = -n; y <= n; y++) {
+      int sy = cy + y;
+      if (sy < gfx_y0 || sy >= gfx_y1) continue;
+      for (int x = -n; x <= n; x++) {
+        int d2 = (x * x + y * y) * 1024;
+        if (d2 > out2) continue;
+        color_t c;
+        if (d2 > in2) c = col[4];
+        else {
+          int u = x * RC + y * RS, v = y * RC - x * RS, v2 = v * v;
+          int q1 = (u - cx1) * (u - cx1) + v2, q2 = (u + cx1) * (u + cx1) + v2;
+          if ((u < w && u > -w) || (v < w && v > -w) || (q1 > lo && q1 < hi) || (q2 > lo && q2 < hi)) c = col[3];
+          else {
+            int l = -96 * x - 112 * y; /* (-0.6 and -0.7, times 160) */
+            c = l > l1 ? col[0] : l > l2 ? col[1] : col[2];
+          }
+        }
+        px(cx + x, sy, c);
+      }
+    }
+    return;
+  }
+#endif
   for (int y = -n; y <= n; y++) {
     int sy = cy + y;
     if (sy < gfx_y0 || sy >= gfx_y1) continue;
@@ -385,6 +429,39 @@ static void wing(int jx, int jy, float c, float s, bool back) {
   static const float fe[3][4] = {{6.2f, 2.0f, 6.6f, 2.2f}, {4.8f, -0.4f, 5.0f, 1.8f}, {3.4f, -2.5f, 3.6f, 1.5f}};
   color_t ink = HEX(0x111111), col[3] = {0xFFFF, HEX(0xEBEBEB), HEX(0xDEDEDE)};
   if (back) col[0] = col[1] = col[2] = HEX(0xC8C8C8);
+#ifdef __TICE__ /* (the TI-84 Plus CE: each way the wing turns worked out once, its pixels' colours) */
+  static struct {
+    float c, s;
+    uint8_t k[27 * 27]; /* 0 none, 1-3 a feather, 4 the ink */
+  } shapes[6];
+  static int nshapes;
+  int i = 0;
+  while (i < nshapes && (shapes[i].c != c || shapes[i].s != s)) i++;
+  if (i == nshapes) {
+    if (i == 6) i = 0, nshapes = 0;
+    shapes[i].c = c, shapes[i].s = s, nshapes++;
+    for (int y = -13, n = 0; y <= 13; y++)
+      for (int x = -13; x <= 13; x++, n++) {
+        float wx = -(x * c + y * s), wy = -(y * c - x * s);
+        shapes[i].k[n] = 0;
+        for (int k = 0; k < 3; k++) {
+          float dx = (wx - fe[k][0]) / (fe[k][2] + 1), dy = (wy - fe[k][1]) / (fe[k][3] + 1), e = dx * dx + dy * dy;
+          if (e >= 1) continue;
+          dx = (wx - fe[k][0]) / fe[k][2], dy = (wy - fe[k][1]) / fe[k][3];
+          shapes[i].k[n] = (uint8_t)(dx * dx + dy * dy < 1 ? k + 1 : 4);
+          break;
+        }
+      }
+  }
+  const uint8_t *m = shapes[i].k;
+  for (int y = -13; y <= 13; y++, m += 27) {
+    int sy = jy + y;
+    if (sy < gfx_y0 || sy >= gfx_y1) continue;
+    for (int x = 0; x < 27; x++)
+      if (m[x]) px(jx - 13 + x, sy, m[x] == 4 ? ink : col[m[x] - 1]);
+  }
+  return;
+#endif
   for (int y = -13; y <= 13; y++) {
     int sy = jy + y;
     if (sy < gfx_y0 || sy >= gfx_y1) continue;
@@ -524,6 +601,9 @@ int main(void) {
   np_app_begin();
   color_t *their_strip = gfx_buf;
   gfx_buf = strip;
+#ifdef __TICE__
+  gfx_pure = true; /* (its own pixels make their strips drawn every time) */
+#endif
   now = (uint32_t)eadk_timing_millis();
   load();
   if (sv.flags & 1) ready = true, best0 = sv.best, cam = RUN.x - BALL_SX / PX;

@@ -514,6 +514,12 @@ static int cat_w, cat_h, cell_w;
 
 static inline void blend(int x, int y, color_t c, int a) {
   if (a > 0 && x >= 0 && x < SCREEN_W && y >= gfx_y0 && y < gfx_y1) {
+#ifdef __TICE__
+    if (gfx_listing) { /* (its strip is drawn every time) */
+      gfx_list_rows(y, y + 1);
+      return;
+    }
+#endif
     color_t *p = gfx_buf + (y - gfx_y0) * SCREEN_W + x;
     *p = a >= 32 ? c : gfx_mix(*p, c, a);
   }

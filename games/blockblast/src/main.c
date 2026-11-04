@@ -11,6 +11,9 @@
 #include <eadk.h>
 #include "../../../launcher/src/gfx.h"
 #include "../../common/np_text.h"
+#ifdef __TICE__
+#include <string.h>
+#endif
 
 #if NP_MODULE /* (np_file_read and np_file_write: NumPlay's, launcher/src/np.h) */
 #define np_app_begin()
@@ -70,9 +73,16 @@ static const uint32_t pieces[] = {
 };
 #define NP (int)(sizeof pieces / sizeof pieces[0])
 /* every cell of block p, row r and column c (shifted up, its first cell is the top bit) */
+#ifdef __TICE__ /* (the TI-84 Plus CE: no division) */
+#define EACH(p)                                                                      \
+  for (int r = 0, c = 0, o_ = 1; o_; o_ = 0)                                         \
+    for (uint32_t m_ = pieces[p] << 7; m_; m_ <<= 1, ++c == 5 ? (c = 0, r++) : 0) \
+      if ((int32_t)m_ < 0)
+#else
 #define EACH(p)                                                      \
   for (uint32_t m_ = pieces[p] << 7, b_ = 0; m_; m_ <<= 1, b_++) \
     for (int r = (int)b_ / 5, c = (int)b_ % 5, o_ = (int32_t)m_ < 0; o_; o_ = 0)
+#endif
 
 /* blue, orange, green, purple, yellow, cyan, red, and grey for what can't go anywhere */
 static const uint32_t faces[9] = {0, 0x345CEF, 0xF35C17, 0x28CB30, 0x9655E5, 0xFBD008, 0x19C4F0, 0xD53D38, 0x737A9C};
@@ -235,7 +245,17 @@ static void place(void) {
 /* ------------------------------------------------------------ drawing */
 /* a block, s pixels a side: its face framed by bevels, the top lightest, then the left, the
    right, and the bottom darkest, meeting on the diagonals */
+#ifdef __TICE__ /* (the TI-84 Plus CE: one call in the strips' lists) */
+static void block_at(const int *a);
 static void block(int x, int y, int s, int c) {
+  const int a[] = {x, y, s, c};
+  gfx_call(block_at, a, 4, x, y, s, s);
+}
+static void block_at(const int *a) {
+  int x = a[0], y = a[1], s = a[2], c = a[3];
+#else
+static void block(int x, int y, int s, int c) {
+#endif
   const color_t *k = shade[c];
   gfx_fill(x, y, s, s, k[4]);
   for (int i = 0, b = s > 14 ? 4 : 2; i < b; i++) {
@@ -398,6 +418,9 @@ int main(void) {
   np_app_begin();
   color_t *their_strip = gfx_buf;
   gfx_buf = strip;
+#ifdef __TICE__
+  gfx_pure = true; /* (draws only with gfx_*) */
+#endif
   for (int c = 1; c < 9; c++) {
     static const uint8_t by[5] = {115, 60, 50, 120, 0}; /* towards black, then white */
     for (int i = 0; i < 5; i++) shade[c][i] = gfx_rgb(gfx_lerp888(faces[c], i < 2 ? 0 : 0xFFFFFF, by[i]));
@@ -457,7 +480,16 @@ int main(void) {
       EACH(p) b[(sv.cy + r) * N + sv.cx + c] = 1;
       hl = full(b);
     }
+#ifdef __TICE__ /* (only when the board or the blocks changed) */
+    static uint8_t seen[N * N + 3];
+    static bool known;
+    if (!known || memcmp(seen, sv.board, N * N) || memcmp(seen + N * N, sv.tray, 3)) {
+      known = true, memcpy(seen, sv.board, N * N), memcpy(seen + N * N, sv.tray, 3);
+      for (int i = 0; i < 3; i++) can[i] = sv.tray[i] >= 0 && placeable(sv.tray[i]);
+    }
+#else
     for (int i = 0; i < 3; i++) can[i] = sv.tray[i] >= 0 && placeable(sv.tray[i]);
+#endif
     if (shown != sv.score) shown += (sv.score - shown + 5) / 6;
     eadk_display_wait_for_vblank();
     gfx_render(scene, 0, 0, SCREEN_H);

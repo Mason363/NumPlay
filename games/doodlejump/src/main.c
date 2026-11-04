@@ -470,6 +470,9 @@ int main(void) {
   np_app_begin();
   color_t *their_strip = gfx_buf;
   gfx_buf = strip;
+#ifdef __TICE__
+  gfx_pure = true; /* (draws only with gfx_*) */
+#endif
   now = (uint32_t)eadk_timing_millis();
   load();
   if (sv.flags & 1) frozen = true, best0 = sv.best;
