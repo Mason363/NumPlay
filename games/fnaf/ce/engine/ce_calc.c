@@ -19,6 +19,7 @@ static uint8_t save_handle;
 
 bool ce_init(void) {
   kb_DisableOnLatch();
+  kb_SetMode(MODE_3_CONTINUOUS);   /* (the keys always there: no waiting for a scan) */
   gfx_Begin();
   gfx_SetDrawBuffer();
   memset(gfx_palette, 0, 512);
@@ -34,22 +35,34 @@ void ce_quit(void) {
     save_handle = 0;
   }
   gfx_End();
+  kb_Reset();
   /* a key still down would act on the home screen: wait until it is let go (2 seconds at most) */
   for (clock_t t = clock(); ce_keys() && clock() - t < 2 * CLOCKS_PER_SEC;) {}
   os_ClrHomeFull();
 }
 
+uint32_t ce_frames;
+static bool waiting, keeping;   /* shown, scr not ready yet (ce_wait); to be the shown frame's copy */
+
 void ce_show(bool keep) {
+  ce_frames += keep ? 3 : 1;
   gfx_SwapDraw();
+  waiting = true, keeping = keep;
   if (ce_pal_dirty) {   /* the palette as the new frame starts: once the LCD has taken its address (gfx_SwapDraw
                          * cleared the flag) */
     while (!(lcd_IntStatus & LCD_INT_LNBU)) {}
     memcpy(gfx_palette, ce_pal, sizeof ce_pal);
     ce_pal_dirty = false;
+    ce_wait();
   }
+}
+
+void ce_wait(void) {
+  if (!waiting) return;
   gfx_Wait();
+  waiting = false;
   scr = (uint8_t *)gfx_vbuffer;
-  if (keep) memcpy(scr, scr == gfx_vram ? gfx_vram + SCR_W * SCR_H : gfx_vram, SCR_W * SCR_H);
+  if (keeping) memcpy(scr, scr == gfx_vram ? gfx_vram + SCR_W * SCR_H : gfx_vram, SCR_W * SCR_H);
 }
 
 uint32_t ce_keys(void) {
@@ -64,7 +77,6 @@ uint32_t ce_keys(void) {
     {3, kb_4, CK_DIGIT(4)}, {4, kb_5, CK_DIGIT(5)}, {5, kb_6, CK_DIGIT(6)}, {3, kb_7, CK_DIGIT(7)},
     {4, kb_8, CK_DIGIT(8)}, {5, kb_9, CK_DIGIT(9)},
   };
-  kb_Scan();
   uint32_t k = 0;
   for (unsigned i = 0; i < sizeof map / sizeof map[0]; i++)
     if (kb_Data[map[i].group] & map[i].bit) k |= map[i].key;

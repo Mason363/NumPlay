@@ -43,7 +43,10 @@ void scene_want(int pic) {
   int from = n - 1;
   if (chain[from] == scene_pic) from--;
   scene_pic = -1;
-  for (int k = from; k >= 0; k--) pic_into(chain[k], scene, SCENE_W);
+  bool wide = pic_w(pic) == SCR_W / 2;
+  for (int k = from; k >= 0; k--)
+    if (wide) pic_into_wide(chain[k], scene, SCR_W);
+    else pic_into(chain[k], scene, SCENE_W);
   scene_pic = pic;
 }
 
@@ -127,6 +130,7 @@ int main(void) {
     if (acc > 32768 * 8) acc = 0;   /* far behind: no rush */
     if (!g.running) break;
     if (steps) {
+      ce_wait();
       game_draw();
       ce_show(keep_frame);
       keep_frame = false;

@@ -32,11 +32,23 @@ const uint8_t *map_remap(int group, int which);   /* 0: each colour darker, 1: l
 int pic_group_of(int pic);
 void pic_into(int pic, uint8_t *dst, int stride);
 void pic_full(int pic, uint8_t *dst, int stride);
+void pic_into_wide(int pic, uint8_t *dst, int stride);   /* (pic_into, each pixel twice across) */
 int pic_w(int pic);
 int pic_h(int pic);
 
-/* drawing on scr, clipped to the screen */
+/* drawing on scr, clipped to the screen and to d_clip's box (the whole screen to start with); d_touch: the box of
+ * the screen that the drawing since it was emptied (BOX_NONE) would have covered, clipped or not */
+typedef struct {
+  int x0, y0, x1, y1;
+} Box;
+#define BOX_NONE ((Box){SCR_W, SCR_H, 0, 0})
+#define BOX_ALL ((Box){0, 0, SCR_W, SCR_H})
+extern Box d_touch;
+void d_clip(Box b);
+bool d_meets(Box b);   /* the clip meets b */
 void d_fill(int x, int y, int w, int h, uint8_t c);
+/* n runs of c (y, x, length: bytes, y never going back) from (x, y), all on the screen and in the clip */
+void ce_runs(uint8_t *at, const uint8_t *runs, int n, uint8_t c);
 void d_frame(int x, int y, int w, int h, uint8_t c);
 void d_remap(int x, int y, int w, int h, const uint8_t *lut);
 /* (sx, sy, w, h) of an image (stride bytes a row) at (x, y): rows doubled (dbl: the image's rows are half) */

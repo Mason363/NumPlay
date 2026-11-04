@@ -20,6 +20,10 @@ bool ce_init(void);             /* false: the data is missing (ce_missing names 
 void ce_quit(void);
 /* shows the frame drawn; keep: the next frame starts as a copy of it */
 void ce_show(bool keep);
+/* scr ready to be drawn into (after ce_show the LCD may not have taken the frame yet): before drawing */
+void ce_wait(void);
+/* frames shown: a buffer holds what was drawn into it 2 frames ago (a frame kept counts as 3) */
+extern uint32_t ce_frames;
 
 /* the keys held: the CE's (CK_*) */
 enum {

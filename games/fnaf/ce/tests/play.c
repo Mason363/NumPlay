@@ -171,9 +171,9 @@ int main(int argc, char **argv) {
   }
   ce_quit();
   printf("END scene %d night %d hour %d power %d t %.1f frames %d running %d paused %d reached %d stars %d "
-         "pos %d,%d,%d foxy %d gold %d dark %d muted %d ai %d,%d,%d,%d doors %d,%d cam %d keys_seen %d pounds %d\n",
+         "pos %d,%d,%d foxy %d gold %d dark %d muted %d ai %d,%d,%d,%d doors %d,%d cam %d keys_seen %d pounds %d partial %d wrong %d\n",
          g.scene, g.n.night, g.n.hour, g.n.power, g.n.t, f, g.running, g.paused, g.reached, g.stars, g.n.pos[0],
          g.n.pos[1], g.n.pos[2], g.n.foxy, g.n.gold, g.n.dark, g.n.call_muted, g.n.ai[0], g.n.ai[1], g.n.ai[2],
-         g.n.ai[3], g.n.door[0], g.n.door[1], g.n.cam, g.keys_seen, g.n.foxy_pounds);
+         g.n.ai[3], g.n.door[0], g.n.door[1], g.n.cam, g.keys_seen, g.n.foxy_pounds, view_partial, view_wrong);
   return 0;
 }

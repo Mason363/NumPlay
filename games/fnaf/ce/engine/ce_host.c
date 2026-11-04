@@ -29,7 +29,10 @@ bool ce_init(void) {
 
 void ce_quit(void) { ce_save_done(); }
 
+uint32_t ce_frames;
+
 void ce_show(bool keep) {
+  ce_frames += keep ? 3 : 1;
   if (ce_pal_dirty) memcpy(shown_pal, ce_pal, sizeof ce_pal), ce_pal_dirty = false;
   shown ^= 1;
   scr = buffers[shown ^ 1];
@@ -37,6 +40,7 @@ void ce_show(bool keep) {
   host_frames++;
 }
 
+void ce_wait(void) {}
 uint32_t ce_keys(void) { return host_keys; }
 uint32_t ce_ticks(void) { return host_ticks; }
 

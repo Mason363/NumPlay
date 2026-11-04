@@ -7,7 +7,7 @@ FLAGS = -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -Wno-missing-field
 SRC = src/main.c src/scenes.c src/view.c src/save.c src/rules.c engine/pic.c engine/gfx.c engine/ce_host.c
 HEADERS = $(wildcard src/*.h engine/*.h ../src/*.h) ../src/game.c ../src/night.c ../src/calls.c
 
-.PHONY: all test clean
+.PHONY: all test test-ce clean
 all: build/play build/pics
 
 build/play: $(SRC) tests/play.c $(HEADERS)
@@ -21,6 +21,10 @@ build/pics: engine/pic.c engine/gfx.c engine/ce_host.c tests/pics.c $(HEADERS)
 
 test: build/play build/pics
 	python3 tests/check.py build/play build/pics
+
+# (with the calculator's decoder in tools/ce_emu too: the CE toolchain on PATH)
+test-ce: build/play build/pics
+	python3 tests/check.py build/play build/pics --ce
 
 clean:
 	$(Q)rm -rf build

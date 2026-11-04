@@ -21,4 +21,7 @@ bool pic_keeps(const uint8_t *pic); /* some blocks keep what dst holds */
 void pic_decode(const uint8_t *pic, uint8_t *dst, int stride, const uint8_t *map, uint8_t *temp);
 /* (the grid's blocks into pixels: pic_ez80.s on the calculator) */
 void pic_expand(const uint8_t *grid, uint8_t *dst, int stride, int bw, int bh, const uint8_t *map);
+/* the same, each pixel twice across (dst twice as wide: bw at most 255) */
+void pic_decode_wide(const uint8_t *pic, uint8_t *dst, int stride, const uint8_t *map, uint8_t *temp);
+void pic_expand_wide(const uint8_t *grid, uint8_t *dst, int stride, int bw, int bh, const uint8_t *map);
 #endif

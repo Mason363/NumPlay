@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Checks of the CE version of Five Nights at Freddy's on a computer (make -f host.mk test): every picture decoded
 as tools/pack.py made it, the menus, whole nights played by tests/play.c's own player, each animatronic's attack,
-the power going out, Golden Freddy, the custom night, pausing, Home and the save, and random keys.
+the power going out, Golden Freddy, the custom night, pausing, Home and the save, and random keys. With --ce, the
+calculator's own decoder too (tests/ce_pics in tools/ce_emu: the CE toolchain's cedev-config on PATH).
 
-    python3 tests/check.py build/play build/pics [--quick]"""
+    python3 tests/check.py build/play build/pics [--quick] [--ce]"""
 import os
 import random
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -15,6 +17,8 @@ import tempfile
 PLAY = sys.argv[1] if len(sys.argv) > 1 else "build/play"
 PICTURES = sys.argv[2] if len(sys.argv) > 2 else "build/pics"
 QUICK = "--quick" in sys.argv
+CE = "--ce" in sys.argv
+HERE = os.path.dirname(os.path.abspath(__file__))
 ENV = dict(os.environ, ASAN_OPTIONS="detect_leaks=0", UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1")
 failures = []
 SC_TITLE, SC_NIGHT, SC_SCARE, SC_SIX, SC_PAPER, SC_OVER, SC_CUSTOM = 0, 4, 5, 6, 7, 8, 9
@@ -47,6 +51,9 @@ def run(args, frames, saves=None, what=""):
         s[k] = [int(x) for x in v.split(",")] if "," in v else float(v) if "." in v else int(v)
     events = [dict(zip(e.split()[1::2], e.split()[2::2]), kind=e.split()[0])
               for e in re.findall(r"EVENT (.*)", p.stdout)]
+    if s.get("wrong"):
+        failures.append(f"{what or args}: {s['wrong']} of {s['partial']} office frames drawn where they changed "
+                        "aren't as drawn whole")
     return s, events
 
 
@@ -63,6 +70,36 @@ def save_file(saves):
 # every picture decodes as it was made
 p = subprocess.run([PICTURES], capture_output=True, text=True, env=ENV, timeout=600)
 check(p.returncode == 0 and "runtime error" not in p.stderr, f"pictures: {p.stdout[-300:]} {p.stderr[-1500:]}")
+
+# the calculator's decoder (eZ80): every picture's sums as the computer's, and the jumpscares decoded twice across
+# as the plain decoding
+if CE:
+    game = os.path.dirname(HERE)
+    root = os.path.abspath(os.path.join(game, "..", "..", ".."))
+    for d in (game, os.path.join(HERE, "ce_pics")):
+        p = subprocess.run(["make", "-C", d], capture_output=True, text=True)
+        check(p.returncode == 0, f"the CE build in {d}: {p.stdout[-500:]} {p.stderr[-1500:]}")
+    out = tempfile.mkdtemp(prefix="fnafce_pics_")
+    appvars = sorted(f for f in os.listdir(os.path.join(game, "bin")) if re.match(r"FNAFD\d+\.8xv$", f))
+    p = subprocess.run([sys.executable, os.path.join(root, "tools", "ce_emu.py"),
+                        os.path.join(HERE, "ce_pics", "bin", "PICTEST.8xp")] +
+                       [os.path.join(game, "bin", f) for f in appvars] +
+                       ["--ms", "120000", "--out", out, "--vars-out", out], capture_output=True, text=True)
+    sums = os.path.join(out, "host.sums")
+    subprocess.run([PICTURES, "--sums", sums], capture_output=True, env=ENV)
+    var = os.path.join(out, "FNAFSUM.8xv")
+    if not os.path.exists(var) or not os.path.exists(sums):
+        failures.append(f"the CE decoder: no sums {p.stdout[-500:]}")
+    else:
+        v = open(var, "rb").read()
+        data = v[55 + 17 + 2:-2]   # (an .8xv: its header, the variable's entry, the data's size)
+        host = open(sums, "rb").read()
+        n = len(host) // 4
+        bad = [i for i in range(n) if data[4 * i:4 * i + 4] != host[4 * i:4 * i + 4]]
+        wide = struct.unpack("<I", data[4 * n + 4:4 * n + 8])[0]
+        check(not bad, f"the CE decoder: pictures {bad[:20]} aren't as on the computer")
+        check(wide == 0, f"the CE decoder: {wide} pixels decoded twice across aren't as the plain decoding")
+    shutil.rmtree(out, ignore_errors=True)
 
 # the title, New Game, the newspaper (skipped), how to play, the first night's card, then the office
 saves = tempfile.mkdtemp(prefix="fnafce_check_")

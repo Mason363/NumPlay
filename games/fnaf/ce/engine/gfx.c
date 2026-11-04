@@ -22,6 +22,9 @@ void ce_alpha(const uint8_t *rows, int stride, int h, uint8_t *dst, const uint8_
         if (b >> 6) dst[4 * n + k] = ink[b >> 6];
     }
 }
+void ce_runs(uint8_t *at, const uint8_t *runs, int n, uint8_t c) {
+  for (; n--; runs += 3) memset(at + runs[0] * SCR_W + runs[1], c, runs[2]);
+}
 #endif
 
 static Assets A;
@@ -73,6 +76,13 @@ void pic_into(int pic, uint8_t *dst, int stride) {
   pic_decode(p, dst, stride, maps[slot_of(A.pic_group[pic])], in_place ? NULL : temp);
 }
 
+void pic_into_wide(int pic, uint8_t *dst, int stride) {
+  const uint8_t *p = asset(A.pic_first + pic);
+  bool in_place = !pic_keeps(p) && stride == 2 * pic_width(p);
+  if (!in_place) gfx_temp_uses++;
+  pic_decode_wide(p, dst, stride, maps[slot_of(A.pic_group[pic])], in_place ? NULL : temp);
+}
+
 void pic_full(int pic, uint8_t *dst, int stride) {
   int base = pic_base(asset(A.pic_first + pic));
   if (base >= 0) pic_full(base, dst, stride);
@@ -80,18 +90,50 @@ void pic_full(int pic, uint8_t *dst, int stride) {
 }
 
 /* ------------------------------------------------------------------ drawing */
+Box d_touch;
+static Box cl = {0, 0, SCR_W, SCR_H};
+
+void d_clip(Box b) {
+  cl.x0 = b.x0 > 0 ? b.x0 : 0, cl.y0 = b.y0 > 0 ? b.y0 : 0;
+  cl.x1 = b.x1 < SCR_W ? b.x1 : SCR_W, cl.y1 = b.y1 < SCR_H ? b.y1 : SCR_H;
+}
+
+bool d_meets(Box b) { return b.x0 < cl.x1 && b.x1 > cl.x0 && b.y0 < cl.y1 && b.y1 > cl.y0; }
+
+/* (x0, y0) to (x1, y1) on the screen: in d_touch, then clipped (false: nothing left) */
+static bool box_clip(int *x0, int *y0, int *x1, int *y1) {
+  if (*x0 < 0) *x0 = 0;
+  if (*y0 < 0) *y0 = 0;
+  if (*x1 > SCR_W) *x1 = SCR_W;
+  if (*y1 > SCR_H) *y1 = SCR_H;
+  if (*x0 >= *x1 || *y0 >= *y1) return false;
+  if (*x0 < d_touch.x0) d_touch.x0 = *x0;
+  if (*y0 < d_touch.y0) d_touch.y0 = *y0;
+  if (*x1 > d_touch.x1) d_touch.x1 = *x1;
+  if (*y1 > d_touch.y1) d_touch.y1 = *y1;
+  if (*x0 < cl.x0) *x0 = cl.x0;
+  if (*y0 < cl.y0) *y0 = cl.y0;
+  if (*x1 > cl.x1) *x1 = cl.x1;
+  if (*y1 > cl.y1) *y1 = cl.y1;
+  return *x0 < *x1 && *y0 < *y1;
+}
+
 static bool clip(int *x, int *y, int *w, int *h, int *sx, int *sy) {
-  if (*x < 0) *sx -= *x, *w += *x, *x = 0;
-  if (*y < 0) *sy -= *y, *h += *y, *y = 0;
-  if (*x + *w > SCR_W) *w = SCR_W - *x;
-  if (*y + *h > SCR_H) *h = SCR_H - *y;
-  return *w > 0 && *h > 0;
+  int x0 = *x, y0 = *y, x1 = x0 + *w, y1 = y0 + *h;
+  if (!box_clip(&x0, &y0, &x1, &y1)) return false;
+  *sx += x0 - *x, *sy += y0 - *y;
+  *x = x0, *y = y0, *w = x1 - x0, *h = y1 - y0;
+  return true;
 }
 
 void d_fill(int x, int y, int w, int h, uint8_t c) {
   int sx = 0, sy = 0;
   if (!clip(&x, &y, &w, &h, &sx, &sy)) return;
-  for (uint8_t *p = scr + y * SCR_W + x; h--; p += SCR_W) memset(p, c, (size_t)w);
+  uint8_t *p = scr + y * SCR_W + x;
+  if (w == 1)
+    for (; h--; p += SCR_W) *p = c;
+  else
+    for (; h--; p += SCR_W) memset(p, c, (size_t)w);
 }
 
 void d_frame(int x, int y, int w, int h, uint8_t c) {
@@ -104,7 +146,7 @@ void d_frame(int x, int y, int w, int h, uint8_t c) {
 void d_remap(int x, int y, int w, int h, const uint8_t *lut) {
   int sx = 0, sy = 0;
   if (!clip(&x, &y, &w, &h, &sx, &sy)) return;
-  for (uint8_t *row = scr + y * SCR_W + x; h--; row += SCR_W) ce_remap(row, w, lut);
+  for (uint8_t *row = scr + y * SCR_W + x; h--; row += SCR_W) ce_remap(row, w, lut);   /* (w at most 320) */
 }
 
 void d_blit(const uint8_t *src, int stride, int sx, int sy, int w, int h, int x, int y, bool dbl) {
@@ -114,17 +156,15 @@ void d_blit(const uint8_t *src, int stride, int sx, int sy, int w, int h, int x,
     for (uint8_t *p = scr + y * SCR_W + x; h--; p += SCR_W, s += stride) memcpy(p, s, (size_t)w);
     return;
   }
-  /* rows doubled: source row r at screen rows y + 2r and y + 2r + 1 */
-  if (x < 0) sx -= x, w += x, x = 0;
-  if (x + w > SCR_W) w = SCR_W - x;
-  if (w <= 0) return;
-  for (int r = 0; r < h; r++) {
-    int yy = y + 2 * r;
-    if (yy + 1 < 0 || yy >= SCR_H) continue;
-    const uint8_t *s = src + (sy + r) * stride + sx;
-    if (yy >= 0) memcpy(scr + yy * SCR_W + x, s, (size_t)w);
-    if (yy + 1 < SCR_H) memcpy(scr + (yy + 1) * SCR_W + x, s, (size_t)w);
-  }
+  /* rows doubled: source row r at screen rows y + 2r and y + 2r + 1 (sy2: the first row on the screen, in
+   * halves) */
+  int h2 = 2 * h, sy2 = 2 * sy;
+  if (!clip(&x, &y, &w, &h2, &sx, &sy2)) return;
+  uint8_t *p = scr + y * SCR_W + x;
+  const uint8_t *s = src + (sy2 >> 1) * stride + sx;
+  if (sy2 & 1) memcpy(p, s, (size_t)w), p += SCR_W, s += stride, h2--;
+  for (; h2 >= 2; h2 -= 2, p += 2 * SCR_W, s += stride) memcpy(p, s, (size_t)w), memcpy(p + SCR_W, s, (size_t)w);
+  if (h2) memcpy(p, s, (size_t)w);
 }
 
 void d_blit_key(const uint8_t *src, int stride, int w, int h, int x, int y, uint8_t key) {
@@ -138,6 +178,7 @@ void d_blit_key(const uint8_t *src, int stride, int w, int h, int x, int y, uint
 
 void d_blit2(const uint8_t *src, int stride, int dx, uint8_t fill) {
   static uint8_t row[SCR_W];
+  d_touch = (Box){0, 0, SCR_W, SCR_H};   /* (the clip not looked at: only drawn whole) */
   for (int r = 0; r < SCR_H / 2; r++) {
     uint8_t *d = scr + 2 * r * SCR_W;
     const uint8_t *s = src + r * stride;
@@ -175,9 +216,16 @@ void d_snow(int n, uint32_t seed, const uint8_t *greys) {
     uint32_t r = 0x6F4A7C15u;
     for (int i = 0; i < 1024; i++) r ^= r << 13, r ^= r >> 17, r ^= r << 5, at[i] = (unsigned)(r % (SCR_W * SCR_H));
   }
-  unsigned k = (unsigned)seed & 1023, step = ((unsigned)(seed >> 10) & 510) | 1;
+  d_touch = (Box){0, 0, SCR_W, SCR_H};   /* (as d_blit2) */
+  /* (from a random place in at, a random odd step at a time) */
+  const unsigned *p = at + ((unsigned)seed & 1023), *end = at + 1024;
+  unsigned step = ((unsigned)(seed >> 10) & 510) | 1;
   uint8_t c = (uint8_t)(seed >> 20);
-  while (n--) scr[at[k]] = greys[c++ & 7], k = (k + step) & 1023;
+  while (n--) {
+    scr[*p] = greys[c++ & 7];
+    p += step;
+    if (p >= end) p -= 1024;
+  }
 }
 
 /* ------------------------------------------------------------------ text */
@@ -186,18 +234,18 @@ int d_line_h(int font) { return font_at(font)[0]; }
 
 /* 2-bit alpha rows (4 pixels a byte, the first in the top bits) at (x, y) in an ink; clipped */
 static void alpha(const uint8_t *rows, int w, int h, int x, int y, Ink ink) {
-  int stride = (w + 3) >> 2;
-  if (x >= 0 && y >= 0 && x + 4 * stride <= SCR_W && y + h <= SCR_H) {   /* (all of it on the screen: quick) */
+  int stride = (w + 3) >> 2, x0 = x, y0 = y, x1 = x + w, y1 = y + h;
+  if (!box_clip(&x0, &y0, &x1, &y1)) return;
+  if (x0 == x && y0 == y && x1 == x + w && y1 == y + h && x + 4 * stride <= SCR_W) {   /* (all of it: quick) */
     ce_alpha(rows, stride, h, scr + y * SCR_W + x, ink);
     return;
   }
-  for (int r = 0; r < h; r++, rows += stride) {
-    int yy = y + r;
-    if (yy < 0 || yy >= SCR_H) continue;
-    uint8_t *d = scr + yy * SCR_W;
-    for (int c = 0; c < w; c++) {
-      int a = rows[c >> 2] >> (6 - 2 * (c & 3)) & 3, xx = x + c;
-      if (a && xx >= 0 && xx < SCR_W) d[xx] = ink[a];
+  for (int r = y0 - y; r < y1 - y; r++) {   /* (the row's last pixels, past w, are 0) */
+    const uint8_t *row = rows + r * stride;
+    uint8_t *d = scr + (y + r) * SCR_W;
+    for (int c = x0 - x; c < x1 - x; c++) {
+      int a = row[c >> 2] >> (6 - 2 * (c & 3)) & 3;
+      if (a) d[x + c] = ink[a];
     }
   }
 }
@@ -206,17 +254,47 @@ static void glyph(const uint8_t *f, const uint8_t *gl, int x, int y, Ink ink) {
   if (gl[1]) alpha(f + (gl[6] | gl[7] << 8), gl[1], gl[2], x + (int8_t)gl[3], y + (int8_t)gl[4], ink);
 }
 
+/* how far a font's glyphs reach around the pen: left of it, above, right of the advance, below */
+#define FONTS_KNOWN 8
+static struct {
+  bool known;
+  int8_t x0, y0, x1, y1;
+} reach[FONTS_KNOWN];
+
 int d_text_n(int font, int x, int y, const char *s, int n, Ink ink) {
   const uint8_t *f = font_at(font);
-  int x0 = x;
+  int w = d_text_wn(font, s, n);
+  if (font < FONTS_KNOWN && !reach[font].known) {
+    int x0 = 0, y0 = 127, x1 = 0, y1 = -128;
+    for (int c = 0; c < 95; c++) {
+      const uint8_t *gl = f + 2 + 8 * c;
+      if (!gl[1]) continue;
+      int gx = (int8_t)gl[3], gy = (int8_t)gl[4];
+      x0 = gx < x0 ? gx : x0, y0 = gy < y0 ? gy : y0;
+      x1 = gx + gl[1] - gl[0] > x1 ? gx + gl[1] - gl[0] : x1, y1 = gy + gl[2] > y1 ? gy + gl[2] : y1;
+    }
+    reach[font].x0 = (int8_t)x0, reach[font].y0 = (int8_t)(y0 < y1 ? y0 : 0);
+    reach[font].x1 = (int8_t)x1, reach[font].y1 = (int8_t)(y0 < y1 ? y1 : 0);
+    reach[font].known = true;
+  }
+  bool whole = false;
+  if (font < FONTS_KNOWN) {   /* (the whole string in the clip: its glyphs drawn as they are) */
+    int x0 = x + reach[font].x0, y0 = y + reach[font].y0, x1 = x + w + reach[font].x1, y1 = y + reach[font].y1;
+    int c0 = x0, r0 = y0, c1 = x1, r1 = y1;
+    if (!box_clip(&c0, &r0, &c1, &r1)) return w;
+    whole = c0 == x0 && r0 == y0 && c1 == x1 && r1 == y1;
+  }
   for (; *s && n-- > 0; s++) {
     int ch = (uint8_t)*s;
     if (ch < 32 || ch > 126) ch = '?';
     const uint8_t *gl = f + 2 + 8 * (ch - 32);
-    glyph(f, gl, x, y, ink);
+    if (!whole) glyph(f, gl, x, y, ink);
+    else if (gl[1])
+      ce_alpha(f + (gl[6] | gl[7] << 8), (gl[1] + 3) >> 2, gl[2], scr + (y + (int8_t)gl[4]) * SCR_W + x + (int8_t)gl[3],
+               ink);
     x += gl[0];
   }
-  return x - x0;
+  return w;
 }
 
 int d_text(int font, int x, int y, const char *s, Ink ink) { return d_text_n(font, x, y, s, 1 << 20, ink); }
