@@ -99,12 +99,6 @@ static void act(void) {
       loading("Building terrain");
       uint32_t seed = plat_ms() * 2654435761u ^ (uint32_t)rnd(0x7FFFFF);
       new_world(s, cur_name, seed, new_mode);
-      if (pl.mode) {
-        /* Creative starts with a hotbar of building blocks */
-        static const uint8_t first[9] = {B_GRASS, B_STONE, B_COBBLESTONE, B_PLANKS_OAK, B_LOG_OAK, B_GLASS, B_BRICKS,
-                                         B_TORCH, B_SAND};
-        for (int i = 0; i < 9; i++) pl.inv[i] = (Stack){first[i], 64, 0};
-      }
       save_world();
       start_game();
       break;
@@ -183,6 +177,25 @@ int main(void) {
   wlight = wblk + WS * WS * WH;
   render_init();
   canvas_screen();
+#ifdef HOST
+  /* (tests: straight into a new world, NB_NEW=seed,mode[,x,y,z,yaw,pitch,time]) */
+  extern bool host_start(uint32_t *seed, int *mode, int *at);
+  uint32_t hseed;
+  int hmode, at[6];
+  if (host_start(&hseed, &hmode, at)) {
+    strcpy(cur_name, "Test");
+    new_world(1, cur_name, hseed, hmode);
+    if (at[0] != -9999) {
+      pl.x = (fx)at[0] * FX1 + FX1 / 2, pl.y = (fx)at[1] * FX1, pl.z = (fx)at[2] * FX1 + FX1 / 2;
+      pl.yaw = (uint16_t)at[3], pl.pitch = (int16_t)at[4], world_time = (uint32_t)at[5];
+      pl.flying = pl.mode;
+      world_center(at[0], at[1], at[2], true);
+    }
+    in_game = true;
+    render_sky_palette();
+    last_ms = plat_ms();
+  } else
+#endif
   to_title();
   uint32_t prev = ~0u;
   for (;;) {

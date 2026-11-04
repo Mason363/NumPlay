@@ -48,7 +48,11 @@ static void load_bin(const char *name, uint8_t *mem, unsigned size) {
   }
   fclose(g);
 }
+extern int render_debug;
 void plat_init(void) {
+  if (getenv("NB_DEBUG")) render_debug = atoi(getenv("NB_DEBUG"));
+  extern int probe_px, probe_py;
+  if (getenv("NB_PROBE")) sscanf(getenv("NB_PROBE"), "%d,%d", &probe_px, &probe_py);
   scr = screen_mem;
   load_bin("NBCEDAT.bin", gfx_mem, GFX_SIZE);
   load_bin("NBCETEX.bin", tex_mem, TEXDAT_SIZE);
@@ -143,6 +147,15 @@ void plat_delete(const char *name) {
   char p[512];
   snprintf(p, sizeof p, "%s/%s", saves, name);
   remove(p);
+}
+
+bool host_start(uint32_t *seed, int *mode, int *at) {
+  const char *e = getenv("NB_NEW");
+  if (!e) return false;
+  at[0] = -9999;
+  int n = sscanf(e, "%u,%d,%d,%d,%d,%d,%d,%d", seed, mode, &at[0], &at[1], &at[2], &at[3], &at[4], &at[5]);
+  if (n < 8) at[0] = -9999;
+  return n >= 2;
 }
 
 void plat_expand(const uint8_t *src, uint8_t *dst, int rows) {

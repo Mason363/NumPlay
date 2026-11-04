@@ -101,6 +101,12 @@ void new_world(int slot, const char *name, uint32_t seed, int mode) {
   xp_level = xp_points = 0;
   memset(&pl, 0, sizeof pl);
   pl.mode = (uint8_t)mode;
+  if (mode) {
+    /* Creative starts with a hotbar of building blocks */
+    static const uint8_t first[9] = {B_GRASS, B_STONE, B_COBBLESTONE, B_PLANKS_OAK, B_LOG_OAK, B_GLASS, B_BRICKS, B_TORCH,
+                                     B_SAND};
+    for (int i = 0; i < 9; i++) pl.inv[i] = (Stack){first[i], 64, 0};
+  }
   world_new(seed);
   int x, z;
   gen_spawn(&x, &z);

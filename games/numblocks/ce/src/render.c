@@ -24,6 +24,13 @@ uint32_t stat_faces, stat_spans, stat_px, stat_cells;
 int view_dist = 13;
 uint32_t world_time;
 int crack_stage = -1;
+#define C_RED_DEBUG (FIRST_STATIC + 13)
+int render_debug;   /* (tests: 1 draws every cell, past the occlusion test; 2 the sky red; 4 probe) */
+#ifdef HOST
+#include <stdio.h>
+int probe_px, probe_py;
+static int probe_x, probe_y, probe_z, probe_b, probe_f, probe_t;
+#endif
 
 /* ---------------------------------------------------------------- the camera */
 #define Q 14
@@ -165,6 +172,10 @@ static bool s_alpha;
 static void span(int y, int x0, int x1, int u, int v, int du, int dv) {
   uint8_t *c = cov[y], *d = rbuf + y * RW;
   stat_spans++;
+#ifdef HOST
+  if ((render_debug & 4) && y == probe_py && probe_px >= x0 && probe_px < x1 && !(c[probe_px >> 3] >> (probe_px & 7) & 1))
+    fprintf(stderr, "probe: cell %d %d %d block %d face %d tex %d\n", probe_x, probe_y, probe_z, probe_b, probe_f, probe_t);
+#endif
   int x = x0;
   while (x < x1) {
     int byte = x >> 3, bit = x & 7;
@@ -490,6 +501,9 @@ static void cell(int x, int y, int z, int b, int X, int Y, int Z, int dist2) {
     s_tex = tex_px[tex];
     s_cm = face_cm(wlight[WI(x, y, z)], 1);
     s_alpha = true;
+#ifdef HOST
+    probe_x = x, probe_y = y, probe_z = z, probe_b = b, probe_f = 9, probe_t = tex;
+#endif
     for (int k = 0; k < 2; k++) {
       int q[4][3];
       for (int i = 0; i < 4; i++) memcpy(q[i], corner[CROSS_C[k][i]], sizeof q[i]);
@@ -522,6 +536,9 @@ static void cell(int x, int y, int z, int b, int X, int Y, int Z, int dist2) {
       s_tex = crack_tex;
     } else s_tex = tex_px[tex];
     s_cm = face_cm(world_light(nx, ny, nz), f);
+#ifdef HOST
+    probe_x = x, probe_y = y, probe_z = z, probe_b = b, probe_f = f, probe_t = tex;
+#endif
     int q[4][3];
     for (int i = 0; i < 4; i++) memcpy(q[i], corner[FACE_C[f][i]], sizeof q[i]);
     face4(q, split);
@@ -587,7 +604,7 @@ static void column(int x, int z) {
         int32_t inv = (F16 << 18) / cz;
         int sx = RW * 8 + (int)(((int32_t)cx * inv) >> 18), sy = RH * 8 - (int)(((int32_t)cy * inv) >> 18);
         int r = (int)(((int32_t)R * inv) >> 18) + 16;
-        if (covered(sx, sy, r)) continue;
+        if (!render_debug && covered(sx, sy, r)) continue;
       }
       cell(x, y, z, wblk[WI(x, y, z)], X, Y, Z, d2);
       if (px_left <= 0) return;
@@ -610,6 +627,7 @@ static void sky(void) {
     int32_t len = Q1;   /* (approximately: elevation from ry) */
     int e = (int)(ry * 15 * 5 / 2 / len);   /* 0 at the horizon, 15 at 0.4 up */
     uint8_t col = (uint8_t)(e <= 0 ? 1 : e >= 14 ? 15 : e + 1);
+    if (render_debug & 2) col = C_RED_DEBUG;
     uint8_t *d = rbuf + y * RW;
     for (int b = 0; b < RW / 8; b++) {
       uint8_t m = c[b];
@@ -649,12 +667,99 @@ static void frame_from(fx ex, fx ey, fx ez, uint16_t yaw, int16_t pitch) {
   sky();
 }
 
+/* ---------------------------------------------------------------- the block looked at, the hand */
+/* a line darkening what it crosses (Minecraft's outline: black at 40%), a pixel at a time */
+static void dark_line(int x0, int y0, int x1, int y1) {
+  int dx = x1 > x0 ? x1 - x0 : x0 - x1, dy = y1 > y0 ? y1 - y0 : y0 - y1, sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  int err = dx - dy;
+  const uint8_t *dk = shade_cm[24];
+  for (int n = 0; n < 400; n++) {
+    if ((unsigned)x0 < RW && (unsigned)y0 < RH) rbuf[y0 * RW + x0] = dk[rbuf[y0 * RW + x0]];
+    if (x0 == x1 && y0 == y1) break;
+    int e2 = 2 * err;
+    if (e2 > -dy) err -= dy, x0 += sx;
+    if (e2 < dx) err += dx, y0 += sy;
+  }
+}
+
+static void outline(void) {
+  if (pl.hit_face < 0) return;
+  int b = world_get(pl.hit_x, pl.hit_y, pl.hit_z);
+  int i = pl.hit_x - eye_bx, j = pl.hit_y - eye_by, k = pl.hit_z - eye_bz;
+  corners(bx0 + i * rxx + k * rxz, by0 + i * uxx + j * uxy + k * uxz, bz0 + i * fxx + j * fxy + k * fxz);
+  bool cross = blk_model[b] == M_CROSS || blk_model[b] == M_TORCH;
+  /* the edges of the faces turned to the eye (a plant's box: its two crossing quads' outlines) */
+  for (int f = 0; f < (cross ? 2 : 6); f++) {
+    const uint8_t *fc;
+    if (cross) fc = CROSS_C[f];
+    else {
+      int d = f >> 1, pos = f & 1;
+      int e = d == 0 ? eye_by - pl.hit_y : d == 1 ? eye_bz - pl.hit_z : eye_bx - pl.hit_x;
+      if (pos ? e <= 0 : e >= 0) continue;
+      fc = FACE_C[f];
+    }
+    for (int n = 0; n < 4; n++) {
+      CV a = {corner[fc[n]][0], corner[fc[n]][1], corner[fc[n]][2], 0, 0};
+      CV c = {corner[fc[(n + 1) & 3]][0], corner[fc[(n + 1) & 3]][1], corner[fc[(n + 1) & 3]][2], 0, 0};
+      /* (an end behind the eye: moved to the near plane) */
+      if (a.z < NEAR && c.z < NEAR) continue;
+      if (a.z < NEAR || c.z < NEAR) {
+        CV *p = a.z < NEAR ? &a : &c, *q = a.z < NEAR ? &c : &a;
+        int t = (int)(((int32_t)(NEAR - p->z) << 12) / (q->z - p->z));
+        p->x = lerp12(p->x, q->x, t), p->y = lerp12(p->y, q->y, t), p->z = NEAR;
+      }
+      SV sa, sc;
+      project(&a, &sa);
+      project(&c, &sc);
+      if (sa.x < -8000 || sa.x > 8000 || sc.x < -8000 || sc.x > 8000) continue;
+      dark_line(sa.x >> 4, sa.y >> 4, sc.x >> 4, sc.y >> 4);
+    }
+  }
+}
+
+/* the hand: what it holds as the inventory shows it (a block, an item), 3 times as big at the bottom right,
+ * swinging down and in while it mines or places (EntityRenderer's arm swing, simply) */
+static void hand(void) {
+  const Stack *h = &pl.inv[pl.slot];
+  if (!h->id) return;
+  int k = h->id >= IT0 ? B_N + h->id - IT0 : h->id;
+  if (icon_of[k] == 255) return;
+  int sw = pl.swing;   /* 6 down to 0 */
+  int ph = sw > 3 ? 6 - sw : sw;   /* 0 1 2 3 2 1 */
+  int x0 = RW - 52 - ph * 5, y0 = RH - 40 + ph * 4;
+  const uint8_t *t = gfx + GFX_ICON;
+  const uint8_t *img = t + (t[icon_of[k] * 2] | t[icon_of[k] * 2 + 1] << 8);
+  /* the icon's runs, 3 x 3 pixels each */
+  for (int r = 0; r < 16; r++) {
+    const uint8_t *p = img + (img[r * 2] | img[r * 2 + 1] << 8) + 32;
+    int col = 0;
+    while (col < 16) {
+      int n = *p++, len = n < 128 ? n + 1 : n - 126;
+      for (int q = 0; q < len; q++, col++) {
+        uint8_t c = n < 128 ? p[q] : p[0];
+        if (!c) continue;
+        for (int dy = 0; dy < 3; dy++) {
+          int y = y0 + r * 3 + dy;
+          if (y >= RH) break;
+          for (int dx = 0; dx < 3; dx++) {
+            int x = x0 + col * 3 + dx;
+            if ((unsigned)x < RW) rbuf[y * RW + x] = c;
+          }
+        }
+      }
+      p += n < 128 ? n + 1 : 1;
+    }
+  }
+}
+
 void render_frame(void) {
   fx ey = pl.y + (pl.sneaking ? FX1 * 154 / 100 : FX1 * 162 / 100);
   if (pl.hit_face >= 0) crack_x = pl.hit_x, crack_y = pl.hit_y, crack_z = pl.hit_z;
   crack_stage = pl.break_need > 0 && pl.break_ticks > 0 ? pl.break_ticks * 10 / pl.break_need : -1;
   if (crack_stage > 9) crack_stage = 9;
   frame_from(pl.x, ey, pl.z, pl.yaw, pl.pitch);
+  outline();
+  hand();
 }
 
 void render_title(uint16_t yaw) {
