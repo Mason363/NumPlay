@@ -186,19 +186,19 @@ static bool opaque_tile(const uint8_t *t) {
 static const uint8_t *row_fg[COLS], *row_bg[COLS];
 static uint8_t row_kind[COLS];   /* 0: an opaque fg tile, 1: an opaque bg tile, 2: the background shows */
 
+/* the room's backgrounds: the view's pixel (x, y) is the picture's ((x + ox) % 320, y + oy), the offset moving with the
+ * camera by the chapter's scroll factor (rows above or below it: its first or last) */
 static void background_rows(int vy0, int vy1, int vx0, int vx1) {
-  /* the background's pixel at view (x, y): the composite at (x + ox) % 320, y + oy (clamped) */
-  int ox = fdiv((g_camx - g_bg_camx) * 21, 256), oy = fdiv((g_camy - g_bg_camy) * 15, 256);
+  int ox = fdiv((g_camx - g_bg_refx) * g_bg_scrollx, 256), oy = fdiv((g_camy - g_bg_refy) * g_bg_scrolly, 256);
   ox = ((ox % 320) + 320) % 320;
   for (int y = vy0; y < vy1; y++) {
-    int sy = iclamp(y + oy, 0, VIEW_H - 1);
-    const uint8_t *src = g_bg + sy * 320;
+    const uint8_t *src = g_bg4 + iclamp(y + oy, 0, VIEW_H - 1) * 160;
     uint8_t *d = FB(0, y);
-    int x = vx0;
-    while (x < vx1) {
-      int sx = (x + ox) % 320, n = imin(vx1 - x, 320 - sx);
-      memcpy(d + x, src + sx, n);
-      x += n;
+    int sx = (vx0 + ox) % 320;
+    for (int x = vx0; x < vx1; x++) {
+      uint8_t b = src[sx >> 1];
+      d[x] = g_bg_map[(sx & 1) ? b >> 4 : b & 15];
+      if (++sx == 320) sx = 0;
     }
   }
 }
@@ -222,7 +222,7 @@ void draw_layers_back(void) {
       while (e < COLS && row_kind[e] == 2) e++;
       int x0 = imax(c * 8 - offx, 0), x1 = imin(e * 8 - offx, VIEW_W);
       if (x0 < x1) {
-        if (g_bg) background_rows(y0, y1, x0, x1);
+        if (g_has_bg) background_rows(y0, y1, x0, x1);
         else
           for (int y = y0; y < y1; y++) memset(FB(x0, y), 0, x1 - x0);
       }

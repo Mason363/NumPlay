@@ -40,6 +40,16 @@ const char *level_room_name(void) {
   return buf;
 }
 
+uint8_t g_bg4[320 * 180 / 2];
+int g_bg_refx, g_bg_refy;
+static const uint8_t *bg_loaded;
+static void background_load(const Room *rm) {   /* the room's picture of the backgrounds, into RAM */
+  if (!rm->bg || rm->bg == bg_loaded) return;
+  plat_unpack(g_bg4, rm->bg);
+  bg_loaded = rm->bg;
+  g_bg_refx = rm->bgx, g_bg_refy = rm->bgy;
+}
+
 static bool room_load(int slot, int index) {
   Room *rm = &g_level.rooms[slot];
   const uint8_t *r = room_rec(index), *p = rec_after_name(r);
@@ -63,6 +73,8 @@ static bool room_load(int slot, int index) {
   rm->decals = HPTR(p + 5);
   rm->ents = HPTR(p + 8);
   rm->trigs = HPTR(p + 11);
+  rm->bgx = S24(p + 14), rm->bgy = S24(p + 17);
+  rm->bg = R24(p + 20) == 0xFFFFFF ? NULL : HPTR(p + 20);
   rm->index = index;
   return true;
 }
@@ -144,6 +156,7 @@ static void load_into_current(int index, int intro) {
   g_level.room = &g_level.rooms[0];
   room_load(0, index);
   Room *rm = g_level.room;
+  background_load(rm);
   if (intro != INTRO_RESPAWN) spawn_near(rm->x, rm->y + rm->h);
   ents_spawn_room(0);
   player_spawn(g_level.respawn_x, g_level.respawn_y, intro);
@@ -155,6 +168,7 @@ static void load_into_current(int index, int intro) {
 
 bool level_load(int chapter, int room, int intro) {
   memset(&g_level, 0, sizeof g_level);
+  bg_loaded = NULL;
   g_level.chapter = chapter;
   g_level.rooms[0].index = g_level.rooms[1].index = -1;
   if (room < 0) room = imax(level_room_at(0, 0), 0);
@@ -174,6 +188,7 @@ static void transition_to(int index, int dx, int dy) {
   g_level.room = &g_level.rooms[slot];
   ents_spawn_room(slot);
   Room *rm = g_level.room;
+  background_load(rm);
   g_level.transitioning = true;
   g_level.tr_dirx = dx, g_level.tr_diry = dy;
   g_level.tr_t = 0;

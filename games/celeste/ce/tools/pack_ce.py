@@ -229,8 +229,9 @@ def kmeans(counts, fixed, k, iters=12):
 class Palette:
     """256 colours (15-bit), index 0 black (also the tiles' see-through key: art never maps to it)."""
 
-    def __init__(self, colors):
+    def __init__(self, colors, reserved=True):
         assert len(colors) <= 256
+        self.reserved = reserved
         self.colors = list(colors) + [0] * (256 - len(colors))
         self.n = len(colors)
         self.rgb = np.array([rgb_of(c) for c in self.colors[:self.n]])
@@ -240,7 +241,8 @@ class Palette:
         if q in self.cache:
             return self.cache[q]
         d = ((self.rgb - rgb_of(q)) ** 2).sum(1)
-        d[0] = d[HAIR] = d[HAIR_DARK] = np.inf
+        if self.reserved:
+            d[0] = d[HAIR] = d[HAIR_DARK] = np.inf
         i = int(np.argmin(d))
         self.cache[q] = i
         return i
@@ -450,7 +452,7 @@ class Common:
         extra = kmeans(counts, set(fixed), COMMON - len(fixed))
         cols = fixed + extra
         print(f"common: {len(counts)} colours -> {len(cols)}")
-        return cols
+        return cols + [0] * (COMMON - len(cols))   # (the chapters' own start at COMMON)
 
     def build(self):
         self.collect()
@@ -671,46 +673,73 @@ class Chapter:
                         out.append(p)
         return out
 
-    def background(self):
-        """The chapter's parallax backgrounds as one picture (320 x 180), as they look from the chapter's middle
-        height: the CE has no time to draw five layers a frame. The foreground's additive gradient (purplesunset)
-        is the chapter's tint, added to every colour (src/data.c)."""
+    def background_layers(self):
+        """The chapter's parallax backgrounds (stylegrounds) and its tint: the foreground's additive gradient
+        (purplesunset), added to every colour (src/data.c)."""
         bgs, fgs = pack.styleground_list(self.ch)
-        layers = [(n, a) for n, a in bgs if n == "parallax" and a.get("texture", "").startswith("bgs/")]
+        self.layers = [(n, a) for n, a in bgs if n == "parallax" and a.get("texture", "").startswith("bgs/")]
         self.tint = (0, 0, 0)
         for n, a in fgs:
             if n == "parallax" and a.get("blendmode") == "additive" and a.get("texture") == "purplesunset":
                 g = Atlas("Misc")["purplesunset"].image()[..., :3].reshape(-1, 3).mean(0) * float(a.get("alpha", 1))
                 self.tint = tuple(int(v) for v in g)
-        if not layers:
-            return None
+        # the mean of their scroll factors: the CE moves the room's picture of them by one factor (1/256)
+        sx = [float(a.get("scrollx", 1)) for n, a in self.layers] or [0]
+        sy = [float(a.get("scrolly", 1)) for n, a in self.layers] or [0]
+        self.bg_scroll = (int(round(np.mean(sx) * 256)), int(round(np.mean(sy) * 256)))
+
+    def background_at(self, r, cx, cy):
+        """The backgrounds as Parallax.Render draws them with the camera at (cx, cy), in room r: 180 x 320 RGB."""
         W, Hh = 320, 180
         out = np.zeros((Hh, W, 3), np.float64)
-        cams = [(r.x + r.w / 2 - 160, r.y + r.h / 2 - 90) for r in self.ch.rooms]
-        cy = float(np.median([c[1] for c in cams]))
-        self.bg_cam = (0, int(cy))
-        for n, a in layers:
+        for n, a in self.layers:
+            if a.get("only") and not pack.room_matches(a["only"], r.name):
+                continue
+            if a.get("exclude") and pack.room_matches(a["exclude"], r.name):
+                continue
             s = tex(a["texture"])
             if s is None:
                 continue
             img = s.image().astype(np.float64)
             alpha = float(a.get("alpha", 1))
-            py = int(np.floor(a.get("y", 0) - cy * a.get("scrolly", 0)))
-            px = int(np.floor(a.get("x", 0)))
             tw, th = img.shape[1], img.shape[0]
-            for y in range(Hh):
-                sy = y - py
-                if not 0 <= sy < th:
-                    continue
-                row = img[sy][(np.arange(W) - px) % tw]
-                a1 = row[:, 3:4] / 255 * alpha
-                out[y] = out[y] * (1 - a1) + row[:, :3] * alpha
+            px = int(np.floor(a.get("x", 0) - cx * float(a.get("scrollx", 0))))
+            py = int(np.floor(a.get("y", 0) - cy * float(a.get("scrolly", 0))))
+            if a.get("loopy"):
+                py %= th
+                py -= th if py > 0 else 0
+            ys = np.arange(Hh) - py
+            if a.get("loopy"):
+                ys %= th
+            ok = (ys >= 0) & (ys < th)
+            rows = img[ys[ok]][:, (np.arange(W) - px) % tw]
+            a1 = rows[..., 3:4] / 255 * alpha
+            out[ok] = out[ok] * (1 - a1) + rows[..., :3] * alpha
         return np.clip(out, 0, 255).astype(np.uint8)
+
+    def room_backgrounds(self):
+        """Each room's backgrounds as seen from its first spawn point's camera (the room's picture of them)."""
+        self.bgs = {}
+        cache = {}
+        if not self.layers:
+            return
+        for r in self.ch.rooms:
+            ents = r.e.child("entities").children if r.e.child("entities") else []
+            sp = [(e["x"], e["y"]) for e in ents if e.name == "player"] or [(0, r.h)]
+            cx = min(max(r.x + sp[0][0] - 160, r.x), r.x + r.w - 320)
+            cy = min(max(r.y + sp[0][1] - 90, r.y), r.y + r.h - 180)
+            cx, cy = int(round(cx / 160)) * 160, int(round(cy / 64)) * 64   # (rooms near each other share one)
+            key = (cx, cy, tuple(n for n, a in self.layers if (not a.get("only") or pack.room_matches(a["only"], r.name))
+                                 and not (a.get("exclude") and pack.room_matches(a["exclude"], r.name))))
+            if key not in cache:
+                cache[key] = self.background_at(r, cx, cy)
+            self.bgs[r.name] = (cx, cy, cache[key])
 
     # -------------------------------------------------------------- building
     def build(self):
         common = self.common
-        bg = self.background()
+        self.background_layers()
+        self.room_backgrounds()
         counts = collections.Counter()
         cells = {}
         for r in self.ch.rooms:
@@ -721,9 +750,12 @@ class Chapter:
         for p in decals:
             for s in decal_family(p):
                 count_colors(s.image(), counts)
-        if bg is not None:
-            bgc = np.concatenate([bg, np.full(bg.shape[:2] + (1,), 255, np.uint8)], 2)
-            count_colors(bgc, counts)
+        bgcounts = collections.Counter()
+        for cx, cy, bg in self.bgs.values():
+            count_colors(np.concatenate([bg, np.full(bg.shape[:2] + (1,), 255, np.uint8)], 2), bgcounts)
+        bgcols = kmeans(bgcounts, set(), 15)   # the backgrounds have 16 colours (4 bits a pixel in RAM)
+        for c in bgcols:
+            counts[c] += bgcounts.get(c, 1)
         ent_paths = self.entity_images()
         for p in ent_paths:
             count_colors(self.image(p), counts)
@@ -744,6 +776,21 @@ class Chapter:
             self.decal_ids[p] = (first, len(fam))
         for p in ent_paths:
             self.sprites.add(p, pal.map(self.image(p)))
+        # the backgrounds' 16 colours (chapter palette indices), then each room's picture: 4 bits a pixel (the left
+        # one low), zx0 packed; rooms with the same picture share it
+        bgpal = Palette([0] + bgcols, reserved=False)
+        bgmap = [BLACK] + [pal.index(c) for c in bgcols] + [0] * (15 - len(bgcols))
+        self.bg_items = {}
+        shared = {}
+        for name, (cx, cy, bg) in self.bgs.items():
+            q = bgpal.map(np.concatenate([bg, np.full(bg.shape[:2] + (1,), 255, np.uint8)], 2))
+            flat = q.reshape(-1).astype(np.uint8)
+            packed = bytes((flat[0::2] | (flat[1::2] << 4)).tolist())
+            key = packed
+            if key not in shared:
+                shared[key] = self.blob.item("background " + name).raw(zx0(packed))
+            self.bg_items[name] = (cx, cy, shared[key])
+        print(f"{self.name}: {len(shared)} backgrounds, {sum(it.size() for it in shared.values())} bytes")
         rooms = []
         for r in self.ch.rooms:
             rooms.append(self.room(r, cells[r.name]))
@@ -759,12 +806,6 @@ class Chapter:
             flags.u8(1 if self.tiles.opaque(i) else 0)
         table = self.sprites.table()
         self.blob.add(table)
-        bgit = None
-        if bg is not None:
-            idx = pal.map(np.concatenate([bg, np.full(bg.shape[:2] + (1,), 255, np.uint8)], 2))
-            bgit = []
-            for y0 in range(0, idx.shape[0], 180):
-                bgit.append(self.blob.item("background").raw(bytes(idx[y0:y0 + 180].reshape(-1).tolist())))
         h = self.head
         h.raw(b"CELC").u8(FORMAT).u8(self.number)
         h.raw(pal.rgb1555(COMMON, 256))
@@ -781,10 +822,9 @@ class Chapter:
         for c in chunks:
             h.ref(c)
         h.ref(flags).ref(table)
-        if bgit:
-            h.u8(1).s24(self.bg_cam[0]).s24(self.bg_cam[1]).ref(bgit[0])
-        else:
-            h.u8(0).s24(0).s24(0).u24(0)
+        h.u8(1 if self.bgs else 0).u8(self.bg_scroll[0]).u8(self.bg_scroll[1])
+        for v in bgmap:
+            h.u8(v)
         h.u16(len(rooms))
         for it in rooms:
             h.ref(it)
@@ -856,6 +896,11 @@ class Chapter:
         it.ref(self.decals(r))
         ents, trigs = self.entities(r)
         it.ref(ents).ref(trigs)
+        if r.name in self.bg_items:
+            cx, cy, bgit = self.bg_items[r.name]
+            it.s24(cx).s24(cy).ref(bgit)
+        else:
+            it.s24(0).s24(0).u24(0xFFFFFF)
         return it
 
     def rows(self, r, grid, solid):

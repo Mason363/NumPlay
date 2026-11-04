@@ -79,8 +79,11 @@ const uint8_t *room_rec(int i);
 const uint8_t *tile_data(int id);
 const uint8_t *player_meta(int sprite_id);   /* s8 hair x, s8 hair y, u8 bangs | has hair << 7 */
 const uint16_t *hair_mask(int which);        /* 0 hair, 1-3 bangs: 10 rows (mask), then 10 (dark) */
-extern const uint8_t *g_bg;           /* the chapter's background (320 x 180), NULL if none */
-extern int g_bg_camx, g_bg_camy;
+extern bool g_has_bg;                 /* the chapter has backgrounds */
+extern int g_bg_scrollx, g_bg_scrolly;  /* how they move with the camera (1/256) */
+extern uint8_t g_bg_map[16];          /* their 16 colours */
+extern uint8_t g_bg4[320 * 180 / 2];  /* the room's: 4 bits a pixel, the left one low */
+extern int g_bg_refx, g_bg_refy;      /* the camera it was made for */
 extern int g_chapter_berries;      /* the chapter's strawberries */
 extern const uint8_t *g_remap, *g_remap_red, *g_remap_half;   /* sprites drawn through g_remap if set */
 
@@ -195,7 +198,8 @@ typedef struct {
   uint8_t *grid;            /* fg[tw * th], bg[tw * th], solid bits (rb a row) */
   int rb;
   const uint8_t *tiles[256];
-  const uint8_t *decals, *ents, *trigs;
+  const uint8_t *decals, *ents, *trigs, *bg;
+  int bgx, bgy;
   uint8_t ntiles;
   uint8_t flags;
   int8_t camx, camy;
