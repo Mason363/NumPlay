@@ -561,7 +561,77 @@ static inline int ceil_half(float v) { return (int)__builtin_lceilf(v - 0.5f); }
 #ifdef HOST_STATS
 long st_polys, st_lines, st_pixels;
 #endif
+#if NP_SOFT_FLOAT
+#include "np_fixed.h"
+// (Calculators without a floating-point unit: the same walk in 16.16, a slope an edge; raster_f past 30000 pixels.)
+static void raster_f(const float *px, const float *py, int n, int c);
+static void raster(const float *fx, const float *fy, int n, int c) {
+  int32_t px[8], py[8];
+  for (int i = 0; i < n; i++) {
+    if (fx[i] > 30000 || fx[i] < -30000 || fy[i] > 30000 || fy[i] < -30000 || n > 8) {
+      raster_f(fx, fy, n, c);
+      return;
+    }
+    px[i] = (int32_t)fx_from_float(fx[i], 16), py[i] = (int32_t)fx_from_float(fy[i], 16);
+  }
+  int it = 0, ib = 0;
+  int32_t xmin = px[0], xmax = px[0];
+  for (int i = 1; i < n; i++) {
+    if (py[i] < py[it]) it = i;
+    if (py[i] > py[ib]) ib = i;
+    if (px[i] < xmin) xmin = px[i];
+    if (px[i] > xmax) xmax = px[i];
+  }
+  if (xmax <= 32768 || xmin >= (SW << 16) - 32768) return;
+  int y0 = (py[it] + 32767) >> 16, y1 = (py[ib] + 32767) >> 16;   // (ceil_half)
+  if (y0 < 0) y0 = 0;
+  if (y1 > SH) y1 = SH;
+  if (y0 >= y1) return;
+  int a0 = it, a1 = it + 1 == n ? 0 : it + 1, b0 = it, b1 = it ? it - 1 : n - 1;
+  int32_t sa = 0, sb = 0, yc = (y0 << 16) + 32768;
+  int na = 1, nb = 1;
+  uint8_t *row = fb + y0 * SW;
+  for (int y = y0; y < y1; y++, yc += 65536, row += SW) {
+    while (py[a1] <= yc && a1 != ib) {
+      a0 = a1;
+      a1 = a1 + 1 == n ? 0 : a1 + 1;
+      na = 1;
+    }
+    while (py[b1] <= yc && b1 != ib) {
+      b0 = b1;
+      b1 = b1 ? b1 - 1 : n - 1;
+      nb = 1;
+    }
+    if (na) {
+      int32_t d = py[a1] - py[a0];
+      sa = d > 0 ? (int32_t)(((int64_t)(px[a1] - px[a0]) << 16) / d) : 0;
+      na = 0;
+    }
+    if (nb) {
+      int32_t d = py[b1] - py[b0];
+      sb = d > 0 ? (int32_t)(((int64_t)(px[b1] - px[b0]) << 16) / d) : 0;
+      nb = 0;
+    }
+    int32_t xa = px[a0] + (int32_t)((int64_t)(yc - py[a0]) * sa >> 16), xb = px[b0] + (int32_t)((int64_t)(yc - py[b0]) * sb >> 16);
+    if (xa > xb) {
+      int32_t t = xa;
+      xa = xb;
+      xb = t;
+    }
+    int a = (xa + 32767) >> 16, b = (xb + 32767) >> 16;
+    if (a < 0) a = 0;
+    if (b > SW) b = SW;
+    if (a >= b) continue;
+    uint8_t *p = row + a, *q = row + b;
+    if (c >= 0) memset(p, c, q - p);
+    else
+      for (; p < q; p++) *p = shade[*p];
+  }
+}
+static void raster_f(const float *px, const float *py, int n, int c) {
+#else
 static void raster(const float *px, const float *py, int n, int c) {
+#endif
 #ifdef HOST_STATS
   st_polys++;
 #endif
