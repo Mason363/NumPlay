@@ -70,6 +70,28 @@ The game speed can be changed in Options. "How to Play" in Options lists the key
 2. Plug the calculator into your computer and open **[my.numworks.com/apps](https://my.numworks.com/apps)** in Chrome or Edge.
 3. Upload `Balatro.nwa`.
 
+## TI-84 Plus CE
+
+Balatro also runs on the TI-84 Plus CE, CE Python and TI-83 Premium CE: the same game, the same art and the moving background, drawn at 8 bits a pixel.
+
+1. Send `BALATRO.8xp` and every `BAL*.8xv` (17 files, about 680 KB of archive) with TI Connect CE.
+2. Run `prgmBALATRO` (on OS 5.5 or later through [arTIfiCE](https://yvantt.github.io/arTIfiCE/)). It needs about 110 KB of free RAM, and no C libraries.
+
+| CE key | Action |
+|---|---|
+| Arrows | Move |
+| 2nd | Select (OK) |
+| enter | Play Hand |
+| del | Discard |
+| y= | Sort the hand |
+| alpha | Move a card or Joker |
+| math | Run Info |
+| vars | View your deck |
+| clear | Back, or Options |
+| mode | Save and quit |
+
+The run is saved in the appvar `NPbalato`.
+
 ## Credits
 
 Inspired by **Balatro** by LocalThunk. Not affiliated with LocalThunk or Playstack.
@@ -86,4 +108,5 @@ make          # output/balatro.nwa
 make check    # link it like the calculator does and print the installed size
 make sim      # a build for the NumWorks simulator
 make assets   # rebuild the art from assets/ (Python 3, numpy, Pillow)
+make port TARGET=ti84ce   # the TI-84 Plus CE version (ce/, CE C toolchain v15): build/ti84ce/balatro/bin
 ```
