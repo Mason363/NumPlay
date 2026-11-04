@@ -46,6 +46,8 @@ void chasers_step(void);
 void chasers_draw(void);
 void chaser_add(int x, int y, int radius);
 bool chasers_any(void);
+void chaser_kick(int vs);
+void ow_damage(int dmg);           /* (forest.c) an overworld bullet's hit on the party */
 int chase_battle_event(Ev *c);
 /* the areas past Castle Town: the Field (field.c), the Forest (forest.c), Card Castle (castle.c) */
 void field_setup(int room);

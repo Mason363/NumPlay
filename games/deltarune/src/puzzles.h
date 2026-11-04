@@ -23,6 +23,8 @@ int glow_shake_event(Ev *c);
 
 void suits_setup(int x, int y, int max_suit, const int8_t *sol, bool clue);
 bool suits_won(void);
+int suits_row(int i);                         /* the suit in place i (1 spade, 2 diamond, 3 club, 4 heart) */
+void suits_force(int n, const int8_t *suit);  /* (solved before: as it was left) */
 int suits_button_event(Ev *c);
 
 void puzzles_reset(void);

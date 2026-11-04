@@ -391,6 +391,11 @@ void suits_setup(int x, int y, int max_suit, const int8_t *sol, bool clue) {
   }
 }
 bool suits_won(void) { return SP.on && SP.won; }
+int suits_row(int i) { return SP.on && i >= 0 && i < 4 ? SP.suit[i] : 0; }
+void suits_force(int n, const int8_t *suit) {
+  for (int i = 0; i < n && i < 4; i++) SP.suit[i] = suit[i];
+  SP.cur_s = n, SP.won = 1;
+}
 
 int suits_button_event(Ev *c) {
   int k = c->self->arg;

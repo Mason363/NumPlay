@@ -132,6 +132,15 @@ void chaser_add(int x, int y, int radius) {
     }
 }
 
+/* the last one added jumps out (obj_rabbick_bush: vspeed 16) */
+void chaser_kick(int vs) {
+  for (int k = MAX_CH - 1; k >= 0; k--)
+    if (ch[k].on) {
+      mo_v(&ch[k].m, (float)vs);
+      return;
+    }
+}
+
 bool chasers_any(void) {
   for (int k = 0; k < MAX_CH; k++)
     if (ch[k].on) return true;

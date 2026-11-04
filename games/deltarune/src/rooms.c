@@ -440,6 +440,7 @@ static void npc_setup(const Inst *in) {
   o->event = EV_READ;
   o->ispd = tc.ispd >= 0 ? tc.ispd : in->obj == obj_npc_room_animated ? FX / 5 : 0;
   o->arg = (int16_t)tc.type;
+  if (tc.tspr[0]) memcpy(o->sprs, tc.tspr, sizeof o->sprs);
   /* its box: its sprite's (the original's interactablesolid) */
   int s = world_scale();
   int w = tc.spr != 0xFFFF ? spr_w(tc.spr) * s : 20, h = tc.spr != 0xFFFF ? spr_h(tc.spr) * s : 20;
