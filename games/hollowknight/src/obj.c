@@ -9,7 +9,11 @@
 #endif
 
 #define DT 0.02f
+#ifdef HK_FW
+#define MAX_OBJS 96   /* (Fungus2_18's 89) */
+#else
 #define MAX_OBJS 80   /* (the most a room has: 69, Crossroads_ShamanTemple) */
+#endif
 #define MAX_PIECES 24
 
 typedef struct {
@@ -843,6 +847,181 @@ static void scuttlers_draw(void) {
 }
 
 /* ---------------------------------------------------------------- the room */
+#ifdef HK_FW
+/* ---------------------------------------------------------------- bounce shrooms (BounceShroom) */
+/* idle a while (2 to 8 s), bob, again; a touch on its Phys Box (CollisionEnterEvent) or a slash on it bounces it (its
+ * Bounce clip, then idle again), and the Knight off it: a slash from above shroom bounces him high and shows its hit
+ * effect (BounceLarge). The records (tools/ents.py: _shroom): it; its trigger circle and hit effect; its Phys Box's
+ * bounds */
+#define MAX_SHROOMS 96   /* (Fungus2_18's 95) */
+#define MAX_SHROOM_FX 4
+enum { SH_IDLE, SH_BOB, SH_BOUNCE };
+typedef struct {
+  uint16_t ent;
+  uint8_t state;
+  float t;   /* (till it bobs, or its clip is over) */
+  Anim anim;
+} Shroom;
+static Shroom shrooms[MAX_SHROOMS];
+static int nshrooms;
+static struct {
+  int16_t shroom;   /* (-1: none) */
+  Anim anim;
+} shroom_fx[MAX_SHROOM_FX];
+static float shroom_clock, next_bounce_fx, next_shroom_shake;   /* (BounceShroom's statics: Time.time) */
+
+static void shroom_idle(Shroom *sh, const Ent *e) {
+  anim_play_from_frame(&sh->anim, (int)e->p1, 0);
+  sh->state = SH_IDLE, sh->t = rand_range(2, 8);
+}
+
+static void shrooms_enter(void) {
+  nshrooms = 0;
+  for (int k = 0; k < MAX_SHROOM_FX; k++) shroom_fx[k].shroom = -1;
+  int n;
+  const Ent *es = room_ents(&n);
+  for (int i = 0; i < n; i++) {
+    if (es[i].type != ENT_OBJ || es[i].flags != OK_SHROOM) continue;
+#ifdef HOST
+    if (nshrooms == MAX_SHROOMS) fprintf(stderr, "obj: room %d has more bounce shrooms than %d\n", g_room.id, MAX_SHROOMS);
+#endif
+    if (nshrooms == MAX_SHROOMS) break;
+    Shroom *sh = &shrooms[nshrooms++];
+    memset(sh, 0, sizeof *sh);
+    sh->ent = (uint16_t)i;
+    shroom_idle(sh, &es[i]);
+  }
+}
+
+/* (its Bounce coroutine: once at a time) */
+static void shroom_bounce(Shroom *sh, const Ent *e) {
+  if (sh->state == SH_BOUNCE) return;
+  anim_play_from_frame(&sh->anim, (int)e->p3, 0);
+  sh->state = SH_BOUNCE, sh->t = clip_duration((int)e->p3);
+}
+
+static void shroom_bounce_large(int k, bool effects) {
+  Shroom *sh = &shrooms[k];
+  if (effects) {
+    if (shroom_clock >= next_bounce_fx) next_bounce_fx = shroom_clock + 0.25f;
+    else effects = false;
+  }
+  shroom_bounce(sh, ent_at(sh->ent));
+  if (shroom_clock > next_shroom_shake) {
+    cam_shake(SHAKE_ENEMY_KILL);
+    next_shroom_shake = shroom_clock + 0.25f;
+  }
+  if (!effects) return;
+  /* (its hit effect on: from its start, unless it is on already) */
+  int free = -1;
+  for (int f = 0; f < MAX_SHROOM_FX; f++) {
+    if (shroom_fx[f].shroom == k) return;
+    if (shroom_fx[f].shroom < 0) free = f;
+  }
+  if (free < 0) return;
+  shroom_fx[free].shroom = (int16_t)k;
+  anim_play_from_frame(&shroom_fx[free].anim, (int)ent_at(sh->ent)[1].y1, 0);
+}
+
+static void shrooms_tick(void) {
+  shroom_clock += DT;
+  for (int k = 0; k < nshrooms; k++) {
+    Shroom *sh = &shrooms[k];
+    anim_update(&sh->anim, DT);
+    if ((sh->t -= DT) > 0) continue;
+    const Ent *e = ent_at(sh->ent);
+    if (sh->state == SH_IDLE) {
+      anim_play_from_frame(&sh->anim, (int)e->p2, 0);
+      sh->state = SH_BOB, sh->t = clip_duration((int)e->p2);
+    } else
+      shroom_idle(sh, e);
+  }
+  for (int f = 0; f < MAX_SHROOM_FX; f++) {
+    if (shroom_fx[f].shroom < 0) continue;
+    shroom_fx[f].anim.events = 0;
+    anim_update(&shroom_fx[f].anim, DT);
+    if (shroom_fx[f].anim.events & ANIM_DONE) shroom_fx[f].shroom = -1;   /* (DeactivateAfter2dtkAnimation) */
+  }
+}
+
+static void shrooms_draw(void) {
+  Inst in;
+  for (int k = 0; k < nshrooms; k++) {
+    const Shroom *sh = &shrooms[k];
+    const Ent *e = ent_at(sh->ent);
+    if (fabsf(e->x0 - g_cam_x) > 16 || fabsf(e->y0 - g_cam_y) > 11) continue;
+    sprite_inst(sh->anim.sprite, e->x0, e->y0, e->x1, e->y1, e->p0, 0, &in);
+    gfx_actor(&in, SORT_KEY(e->group, (int)e->a - 32768));
+  }
+  for (int f = 0; f < MAX_SHROOM_FX; f++) {
+    if (shroom_fx[f].shroom < 0) continue;
+    const Ent *x = ent_at(shrooms[shroom_fx[f].shroom].ent) + 1;
+    uint8_t tint = gfx_dyn_tint(10, x->group, x->group2, (uint8_t)x->a, 255);
+    sprite_inst(shroom_fx[f].anim.sprite, x->p0, x->p1, (int16_t)x->s1 * 0.001f, x->p2, x->p3, tint, &in);
+    gfx_actor(&in, SORT_KEY(x->flags, (int)x->s0 - 32768));
+  }
+}
+
+/* a circle and a convex polygon: do they meet? */
+static bool circle_meets_shape(float cx, float cy, float r, const float *pts, int n) {
+  bool inside = true;
+  for (int i = 0; i < n; i++) {
+    float ax = pts[2 * i], ay = pts[2 * i + 1], bx = pts[2 * ((i + 1) % n)], by = pts[2 * ((i + 1) % n) + 1];
+    float ex = bx - ax, ey = by - ay, l2 = ex * ex + ey * ey;
+    float u = l2 > 0 ? ((cx - ax) * ex + (cy - ay) * ey) / l2 : 0;
+    u = u < 0 ? 0 : u > 1 ? 1 : u;
+    float dx = ax + u * ex - cx, dy = ay + u * ey - cy;
+    if (dx * dx + dy * dy <= r * r) return true;
+    float side = ex * (cy - ay) - ey * (cx - ax);
+    if (i == 0) inside = side >= 0;
+    else if ((side >= 0) != inside) return false;
+  }
+  return true;   /* (its center inside) */
+}
+
+/* NailSlash.OnTriggerEnter2D / Stay: each step the slash touches it, it bounces (its effects only from above) */
+static int shrooms_nail(const float *pts, int npts, float direction) {
+  int out = 0;
+  for (int k = 0; k < nshrooms; k++) {
+    const Ent *x = ent_at(shrooms[k].ent) + 1;
+    if (!circle_meets_shape(x->x0, x->y0, x->x1, pts, npts)) continue;
+    out = HB_SHROOM;
+    shroom_bounce_large(k, direction == 270);
+  }
+  return out;
+}
+
+/* CollisionEnterEvent (checkDirection, the Hero layer): rays 0.08 long out of its Phys Box's sides, from their ends and
+ * middles; the Knight on one side is pushed off it (on top: bounced, and pushed either way), and it bounces */
+void shrooms_touched(int col) {
+  if (!col) return;
+  const Body *b = &g_hero.body;
+  float hx0 = b->x + b->ox - b->hx, hx1 = b->x + b->ox + b->hx, hy0 = b->y + b->oy - b->hy, hy1 = b->y + b->oy + b->hy;
+  for (int k = 0; k < nshrooms; k++) {
+    const Ent *e = ent_at(shrooms[k].ent), *q = e + 2;
+    if (e->s0 != col) continue;
+    float cx = (q->x0 + q->x1) * 0.5f, cy = (q->y0 + q->y1) * 0.5f;
+    const float xs[3] = {q->x0, cx, q->x1}, ys[3] = {q->y0, cy, q->y1};
+    bool top = false, right = false, left = false;
+    for (int i = 0; i < 3; i++) {
+      top |= xs[i] >= hx0 && xs[i] <= hx1 && hy0 <= q->y1 + 0.08f && hy1 >= q->y1;
+      right |= ys[i] >= hy0 && ys[i] <= hy1 && hx0 <= q->x1 + 0.08f && hx1 >= q->x1;
+      left |= ys[i] >= hy0 && ys[i] <= hy1 && hx1 >= q->x0 - 0.08f && hx0 <= q->x0;
+    }
+    bool bottom = false;
+    for (int i = 0; i < 3; i++) bottom |= xs[i] >= hx0 && xs[i] <= hx1 && hy1 >= q->y0 - 0.08f && hy0 <= q->y0;
+    if (top) {
+      hero_bounce();
+      if (rand_range(0, 2) < 1) hero_recoil_left();
+      else hero_recoil_right();
+    }
+    if (right) hero_recoil_right();
+    if (left) hero_recoil_left();
+    if (top || right || bottom || left) shroom_bounce(&shrooms[k], e);
+  }
+}
+#endif
+
 void obj_enter(void) {
   nobjs = 0;
   phys_colliders_reset();
@@ -852,6 +1031,13 @@ void obj_enter(void) {
   cocoon_fx_on = false;
   int n;
   const Ent *es = room_ents(&n);
+#ifdef HOST
+  int want = 0;
+  for (int i = 0; i < n; i++)
+    want += es[i].type == ENT_OBJ && es[i].flags != OK_COND && es[i].flags != OK_ENEMY && es[i].flags != OK_BENCH &&
+            es[i].flags != OK_ARENA && es[i].flags != OK_EVENT && es[i].flags != OK_SUMMON && es[i].flags != OK_SHROOM;
+  if (want > MAX_OBJS) fprintf(stderr, "obj: room %d has %d objects, more than %d\n", g_room.id, want, MAX_OBJS);
+#endif
   for (int i = 0; i < n && nobjs < MAX_OBJS; i++) {
     if (es[i].type != ENT_OBJ) continue;
     if (es[i].flags == OK_COND) {
@@ -863,11 +1049,8 @@ void obj_enter(void) {
       continue;
     }
     if (es[i].flags == OK_ENEMY || es[i].flags == OK_BENCH || es[i].flags == OK_ARENA || es[i].flags == OK_EVENT ||
-        es[i].flags == OK_SUMMON)
-      continue;   /* (enemy.c's, npc.c's; below) */
-#ifdef HOST
-    if (nobjs == MAX_OBJS - 1) fprintf(stderr, "obj: room %d has more objects than %d\n", g_room.id, MAX_OBJS);
-#endif
+        es[i].flags == OK_SUMMON || es[i].flags == OK_SHROOM)
+      continue;   /* (enemy.c's, npc.c's, the shrooms'; below) */
     Obj *o = &objs[nobjs++];
     memset(o, 0, sizeof *o);
     o->kind = es[i].flags, o->ent = (uint16_t)i;
@@ -886,6 +1069,9 @@ void obj_enter(void) {
   enemies_enter();
   benches_enter();
   arena_enter();
+#ifdef HK_FW
+  shrooms_enter();
+#endif
 #ifdef HOST
   if (getenv("HKOBJ"))
     for (int k = 0; k < nobjs; k++) {
@@ -909,6 +1095,9 @@ void obj_tick(void) {
     else if (o->kind == OK_COCOON) cocoon_tick(o, e);
   }
   scuttlers_tick();
+#ifdef HK_FW
+  shrooms_tick();
+#endif
   arena_tick();
   pieces_tick();
   enemies_update();
@@ -940,6 +1129,9 @@ void obj_draw(void) {
   }
   pieces_draw();
   scuttlers_draw();
+#ifdef HK_FW
+  shrooms_draw();
+#endif
   enemies_draw();
 }
 
@@ -974,6 +1166,9 @@ int obj_nail(const float *pts, int npts, float direction) {
     else if (o->kind == OK_COCOON) cocoon_hit(o, e);
   }
   out |= scuttlers_nail(pts, npts);
+#ifdef HK_FW
+  out |= shrooms_nail(pts, npts, direction);
+#endif
   return out;
 }
 

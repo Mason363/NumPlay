@@ -20,6 +20,7 @@
 #define ATTACK_COOLDOWN_TIME 0.41f
 #define BOUNCE_TIME 0.25f
 #define BOUNCE_VELOCITY 12.0f
+#define SHROOM_BOUNCE_VELOCITY 25.0f
 #define RECOIL_HOR_VELOCITY 3.75f
 #define RECOIL_HOR_VELOCITY_LONG 16.0f
 #define RECOIL_HOR_STEPS 8
@@ -140,7 +141,7 @@ static void cancel_dash(void) {
   g_hero.cs.dashing = false, g_hero.dash_timer = 0;
   affected_by_gravity(true);
 }
-static void cancel_bounce(void) { g_hero.cs.bouncing = false, g_hero.bounce_timer = 0; }
+static void cancel_bounce(void) { g_hero.cs.bouncing = g_hero.cs.shroom_bouncing = false, g_hero.bounce_timer = 0; }
 static void cancel_recoil_horizontal(void) { g_hero.cs.recoiling_left = g_hero.cs.recoiling_right = false, g_hero.recoil_steps = 0; }
 static void cancel_wallsliding(void) {
   Hero *h = &g_hero;
@@ -189,7 +190,7 @@ static void back_on_ground(void) {
 
 static void jump_released(void) {
   Hero *h = &g_hero;
-  if (h->body.vy > 0 && h->jumped_steps >= JUMP_STEPS_MIN) {
+  if (h->body.vy > 0 && h->jumped_steps >= JUMP_STEPS_MIN && !h->cs.shroom_bouncing) {
     h->body.vy = 0;
     cancel_jump();
   }
@@ -215,7 +216,7 @@ static void do_hard_landing(void) {
 static bool can_jump(void) {
   Hero *h = &g_hero;
   if (h->state == HS_NO_INPUT || h->state == HS_HARD_LANDING || h->state == HS_DASH_LANDING || h->cs.wall_sliding ||
-      h->cs.dashing || h->cs.jumping || h->cs.bouncing)
+      h->cs.dashing || h->cs.jumping || h->cs.bouncing || h->cs.shroom_bouncing)
     return false;
   if (h->cs.on_ground) return true;
   if (h->ledge_buffer_steps > 0 && !h->cs.dead && !h->control_relinquished && h->head_bump_steps <= 0 && !check_near_roof()) {
@@ -368,6 +369,18 @@ void hero_recoil_right(void) {
     h->body.vx = RECOIL_HOR_VELOCITY;
   }
 }
+/* (off a bounce shroom: farther, and Steady Body does not hold the Knight) */
+static void recoil_long(bool left) {
+  Hero *h = &g_hero;
+  if (!h->cs.recoiling_left && !h->cs.recoiling_right && !h->control_relinquished) {
+    cancel_dash();
+    reset_attacks();
+    h->recoil_steps = 0;
+    h->cs.recoiling_left = left, h->cs.recoiling_right = !left;
+    h->recoil_large = true;
+    h->body.vx = left ? -RECOIL_HOR_VELOCITY_LONG : RECOIL_HOR_VELOCITY_LONG;
+  }
+}
 void hero_recoil_down(void) {
   Hero *h = &g_hero;
   cancel_jump();
@@ -375,7 +388,7 @@ void hero_recoil_down(void) {
 }
 void hero_bounce(void) {
   Hero *h = &g_hero;
-  if (!h->cs.bouncing && !h->control_relinquished) {
+  if (!h->cs.bouncing && !h->cs.shroom_bouncing && !h->control_relinquished) {
     cancel_jump();
     cancel_dash();
     h->bounce_timer = 0;
@@ -550,6 +563,9 @@ static bool should_hard_land(int col) {
 static void on_enter(const BodyEvent *e) {
   Hero *h = &g_hero;
   uint8_t f = phys_col_flags(e->col);
+#ifdef HK_FW
+  shrooms_touched(e->col);   /* (a bounce shroom's Phys Box: its CollisionEnterEvent) */
+#endif
   if ((f & CF_TERRAIN) && hero_touching_ground()) h->landed_event = true;   /* HeroCtrl-Landed */
   if (h->state != HS_NO_INPUT) {
     if (!(f & CF_TERRAIN)) return;
@@ -557,7 +573,7 @@ static void on_enter(const BodyEvent *e) {
     if (side == SIDE_TOP) {
       h->head_bump_steps = HEAD_BUMP_STEPS;
       if (h->cs.jumping) cancel_jump();
-      if (h->cs.bouncing) cancel_bounce(), h->body.vy = 0;
+      if (h->cs.bouncing || h->cs.shroom_bouncing) cancel_bounce(), h->body.vy = 0;
     }
     if (side == SIDE_BOTTOM) {
       if (h->cs.attacking) cancel_down_attack();
@@ -729,6 +745,7 @@ static void update(void) {
       if (h->bounce_timer < BOUNCE_TIME) h->bounce_timer += DT;
       else cancel_bounce(), h->body.vy = 0;
     }
+    if (h->cs.shroom_bouncing && h->body.vy <= 0) h->cs.shroom_bouncing = false;
     if (h->state == HS_IDLE) {
       if (!h->control_relinquished && !g_game.paused) {
         if (held(K_UP)) {
@@ -1097,6 +1114,17 @@ static void slash_hits(void) {
   float direction = sl.kind == SLASH_UP ? 90 : sl.kind == SLASH_DOWN ? 270 : (h->cs.facing_right != (sl.kind == SLASH_WALL)) ? 0 : 180;
   int fl = obj_nail(pts, 6, direction);
   if (direction == 270 && !(fl & HB_BOUNCE)) fl |= hazards_nail(pts, 6);
+  if (fl & HB_SHROOM) {
+    /* (a bounce shroom: far off it to the sides, down off it from below, high off it from above) */
+    if (direction == 0) recoil_long(true);
+    else if (direction == 180) recoil_long(false);
+    else if (direction == 90) hero_recoil_down();
+    else {
+      h->air_dashed = false;
+      h->cs.bouncing = false, h->cs.shroom_bouncing = true;
+      h->body.vy = SHROOM_BOUNCE_VELOCITY;
+    }
+  }
   if (direction == 0 && (fl & HB_RECOIL)) hero_recoil_left();
   else if (direction == 180 && (fl & HB_RECOIL)) hero_recoil_right();
   else if (direction == 90 && (fl & HB_RECOIL)) hero_recoil_down();
@@ -1452,7 +1480,7 @@ void hero_take_damage(int side, int damage, int hazard) {
     inv_damage();
     cancel_attack();
     if (h->cs.recoiling_left || h->cs.recoiling_right) cancel_recoil_horizontal();
-    if (h->cs.bouncing) cancel_bounce(), h->body.vy = 0;
+    if (h->cs.bouncing || h->cs.shroom_bouncing) cancel_bounce(), h->body.vy = 0;
     take_health(pd_flag(PDF_OVERCHARMED) ? damage * 2 : damage);
     take_damage_charm_effects(damage);
     fury_check();

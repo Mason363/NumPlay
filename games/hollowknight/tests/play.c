@@ -31,6 +31,20 @@ static void run_ticks(int n, uint32_t keys) {
 }
 /* every hazard respawn point of every room (the gates' and the hazard triggers'): ground under it, in the room; and
  * whether the room has hazards at all */
+/* (a gate no gate leads to (or one of the other part might): its marker is never where the Knight comes back) */
+static bool gate_entered(int r, const char *gate) {
+  bool found = false;
+  for (int q = 0; q < NUM_ROOMS && !found; q++) {
+    if (!room_load(q)) continue;
+    int n;
+    const Ent *es = room_ents(&n);
+    for (int i = 0; i < n && !found; i++)
+      found = es[i].type == ENT_GATE && (es[i].a == r || (es[i].a & 0x8000)) && !strcmp(str_at(es[i].s1), gate);
+  }
+  room_load(r);
+  return found;
+}
+
 static int markers_test(void) {
   int bad = 0;
   for (int r = 0; r < NUM_ROOMS; r++) {
@@ -54,10 +68,14 @@ static int markers_test(void) {
       float x = es[m].x0, y = es[m].y0;
       bool ground = phys_ray(x, y, 0, -1, 50, CF_TERRAIN, &hit);
       bool in = x > 0 && x < g_room.h->w && y > 0 && y < g_room.h->h;
-      if (!ground || !in || (ground && hit.dist > 15))
-        printf("%s %s ent %d (%s) marker %d at %.2f,%.2f: %s%s (hazards in the room: %d)\n", hazards ? "BAD " : "note", room_name(r), i,
-               es[i].type == ENT_GATE ? str_at(es[i].s0) : "trigger", m, x, y, ground ? "" : "no ground below", in ? "" : " outside the room", hazards);
-      bad += hazards && (!ground || !in);
+      if (!ground || !in || (ground && hit.dist > 15)) {
+        bool used = es[i].type != ENT_GATE || gate_entered(r, str_at(es[i].s0));
+        es = room_ents(&n);
+        printf("%s %s ent %d (%s) marker %d at %.2f,%.2f: %s%s (hazards in the room: %d)%s\n", hazards && used ? "BAD " : "note",
+               room_name(r), i, es[i].type == ENT_GATE ? str_at(es[i].s0) : "trigger", m, x, y, ground ? "" : "no ground below",
+               in ? "" : " outside the room", hazards, used ? "" : ", a gate never come in by");
+        bad += hazards && used && (!ground || !in);
+      }
     }
   }
   printf("markers: %d bad\n", bad);

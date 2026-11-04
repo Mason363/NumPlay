@@ -133,7 +133,7 @@ void save_set_respawn_kind(const char *marker, bool facing_right, int type);   /
 enum { ENT_CAMLOCK = 1, ENT_GATE, ENT_HAZARD_MARKER, ENT_RESPAWN, ENT_HAZARD_TRIGGER, ENT_MASK, ENT_DAMAGE, ENT_SHAPE,
        ENT_BOX, ENT_OBJ, ENT_PIECE, ENT_SHADE_MARKER };   /* (shape, box, piece: more of the record before) */
 enum { OK_BREAKABLE = 1, OK_ENEMY, OK_GREAT_DOOR, OK_GEO_ROCK, OK_CHEST, OK_BENCH, OK_BATTLE, OK_FK_FLOOR, OK_BGATE,
-       OK_ARENA, OK_EVENT, OK_SUMMON, OK_COND, OK_PROP, OK_DRIP, OK_COCOON, OK_AREA };   /* objects (ENT_OBJ's flags) */
+       OK_ARENA, OK_EVENT, OK_SUMMON, OK_COND, OK_PROP, OK_DRIP, OK_COCOON, OK_AREA, OK_SHROOM };   /* objects (ENT_OBJ's flags) */
 /* an enemy record's s1: starts alert (or first); startles; one of an arena's Pre Battle Enemies; its death counts for its arena; gone once its arena's
  * fight is over; spawned by its mother's burster; there only once its arena's fight is over; its FSMs off till near
  * the camera (FSMActivator); then its death's effects
@@ -161,7 +161,8 @@ int enemies_wave_hp(int wave);    /* (the HP of the first of them alive, else -1
 #endif
 void enemies_hornet_wake(void);  /* WAKE (to Hornet) */
 void enemies_hornet_saver(bool on);   /* her Hornet Saver's walls (ActivateAllChildren) */
-enum { HB_BOUNCE = 1, HB_RECOIL = 2 };    /* a hit box (ENT_BOX's flags): a down slash bounces off it, a slash recoils */
+enum { HB_BOUNCE = 1, HB_RECOIL = 2, HB_SHROOM = 4 };   /* a hit box (ENT_BOX's flags): a down slash bounces off it, a slash
+                                                         recoils; (obj_nail's) a bounce shroom */
 enum { HAZ_NONE, HAZ_NORMAL, HAZ_SPIKES, HAZ_ACID, HAZ_LAVA, HAZ_PIT };   /* DamageHero.hazardType */
 enum { MK_SECRET = 1, MK_REMASK = 2, MK_SIMPLE = 4 };   /* masks: the unmasker, remasker and inverse FSMs */
 enum { CL_PREVENT_UP = 1, CL_PREVENT_DOWN = 2, CL_MAX_PRIORITY = 4 };
@@ -197,6 +198,9 @@ void obj_draw(void);
 void obj_keep_cocoons(void);
 void obj_swing_start(void);                                  /* a slash's hit shape on: what it hits, once */
 int obj_nail(const float *pts, int npts, float direction);   /* -> HB_* of what it touches */
+#ifdef HK_FW
+void shrooms_touched(int col);   /* the Knight touched a collider: a bounce shroom's Phys Box? */
+#endif
 float rand_range(float lo, float hi);   /* Random.Range (floats) */
 
 /* enemies, their corpses, geo (enemy.c) */
@@ -214,7 +218,11 @@ void body_bounce(Body *b, float pvx, float pvy, int had, float factor);   /* Obj
 void geo_fling_at(int type, int n, float x, float y, float smin, float smax, float amin, float amax, float spread);
 int cardinal(float degrees);            /* DirectionUtils.GetCardinalDirection */
 const Ent *room_ents(int *n);
+#ifdef HK_FW
+#define MAX_ENTS 576   /* (Fungus2_18's bounce shrooms) */
+#else
 #define MAX_ENTS 448
+#endif
 
 /* ---------------------------------------------------------------- the game */
 typedef struct {
@@ -266,7 +274,7 @@ typedef struct {   /* HeroControllerStates */
   bool looking_up, looking_down, looking_up_anim, looking_down_anim, bouncing, recoiling_left, recoiling_right;
   bool recoiling, recoil_frozen, dead, hazard_death, hazard_respawning, will_hard_land, casting, cast_recoiling;
   bool prevent_dash, dash_cooldown, in_walk_zone, touching_wall, touching_non_slider, was_on_ground, transitioning;
-  bool invulnerable, focusing, wall_sliding;
+  bool invulnerable, focusing, wall_sliding, shroom_bouncing;
 } CState;
 
 typedef struct {

@@ -415,6 +415,41 @@ static void globs_draw(void) {
   }
 }
 
+/* (an Ogre's Spit Effect and Slam Effect: its children, a clip each time it spits or its smash lands, then off) */
+#define MAX_OGRE_FX 4
+static struct {
+  bool on;
+  float x, y, sx, sy;
+  Anim anim;
+} ogre_fx[MAX_OGRE_FX];
+
+static void ogre_fx_play(const Enemy *e, int clip, float lx, float ly, float kx, float ky) {
+  int k = 0;
+  for (int i = 0; i < MAX_OGRE_FX; i++)
+    if (!ogre_fx[i].on) k = i;
+  enemy_at(e, lx, ly, &ogre_fx[k].x, &ogre_fx[k].y);
+  ogre_fx[k].on = true, ogre_fx[k].sx = (e->sx < 0 ? -kx : kx), ogre_fx[k].sy = ky;
+  anim_play_from_frame(&ogre_fx[k].anim, clip, 0);
+}
+
+static void ogre_fx_tick(void) {
+  for (int i = 0; i < MAX_OGRE_FX; i++)
+    if (ogre_fx[i].on) {
+      ogre_fx[i].anim.events = 0;
+      anim_update(&ogre_fx[i].anim, DT);
+      if (ogre_fx[i].anim.events & ANIM_DONE) ogre_fx[i].on = false;
+    }
+}
+
+static void ogre_fx_draw(void) {
+  for (int i = 0; i < MAX_OGRE_FX; i++)
+    if (ogre_fx[i].on && ogre_fx[i].anim.sprite >= 0) {
+      Inst in;
+      sprite_inst(ogre_fx[i].anim.sprite, ogre_fx[i].x, ogre_fx[i].y, -0.002f, ogre_fx[i].sx, ogre_fx[i].sy, 0, &in);
+      gfx_actor(&in, SORT_KEY(0, 0));
+    }
+}
+
 /* ---------------------------------------------------------------- Shrumal Ogres (Shroom Brawler): asleep till woken
  * (by their Wake Region, or by their arena), they roam about where they started, turning to face the Knight; every
  * second and a half or so they spit globs at him or, if he is near, smash the ground before them. Their cap blocks
@@ -555,6 +590,7 @@ static void ogre_update(Enemy *e) {
         float x, y;
         enemy_at(e, v ? v->p0 : -1.95f, v ? v->p1 : 0.04f, &x, &y);
         for (int n = (int)rand_range(2, 4.999f); n > 0; n--) glob_fling(x, y, rand_range(t - 1.5f, t + 1.5f), rand_range(23, 26));
+        ogre_fx_play(e, CLIP_FX_ENEMY_SHOT, -3.32f, 1.55f, 1.2826f, 1.4723f);   /* (its Spit Effect: PLAY) */
         e->st = OG_SPIT;
       }
       break;
@@ -578,11 +614,18 @@ static void ogre_update(Enemy *e) {
         mk_hitbox(e, STR_SMASH_HITS, true);
         anim_play_from_frame(&e->anim, CLIP(e, R_A4), 0);
         ogre_invincible(e, false);
-        e->wait = 2.25f;
+        e->wait = 2.25f, e->c2 = 255, e->pause1 = 0;
         e->st = OG_SMASHING;
       }
       break;
     case OG_SMASHING:
+      /* (Slam Effects: the smash's frame that lands (its sprite 36), its Slam Effect, then a shake a moment after) */
+      if ((e->anim.frame == 3 || e->anim.frame == 11) && e->c2 != e->anim.frame) {
+        ogre_fx_play(e, CLIP_FX_SLAM_FAST, -2.936f, -1.1009f, 1, 1);
+        e->pause1 = 0.1f;
+      }
+      e->c2 = (uint8_t)e->anim.frame;
+      if (e->pause1 > 0 && (e->pause1 -= DT) <= 0) cam_shake(SHAKE_ENEMY_KILL);
       if ((e->wait -= DT) <= 0 || e->b1 == hero_left) {
         /* Smash Recover */
         mk_hitbox(e, STR_SMASH_HITS, false);
@@ -648,6 +691,7 @@ typedef struct {
   uint8_t st;
   float x, y, vx, vy, t, ang;
   Anim anim, lines;
+  uint32_t hit;   /* (its Gas Explosion's damages_enemy: the enemies it has hit, a bit each) */
 } Bomb;
 static Bomb bombs[MAX_BOMBS];
 
@@ -678,6 +722,18 @@ static void bombs_tick(void) {
     anim_update(&b->anim, DT);
     if (b->st == BB_BOOM) {
       anim_update(&b->lines, DT);
+      if (b->t < 0.5f)
+        /* (its circle, while on, hits every enemy it meets once, hard: damages_enemy's 9999) */
+        for (int k = 0; k < MAX_ENEMIES; k++) {
+          Enemy *e = &en[k];
+          if (e->mode != EM_ALIVE || (e->flags & 17) || (b->hit >> k & 1)) continue;
+          float x0, y0, x1, y1;
+          enemy_box(e, &x0, &y0, &x1, &y1);
+          float qx = b->x < x0 ? x0 : b->x > x1 ? x1 : b->x, qy = b->y < y0 ? y0 : b->y > y1 ? y1 : b->y;
+          if ((qx - b->x) * (qx - b->x) + (qy - b->y) * (qy - b->y) >= 9) continue;
+          b->hit |= 1u << k;
+          enemy_hit_by(e, atan2f(e->body.y - b->y, e->body.x - b->x) * 180 / (float)M_PI, 9999, false, 1);
+        }
       if ((b->t += DT) >= 1.5f) b->st = BB_OFF;   /* (Collider End: 1 s more, then Recycle) */
       continue;
     }
@@ -1815,6 +1871,7 @@ static void xl_enter(void) {
   memset(bombs, 0, sizeof bombs);
   memset(lances, 0, sizeof lances);
   memset(&mlb, 0, sizeof mlb);
+  memset(ogre_fx, 0, sizeof ogre_fx);
 }
 static void xl_tick(void) {
   gas_tick();
@@ -1822,6 +1879,7 @@ static void xl_tick(void) {
   bombs_tick();
   lances_tick();
   mlb_tick();
+  ogre_fx_tick();
 }
 static void xl_draw(void) {
   gas_draw();
@@ -1829,6 +1887,7 @@ static void xl_draw(void) {
   bombs_draw();
   lances_draw();
   mlords_draw();
+  ogre_fx_draw();
 }
 static int xl_touch(float x0, float y0, float x1, float y1, int *side) {
   int d = gas_touch(x0, y0, x1, y1, side);

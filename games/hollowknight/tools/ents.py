@@ -11,8 +11,8 @@ ENT_CAMLOCK, ENT_GATE, ENT_HAZARD_MARKER, ENT_RESPAWN, ENT_HAZARD_TRIGGER, ENT_M
     ENT_OBJ, ENT_PIECE, ENT_SHADE_MARKER = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
 # objects (ENT_OBJ's flags: src/obj.c)
 OK_BREAKABLE, OK_ENEMY, OK_GREAT_DOOR, OK_GEO_ROCK, OK_CHEST, OK_BENCH, OK_BATTLE, OK_FK_FLOOR, OK_BGATE, OK_ARENA, \
-    OK_EVENT, OK_SUMMON, OK_COND, OK_PROP, OK_DRIP, OK_COCOON, OK_AREA = \
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
+    OK_EVENT, OK_SUMMON, OK_COND, OK_PROP, OK_DRIP, OK_COCOON, OK_AREA, OK_SHROOM = \
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18
 # area titles (AreaTitleController: OK_AREA's p3): wait for its trigger, only on a revisit, shown on the right, only
 # when the Knight came in by a gate (s0), a sub area (always the small title), only once the Crossroads were visited
 AF_TRIGGER, AF_REVISIT, AF_RIGHT, AF_DOOR, AF_SUB, AF_AFTER_CROSSROADS = 1, 2, 4, 8, 16, 32
@@ -829,6 +829,50 @@ def prop(d, o, by_id):
     return lib, unity.S(clips[an["defaultClipId"]]["name"])
 
 
+def _world_scale(o):
+    """its world x and y scale (x negative when flipped)"""
+    m = np.array(o["m3"]).reshape(3, 3)
+    sx = float(np.hypot(m[0, 0], m[1, 0])) * (-1.0 if np.linalg.det(m[:2, :2]) < 0 else 1.0)
+    return sx, float(np.hypot(m[0, 1], m[1, 1]))
+
+
+def _shroom(d, o, by_id, owners):
+    """A bounce shroom (BounceShroom) -> its 3 records: its place, scale, clips (idle, bob, bounce), sorting and its Phys
+    Box's collider (s0); its trigger circle (center, radius), its hit effect (clip, place, scale; its tint: group,
+    group2, a; its sorting: flags, s0); its Phys Box's bounds (CollisionEnterEvent's rays start on them). The spores
+    (particles) are left out."""
+    import actors
+    an = next(c["v"] for c in o["c"] if c.get("class") == "tk2dSpriteAnimator")
+    assert _ref_file(d, an["library"]) == actors.ACTORS["shroom"][:2], o["path"]
+    bs = next(c["v"] for c in o["c"] if c.get("class") == "BounceShroom")
+    clip = lambda n: CLIP_INDEX[actors.clip_id("shroom", n)]
+    m = lambda q: np.array(q["m3"]).reshape(3, 3)
+    sx, sy = _world_scale(o)
+    layer, order = _sorting(o)
+    kids = {by_id[c]["name"]: by_id[c] for c in o.get("children", [])}
+    pb, fx = kids.get("Phys Box"), kids["Bounce Shroom Hit Effect"]
+    col, bounds = 0, (0, 0, 0, 0)
+    if pb:
+        col, n = _subcols(d, owners, pb["id"]) if owners else (0, 0)
+        assert n == 1 or not owners, o["path"]
+        v = next(c["v"] for c in pb["c"] if c["type"] == "BoxCollider2D")
+        hx, hy, ox, oy = v["m_Size"]["x"] / 2, v["m_Size"]["y"] / 2, v["m_Offset"]["x"], v["m_Offset"]["y"]
+        pts = [np.array(pb["pos"][:2]) + (m(pb) @ [ox + a * hx, oy + b * hy, 0])[:2] for a in (-1, 1) for b in (-1, 1)]
+        bounds = (min(p[0] for p in pts), min(p[1] for p in pts), max(p[0] for p in pts), max(p[1] for p in pts))
+    cc = next(c["v"] for c in o["c"] if c["type"] == "CircleCollider2D")
+    cx, cy = np.array(o["pos"][:2]) + (m(o) @ [cc["m_Offset"]["x"], cc["m_Offset"]["y"], 0])[:2]
+    r = cc["m_Radius"] * max(abs(sx), abs(sy))
+    fsx, fsy = _world_scale(fx)
+    tint = next(c["v"] for c in fx["c"] if c.get("class") == "tk2dSprite")["_color"]
+    rgb = [int(round(tint[k] * 255)) for k in "rgb"]
+    flayer, forder = _sorting(fx)
+    return [rec(ENT_OBJ, OK_SHROOM, (o["pos"][0], o["pos"][1], o["pos"][2], sx),
+                (sy, clip(bs["idleAnim"]), clip(bs["bobAnim"]), clip(bs["bounceAnim"])), a=order + 32768, group=layer, s0=col),
+            rec(0, flayer, (float(cx), float(cy), r, clip("Bounce Effect")), (fx["pos"][0], fx["pos"][1], fsx, fsy),
+                a=rgb[2], group=rgb[0], group2=rgb[1], s0=forder + 32768, s1=int(round(fx["pos"][2] * 1000)) & 0xFFFF),
+            rec(0, box=bounds)]
+
+
 def _sorting(o):
     """Its renderer's sorting layer (index) and order."""
     import scene
@@ -1050,6 +1094,9 @@ def room(d, rooms, strings, persist, name, sprites=None, owners=None, rec_base=0
             layer, order = _sorting(o)
             recs.append(rec(ENT_OBJ, OK_PROP, (o["pos"][0], o["pos"][1], o["pos"][2], sx), (sy, _angle(o), ci, 0),
                             a=order + 32768, group=layer, s0=sprites.tk2d(*sp) if sp else 0))
+        bs = next((c.get("v") for c in o["c"] if c.get("class") == "BounceShroom" and c.get("v")), None)
+        if bs and bs.get("active"):
+            recs += _shroom(d, o, by_id, owners)
         hc = next((c.get("v") for c in o["c"] if c.get("class") == "HealthCocoon" and c.get("v")), None)
         if hc is not None:
             # a lifeblood cocoon: its place, its sweat's waits; its colliders, the children it hides as it breaks (a
@@ -1322,5 +1369,5 @@ def room(d, rooms, strings, persist, name, sprites=None, owners=None, rec_base=0
         else:
             print("ents: %s: HIT receiver %d has no record" % (name, target))
     assert ngroups[0] < MAX_GROUPS, ngroups[0]
-    assert len(recs) <= 448, len(recs)   # (src/game.h: MAX_ENTS)
+    assert len(recs) <= (576 if os.environ.get("HK_PART") == "2" else 448), len(recs)   # (src/game.h: MAX_ENTS)
     return recs, groups

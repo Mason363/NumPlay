@@ -69,7 +69,7 @@ ROOMS = {
     "Fungus2_14": ["Shiny Item Stand", "Quirrel Mantis NPC", "Mantis Lever", "Mantis Lever (1)", "Mantis Gate", "Mantis Gate F",
                    "Mantis Floor Gate", "Inspect Region"],
     "Fungus2_12": ["Inspect Region"],
-    "Fungus2_15": ["Mantis Lever", "Mantis Lever (1)", "Mantis Lever (2)", "Mantis Lever (3)", "Mantis Lever (4)", "Mantis Gate",
+    "Fungus2_15": ["_SceneManager", "Mantis Lever", "Mantis Lever (1)", "Mantis Lever (2)", "Mantis Lever (3)", "Mantis Lever (4)", "Mantis Gate",
                    "Mantis Gate (1)", "Mantis Gate (2)", "Mantis Gate (3)", "Mantis Gate (4)", "Breakable Wall", "mantis_cage_up",
                    "deepnest_mantis_gate",
                    # (the Mantis Lords' fight, Fungus2_15_boss: their thrones, the challenge, the cage, the floors; the
@@ -197,7 +197,7 @@ def _conds(o, pdf):
 
 # FSMs left out (what this port does not have: the dream nail, sounds...)
 SKIP_FSMS = {"npc_dream_dialogue", "Dream Dialogue", "Rotate", "Shop Open Voice", "Enviro Region", "tink_effect",
-             "RespawnTriggerFSM"}
+             "RespawnTriggerFSM", "Music Control"}
 
 
 def _spins(f):

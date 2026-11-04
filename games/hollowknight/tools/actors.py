@@ -212,7 +212,8 @@ ACTORS["bgate"] = ("sharedassets9.assets", 197, ["BG Opened", "BG Close 1", "BG 
                                                  "Bone Gate Opened", "Bone Gate Close", "Bone Gate Closed", "Bone Gate Open"])
 # lifeblood cocoons and their scuttlers (HealthCocoon, ScuttlerControl); effects (splats)
 ACTORS["cocoon"] = ("sharedassets6.assets", 1092, ["Cocoon Idle", "Cocoon Sweat", "Scuttler Land", "Scuttler Run"])
-ACTORS["fx"] = ("resources.assets", 21298, ["Splat", "Splat2"] + (["Impact Lines"] if os.environ.get("HK_PART") == "2" else []))
+ACTORS["fx"] = ("resources.assets", 21298, ["Splat", "Splat2"] +
+                (["Impact Lines", "Enemy Shot", "Slam Fast"] if os.environ.get("HK_PART") == "2" else []))   # (a Spore Bomb's; an Ogre's spit, slam)
 # Vengeful Spirit (Fireball Top's blast, Fireball: its ball, its end, its impact on a wall)
 ACTORS["fireball"] = ("resources.assets", 23262, ["Blast", "Ball", "Ball End", "Fireball Wall Impact"])
 # water drips (WaterDrip)
@@ -245,6 +246,10 @@ ACTORS["hornetcs"] = ("sharedassets19.assets", 91, ["Idle", "Jump Full", "Throw 
 
 # enemies' shots (EnemyBullet)
 ACTORS["bullet"] = ("sharedassets32.assets", 745, ["Idle", "Impact", "Shockwave Spurt"])
+if os.environ.get("HK_PART") == "2":
+    # bounce shrooms (BounceShroom: its idle, bob and bounce clips, both kinds; its hit effect)
+    ACTORS["shroom"] = ("sharedassets174.assets", 29, ["Idle 1", "Bob 1", "Bounce 1", "Idle 2", "Bob 2", "Bounce 2",
+                                                       "Bounce Effect"])
 if os.environ.get("HK_PART") == "2":
     # (the Shrumal Ogres' spit: Vomit Glob)
     ACTORS["glob"] = ("sharedassets34.assets", 1067, ["Idle", "Land"])
