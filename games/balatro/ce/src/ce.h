@@ -18,7 +18,25 @@ uint32_t ce_ms(void);                                      /* milliseconds */
 
 /* ---- the busiest loops (blit.S; C on a computer, in gfx_ce.c) */
 void ce_shade(uint8_t *d, const uint8_t *tab, unsigned n);  /* d[i] = tab[d[i]]: tab 256-byte aligned, n > 0 */
-void ce_unpack(uint8_t *d, const uint8_t *s, unsigned n);   /* n bytes of two levels into 2n indices from 192 */
+unsigned ce_hash(unsigned h, const void *p, unsigned n);    /* h * 33 ^ each byte, 0 < n < 256 */
+unsigned ce_hash_str(unsigned h, const char *s);            /* the same over a string */
+unsigned ce_hash_words(unsigned h, const void *p, unsigned n); /* h * 33 + each 3 bytes (n of them), 0 < n < 256 */
+/* n rows (1..255) of a glyph, a byte a row (the left column its top bit), d its left on the first row (the strip's
+   rows are 320 bytes): in colour col, or the pixels under it darkened through tab (256-byte aligned) */
+void ce_glyph(uint8_t *d, const uint8_t *rows, unsigned n, unsigned col);
+void ce_glyph_shade(uint8_t *d, const uint8_t *rows, unsigned n, const uint8_t *tab);
+/* a sprite's rows of runs into the strip, the sprite wholly between the clip's columns */
+typedef struct {
+  uint8_t *d;         /* the strip at the sprite's left, on the first row drawn */
+  const uint8_t *rt;  /* that row's entry in the sprite's table of rows */
+  const uint8_t *spr; /* the sprite */
+  uint8_t n, sw;      /* rows (1..255), the sprite's width (1..255) */
+  const uint8_t *tab; /* NULL: the pixels copied; or a table (256-byte aligned) darkening what is under them */
+} ce_rle_t;
+void ce_rle(ce_rle_t *b);
+/* n pixels (1..255) of a sprite's row at another width, pixel i from row[(x8 + i * step) / 256] (row 256-byte aligned,
+   255 where nothing is): copied (tab NULL), or what is under it darkened through tab */
+void ce_scale_row(uint8_t *d, const uint8_t *row, unsigned n, unsigned x8, unsigned step, const uint8_t *tab);
 
 /* ---- colours (gfx_ce.c) */
 uint8_t ce_pal(C c);                    /* the palette index showing c: a fixed colour, or one taken for it */
@@ -34,6 +52,8 @@ extern const uint8_t *ce_edpat;         /* BALED: the editions' sheen */
 
 /* ---- the background (bg_ce.c) */
 void ce_bg_row(uint8_t *dst, int y, int x0); /* row y's background, from x0 to the right edge */
+/* the background's 64 colours (1555, the low byte first) at phase (0..511) from lut's 33 colours (blit.S) */
+void ce_bg_pal(uint8_t *out, const uint8_t *lut, unsigned phase, const uint8_t *keep);
 extern uint8_t ce_bg_ver;                    /* changes when the background's picture does (not its colours) */
 int ce_bg_init(void);
 

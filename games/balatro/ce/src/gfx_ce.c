@@ -7,6 +7,10 @@
  * one of 16 free entries while the screen shows it. Shading (panels, shadows, Options over the game) goes through
  * tables of every entry darkened. */
 #include <string.h>
+#ifdef NP_HOST
+#include <stdio.h>
+#include <stdlib.h>
+#endif
 #include "art.h"
 #include "assets.h"
 #include "bg.h"
@@ -34,19 +38,30 @@ typedef struct {
   int16_t x, y, w, h;
   uint8_t type, clip, r, fx;
   uint16_t a, b;
+  uint8_t anim;   /* the frame of what moves on its own (an edition's sheen, the fire) */
+  uint8_t s0, s1; /* the strips it covers */
   const char *s;
 } item_t;
+#ifndef NP_HOST
+_Static_assert(offsetof(item_t, clip) == 9 && offsetof(item_t, anim) == 16 && offsetof(item_t, s0) == 17 &&
+                   offsetof(item_t, s) == 19 && sizeof(item_t) == 22,
+               "blit.S's ce_hash_items reads items");
+#endif
+void ce_hash_items(unsigned *hs, const item_t *it, unsigned n, const unsigned *clip_hash);
 
-static item_t items[MAXI];
+static item_t items[MAXI], *item_next;
 static char strbuf[2560]; /* (a frame takes under 1 KB: the How to play page) */
 static int strpos, nitems;
 static int16_t clips[MAXCLIP][4];
 static int nclips, cur_clip;
 static uint8_t strip[SCR_W * SH];
+static const uint16_t ROW_OFF[SH] = {0, 320, 640, 960, 1280, 1600, 1920, 2240, 2560, 2880, 3200, 3520, 3840, 4160,
+                                     4480, 4800}; /* (a strip's rows: the eZ80 multiplies by calls) */
 static int bg_swirl, bg_cover_x;
 static uint8_t bg_solid;
 static unsigned strip_hash[NSTRIP];
 static uint8_t drawn_once;
+static unsigned ed_frame; /* the editions' sheen's frame */
 uint32_t g_time;
 
 void *g_scratch(int *size) {
@@ -56,13 +71,55 @@ void *g_scratch(int *size) {
 void g_bg_cover(int x) { bg_cover_x = x; }
 
 #ifdef NP_HOST
+#define CE_SLOW (getenv("NP_SLOW") != 0) /* (the C paths, to compare) */
 /* (blit.S on the calculator) */
 void ce_shade(uint8_t *d, const uint8_t *tab, unsigned n) {
   while (n--) *d = tab[*d], d++;
 }
-void ce_unpack(uint8_t *d, const uint8_t *s, unsigned n) {
-  for (; n; n--, s++) *d++ = (uint8_t)(CE_SWIRL0 + (*s & 15)), *d++ = (uint8_t)(CE_SWIRL0 + (*s >> 4));
+unsigned ce_hash(unsigned h, const void *p, unsigned n) {
+  for (const uint8_t *q = p; n; n--) h = (h * 33 ^ *q++) & 0xFFFFFF;
+  return h;
 }
+unsigned ce_hash_words(unsigned h, const void *p, unsigned n) {
+  for (const uint8_t *q = p; n; n--, q += 3) h = (h * 33 + (unsigned)(q[0] | q[1] << 8 | q[2] << 16)) & 0xFFFFFF;
+  return h;
+}
+unsigned ce_hash_str(unsigned h, const char *s) {
+  while (*s) h = (h * 33 ^ (uint8_t)*s++) & 0xFFFFFF;
+  return h;
+}
+void ce_glyph(uint8_t *d, const uint8_t *rows, unsigned n, unsigned col) {
+  for (; n; n--, d += SCR_W, rows++)
+    for (int x = 0; x < 8; x++)
+      if (*rows & (0x80 >> x)) d[x] = (uint8_t)col;
+}
+void ce_glyph_shade(uint8_t *d, const uint8_t *rows, unsigned n, const uint8_t *tab) {
+  for (; n; n--, d += SCR_W, rows++)
+    for (int x = 0; x < 8; x++)
+      if (*rows & (0x80 >> x)) d[x] = tab[d[x]];
+}
+void ce_scale_row(uint8_t *d, const uint8_t *row, unsigned n, unsigned x8, unsigned step, const uint8_t *tab) {
+  for (; n; n--, d++, x8 += step) {
+    uint8_t v = row[(x8 >> 8) & 255];
+    if (v != 255) *d = tab ? tab[*d] : v;
+  }
+}
+void ce_rle(ce_rle_t *b) {
+  for (; b->n; b->n--, b->d += SCR_W, b->rt += 2) {
+    const uint8_t *row = b->spr + (b->rt[0] | b->rt[1] << 8);
+    uint8_t *d = b->d;
+    for (int left = b->sw; left > 0;) {
+      d += row[0];
+      int n = row[1];
+      left -= row[0] + n;
+      for (int i = 0; i < n; i++, d++) *d = b->tab ? b->tab[*d] : row[2 + i];
+      row += 2 + n;
+    }
+  }
+}
+#else
+#define CE_SLOW 0
+_Static_assert(offsetof(ce_rle_t, tab) == 11, "blit.S reads ce_rle_t");
 #endif
 
 C darken(C a, int t) { return mix565(a, 0, t); }
@@ -74,46 +131,54 @@ static uint16_t strip_dyn[NSTRIP], frame_dyn; /* the taken entries each strip sh
 static struct {
   C c;
   uint8_t v, ok;
-} pcache[64];
+} pcache[256];
+static const uint16_t BIT16[16] = {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768};
+static uint8_t pal_r[CE_NSTATIC], pal_g[CE_NSTATIC], pal_b[CE_NSTATIC]; /* the fixed colours, 5 bits a channel */
+static uint16_t sq2[63], sq4[63], sq3[63];                             /* the distance's terms, by difference */
 
-static int dist(C a, uint16_t p) {
-  int dr = (int)(a >> 11) - (int)(p >> 10 & 31), dg = (int)((a >> 6) & 31) - (int)(p >> 5 & 31),
-      db = (int)(a & 31) - (int)(p & 31);
-  return 2 * dr * dr + 4 * dg * dg + 3 * db * db;
-}
 static uint8_t nearest_fixed(C c, int *d) {
-  int best = 0, bd = 1 << 20;
-  for (int i = 0; i < CE_NSTATIC; i++) {
-    int e = dist(c, ce_palette[i]);
-    if (e < bd) bd = e, best = i;
+  int r = c >> 11, g = (c >> 6) & 31, b = c & 31;
+  unsigned best = 0, bd = 0xFFFF;
+  for (unsigned i = 0; i < CE_NSTATIC; i++) {
+    unsigned e = (unsigned)sq2[r - pal_r[i] + 31] + sq4[g - pal_g[i] + 31] + sq3[b - pal_b[i] + 31];
+    if (e < bd) {
+      bd = e, best = i;
+      if (!e) break;
+    }
   }
-  if (d) *d = bd;
+  if (d) *d = (int)bd;
   return (uint8_t)best;
 }
 
 static void shade_tabs_reset(void);
 
 uint8_t ce_pal(C c) {
-  unsigned h = (c ^ c >> 6 ^ c >> 11) & 63;
+  uint8_t hi = (uint8_t)(c >> 8), h = (uint8_t)((uint8_t)c + (uint8_t)(hi << 3 | hi >> 5)); /* (bytes: the eZ80 shifts by calls) */
   if (pcache[h].ok && pcache[h].c == c) {
     uint8_t v = pcache[h].v;
-    if (v < CE_DYN0 || v >= CE_SWIRL0 || dyn_col[v - CE_DYN0] == c) {
-      if (v >= CE_DYN0 && v < CE_SWIRL0) frame_dyn |= (uint16_t)(1u << (v - CE_DYN0));
+    if (v < CE_DYN0 || v >= CE_SWIRL0) return v;
+    if (dyn_col[v - CE_DYN0] == c) {
+      frame_dyn |= BIT16[v - CE_DYN0];
       return v;
     }
   }
   int d;
+#ifdef NP_HOST
+  extern long ce_pal_misses;
+  ce_pal_misses++;
+  if (getenv("NP_PAL")) fprintf(stderr, "%u: miss %04X (slot %d had %04X)\n", (unsigned)g_time, c, h, pcache[h].c);
+#endif
   uint8_t v = nearest_fixed(c, &d);
-  if (d > 6) {
+  if (d > 24) {
     /* a free entry, or one already showing it */
     uint16_t used = frame_dyn;
     for (int s = 0; s < NSTRIP; s++) used |= strip_dyn[s];
     int k = -1;
     for (int i = 0; i < NDYN; i++)
-      if (dyn_col[i] == c && (used >> i & 1)) k = i;
+      if (dyn_col[i] == c && (used & BIT16[i])) k = i;
     if (k < 0)
       for (int i = 0; i < NDYN && k < 0; i++)
-        if (!(used >> i & 1)) k = i;
+        if (!(used & BIT16[i])) k = i;
     if (k >= 0) {
       if (dyn_col[k] != c) {
         dyn_col[k] = c;
@@ -121,7 +186,7 @@ uint8_t ce_pal(C c) {
         ce_set_palette(CE_DYN0 + k, 1, &p);
         shade_tabs_reset();
       }
-      frame_dyn |= (uint16_t)(1u << k);
+      frame_dyn |= BIT16[k];
       v = (uint8_t)(CE_DYN0 + k);
     }
   }
@@ -151,7 +216,7 @@ const uint8_t *ce_shade_tab(int alpha) {
   memcpy(t, ce_lut + LUT_SHADE + alpha * CE_NSTATIC, CE_NSTATIC);
   uint16_t used = frame_dyn;
   for (int s = 0; s < NSTRIP; s++) used |= strip_dyn[s];
-  for (int k = 0; k < NDYN; k++) t[CE_DYN0 + k] = used >> k & 1 ? nearest_fixed(mix565(dyn_col[k], 0, alpha), 0) : 0;
+  for (int k = 0; k < NDYN; k++) t[CE_DYN0 + k] = used & BIT16[k] ? nearest_fixed(mix565(dyn_col[k], 0, alpha), 0) : 0;
   for (int b = 0; b < CE_BANKS; b++) {
     /* the background's banks: the darkness after shading, to the nearest bank */
     int dark = 32 - (32 - bank_dark[b]) * (32 - alpha) / 32, nb = 0;
@@ -165,7 +230,7 @@ const uint8_t *ce_shade_tab(int alpha) {
 
 /* ------------------------------------------------------------------ the list */
 #define MAXR 8 /* (the interface's corners are 7 at most) */
-static uint8_t cov[MAXR + 1][MAXR][MAXR];
+static uint8_t cut[MAXR + 1][MAXR]; /* a corner's row: the pixels left out at the edge (under half covered) */
 
 void g_init(void) {
   for (int r = 1; r <= MAXR; r++)
@@ -178,18 +243,48 @@ void g_init(void) {
             int dx = 8 * r - (8 * x + 2 * sx + 1), dy = 8 * r - (8 * y + 2 * sy + 1);
             if (dx * dx + dy * dy <= 64 * r * r) n++;
           }
-        cov[r][y][x] = (uint8_t)(n * 2);
+        if (n * 2 < 16) cut[r][y] = (uint8_t)(x + 1); /* (coverage grows towards the middle) */
       }
+  for (int i = 0; i < CE_NSTATIC; i++)
+    pal_r[i] = ce_palette[i] >> 10 & 31, pal_g[i] = ce_palette[i] >> 5 & 31, pal_b[i] = ce_palette[i] & 31;
+  for (int d = -31; d <= 31; d++) sq2[d + 31] = (uint16_t)(2 * d * d), sq4[d + 31] = (uint16_t)(4 * d * d),
+                                  sq3[d + 31] = (uint16_t)(3 * d * d);
   drawn_once = 0;
 }
 
+#ifdef CE_PROF
+/* where a frame's time goes (ce_main.c prints it at the end), in thousands of cycles: 0 between frames, 1 the list,
+   2 the hashes, 3 the strips (4 how many, 5 frames), then in the strips 6 + an item's type, 13 the background, 14 the
+   copy to the screen */
+#include <sys/timers.h>
+unsigned long ce_prof[16];
+static unsigned long prof_t, prof_c[16];
+static unsigned long prof_now(void) {
+  static int on;
+  if (!on) on = 1, timer_Enable(2, TIMER_CPU, TIMER_NOINT, TIMER_UP);
+  return timer_GetSafe(2, TIMER_UP);
+}
+#define PROF(k)                        \
+  do {                                 \
+    unsigned long t_ = prof_now();     \
+    prof_c[k] += t_ - prof_t;          \
+    ce_prof[k] = prof_c[k] / 1000;     \
+    prof_t = t_;                       \
+  } while (0)
+#else
+#define PROF(k) ((void)0)
+#endif
+
 void g_begin(void) {
+  PROF(0); /* (the time between frames: the rules, the keys, the waiting) */
   nitems = 0;
+  item_next = items;
   bg_cover_x = 0;
   strpos = 0;
   nclips = 1;
   cur_clip = 0;
   frame_dyn = 0;
+  ed_frame = (unsigned)(g_time / ED_DT_MS);
   clips[0][0] = 0, clips[0][1] = 0, clips[0][2] = SCR_W, clips[0][3] = SCR_H;
 }
 
@@ -207,11 +302,14 @@ static item_t *add(int type, int x, int y, int w, int h) {
   if (nitems >= MAXI || w <= 0 || h <= 0) return 0;
   const int16_t *c = clips[cur_clip];
   if (x >= c[2] || y >= c[3] || x + w <= c[0] || y + h <= c[1]) return 0;
-  item_t *it = &items[nitems++];
+  item_t *it = item_next++;
+  nitems++;
   it->type = (uint8_t)type;
   it->x = (int16_t)x, it->y = (int16_t)y, it->w = (int16_t)w, it->h = (int16_t)h;
   it->clip = (uint8_t)cur_clip;
-  it->fx = 0, it->r = 0, it->a = 0, it->b = 0, it->s = 0;
+  it->fx = 0, it->r = 0, it->a = 0, it->b = 0, it->s = 0, it->anim = 0;
+  int y0 = y > c[1] ? y : c[1], y1 = y + h < c[3] ? y + h : c[3];
+  it->s0 = (uint8_t)((uint8_t)y0 >> 4), it->s1 = (uint8_t)((uint8_t)(y1 - 1) >> 4); /* (SH 16; y0 < y1 <= 240) */
   return it;
 }
 
@@ -244,11 +342,11 @@ void g_sprite(int id, int x, int y, int fx, int scale) {
     w = nw, h = nh;
   }
   item_t *it = add(I_SPRITE, x, y, w, h);
-  if (it) it->a = (uint16_t)id, it->fx = (uint8_t)fx, it->b = (uint16_t)scale;
+  if (it) it->a = (uint16_t)id, it->fx = (uint8_t)fx, it->b = (uint16_t)scale, it->anim = fx & FX_EDMASK ? ed_frame : 0;
 }
 void g_sprite_wh(int id, int x, int y, int w, int h, int fx) {
   item_t *it = add(I_SPRITE, x, y, w, h);
-  if (it) it->a = (uint16_t)id, it->fx = (uint8_t)fx, it->b = 0;
+  if (it) it->a = (uint16_t)id, it->fx = (uint8_t)fx, it->b = 0, it->anim = fx & FX_EDMASK ? ed_frame : 0;
 }
 void g_rsquare(int cx, int cy, int hs, int angle, C c) {
   int R = hs * 3 / 2 + 1;
@@ -258,7 +356,7 @@ void g_rsquare(int cx, int cy, int hs, int angle, C c) {
 void g_flame(int k, int x, int y, int w, int h, int top) {
   if (!flame_on()) return;
   item_t *it = add(I_FLAME, x, y, w, h);
-  if (it) it->a = (uint16_t)k, it->b = (uint16_t)top;
+  if (it) it->a = (uint16_t)k, it->b = (uint16_t)top, it->anim = (uint8_t)ce_flame_frame();
 }
 void g_bg(int swirl, C solid) {
   bg_swirl = swirl;
@@ -308,11 +406,43 @@ static int advance(int f, unsigned ch, const glyph_t *g) {
   return a;
 }
 
+/* a size's advances (characters 32 to 130), made when first asked for: measuring texts is a frame's busiest work */
+#define NADV 6
+static struct {
+  uint16_t key;
+  int8_t a[99];
+} advs[NADV];
+static uint8_t adv_next;
+#ifdef NP_HOST
+long ce_adv_made;
+#endif
+static const int8_t *adv_tab(int f) {
+  unsigned key = (unsigned)(f & (T_LARGE | T_MED | T_COND | T_TIGHT)) + 1;
+  for (int i = 0; i < NADV; i++)
+    if (advs[i].key == key) return advs[i].a - 32;
+  int i = adv_next;
+  adv_next = (uint8_t)(adv_next == NADV - 1 ? 0 : adv_next + 1);
+  const uint8_t *bits;
+  for (unsigned ch = 32; ch <= 130; ch++) {
+    unsigned c = ch > (f & (T_LARGE | T_MED) ? 126u : 130u) ? '?' : ch;
+    advs[i].a[ch - 32] = (int8_t)advance(f, c, glyph(f, c, &bits));
+  }
+  advs[i].key = (uint16_t)key;
+#ifdef NP_HOST
+  ce_adv_made++;
+#endif
+  return advs[i].a - 32;
+}
+
 static int textw(const char *s, int f, int one_line) {
   int w = 0, best = 0, badge = 0;
-  const uint8_t *bits;
+  const int8_t *adv = adv_tab(f);
   for (; *s; s++) {
     unsigned char ch = (unsigned char)*s;
+    if (ch >= 32) {
+      w += adv[ch > 130 ? '?' : ch];
+      continue;
+    }
     if (ch == '\n') {
       if (badge) w += 2, badge = 0;
       if (w > best) best = w;
@@ -320,13 +450,8 @@ static int textw(const char *s, int f, int one_line) {
       w = 0;
       continue;
     }
-    if (ch < 32) {
-      if (ch == 14 && !badge) w += 2, badge = 1;
-      else if (badge && ch != 14) w += 2, badge = 0;
-      continue;
-    }
-    if (ch > (f & (T_LARGE | T_MED) ? 126 : 130)) ch = '?';
-    w += advance(f, ch, glyph(f, ch, &bits));
+    if (ch == 14 && !badge) w += 2, badge = 1;
+    else if (badge && ch != 14) w += 2, badge = 0;
   }
   if (badge) w += 2;
   if (w > best) best = w;
@@ -378,27 +503,61 @@ void g_text_box(const char *s, int x, int y, int w, int h, int f, C c) {
 /* one glyph's pixels (its shadow first), into the strip rows ra..rb, columns cx0..cx1 */
 static void put_glyph(const glyph_t *g, const uint8_t *b, int f, int dc, int x, int y, uint8_t col, int y0, int ra,
                       int rb, int cx0, int cx1, const uint8_t *shadow) {
+  static const uint8_t BIT8[8] = {1, 2, 4, 8, 16, 32, 64, 128};
   int sc = (f & T_X2) ? 2 : 1, gh = glyph_rows(f);
   for (int pass = shadow ? 0 : 1; pass < 2; pass++) {
-    unsigned bit = g->off;
-    int dy = pass ? 0 : sc;
+    /* the bits column by column, a byte and a mask walked along, the strip by a pointer moved a row at a time (the
+       eZ80 shifts and multiplies by calls) */
+    const uint8_t *p = b + (g->off >> 3);
+    uint8_t m = BIT8[g->off & 7];
+    int top = y + (pass ? 0 : sc);
+    uint8_t *base = strip + (top - y0) * SCR_W;
     for (int gx = 0; gx < g->w; gx++) {
-      if (gx == dc) {
-        bit += gh;
+      int px = x + (gx - (dc >= 0 && gx > dc)) * sc, skip = gx == dc || px >= cx1 || px + sc <= cx0;
+      if (skip) {
+        for (int gy = 0; gy < gh; gy++) {
+          m = (uint8_t)(m + m);
+          if (!m) m = 1, p++;
+        }
         continue;
       }
-      int px = x + (gx - (dc >= 0 && gx > dc)) * sc;
-      for (int gy = 0; gy < gh; gy++, bit++) {
-        if (!((b[bit >> 3] >> (bit & 7)) & 1)) continue;
-        int py = y + gy * sc + dy;
-        for (int k = 0; k < sc * sc; k++) {
-          int X = px + (k & (sc - 1)), Y = py + (k >> (sc - 1));
+      uint8_t *d = base + px;
+      int py = top;
+      for (int gy = 0; gy < gh; gy++, py += sc, d += sc * SCR_W) {
+        int on = *p & m;
+        m = (uint8_t)(m + m);
+        if (!m) m = 1, p++;
+        if (!on) continue;
+        if (sc == 1) {
+          if (py >= ra && py < rb) *d = pass ? col : shadow[*d];
+          continue;
+        }
+        for (int k = 0; k < 4; k++) {
+          int X = px + (k & 1), Y = py + (k >> 1);
           if (Y >= ra && Y < rb && X >= cx0 && X < cx1) {
-            uint8_t *d = strip + (Y - y0) * SCR_W + X;
-            *d = pass ? col : shadow[*d];
+            uint8_t *q = d + (k & 1) + (k >> 1) * SCR_W;
+            *q = pass ? col : shadow[*q];
           }
         }
       }
+    }
+  }
+}
+
+/* the same row by row in eZ80 code (tools/mkart.py's glyph_rows), the glyph wholly between the clip's columns and
+   at its size: e its entry (where its rows start, its width), bits the size's rows */
+static void fast_glyph(const uint8_t *e, const uint8_t *bits, int gh, int x, int y, uint8_t col, int y0, int ra, int rb,
+                       const uint8_t *shadow) {
+  const uint8_t *rows = bits + *(const uint16_t *)e;
+  for (int pass = shadow ? 0 : 1; pass < 2; pass++) {
+    int top = y + 1 - pass, r0 = ra > top ? ra - top : 0, r1 = rb - top < gh ? rb - top : gh;
+    if (r0 >= r1) continue;
+    uint8_t *d = strip + ROW_OFF[top + r0 - y0] + x;
+    const uint8_t *r = rows + r0;
+    unsigned n = (unsigned)(r1 - r0);
+    for (int part = e[2] > 8 ? 2 : 1; part; part--, d += 8, r += gh) {
+      if (pass) ce_glyph(d, r, n, col);
+      else ce_glyph_shade(d, r, n, shadow);
     }
   }
 }
@@ -440,6 +599,16 @@ static void draw_text(item_t *it, int y0, int ra, int rb, int cx0, int cx1) {
   uint8_t col = (uint8_t)it->a, base = col;
   const uint8_t *sh = (f & (T_SHADOW | T_OUTLINE)) ? ce_shade_tab(12) : 0;
   int badge = 0;
+  const int8_t *advt = adv_tab(f);
+  /* the size's rows (glyphs drawn by fast_glyph) */
+  const uint8_t *rtab, *rbits;
+  int gh = glyph_rows(f), digits = (f & (T_COND | T_LARGE)) == (T_COND | T_LARGE);
+  if (f & T_LARGE) rtab = ce_lut + LUT_ROWS_LARGE, rbits = ce_lut + LUT_ROWBITS_LARGE;
+  else if (f & T_MED) {
+    if (f & T_COND) rtab = ce_lut + LUT_ROWS_MED_COND, rbits = ce_lut + LUT_ROWBITS_MED_COND;
+    else rtab = ce_lut + LUT_ROWS_MED, rbits = ce_lut + LUT_ROWBITS_MED;
+  } else
+    rtab = ce_lut + LUT_ROWS_SMALL, rbits = ce_lut + LUT_ROWBITS_SMALL;
   int align = (f & (T_CENTER | T_RIGHT)) && multi, total = it->w - 4;
   if (align) {
     int lw = textw(it->s, f, 1);
@@ -464,8 +633,7 @@ static void draw_text(item_t *it, int y0, int ra, int rb, int cx0, int cx1) {
         /* a red badge behind the following text, until the next code */
         const char *e = s + 1;
         int bw = 0;
-        const uint8_t *bb;
-        while (*e && (unsigned char)*e >= 32) bw += advance(f, (unsigned char)*e, glyph(f, (unsigned char)*e, &bb)), e++;
+        for (; (unsigned char)*e >= 32; e++) bw += advt[(unsigned char)*e > 130 ? '?' : (unsigned char)*e];
         bw = bw * sc + 3;
         int by0 = y - 2, by1 = y + cap * sc + 2;
         uint8_t red = ce_pal(HEXC(0xFE5F55));
@@ -483,11 +651,20 @@ static void draw_text(item_t *it, int y0, int ra, int rb, int cx0, int cx1) {
       continue;
     }
     if (ch > (f & (T_LARGE | T_MED) ? 126 : 130)) ch = '?';
-    const uint8_t *b;
-    const glyph_t *g = glyph(f, ch, &b);
-    int adv = advance(f, ch, g) * sc;
-    if (x < cx1 && x + adv + sc > cx0 && y < rb && y + glyph_rows(f) * sc + sc > ra)
-      put_glyph(g, b, f, drop_col(f, ch, g), x, y, col, y0, ra, rb, cx0, cx1, sh);
+    int adv = advt[ch] * sc;
+    if (x < cx1 && x + adv + sc > cx0 && y < rb && y + gh * sc + sc > ra) {
+      int dg = digits && ch >= '0' && ch <= '9';
+      const uint8_t *e = dg ? ce_lut + LUT_ROWS_LARGE_DIGITS + (ch - '0') * 4 : rtab + (ch - 32) * 4;
+      if (!e[2])
+        ; /* (a space) */
+      else if (sc == 1 && x >= cx0 && x + e[2] <= cx1 && !CE_SLOW)
+        fast_glyph(e, dg ? ce_lut + LUT_ROWBITS_LARGE_DIGITS : rbits, gh, x, y, col, y0, ra, rb, sh);
+      else {
+        const uint8_t *b;
+        const glyph_t *g = glyph(f, ch, &b);
+        put_glyph(g, b, f, drop_col(f, ch, g), x, y, col, y0, ra, rb, cx0, cx1, sh);
+      }
+    }
     x += adv;
   }
 }
@@ -495,11 +672,11 @@ static void draw_text(item_t *it, int y0, int ra, int rb, int cx0, int cx1) {
 /* ------------------------------------------------------------------ sprites */
 /* editions: a level a 2 x 2 cell of the card, a frame every ED_DT_MS, each card a little behind the next */
 static const uint8_t *ed_pattern(int ed, int x) {
-  int f = (int)((g_time / ED_DT_MS + (unsigned)(x / 12)) % ED_FRAMES);
+  int f = (int)((ed_frame + (unsigned)(x / 12)) % ED_FRAMES);
   return ce_edpat + ((ed - 1) * ED_FRAMES + f) * (ED_CH * ED_CW / 2);
 }
 
-static uint8_t rowbuf[256];
+static uint8_t rowbuf[256] __attribute__((aligned(256))); /* (ce_scale_row looks up by the low byte) */
 
 static void draw_sprite(item_t *it, int y0, int ra, int rb, int cx0, int cx1) {
   int id = it->a;
@@ -516,11 +693,21 @@ static void draw_sprite(item_t *it, int y0, int ra, int rb, int cx0, int cx1) {
   const uint8_t *edl = ed ? ce_lut + LUT_EDLUT + (ed - 1) * ED_LEVELS * CE_NSTATIC : 0;
   if (fx & FX_SHADOW) tab = ce_shade_tab(11);
   int plain = !(fx & ~FX_SHADOW);
-  for (int y = ya; y < yb; y++) {
-    int sy = same ? y - it->y : (int)((unsigned)(y - it->y) * sh / h);
-    const uint8_t *row = spr + (spr[2 * sy] | spr[2 * sy + 1] << 8);
-    uint8_t *d = strip + (y - y0) * SCR_W;
+  /* the source row: a step of sh / h in 1/256 */
+  unsigned ystep = same ? 256 : ((unsigned)sh << 8) / (unsigned)h, sy8 = (unsigned)(ya - it->y) * ystep;
+  uint8_t *d = strip + (ya - y0) * SCR_W;
+  for (int y = ya; y < yb; y++, sy8 += ystep, d += SCR_W) {
+    int sy = (int)(sy8 >> 8);
+    const uint8_t *rt = spr + sy + sy;
+    const uint8_t *row = spr + (rt[0] | (unsigned)rt[1] << 8);
     if (same && plain) {
+      if (it->x >= xa && it->x + sw <= xb && sw < 256 && !CE_SLOW) {
+        /* (in eZ80 code: the whole sprite) */
+        static ce_rle_t b;
+        b.d = d + it->x, b.rt = rt, b.spr = spr, b.n = (uint8_t)(yb - y), b.sw = (uint8_t)sw, b.tab = tab;
+        ce_rle(&b);
+        return;
+      }
       /* the runs straight in (or their shadow) */
       int x = it->x, end = it->x + sw;
       while (x < end) {
@@ -550,6 +737,10 @@ static void draw_sprite(item_t *it, int y0, int ra, int rb, int cx0, int cx1) {
     }
     const uint8_t *prow = pat ? pat + (sy >> 1 < ED_CH ? sy >> 1 : ED_CH - 1) * (ED_CW / 2) : 0;
     unsigned step = ((unsigned)sw << 8) / (unsigned)w, sx8 = (unsigned)(xa - it->x) * step;
+    if (!(fx & ~FX_SHADOW) && xb - xa < 256 && !CE_SLOW) {
+      ce_scale_row(d + xa, rowbuf, (unsigned)(xb - xa), sx8, step, tab);
+      continue;
+    }
     for (int x = xa; x < xb; x++, sx8 += step) {
       int sx = same ? x - it->x : (int)(sx8 >> 8);
       int v = rowbuf[sx];
@@ -564,7 +755,8 @@ static void draw_sprite(item_t *it, int y0, int ra, int rb, int cx0, int cx1) {
       }
       if (edl) {
         int cx = sx >> 1 < ED_CW ? sx >> 1 : ED_CW - 1;
-        int lv = (prow[cx >> 1] >> ((cx & 1) * 4)) & 15;
+        uint8_t pv = prow[cx >> 1];
+        int lv = cx & 1 ? pv >> 4 : pv & 15;
         v = edl[lv * CE_NSTATIC + v];
       }
       if (grey) v = grey[v];
@@ -581,16 +773,13 @@ static void draw_rsq(item_t *it, int y0, int ra, int rb, int cx0, int cx1) {
   int hs = it->r * 256 + 128, R = it->w / 2, cx = it->x + R, cy = it->y + R;
   int ya = it->y > ra ? it->y : ra, yb = it->y + it->h < rb ? it->y + it->h : rb;
   int xa = it->x > cx0 ? it->x : cx0, xb = it->x + it->w < cx1 ? it->x + it->w : cx1;
-  for (int y = ya; y < yb; y++) {
-    uint8_t *d = strip + (y - y0) * SCR_W;
-    int dy = y - cy;
-    for (int x = xa; x < xb; x++) {
-      int dx = x - cx;
-      int u = dx * co + dy * si, v = dy * co - dx * si;
-      if (u < 0) u = -u;
-      if (v < 0) v = -v;
-      if (u <= hs && v <= hs) d[x] = (uint8_t)it->a;
-    }
+  uint8_t *d = strip + (ya - y0) * SCR_W;
+  for (int y = ya; y < yb; y++, d += SCR_W) {
+    int dy = y - cy, dx = xa - cx;
+    /* u and v along the row: a step of co and -si a pixel (no multiplying per pixel) */
+    int u = dx * co + dy * si, v = dy * co - dx * si;
+    for (int x = xa; x < xb; x++, u += co, v -= si)
+      if ((u < 0 ? -u : u) <= hs && (v < 0 ? -v : v) <= hs) d[x] = (uint8_t)it->a;
   }
 }
 
@@ -600,32 +789,18 @@ static void draw_rrect(item_t *it, int y0, int ra, int rb, int cx0, int cx1, int
   int xa = x > cx0 ? x : cx0, xb = x + w < cx1 ? x + w : cx1;
   uint8_t c = (uint8_t)it->a;
   const uint8_t *tab = shade ? ce_shade_tab(it->a) : 0;
-  for (int yy = ya; yy < yb; yy++) {
-    int j = yy - it->y, cy = -1;
-    if (j < r) cy = j;
-    else if (j >= h - r) cy = h - 1 - j;
-    uint8_t *d = strip + (yy - y0) * SCR_W;
-    int ma = xa, mb = xb;
-    if (cy >= 0) {
-      if (ma < x + r) ma = x + r;
-      if (mb > x + w - r) mb = x + w - r;
-    }
+  uint8_t *d = strip + ROW_OFF[ya - y0];
+  const uint8_t *cr = cut[r];
+  for (int j = ya - it->y, je = yb - it->y; j < je; j++, d += SCR_W) {
+    /* the row less its corners' cut */
+    int k = j < r ? cr[j] : j >= h - r ? cr[h - 1 - j] : 0, ma = x + k, mb = x + w - k;
+    if (ma < xa) ma = xa;
+    if (mb > xb) mb = xb;
     if (ma < mb) {
       if (shade)
         ce_shade(d + ma, tab, (unsigned)(mb - ma));
       else
         memset(d + ma, c, (size_t)(mb - ma));
-    }
-    if (cy < 0) continue;
-    for (int side = 0; side < 2; side++) {
-      int ea = side ? (mb > xa ? mb : xa) : xa, eb = side ? xb : (ma < xb ? ma : xb);
-      for (int xx = ea; xx < eb; xx++) {
-        int i = xx - x;
-        int a = cov[r][cy][i < r ? i : w - 1 - i];
-        if (!a) continue;
-        if (a < 16) continue;
-        d[xx] = shade ? tab[d[xx]] : c;
-      }
     }
   }
 }
@@ -634,33 +809,30 @@ static void draw_rect(item_t *it, int y0, int ra, int rb, int cx0, int cx1) {
   int ya = it->y > ra ? it->y : ra, yb = it->y + it->h < rb ? it->y + it->h : rb;
   int xa = it->x > cx0 ? it->x : cx0, xb = it->x + it->w < cx1 ? it->x + it->w : cx1;
   if (xa >= xb) return;
-  for (int y = ya; y < yb; y++) memset(strip + (y - y0) * SCR_W + xa, it->a, (size_t)(xb - xa));
+  uint8_t *d = strip + (ya - y0) * SCR_W + xa;
+  for (int y = ya; y < yb; y++, d += SCR_W) memset(d, it->a, (size_t)(xb - xa));
 }
 
 /* ------------------------------------------------------------------ the frame */
-static unsigned mix(unsigned h, unsigned v) {
-  h ^= v;
-  return (h << 5) + h + (h >> 13);
-}
+static unsigned clip_hash[MAXCLIP];
 
-static unsigned item_hash(const item_t *it) {
-  unsigned h = mix(mix(mix((unsigned)(uint16_t)it->x, (unsigned)(uint16_t)it->y), (unsigned)it->w),
-                   (unsigned)it->h);
-  h = mix(h, (unsigned)it->type | (unsigned)it->r << 8 | (unsigned)it->fx << 16);
-  h = mix(h, (unsigned)it->a ^ (unsigned)it->b << 9);
-  const int16_t *c = clips[it->clip];
-  h = mix(h, (unsigned)(c[0] ^ c[1] << 9) ^ (unsigned)(c[2] << 3 ^ c[3] << 12));
-  if (it->s)
-    for (const char *p = it->s; *p; p++) h = mix(h, (unsigned char)*p);
-  /* what moves on its own: the editions' sheen, the fire */
-  if (it->type == I_SPRITE && (it->fx & FX_EDMASK)) h = mix(h, g_time / ED_DT_MS);
-  if (it->type == I_FLAME) h = mix(h, (unsigned)ce_flame_frame());
-  return h;
+#ifdef NP_HOST
+/* (blit.S on the calculator) */
+void ce_hash_items(unsigned *hs, const item_t *it, unsigned n, const unsigned *ch) {
+  for (; n; n--, it++) {
+    uint8_t b[18];
+    memcpy(b, it, 16), b[16] = it->anim, b[17] = it->s0; /* (the calculator's layout) */
+    unsigned h = ce_hash_words(ch[it->clip], b, 6);
+    if (it->s) h = ce_hash_str(h, it->s);
+    for (int s = it->s0; s <= it->s1; s++) hs[s] = (hs[s] * 33 + h) & 0xFFFFFF;
+  }
 }
+#endif
 
 #ifdef NP_HOST
 /* how full the frame's lists get (tools/host.c prints it) */
 int ce_max_items, ce_max_str;
+long ce_strips_drawn, ce_pal_misses;
 #endif
 
 void g_end(void) {
@@ -668,38 +840,50 @@ void g_end(void) {
   if (nitems > ce_max_items) ce_max_items = nitems;
   if (strpos > ce_max_str) ce_max_str = strpos;
 #endif
-  unsigned hs[NSTRIP];
-  unsigned base = mix(mix((unsigned)bg_swirl, (unsigned)bg_cover_x), (unsigned)bg_solid ^ (unsigned)ce_bg_ver << 8);
-  for (int s = 0; s < NSTRIP; s++) hs[s] = base + (unsigned)s;
-  for (int i = 0; i < nitems; i++) {
-    const item_t *it = &items[i];
-    int s0 = it->y < 0 ? 0 : it->y / SH, s1 = (it->y + it->h - 1) / SH;
-    if (s1 >= NSTRIP) s1 = NSTRIP - 1;
-    if (s0 > s1) continue;
-    unsigned h = item_hash(it) + (unsigned)i;
-    for (int s = s0; s <= s1; s++) hs[s] = mix(hs[s], h);
-  }
-  for (int s = 0; s < NSTRIP; s++) {
+  PROF(1); /* (the frame's list) */
+#ifdef CE_PROF
+  ce_prof[5]++;
+#endif
+  unsigned hs[NSTRIP], base[3] = {(unsigned)bg_swirl, (unsigned)bg_cover_x, bg_solid + (unsigned)ce_bg_ver * 256};
+#ifdef NP_HOST
+  for (int i = 0; i < 3; i++) base[i] &= 0xFFFFFF;
+#endif
+  unsigned b = ce_hash_words(0, base, 3);
+  for (int s = 0; s < NSTRIP; s++) hs[s] = b + (unsigned)s;
+  for (int i = 0; i < nclips; i++) clip_hash[i] = ce_hash(0x5A17u, clips[i], sizeof clips[i]);
+  ce_hash_items(hs, items, (unsigned)nitems, clip_hash);
+  PROF(2); /* (the hashes) */
+  uint8_t *d = strip;
+  for (int s = 0, y0 = 0; s < NSTRIP; s++, y0 += SH) {
     if (drawn_once && hs[s] == strip_hash[s]) continue;
+#ifdef CE_PROF
+    ce_prof[4]++;
+#endif
     strip_hash[s] = hs[s];
-    int y0 = s * SH, y1 = y0 + SH;
+#ifdef NP_HOST
+    ce_strips_drawn++;
+    if (getenv("NP_STRIPS")) fprintf(stderr, "%u: strip %d\n", (unsigned)g_time, s);
+#endif
+    int y1 = y0 + SH;
     uint16_t dyn = 0;
     if (bg_swirl) {
-      for (int y = y0; y < y1; y++) {
-        uint8_t *d = strip + (y - y0) * SCR_W;
+      d = strip;
+      for (int y = y0; y < y1; y++, d += SCR_W) {
         if (bg_cover_x > 0) memset(d, bg_solid, (size_t)(bg_cover_x < SCR_W ? bg_cover_x : SCR_W));
         if (bg_cover_x < SCR_W) ce_bg_row(d, y, bg_cover_x);
       }
     } else
       memset(strip, bg_solid, sizeof strip);
+    PROF(13);
     for (int i = 0; i < nitems; i++) {
       item_t *it = &items[i];
-      if (it->y >= y1 || it->y + it->h <= y0) continue;
+      if (s < it->s0 || s > it->s1) continue;
       const int16_t *c = clips[it->clip];
       int cy0 = y0 > c[1] ? y0 : c[1], cy1 = y1 < c[3] ? y1 : c[3];
       if (cy0 >= cy1) continue;
       if (it->type != I_SPRITE && it->type != I_SHADE && it->type != I_FLAME && it->a >= CE_DYN0 && it->a < CE_SWIRL0)
-        dyn |= (uint16_t)(1u << (it->a - CE_DYN0));
+        dyn |= BIT16[it->a - CE_DYN0];
+      PROF(15);
       switch (it->type) {
         case I_RECT: draw_rect(it, y0, cy0, cy1, c[0], c[2]); break;
         case I_RRECT: draw_rrect(it, y0, cy0, cy1, c[0], c[2], 0); break;
@@ -709,9 +893,13 @@ void g_end(void) {
         case I_RSQ: draw_rsq(it, y0, cy0, cy1, c[0], c[2]); break;
         case I_FLAME: ce_flame_rows(it->a & 1, it->x, it->y, it->w, it->h, it->b, strip, y0, cy0, cy1, c[0], c[2]); break;
       }
+      PROF(6 + it->type);
     }
     strip_dyn[s] = dyn;
+    PROF(15);
     memcpy(ce_vram + y0 * SCR_W, strip, sizeof strip);
+    PROF(14);
   }
   drawn_once = 1;
+  PROF(3); /* (the strips drawn: what the items left) */
 }

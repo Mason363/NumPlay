@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """The NumWorks version's main.c for the TI-84 Plus CE: the same file with the CE's keys named where the screens
 name keys (platform/ti84ce/README.md: 2nd is OK, enter is EXE, clear is Back, mode is Home, del is the NumWorks's
-backspace, y= is shift, math is toolbox, vars is var), and its main() renamed for src/ce_main.c to call.
+backspace, y= is shift, math is toolbox, vars is var), the keys looked through only when one is newly down, and its
+main() renamed for src/ce_main.c to call.
 Every text below must be found, so a change to the NumWorks texts shows here.
 
 Usage: cekeys.py ../src/main.c gen/main.c"""
@@ -23,6 +24,9 @@ SWAPS = [
     ('const char *k = moving ? "OK" : "alpha"', 'const char *k = moving ? "2nd" : "alpha"'),
     # Run Info
     ('T("left/right: tabs     back: close")', 'T("left/right: tabs     clear: close")'),
+    # the keys newly down: none most frames (the eZ80 shifts 64 bits by calls)
+    ("  for (int k = 0; k < 53; k++)\n    if (((keys >> k) & 1) && !((prev_keys >> k) & 1)) {",
+     "  if (keys & ~prev_keys)\n  for (int k = 0; k < 53; k++)\n    if (((keys >> k) & 1) && !((prev_keys >> k) & 1)) {"),
     # the entry point
     ("int main(void) {", "int balatro_main(void) {"),
 ]

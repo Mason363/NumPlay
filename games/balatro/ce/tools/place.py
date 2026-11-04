@@ -24,8 +24,9 @@ def main():
             bss += size
         elif name.startswith((".text", ".rodata")) and size and not KEEP.match(name):
             secs.append((size, name))
-    bss_size = (bss + 64 + 255) & ~255
-    bins = [["vram", VRAM, []], ["pshadow", PSHADOW, []], ["bssx", BSS_HIGH - BSS_LOW - bss_size, []]]
+    bss_size = (bss + 64 + 511 + 255) & ~255  # (and the 256-byte aligned tables' padding)
+    # (a few bytes kept free in each: the alignment of some sections)
+    bins = [["vram", VRAM - 32, []], ["pshadow", PSHADOW - 32, []], ["bssx", BSS_HIGH - BSS_LOW - bss_size - 32, []]]
     left = 0
     for size, name in sorted(secs, reverse=True):
         for b in bins:

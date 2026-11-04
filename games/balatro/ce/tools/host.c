@@ -386,8 +386,10 @@ int main(void) {
   ce_set_palette(0, CE_NSTATIC, ce_palette);
   balatro_main();
   extern int ce_max_items, ce_max_str;
-  fprintf(stderr, "host: %ld frames in %llu ms (at most %d items, %d bytes of text a frame)\n", frames,
-          (unsigned long long)eadk_timing_millis(), ce_max_items, ce_max_str);
+  extern long ce_strips_drawn, ce_adv_made, ce_pal_misses;
+  fprintf(stderr, "host: %ld frames in %llu ms (at most %d items, %d bytes of text a frame), %ld strips drawn, "
+          "%ld advance tables made, %ld colours looked up\n", frames, (unsigned long long)eadk_timing_millis(),
+          ce_max_items, ce_max_str, ce_strips_drawn, ce_adv_made, ce_pal_misses);
   if (getenv("NP_BOT"))
     fprintf(stderr, "bot: ante %d reached, %d wins, round %d, best hand %.0f, money %ld\n", bot_ante_reached, bot_wins,
             R.round, R.best_hand, (long)R.money);

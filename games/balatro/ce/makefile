@@ -1,7 +1,8 @@
 # Balatro for the TI-84 Plus CE (CE C toolchain v15: cedev-config on the PATH). `make` builds bin/: BALATRO.8xp
-# (with BALATRO0... when the program is past 64 KB), the code the loader puts in place (BALCV0, BALCV1, BALCB), the art
-# (BALART0...) and tables (BALLUT, BALFIRE, BALBG0, BALBG1). The game's rules and screens are the NumWorks version's
-# (../src); src/ is the CE's own: the screen at 8 bits a pixel, the background's colours turning, the keys, the files.
+# (with BALATRO0... when the program is past 64 KB), the code the loader puts in place (BALCV0, BALCV1, BALCP,
+# BALCB), the art (BALART0...) and tables (BALLUT, BALFIRE, BALBG0 to 2, BALED). The game's rules and screens are the
+# NumWorks version's (../src); src/ is the CE's own: the screen at 8 bits a pixel, the background's colours turning,
+# the keys, the files; its busiest drawing in eZ80 code (src/blit.S).
 #   make host    the same code on a computer (tools/host.c, SDL 3): bin/host/balatro
 NAME = BALATRO
 ICON = icon.png

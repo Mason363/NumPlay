@@ -85,6 +85,44 @@ def rle_rows(rows, w):
     return bytes(out + body)
 
 
+GLYPH_H = {"font_small": 9, "font_med": 12, "font_large": 14, "font_large_digits": 14}
+
+
+def drop_col(ch, w):
+    """the column the condensed medium size leaves out (src/gfx.c), or None"""
+    if ch in "TI1":
+        return 0
+    if ch in "ft":
+        return 4
+    return {5: 3, 6: 2, 7: 3, 8: 4}.get(w)
+
+
+def glyph_rows(fonts):
+    """The fonts row by row for src/gfx_ce.c (its eZ80 code draws a row from a byte, the left column its top bit):
+    per size a table of 4 bytes a glyph (where its rows start, its width), then the rows; a glyph past 8 columns has
+    its ninth column's rows after. The condensed medium size has a table and rows of its own."""
+    out = []
+    sizes = [(n, n) for n in fonts] + [("font_med_cond", "font_med")]
+    for name, src in sizes:
+        glyphs, bits = fonts[src]
+        gh = GLYPH_H[src]
+        tab, rows = bytearray(), bytearray()
+        for k, (o, w, _a) in enumerate(glyphs):
+            cols = [[(bits[(o + x * gh + y) >> 3] >> ((o + x * gh + y) & 7)) & 1 for y in range(gh)] for x in range(w)]
+            if name == "font_med_cond":
+                dc = drop_col(chr(32 + k), w)
+                if dc is not None and dc < w:
+                    cols = cols[:dc] + cols[dc + 1:]
+            if len(cols) > 9:
+                raise SystemExit(f"mkart: a glyph of {name} is wider than 9")
+            tab += bytes((len(rows) & 255, len(rows) >> 8, len(cols), 0))
+            for part in (cols[:8], cols[8:]):
+                if part:
+                    rows += bytes(sum(c[y] << (7 - x) for x, c in enumerate(part)) for y in range(gh))
+        out += [("rows_" + name[5:], tab), ("rowbits_" + name[5:], rows)]
+    return out
+
+
 def zx0(data, convbin, tmp):
     src, dst = os.path.join(tmp, "zx.in"), os.path.join(tmp, "zx.out")
     open(src, "wb").write(data)
@@ -141,7 +179,7 @@ BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
 def field(mode, x0, w, h, cell):
     """The paint as src/bg.c draws it: worked out on a grid every `cell` pixels (each point the mean of 4 samples a
     pixel around it, as bg.c's passes average them), interpolated between the points for every pixel, then as levels
-    0..15 (ordered dither), two pixels a byte (the left one in the low half)."""
+    0..15 (ordered dither), as their palette entries (the background's from SWIRL0)."""
     gw, gh = (w + cell - 1) // cell + 2, (h + cell - 1) // cell + 2
     t = 20.0 if mode else 36.0
     jit = ((-1, -1), (1, 1), (1, -1), (-1, 1))
@@ -155,10 +193,7 @@ def field(mode, x0, w, h, cell):
             v = (grid[gy][gx] * (1 - fx) + grid[gy][gx + 1] * fx) * (1 - fy) + \
                 (grid[gy + 1][gx] * (1 - fx) + grid[gy + 1][gx + 1] * fx) * fy
             lv = max(0, min(LEVELS - 1, int((v * (LEVELS - 1) * 16 / 255 + BAYER[y & 3][x & 3]) // 16)))
-            if x & 1:
-                out[-1] |= lv << 4
-            else:
-                out.append(lv)
+            out.append(SWIRL0 + lv)
     return bytes(out)
 
 
@@ -495,6 +530,7 @@ def main():
         for o, w, a in glyphs:
             tab += bytes((o & 255, o >> 8, w, a))
         fonts += [(name, tab), (name + "_bits", bits)]
+    fonts += glyph_rows(art.fonts)
     parts = {}
     for name, blob in (("shade", shade), ("grey", grey), ("edlut", edl), ("fcol", fcols), ("text", texts)) + tuple(fonts):
         if len(lut) & 1:
@@ -507,7 +543,8 @@ def main():
     blobs = dict(vars_)
     blobs["BALLUT"] = lut
     blobs["BALBG0"] = bg_run
-    blobs["BALBG1"] = bg_title
+    blobs["BALBG1"] = bg_title[:len(bg_title) // 2]  # (the title's: in two)
+    blobs["BALBG2"] = bg_title[len(bg_title) // 2:]
     blobs["BALFIRE"] = fgrids
     blobs["BALED"] = edp
     if max(len(b) for b in blobs.values()) > MAXVAR:
