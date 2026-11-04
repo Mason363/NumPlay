@@ -8,7 +8,7 @@
 
 <p align="center">
   <b>Hallownest past Greenpath, on the NumWorks calculator.</b><br>
-  Down from the Forgotten Crossroads into the Fungal Wastes.
+  Down from the Forgotten Crossroads into the Fungal Wastes, to Mantis Village and the Mantis Lords.
 </p>
 
 <p align="center">
@@ -20,17 +20,32 @@
   <img src="docs/shot.png" width="390" alt="A Fungoon in the Fungal Wastes">
 </p>
 
+<table>
+  <tr>
+    <td align="center"><img src="docs/village.png" width="390" alt="Mantis Village"><br><sub>Mantis Village</sub></td>
+    <td align="center"><img src="docs/lords.png" width="390" alt="The Mantis Lords"><br><sub>The Mantis Lords</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/shrooms.png" width="390" alt="A bounce shroom"><br><sub>Bounce shrooms</sub></td>
+    <td align="center"><img src="docs/quirrel.png" width="390" alt="Quirrel over Mantis Village"><br><sub>Quirrel over Mantis Village</sub></td>
+  </tr>
+</table>
+
 ## How to play
 
 Play Hollow Knight first. At the Forgotten Crossroads' way down to the Fungal Wastes, the game saves and tells you to install this app. Install it, choose Start Game and the same save: the Knight walks in there. Going back up saves the same way, for Hollow Knight to go on.
 
-Keys, charms, benches and the rest are as in Hollow Knight: see its [controls](../hollowknight/README.md#controls).
+Keys, charms, benches and the rest are as in Hollow Knight: see its [controls](../hollowknight/README.md#controls). With the Mantis Claw, press OK while sliding down a wall to jump off it.
 
 ## What's in
 
-* **The way down:** from the Crossroads' last room through the Fungal Wastes to Queen's Station.
-* **The Shrumal Ogres' fight:** two Ogres, one after the other, behind shut gates.
-* **Its creatures:** Shrumal Ogres, Sporgs and their Spore Bombs, Fungoons and their gas, Funglings, Amblooms, Shrumelings, Husk Hornheads and Fungified Husks, each with its own moves.
+* **The way down:** from the Crossroads' last room through the Fungal Wastes to Queen's Station, then on to Mantis Village.
+* **The Shrumal Ogres' fight:** two Ogres, one after the other, behind shut gates, and a charm notch for beating them.
+* **Mantis Village:** its warriors and youths, its levers and gates, and the Mantis Claw. With it the Knight slides down walls and jumps off them, here and in Hollow Knight.
+* **The Mantis Lords:** first one, then the other two together. Beat them and the tribe bows, the way to their treasure opens and the mantises leave you be.
+* **Its creatures:** Shrumal Ogres, Sporgs and their Spore Bombs, Fungoons and their gas, Funglings, Amblooms, Shrumelings, Husk Hornheads, Fungified Husks, Mantis Warriors and Mantis Youths, each with its own moves.
+* **Bounce shrooms:** strike one from above to bounce high.
+* **Who you meet:** Quirrel at Queen's Station and over Mantis Village, and Cornifer, who sells the Fungal Wastes' map.
 * **Queen's Station:** its bench, its toll and bell, and the stag. Both apps' stags go to every station opened, and a ride to one of the other app saves for it.
 
 ## Good to know

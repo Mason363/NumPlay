@@ -19,7 +19,7 @@
 ## Highlights
 
 * **The start of the journey:** King's Pass, Dirtmouth, the Forgotten Crossroads with the False Knight, Gruz Mother and the Ancestral Mound, then Greenpath up to Hornet and the Mothwing Cloak, with the rooms along the way and their secrets.
-* **The Knight moves like in the game:** the same jumps, nail slashes, recoils, pogos, dash, focus and Vengeful Spirit.
+* **The Knight moves like in the game:** the same jumps, nail slashes, recoils, pogos, dash, focus and Vengeful Spirit. Once the Mantis Claw is found in [Hollow Knight: Fungal Wastes](../hkfungal/README.md), he slides down walls and jumps off them here too.
 * **Its creatures and bosses:** from Crawlids and Vengeflies to Moss Knights and Mosskin, the False Knight, Gruz Mother and Hornet, each with its own attacks.
 * **The people of Hallownest:** Elderbug, Sly, Iselda, Cornifer, Salubra, the Snail Shaman, Quirrel, Tiso, the Stag and the Grubfather, with all they have to say.
 * **Everything to find and spend:** geo, charms and what they do, mask shards, vessel fragments, grubs, relics, the map, the quill and its markers, the stag stations and the shops.
@@ -58,7 +58,7 @@ Hit enemies with the nail to fill your soul, then hold the spell key to focus it
 | --- | --- |
 | Arrows | Move, look up and down, aim the nail up or down |
 | Up | Talk, read, rest at a bench, go through a door |
-| OK | Jump |
+| OK | Jump, and off a wall once you have the Mantis Claw |
 | Back | Nail |
 | Shift | Dash, once you have the Mothwing Cloak |
 | Alpha | Hold to focus and heal, tap to cast a spell |
