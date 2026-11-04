@@ -11,6 +11,14 @@
 
 #if M68K_EMULATE_ADDRESS_ERROR
 #include <setjmp.h>
+/* (NumPlay: on the calculator GCC's own, without the C library's and the unwinding it brings) */
+#if defined(__arm__) && defined(__GNUC__) && !defined(__clang__)
+#define M68K_SETJMP __builtin_setjmp
+#define M68K_LONGJMP __builtin_longjmp
+#else
+#define M68K_SETJMP setjmp
+#define M68K_LONGJMP longjmp
+#endif
 #endif /* M68K_EMULATE_ADDRESS_ERROR */
 
 #include "m68k.h"
@@ -312,7 +320,7 @@
 /* Enable or disable Address error emulation */
 #if M68K_EMULATE_ADDRESS_ERROR
   #define m68ki_set_address_error_trap() \
-    if(setjmp(m68ki_cpu.aerr_trap) != 0) \
+    if(M68K_SETJMP(m68ki_cpu.aerr_trap) != 0) \
     { \
       m68ki_exception_address_error(); \
     }
@@ -325,7 +333,7 @@
         m68ki_cpu.aerr_address = ADDR; \
         m68ki_cpu.aerr_write_mode = WRITE_MODE; \
         m68ki_cpu.aerr_fc = FC; \
-        longjmp(m68ki_cpu.aerr_trap, 1); \
+        M68K_LONGJMP(m68ki_cpu.aerr_trap, 1); \
       } \
     }
 #else

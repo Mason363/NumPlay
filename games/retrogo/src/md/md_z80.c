@@ -34,8 +34,8 @@ uint8_t md_z80_read(uint16_t addr);
 #include "gwenesis_bus.h"
 #include "gwenesis_savestate.h"
 
-extern unsigned char *md_zram[2];
-#define ZRAM_AT(a) (md_zram[((a) >> 12) & 1][(a) & 0xFFF])
+extern unsigned char *md_zram[4];
+#define ZRAM_AT(a) (md_zram[((a) >> 11) & 3][(a) & 0x7FF])
 
 /* the machine around it, saved with it */
 static struct {

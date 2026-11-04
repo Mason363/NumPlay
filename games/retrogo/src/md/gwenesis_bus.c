@@ -42,9 +42,9 @@ __license__ = "GPLv3"
 #define gwenesis_SN76489_Reset() ((void)0)
 #define printf(...) ((void)0)
 #define vfprintf(...) ((void)0)
-/* (the Z80's 8 KB of RAM in two pages of 4 KB, md.c) */
-extern unsigned char *md_zram[2];
-#define ZRAM_AT(a) (md_zram[((a) >> 12) & 1][(a) & 0xFFF])
+/* (the Z80's 8 KB of RAM in four pages of 2 KB, md.c) */
+extern unsigned char *md_zram[4];
+#define ZRAM_AT(a) (md_zram[((a) >> 11) & 3][(a) & 0x7FF])
 
 #if GNW_TARGET_MARIO !=0 || GNW_TARGET_ZELDA!=0
   #pragma GCC optimize("Ofast")

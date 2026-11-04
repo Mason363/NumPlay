@@ -44,7 +44,9 @@ LDFLAGS += -Wl,--gc-sections -flinker-output=nolto-rel
 
 CORE_O = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(CORE_SRC))
 APP_O = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(APP_SRC))
-MOD_CORE_O = $(patsubst src/%.c,$(BUILD_DIR)/mod/%.o,$(CORE_SRC))
+# (inside NumPlay, no Mega Drive: the RAM it needs isn't there, main.c's HAS_MD)
+MOD_CORE_SRC = $(filter-out $(MD_SRC),$(CORE_SRC))
+MOD_CORE_O = $(patsubst src/%.c,$(BUILD_DIR)/mod/%.o,$(MOD_CORE_SRC))
 MOD_APP_O = $(patsubst src/%.c,$(BUILD_DIR)/mod/%.o,$(APP_SRC))
 
 .PHONY: build check clean test module sim-module FORCE
@@ -106,10 +108,10 @@ $(BUILD_DIR)/module.o: $(MOD_CORE_O) $(MOD_APP_O)
 
 SIM_CFLAGS = -std=gnu11 -Isrc/nes -O2 -fPIC $(shell $(NWLINK) eadk-cflags-simulator) -DNP_MODULE=1 -w
 sim-module: $(BUILD_DIR)/sim-module.o
-$(BUILD_DIR)/sim-module.o: $(CORE_SRC) $(APP_SRC) $(HEADERS)
+$(BUILD_DIR)/sim-module.o: $(MOD_CORE_SRC) $(APP_SRC) $(HEADERS)
 	$(Q) mkdir -p $(BUILD_DIR)/sim
 	$(Q) cc $(SIM_CFLAGS) -Dmain=np_retrogo_main -c src/main.c -o $(BUILD_DIR)/sim/main.o
-	$(Q) for f in $(CORE_SRC) src/romtable.c src/pack.c; do cc $(SIM_CFLAGS) -c $$f -o $(BUILD_DIR)/sim/$$(echo $$f | tr / _).o || exit 1; done
+	$(Q) for f in $(MOD_CORE_SRC) src/romtable.c src/pack.c; do cc $(SIM_CFLAGS) -c $$f -o $(BUILD_DIR)/sim/$$(echo $$f | tr / _).o || exit 1; done
 	$(Q) $(PY) ../../tools/romtable.py --c $(BUILD_DIR)/sim/roms.c $(ROMS) && cc $(SIM_CFLAGS) -c $(BUILD_DIR)/sim/roms.c -o $(BUILD_DIR)/sim/roms.o
 	$(Q) ld -r $(BUILD_DIR)/sim/*.o -exported_symbol _np_retrogo_main -o $@
 

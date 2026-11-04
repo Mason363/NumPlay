@@ -9,7 +9,8 @@
 
 /* the RAMs (64 KB for the 68000, 8 KB for the Z80) in pages of MD_PAGE bytes, from rg_alloc_page
    (main.c: the heap, then the RAM after the app's own, then a buffer on main's stack) */
-#define MD_PAGE 4096
+#define MD_PAGE 2048
+#define MD_PAGES (32 + 4)
 void *rg_alloc_page(void);
 
 /* a game read in place, plain and its bytes swapped in pairs (tools/romtable.py). RG_OK or an

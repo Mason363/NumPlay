@@ -138,12 +138,6 @@ void gwenesis_vdp_set_buffers(unsigned char *screen_buffer, unsigned char *scale
     screen = screen_buffer;
     scaled_screen = scaled_buffer;
 }
-//embedded
-void gwenesis_vdp_set_buffer(unsigned short *ptr_screen_buffer)
-{
-    screen_buffer_line = ptr_screen_buffer;
-    screen_buffer = ptr_screen_buffer;
-}
 
 /******************************************************************************
  *

@@ -25,6 +25,7 @@
 #include "nes/nes_core.h"
 #include "sms/sms.h"
 #include "gw/gw.h"
+#include "md/md.h"
 
 #if NP_MODULE /* (np_file_read, np_file_write, np_storage_delete: NumPlay's, launcher/src/np.h) */
 #define np_app_begin()
@@ -63,12 +64,19 @@ extern const uint32_t np_roms_size;
 #endif
 
 #define KEY(k) (1ull << (k))
+/* the Mega Drive: in RetroGo.nwa on its own and the other calculators (inside NumPlay, the RAM it
+   needs isn't there) */
+#if NP_MODULE
+#define HAS_MD 0
+#else
+#define HAS_MD 1
+#endif
 #define WHITE 0xFFFF
 #define BLACK 0x0000
 
 /* ------------------------------------------------------------ memory */
 static uint8_t heap[RG_HEAP_SIZE] __attribute__((aligned(8)));
-static uint32_t heap_used;
+static uint32_t heap_used, room_used;
 bool rg_drawing = true;
 
 void *rg_alloc(uint32_t size) {
@@ -79,7 +87,34 @@ void *rg_alloc(uint32_t size) {
   memset(p, 0, size);
   return p;
 }
-void rg_alloc_reset(void) { heap_used = 0; }
+void rg_alloc_reset(void) { heap_used = 0, room_used = 0; }
+
+/* The Mega Drive's RAMs, in pages of 2 KB: from the heap, then from the RAM the calculator has
+   after the app's own (the most on Epsilon 23 and newer), then from a buffer on main's stack. */
+#if HAS_MD
+#if PLATFORM_DEVICE
+extern char _heap_start[], _heap_end[];
+#define MD_STACK_PAGES 13 /* (on main's stack: 26 KB of its 32) */
+#else
+#define MD_STACK_PAGES MD_PAGES
+#endif
+static uint8_t *stack_pages;
+void *rg_alloc_page(void) {
+  void *p = rg_alloc(MD_PAGE);
+  if (p) return p;
+  uint8_t *start, *end;
+#if PLATFORM_DEVICE
+  start = (uint8_t *)(((uintptr_t)_heap_start + 7) & ~(uintptr_t)7), end = (uint8_t *)_heap_end;
+#else
+  start = end = NULL;
+#endif
+  uint32_t after = end > start ? (uint32_t)(end - start) / MD_PAGE : 0;
+  if (room_used < after) return memset(start + MD_PAGE * room_used++, 0, MD_PAGE);
+  if (room_used < after + MD_STACK_PAGES && stack_pages)
+    return memset(stack_pages + MD_PAGE * (room_used++ - after), 0, MD_PAGE);
+  return NULL;
+}
+#endif
 
 /* one strip of the screen: the launcher's drawing functions draw there, and the emulators'
    pictures go through it */
@@ -329,6 +364,8 @@ static void set_view(void) {
     sms_view(&sx, &sy, &sw, &sh); /* (the Game Gear's screen, or the taller pictures of some games) */
   } else if (sys_now == RG_SYS_GW) {
     sw = GW_WIDTH, sh = GW_HEIGHT;
+  } else if (sys_now == RG_SYS_MD) {
+    md_view(&sx, &sy, &sw, &sh); /* (256 or 320 wide, 224 or 240 high, as the game sets it) */
   }
   view.src_x = sx, view.src_y = sy, view.src_w = sw, view.src_h = sh;
   int w = sw, h = sh;
@@ -780,18 +817,30 @@ static uint32_t autosave_at;         /* when the battery save is due, 0 none */
 
 /* the emulators: gnuboy, nofrendo, the Master System's (for the Game Gear, the SG-1000 and the
    ColecoVision too) and LCD-Game-Emulator */
-enum { CORE_GB, CORE_NES, CORE_SMS, CORE_GW };
+enum { CORE_GB, CORE_NES, CORE_SMS, CORE_GW, CORE_MD };
+#if !HAS_MD /* (stand-ins: never called) */
+#define md_load(d, n) RG_ERR_MEMORY
+#define md_state_chunks(c) 0
+#define md_state_loaded()
+#define md_redraw()
+#define md_reset(h)
+#define md_view(x, y, w, h)
+#define md_frame_us() 16667
+#define md_set_pad(p)
+#define md_set_z80(z)
+#define md_run_frame(d)
+#endif
 static int core;
 static bool is_gb(void) { return core == CORE_GB; }
 
 static int core_chunks(rg_chunk_t *c) {
   return core == CORE_GB ? gb_state_chunks(c) : core == CORE_NES ? nes_state_chunks(c) : core == CORE_GW ? gw_state_chunks(c)
-                                                                                     : sms_state_chunks(c);
+         : core == CORE_MD ? md_state_chunks(c) : sms_state_chunks(c);
 }
 
 /* the battery RAM, NULL if none (a Sega cartridge's only once the game has turned it on) */
 static uint8_t *core_sram(uint32_t *size) {
-  if (core == CORE_GW) return *size = 0, NULL; /* (no battery RAM: the state is the save) */
+  if (core == CORE_GW || core == CORE_MD) return *size = 0, NULL; /* (no battery RAM: the state is the save) */
   if (core == CORE_SMS) return sms_sram(size);
   return core == CORE_GB ? gb_sram(size) : nes_sram(size);
 }
@@ -810,6 +859,7 @@ static void core_redraw(void) {
   if (core == CORE_GB) gb_redraw();
   else if (core == CORE_NES) nes_redraw();
   else if (core == CORE_GW) gw_redraw();
+  else if (core == CORE_MD) md_redraw();
   else sms_redraw();
   flush();
   redraw_all = false;
@@ -888,6 +938,7 @@ static bool state_load(int slot) {
     if (core == CORE_GB) gb_state_loaded();
     else if (core == CORE_NES) nes_state_loaded();
     else if (core == CORE_GW) gw_state_loaded();
+    else if (core == CORE_MD) md_state_loaded();
     else sms_state_loaded();
     last_slot = session_slot = slot, skip = 0;
     return true;
@@ -903,11 +954,13 @@ static void core_reset(bool hard) {
   if (core == CORE_GB) gb_reset(hard);
   else if (core == CORE_NES) nes_reset_machine(hard);
   else if (core == CORE_GW) gw_reset(hard); /* (soft: the ACL button) */
+  else if (core == CORE_MD) md_reset(hard);
   else sms_reset(hard);
   skip = 0;
 }
 
 static void apply_settings(void) {
+  if (core == CORE_MD) md_set_z80(cfg.md_z80);
   if (core == CORE_GB) gb_set_palette(cfg.gb_palette);
   else if (core == CORE_NES) nes_set_palette(cfg.nes_palette), nes_set_sprite_limit(cfg.sprite_limit);
 }
@@ -926,6 +979,10 @@ static const char *button_name(int k) {
   if (sys_now == RG_SYS_CV) {
     static const char *const cv[] = {T("Joystick"), T("Left button"), T("Right button"), NULL, NULL};
     return cv[k];
+  }
+  if (sys_now == RG_SYS_MD) { /* (Retro-Go's: its A is the pad's C, Select its A) */
+    static const char *const md[] = {T("D-pad"), "C", "B", "A", T("Start")};
+    return md[k];
   }
   if (sys_now == RG_SYS_GW) { /* (Retro-Go's: Select is Time, Start is Game) */
     static const char *const gw[] = {T("D-pad"), "A", "B", T("Time"), T("Game A")};
@@ -1111,6 +1168,11 @@ static int sprite_limit_cb(item_t *it, int ev) {
   strcpy(it->value, cfg.sprite_limit ? T("On") : T("Off"));
   return CB_NONE;
 }
+static int md_z80_cb(item_t *it, int ev) {
+  if (ev == EV_PREV || ev == EV_NEXT || ev == EV_ENTER) cfg.md_z80 ^= 1, apply_settings();
+  strcpy(it->value, cfg.md_z80 ? T("On") : T("Off"));
+  return CB_NONE;
+}
 static int emulator_options_cb(item_t *it, int ev) {
   if (ev != EV_ENTER) return CB_NONE;
   int r;
@@ -1124,6 +1186,9 @@ static int emulator_options_cb(item_t *it, int ev) {
                       OPTION(T("Crop sides"), crop_cb, 0), OPTION(T("Sprite limit"), sprite_limit_cb, 0),
                       OPTION(T("SRAM autosave"), autosave_cb, 0)};
     r = dialog_run(it->label, items, 5, 0);
+  } else if (core == CORE_MD) {
+    item_t items[] = {OPTION(T("Z80 emulation"), md_z80_cb, 0)};
+    r = dialog_run(it->label, items, 1, 0);
   } else {
     item_t items[] = {OPTION(T("SRAM autosave"), autosave_cb, 0)};
     r = dialog_run(it->label, items, 1, 0);
@@ -1199,10 +1264,10 @@ static int about(void) {
   item_t items[] = {
     {0, T("Retro-Go"), "ducalex", IT_MESSAGE, 1, NULL, 0}, {0, "Game Boy", "gnuboy", IT_MESSAGE, 1, NULL, 0},
     {0, "NES", "nofrendo", IT_MESSAGE, 1, NULL, 0},        {0, "SMS, GG, SG, COL", T("z80 by superzazu"), IT_MESSAGE, 1, NULL, 0},
-    {0, "Game & Watch", "LCD-Game-Emulator", IT_MESSAGE, 1, NULL, 0},
+    {0, "Game & Watch", "LCD-Game-Emulator", IT_MESSAGE, 1, NULL, 0}, {0, "Mega Drive", "gwenesis", IT_MESSAGE, 1, NULL, 0},
     {0, T("Port"), "NumPlay", IT_MESSAGE, 1, NULL, 0},     MESSAGE(T("Not affiliated with Retro-Go")),
     ITEM(1, T("OK"))};
-  return dialog_run(T("About Retro-Go"), items, 8, 7);
+  return dialog_run(T("About Retro-Go"), items, 9, 8);
 }
 
 /* Retro-Go's save slots: 0 to 3; the slot, DLG_BACK or DLG_HOME */
@@ -1300,12 +1365,14 @@ uint32_t perf_frames, perf_drawn;
 
 static int play(const rg_rom_t *r, int slot) {
   sys_now = r->system;
-  core = sys_now == RG_SYS_NES ? CORE_NES : is_z80(sys_now) ? CORE_SMS : sys_now == RG_SYS_GW ? CORE_GW : CORE_GB;
+  core = sys_now == RG_SYS_NES ? CORE_NES : is_z80(sys_now) ? CORE_SMS : sys_now == RG_SYS_GW ? CORE_GW
+       : sys_now == RG_SYS_MD ? CORE_MD : CORE_GB;
   game = r;
   game_crc = rom_crc(r);
   int err = core == CORE_GB    ? gb_load(r->data, r->size)
             : core == CORE_NES ? nes_load(r->data, r->size)
             : core == CORE_GW  ? gw_load(r->data, r->size)
+            : core == CORE_MD  ? md_load(r->data, r->size)
                                : sms_load(r->data, r->size, game_crc,
                                           sys_now == RG_SYS_GG   ? SMS_GG
                                           : sys_now == RG_SYS_SG ? SMS_SG
@@ -1313,7 +1380,8 @@ static int play(const rg_rom_t *r, int slot) {
                                                                  : SMS_SMS);
   if (err != RG_OK) {
     game = NULL;
-    const char *why = err == RG_ERR_MAPPER ? T("This cartridge type isn't supported.")
+    const char *why = core == CORE_MD && !HAS_MD ? T("Mega Drive games play in Retro-Go on its own.")
+                      : err == RG_ERR_MAPPER ? T("This cartridge type isn't supported.")
                       : err == RG_ERR_MEMORY ? T("This game needs more memory than the calculator has.")
                                              : T("This file isn't a game Retro-Go can read.");
     return alert(T("Can't start the game"), why) == DLG_HOME ? GAME_EXIT : GAME_PICKER;
@@ -1337,7 +1405,8 @@ static int play(const rg_rom_t *r, int slot) {
 
   /* a frame: the Game Boy's 70224 clocks at 4.194304 MHz, the NES's 29780.5 at 1.789773 MHz, the
      Master System's 59736 at 3.579545 MHz (or 50 a second) */
-  const uint32_t frame_us = core == CORE_GB ? 16742 : core == CORE_NES ? 16639 : core == CORE_GW ? 15625 : sms_frame_us();
+  uint32_t frame_us = core == CORE_GB ? 16742 : core == CORE_NES ? 16639 : core == CORE_GW ? 15625
+                    : core == CORE_MD ? md_frame_us() : sms_frame_us();
   bool acl_held = false;
   uint32_t next_us = millis() * 1000u, second = millis(), frames = 0, busy = 0;
   int result = GAME_ON;
@@ -1387,12 +1456,18 @@ static int play(const rg_rom_t *r, int slot) {
     if (core == CORE_GB) gb_set_pad(pad), gb_run_frame(draw);
     else if (core == CORE_NES) nes_set_pad(pad), nes_run_frame(draw);
     else if (core == CORE_GW) gw_set_pad(pad, gw_keys_held), gw_run_frame(draw);
+    else if (core == CORE_MD) md_set_pad(pad), md_run_frame(draw);
     else sms_set_pad(pad), sms_run_frame(draw);
     if (draw) flush(), redraw_all = false, perf_drawn++;
     if (core == CORE_SMS) { /* (a game that changes the picture's height) */
       int x, y, w, h;
       sms_view(&x, &y, &w, &h);
       if (y != view.src_y || h != view.src_h) set_view(), game_screen();
+    } else if (core == CORE_MD) { /* (or its width, or goes to 50 frames a second) */
+      int x, y, w, h;
+      md_view(&x, &y, &w, &h);
+      if (w != view.src_w || h != view.src_h) set_view(), game_screen();
+      frame_us = md_frame_us();
     }
     perf_frames++, frames++;
     uint32_t elapsed = millis() - t0;
@@ -1442,11 +1517,11 @@ static void picker_scene(void *ctx) {
 #ifdef NP_PORT
     const char *const lines[] = {T("Welcome to Retro-Go!"), "", "Add games to this folder:", rg_port_folder_shown(),
                                  T("Game Boy, Game Boy Color, NES,"), T("Master System, Game Gear, SG-1000,"),
-                                 T("ColecoVision, Game & Watch."), T("Home: quit")};
+                                 T("ColecoVision, Game & Watch, Mega Drive."), T("Home: quit")};
 #else
     static const char *const lines[] = {T("Welcome to Retro-Go!"), "", T("Add games on NumPlay's"),
                                         T("customizer website:"), T("Game Boy, Game Boy Color, NES,"), T("Master System, Game Gear, SG-1000,"),
-                                        T("ColecoVision, Game & Watch."), T("Home: quit")};
+                                        T("ColecoVision, Game & Watch, Mega Drive."), T("Home: quit")};
 #endif
     for (int i = 0; i < 8; i++) gfx_text(&np_font_body, 8, 80 + 18 * i, lines[i], i ? 0xAD55 : WHITE, 256);
     return;
@@ -1549,6 +1624,10 @@ static int file_menu(const rg_rom_t *r) {
 static void launcher_menu_redraw(void) { picker_draw(); }
 
 int main(void) {
+#if HAS_MD
+  uint64_t md_pages[MD_STACK_PAGES * MD_PAGE / 8]; /* (the Mega Drive's last RAM pages, rg_alloc_page) */
+  stack_pages = (uint8_t *)md_pages;
+#endif
   np_app_begin();
   color_t *their_strip = gfx_buf;
   gfx_buf = strip;

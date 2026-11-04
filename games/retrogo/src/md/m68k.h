@@ -158,8 +158,8 @@
 #else
 
 	extern unsigned char *ROM_DATA;
-	/* (NumPlay: the 68000's 64 KB of RAM in 16 pages of 4 KB, wherever the calculator has room) */
-	extern unsigned char *md_ram[16];
+	/* (NumPlay: the 68000's 64 KB of RAM in 32 pages of 2 KB, wherever the calculator has room) */
+	extern unsigned char *md_ram[32];
 #endif
 
 /* (NumPlay: nothing read past the ROM's size rounded up to a power of two) */
@@ -181,12 +181,12 @@ extern unsigned int md_rom_mask;
 #else
 
 /* (the words swapped as gwenesis keeps them; a long word is two words, maybe in two pages) */
-#define MD_RAM16(A) (*(unsigned short *)&md_ram[((A) >> 12) & 15][(A) & 0xFFE])
-#define FETCH8RAM(A) (md_ram[((A) >> 12) & 15][((A) ^ 1) & 0xFFF])
+#define MD_RAM16(A) (*(unsigned short *)&md_ram[((A) >> 11) & 31][(A) & 0x7FE])
+#define FETCH8RAM(A) (md_ram[((A) >> 11) & 31][((A) ^ 1) & 0x7FF])
 #define FETCH16RAM(A) (MD_RAM16(A))
 #define FETCH32RAM(A) (((unsigned int)MD_RAM16(A) << 16) | MD_RAM16((A) + 2))
 
-#define WRITE8RAM(A, V) (md_ram[((A) >> 12) & 15][((A) ^ 1) & 0xFFF] = (V))
+#define WRITE8RAM(A, V) (md_ram[((A) >> 11) & 31][((A) ^ 1) & 0x7FF] = (V))
 #define WRITE16RAM(A, V) (MD_RAM16(A) = (unsigned short)(V))
 #define WRITE32RAM(A, V) (MD_RAM16(A) = (unsigned short)((V) >> 16), MD_RAM16((A) + 2) = (unsigned short)(V))
 
@@ -317,7 +317,7 @@ typedef struct
 
 typedef struct
 {
-  cpu_memory_map memory_map[256]; /* memory mapping */
+  /* (NumPlay: no memory_map[256], gwenesis reads its memory through its bus: 5 KB of RAM) */
 
   cpu_idle_t poll;      /* polling detection */
 

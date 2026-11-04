@@ -47,7 +47,7 @@
 #define  FULLBG               (ppu.palette[0] | BG_TRANS)
 
 /* the NES PPU */
-ppu_t ppu;
+ppu_t *nes_ppu_p;
 bool ppu_limit_sprites = true;
 bool ppu_pages_changed = true; /* (since the last line drawn: for the lines kept for the menus) */
 
@@ -873,11 +873,19 @@ const uint16 *nes_palette565 = NULL;
    controls and the CHR and nametable banks (a few sets a frame, for the games that switch them
    for a status bar) */
 #define  CHR_SETS 4
-static struct
+typedef struct
 {
    uint16 vaddr;
    uint8 xofs, ctrl0, ctrl1, set, drawn;
-} snap[NES_SCREEN_HEIGHT];
+} snap_t;
+static snap_t *snap; /* (NES_SCREEN_HEIGHT of them, in Retro-Go's heap) */
+
+bool nes_ppu_alloc(void)
+{
+   nes_ppu_p = rg_alloc(sizeof(ppu_t));
+   snap = rg_alloc(sizeof(snap_t) * NES_SCREEN_HEIGHT);
+   return nes_ppu_p && snap;
+}
 static uint8 *chr_sets[CHR_SETS][12];
 static int chr_used;
 
@@ -887,7 +895,7 @@ static void ppu_snapshot(int scanline)
    if (0 == scanline)
    {
       chr_used = 0;
-      memset(snap, 0, sizeof snap);
+      memset(snap, 0, sizeof(snap_t) * NES_SCREEN_HEIGHT);
    }
    /* (most lines have the banks of the line before) */
    i = scanline && snap[scanline - 1].drawn ? snap[scanline - 1].set : chr_used;

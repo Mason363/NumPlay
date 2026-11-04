@@ -34,12 +34,12 @@ void *rg_alloc(uint32_t size) {
 }
 void rg_alloc_reset(void) { used = 0, pages_used = 0; }
 /* (the Mega Drive's RAM pages: on the calculator from three places, here from a block of their own) */
-static uint8_t pages[18 * 4096] __attribute__((aligned(8)));
+static uint8_t pages[MD_PAGES * MD_PAGE] __attribute__((aligned(8)));
 void *rg_alloc_page(void) {
-  if (used + 4096 <= sizeof heap) return rg_alloc(4096);
-  if (pages_used >= 18) return NULL;
-  memset(pages + pages_used * 4096, 0, 4096);
-  return pages + 4096 * pages_used++;
+  if (used + MD_PAGE <= sizeof heap) return rg_alloc(MD_PAGE);
+  if (pages_used >= MD_PAGES) return NULL;
+  memset(pages + pages_used * MD_PAGE, 0, MD_PAGE);
+  return pages + MD_PAGE * pages_used++;
 }
 
 void rg_line(int y, const uint16_t *px) {
@@ -161,7 +161,7 @@ int main(int argc, char **argv) {
   if (getenv("STATE")) {
     rg_chunk_t parts[RG_MAX_CHUNKS];
     int n = chunks(parts);
-    static uint8_t copy[RG_HEAP_SIZE + 18 * 4096 + 65536];
+    static uint8_t copy[RG_HEAP_SIZE + MD_PAGES * MD_PAGE + 65536];
     uint32_t at = 0;
     for (int i = 0; i < n; i++) memcpy(copy + at, parts[i].at, parts[i].size), at += parts[i].size;
     static uint16_t first[FW * 240];

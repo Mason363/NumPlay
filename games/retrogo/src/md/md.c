@@ -16,8 +16,8 @@
 #include "gwenesis_savestate.h"
 #include "z80inst.h"
 
-unsigned char *VRAM;                 /* (gwenesis_vdp_mem.c's) */
-unsigned char *md_ram[16], *md_zram[2];
+extern unsigned char *VRAM;          /* (gwenesis_vdp_mem.c) */
+unsigned char *md_ram[32], *md_zram[4];
 extern unsigned char gwenesis_vdp_regs[];
 extern unsigned short gwenesis_vdp_status;
 extern int screen_width, screen_height, hint_pending;
@@ -32,7 +32,7 @@ int system_clock, scan_line; /* (the frame's master clock and line, as gwenesis'
 static bool z80_on = true;
 
 /* ---- the state: the parts gwenesis saves by name, here one after another in a block */
-#define MISC_SIZE 3072
+#define MISC_SIZE 2304
 static uint8_t *misc;
 static uint32_t misc_at, misc_size;
 struct SaveState { int unused; };
@@ -69,8 +69,8 @@ static void save_misc(void) {
 }
 
 static void clear_rams(void) {
-  for (int i = 0; i < 16; i++) memset(md_ram[i], 0, MD_PAGE);
-  for (int i = 0; i < 2; i++) memset(md_zram[i], 0, MD_PAGE);
+  for (int i = 0; i < 32; i++) memset(md_ram[i], 0, MD_PAGE);
+  for (int i = 0; i < 4; i++) memset(md_zram[i], 0, MD_PAGE);
 }
 
 int md_load(const uint8_t *data, uint32_t size) {
@@ -79,9 +79,9 @@ int md_load(const uint8_t *data, uint32_t size) {
   VRAM = rg_alloc(0x10000);
   misc = rg_alloc(MISC_SIZE);
   if (!VRAM || !misc) return RG_ERR_MEMORY;
-  for (int i = 0; i < 16; i++)
+  for (int i = 0; i < 32; i++)
     if (!(md_ram[i] = rg_alloc_page())) return RG_ERR_MEMORY;
-  for (int i = 0; i < 2; i++)
+  for (int i = 0; i < 4; i++)
     if (!(md_zram[i] = rg_alloc_page())) return RG_ERR_MEMORY;
   clear_rams();
   load_cartridge((unsigned char *)(uintptr_t)data, size);
@@ -176,8 +176,8 @@ int md_state_chunks(rg_chunk_t *out) {
   out[n++] = (rg_chunk_t){misc, misc_size};
   out[n++] = (rg_chunk_t){VRAM, 0x8000};
   out[n++] = (rg_chunk_t){VRAM + 0x8000, 0x8000};
-  for (int i = 0; i < 16; i++) out[n++] = (rg_chunk_t){md_ram[i], MD_PAGE};
-  for (int i = 0; i < 2; i++) out[n++] = (rg_chunk_t){md_zram[i], MD_PAGE};
+  for (int i = 0; i < 32; i++) out[n++] = (rg_chunk_t){md_ram[i], MD_PAGE};
+  for (int i = 0; i < 4; i++) out[n++] = (rg_chunk_t){md_zram[i], MD_PAGE};
   return n;
 }
 
