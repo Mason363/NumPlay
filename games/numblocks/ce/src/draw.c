@@ -28,6 +28,16 @@ void fill(int x, int y, int w, int h, uint8_t c) {
   for (int r = 0; r < h; r++) memset(cv.p + (y + r) * cv.stride + x, c, (size_t)w);
 }
 
+/* w x h pixels of a buffer (sw a row) to (x, y) */
+void blit(const uint8_t *src, int sw, int x, int y, int w, int h) {
+  for (int r = 0; r < h; r++, src += sw) {
+    uint8_t *dr = row_at(y + r);
+    if (!dr) continue;
+    int a = x > x0 ? x : x0, b = x + w < x1 ? x + w : x1;
+    if (b > a) memcpy(dr + a, src + (a - x), (size_t)(b - a));
+  }
+}
+
 /* a darker colour: Minecraft's text shadow is a quarter as bright */
 uint8_t dark(uint8_t c, int level) { return shade_cm[level][c]; }
 

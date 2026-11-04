@@ -109,6 +109,9 @@ extern uint8_t *rbuf;          /* the picture, RW x RH */
 void render_init(void);
 void render_frame(void);       /* from the player's eyes */
 void render_title(uint16_t yaw);   /* the title's backdrop: the world turning */
+void render_picture(const uint8_t *p);   /* rbuf and the sky's rows as render_title left them, again */
+const uint8_t *render_sky(void);         /* the sky's rows (RH) */
+const uint8_t *render_veil_row(uint8_t level);   /* shade row level with the sky's colours darkened too */
 void render_show(bool hud);    /* the picture onto the screen at 2x, the sky in it (and the HUD) */
 void render_sky_palette(void); /* the sky's colours and the light, for the time of day */
 extern uint32_t world_time;    /* ticks: 24000 a day, 0 sunrise */
@@ -177,7 +180,6 @@ enum {
 #define K_SLOT(n) ((uint32_t)K_SLOT1 << (n))
 #define K_OK K_ATTACK   /* 2nd: OK in screens */
 #define K_ESC K_USE     /* clear: back in screens */
-uint32_t keys_now(void);
 int rnd(int n);
 void game_save_quit(void);
 void options_save(void);

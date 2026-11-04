@@ -83,7 +83,17 @@ void plat_palette(int first, int n, const uint8_t *rgb) {
   }
 }
 
+static uint32_t read_keys(void);
+/* keys pressed while a picture is made (a tap shorter than a picture still counts) */
+static uint32_t latch;
+void plat_poll(void) { latch |= read_keys(); }
 uint32_t plat_keys(void) {
+  uint32_t k = read_keys() | latch;
+  latch = 0;
+  return k;
+}
+
+static uint32_t read_keys(void) {
   /* (keypadc scans on its own in continuous mode) */
   uint32_t k = 0;
   uint8_t g1 = kb_Data[1], g2 = kb_Data[2], g3 = kb_Data[3], g4 = kb_Data[4], g5 = kb_Data[5], g6 = kb_Data[6],

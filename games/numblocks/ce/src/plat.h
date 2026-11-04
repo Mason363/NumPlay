@@ -11,7 +11,8 @@ extern uint8_t *scr;                  /* the screen shown */
 void plat_init(void);
 void plat_exit(void);
 void plat_palette(int first, int n, const uint8_t *rgb);   /* entries first.., 3 bytes each */
-uint32_t plat_keys(void);             /* the keys held (K_*) */
+uint32_t plat_keys(void);             /* the keys held (K_*), and those pressed since the last call */
+void plat_poll(void);                 /* (the keys looked at while a picture is made: plat_keys has them) */
 uint32_t plat_ms(void);
 void plat_frame(void);                /* a picture is done (the computer shows or keeps it) */
 uint8_t *plat_spare(void);            /* 76800 bytes of the machine's own (the CE: the second half of its screen memory) */

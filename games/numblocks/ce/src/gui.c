@@ -6,6 +6,7 @@
  * half or puts one (a right click), y= with 2nd moves a whole stack across (a shift click), clear closes.
  * A screen is drawn in bands of the 3D view's buffer, then copied to the screen: nothing flickers. */
 #include "nb.h"
+#include "rs.h"
 #include "draw.h"
 
 int gui = GUI_NONE, menu_action;
@@ -39,7 +40,9 @@ static void offscreen(int x, int y, int w, int h, void (*fn)(void)) {
 
 /* darkens what is on the screen (Minecraft's grey veil over the world behind a screen) */
 static void veil(int level) {
-  for (unsigned i = 0; i < SCREEN_W * SCREEN_H; i++) scr[i] = shade_cm[level][scr[i]];
+  /* (a row of 256 at a time, through the shade row, in assembly) */
+  const uint8_t *row = render_veil_row((uint8_t)level);
+  for (unsigned i = 0; i < SCREEN_W * SCREEN_H; i += 256) rs_shade(scr + i, row);
 }
 
 void gui_message(const char *s) {
@@ -240,8 +243,17 @@ static void layout(void) {
   panel_x = (SCREEN_W - panel_w) / 2, panel_y = (SCREEN_H - panel_h) / 2;
 }
 
+/* the darkened world where a container's names go (above its panel), kept while it is open to be put back under
+ * the next name (in the HUD's layer: not shown then) */
+#define STRIP_H 14
+static void strip_keep(void) {
+  int x = panel_x - 2, w = panel_w + 4, y = panel_y - STRIP_H;
+  for (int r = 0; r < STRIP_H; r++) memcpy(hud_layer + r * w, scr + (y + r) * SCREEN_W + x, (size_t)w);
+}
+
 static void draw_panel(void) {
   int px = panel_x, py = panel_y;
+  blit(hud_layer, panel_w + 4, px - 2, py - STRIP_H, panel_w + 4, STRIP_H);
   sprite(panel_sprite, px, py);
   if (gui != GUI_CREATIVE) sprite(SP_INV_BOTTOM, px, py + (gui == GUI_CHEST ? 80 : 79));
   if (gui == GUI_INVENTORY) {
@@ -739,7 +751,7 @@ void gui_draw(void) {
   if (full) {
     /* the world behind a screen, darkened (Minecraft's grey veil; red-brown when you died) */
     if (over_world && gui != GUI_TITLE) veil(gui == GUI_DEATH ? 12 : 14);
-    if (container) offscreen(panel_x - 2, panel_y - 14, panel_w + 4, panel_h + 16, draw_panel_off);
+    if (container) strip_keep(), offscreen(panel_x - 2, panel_y - 14, panel_w + 4, panel_h + 16, draw_panel_off);
     else offscreen(0, 0, SCREEN_W, SCREEN_H, draw_menu_off);
   } else if (container) offscreen(panel_x - 2, panel_y - 14, panel_w + 4, panel_h + 16, draw_panel_off);
   else if (over_world) offscreen(0, 0, SCREEN_W, SCREEN_H, draw_buttons_off);

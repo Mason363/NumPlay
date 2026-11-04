@@ -27,10 +27,27 @@ static int look_held;
 
 #define TITLE_SEED 20151008u   /* the title's world */
 
+static void loading(const char *what) {
+  canvas_screen();
+  dirt_background(0, SCREEN_H);
+  text_center(SCREEN_W / 2, SCREEN_H / 2 - 4, what, C_WHITE);
+  plat_frame();
+}
+
 static bool backdrop_ok;
 static void title_backdrop(void) {
-  /* the title's world: a view over the land, the same each time */
+  /* the title's world: a view over the land, the same each time (kept as a picture, NBCETTL, once made) */
   backdrop_ok = true;
+  world_time = 3000;
+  unsigned len;
+  const uint8_t *pic = plat_load("NBCETTL", &len);
+  if (pic && len == RW * RH + RH) {
+    render_sky_palette();
+    render_picture(pic);
+    compose(false, false);
+    return;
+  }
+  loading("");
   world_new(TITLE_SEED);
   int x, z;
   gen_spawn(&x, &z);
@@ -39,9 +56,9 @@ static void title_backdrop(void) {
   world_center(x, 40, z, true);
   pl.x = (fx)x * FX1 + FX1 / 2, pl.z = (fx)z * FX1 + FX1 / 2;
   pl.y = (fx)world_top(x, z) * FX1 + FX1 * 2;
-  world_time = 3000;
   render_sky_palette();
   render_title(0x3000);
+  plat_save("NBCETTL", rbuf, RW * RH, render_sky(), RH);
   compose(false, false);
 }
 
@@ -83,12 +100,6 @@ void game_save_quit(void) {
   if (in_game) save_world();
 }
 
-static void loading(const char *what) {
-  canvas_screen();
-  dirt_background(0, SCREEN_H);
-  text_center(SCREEN_W / 2, SCREEN_H / 2 - 4, what, C_WHITE);
-  plat_frame();
-}
 
 static void act(void) {
   int a = menu_action;
@@ -163,7 +174,7 @@ static void play(uint32_t keys, uint32_t pressed) {
   if (tick_acc > 200) tick_acc = 0;
   world_center(FXI(pl.x), FXI(pl.y) + 1, FXI(pl.z), false);
   /* a row a picture, more when the view would see past them */
-  for (int k = 0; world_busy() && (!k || world_behind()); k++) world_step();
+  for (int k = 0; world_busy() && (!k || world_behind()); k++) world_step(), plat_poll();
   if (gui == GUI_NONE) {
     if (pressed & K_INV) {
       gui_open(pl.mode ? GUI_CREATIVE : GUI_INVENTORY);
@@ -174,6 +185,7 @@ static void play(uint32_t keys, uint32_t pressed) {
       return;
     }
     render_frame();
+    plat_poll();
     hud_draw();
     compose(true, true);
   }
@@ -239,6 +251,22 @@ int main(void) {
     LAP("world");
     render_sky_palette();
     LAP("sky");
+#if NB_BENCH == 8
+    {
+      /* a screen opened over the world: the creative inventory */
+      in_game = true, gui = GUI_NONE;
+      pl.mode = 1;
+      render_frame();
+      compose(true, true);
+      LAP("frame");
+      gui_open(GUI_CREATIVE);
+      LAP("open");
+      gui_draw();
+      LAP("draw");
+      plat_save("NBBENCH", out, (unsigned)n, 0, 0);
+      plat_exit();
+    }
+#endif
 #if NB_BENCH == 7
     {
       /* one picture, as the computer build makes it (to compare) */
@@ -342,7 +370,7 @@ int main(void) {
       }
       break;
     }
-    if (gui != GUI_NONE) gui_input(keys, pressed);
+    if (gui != GUI_NONE) gui_input(keys, pressed), pressed = 0;   /* (a press a screen took: not the game's too) */
     if (menu_action) act();
     if (in_game) play(keys, pressed);
     /* back on the title from another menu: its world behind it again */

@@ -91,6 +91,7 @@ void plat_exit(void) {
 
 void plat_palette(int first, int n, const uint8_t *rgb) { memcpy(pal + first * 3, rgb, (size_t)n * 3); }
 
+void plat_poll(void) {}
 uint32_t plat_keys(void) {
   uint32_t k = 0;
   for (int i = 0; i < nholds; i++)

@@ -251,19 +251,20 @@ static const uint8_t BYTE8[32] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1
 extern const uint8_t *xp_p;
 extern uint8_t *xp_out;
 extern int xp_ox0, xp_ox1, xp_oz0, xp_oz1;
-extern uint8_t xp_ys, xp_sides;
+extern uint8_t xp_ys, xp_sides, xp_k0, xp_k1;
 void w_expose(void);
 #else
 static const uint8_t *xp_p;
 static uint8_t *xp_out;
 static int xp_ox0, xp_ox1, xp_oz0, xp_oz1;
-static uint8_t xp_ys, xp_sides;
+static uint8_t xp_ys, xp_sides, xp_k0, xp_k1 = 32;
 static void w_expose(void) {
   static uint8_t m[4];
-  m[0] = m[1] = m[2] = m[3] = 0;
+  memcpy(m, xp_out, 4);
   const uint8_t *p = xp_p;
   uint8_t ys = xp_ys;
-  for (uint8_t k = 0; k < 32; k++) {
+  for (uint8_t k = xp_k0; k < xp_k1; k++) {
+    m[BYTE8[ys]] &= (uint8_t)~BIT32[ys];
     uint8_t b = *p;
     const uint8_t *up = ys == 31 ? p - 31 * 1024 : p + 1024;
     if (b != B_AIR) {
@@ -285,25 +286,31 @@ static void w_expose(void) {
   memcpy(xp_out, m, 4);
 }
 #endif
-static void expose_col(int x, int z) {
+/* (levels [k0, k1) up from the window's bottom, the others kept) */
+static void expose_col(int x, int z, uint8_t k0, uint8_t k1) {
   if ((unsigned)(x - win_x) >= WS || (unsigned)(z - win_z) >= WS) return;
+  xp_k0 = k0, xp_k1 = k1;
   int c = CI(x, z);
   uint8_t sx = MOD32[x - win_x + (win_x & 31)], sz = MOD32[z - win_z + (win_z & 31)];
   xp_sides = (uint8_t)((x > win_x ? 1 : 0) | (x < win_x + WS - 1 ? 2 : 0) | (z > win_z ? 4 : 0) |
                        (z < win_z + WS - 1 ? 8 : 0));
   xp_ox0 = sx ? -1 : 31, xp_ox1 = sx != 31 ? 1 : -31, xp_oz0 = sz ? -32 : 31 * 32, xp_oz1 = sz != 31 ? 32 : -31 * 32;
-  xp_ys = MOD32[win_y];
+  xp_ys = MOD32[win_y + k0];
   xp_p = wblk + YOFF[xp_ys] + c;
   xp_out = (uint8_t *)&wexp[c];
   w_expose();
 }
 /* the columns around a cell that changed */
-static void expose_around(int x, int z) {
-  expose_col(x, z);
-  expose_col(x - 1, z);
-  expose_col(x + 1, z);
-  expose_col(x, z - 1);
-  expose_col(x, z + 1);
+static void expose_around(int x, int y, int z) {
+  /* (its level and those above and below) */
+  int k = y - win_y;
+  uint8_t k0 = (uint8_t)(k > 0 ? k - 1 : 0), k1 = (uint8_t)(k < WH - 1 ? k + 2 : WH);
+  expose_col(x, z, k0, k1);
+  k0 = (uint8_t)k, k1 = (uint8_t)(k + 1);
+  expose_col(x - 1, z, k0, k1);
+  expose_col(x + 1, z, k0, k1);
+  expose_col(x, z - 1, k0, k1);
+  expose_col(x, z + 1, k0, k1);
 }
 
 /* ---------------------------------------------------------------- filling the window */
@@ -374,6 +381,7 @@ static void fill(int x0, int z0, int x1, int z1, int y0, int y1, bool cols) {
         if (pl) p[YOFF[MOD32[py]]] = (uint8_t)pl;
       }
     }
+  plat_poll();
   gen_decorate(x0, z0, x1, z1, y0, y1, put_cb);
   for (unsigned k = 0; k < n_edits; k++) {
     const Edit *e = &edits[k];
@@ -393,6 +401,7 @@ static void fill(int x0, int z0, int x1, int z1, int y0, int y1, bool cols) {
       col_light((uint16_t)c, ys0, (uint8_t)y0, (uint8_t)y1, (uint8_t)top);
     }
   if (dq_n) light_darken();
+  plat_poll();
   /* spreading it: from the lit cells next to darker ones (the region's and the cells around it) */
   for (int z = z0 - 1; z <= z1; z++)
     for (int x = x0 - 1; x <= x1; x++) {
@@ -423,8 +432,10 @@ static void fill(int x0, int z0, int x1, int z1, int y0, int y1, bool cols) {
       if (x == x1) light_spread();
     }
   light_spread();
+  int ka = y0 - 1 - win_y, kb = y1 + 1 - win_y;
+  uint8_t k0 = (uint8_t)(ka < 0 ? 0 : ka), k1 = (uint8_t)(kb > WH ? WH : kb);
   for (int z = z0 - 1; z <= z1; z++)
-    for (int x = x0 - 1; x <= x1; x++) expose_col(x, z);
+    for (int x = x0 - 1; x <= x1; x++) expose_col(x, z, k0, k1);
 }
 
 /* ---------------------------------------------------------------- changes */
@@ -464,7 +475,7 @@ void world_set(int x, int y, int z, int b) {
   for (uint8_t k = 0; k < nbr_n; k++)
     if (wlight[nbr[k]]) lq_push(nbr[k]);
   light_spread();
-  expose_around(x, z);
+  expose_around(x, y, z);
 }
 
 /* ---------------------------------------------------------------- the window */

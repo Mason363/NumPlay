@@ -769,6 +769,26 @@ void render_frame(void) {
   hand();
 }
 
+/* shade row level, the sky's colours (1..15) darkened too: a 256-byte aligned row (the screens' veil) */
+const uint8_t *render_veil_row(uint8_t level) {
+  uint8_t *row = crack_tex;   /* (free while no block is being mined) */
+  crack_for = -1;
+  memcpy(row, page(shade_ram, level), 256);
+  for (int i = 1; i < FIRST_STATIC; i++) {
+    uint8_t k[3];
+    for (int j = 0; j < 3; j++) k[j] = (uint8_t)(fog_rgb[j] + (sky_rgb[j] - fog_rgb[j]) * (i - 1) / 14);
+    row[i] = row[pal_cube[cube_of[k[0]] << 8 | cube_of[k[1]] << 4 | cube_of[k[2]]]];
+  }
+  return row;
+}
+
+/* a picture kept (render_title's, rbuf then the sky's rows) shown again; the sky's rows */
+void render_picture(const uint8_t *p) {
+  memcpy(rbuf, p, RW * RH);
+  memcpy(sky_row, p + RW * RH, RH);
+}
+const uint8_t *render_sky(void) { return sky_row; }
+
 void render_title(uint16_t yaw) {
   crack_stage = -1;
   frame_from(pl.x, pl.y + FX1 * 162 / 100, pl.z, yaw, 1200);

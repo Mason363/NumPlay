@@ -18,6 +18,7 @@ enum {
 };
 
 void fill(int x, int y, int w, int h, uint8_t c);
+void blit(const uint8_t *src, int sw, int x, int y, int w, int h);   /* a buffer's w x h pixels (sw a row) to (x, y) */
 uint8_t dark(uint8_t c, int level);
 void text_plain(int x, int y, const char *s, uint8_t c);
 void text_center(int cx, int y, const char *s, uint8_t c);

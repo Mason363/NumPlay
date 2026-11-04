@@ -1688,6 +1688,7 @@ _rs_quad:
 	ld	(q_V), hl
 	jp	.Lq_col
 .Lq_rowend:
+	call	_plat_poll		; (a key tapped while the picture is made)
 	; the next row out along x
 	ld	a, (q_a)
 	inc	a
@@ -2035,8 +2036,8 @@ nb_z:
 	ret
 
 ; ------------------------------------------------------------------------------------------------- w_expose
-; void w_expose(void): a window column's cells with a face to draw into xp_out (4 bytes, bit y & 31), from its cell
-; at the window's bottom (xp_p, slot xp_ys) up; a face shows unless what is next to it is opaque, the same block or
+; void w_expose(void): a window column's cells with a face to draw, levels xp_k0 to xp_k1 - 1 up from the window's
+; bottom (from the cell xp_p, slot xp_ys), into xp_out (4 bytes, bit y & 31, the other levels' kept); a face shows unless what is next to it is opaque, the same block or
 ; both are liquids; plants and torches always; past the window: below it as if solid, above air; the columns
 ; around it at xp_ox0.. (bits of xp_sides: 1 -x, 2 +x, 4 -z, 8 +z inside the window) (world.c)
 	.section	.text._w_expose
@@ -2049,17 +2050,18 @@ nb_z:
 _w_expose:
 	push	ix
 	ld	ix, (_xp_p)
-	xor	a, a
+	ld	a, (_xp_k0)
 	ld	(xp_k), a
-	ld	hl, xp_m
-	ld	(hl), a
-	inc	hl
-	ld	(hl), a
-	inc	hl
-	ld	(hl), a
-	inc	hl
-	ld	(hl), a
+	ld	hl, (_xp_out)		; (the column's other levels kept)
+	ld	de, xp_m
+	ld	bc, 4
+	ldir
 .Lxp_cell:
+	; (this level's bit cleared first)
+	call	xp_bit
+	cpl
+	and	a, (hl)
+	ld	(hl), a
 	ld	a, (_xp_ys)
 	cp	a, 31
 	ld	de, 1024
@@ -2143,6 +2145,30 @@ _w_expose:
 	call	xp_shows
 	jr	z, .Lxp_next
 .Lxp_show:
+	call	xp_bit
+	or	a, (hl)
+	ld	(hl), a
+.Lxp_next:
+	ld	ix, (xp_up)
+	ld	a, (_xp_ys)
+	inc	a
+	and	a, 31
+	ld	(_xp_ys), a
+	ld	a, (xp_k)
+	inc	a
+	ld	(xp_k), a
+	ld	hl, _xp_k1
+	cp	a, (hl)
+	jp	nz, .Lxp_cell
+	ld	hl, xp_m
+	ld	de, (_xp_out)
+	ld	bc, 4
+	ldir
+	pop	ix
+	ret
+
+; hl: xp_m's byte of slot xp_ys, a: its bit
+xp_bit:
 	ld	a, (_xp_ys)
 	ld	c, a
 	rrca
@@ -2157,29 +2183,10 @@ _w_expose:
 	and	a, 7
 	ld	b, a
 	ld	a, 1
-	jr	z, .Lxp_bit
-.Lxp_sh:
+	ret	z
+.Lxb_sh:
 	add	a, a
-	djnz	.Lxp_sh
-.Lxp_bit:
-	or	a, (hl)
-	ld	(hl), a
-.Lxp_next:
-	ld	ix, (xp_up)
-	ld	a, (_xp_ys)
-	inc	a
-	and	a, 31
-	ld	(_xp_ys), a
-	ld	a, (xp_k)
-	inc	a
-	ld	(xp_k), a
-	cp	a, 32
-	jp	nz, .Lxp_cell
-	ld	hl, xp_m
-	ld	de, (_xp_out)
-	ld	bc, 4
-	ldir
-	pop	ix
+	djnz	.Lxb_sh
 	ret
 
 ; nz when the cell at hl shows xp_b's face next to it
@@ -2203,6 +2210,31 @@ xp_shows:
 	ret
 .Lxs_hid:
 	xor	a, a
+	ret
+
+; ------------------------------------------------------------------------------------------------- rs_shade
+; void rs_shade(uint8_t *p, const uint8_t *row): p[i] = row[p[i]] for 256 bytes, row 256-byte aligned
+	.section	.text._rs_shade
+	.global	_rs_shade
+	.type	_rs_shade, @function
+_rs_shade:
+	ld	iy, 0
+	add	iy, sp
+	ld	de, (iy+3)
+	ld	hl, (iy+6)
+	ld	b, 128
+.Lsh_loop:
+	ld	a, (de)
+	ld	l, a
+	ld	a, (hl)
+	ld	(de), a
+	inc	de
+	ld	a, (de)
+	ld	l, a
+	ld	a, (hl)
+	ld	(de), a
+	inc	de
+	djnz	.Lsh_loop
 	ret
 
 ; ------------------------------------------------------------------------------------------------- data
@@ -2409,6 +2441,10 @@ _xp_oz0:	.d24	0
 _xp_oz1:	.d24	0
 _xp_ys:	.db	0
 _xp_sides:	.db	0
+	.global	_xp_k0
+	.global	_xp_k1
+_xp_k0:	.db	0
+_xp_k1:	.db	32
 xp_up:	.d24	0
 xp_k:	.db	0
 xp_b:	.db	0
@@ -2424,6 +2460,7 @@ r_rtab:
 
 	.extern	_rbuf
 	.extern	_rs_cell
+	.extern	_plat_poll
 	.extern	_wexp
 	.extern	_w_nbr
 	.extern	_blk_model
