@@ -188,6 +188,10 @@ void game_init(void) {
   main_menu();
 #ifdef CO_START /* (speed tests: make EXTRA=-DCO_START=9, or 106 for hard level 6) */
   start(CO_START % 100, CO_START > 100);
+#ifdef CO_RINGS /* (and every ring open: make EXTRA="-DCO_START=106 -DCO_RINGS=6") */
+  void level_debug_grow(void);
+  for (int r = 0; r < CO_RINGS; r++) level_debug_grow();
+#endif
 #endif
 }
 

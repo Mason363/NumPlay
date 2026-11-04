@@ -33,6 +33,10 @@ uint16_t mix(uint16_t a, uint16_t b, int t) {
   return (uint16_t)(r << 11 | g << 5 | bl);
 }
 
+int gfx_visible(float x0, float y0, float x1, float y1) {
+  return y1 >= by0 && y0 < by0 + BAND && x1 >= 0 && x0 < SCREEN_W;
+}
+
 void gfx_fill(uint16_t c) {
   int n = SCREEN_W * BAND;
   for (int i = 0; i < n; i++) fb[i] = c;
@@ -51,14 +55,20 @@ static void row(int y, float a0, float b0, float a1, float b1, uint16_t c, int a
   if (x1 > SCREEN_W) x1 = SCREEN_W;
   uint16_t *p = fb + (y - by0) * SCREEN_W;
   int f0 = (int)ceilf(in_lo), f1 = (int)floorf(in_hi);   /* fully covered pixels: [f0, f1) */
+  if (f0 < x0) f0 = x0;
+  if (f1 > x1) f1 = x1;
+  if (f1 < f0) f1 = f0;
   for (int x = x0; x < x1; x++) {
-    int cov;
-    if (x >= f0 && x < f1) cov = 256;
-    else {
-      float c0 = e0 ? 0 : clampf(fminf(b0, x + 1.0f) - fmaxf(a0, (float)x), 0, 1);
-      float c1 = e1 ? 0 : clampf(fminf(b1, x + 1.0f) - fmaxf(a1, (float)x), 0, 1);
-      cov = (int)((c0 + c1) * 128);
+    if (x == f0 && f1 > f0) {   /* the inside: filled */
+      if (alpha >= 256)
+        for (; x < f1; x++) p[x] = c;
+      else
+        for (; x < f1; x++) p[x] = mix(p[x], c, alpha);
+      if (x >= x1) break;
     }
+    float c0 = e0 ? 0 : clampf(fminf(b0, x + 1.0f) - fmaxf(a0, (float)x), 0, 1);
+    float c1 = e1 ? 0 : clampf(fminf(b1, x + 1.0f) - fmaxf(a1, (float)x), 0, 1);
+    int cov = (int)((c0 + c1) * 128);
     if (alpha < 256) cov = cov * alpha >> 8;
     if (cov >= 256) p[x] = c;
     else if (cov > 0) p[x] = mix(p[x], c, cov);

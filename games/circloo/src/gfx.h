@@ -16,6 +16,7 @@ void gfx_push(void);            /* the band to the screen */
 uint16_t rgb(int r, int g, int b);
 uint16_t mix(uint16_t a, uint16_t b, int t);   /* a to b, t of 256 */
 void gfx_fill(uint16_t c);
+int gfx_visible(float x0, float y0, float x1, float y1);   /* a box that reaches the band */
 void gfx_rect(float x0, float y0, float x1, float y1, uint16_t c, int alpha);
 void gfx_disc(float cx, float cy, float r, uint16_t c, int alpha);
 void gfx_poly(const float *x, const float *y, int n, uint16_t c, int alpha);   /* convex */

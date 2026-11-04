@@ -228,7 +228,7 @@ static void grow(void) {
   boundary();
 }
 
-#ifdef HOST
+#if defined HOST || defined CO_RINGS
 void level_debug_grow(void) { grow(); }   /* (tests: the next ring now) */
 #endif
 
@@ -299,6 +299,13 @@ void level_tick(uint32_t keys) {
 static float sx(float x) { return (x - g.camx) * SCALE + SCREEN_W / 2; }
 static float sy(float y) { return (y - g.camy) * SCALE + SCREEN_H / 2; }
 
+/* a thick line, if it reaches the band */
+static void seg(float x1, float y1, float x2, float y2, float w, uint16_t c) {
+  float ax = sx(x1), ay = sy(y1), bx = sx(x2), by = sy(y2), h = w * 0.5f + 1;
+  if (!gfx_visible(fminf(ax, bx) - h, fminf(ay, by) - h, fmaxf(ax, bx) + h, fmaxf(ay, by) + h)) return;
+  gfx_line(ax, ay, bx, by, w, c, 256);
+}
+
 static void ring(float x, float y, int alpha, bool io) {
   gfx_disc(sx(x), sy(y), 20 * SCALE, g.hue_a, 256);
   gfx_disc(sx(x), sy(y), 16 * SCALE, g.hue_b, alpha);
@@ -332,10 +339,9 @@ void level_draw(void) {
   /* the level's script: lines, chains, boxes, triangles */
   for (const int16_t *r = L.data; *r != T_END; r += 2 + r[1]) {
     const int16_t *v = r + 2;
-    if (r[0] == T_LINE) gfx_line(sx(P8(v[0])), sy(P8(v[1])), sx(P8(v[2])), sy(P8(v[3])), 6 * SCALE, A, 256);
+    if (r[0] == T_LINE) seg(P8(v[0]), P8(v[1]), P8(v[2]), P8(v[3]), 6 * SCALE, A);
     else if (r[0] == T_CHAIN)
-      for (int k = 0; k + 1 < v[0]; k++)
-        gfx_line(sx(P8(v[1 + 2 * k])), sy(P8(v[2 + 2 * k])), sx(P8(v[3 + 2 * k])), sy(P8(v[4 + 2 * k])), 6 * SCALE, A, 256);
+      for (int k = 0; k + 1 < v[0]; k++) seg(P8(v[1 + 2 * k]), P8(v[2 + 2 * k]), P8(v[3 + 2 * k]), P8(v[4 + 2 * k]), 6 * SCALE, A);
     else if (r[0] == T_B) gfx_rect(sx(P8(v[0] - v[2])), sy(P8(v[1] - v[3])), sx(P8(v[0] + v[2])), sy(P8(v[1] + v[3])), A, 256);
     else if (r[0] == T_T) {
       float x[3], y[3];
@@ -368,7 +374,10 @@ void level_draw(void) {
     const Body *b = &W.b[L.ball];
     gfx_disc(sx(b->x / PX_M), sy(b->y / PX_M), 32.5f * SCALE, mix(A, 0, 51), 256);
   }
-  for (int k = 0; k < W.nsc; k++) gfx_disc(sx(W.sc[k].x / PX_M), sy(W.sc[k].y / PX_M), (W.sc[k].r / PX_M + 0.5f) * SCALE, A, 256);
+  for (int k = 0; k < W.nsc; k++) {
+    float x = sx(W.sc[k].x / PX_M), y = sy(W.sc[k].y / PX_M), r = (W.sc[k].r / PX_M + 0.5f) * SCALE;
+    if (gfx_visible(x - r, y - r, x + r, y + r)) gfx_disc(x, y, r, A, 256);
+  }
   /* the text of this ring, at the bottom (obj_levelguihandler) */
   int ringno = (int)lroundf(L.R / 200), alpha = 256;
   int text = ringno >= 1 && ringno <= 7 ? L.info[ringno] : -1;

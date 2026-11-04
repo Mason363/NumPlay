@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
     for (int r = 0; r < rings; r++) level_debug_grow();
   }
   uint32_t fk = 0;
-  int ended = 0, stuck = 0;
+  int ended = 0, stuck = 0, maxc = 0, maxb = 0;
   float lx = 0, ly = 0;
   for (int f = 0; f < frames && g.running; f++) {
     uint32_t k = 0;
@@ -151,6 +151,8 @@ int main(int argc, char **argv) {
       if (b->vx * b->vx + b->vy * b->vy > 9 && b->x == lx && b->y == ly) stuck++;
       lx = b->x, ly = b->y;
     }
+    if (W.nc > maxc) maxc = W.nc;
+    if (W.nb > maxb) maxb = W.nb;
     int want = every ? f % every == 0 : 0;
     for (int i = 0; i < nshots; i++) want |= shots[i] == f;
     if (want || (draw && f % 2 == 0)) game_draw();
@@ -165,7 +167,7 @@ int main(int argc, char **argv) {
   }
   (void)ended;
   save_write();
-  printf("END state %d level %d hard %d taken %d complete %d frames %d R %.0f stuck %d\n", g.state, L.level, L.hard,
-         L.taken, L.complete, L.frames, L.R, stuck);
+  printf("END state %d level %d hard %d taken %d complete %d frames %d R %.0f stuck %d contacts %d bodies %d\n", g.state,
+         L.level, L.hard, L.taken, L.complete, L.frames, L.R, stuck, maxc, maxb);
   return 0;
 }
