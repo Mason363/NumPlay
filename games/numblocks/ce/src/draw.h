@@ -30,10 +30,10 @@ void button(int x, int y, int w, int state, const char *label);   /* state 0 off
 void dirt_background(int y0, int y1);
 
 /* the HUD: drawn into its own layer, laid over the 3D view as it goes to the screen */
-#define HUD_X 66
-#define HUD_W 188
+#define HUD_X 67
+#define HUD_W 187
 #define HUD_Y 180
 #define HUD_H (SCREEN_H - HUD_Y)
-extern uint8_t hud_layer[HUD_W * HUD_H];
-void compose(const uint8_t *src, bool hud, bool crosshair);
+extern uint8_t *hud_layer;   /* HUD_W x HUD_H (in the CE's screen memory, after the world) */
+void compose(bool hud, bool crosshair);   /* the 3D view (rbuf) onto the screen, with the HUD and the crosshair */
 #endif

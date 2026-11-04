@@ -9,9 +9,13 @@ const uint8_t *gfx, *texdat;
 
 void canvas_screen(void) { cv = (Canvas){scr, SCREEN_W, 0, 0, SCREEN_W, SCREEN_H}; }
 
-static inline void put(int x, int y, uint8_t c) {
-  x -= cv.ox, y -= cv.oy;
-  if ((unsigned)x < (unsigned)cv.w && (unsigned)y < (unsigned)cv.h) cv.p[y * cv.stride + x] = c;
+/* (a row at a time: the row's pixel 0 in screen x, 0 off the canvas; x kept in [x0, x1)) */
+static int x0, x1;
+static uint8_t *row_at(int y) {
+  y -= cv.oy;
+  if ((unsigned)y >= (unsigned)cv.h) return 0;
+  x0 = cv.ox, x1 = cv.ox + cv.w;
+  return cv.p + y * cv.stride - cv.ox;
 }
 
 void fill(int x, int y, int w, int h, uint8_t c) {
@@ -35,17 +39,30 @@ int text_width(const char *s) {
 }
 
 static void glyphs(const char *s, int x, int y, uint8_t c, int scale) {
-  for (; *s; s++) {
-    int k = *s - 32;
-    if (k < 0 || k >= 96) continue;
-    const uint8_t *g = font_bits + k * 8;
-    for (int r = 0; r < 8; r++)
-      for (int b = 0; b < 8; b++)
-        if (g[r] >> b & 1) {
-          if (scale == 1) put(x + b, y + r, c);
-          else fill(x + b * scale, y + r * scale, scale, scale, c);
-        }
-    x += font_w[k] * scale;
+  if (scale > 1) {
+    for (; *s; s++) {
+      int k = *s - 32;
+      if (k < 0 || k >= 96) continue;
+      const uint8_t *g = font_bits + k * 8;
+      for (int r = 0; r < 8; r++)
+        for (int b = 0; b < 8; b++)
+          if (g[r] >> b & 1) fill(x + b * scale, y + r * scale, scale, scale, c);
+      x += font_w[k] * scale;
+    }
+    return;
+  }
+  for (int r = 0; r < 8; r++) {
+    uint8_t *d = row_at(y + r);
+    if (!d) continue;
+    int gx = x;
+    for (const char *p = s; *p; p++) {
+      int k = *p - 32;
+      if (k < 0 || k >= 96) continue;
+      uint8_t bits = font_bits[k * 8 + r];
+      for (int b = gx; bits; b++, bits >>= 1)
+        if (bits & 1 && b >= x0 && b < x1) d[b] = c;
+      gx += font_w[k];
+    }
   }
 }
 
@@ -60,21 +77,28 @@ void text_big(int x, int y, const char *s, uint8_t c, int scale) { glyphs(s, x, 
 /* a picture kept as runs (tools/pack.py rle): x, y its top left; sx, sy, w, h a part of it */
 static void runs(const uint8_t *base, int sw, int sh, int x, int y, int sx, int sy, int w, int h) {
   for (int r = sy; r < sy + h && r < sh; r++) {
+    uint8_t *d = row_at(y + r - sy);
+    if (!d) continue;
     const uint8_t *p = base + (base[r * 2] | base[r * 2 + 1] << 8) + sh * 2;
-    int col = 0, dy = y + r - sy;
+    /* (screen x = col + dx, within [a, b): the part asked for, on the canvas) */
+    int dx = x - sx, a = x > x0 ? x : x0, b = x + w < x1 ? x + w : x1;
+    int col = 0;
     while (col < sw) {
       int n = *p++;
       if (n < 128) {
         for (int k = 0; k <= n; k++, col++) {
           uint8_t c = *p++;
-          if (c && col >= sx && col < sx + w) put(x + col - sx, dy, c);
+          int px = col + dx;
+          if (c && px >= a && px < b) d[px] = c;
         }
       } else {
         int len = n - 126;
         uint8_t c = *p++;
         if (c) {
-          int a = col < sx ? sx : col, b = col + len > sx + w ? sx + w : col + len;
-          for (int k = a; k < b; k++) put(x + k - sx, dy, c);
+          int s0 = col + dx, s1 = s0 + len;
+          if (s0 < a) s0 = a;
+          if (s1 > b) s1 = b;
+          if (s1 > s0) memset(d + s0, c, (size_t)(s1 - s0));
         }
         col += len;
       }
@@ -129,43 +153,30 @@ void button(int x, int y, int w, int state, const char *label) {
   text_center(x + w / 2, y + 6, label, c);
 }
 
-/* the options background: dirt, 32 pixels a tile, darkened */
+/* the options background: dirt, 32 pixels a tile, darkened (the texture at 2x, a quarter as bright) */
 void dirt_background(int y0, int y1) {
-  for (int y = y0; y < y1; y++)
-    for (int x = 0; x < SCREEN_W; x += 32) {
-      for (int k = 0; k < 32 && x + k < SCREEN_W; k += 2) {
-        /* (the dirt texture at 2x, darkened to a quarter) */
-        const uint8_t *row = tex_px[TX_DIRT] + ((y >> 1) & 15) * 16;
-        uint8_t c = dark(row[(k >> 1) & 15], 19);
-        put(x + k, y, c);
-        put(x + k + 1, y, c);
-      }
+  static uint8_t line[SCREEN_W];
+  int tr = -1;
+  for (int y = y0; y < y1; y++) {
+    uint8_t *d = row_at(y);
+    if (!d) continue;
+    int r = (y >> 1) & 15;
+    if (r != tr) {
+      const uint8_t *t = tex_px[TX_DIRT] + r * 16;
+      for (int k = 0; k < 16; k++) line[2 * k] = line[2 * k + 1] = dark(t[k], 19);
+      for (int k = 32; k < SCREEN_W; k += 32) memcpy(line + k, line, 32);
+      tr = r;
     }
+    int a = x0 > 0 ? x0 : 0, b = x1 < SCREEN_W ? x1 : SCREEN_W;
+    if (b > a) memcpy(d + a, line + a, (size_t)(b - a));
+  }
 }
 
 /* ---------------------------------------------------------------- the 3D view on the screen */
-uint8_t hud_layer[HUD_W * HUD_H];
+uint8_t *hud_layer;
 
-void compose(const uint8_t *src, bool hud, bool crosshair) {
-  plat_expand(src, scr, HUD_Y / 2);
-  /* the rows under the HUD: doubled, then the HUD's own pixels over them */
-  for (int y = HUD_Y; y < SCREEN_H; y += 2) {
-    uint8_t *d = scr + y * SCREEN_W;
-    const uint8_t *s = src + (y / 2) * RW;
-    for (int x = 0; x < RW; x++) d[2 * x] = d[2 * x + 1] = s[x];
-    if (hud) {
-      const uint8_t *h = hud_layer + (y - HUD_Y) * HUD_W;
-      for (int x = 0; x < HUD_W; x++)
-        if (h[x]) d[HUD_X + x] = h[x];
-    }
-    uint8_t *d2 = d + SCREEN_W;
-    for (int x = 0; x < RW; x++) d2[2 * x] = d2[2 * x + 1] = s[x];
-    if (hud) {
-      const uint8_t *h = hud_layer + (y + 1 - HUD_Y) * HUD_W;
-      for (int x = 0; x < HUD_W; x++)
-        if (h[x]) d2[HUD_X + x] = h[x];
-    }
-  }
+void compose(bool hud, bool crosshair) {
+  render_show(hud);
   if (crosshair) {
     /* the crosshair (icons.png's, light) */
     uint8_t *m = scr + (SCREEN_H / 2) * SCREEN_W + SCREEN_W / 2;

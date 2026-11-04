@@ -66,7 +66,7 @@ void hud_draw(void) {
   if (s == sig && !hud_dirty) return;
   sig = s, hud_dirty = false;
   cv = (Canvas){hud_layer, HUD_W, HUD_X, HUD_Y, HUD_W, HUD_H};
-  memset(hud_layer, 0, sizeof hud_layer);
+  memset(hud_layer, 0, HUD_W * HUD_H);
   int x0 = SCREEN_W / 2 - 91, yb = SCREEN_H - 22;
   sprite(SP_HOTBAR, x0, yb);
   sprite(SP_HOTBAR_SEL, x0 - 1 + pl.slot * 20, yb - 1);

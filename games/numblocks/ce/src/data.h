@@ -112,7 +112,9 @@ extern const uint8_t pal_rgb[256 * 3];   /* 1-15: the sky's (set at run time) */
 /* the appvar NBCETEX: the textures (v * 16 + u; 0 see-through), each colour at each level of light
  * (31 full), the nearest colour of a point [r][g][b] of 16 levels each (cube_levels) */
 extern const uint8_t *texdat;
-#define TEXDAT_SIZE (NTEX * 256 + N_SHADE * 256 + 4096)
+#define TEXDAT_RECIP (NTEX * 256 + N_SHADE * 256 + 4096)
+#define TEXDAT_RATIO (TEXDAT_RECIP + 2545 * 3)
+#define TEXDAT_SIZE (TEXDAT_RATIO + 256)
 #define tex_px ((const uint8_t (*)[256])texdat)
 #define shade_cm ((const uint8_t (*)[256])(texdat + NTEX * 256))
 #define pal_cube (texdat + NTEX * 256 + N_SHADE * 256)

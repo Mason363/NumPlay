@@ -42,7 +42,7 @@ static void title_backdrop(void) {
   world_time = 3000;
   render_sky_palette();
   render_title(0x3000);
-  compose(rbuf, false, false);
+  compose(false, false);
 }
 
 static void to_title(void) {
@@ -67,7 +67,7 @@ static void start_game(void) {
     static const uint8_t one = 1;
     plat_save("NBCEOPT", &one, 1, 0, 0);
     render_frame();
-    compose(rbuf, false, false);
+    compose(false, false);
     gui_open(GUI_CONTROLS);
   }
 }
@@ -167,7 +167,7 @@ static void play(uint32_t keys, uint32_t pressed) {
     }
     render_frame();
     hud_draw();
-    compose(rbuf, true, true);
+    compose(true, true);
   }
 }
 
@@ -175,8 +175,83 @@ int main(void) {
   plat_init();
   wblk = plat_spare();
   wlight = wblk + WS * WS * WH;
+  hud_layer = wblk + 2 * WS * WS * WH;
   render_init();
   canvas_screen();
+#ifdef NB_BENCH
+#include <stdio.h>
+  {
+    /* (timing, built with -DNB_BENCH: each part's ms x 10, as text in the appvar NBBENCH) */
+    static char out[400];
+    int n = 0;
+    uint32_t t = plat_ms();
+#define LAP(name)                                                                            \
+  do {                                                                                       \
+    uint32_t now = plat_ms();                                                                \
+    n += sprintf(out + n, "%s %lu\n", name, (unsigned long)(now - t));                       \
+    t = plat_ms();                                                                           \
+  } while (0)
+#if NB_BENCH == 3
+    {
+      /* the arithmetic's costs: 3000 of each (volatile: not folded away) */
+      static volatile int a = 12345, b = 77, r;
+      static volatile int32_t la = 1234567, lb = 777, lr;
+      for (int i = 0; i < 3000; i++) r = a + b;
+      LAP("loop");
+      for (int i = 0; i < 3000; i++) r = a * b;
+      LAP("imul");
+      for (int i = 0; i < 3000; i++) r = a / b;
+      LAP("idiv");
+      for (int i = 0; i < 3000; i++) r = a >> 5;
+      LAP("ishr5");
+      for (int i = 0; i < 3000; i++) r = a & 4095;
+      LAP("iand");
+      for (int i = 0; i < 3000; i++) lr = la * lb;
+      LAP("lmul");
+      for (int i = 0; i < 3000; i++) lr = la / lb;
+      LAP("ldiv");
+      for (int i = 0; i < 3000; i++) lr = la >> 12;
+      LAP("lshr12");
+      static volatile uint8_t ba = 200, bb = 3, br;
+      for (int i = 0; i < 3000; i++) br = (uint8_t)(ba & 0xF0);
+      LAP("band");
+      for (int i = 0; i < 3000; i++) br = (uint8_t)(ba * bb);
+      LAP("bmul");
+      static volatile int16_t sa = 1234, sb = 56;
+      static volatile int32_t sr;
+      for (int i = 0; i < 3000; i++) sr = (int32_t)sa * sb;
+      LAP("s16mul32");
+      plat_save("NBBENCH", out, (unsigned)n, 0, 0);
+      plat_exit();
+    }
+#endif
+    strcpy(cur_name, "Bench");
+    new_world(1, cur_name, 12345, 0);
+    LAP("world");
+    render_sky_palette();
+    LAP("sky");
+    for (int v = 0; v < (NB_BENCH > 1 ? 24 : 4); v++) {
+      pl.yaw = (uint16_t)((v & 3) * 16384);
+      pl.pitch = (v & 3) == 3 ? 6000 : 0;
+      render_frame();
+      LAP("render");
+      hud_draw();
+      LAP("hud");
+      compose(true, true);
+      LAP("compose");
+    }
+    pl.x += FX1 * 4;
+    world_center(FXI(pl.x), FXI(pl.y), FXI(pl.z), false);
+    world_step();
+    LAP("row");
+    world_step();
+    LAP("row");
+    player_tick(K_FWD, 0);
+    LAP("tick");
+    plat_save("NBBENCH", out, (unsigned)n, 0, 0);
+    plat_exit();
+  }
+#endif
 #ifdef HOST
   /* (tests: straight into a new world, NB_NEW=seed,mode[,x,y,z,yaw,pitch,time]) */
   extern bool host_start(uint32_t *seed, int *mode, int *at);

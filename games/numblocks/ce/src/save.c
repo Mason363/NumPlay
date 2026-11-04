@@ -83,7 +83,7 @@ bool save_world(void) {
   h.n_tiles = (uint8_t)n_tiles;
   h.n_edits = (uint16_t)n_edits;
   /* the header and the tiles, then the edits */
-  static uint8_t buf[sizeof(Header) + MAX_TILES * sizeof(Tile)];
+  uint8_t *buf = rbuf;   /* (the 3D view's picture: not drawn while saving) */
   memcpy(buf, &h, sizeof h);
   memcpy(buf + sizeof h, tiles, n_tiles * sizeof(Tile));
   char n[8];

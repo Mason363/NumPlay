@@ -593,7 +593,10 @@ def main():
     out = ['/* Made by tools/pack.py from Minecraft 1.8.8\'s pictures: see data.h. */', '#include "data.h"', '']
     out += carr('pal_rgb[256 * 3]', 'uint8_t', [int(v) for c in pal for v in c])
     # the appvar NBCETEX (gfx/NBCETEX.bin): the textures, the shade rows and the colour cube, read in place
-    texbin = bytes([v for t in tex_idx for v in t]) + bytes(shade) + bytes(cube)
+    # (and the 3D view's division tables: 2^28 / k for k 16..2560, 3 bytes each; f * 256 / d for d 1..15, f < d)
+    recip = b''.join((min((1 << 28) // k, (1 << 24) - 1)).to_bytes(3, 'little') for k in range(16, 2561))
+    ratio = bytes((f * 256 // d) if d and f < d else 0 for d in range(16) for f in range(16))
+    texbin = bytes([v for t in tex_idx for v in t]) + bytes(shade) + bytes(cube) + recip + ratio
     assert len(texbin) <= 65505, len(texbin)
     os.makedirs(os.path.join(CE, 'gfx'), exist_ok=True)
     open(os.path.join(CE, 'gfx', 'NBCETEX.bin'), 'wb').write(texbin)
@@ -731,7 +734,9 @@ def main():
           '/* the appvar NBCETEX: the textures (v * 16 + u; 0 see-through), each colour at each level of light',
           ' * (31 full), the nearest colour of a point [r][g][b] of 16 levels each (cube_levels) */',
           'extern const uint8_t *texdat;',
-          '#define TEXDAT_SIZE (NTEX * 256 + N_SHADE * 256 + 4096)',
+          '#define TEXDAT_RECIP (NTEX * 256 + N_SHADE * 256 + 4096)',
+          '#define TEXDAT_RATIO (TEXDAT_RECIP + 2545 * 3)',
+          '#define TEXDAT_SIZE (TEXDAT_RATIO + 256)',
           '#define tex_px ((const uint8_t (*)[256])texdat)',
           '#define shade_cm ((const uint8_t (*)[256])(texdat + NTEX * 256))',
           '#define pal_cube (texdat + NTEX * 256 + N_SHADE * 256)',

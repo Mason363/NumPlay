@@ -48,11 +48,7 @@ static void load_bin(const char *name, uint8_t *mem, unsigned size) {
   }
   fclose(g);
 }
-extern int render_debug;
 void plat_init(void) {
-  if (getenv("NB_DEBUG")) render_debug = atoi(getenv("NB_DEBUG"));
-  extern int probe_px, probe_py;
-  if (getenv("NB_PROBE")) sscanf(getenv("NB_PROBE"), "%d,%d", &probe_px, &probe_py);
   scr = screen_mem;
   load_bin("NBCEDAT.bin", gfx_mem, GFX_SIZE);
   load_bin("NBCETEX.bin", tex_mem, TEXDAT_SIZE);
@@ -110,6 +106,11 @@ void plat_frame(void) {
       char p[512];
       snprintf(p, sizeof p, "%s/shot_%04d.ppm", out, frame_no);
       shot(p);
+      extern unsigned long rs_visited, rs_drawn, rs_rows, rs_edges, rs_polys;
+      fprintf(stderr, "polys %lu edges %lu rows %lu visited %lu drawn %lu\n", rs_polys, rs_edges, rs_rows, rs_visited, rs_drawn);
+      rs_visited = rs_drawn = rs_rows = rs_edges = rs_polys = 0;
+      extern unsigned long st_cols, st_list, st_frus, st_cov, st_culled;
+      fprintf(stderr, "cols %lu listed %lu in view %lu tested %lu culled %lu\n", st_cols, st_list, st_frus, st_cov, st_culled);
       fprintf(stderr, "frame %d: %u cells, %u faces, %u spans, %u pixels; at %.2f %.2f %.2f yaw %d pitch %d, win %d %d %d\n",
               frame_no, stat_cells, stat_faces, stat_spans, stat_px, pl.x / 4096.0, pl.y / 4096.0, pl.z / 4096.0, pl.yaw,
               pl.pitch, win_x, win_y, win_z);

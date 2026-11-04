@@ -121,7 +121,8 @@ uint32_t plat_keys(void) {
 }
 
 uint32_t plat_ms(void) { return (uint32_t)clock() * 125 >> 12; }   /* (32768 a second) */
-void plat_frame(void) {}
+/* (a frame is done: tools/ce_emu counts frames here) */
+__attribute__((noinline, used)) void plat_frame(void) { __asm__ volatile("" ::: "memory"); }
 uint8_t *plat_spare(void) { return (uint8_t *)lcd_Ram + SCREEN_W * SCREEN_H; }
 
 /* the edit log's memory: a RAM appvar, made once as big as it will be (resizing one loses its data) */

@@ -6,8 +6,21 @@
 
 uint8_t *wblk, *wlight;
 uint32_t wexp[WS * WS];
-uint8_t wtop[WS * WS], wbiome[WS * WS];
-static Column wcol[WS * WS];
+uint8_t wtop[WS * WS];
+CCol wcol[WS * WS];
+/* a column's top and filler blocks and depth, packed (tf) */
+static const uint8_t TOPS[6] = {B_GRASS, B_SAND, B_GRAVEL, B_DIRT, B_GRASS_SNOWED, B_STONE};
+static const uint8_t FILLS[3] = {B_DIRT, B_SAND, B_GRAVEL};
+static void col_pack(CCol *k, const Column *c) {
+  int t = 0, f = 0;
+  while (t < 5 && TOPS[t] != c->top) t++;
+  while (f < 2 && FILLS[f] != c->filler) f++;
+  k->h = c->h, k->biome = c->biome, k->tf = (uint8_t)(t | f << 3 | (c->depth - 3) << 5);
+}
+static void col_unpack(const CCol *k, Column *c) {
+  c->h = k->h, c->biome = k->biome, c->top = TOPS[k->tf & 7], c->filler = FILLS[k->tf >> 3 & 3];
+  c->depth = (uint8_t)(3 + (k->tf >> 5));
+}
 int win_x, win_z, win_y;
 uint32_t world_seed;
 Edit *edits;
@@ -222,11 +235,11 @@ static void fill(int x0, int z0, int x1, int z1, int y0, int y1, bool cols) {
   for (int z = z0; z < z1; z++)
     for (int x = x0; x < x1; x++) {
       int c = CI(x, z);
-      Column *col = &wcol[c];
+      Column cc, *col = &cc;
       if (cols) {
         gen_column(x, z, col);
-        wbiome[c] = col->biome;
-      }
+        col_pack(&wcol[c], col);
+      } else col_unpack(&wcol[c], col);
       for (int y = y0; y < y1; y++) wblk[WI(x, y, z)] = (uint8_t)gen_cell(x, y, z, col);
       int py = col->h + 1;
       if (py >= y0 && py < y1 && wblk[WI(x, py, z)] == B_AIR && wblk[WI(x, py - 1, z)] == col->top) {

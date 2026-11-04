@@ -29,7 +29,9 @@ extern uint8_t *wblk;   /* blocks [y & 31][z & 31][x & 31] */
 extern uint8_t *wlight; /* light: sky (low 4 bits) | block (high 4 bits) */
 extern uint32_t wexp[WS * WS];   /* per column: the cells with a face to draw (bit y & 31) */
 extern uint8_t wtop[WS * WS];    /* per column: the lowest y the sky shines down to (in the window) */
-extern uint8_t wbiome[WS * WS];
+typedef struct { uint8_t h, biome, tf; } CCol;   /* a window column's ground (gen.c's Column, packed) */
+extern CCol wcol[WS * WS];
+#define wbiome(ci) (wcol[ci].biome)
 extern int win_x, win_z, win_y; /* the world position of the window's low corner */
 #define WI(x, y, z) ((((unsigned)(y) & 31) << 10) | (((unsigned)(z) & 31) << 5) | ((unsigned)(x) & 31))
 #define CI(x, z) ((((unsigned)(z) & 31) << 5) | ((unsigned)(x) & 31))
@@ -105,6 +107,7 @@ extern uint8_t *rbuf;          /* the picture, RW x RH */
 void render_init(void);
 void render_frame(void);       /* from the player's eyes */
 void render_title(uint16_t yaw);   /* the title's backdrop: the world turning */
+void render_show(bool hud);    /* the picture onto the screen at 2x, the sky in it (and the HUD) */
 void render_sky_palette(void); /* the sky's colours and the light, for the time of day */
 extern uint32_t world_time;    /* ticks: 24000 a day, 0 sunrise */
 extern int view_dist;          /* blocks seen */
@@ -135,7 +138,7 @@ typedef struct {
   int16_t burn, cook, burn_max;
   Stack s[27];         /* a chest's 27; a furnace's input, fuel, output */
 } Tile;
-#define MAX_TILES 24
+#define MAX_TILES 16
 extern Tile tiles[MAX_TILES];
 extern int n_tiles;
 Tile *tile_at(int x, int y, int z);
