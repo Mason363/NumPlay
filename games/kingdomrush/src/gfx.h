@@ -61,6 +61,9 @@ void spr_frame_tint(int slot, int x, int y, bool flip, uint16_t c, int a);
 
 /* pictures (pic.c) */
 void pic_draw(int id, int x, int y);   /* straight from flash, decoded as the band needs */
+#if NP_SOFT_FLOAT
+void pic_end(void);   /* (the decoded squares kept: freed) */
+#endif
 int pic_w(int id);
 int pic_h(int id);
 /* the terrain: the picture decoded once into RAM (w x h bytes at mem), drawn at (x, y) */
