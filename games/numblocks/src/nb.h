@@ -193,6 +193,8 @@ extern Player pl;
 void player_spawn(void);
 void player_pick_block(void);   /* the block looked at, into the hand (Pick Block) */
 extern float look_ray[6];   /* the eyes' ray as last drawn: from, direction */
+bool ray_box(const float *o, const float *d, const float *lo, const float *hi, float *t, int *face);
+int ray_world(const float *r, float reach, bool solid, int *h, float *t);   /* the first block on a ray: its face, -1 */
 void player_look(float ex, float ey, float ez, float yaw, float pitch);
 void player_tick(uint32_t keys, uint32_t pressed);   /* 20 a second */
 static inline Stack *held(void) { return &pl.inv[pl.slot]; }
@@ -237,6 +239,8 @@ typedef struct {
     struct { int16_t tx, tz; };  /* a mob: where it is going in the end (a block) */
   };
 } Entity;
+/* an arrow: state 1 stuck (vx, vy, vz 0.1 long, into its block), delay its shake, on_ground critical; item.aux who
+ * may pick it up (throw_item) */
 #define N_ENT 24
 extern Entity ents[N_ENT];
 Entity *ent_new(int type, float x, float y, float z);
@@ -261,7 +265,7 @@ void mob_tick(Entity *e);
 void mobs_spawn(void);
 void explode(float x, float y, float z, float power, bool blocks);
 void tnt_light(int x, int y, int z, int fuse);
-void throw_item(int id, float speed, bool from_player);   /* arrows, snowballs, eggs */
+Entity *throw_item(int id, float speed, int pickup);   /* arrows, snowballs, eggs; pickup: 1 anyone, 2 in creative */
 bool mob_attack(const Entity *e);   /* the player hits this mob (with the held item) */
 bool mob_use(Entity *e);            /* the player uses the held item on it (shears, bucket) */
 void mob_struck(Entity *e);         /* hit by lightning */
@@ -385,7 +389,9 @@ void chat_add(const char *s, int color);   /* a line in the chat (gui.c) */
 void command_run(const char *line);        /* a line sent from the chat: a command ("/...") or said */
 /* tab completion: the k-th way to finish the last word of line (the word starts at *at); false: no more */
 bool command_complete(const char *line, int k, int *at, char *out, int max);
-extern const char *const mc_block_name[198], *const mc_item_name[176];   /* (names.c) */
+const char *mc_name(int k);   /* Minecraft's name of block k (0-197) or item 256 + k - 198 ("": not in NumBlocks; names.c) */
+#define mc_block_name(i) mc_name(i)
+#define mc_item_name(i) mc_name(198 + (i))
 extern const uint8_t mc_block_item[25];
 extern const uint16_t give_key[], give_id[];   /* Minecraft's id << 4 | data, and NumBlocks' id */
 extern const int n_give;

@@ -277,7 +277,10 @@ SPRITES = [
     ('fishing_rod_cast', 'items/fishing_rod_cast', 0, 0, 16, 16),
     # the sun (its glow) and the moon's eight phases (their middles; drawn adding light)
     ('sun', 'environment/sun', 2, 2, 28, 28),
-] + [(f'moon_{k}', 'environment/moon_phases', (k % 4) * 32 + 8, (k // 4) * 32 + 8, 16, 16) for k in range(8)]
+] + [(f'moon_{k}', 'environment/moon_phases', (k % 4) * 32 + 8, (k // 4) * 32 + 8, 16, 16) for k in range(8)] + [
+    # the bow drawn, an arrow on it (RenderItem.renderItemModelForEntity), and a flying arrow's shaft and tail
+    (f'bow_pulling_{k}', f'items/bow_pulling_{k}', 0, 0, 16, 16) for k in range(3)] + [
+    ('arrow_entity', 'entity/arrow', 0, 0, 16, 10)]
 
 
 # what the inventory tints its icons with: plains grass and foliage, and the fixed colours
