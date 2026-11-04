@@ -2175,5 +2175,31 @@
       "nspire",
       "casio-cg"
     ]
+  },
+  {
+    "id": "circloo",
+    "rank": 49,
+    "title": "circloO",
+    "tagline": "Roll the ball, grow the circle",
+    "credit": "Based on circloO by Florian van Strien",
+    "top": "0xD89645",
+    "bottom": "0x563C1B",
+    "accent": "0xD89645",
+    "colors": 16,
+    "records": [
+      "circloo.sav",
+      "circloo_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/circloo",
+    "default": false,
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire"
+    ]
   }
 ]

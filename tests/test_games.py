@@ -342,6 +342,10 @@ GAMES = {
     "fourplayer": ("FourPlayers.nwa", "fourplayer.sav",
                    presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (5300, "shift"), (5600, "exe")), 6500,
                    presses((1500, "down")), 3500),
+    # level 1 from the main menu, the ball rolled right a while; Home saves. Next time, from the copy, the menu, then
+    # On/Off
+    "circloo": ("CircloO.nwa", "circloo.sav",
+                presses((1500, "ok"), (2500, "right", 2000)), 6000, presses((1500, "down")), 3500),
     # Play, the first level, the gas held a while; Home saves. Next time, from the copy, the map, then On/Off
     "motox3m": ("MotoX3M.nwa", "motox3m.sav",
                 presses((1500, "ok"), (2200, "ok"), (3000, "up", 4000)), 9000,
@@ -450,7 +454,7 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "catninja": "catninja_saves.py",
           "kingdomrush": "kingdomrush_saves.py",
           "mrbullet": "mrbullet_saves.py", "motox3m": "motox3m_saves.py", "amongus": "amongus_saves.py", "imposter": "imposter_saves.py",
-          "fourplayer": "fourplayer_saves.py"}
+          "fourplayer": "fourplayer_saves.py", "circloo": "circloo_saves.py"}
 
 
 def paperclips_ok(v):
@@ -762,6 +766,8 @@ CHECKS = {
     # Down chose 2 v 2
     "fourplayer": (lambda v: len(v) == 188 and v[:4] == b"FOUR" and v[4:8] == bytes([1, 2, 0, 3]),
                    lambda v: len(v) == 188 and v[:4] == b"FOUR" and v[4:8] == bytes([1, 3, 0, 3])),
+    # "COOS", version 1, its size (104): levels 1 and 2 open in both modes; after the reinstall, from the copy, the same
+    "circloo": (lambda v: len(v) == 112 and v[:8] == b"COOS\x01\x00\x68\x00" and v[8:10] == bytes([2, 2]),) * 2,
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept
