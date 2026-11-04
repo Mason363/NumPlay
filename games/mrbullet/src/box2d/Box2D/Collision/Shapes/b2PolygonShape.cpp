@@ -1,3 +1,4 @@
+/* Altered for NumPlay's Mr Bullet (NumWorks calculator): points welded as in later Box2D (half the slop apart) */
 /*
 * Copyright (c) 2006-2009 Erin Catto http://www.box2d.org
 *
@@ -138,7 +139,9 @@ void b2PolygonShape::Set(const b2Vec2* vertices, int32 count)
 		bool unique = true;
 		for (int32 j = 0; j < tempCount; ++j)
 		{
-			if (b2DistanceSquared(v, ps[j]) < 0.5f * b2_linearSlop)
+			// (as Mr Bullet's Box2D welds them: points closer than half the slop, 0.15 of its units; 2.3.1 itself
+			// compares the squared distance with half the slop, 3 units, and turns small pieces into 2 m boxes)
+			if (b2DistanceSquared(v, ps[j]) < (0.5f * b2_linearSlop) * (0.5f * b2_linearSlop))
 			{
 				unique = false;
 				break;
