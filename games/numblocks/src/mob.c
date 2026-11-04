@@ -335,12 +335,13 @@ static void loot(Entity *e) {
 #if NB_DIMS
 void dims_hurt_(Entity *e, float dmg, float kx, float kz);
 #endif
-static void hurt(Entity *e, float dmg, float kx, float kz) {
-  if (e->state == 255 || e->invuln > 10) return;
+/* false: not hurt (dying, or still hurt from the last hit) */
+static bool hurt(Entity *e, float dmg, float kx, float kz) {
+  if (e->state == 255 || e->invuln > 10) return false;
 #if NB_DIMS
   if (e->type == E_DRAGON || e->type == E_CRYSTAL) {
     dims_hurt_(e, dmg, kx, kz);
-    return;
+    return true;
   }
 #endif
   e->health = (int16_t)(e->health - (int)ceilf(dmg));
@@ -364,37 +365,27 @@ static void hurt(Entity *e, float dmg, float kx, float kz) {
     e->state = 255;
     e->timer = 0;
   }
+  return true;
 }
 
 /* ---------------------------------------------------------------- the player and mobs */
-Entity *entity_looked_at(float reach, float block_t) {
-  float ex = look_ray[0], ey = look_ray[1], ez = look_ray[2], *d = look_ray + 3;
-  float best = reach < block_t ? reach : block_t;
+/* the nearest living mob the ray r (from, the way) meets before *t, its box grown by g on every side; *t: where */
+static Entity *ray_mob(const float *r, float *t, float g) {
   Entity *hit = NULL;
   for (int i = 0; i < N_ENT; i++) {
     Entity *e = &ents[i];
     if (NOT_MOB(e->type) || e->state == 255) continue;
-    float w = info[e->type].w / 2 + 0.1f, h = info[e->type].h + 0.1f;
-    float lo[3] = {e->x - w, e->y, e->z - w}, hi[3] = {e->x + w, e->y + h, e->z + w}, o[3] = {ex, ey, ez};
-    float t0 = 0, t1 = best;
-    bool miss = false;
-    for (int a = 0; a < 3 && !miss; a++) {
-      if (fabsf(d[a]) < 1e-6f) {
-        if (o[a] < lo[a] || o[a] > hi[a]) miss = true;
-        continue;
-      }
-      float ta = (lo[a] - o[a]) / d[a], tb = (hi[a] - o[a]) / d[a];
-      if (ta > tb) {
-        float t = ta;
-        ta = tb, tb = t;
-      }
-      if (ta > t0) t0 = ta;
-      if (tb < t1) t1 = tb;
-      if (t0 > t1) miss = true;
-    }
-    if (!miss) best = t0, hit = e;
+    float w = info[e->type].w / 2 + g, et;
+    float lo[3] = {e->x - w, e->y - g, e->z - w}, hi[3] = {e->x + w, e->y + info[e->type].h + g, e->z + w};
+    int f;
+    if (ray_box(r, r + 3, lo, hi, &et, &f) && et <= *t) *t = et > 0 ? et : 0, hit = e;
   }
   return hit;
+}
+/* EntityRenderer.getMouseOver: boxes grown by 0.1 */
+Entity *entity_looked_at(float reach, float block_t) {
+  float t = reach < block_t ? reach : block_t;
+  return ray_mob(look_ray, &t, 0.1f);
 }
 
 bool mob_attack(const Entity *ce) {
@@ -643,66 +634,74 @@ static void shoot(const Entity *from) {
   a->vx = (dx / d + (rndf() - 0.5f) * 2 * spread) * 1.6f;
   a->vy = (dy / d + (rndf() - 0.5f) * 2 * spread) * 1.6f;
   a->vz = (dz / d + (rndf() - 0.5f) * 2 * spread) * 1.6f;
-  a->yaw = atan2f(-a->vx, a->vz) * 57.29578f;
 }
 
-/* the player throws or shoots: from the eyes, the way they look (EntityThrowable, EntityArrow) */
-void throw_item(int id, float speed, bool from_player) {
+/* the player throws or shoots: from the eyes, 0.1 lower and 0.16 to the right, the way they look (EntityThrowable,
+ * EntityArrow: none of the player's own speed) */
+Entity *throw_item(int id, float speed, int pickup) {
   float yaw = pl.yaw * 0.017453292f, pitch = pl.pitch * 0.017453292f;
   Entity *a = ent_new(E_ARROW, pl.x - cosf(yaw) * 0.16f, pl.y + 1.52f, pl.z - sinf(yaw) * 0.16f);
-  if (!a) return;
+  if (!a) return NULL;
   a->item.id = (uint16_t)id;
-  a->item.aux = from_player;   /* the player's arrows can be picked up again */
+  a->item.aux = (uint16_t)pickup;
   float dx = -sinf(yaw) * cosf(pitch), dy = -sinf(pitch), dz = cosf(yaw) * cosf(pitch);
-  a->vx = (dx + (rndf() - 0.5f) * 0.015f) * speed + pl.vx;
-  a->vy = (dy + (rndf() - 0.5f) * 0.015f) * speed + (pl.on_ground ? 0 : pl.vy);
-  a->vz = (dz + (rndf() - 0.5f) * 0.015f) * speed + pl.vz;
-  a->yaw = pl.yaw;
+  a->vx = (dx + (rndf() - 0.5f) * 0.015f) * speed;
+  a->vy = (dy + (rndf() - 0.5f) * 0.015f) * speed;
+  a->vz = (dz + (rndf() - 0.5f) * 0.015f) * speed;
+  return a;
 }
 
+/* EntityArrow, EntityThrowable: each tick, along its way, the first block with a collision box (an arrow sticks in
+ * it), and before that the nearest mob (the player, for a skeleton's), their boxes grown by 0.3 */
 static void arrow_tick(Entity *e) {
   bool arrow = e->item.id == I_ARROW;
-  if (e->state) {   /* stuck in a block: the player's can be picked up */
-    float px = pl.x - e->x, py = pl.y + 0.9f - e->y, pz = pl.z - e->z;
-    if (e->item.aux && px * px + py * py + pz * pz < 2.0f && !inv_add(pl.inv, 36, I_ARROW, 1, 0)) e->type = E_NONE;
-    if (++e->timer > 1200) e->type = E_NONE;
-    return;
+  if (e->state) {
+    /* stuck (inGround) while its block is there: vx, vy, vz point 0.05 into it */
+    if (blk_flags[world_get(ifl(e->x + e->vx), ifl(e->y + e->vy), ifl(e->z + e->vz))] & BF_SOLID) {
+      float px = pl.x - e->x, py = pl.y + 0.9f - e->y, pz = pl.z - e->z;
+      if (e->delay) e->delay--;   /* (arrowShake: it can't be picked up yet) */
+      else if (e->item.aux && px * px + py * py + pz * pz < 2.0f &&
+               (e->item.aux == 2 ? pl.mode == 1 : !inv_add(pl.inv, 36, I_ARROW, 1, 0)))
+        e->type = E_NONE;
+      if (++e->timer > 1200) e->type = E_NONE;
+      return;
+    }
+    e->state = 0, e->timer = 0;   /* its block gone: it falls */
   }
-  float nx = e->x + e->vx, ny = e->y + e->vy, nz = e->z + e->vz;
+  float r[6] = {e->x, e->y, e->z, e->vx, e->vy, e->vz}, t = 1;
+  int b[3], face = ray_world(r, 1, true, b, &t);
   float sp = sqrtf(e->vx * e->vx + e->vy * e->vy + e->vz * e->vz);
-  /* the player in the way of a mob's arrow */
-  float px = pl.x - nx, pz = pl.z - nz;
-  if (!e->item.aux && !pl.dead && px * px + pz * pz < 0.5f && ny > pl.y && ny < pl.y + 1.8f) {
-    player_hurt(scaled(ceilf(sp * 2.2f)), DMG_ARROW);
-    push_player(e->vx, e->vz, 0.4f);
-    e->type = E_NONE;
-    return;
-  }
-  /* a mob in the way of the player's */
-  if (e->item.aux)
-    for (int i = 0; i < N_ENT; i++) {
-      Entity *m = &ents[i];
-      if (NOT_MOB(m->type) || m->state == 255) continue;
-      float w = info[m->type].w / 2 + 0.15f, mx = m->x - nx, mz = m->z - nz;
-      if (fabsf(mx) < w && fabsf(mz) < w && ny > m->y - 0.1f && ny < m->y + info[m->type].h) {
-        /* EntityArrow: damage 2 x speed, rounded up (a full draw sometimes more) */
-        float dmg = arrow ? ceilf(sp * 2) + (sp > 2.9f ? rnd((int)(sp * 2) / 2 + 2) : 0) : 0;
+  if (!e->item.aux) {
+    float lo[3] = {pl.x - 0.6f, pl.y - 0.3f, pl.z - 0.6f}, hi[3] = {pl.x + 0.6f, pl.y + 2.1f, pl.z + 0.6f}, pt;
+    int f;
+    if (!pl.dead && pl.mode == 0 && ray_box(r, r + 3, lo, hi, &pt, &f) && pt <= t) {
+      player_hurt(scaled(ceilf(sp * 2.2f)), DMG_ARROW);
+      push_player(e->vx, e->vz, 0.4f);
+      e->type = E_NONE;
+      return;
+    }
+  } else {
+    Entity *m = ray_mob(r, &t, 0.3f);
+    if (m) {
+      /* damage 2 x its speed, rounded up; a critical one (a full draw) up to half as much again and 2 more */
+      int dmg = arrow ? (int)ceilf(sp * 2) : 0;
+      if (e->on_ground) dmg += rnd(dmg / 2 + 2);
 #if NB_DIMS
-        if (m->type == E_ENDERMAN && arrow) {   /* (EntityEnderman: arrows send it away) */
-          ender_tp_random_(m);
-          e->type = E_NONE;
-          return;
-        }
-        if (e->item.id == I_ENDER_PEARL) pearl_land(e->x, e->y, e->z);
+      if (e->item.id == I_ENDER_PEARL) pearl_land(e->x, e->y, e->z);
+      if (m->type == E_ENDERMAN && arrow) ender_tp_random_(m);   /* (EntityEnderman: it goes, the arrow flies on) */
+      else
 #endif
-        hurt(m, dmg, e->vx, e->vz);
+      if (hurt(m, dmg, e->vx, e->vz) || !arrow) {
         if (!arrow && dmg == 0) m->vx += e->vx * 0.2f, m->vz += e->vz * 0.2f;
         e->type = E_NONE;
         return;
+      } else {
+        e->vx *= -0.1f, e->vy *= -0.1f, e->vz *= -0.1f;   /* (not hurt: it bounces off) */
       }
+      face = -1, t = 1;
     }
-  int b = world_get(ifl(nx), ifl(ny), ifl(nz));
-  if (blk_flags[b] & BF_SOLID) {
+  }
+  if (face >= 0) {
     if (!arrow) {
       /* EntityEgg: one in eight hatches a chick (a chicken here) */
       if (e->item.id == I_EGG && rnd(8) == 0) spawn(E_CHICKEN, e->x, e->y, e->z);
@@ -712,13 +711,19 @@ static void arrow_tick(Entity *e) {
       e->type = E_NONE;
       return;
     }
-    e->state = 1;
-    e->vx = e->vy = e->vz = 0;
+    /* stuck 0.05 short of where it hit, shaking for 7 ticks, no longer critical */
+    t -= 0.05f / sp;
+    e->state = 1, e->delay = 7, e->timer = 0, e->on_ground = 0;
+  }
+  e->x += e->vx * t, e->y += e->vy * t, e->z += e->vz * t;
+  if (e->age == 1) e->px = e->x, e->py = e->y, e->pz = e->z;   /* (first seen there, not at the eyes) */
+  if (e->state) {
+    sp = 0.1f / sp;
+    e->vx *= sp, e->vy *= sp, e->vz *= sp;
     return;
   }
-  e->x = nx, e->y = ny, e->z = nz;
-  bool water = blk_model[b] == M_LIQUID;
-  float drag = water ? 0.8f : 0.99f;
+  /* slowed in water (an arrow more), falling */
+  float drag = is_water(world_get(ifl(e->x), ifl(e->y), ifl(e->z))) ? arrow ? 0.6f : 0.8f : 0.99f;
   e->vx *= drag, e->vy *= drag, e->vz *= drag;
   e->vy -= arrow ? 0.05f : 0.03f;
   if (++e->timer > 400) e->type = E_NONE;

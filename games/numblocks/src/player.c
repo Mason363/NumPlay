@@ -347,7 +347,7 @@ float look_ray[6];
 float hit_t;   /* how far along it the block looked at is */
 
 /* the ray against a box: where it comes in, and through which face */
-static bool ray_box(const float *o, const float *d, const float *lo, const float *hi, float *t, int *face) {
+bool ray_box(const float *o, const float *d, const float *lo, const float *hi, float *t, int *face) {
   float t0 = -1e9f, t1 = 1e9f;
   int f = -1;
   for (int a = 0; a < 3; a++) {
@@ -371,8 +371,8 @@ static bool ray_box(const float *o, const float *d, const float *lo, const float
 
 /* where the ray meets block b at (x, y, z): its selection box (Block.collisionRayTrace), the steps
  * of stairs one by one (BlockStairs); a ray passing beside a flower or over a slab goes on */
-static bool ray_block(int b, int x, int y, int z, float *t, int *face) {
-  float o[3] = {look_ray[0] - x, look_ray[1] - y, look_ray[2] - z}, s[6];
+static bool ray_block(const float *r, int b, int x, int y, int z, float *t, int *face) {
+  float o[3] = {r[0] - x, r[1] - y, r[2] - z}, s[6];
   if (blk_model[b] == M_STAIRS) {
     int8_t bx[5][6];
     int n = block_boxes(b, x, y, z, bx);
@@ -381,48 +381,50 @@ static bool ray_block(int b, int x, int y, int z, float *t, int *face) {
       float lo[3] = {bx[k][0] / 16.0f, bx[k][1] / 16.0f, bx[k][2] / 16.0f}, hi[3] = {bx[k][3] / 16.0f, bx[k][4] / 16.0f, bx[k][5] / 16.0f};
       float kt;
       int kf;
-      if (ray_box(o, look_ray + 3, lo, hi, &kt, &kf) && (!hit || kt < *t)) *t = kt, *face = kf, hit = true;
+      if (ray_box(o, r + 3, lo, hi, &kt, &kf) && (!hit || kt < *t)) *t = kt, *face = kf, hit = true;
     }
     return hit;
   }
   select_box(b, x, y, z, s);
-  return ray_box(o, look_ray + 3, s, s + 3, t, face);
+  return ray_box(o, r + 3, s, s + 3, t, face);
 }
 
-/* the first block the eyes' ray meets within reach (4.5, 5 in creative) */
-static void pick_block(void) {
-  float ex = look_ray[0], ey = look_ray[1], ez = look_ray[2], dx = look_ray[3], dy = look_ray[4], dz = look_ray[5];
+/* the first block the ray r (from, the way) meets before reach (in r's steps): where (h: x y z, *t along), the face
+ * it comes in by, -1 if none; solid: only blocks with a collision box (World.rayTraceBlocks, for arrows) */
+int ray_world(const float *r, float reach, bool solid, int *h, float *t_out) {
+  float ex = r[0], ey = r[1], ez = r[2], dx = r[3], dy = r[4], dz = r[5];
   int x = ifloor(ex), y = ifloor(ey), z = ifloor(ez);
   int sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1, sz = dz > 0 ? 1 : -1;
   float idx = dx != 0 ? fabsf(1 / dx) : 1e9f, idy = dy != 0 ? fabsf(1 / dy) : 1e9f, idz = dz != 0 ? fabsf(1 / dz) : 1e9f;
   float tx = dx > 0 ? (x + 1 - ex) * idx : (ex - x) * idx, ty = dy > 0 ? (y + 1 - ey) * idy : (ey - y) * idy,
         tz = dz > 0 ? (z + 1 - ez) * idz : (ez - z) * idz;
   int face = -1;
-  float t = 0, reach = pl.mode ? 5.0f : 4.5f;
-  pl.hit_face = -1;
+  float t = 0;
   while (t <= reach) {
     int b = world_get(x, y, z);
-    if (b != B_AIR && blk_model[b] != M_LIQUID && b != B_FIRE) {
+    if (solid ? blk_flags[b] & BF_SOLID : b != B_AIR && blk_model[b] != M_LIQUID && b != B_FIRE) {
       float bt;
       int bf;
-      if (ray_block(b, x, y, z, &bt, &bf)) {
-        if (bt > reach) return;
+      if (ray_block(r, b, x, y, z, &bt, &bf)) {
+        if (bt > reach) return -1;
         if (bt <= t) bt = t, bf = face;   /* (the eyes inside it: the side they came in by) */
-        pl.hit_x = x, pl.hit_y = y, pl.hit_z = z, pl.hit_face = bf < 0 ? 1 : bf, hit_t = bt;
-        return;
+        h[0] = x, h[1] = y, h[2] = z, *t_out = bt;
+        return bf < 0 ? 1 : bf;
       }
     }
     if (tx < ty && tx < tz) t = tx, tx += idx, x += sx, face = sx > 0 ? 4 : 5;
     else if (ty < tz) t = ty, ty += idy, y += sy, face = sy > 0 ? 0 : 1;
     else t = tz, tz += idz, z += sz, face = sz > 0 ? 2 : 3;
   }
+  return -1;
 }
 
-/* what the crosshair is on (EntityRenderer.getMouseOver): a mob in front of the block takes it, so the
- * block has no outline; past 3 blocks, in survival, nothing is in reach */
+/* what the crosshair is on (EntityRenderer.getMouseOver): the first block within reach (4.5, 5 in creative); a mob
+ * in front of it takes it, so the block has no outline; past 3 blocks, in survival, nothing is in reach */
 static void pick(void) {
-  pick_block();
-  if (entity_looked_at(pl.mode ? 5.0f : 4.5f, pl.hit_face >= 0 ? hit_t : 1e9f)) pl.hit_face = -1;
+  float reach = pl.mode ? 5.0f : 4.5f;
+  pl.hit_face = ray_world(look_ray, reach, false, &pl.hit_x, &hit_t);
+  if (entity_looked_at(reach, pl.hit_face >= 0 ? hit_t : 1e9f)) pl.hit_face = -1;
 }
 
 void player_look(float ex, float ey, float ez, float yaw, float pitch) {
@@ -1037,7 +1039,9 @@ void player_tick(uint32_t keys, uint32_t pressed) {
       f = (f * f + f * 2) / 3;
       if (f > 1) f = 1;
       if (f >= 0.1f) {
-        throw_item(I_ARROW, f * 3, true);
+        /* 3 blocks a tick at full draw, critical then; a creative player's for creative players only */
+        Entity *a = throw_item(I_ARROW, f * 3, pl.mode + 1);
+        if (a) a->on_ground = f == 1;
         if (pl.mode == 0) {
           stack_wear(held(), 1);
           for (int i = 0; i < 36; i++)

@@ -254,6 +254,74 @@ int main(void) {
     CHECK(zb->type == E_ZOMBIE && zb->y >= y + 1 && zb->x > 10);
     plat_remove_prefix("ut3z");
   }
+  /* a bow drawn a second (ItemBow): the arrow goes 3 blocks a tick the way the player looks, hits the zombie 8 blocks
+   * ahead (6 damage, a critical one up to 10) and knocks it back; one at a wall 1 block thick sticks in it, and comes
+   * back once the player is by it */
+  for (int way = 0; way < 2; way++) {
+    extern uint32_t game_time;
+    world_new(0, "ut3b");
+    world_follow(16, 70, 16);
+    int y = 70;
+    for (int z = 0; z <= 32; z++)
+      for (int x = 0; x <= 32; x++) {
+        world_set(x, y - 1, z, B_STONE);
+        for (int k = 0; k < 6; k++) world_set(x, y + k, z, B_AIR);
+      }
+    memset(ents, 0, sizeof ents);
+    memset(&pl, 0, sizeof pl);
+    opt.difficulty = 2, game_time = 18000, game_rules &= (uint8_t)~GR_MOB_SPAWNING;
+    /* looking along +z (yaw 0), then along -x (yaw 90) */
+    float fx = way ? -1 : 0, fz = way ? 0 : 1;
+    pl.x = 16.5f, pl.y = (float)y, pl.z = 16.5f, pl.yaw = way ? 90 : 0, pl.health = 20, pl.food = 20, pl.on_ground = true;
+    pl.inv[0] = (Stack){I_BOW, 0}, pl.inv[1] = (Stack){I_ARROW, 5}, pl.slot = 0;
+    Entity *zb = ent_new(E_ZOMBIE, pl.x + fx * 8, (float)y, pl.z + fz * 8);
+    zb->health = 20;
+    for (int t = 0; t < 22; t++) player_tick(K_USE, t ? 0 : K_USE);
+    player_tick(0, 0);
+    Entity *a = NULL;
+    for (int i = 0; i < N_ENT; i++)
+      if (ents[i].type == E_ARROW) a = &ents[i];
+    CHECK(a && pl.inv[1].aux == 4 && a->on_ground);
+    if (!a) continue;
+    float x0 = a->x, z0 = a->z, sp = sqrtf(a->vx * a->vx + a->vy * a->vy + a->vz * a->vz);
+    CHECK(sp > 2.9f && sp < 3.1f && (a->vx * fx + a->vz * fz) / sp > 0.99f);
+    ents_tick();
+    float along = (a->x - x0) * fx + (a->z - z0) * fz, aside = (a->x - x0) * fz - (a->z - z0) * fx;
+    CHECK(a->type == E_ARROW && along > 2.9f && along < 3.1f && fabsf(aside) < 0.1f);
+    for (int t = 0; t < 5 && a->type == E_ARROW; t++) ents_tick();
+    int dmg = 20 - zb->health;
+    printf("bow, way %d: %.2f blocks a tick, %.3f aside; the zombie lost %d\n", way, along, aside, dmg);
+    CHECK(a->type == E_NONE && dmg >= 6 && dmg <= 10 && zb->vx * fx + zb->vz * fz > 0.2f);
+    /* one drawn half a second (0.42 of the power) at a wall 1 block thick, 6 blocks off */
+    memset(ents, 0, sizeof ents);
+    int wx = (int)floorf(pl.x + fx * 6), wz = (int)floorf(pl.z + fz * 6);
+    for (int k = 0; k < 3; k++) world_set(wx, y + k, wz, B_PLANKS_OAK);
+    for (int t = 0; t < 10; t++) player_tick(K_USE, t ? 0 : K_USE);
+    player_tick(0, 0);
+    a = &ents[0];
+    CHECK(a->type == E_ARROW && !a->on_ground && pl.inv[1].aux == 3);
+    for (int t = 0; t < 10; t++) ents_tick();
+    float in = (a->x - pl.x) * fx + (a->z - pl.z) * fz;
+    CHECK(a->type == E_ARROW && a->state == 1 && in > 5.4f && in < 5.5f);
+    /* not picked up from afar, then by it once it has stopped shaking */
+    for (int t = 0; t < 10; t++) ents_tick();
+    CHECK(a->type == E_ARROW && pl.inv[1].aux == 3);
+    pl.x += fx * 5, pl.z += fz * 5;
+    ents_tick();
+    CHECK(a->type == E_NONE && pl.inv[1].aux == 4);
+    /* a full draw at it: it doesn't go through; the wall broken, the arrow falls to the floor */
+    pl.x -= fx * 5, pl.z -= fz * 5;
+    for (int t = 0; t < 21; t++) player_tick(K_USE, t ? 0 : K_USE);
+    player_tick(0, 0);
+    for (int t = 0; t < 12; t++) ents_tick();
+    in = (a->x - pl.x) * fx + (a->z - pl.z) * fz;
+    CHECK(a->type == E_ARROW && a->state == 1 && in > 5.4f && in < 5.5f);
+    for (int k = 0; k < 3; k++) world_set(wx, y + k, wz, B_AIR);
+    for (int t = 0; t < 30; t++) ents_tick();
+    CHECK(a->type == E_ARROW && a->state == 1 && a->y < y + 0.2f);
+    game_rules = GR_DEFAULT;
+    plat_remove_prefix("ut3b");
+  }
   {
     /* weather: the clock, the strength, the light, and where rain falls */
     extern uint32_t game_time;
