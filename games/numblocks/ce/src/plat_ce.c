@@ -15,21 +15,26 @@
 #include <ti/screen.h>
 #include <time.h>
 #include "nb.h"
+#include "rs.h"
 
 uint8_t *scr = (uint8_t *)lcd_Ram;
 static uint8_t pal_live[256 * 3];
 bool vram_lost;          /* the screen memory was cleared (a garbage collection): the window must be made again */
 
-static const uint8_t *appvar(const char *name, unsigned size) {
+static const uint8_t *appvar(const char *name, unsigned size, unsigned *got) {
   uint8_t h = ti_Open(name, "r");
   if (!h) return 0;
-  const uint8_t *p = ti_GetSize(h) == size ? ti_GetDataPtr(h) : 0;
+  *got = ti_GetSize(h);
+  const uint8_t *p = *got >= size ? ti_GetDataPtr(h) : 0;
   ti_Close(h);
   return p;
 }
 static void gfx_reload(void) {
-  gfx = appvar("NBCEDAT", GFX_SIZE);
-  texdat = appvar("NBCETEX", TEXDAT_SIZE);
+  unsigned n;
+  gfx = appvar("NBCEDAT", GFX_SIZE, &n);
+  texdat = appvar("NBCETEX", TEXDAT_SIZE, &n);
+  /* (the busiest loops' copy, after the tables: run where they are, in the archive) */
+  rs_flash = texdat && n >= TEXDAT_SIZE + RSF_SIZE ? texdat + TEXDAT_SIZE : 0;
 }
 static void gc_before(void) { gfx_End(); }
 static void gc_after(void) {

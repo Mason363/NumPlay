@@ -16,3 +16,12 @@ target: bin/NBCEDAT.8xv bin/NBCETEX.8xv
 bin/%.8xv: gfx/%.bin
 	@mkdir -p bin
 	convbin -j bin -k 8xv -r -n $* -i $< -o $@
+# the textures' appvar carries the busiest loops too (flash/rsf.s), run from the archive
+obj/rsf.bin: flash/rsf.s
+	@mkdir -p obj
+	$(AS) -march=ez80+full $< -o obj/rsf.o
+	$(OBJCOPY) -O binary -j .text obj/rsf.o $@
+bin/NBCETEX.8xv: gfx/NBCETEX.bin obj/rsf.bin
+	@mkdir -p bin
+	cat $^ > obj/NBCETEX.bin
+	convbin -j bin -k 8xv -r -n NBCETEX -i obj/NBCETEX.bin -o $@

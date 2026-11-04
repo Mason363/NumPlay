@@ -267,6 +267,26 @@ int main(void) {
       plat_exit();
     }
 #endif
+#if NB_BENCH == 9
+    {
+      /* the picture with the archive's loops and without: the same? */
+      in_game = true, gui = GUI_NONE;
+      extern const uint8_t *rs_flash;
+      const uint8_t *fl = rs_flash;
+      uint32_t ha = 0, hb = 0;
+      for (int pass = 0; pass < 2; pass++) {
+        rs_flash = pass ? 0 : fl;
+        render_stale = 1;
+        render_frame();
+        uint32_t h = 0;
+        for (unsigned i = 0; i < RW * RH; i++) h = h * 31 + rbuf[i];
+        if (pass) hb = h; else ha = h;
+      }
+      n += sprintf(out + n, "flash %p a %lx b %lx\n", (void *)fl, (unsigned long)ha, (unsigned long)hb);
+      plat_save("NBBENCH", out, (unsigned)n, 0, 0);
+      plat_exit();
+    }
+#endif
 #if NB_BENCH == 7
     {
       /* one picture, as the computer build makes it (to compare) */
@@ -274,7 +294,7 @@ int main(void) {
       render_frame();
       hud_draw();
       compose(true, true);
-      for (uint32_t t = plat_ms(); plat_ms() - t < 3000;) plat_frame();
+      for (uint32_t t = plat_ms(); plat_ms() - t < 6000;) plat_frame();
       plat_exit();
     }
 #endif

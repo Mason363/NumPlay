@@ -255,6 +255,7 @@ uint8_t RS(rs_cells)(const uint8_t *mask, uint8_t slot, uint8_t up, uint8_t down
 }
 
 #ifndef __ez80__
+const uint8_t *rs_flash;
 int rs_jY[65], rs_jZ[65], rs_jV[65];
 uint16_t rs_jS[128];
 uint8_t rs_fog[257];

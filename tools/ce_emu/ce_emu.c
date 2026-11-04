@@ -139,12 +139,12 @@ static uint64_t cycles_now(void) { return sched_total_cycles(); }
 uint64_t emu_ms(void) { return now_ms; }
 bool emu_key_held(int group, int bit) { return group >= 0 && group < 8 && bit >= 0 && bit < 8 && held[group][bit]; }
 uint32_t emu_key_presses(int group, int bit) { return group >= 0 && group < 8 && bit >= 0 && bit < 8 ? presses[group][bit] : 0; }
-/* an OS routine's time: in steps of a millisecond, the scheduler's events between them (timers, the LCD, the
- * seconds), as they go on while a calculator runs a long routine such as archiving; charged at once, a second's
- * worth left events behind the second and stopped the core (sched_second's assertion) */
+/* an OS routine's time; a long one's (from 0.1 s: archiving, a garbage collection) in steps of a millisecond, the
+ * scheduler's events between them (timers, the LCD, the seconds), as they go on while a calculator runs it: charged
+ * at once, a second's worth left events behind the second and stopped the core (sched_second's assertion) */
 static bool in_hook;
 void emu_charge(uint32_t cycles) {
-  if (!in_hook) {
+  if (!in_hook || cycles < 4800000) {
     debug.cpuCycles += cycles;
     return;
   }

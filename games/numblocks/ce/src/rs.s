@@ -15,6 +15,9 @@
 	.equ	W_DIR, 20		; 1 or n - 1
 	.equ	W_SIZE, 21
 	.equ	RW, 160
+	.equ	RSF_SPAN_ALPHA, 64	; (flash/rsf.s's offsets)
+	.equ	RSF_DOUBLE, 128
+	.equ	RSF_OVERLAY, 192
 
 ; ------------------------------------------------------------------------------------------------- rs_setup
 ; void rs_setup(const uint8_t *tex, const uint8_t *cm, uint8_t alpha)
@@ -28,12 +31,25 @@ _rs_setup:
 	ld	(r_tex), hl
 	ld	hl, (iy+6)
 	ld	(r_cm), hl
+	; the loop: the archive's copy when there is one (flash/rsf.s: faster), else this one
+	ld	de, (_rs_flash)
+	or	a, a
+	sbc	hl, hl
+	adc	hl, de
+	jr	z, .Lsetup_ram
+	ld	a, (iy+9)
+	or	a, a
+	jr	z, .Lsetup_set
+	ld	de, RSF_SPAN_ALPHA
+	add	hl, de
+	jr	.Lsetup_set
+.Lsetup_ram:
 	ld	hl, span_plain
 	ld	a, (iy+9)
 	or	a, a
-	jr	z, .Lsetup_plain
+	jr	z, .Lsetup_set
 	ld	hl, span_alpha
-.Lsetup_plain:
+.Lsetup_set:
 	ld	(r_loop), hl
 	ret
 
@@ -1103,6 +1119,29 @@ h_px:
 	.equ	HUD_W, 187
 _rs_expand:
 	push	ix
+	; the loops: the archive's when there is one (flash/rsf.s), written into the calls below
+	ld	de, (_rs_flash)
+	or	a, a
+	sbc	hl, hl
+	adc	hl, de
+	jr	z, .Lex_ram
+	ld	de, RSF_DOUBLE
+	add	hl, de
+	ld	(.Lex_c1 + 1), hl
+	ld	(.Lex_c2 + 1), hl
+	ld	de, RSF_OVERLAY - RSF_DOUBLE
+	add	hl, de
+	ld	(.Lex_c3 + 1), hl
+	ld	(.Lex_c4 + 1), hl
+	jr	.Lex_go
+.Lex_ram:
+	ld	hl, r_double
+	ld	(.Lex_c1 + 1), hl
+	ld	(.Lex_c2 + 1), hl
+	ld	hl, r_overlay
+	ld	(.Lex_c3 + 1), hl
+	ld	(.Lex_c4 + 1), hl
+.Lex_go:
 	ld	iy, 0
 	add	iy, sp
 	ld	hl, (iy+15)
@@ -1126,19 +1165,9 @@ _rs_expand:
 	cp	a, (iy)
 	jr	c, .Lex_hudrow
 	ld	c, (ix+0)
-	ld	b, RW
-.Lex_px:
-	ld	a, (hl)
-	inc	hl
-	or	a, a
-	jr	nz, .Lex_set
-	ld	a, c
-.Lex_set:
-	ld	(de), a
-	inc	de
-	ld	(de), a
-	inc	de
-	djnz	.Lex_px
+	ld	b, RW / 2
+.Lex_c1:
+	call	r_double
 	push	hl
 	ld	hl, -320
 	add	hl, de
@@ -1158,19 +1187,9 @@ _rs_expand:
 	push	de
 	ld	de, r_line
 	ld	c, (ix+0)
-	ld	b, RW
-.Lex_hpx:
-	ld	a, (hl)
-	inc	hl
-	or	a, a
-	jr	nz, .Lex_hset
-	ld	a, c
-.Lex_hset:
-	ld	(de), a
-	inc	de
-	ld	(de), a
-	inc	de
-	djnz	.Lex_hpx
+	ld	b, RW / 2
+.Lex_c2:
+	call	r_double
 	push	hl
 	ld	hl, r_line
 	ld	de, r_line2
@@ -1178,8 +1197,12 @@ _rs_expand:
 	ldir
 	ld	de, r_line + HUD_X
 	ld	hl, (r_hud)
+	ld	b, HUD_W
+.Lex_c3:
 	call	r_overlay
 	ld	de, r_line2 + HUD_X
+	ld	b, HUD_W
+.Lex_c4:
 	call	r_overlay
 	ld	(r_hud), hl
 	pop	hl
@@ -1191,10 +1214,33 @@ _rs_expand:
 	pop	hl
 	jr	.Lex_next
 
-; HUD_W pixels of the layer (hl) over de, 0 see-through; hl after them
+; b pairs of pixels from hl doubled to de (0: c, the row's sky); hl and de after them (flash/rsf.s has it too)
+r_double:
+	ld	a, (hl)
+	inc	hl
+	or	a, a
+	jr	nz, .Lrd_set
+	ld	a, c
+.Lrd_set:
+	ld	(de), a
+	inc	de
+	ld	(de), a
+	inc	de
+	ld	a, (hl)
+	inc	hl
+	or	a, a
+	jr	nz, .Lrd_set2
+	ld	a, c
+.Lrd_set2:
+	ld	(de), a
+	inc	de
+	ld	(de), a
+	inc	de
+	djnz	r_double
+	ret
+
+; b pixels of the layer (hl) over de, 0 see-through; hl and de after them
 r_overlay:
-	ld	b, HUD_W
-.Lov_px:
 	ld	a, (hl)
 	inc	hl
 	or	a, a
@@ -1202,7 +1248,7 @@ r_overlay:
 	ld	(de), a
 .Lov_skip:
 	inc	de
-	djnz	.Lov_px
+	djnz	r_overlay
 	ret
 
 
@@ -2342,6 +2388,8 @@ _rs_eys:	.db	0
 _rs_up:	.db	0
 _rs_down:	.db	0
 _rs_jbase:	.db	0
+	.global	_rs_flash
+_rs_flash:	.d24	0
 	.global	_rs_qXi
 	.global	_rs_qYi
 	.global	_rs_qZi
