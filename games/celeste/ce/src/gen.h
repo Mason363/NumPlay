@@ -547,5 +547,6 @@
 #define TT_goldenBerryCollectTrigger 4
 #define EV_end_city 0
 #define FORMAT 1
+#define GRID_MAX 6603   /* the biggest room's grids */
 #define MARGIN 4
 #endif

@@ -42,6 +42,7 @@ unsigned plat_keys(void);
 unsigned plat_ticks(void);            /* a 32768 Hz clock (wraps at 16 bits) */
 void plat_wait(unsigned ticks);
 const uint8_t *plat_appvar(const char *name);   /* an appvar's data in place, NULL if missing */
+uint8_t *plat_ram(unsigned n);       /* n bytes of the calculator's free RAM for the game (NULL: not that much) */
 bool plat_save(const char *name, const void *data, unsigned n);
 bool plat_load(const char *name, void *data, unsigned n);
 void plat_unpack(void *dst, const void *src);   /* ZX0 */
@@ -82,13 +83,15 @@ const uint16_t *hair_mask(int which);        /* 0 hair, 1-3 bangs: 10 rows (mask
 extern bool g_has_bg;                 /* the chapter has backgrounds */
 extern int g_bg_scrollx, g_bg_scrolly;  /* how they move with the camera (1/256) */
 extern uint8_t g_bg_map[16];          /* their 16 colours */
-extern uint8_t g_bg4[320 * 180 / 2];  /* the room's: 4 bits a pixel, the left one low */
+extern uint8_t g_bg8[320 * 180];      /* the room's picture of them */
 extern int g_bg_refx, g_bg_refy;      /* the camera it was made for */
+extern uint8_t g_cells_gen;          /* changes when the rooms' tiles do (draw.c keeps the view's cells) */
 extern int g_chapter_berries;      /* the chapter's strawberries */
 extern const uint8_t *g_remap, *g_remap_red, *g_remap_half;   /* sprites drawn through g_remap if set */
 
 /* ---------------------------------------------------------------- drawing (draw.c) */
-enum { DF_FLIPX = 1, DF_FLIPY = 2, DF_SOLID = 4 };   /* DF_SOLID: every pixel in one colour (draw_color) */
+enum { DF_FLIPX = 1, DF_FLIPY = 2, DF_SOLID = 4 };
+enum { TF_OPAQUE = 1 };               /* a tile without see-through pixels */   /* DF_SOLID: every pixel in one colour (draw_color) */
 extern int g_camx, g_camy;            /* the view's top left in the world */
 extern uint8_t g_draw_color;
 void draw_sprite(const uint8_t *spr, int x, int y, uint8_t flags);   /* (x, y): the frame's top left, world */
@@ -105,6 +108,25 @@ void draw_layers_back(void);          /* background, bg tiles */
 void draw_layer_fg(void);             /* fg tiles */
 void draw_decals(int fg);
 void draw_clear_screen(uint8_t c);
+/* src/blit.S (host/blit.c) */
+typedef struct { uint8_t opaque, drawn; const uint8_t *tile; } Cell;   /* a tile to draw: its rows' masks, its data */
+typedef struct {
+  Cell c;
+#ifdef __TICE__
+  uint8_t pad[3];   /* (8 bytes: build_cells finds them by shifting) */
+#endif
+} TEnt;
+void blit_row(const Cell *cells, unsigned n, uint8_t *dst, unsigned rows);
+void blit_clip(const Cell *cell, uint8_t *dst, unsigned a, unsigned b, unsigned rows);
+void blit_copy(uint8_t *dst, const uint8_t *src, unsigned n);
+void blit_rect(uint8_t *dst, const uint8_t *src, unsigned w, unsigned h, unsigned src_step);
+void blit_rle(uint8_t *dst, const uint8_t *rows, unsigned nrows);
+void build_cells(const uint8_t *fg, const uint8_t *bg, const TEnt *table, Cell *ofg, Cell *obg, uint8_t *vis, unsigned n);
+/* the view's cells (draw.c), kept while the camera stays in the same ones: 41 x 24 */
+#define COLS 41
+#define CROWS 24
+typedef struct { Cell fg[COLS], bg[COLS]; uint8_t vis[COLS]; } CellRow;
+#define CELL_CACHE (CROWS * sizeof(CellRow))
 
 /* ---------------------------------------------------------------- floats (sf.c): IEEE single precision in whole numbers */
 typedef uint32_t f32;
@@ -129,6 +151,7 @@ int fdiv(int a, int b);               /* floor(a / b), b > 0 */
 int round_mu(int c, int dir);         /* c / MU rounded as Celeste's floats round it (util.c) */
 int bias_add(int b, int amount);      /* the bias round_mu needs, kept within 24 bits */
 int isqrt(int32_t v);
+int isqrt24(int v);                   /* v < 2^23 */
 int sin15(int a);                     /* a: 1024 a turn, result * 32768 */
 static inline int sin256(int a) { return sin15(a) >> 7; }
 static inline int cos256(int a) { return sin15(a + 256) >> 7; }
@@ -173,7 +196,7 @@ struct Ent {
   f32 ptr2;
 };
 #define MAX_ENTS 96
-extern Ent g_ents[MAX_ENTS];
+extern Ent *g_ents;                   /* (in the RAM plat_ram gives) */
 extern int g_nents;
 static inline int e_left(const Ent *e) { return e->x + e->hx; }
 static inline int e_top(const Ent *e) { return e->y + e->hy; }
@@ -197,7 +220,7 @@ typedef struct {
   int gx, gy, tw, th;       /* its grid: the top left cell's world pixel, cells (with MARGIN) */
   uint8_t *grid;            /* fg[tw * th], bg[tw * th], solid bits (rb a row) */
   int rb;
-  const uint8_t *tiles[256];
+  TEnt *tab;                /* its tiles, by its own numbers (256) */
   const uint8_t *decals, *ents, *trigs, *bg;
   int bgx, bgy;
   uint8_t ntiles;
@@ -228,6 +251,7 @@ typedef struct {
 } Level;
 extern Level g_level;
 bool level_load(int chapter, int room, int intro);
+bool level_ram(void);                 /* the RAM the rooms and entities take; false if there is not enough */
 void level_update(void);
 void level_render(void);
 bool solid_at(int l, int t, int r, int b, const Ent *self);   /* tiles or solid entities over [l, r) x [t, b) */

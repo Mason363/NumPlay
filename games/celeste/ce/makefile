@@ -21,7 +21,7 @@ bin/%.8xv: data/%.bin tools/appvar.py
 	@mkdir -p bin
 	python3 tools/appvar.py bin $<
 
-HOST_SRC = $(filter-out src/plat_ce.c,$(wildcard src/*.c)) host/plat_host.c
+HOST_SRC = $(filter-out src/plat_ce.c,$(wildcard src/*.c)) host/plat_host.c host/blit.c
 HOST_FLAGS = -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -Isrc
 host: build/host/celeste
 build/host/celeste: $(HOST_SRC) $(wildcard src/*.h)

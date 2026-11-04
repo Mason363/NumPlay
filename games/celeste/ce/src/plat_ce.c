@@ -21,13 +21,41 @@ void plat_init(void) {
   timer_Enable(2, TIMER_32K, TIMER_NOINT, TIMER_UP);
   kb_DisableOnLatch();
 }
+/* The RAM the game takes besides its program and static data: an appvar, CELRAM, made last (the save before it, in
+ * RAM and at its full size, is only written in place while playing), so nothing moves it; gone at the end. */
+#define SAVE_SIZE 512
+uint8_t *plat_ram(unsigned n) {
+  uint8_t h = ti_Open("CELSAVE", "r");
+  if (h) {
+    if (ti_IsArchived(h)) ti_SetArchiveStatus(false, h);
+    ti_Close(h);
+  }
+  h = ti_Open("CELSAVE", "r+");
+  if (!h) h = ti_Open("CELSAVE", "w");
+  if (!h) return NULL;
+  if (ti_GetSize(h) < SAVE_SIZE) ti_Resize(SAVE_SIZE, h);
+  ti_Close(h);
+  ti_Delete("CELRAM");
+  h = ti_Open("CELRAM", "w");
+  if (!h) return NULL;
+  if (ti_Resize(n, h) != (int)n) {
+    ti_Close(h);
+    ti_Delete("CELRAM");
+    return NULL;
+  }
+  uint8_t *p = ti_GetDataPtr(h);
+  ti_Close(h);
+  return p;
+}
+
 void plat_exit(void) {
-  uint8_t h = ti_Open("CELSAVE", "r+");   /* the save goes to the archive (it stays in RAM while playing) */
+  ti_Delete("CELRAM");
+  uint8_t h = ti_Open("CELSAVE", "r");   /* the save goes to the archive (it stays in RAM while playing) */
   if (h) ti_SetArchiveStatus(true, h), ti_Close(h);
   gfx_End();
   kb_ClearOnLatch();
 }
-void plat_frame(void) {
+__attribute__((noinline)) void plat_frame(void) {   /* (not inlined: the emulator counts frames here) */
   gfx_SwapDraw();
   g_fb = (uint8_t *)gfx_vbuffer;
 }
@@ -66,7 +94,7 @@ const uint8_t *plat_appvar(const char *name) {
   return p;
 }
 bool plat_save(const char *name, const void *data, unsigned n) {
-  uint8_t h = ti_Open(name, "w");
+  uint8_t h = ti_Open(name, "r+");   /* (in place: made at its size by plat_ram) */
   if (!h) return false;
   bool ok = ti_Write(data, n, 1, h) == 1;
   ti_Close(h);

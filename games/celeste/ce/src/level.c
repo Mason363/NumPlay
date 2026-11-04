@@ -3,8 +3,27 @@
 #include "ce.h"
 
 Level g_level;
-#define GRID_BYTES 9000   /* a room's grids in RAM (the biggest of the chapters here, with a margin) */
-static uint8_t grid_mem[2][GRID_BYTES];
+#define GRID_BYTES GRID_MAX   /* a room's grids in RAM (the biggest of the chapters here) */
+static uint8_t *grid_mem[2];
+uint8_t *g_scratch;   /* 1 KB for passing things (a scaled sprite's pixels) */
+uint8_t *g_cell_cache;   /* draw.c's */
+uint8_t g_cells_gen;
+
+/* the RAM plat_ram gives: the entities, the two rooms' grids and tile tables */
+bool level_ram(void) {
+  unsigned n = sizeof(Ent) * MAX_ENTS + 2 * (GRID_BYTES + 256 * sizeof(TEnt)) + 1024 + CELL_CACHE;
+  uint8_t *m = plat_ram(n);
+  if (!m) return false;
+  memset(m, 0, n);
+  g_ents = (Ent *)(void *)m, m += sizeof(Ent) * MAX_ENTS;
+  g_scratch = m, m += 1024;
+  g_cell_cache = m, m += CELL_CACHE;
+  for (int k = 0; k < 2; k++) {
+    g_level.rooms[k].tab = (TEnt *)(void *)m, m += 256 * sizeof(TEnt);
+    grid_mem[k] = m, m += GRID_BYTES;
+  }
+  return true;
+}
 static int pending_room = -1, pending_intro;
 
 /* a room record (tools/pack_ce.py Chapter.room) */
@@ -40,12 +59,18 @@ const char *level_room_name(void) {
   return buf;
 }
 
-uint8_t g_bg4[320 * 180 / 2];
+uint8_t g_bg8[320 * 180];
 int g_bg_refx, g_bg_refy;
 static const uint8_t *bg_loaded;
-static void background_load(const Room *rm) {   /* the room's picture of the backgrounds, into RAM */
+static void background_load(const Room *rm) {   /* the room's picture of the backgrounds: 4 bits a pixel, to 8 */
   if (!rm->bg || rm->bg == bg_loaded) return;
-  plat_unpack(g_bg4, rm->bg);
+  uint8_t *src = g_bg8 + 320 * 180 / 2, *d = g_bg8;
+  plat_unpack(src, rm->bg);
+  for (unsigned i = 0; i < 320 * 180 / 2; i++) {   /* (in place: what is written never passes what is read) */
+    uint8_t b = *src++;
+    *d++ = g_bg_map[b & 15];
+    *d++ = g_bg_map[b >> 4];
+  }
   bg_loaded = rm->bg;
   g_bg_refx = rm->bgx, g_bg_refy = rm->bgy;
 }
@@ -63,7 +88,8 @@ static bool room_load(int slot, int index) {
   rm->ntiles = p[0];
   for (int i = 0; i <= rm->ntiles; i++) {
     int t = (int)R16(p + 1 + 2 * i);
-    rm->tiles[i] = t ? tile_data(t) : NULL;
+    rm->tab[i].c.tile = t ? tile_data(t) : NULL;
+    rm->tab[i].c.opaque = g_tile_flags[2 * t], rm->tab[i].c.drawn = g_tile_flags[2 * t + 1];
   }
   p += 1 + 2 * (rm->ntiles + 1);
   int raw = (int)R16(p);
@@ -76,6 +102,7 @@ static bool room_load(int slot, int index) {
   rm->bgx = S24(p + 14), rm->bgy = S24(p + 17);
   rm->bg = R24(p + 20) == 0xFFFFFF ? NULL : HPTR(p + 20);
   rm->index = index;
+  g_cells_gen++;
   return true;
 }
 
@@ -152,6 +179,7 @@ static int spawn_near(int x, int y) {   /* the room's spawn nearest (x, y), as a
 static void load_into_current(int index, int intro) {
   ents_clear();
   g_level.rooms[0].index = g_level.rooms[1].index = -1;
+  g_cells_gen++;
   g_level.slot = 0;
   g_level.room = &g_level.rooms[0];
   room_load(0, index);
@@ -167,7 +195,12 @@ static void load_into_current(int index, int intro) {
 }
 
 bool level_load(int chapter, int room, int intro) {
-  memset(&g_level, 0, sizeof g_level);
+  {   /* (the RAM's pointers stay) */
+    Room keep[2];
+    memcpy(keep, g_level.rooms, sizeof keep);
+    memset(&g_level, 0, sizeof g_level);
+    memcpy(g_level.rooms, keep, sizeof keep);
+  }
   bg_loaded = NULL;
   g_level.chapter = chapter;
   g_level.rooms[0].index = g_level.rooms[1].index = -1;
@@ -230,6 +263,7 @@ static void transition_update(void) {
     int old = g_level.slot ^ 1;
     ents_remove_room(old);
     g_level.rooms[old].index = -1;
+    g_cells_gen++;
     spawn_near(g_player.e->x, g_player.e->y);
     player_on_transition();
     g_level.transitioning = false;

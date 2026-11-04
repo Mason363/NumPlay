@@ -9,10 +9,19 @@ uint32_t g_perf_updates, g_perf_frames;   /* (read by the tests and the emulator
 
 int main(void) {
   plat_init();
-  if (!data_open()) {
+  bool ram = level_ram(), data = data_open();
+  ram = ram && data;
+  if (!ram) {
+    static const uint16_t white[2] = {0, 0x7FFF};
+    plat_palette(white, 0, 2);
     draw_clear_screen(0);
-    draw_text("Celeste needs its appvars:", 20, 100, 255);
-    draw_text("send CELG*.8xv and CEL*.8xv too.", 20, 112, 255);
+    if (!data) {
+      draw_text("Celeste needs its appvars:", 20, 100, 1);
+      draw_text("send CELG*.8xv and CEL*.8xv too.", 20, 112, 1);
+    } else {
+      draw_text("Celeste needs 30 KB more", 20, 100, 1);
+      draw_text("free RAM.", 20, 112, 1);
+    }
     plat_frame();
     while (!(plat_keys() & (K_QUIT | K_BACK | K_OK))) plat_wait(300);
     plat_exit();

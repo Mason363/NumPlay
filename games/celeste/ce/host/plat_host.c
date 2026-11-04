@@ -116,6 +116,7 @@ void plat_frame(void) {
   }
 }
 void plat_begin_draw(void) {}
+uint8_t *plat_ram(unsigned n) { return calloc(1, n); }
 void plat_palette(const uint16_t *p, int first, int n) { memcpy(pal + first, p, (size_t)n * 2); }
 
 unsigned plat_keys(void) {
@@ -124,7 +125,7 @@ unsigned plat_keys(void) {
     Room *rm = g_level.room;
     int nf = 0, nb = 0, nt = 0;
     for (int i = 0; i < rm->tw * rm->th; i++) nf += rm->grid[i] != 0, nb += rm->grid[rm->tw * rm->th + i] != 0;
-    for (int i = 0; i < 320 * 90; i++) nt += g_bg4[i] != 0;
+    for (int i = 0; i < 320 * 180; i++) nt += g_bg8[i] != 0;
     printf("room %s tw %d th %d ntiles %d fg %d bg %d bg4 %d hasbg %d map %d %d %d\n", level_room_name(), rm->tw, rm->th,
            rm->ntiles, nf, nb, nt, g_has_bg, g_bg_map[0], g_bg_map[1], g_bg_map[2]);
   }

@@ -767,13 +767,6 @@ class Chapter:
         self.sprites = SpriteSet(self.blob, "chapter")
         # decals' sprites: each family's frames in a row (an animated decal plays them)
         self.decal_ids = {}
-        for p in decals:
-            fam = decal_family(p)
-            first = None
-            for s in fam:
-                i = self.sprites.add(s.path, pal.map(s.image()))
-                first = i if first is None else first
-            self.decal_ids[p] = (first, len(fam))
         for p in ent_paths:
             self.sprites.add(p, pal.map(self.image(p)))
         # the backgrounds' 16 colours (chapter palette indices), then each room's picture: 4 bits a pixel (the left
@@ -801,9 +794,12 @@ class Chapter:
             for t in self.tiles.list[i:i + 1000]:
                 it.raw(t)
             chunks.append(it)
+        # each tile's rows: those without see-through pixels, those with something (bit 0: the top row)
         flags = self.blob.item("tile flags")
-        for i in range(len(self.tiles.list)):
-            flags.u8(1 if self.tiles.opaque(i) else 0)
+        for t in self.tiles.list:
+            full = sum(1 << r for r in range(8) if 0 not in t[r * 8:r * 8 + 8])
+            some = sum(1 << r for r in range(8) if any(t[r * 8:r * 8 + 8]))
+            flags.u8(full).u8(some)
         table = self.sprites.table()
         self.blob.add(table)
         h = self.head
@@ -888,6 +884,7 @@ class Chapter:
                     bits[x >> 3] |= 1 << (x & 7)
             raw += bits
         packed = zx0(bytes(raw))
+        GRID_MAX[0] = max(GRID_MAX[0], len(raw))
         it.u8(len(ids) - 1)
         for v in ids:
             it.u16(v)
@@ -931,9 +928,26 @@ class Chapter:
             cur.chunks.append(it)
         return table
 
+    def decal_sprite(self, p, fl):
+        """A decal's frames as sprites, turned as it is placed (fl: 1 flipped across, 2 upside down): the CE draws
+        them as they are stored, fast. (first sprite, frames)"""
+        if (p, fl) not in self.decal_ids:
+            first = None
+            fam = decal_family(p)
+            for s in fam:
+                img = s.image()
+                if fl & 1:
+                    img = img[:, ::-1]
+                if fl & 2:
+                    img = img[::-1]
+                i = self.sprites.add((s.path, fl), self.pal.map(np.ascontiguousarray(img)))
+                first = i if first is None else first
+            self.decal_ids[(p, fl)] = (first, len(fam))
+        return self.decal_ids[(p, fl)]
+
     def decals(self, r):
         """u8 bg count, u8 fg count, then each: u16 sprite, s16 x, s16 y (its centre, room coordinates),
-        u8 flags (1 flip x, 2 flip y), u8 frames (an animated one plays them, 12 a second)."""
+        u8 flags (0: the sprites are turned already), u8 frames (an animated one plays them, 12 a second)."""
         it = self.blob.item("decals " + r.name)
         lists = []
         for layer in ("bgdecals", "fgdecals"):
@@ -941,11 +955,11 @@ class Chapter:
             lst = []
             for d in (el.children if el else []):
                 p = decal_base(d["texture"])
-                sid, n = self.decal_ids[p]
+                fl = (1 if d.get("scaleX", 1) < 0 else 0) | (2 if d.get("scaleY", 1) < 0 else 0)
+                sid, n = self.decal_sprite(p, fl)
                 if sid is None:
                     continue
-                fl = (1 if d.get("scaleX", 1) < 0 else 0) | (2 if d.get("scaleY", 1) < 0 else 0)
-                lst.append((sid, int(round(d["x"])), int(round(d["y"])), fl, n))
+                lst.append((sid, int(round(d["x"])), int(round(d["y"])), 0, n))
             lists.append(lst)
         it.u8(len(lists[0])).u8(len(lists[1]))
         for lst in lists:
@@ -1091,6 +1105,7 @@ class Chapter:
 
 
 EVENTS = {}
+GRID_MAX = [0]
 MISSING = collections.Counter()
 
 
@@ -1148,6 +1163,7 @@ def main():
     for n, i in EVENTS.items():
         H.append(f"#define EV_{cname(n)} {i}")
     H.append(f"#define FORMAT {FORMAT}")
+    H.append(f"#define GRID_MAX {GRID_MAX[0]}   /* the biggest room's grids */")
     H.append(f"#define MARGIN {MARGIN}")
     H.append("#endif")
     open(GEN_H, "w").write("\n".join(H) + "\n")

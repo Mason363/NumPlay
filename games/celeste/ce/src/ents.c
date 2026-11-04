@@ -3,7 +3,7 @@
 #include "ce.h"
 #include "fconst.h"
 
-Ent g_ents[MAX_ENTS];
+Ent *g_ents;
 int g_nents;
 static int trig_ox, trig_oy;
 

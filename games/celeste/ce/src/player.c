@@ -1220,34 +1220,60 @@ void player_before_down_transition(void) {
 }
 
 /* ---------------------------------------------------------------- drawing */
+/* PlayerHair.Render: the bangs, then circles shrinking down the hair (hair00, scaled 0.25 + (1 - i / n) * 0.75), each
+ * outlined in black by drawing it a pixel off in four directions first. A circle's rows come from its mask, a row at a
+ * time (the scale's samples: no division per pixel). */
+static void hline(int y, int x0, int x1, uint8_t c) {   /* view pixels [x0, x1] of row y */
+  if ((unsigned)y >= VIEW_H) return;
+  if (x0 < 0) x0 = 0;
+  if (x1 >= VIEW_W) x1 = VIEW_W - 1;
+  if (x0 <= x1) memset(g_fb + (VIEW_Y + y) * 320 + x0, c, (unsigned)(x1 - x0 + 1));
+}
 static void hair_draw(bool outline) {
   const uint8_t *m = player_meta(cur_sprite());
   if (!(m[2] & 0x80)) return;
   int n = P->hair_count, bangs = m[2] & 0x7F;
   for (int i = outline ? 0 : n - 1; outline ? i < n : i >= 0; i += outline ? 1 : -1) {
-    const uint16_t *mask = hair_mask(i == 0 ? 1 + (bangs < 3 ? bangs : 0) : 0);
-    int scale = 64 + (256 - i * 256 / n) * 3 / 4;   /* 0.25 + (1 - i / n) * 0.75 */
     int cx = (i == 0 ? P->hairx[0] >> 8 : (P->hairx[i] + 128) >> 8) - g_camx;
     int cy = (i == 0 ? P->hairy[0] >> 8 : (P->hairy[i] + 128) >> 8) - g_camy;
-    bool flip = i == 0 && P->facing < 0;
-    int sx = (i == 0 ? 256 : scale) * P->scale_x / 1024, sy = i == 0 ? 256 : scale;
-    if (sx < 16) sx = 16;
-    int x0 = cx - (5 * sx + 128) / 256, x1 = cx + (5 * sx + 128) / 256, y0 = cy - (5 * sy + 128) / 256, y1 = cy + (5 * sy + 128) / 256;
-    for (int y = y0; y < y1; y++)
-      for (int x = x0; x < x1; x++) {
-        int u = 5 + fdiv((x - cx) * 256 + 128, sx), v = 5 + fdiv((y - cy) * 256 + 128, sy);
-        if ((unsigned)u >= 10 || (unsigned)v >= 10) continue;
-        if (flip) u = 9 - u;
-        if (!(mask[v] >> u & 1)) continue;
-        if (outline) {
-          static const int8_t O[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
-          for (int k = 0; k < 4; k++) {
-            int px = x + O[k][0], py = y + O[k][1];
-            if ((unsigned)px < VIEW_W && (unsigned)py < VIEW_H) g_fb[(VIEW_Y + py) * 320 + px] = BLACK;
-          }
-        } else if ((unsigned)x < VIEW_W && (unsigned)y < VIEW_H)
-          g_fb[(VIEW_Y + y) * 320 + x] = mask[10 + v] >> u & 1 ? HAIR_DARK : HAIR;
+    if (i == 0) {   /* the bangs: their own picture, both shades, unscaled */
+      const uint16_t *mask = hair_mask(1 + (bangs < 3 ? bangs : 0));
+      bool flip = P->facing < 0;
+      for (int v = 0; v < 10; v++) {
+        unsigned bits = mask[v], dark = mask[10 + v];
+        if (!bits) continue;
+        int y = cy - 5 + v;
+        for (int u = 0; u < 10; u++) {
+          if (!(bits >> u & 1)) continue;
+          int x = cx + (flip ? 4 - u : u - 5);
+          if (outline) {
+            hline(y, x - 1, x + 1, BLACK);
+            hline(y - 1, x, x, BLACK), hline(y + 1, x, x, BLACK);
+          } else
+            hline(y, x, x, dark >> u & 1 ? HAIR_DARK : HAIR);
+        }
       }
+      continue;
+    }
+    /* a circle: hair00's rows (an 8 x 8 disc in a 10 x 10 frame), scaled by k (1/256) around the frame's middle */
+    const uint16_t *mask = hair_mask(0);
+    int k = 64 + (256 - i * 256 / n) * 3 / 4;
+    int half = (5 * k + 128) >> 8;
+    for (int dy = -half; dy < half; dy++) {
+      int v = 5 + fdiv(dy * 256 + 128, k);
+      if ((unsigned)v >= 10) continue;
+      unsigned bits = mask[v];
+      if (!bits) continue;
+      int u0 = 0, u1 = 9;
+      while (!(bits >> u0 & 1)) u0++;
+      while (!(bits >> u1 & 1)) u1--;
+      int x0 = cx + fdiv((u0 - 5) * k, 256), x1 = cx + fdiv((u1 - 4) * k - 1, 256);
+      if (outline) {
+        hline(cy + dy, x0 - 1, x1 + 1, BLACK);
+        hline(cy + dy - 1, x0, x1, BLACK), hline(cy + dy + 1, x0, x1, BLACK);
+      } else
+        hline(cy + dy, x0, x1, HAIR);
+    }
   }
 }
 
