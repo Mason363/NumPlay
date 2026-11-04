@@ -66,6 +66,7 @@ static void parse_shots(const char *spec) {
 }
 
 static const char *const SCREEN[] = {"mode", "games", "rules", "play", "score", "over", "pause", "ask"};
+static int frame_now;
 static void print_state(const char *what) {
   app_state_t s;
   app_state(&s);
@@ -75,6 +76,8 @@ static void print_state(const char *what) {
   if (!strcmp(what, "STATE")) {
     printf(" wins");
     for (int g = 0; g < 15; g++) printf(" %d,%d,%d,%d,%d,%d", s.wins[g][0], s.wins[g][1], s.wins[g][2], s.wins[g][3], s.wins[g][4], s.wins[g][5]);
+  } else {
+    printf(" frame %d", frame_now);
   }
   printf("\n");
 }
@@ -133,6 +136,7 @@ int main(int argc, char **argv) {
     }
     app_state_t s;
     app_state(&s);
+    frame_now = f;
     if (trace && s.screen != last_screen) print_state("SCREEN");
     last_screen = s.screen;
     bool shot = false;

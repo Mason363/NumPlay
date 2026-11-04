@@ -8,8 +8,8 @@
 #define RING 100.0f /* the ice */
 #define R 11.0f     /* a wrestler */
 #define SPIN 3.4f   /* the arrow, radians a second */
-#define DASH 215.0f /* px/s a dash adds */
-#define FAST 330.0f
+#define DASH 185.0f /* px/s a dash adds */
+#define FAST 270.0f
 #define COOL 300    /* ms between dashes */
 static struct {
   body_t b;
@@ -42,7 +42,7 @@ static void step(void) {
       if (v > FAST) b->vx *= FAST / v, b->vy *= FAST / v;
       w[p].spin = -w[p].spin, w[p].dash_t = rt;
     }
-    b->vx *= 0.988f, b->vy *= 0.988f; /* ice: barely slows */
+    b->vx *= 0.982f, b->vy *= 0.982f; /* ice: slow to stop */
     b->x += b->vx * DT, b->y += b->vy * DT;
   }
   for (int p = 0; p < np; p++)

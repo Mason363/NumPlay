@@ -70,8 +70,15 @@ build/play: $(HOST_SRC) tests/play.c $(HEADERS)
 	$(Q) cc $(HOST_FLAGS) $(HOST_SAN) $(HOST_SRC) tests/play.c -lm -o $@
 	@echo "HOST    $@"
 
-test: build/play
-	python3 tests/check.py build/play
+# the rules of each minigame, from inside: tests/rules/ takes each game's source in, in place of src/g_*.c
+RULES_SRC = $(filter-out src/g_%.c,$(HOST_SRC)) $(wildcard tests/rules/*.c)
+build/rules: $(RULES_SRC) $(wildcard src/*.c) tests/rules/t.h $(HEADERS)
+	$(Q) mkdir -p $(dir $@)
+	$(Q) cc $(HOST_FLAGS) $(HOST_SAN) $(RULES_SRC) -lm -o $@
+	@echo "HOST    $@"
+
+test: build/play build/rules
+	python3 tests/check.py build/play build/rules
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build

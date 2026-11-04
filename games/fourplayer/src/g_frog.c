@@ -3,7 +3,7 @@
  * across takes the round. */
 #include "fp.h"
 
-#define NPAD 10
+#define NPAD 14
 #define MAP 18      /* the map of the race, at the top */
 #define FULL 700    /* ms to a full jump */
 #define FLY 360

@@ -689,6 +689,9 @@ void app_test_step(unsigned held) {
 int app_test_winner(void) { return u.decided ? u.winner : -2; } /* a side, -1 a draw, -2 not yet */
 uint64_t app_bot_keys(void) {
   uint64_t k = 0;
+  static bool press;
+  if (u.screen == S_RULES && u.started && (press = !press)) /* (Mix: everyone ready for the next game) */
+    for (int p = 0; p < np; p++) k |= KEY(PKEY[p]);
   if (u.screen == S_PLAY && rt > 0 && !u.decided && u.freeze <= 0)
     for (int p = 0; p < np; p++)
       if (!gone[p] && G()->bot(p)) k |= KEY(PKEY[p]);

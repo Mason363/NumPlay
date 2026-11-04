@@ -44,7 +44,7 @@ static void start(void) {
   while (next_x < world + 700) add_gap();
 }
 static void step(void) {
-  speed = 105 + (rt < 45000 ? rt : 45000) * 0.0015f;
+  speed = 105 + (rt < 45000 ? rt : 45000) * 0.002f;
   world += speed * DT;
   while (next_x < world + 700) add_gap();
   for (int p = 0; p < np; p++) {

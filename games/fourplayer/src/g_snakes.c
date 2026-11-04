@@ -108,7 +108,7 @@ static void step(void) {
     if (s[p].dead_t >= 0 && s[p].len && rt - s[p].dead_t > 900) clear_snake(p);
   }
   if (rt >= next_t) {
-    int period = 130 - (rt < 50000 ? rt / 1000 : 50);
+    int period = 115 - (rt < 55000 ? rt / 1000 : 55);
     next_t = rt + period;
     if (!over()) move();
   }
