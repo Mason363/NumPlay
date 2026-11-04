@@ -91,6 +91,7 @@ static char console_err[512];
 static char text_log[8192];
 static size_t text_len;
 static bool held[8][8], on_held;
+static uint32_t presses[8][8];
 static uint64_t key_reads, os_calls, screen_changes;
 /* frames: a marker reached (--frame), or the LCD's base set (a double-buffered program's swap) */
 typedef struct {
@@ -129,6 +130,7 @@ static uint32_t *samples;
 static uint64_t cycles_now(void) { return sched_total_cycles(); }
 uint64_t emu_ms(void) { return now_ms; }
 bool emu_key_held(int group, int bit) { return group >= 0 && group < 8 && bit >= 0 && bit < 8 && held[group][bit]; }
+uint32_t emu_key_presses(int group, int bit) { return group >= 0 && group < 8 && bit >= 0 && bit < 8 ? presses[group][bit] : 0; }
 void emu_charge(uint32_t cycles) { debug.cpuCycles += cycles; }
 void emu_jump(uint32_t pc) { debug_set_pc(pc); }
 
@@ -361,10 +363,89 @@ static void apply_keys(void) {
       if (opt.keys[i].group == 2 && opt.keys[i].bit == 0) want_on = true;
       else want[opt.keys[i].group][opt.keys[i].bit] = true;
     }
+  for (int i = 0; i < opt.nkeys; i++) /* a press right after another of the same key: let go first */
+    if (now_ms && now_ms == opt.keys[i].from && held[opt.keys[i].group][opt.keys[i].bit])
+      emu_keypad_event(opt.keys[i].group, opt.keys[i].bit, false), held[opt.keys[i].group][opt.keys[i].bit] = false;
   for (int g = 1; g < 8; g++)
     for (int b = 0; b < 8; b++)
-      if (want[g][b] != held[g][b]) held[g][b] = want[g][b], emu_keypad_event(g, b, want[g][b]);
+      if (want[g][b] != held[g][b]) {
+        held[g][b] = want[g][b], emu_keypad_event(g, b, want[g][b]);
+        if (want[g][b]) presses[g][b]++;
+      }
   if (want_on != on_held) on_held = want_on, emu_keypad_event(2, 0, want_on);
+}
+
+/* ---- a script (--script, CEmu's autotester's steps): delay MS, key GROUP BIT, hash ID START SIZE TIMEOUT CRC,...
+ * A key is held 80 ms; a hash (CRC-32C, the autotester's) is checked every 100 ms until it matches or times out ---- */
+static struct step {
+  char op;
+  uint32_t a, b, timeout, crcs[16];
+  int ncrc;
+  char id[32];
+} steps[512];
+static int nsteps, step_i;
+static bool step_on;
+static uint64_t step_until, step_from;
+static char hash_log[16384];
+static size_t hash_len;
+static int hashes_ok, hashes_bad;
+static uint32_t crc32c(const uint8_t *p, size_t n) {
+  uint32_t c = 0xFFFFFFFF;
+  while (n--) {
+    c ^= *p++;
+    for (int k = 0; k < 8; k++) c = c >> 1 ^ (0x82F63B78 & -(c & 1));
+  }
+  return ~c;
+}
+static void load_script(const char *path) {
+  FILE *f = fopen(path, "r");
+  char line[512];
+  while (f && fgets(line, sizeof line, f) && nsteps < (int)(sizeof steps / sizeof steps[0])) {
+    struct step *s = &steps[nsteps];
+    memset(s, 0, sizeof *s);
+    char crcs[400] = "";
+    if (sscanf(line, "delay %u", &s->a) == 1) s->op = 'd';
+    else if (sscanf(line, "key %u %u", &s->a, &s->b) == 2) s->op = 'k';
+    else if (sscanf(line, "hash %31s %x %u %u %399s", s->id, &s->a, &s->b, &s->timeout, crcs) == 5) {
+      s->op = 'h';
+      for (char *t = strtok(crcs, ","); t && s->ncrc < 16; t = strtok(NULL, ",")) s->crcs[s->ncrc++] = strtoul(t, NULL, 16);
+    } else continue;
+    nsteps++;
+  }
+  if (f) fclose(f);
+}
+static void script_tick(void) {
+  while (step_i < nsteps && !stopping) {
+    struct step *s = &steps[step_i];
+    if (!step_on) step_on = true, step_from = now_ms, step_until = now_ms;
+    if (s->op == 'd') {
+      if (now_ms < step_from + s->a) return;
+    } else if (s->op == 'k') {
+      if (now_ms == step_from && opt.nkeys < (int)(sizeof opt.keys / sizeof opt.keys[0]))
+        opt.keys[opt.nkeys++] = (key_t_){now_ms, now_ms + 79, (int)s->a, (int)s->b};
+      if (now_ms < step_from + 80) return;
+    } else if (s->op == 'h') {
+      if (now_ms < step_until) return;
+      uint8_t *p = mem_at(s->a, s->b);
+      uint32_t c = p ? crc32c(p, s->b) : 0;
+      bool ok = false;
+      for (int i = 0; i < s->ncrc; i++) ok |= c == s->crcs[i];
+      if (!ok && now_ms < step_from + s->timeout) {
+        step_until = now_ms + 100;
+        return;
+      }
+      ok ? hashes_ok++ : hashes_bad++;
+      hash_len += snprintf(hash_log + hash_len, sizeof hash_log - hash_len, "%s{\"id\": \"%s\", \"ms\": %llu, \"crc\": \"%08X\", \"match\": %s, \"exited\": %s}",
+                           hash_len ? ", " : "", s->id, (unsigned long long)now_ms, c, ok ? "true" : "false", exited ? "true" : "false");
+      if (hash_len >= sizeof hash_log) hash_len = sizeof hash_log - 1;
+    }
+    step_i++, step_on = false;
+  }
+  if (nsteps && step_i >= nsteps && !stopping) {
+    stopping = true;
+    snprintf(detail, sizeof detail, "the script's end");
+    cpu_set_signal(CPU_SIGNAL_EXIT);
+  }
 }
 
 static void json_str(FILE *f, const char *s) {
@@ -397,6 +478,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(a, "--idle") && v) opt.idle_addr = (uint32_t)strtoul(v, NULL, 0), i++;
     else if (!strcmp(a, "--trace")) os_trace = true;
     else if (!strcmp(a, "--float-scale") && v) os_float_scale = atof(v), i++;
+    else if (!strcmp(a, "--script") && v) load_script(v), i++;
     else if (!strcmp(a, "--screen-memory")) from_memory = true;
     else if (!strcmp(a, "--profile") && v) opt.profile = v, i++;
     else if (!strcmp(a, "--ram") && v) {
@@ -487,6 +569,7 @@ int main(int argc, char **argv) {
     if (sorted) break;
   }
   for (now_ms = 0; now_ms < opt.ms && !stopping; now_ms++) {
+    if (started) script_tick();
     apply_keys();
     if (opt.profile) { /* the PC every 0.1 ms */
       for (int k = 0; k < 10 && !stopping; k++) {
@@ -571,6 +654,7 @@ int main(int argc, char **argv) {
     fprintf(f, "  \"lcd_swaps\": %llu,\n  \"screen_changes\": %llu,\n  \"key_reads\": %llu,\n",
             (unsigned long long)swaps.n, (unsigned long long)screen_changes, (unsigned long long)key_reads);
     os_report(f);
+    fprintf(f, "  \"hashes\": [%s],\n  \"hashes_ok\": %d,\n  \"hashes_bad\": %d,\n", hash_log, hashes_ok, hashes_bad);
     fprintf(f, "  \"vars_saved\": %d,\n  \"text\": ", saved);
     json_str(f, text_log);
     fprintf(f, ",\n  \"warnings\": ");

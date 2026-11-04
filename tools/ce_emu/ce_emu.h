@@ -75,6 +75,7 @@ void emu_stop(const char *status, const char *fmt, ...);
 void emu_warn(const char *fmt, ...);
 void emu_text(const char *s);
 bool emu_key_held(int group, int bit);
+uint32_t emu_key_presses(int group, int bit);
 uint64_t emu_ms(void);
 void emu_charge(uint32_t cycles);
 void emu_jump(uint32_t pc);

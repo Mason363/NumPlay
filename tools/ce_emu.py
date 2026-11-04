@@ -108,7 +108,7 @@ def profile_lines(samples, syms, n):
 
 
 def run(files, keys="", shots="", ms=5000, out=".", ram="", lib=None, frame=None, rev="m", trace=False,
-        vars_out=None, profile=0, float_scale=1.0):
+        vars_out=None, profile=0, float_scale=1.0, script=None):
     """One run; its report (a dict)."""
     build()
     prog = next(f for f in files if f.lower().endswith(".8xp"))
@@ -135,6 +135,9 @@ def run(files, keys="", shots="", ms=5000, out=".", ram="", lib=None, frame=None
         cmd += ["--float-scale", str(float_scale)] if float_scale != 1 else []
         cmd += ["--vars-out", vars_out] if vars_out else []
         cmd += ["--profile", os.path.join(tmp, "profile")] if profile else []
+        if script:
+            open(os.path.join(tmp, "script"), "w").write(script)
+            cmd += ["--script", os.path.join(tmp, "script")]
         cmd += files + ([lib] if lib else [])
         os.makedirs(out, exist_ok=True)
         r = subprocess.run(cmd, capture_output=True, text=True)
@@ -166,6 +169,64 @@ def summary(rep):
     for line in rep.get("profile", []):
         s += "\n  " + line
     return s
+
+
+CE_KEYS = {
+    "graph": (1, 0), "trace": (1, 1), "zoom": (1, 2), "window": (1, 3), "yequ": (1, 4), "2nd": (1, 5), "mode": (1, 6),
+    "del": (1, 7), "on": (2, 0), "sto": (2, 1), "ln": (2, 2), "log": (2, 3), "square": (2, 4), "recip": (2, 5),
+    "math": (2, 6), "alpha": (2, 7), "0": (3, 0), "1": (3, 1), "4": (3, 2), "7": (3, 3), "comma": (3, 4), "sin": (3, 5),
+    "apps": (3, 6), "xton": (3, 7), "dot": (4, 0), "2": (4, 1), "5": (4, 2), "8": (4, 3), "lparen": (4, 4),
+    "cos": (4, 5), "prgm": (4, 6), "stat": (4, 7), "chs": (5, 0), "3": (5, 1), "6": (5, 2), "9": (5, 3),
+    "rparen": (5, 4), "tan": (5, 5), "vars": (5, 6), "enter": (6, 0), "add": (6, 1), "sub": (6, 2), "mul": (6, 3),
+    "div": (6, 4), "power": (6, 5), "clear": (6, 6), "down": (7, 0), "left": (7, 1), "right": (7, 2), "up": (7, 3)}
+AUTOTEST_KEYS = {"y=": "yequ", "wind": "window", "^2": "square", "sq": "square", "-1": "recip", "inv": "recip",
+                 ",": "comma", "xtn": "xton", ".": "dot", "(": "lparen", "lpar": "lparen", ")": "rparen",
+                 "rpar": "rparen", "(-)": "chs", "neg": "chs", "+": "add", "-": "sub", "*": "mul", "/": "div",
+                 "^": "power", "pow": "power", "clr": "clear"}
+AUTOTEST_ADDR = {"vram_start": 0xD40000, "vram2_start": 0xD52C00, "vram_16_size": 153600, "vram_8_size": 76800}
+
+
+def autotest(path, out, lib):
+    """A CE toolchain test (CEmu's autotester JSON: its keys, delays and screen CRCs), run here; what matched."""
+    cfg = json.load(open(path))
+    d = os.path.dirname(os.path.abspath(path))
+    files = [os.path.join(d, f) for f in cfg["transfer_files"]]
+    hashes = cfg.get("hashes", {})
+    num = lambda v: AUTOTEST_ADDR[v] if isinstance(v, str) and v in AUTOTEST_ADDR else int(str(v), 0)
+    lines = []
+    for step in cfg["sequence"]:
+        op, _, arg = step.partition("|")
+        if op == "delay":
+            lines.append(f"delay {int(arg)}")
+        elif op == "key":
+            g, b = CE_KEYS[AUTOTEST_KEYS.get(arg, arg)]
+            lines.append(f"key {g} {b}")
+        elif op in ("hash", "hashWait"):
+            h = hashes[arg]
+            t = h.get("timeout", 1000 if op == "hashWait" else 0)
+            crcs = ",".join(c for c in h["expected_CRCs"])
+            lines.append(f"hash {arg} {num(h['start']):X} {num(h['size'])} {t} {crcs}")
+    rep = run(files, ms=120000, out=out, lib=lib, script="\n".join(lines) + "\n")
+    good = bad = 0
+    print(f"{os.path.relpath(path)}: {rep['status']}" + (f" ({rep['detail']})" if rep["detail"] else ""))
+    done = {h["id"]: h for h in rep["hashes"]}
+    for k, h in hashes.items():
+        r = done.get(k)
+        what = h.get("description", k)
+        if r is None:
+            note = "not reached" + (" (the program had ended: TI-OS's home screen isn't drawn here)" if rep["exit_code"] >= 0 else "")
+        elif r["match"]:
+            note, good = "ok", good + 1
+        elif r["exited"]:
+            note = "skipped: after the program's end (TI-OS's home screen isn't drawn here)"
+        elif rep["text"]:
+            note = "skipped: TI-OS's text on screen (ce_emu writes it with NumPlay's font; see the home screen line)"
+        else:
+            note, bad = f"MISMATCH (got {r['crc']})", bad + 1
+        print(f"  {k}: {what}: {note}")
+    if rep["text"]:
+        print("  home screen: " + rep["text"].replace("\n", " / "))
+    return good, bad, rep
 
 
 def game_files(g):
@@ -244,6 +305,18 @@ def main():
         else:
             pos.append(a[i])
             i += 1
+    if pos and pos[0] == "autotest":
+        lib = None if opts["libs"] == "none" else opts["libs"] or libs()
+        good = bad = 0
+        for p in pos[1:]:
+            try:
+                g, b, _ = autotest(p, opts["out"], lib)
+            except SystemExit as e:
+                print(f"{os.path.relpath(p)}: {e}")
+                continue
+            good, bad = good + g, bad + b
+        print(f"{good} screens matched, {bad} didn't")
+        return 1 if bad else 0
     if pos and pos[0] == "sheet":
         sys.path.insert(0, os.path.join(ROOT, "tools"))
         import ports

@@ -215,9 +215,29 @@ static void move_ptr(uint32_t addr, uint32_t at, int32_t n) {
   else p += n;
   wr24(addr, p);
 }
+/* the pointers TI-OS keeps right through InsertMem and DelMem: its own, and those programs park there to have them
+ * kept (fileioc's open files: asm_data_ptr1 and 2, and 0xD01FED, F3, F9) */
+static const uint32_t DATA_PTRS[] = {
+  0xD0067E, 0xD00681, 0xD01FED, 0xD01FF3, 0xD01FF9,       /* asm_data_ptr1, 2 and the three after them */
+  0xD02317, 0xD0231A, 0xD0231D,                           /* begPC, curPC, endPC */
+  0xD02437, 0xD0243A, 0xD0243D, 0xD02440, 0xD02451,       /* editTop, editCursor, editTail, editBtm, editDat */
+};
+/* and the VAT pointers it keeps when the VAT moves: editSym, tSymPtr1 and 2, chkDelPtr3 and 4 */
+static const uint32_t VAT_PTRS[] = {0xD0244E, 0xD0257B, 0xD0257E, 0xD02581, 0xD02584};
+static void move_vat_ptrs(uint32_t lo, uint32_t hi, int32_t n) {
+  for (size_t i = 0; i < sizeof VAT_PTRS / sizeof VAT_PTRS[0]; i++) {
+    uint32_t p = rd24(VAT_PTRS[i]);
+    if (p >= lo && p <= hi) wr24(VAT_PTRS[i], p + n);
+  }
+}
 static void move_vars(uint32_t at, int32_t n) {
   static const uint32_t PTRS[] = {TEMP_MEM, FPS_BASE, FPS, NEW_DATA_PTR};
   for (size_t i = 0; i < sizeof PTRS / sizeof PTRS[0]; i++) move_ptr(PTRS[i], at, n);
+  uint32_t fps = rd24(FPS);
+  for (size_t i = 0; i < sizeof DATA_PTRS / sizeof DATA_PTRS[0]; i++) {
+    uint32_t p = rd24(DATA_PTRS[i]);
+    if (p >= USER_MEM && p <= fps + (n < 0 ? -n : 0)) move_ptr(DATA_PTRS[i], at, n);
+  }
   ent_t e;
   for (bool ok = ent_next(&e, true); ok; ok = ent_next(&e, false)) {
     if (!in_ram(e.data) || e.data < at) continue;
@@ -257,6 +277,7 @@ static bool vat_open(uint32_t top, uint32_t len, bool symbol) {
   uint32_t ops = rd24(OPS);
   if (len > ram_free()) return false;
   memmove(mem_at(ops - len, top - ops + 1), mem_at(ops, top - ops + 1), top - ops + 1);
+  move_vat_ptrs(ops, top, -(int32_t)len);
   if (symbol) wr24(PROG_PTR, rd24(PROG_PTR) - len);
   wr24(P_TEMP, rd24(P_TEMP) - len);
   wr24(OP_BASE, rd24(OP_BASE) - len);
@@ -266,6 +287,7 @@ static bool vat_open(uint32_t top, uint32_t len, bool symbol) {
 static void vat_close(const ent_t *e) {
   uint32_t ops = rd24(OPS), below = e->vat - e->len;
   memmove(mem_at(ops + e->len, below - ops + 1), mem_at(ops, below - ops + 1), below - ops + 1);
+  move_vat_ptrs(ops, below, (int32_t)e->len);
   if (!e->prog) wr24(PROG_PTR, rd24(PROG_PTR) + e->len);
   wr24(P_TEMP, rd24(P_TEMP) + e->len);
   wr24(OP_BASE, rd24(OP_BASE) + e->len);
@@ -549,29 +571,22 @@ static void fcmp(float x, float y) {
 static uint8_t prog_name[8], prog_namelen;
 static uint32_t calls[0x30000 / 4];
 static uint32_t unknown_calls;
-static int csc_last = -1;
+/* GetCSC: each press once (TI's scan codes: (7 - group) * 8 + bit + 1), a held arrow again and again */
+static uint32_t csc_seen[8][8];
+static int csc_held = -1;
 static uint64_t csc_repeat_at;
-/* the CE's keys, TI's scan codes ((7 - group) * 8 + bit + 1) */
-static int scan_code(void) {
+static uint8_t get_csc(void) {
+  uint64_t now = emu_ms();
   for (int g = 1; g <= 7; g++)
     for (int b = 0; b < 8; b++)
-      if (emu_key_held(g, b)) return (7 - g) * 8 + b + 1;
-  return 0;
-}
-static uint8_t get_csc(void) {
-  int k = scan_code();
-  uint64_t now = emu_ms();
-  if (!k) {
-    csc_last = -1;
-    return 0;
-  }
-  if (k != csc_last) {
-    csc_last = k, csc_repeat_at = now + 500;
-    return k;
-  }
-  if (k <= 4 && now >= csc_repeat_at) { /* arrows repeat */
+      if (emu_key_presses(g, b) != csc_seen[g][b]) {
+        csc_seen[g][b] = emu_key_presses(g, b);
+        csc_held = g * 8 + b, csc_repeat_at = now + 500;
+        return (7 - g) * 8 + b + 1;
+      }
+  if (csc_held >= 0 && emu_key_held(csc_held / 8, csc_held % 8) && csc_held / 8 == 7 && now >= csc_repeat_at) {
     csc_repeat_at = now + 100;
-    return k;
+    return (7 - csc_held / 8) * 8 + csc_held % 8 + 1;
   }
   return 0;
 }
@@ -655,7 +670,9 @@ bool os_trap(uint32_t pc) {
   bool boot = pc >= 0x80 && pc < 0x800, osj = pc >= 0x20100 && pc < HLE_BASE, own = pc >= HLE_BASE && pc < HLE_BASE + 4 * HLE_SLOTS;
   if (!(boot || osj || own) || (pc & 3)) return false;
   if (pc / 4 < sizeof calls / sizeof calls[0]) calls[pc / 4]++;
-  if (os_trace && !own) fprintf(stderr, "[os] %6llu ms %06X %s\n", (unsigned long long)emu_ms(), pc, os_name(pc));
+  if (os_trace && !own)
+    fprintf(stderr, "[os] %6llu ms %06X %-16s a %02X bc %06X de %06X hl %06X (from %06X)\n", (unsigned long long)emu_ms(), pc,
+            os_name(pc), R.A, R.BC & 0xFFFFFF, R.DE & 0xFFFFFF, R.HL & 0xFFFFFF, rd24(R.SPL));
   ent_t e;
   uint8_t name[8];
   switch (pc) {
