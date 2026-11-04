@@ -100,7 +100,7 @@ static char text_log[8192];
 static size_t text_len;
 static bool held[8][8], on_held;
 static uint32_t presses[8][8];
-static uint64_t key_reads, os_calls, screen_changes;
+static uint64_t key_reads, os_calls, screen_changes, timer_reads;
 /* frames: a marker reached (--frame), or the LCD's base set (a double-buffered program's swap) */
 typedef struct {
   uint64_t n, at[50000];
@@ -246,6 +246,7 @@ void gui_debug_open(int reason, uint32_t data) {
     return;
   case DBG_WATCHPOINT_READ:
     if (data >= 0xF50010 && data < 0xF50020) key_reads++;
+    else if (data >= 0xF20000 && data < 0xF20030) timer_reads++;
     return;
   case DBG_WATCHPOINT_WRITE:
     if (data >= 0xE30010 && data < 0xE30013) {
@@ -557,6 +558,7 @@ int main(int argc, char **argv) {
   if (opt.frame_addr) debug_watch(opt.frame_addr, DBG_MASK_EXEC, true);
   if (opt.idle_addr) debug_watch(opt.idle_addr, DBG_MASK_EXEC, true);
   for (uint32_t a = 0xF50010; a < 0xF50020; a++) debug_watch(a, DBG_MASK_READ, true);
+  for (uint32_t a = 0xF20000; a < 0xF20030; a++) debug_watch(a, DBG_MASK_READ, true); /* (waiting on a timer is waiting) */
   for (uint32_t a = 0xE30010; a < 0xE30013; a++) debug_watch(a, DBG_MASK_WRITE, true);
   for (uint32_t a = 0xD00000; a < 0xE00000; a++)
     if ((a & 0x7FFFF) >= SIZE_RAM) debug_watch(a, DBG_MASK_WRITE, true);
@@ -597,12 +599,12 @@ int main(int argc, char **argv) {
     /* hangs */
     if (cpu.halted && !cpu.IEF1) emu_stop("hang", "halt with interrupts off at %06X", cpu.registers.PC);
     uint32_t pc = cpu.registers.PC;
-    uint64_t act = marks.n + swaps.n + screen_changes + key_reads + os_calls;
+    uint64_t act = marks.n + swaps.n + screen_changes + key_reads + os_calls + timer_reads;
     if (act != activity) activity = act, last_activity = now_ms;
     if (pc - stuck_pc > 64 && stuck_pc - pc > 64) stuck_pc = pc, stuck_since = now_ms;
     uint64_t quiet = now_ms - (stuck_since > last_activity ? stuck_since : last_activity);
     if (quiet >= 3000)
-      emu_stop("hang", "the CPU stayed around %06X for %llu ms: no frame, screen change, key read or OS call", pc,
+      emu_stop("hang", "the CPU stayed around %06X for %llu ms: no frame, screen change, key or timer read, or OS call", pc,
                (unsigned long long)quiet);
     uint32_t sp = cpu.registers.SPL;
     if (cpu.ADL && (sp < STACK_BOT - 0x100 || sp > STACK_TOP)) {
