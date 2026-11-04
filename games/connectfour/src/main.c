@@ -296,9 +296,69 @@ static color pix_title(int x, int y) {
   return mix(NAVY, c, y < 80 ? 6 : y < 216 ? 12 : 20); /* dimmed, so the words stand out */
 }
 
+#ifdef __TICE__
+/* The TI-84 Plus CE: the title's board cells worked out once for each kind (empty, red, yellow), their pixels
+   before the dimming; each row is then copied from them and dimmed through tables. */
+#include <wchar.h>
+__attribute__((naked)) static void ce_blend(color *p, unsigned n, const uint8_t *t) { __asm__(CE_BLEND_ASM); }
+__attribute__((section(".data"))) static uint8_t tab_mem[CE_TABLES + 255];
+__attribute__((section(".data"))) static color tcell[3][48 * 48]; /* (with the program: the 60 KB are full) */
+static bool tmade[3];
+static color title_raw(int px, int py, char q) { /* pix_title's colour before the dimming, (px, py) in its cell */
+  const int P = 48, r = 38;
+  int dx = 2 * px + 1 - P, dy = 2 * py + 1 - P, d2 = dx * dx + dy * dy, e = r * r - d2;
+  int s = (dx + dy) * 16 / r - 2;
+  int o2 = (r + 9) * (r + 9);
+  s = d2 < o2 ? s * (o2 - d2) / (o2 - r * r) : -2;
+  color h = RGB(0x0A1430), c;
+  if (e <= -2 * r) {
+    c = plastic(s);
+  } else {
+    if (q != ' ') h = over_disc(h, dx, dy, r, q == 'Y', 0);
+    int sx = dx - 7, sy = dy - 7;
+    if (sx * sx + sy * sy > r * r) h = mix(0, h, 10);
+    c = e >= 2 * r ? h : mix(h, plastic(s), 8 * e / r + 16);
+  }
+  return c;
+}
+/* the title's row j from x0 to x1 at p (the menu's card left black) */
+static void title_row(color *p, int j, int x0, int x1) {
+  static const char pat[] = "RY  YR" "  Y  Y" "     R" "Y    Y" "RR  RY" "YRY YR" "RYRYRR"; /* by columns */
+  const int P = 48;
+  int gy = j + 14, rt = gy / P, py = gy - rt * P, gx = x0 + 16, col = gx / P, px = gx - col * P;
+  for (int x = x0; x < x1;) {
+    char q = pat[(col % 7) * 6 + rt % 6];
+    int k = q == ' ' ? 0 : q == 'R' ? 1 : 2;
+    if (!tmade[k]) {
+      tmade[k] = true;
+      for (int v = 0, n = 0; v < P; v++)
+        for (int u = 0; u < P; u++, n++) tcell[k][n] = title_raw(u, v, q);
+    }
+    const color *c = tcell[k] + py * P;
+    for (; px < P && x < x1; px++, x++, p++) *p = c[px];
+    px = 0, col++;
+  }
+}
+#endif
+
 /* ------------------------------------------------------------------ painting on the band */
 static void fill(int x, int y, int w, int h, color c, int a) {
   int x0 = x < cx0 ? cx0 : x, x1 = x + w > cx1 ? cx1 : x + w, y0 = y < cy0 ? cy0 : y, y1 = y + h > cy1 ? cy1 : y + h;
+#ifdef __TICE__ /* (the TI-84 Plus CE: the C library's fill, or mixing tables) */
+  if (x0 >= x1 || a <= 0) return;
+  __attribute__((section(".data"))) static uint8_t fmem[CE_TABLES + 255];
+  static color fc;
+  static int fa = -1;
+  uint8_t *m = (uint8_t *)(((unsigned)fmem + 255) & ~255u);
+  if (a < 32 && (fc != c || fa != a)) ce_tables(m, c, (unsigned)a), fc = c, fa = a;
+  for (int j = y0; j < y1; j++) {
+    color *p = buf + (j - cy0) * bw + x0 - cx0;
+    if (a >= 32) wmemset((wchar_t *)p, (wchar_t)c, (size_t)(x1 - x0));
+    else
+      for (int i = x0; i < x1; i += 255) ce_blend(p + i - x0, (unsigned)(x1 - i < 255 ? x1 - i : 255), m);
+  }
+  return;
+#endif
   for (int j = y0; j < y1; j++)
     for (color *p = buf + (j - cy0) * bw + x0 - cx0, *e = p + x1 - x0; p < e; p++) *p = a >= 32 ? c : mix(c, *p, a);
 }
@@ -544,9 +604,22 @@ static void paint(int x, int y, int w, int h) {
       int g = j * 64 / 240;
       rb[0] = mix(THEME[V.dark][1], THEME[V.dark][0], g / 2), rb[1] = mix(THEME[V.dark][1], THEME[V.dark][0], (g + 1) / 2);
       if (!title) row_game(p, j, cx0, cx1);
+#ifdef __TICE__
+      else {
+        title_row(p, j, cx0, cx1);
+        uint8_t *m = (uint8_t *)(((unsigned)tab_mem + 255) & ~255u);
+        static int lvl = -1;
+        int l = j < 80 ? 6 : j < 216 ? 12 : 20;
+        if (l != lvl) ce_tables(m, NAVY, (unsigned)l), lvl = l;
+        for (int i = cx0; i < cx1; i += 255) ce_blend(p + i - cx0, (unsigned)(cx1 - i < 255 ? cx1 - i : 255), m);
+        for (int i = cx0; i < cx1; i++) /* (under the menu's card) */
+          if ((i >= 46 && i < 274 && j >= 88 && j < 212) || (i >= 32 && i < 288 && j >= 102 && j < 198)) p[i - cx0] = 0;
+      }
+#else
       else
         for (int i = cx0; i < cx1; i++) /* (under the menu's card: nothing to work out) */
           p[i - cx0] = (i >= 46 && i < 274 && j >= 88 && j < 212) || (i >= 32 && i < 288 && j >= 102 && j < 198) ? 0 : pix_title(i, j);
+#endif
     }
     if (title) {
       title_ui();
