@@ -15,8 +15,8 @@ PORT_CFLAGS = -std=gnu11 -O2 -g -Wall -Wno-unused-parameter -Wno-unused-function
 
 .PHONY: port
 ifeq ($(TARGET),sdl)
-SDL_CFLAGS := $(shell pkg-config --cflags sdl3 2>/dev/null)
-SDL_LIBS := $(shell pkg-config --libs sdl3 2>/dev/null)
+SDL_CFLAGS = $(shell pkg-config --cflags sdl3 2>/dev/null)
+SDL_LIBS = $(shell pkg-config --libs sdl3 2>/dev/null)
 port: $(PORT_OUT)/$(PORT_ID)
 $(PORT_OUT)/$(PORT_ID): $(PORT_SRC) $(PORT_ASM) $(wildcard $(NP_PLATFORM)/include/*.h) $(NP_PLATFORM)/sdl/np_sdl.c
 	@mkdir -p $(@D)
@@ -27,7 +27,7 @@ else ifeq ($(TARGET),ti84ce)
 # the CE C toolchain (CEDEV: its folder) builds a folder of its own: one small file per source, each including the
 # game's (by its full path, so the game's own relative #includes still work), and its makefile
 CEDEV ?= $(HOME)/Documents/Assets/toolchains/CEdev
-CE_NAME := $(shell echo '$(PORT_ID)' | tr a-z A-Z | tr -cd 'A-Z0-9' | cut -c1-8)
+CE_NAME = $(shell echo '$(PORT_ID)' | tr a-z A-Z | tr -cd 'A-Z0-9' | cut -c1-8)
 CE_DIR = $(PORT_OUT)/$(PORT_ID)
 CE_ALL = $(abspath $(PORT_SRC) $(NP_PLATFORM)/ti84ce/np_ce.c $(PORT_COMMON))
 port: $(CE_DIR)/bin/$(CE_NAME).8xp

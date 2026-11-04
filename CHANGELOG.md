@@ -2,7 +2,7 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
-## 1.24.13: Among Us
+## 1.24.14: Among Us
 
 - **Among Us:** AmongUs.nwa, the Skeld against up to 9 bots, as a crewmate or the Impostor: every task, sabotages, vents, kills, meetings and votes, with the game's own pictures.
 

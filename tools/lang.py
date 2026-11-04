@@ -114,7 +114,7 @@ def tree(code, out):
     """A copy of what builds NumPlay, translated."""
     files = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard"], cwd=ROOT,
                            capture_output=True, text=True, check=True).stdout.split("\n")
-    keep = [f for f in files if f and (f in ("Makefile", "VERSION") or f.startswith(("launcher/", "games/", "tools/", "assets/fonts/")))
+    keep = [f for f in files if f and (f in ("Makefile", "VERSION") or f.startswith(("launcher/", "games/", "tools/", "assets/fonts/", "platform/")))
             and not SKIP.search(f) and not f.startswith("games/numdance/")]
     if os.path.exists(out):
         shutil.rmtree(out)
