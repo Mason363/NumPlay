@@ -45,7 +45,16 @@ typedef struct {
   uint32_t footer;
 } epsilon_userland_t;
 
-#if PLATFORM_DEVICE && !defined(HOST)
+#if defined(NP_PORT) /* any other target: platform/include/np_port.h */
+#include <eadk.h>
+#include "np_port.h"
+__attribute__((unused)) static uint8_t *epsilon_storage(uint32_t *size) { return np_storage(size); }
+static inline bool epsilon_is_upsilon(void) { return false; }
+static inline bool epsilon_slow_model(void) { return np_slow(); }
+static inline void np_app_begin(void) { np_begin(); }
+static inline int np_app_end(void) { return np_end(); }
+
+#elif PLATFORM_DEVICE && !defined(HOST)
 #include <eadk.h>
 
 /* The header of the software running this app, or NULL; *upsilon tells which. */

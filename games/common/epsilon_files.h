@@ -19,6 +19,10 @@ typedef struct {
   uint8_t *buf;
   uint32_t size;
 } ef_fs_t;
+/* (another target keeps its files when they change: platform/include/np_port.h) */
+#ifndef NP_PORT
+#define EF_CHANGED() ((void)0)
+#endif
 
 static uint16_t ef_rd16(const uint8_t *p) { return (uint16_t)(p[0] | p[1] << 8); }
 static void ef_wr16(uint8_t *p, uint32_t v) {
@@ -61,7 +65,15 @@ static int ef_find(const ef_fs_t *fs, const char *name, int end) {
   return -1;
 }
 
-#if PLATFORM_DEVICE && !defined(HOST)
+#if defined(NP_PORT)
+/* (another target: no Epsilon to keep a cache of the last record looked up) */
+static uint32_t *ef_cache(const ef_fs_t *fs, int end) {
+  static uint32_t none[3];
+  (void)fs, (void)end;
+  return none;
+}
+#define EF_CHANGED() np_storage_changed()
+#elif PLATFORM_DEVICE && !defined(HOST)
 static uint32_t ef_crc_bytes(const void *data, uint32_t len) {
   if (!len) return 0;
   register uint32_t r0 __asm__("r0") = (uint32_t)(uintptr_t)data;
@@ -132,6 +144,7 @@ __attribute__((unused)) static bool ef_remove(const char *name) {
   uint16_t size = ef_rd16(fs.buf + at);
   if (at + size == end) {  /* the last one: nothing moves */
     ef_wr16(fs.buf + at, 0);
+    EF_CHANGED();
     return true;
   }
   uint32_t *cache = ef_cache(&fs, end);
@@ -141,6 +154,7 @@ __attribute__((unused)) static bool ef_remove(const char *name) {
   for (int n = end + 2 - (at + size); n > 0; n--) *d++ = *s++;
   for (int n = size; n > 0; n--) *d++ = 0;
   cache[1] = cache[2] = 0;
+  EF_CHANGED();
   return true;
 }
 
@@ -169,6 +183,7 @@ __attribute__((unused)) static bool ef_write(const char *name, const void *conte
   }
   const uint8_t *c = (const uint8_t *)content;
   for (uint32_t i = 0; i < len; i++) fs.buf[at + 2 + nlen + i] = c ? c[i] : 0;
+  EF_CHANGED();
   return true;
 }
 
@@ -228,6 +243,7 @@ __attribute__((unused)) static uint8_t *ef_resize(const char *name, uint32_t len
     cache[1] = cache[2] = 0;
   }
   ef_wr16(fs.buf + at, total);
+  EF_CHANGED();
   return fs.buf + at + 2 + nlen;
 }
 #endif

@@ -82,3 +82,11 @@ data:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl
+PORT_ID = motox3m
+PORT_NAME = Moto X3M
+PORT_SRC = $(filter-out src/plat_host.c,$(wildcard src/*.c))
+PORT_ASM = src/data.S
+PORT_FLAGS = -Isrc -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"' -fno-math-errno
+include ../../platform/port.mk
