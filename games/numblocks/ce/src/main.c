@@ -1,6 +1,7 @@
 /* NumBlocks on the TI-84 Plus CE: the title, the worlds, and the game's loop (Minecraft's 20 ticks a second, the
  * picture as often as the CE can draw it). */
 #include "nb.h"
+#include "rs.h"
 #include "draw.h"
 
 extern int new_mode;
@@ -275,7 +276,7 @@ int main(void) {
       const uint8_t *fl = rs_flash;
       uint32_t ha = 0, hb = 0;
       for (int pass = 0; pass < 2; pass++) {
-        rs_flash = pass ? 0 : fl;
+        if (pass) rs_flash_init(0, 0);
         render_stale = 1;
         render_frame();
         uint32_t h = 0;

@@ -57,9 +57,10 @@ extern const uint16_t *rs_qsqi, *rs_qsqk;
 extern uint8_t rs_qsx, rs_qsz, rs_qxs0, rs_qzs0, rs_vd;
 extern int rs_x, rs_z, rs_ci, rs_X0;
 extern uint8_t rs_xs, rs_zs;
-/* the busiest loops' copy in the archive (flash/rsf.s, after NBCETEX's tables; 0: none), RSF_SIZE bytes */
+/* the inner loops' copy in the archive (flash/rsf.s, after NBCETEX's tables), run when of this build: size its
+ * bytes; rs_flash it, 0 when not run (the program's own copy then) */
 extern const uint8_t *rs_flash;
-#define RSF_SIZE 224
+void rs_flash_init(const uint8_t *blob, unsigned size);
 /* 2^28 / k for k 16..2560 (3 bytes each, from k = 16), and f * 256 / d for d 1..15, f < d ([d * 16 + f]): the
  * tables rs_poly divides with (in NBCETEX) */
 extern const uint8_t *rs_recip, *rs_ratio;

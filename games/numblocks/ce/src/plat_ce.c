@@ -33,8 +33,8 @@ static void gfx_reload(void) {
   unsigned n;
   gfx = appvar("NBCEDAT", GFX_SIZE, &n);
   texdat = appvar("NBCETEX", TEXDAT_SIZE, &n);
-  /* (the busiest loops' copy, after the tables: run where they are, in the archive) */
-  rs_flash = texdat && n >= TEXDAT_SIZE + RSF_SIZE ? texdat + TEXDAT_SIZE : 0;
+  /* (the inner loops' copy, after the tables: run where it is, in the archive) */
+  rs_flash_init(texdat && n > TEXDAT_SIZE ? texdat + TEXDAT_SIZE : 0, texdat ? n - TEXDAT_SIZE : 0);
 }
 static void gc_before(void) { gfx_End(); }
 static void gc_after(void) {

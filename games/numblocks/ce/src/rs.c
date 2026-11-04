@@ -353,3 +353,26 @@ void RS(rs_expand)(const uint8_t *src, uint8_t *dst, const uint8_t *sky, const u
   }
 }
 #endif
+
+#ifdef __ez80__
+/* (rs.s: the trampolines, jp and an address each; the program's copy's addresses; this build's mark) */
+extern uint8_t rs_tramps[], rs_tramps_ram[], rs_ntramps, rs_build[3];
+void rs_flash_init(const uint8_t *blob, unsigned size) {
+  uint8_t n = rs_ntramps;
+  bool ok = blob && size >= 8 + 3 * (unsigned)n && !memcmp(blob, "NBRS", 4) && !memcmp(blob + 4, rs_build, 3) &&
+            blob[7] == n;
+  uint8_t *t = rs_tramps + 1;
+  const uint8_t *r = rs_tramps_ram, *o = blob + 8;
+  for (uint8_t i = 0; i < n; i++, t += 4, r += 3, o += 3) {
+    if (ok) {
+      const uint8_t *at = blob + (o[0] | o[1] << 8 | (unsigned)o[2] << 16);
+      memcpy(t, &at, 3);
+    } else
+      memcpy(t, r, 3);
+  }
+  rs_flash = ok ? blob : 0;
+}
+#else
+void rs_flash_init(const uint8_t *blob, unsigned size) { (void)blob, (void)size; }
+#endif
+
