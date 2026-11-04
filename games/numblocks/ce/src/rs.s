@@ -2437,3 +2437,5 @@ r_rtab:
 	.extern	_w_eey
 	.extern	_rs_recip
 	.extern	_rs_ratio
+
+	.section	.note.GNU-stack,"",@progbits

@@ -7,6 +7,8 @@ COMPRESSED = YES
 ARCHIVED = YES
 CFLAGS = -Wall -Wextra -Wno-unused-parameter -Wno-missing-braces -Oz
 HAS_PRINTF = NO
+# (the program's name whatever TARGET make port was given)
+override TARGET := $(NAME).8xp
 
 include $(shell cedev-config --makefile)
 
