@@ -32,6 +32,11 @@ static uint8_t pending_blast[MAX_OBJ];   /* explosives set off, going off in a f
 #define GRENADE_R 5.0f
 #define FUSE 150
 #define BLAST_R 160.0f
+/* what a blast gives what it reaches: BLAST_PUSH kg m/s at its middle, less further off (its nearest part), but no
+   faster than BLAST_SPEED m/s (not read in the original: fitted by the bot in tests/play.c, so that a grenade by a
+   plank sends it across the floor, as Grenades 15 and 57 need) */
+#define BLAST_PUSH 20.0f
+#define BLAST_SPEED 12.0f
 /* blows to characters, as friction x friction x speed (m/s): one that knocks them over, one that kills */
 #define KNOCK_BLOW 0.06f
 #define KILL_BLOW 0.2f
@@ -221,13 +226,14 @@ static bool build_poly(Obj *o, int oi, const uint8_t *parts, int nparts) {
   if (o->flags & F_HV) f.density *= 3;
   const uint8_t *save = rp;
   if (fixed) {
-    /* a static one: its outline and holes as loops of edges (its convex parts' boxes overlap too much: thousands
-       of contacts with what lies on it) */
+    /* a static one: loops of edges (its convex parts' boxes overlap too much: thousands of contacts with what lies
+       on it), the outline of its parts put together (tools/pack.py), or else its drawn outline and holes */
     float *xy = mb_scratch;
-    rp = o->outline;
-    int n = o->nout;
-    for (int h = 0; h <= o->nholes; h++) {
-      if (h) n = rd8();
+    rp = nparts ? parts : o->outline;
+    int n = nparts ? 0 : o->nout;
+    for (int h = 0; h < (nparts ? nparts : o->nholes + 1); h++) {
+      if (h == 1 && !nparts) rp++;   /* (past the number of holes, to the first one's) */
+      if (h || nparts) n = rd8();
       int m = n < SCRATCH_FLOATS / 2 ? n : SCRATCH_FLOATS / 2;
       for (int i = 0; i < n; i++) {
         float x = rdc(), y = rdc();
@@ -295,10 +301,12 @@ bool game_load(int level, uint8_t *buf) {
       c->alive = 1;
       c->left = (flags & F_RH) != 0;
       c->hittable = (flags & (F_HKI | F_HGKI)) != 0;
-      c->fx = x0, c->fy = y0;
-      c->h = sqrtf((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
+      /* as the game makes him: upright, as tall as his segment is high, about its middle (a segment drawn
+         leaning gives a man standing) */
+      c->h = fabsf(y1 - y0);
       if (c->h < 20) c->h = 80;
-      c->tilt = atan2f(x1 - x0, -(y1 - y0));
+      c->fx = (x0 + x1) / 2, c->fy = (y0 + y1) / 2 + c->h / 2;
+      c->tilt = 0;
       c->body = -1;
       for (int p = 0; p < P_COUNT; p++) c->part[p] = -1;
       if (c->role == R_HERO && g.hero < 0) {
@@ -368,15 +376,18 @@ bool game_load(int level, uint8_t *buf) {
     }
     if (!build_obj(i)) return false;
   }
+  /* (Mr Bullet himself is a picture where he stands, with no body, unless his bullets can kill him: Friendly Fire) */
   for (int i = 0; i < g.nchar; i++)
-    if (!make_standing(&g.ch[i], i)) return false;
+    if ((g.ch[i].role != R_HERO || g.ch[i].hittable) && !make_standing(&g.ch[i], i)) return false;
   for (int i = 0; i < g.nsw; i++) {
     Switch *s = &g.sw[i];
     float mx = (s->x0 + s->x1) / 2, my = (s->y0 + s->y1) / 2, dx = s->x1 - s->x0, dy = s->y1 - s->y0;
     float len = sqrtf(dx * dx + dy * dy);
     s->body = (int16_t)world_body(WB_STATIC, mx, my, atan2f(dy, dx), CODE(T_SWITCH, i), false, false, 1);
     if (s->body < 0) return false;
-    world_box(s->body, 0, 0, len / 2 + 2, 6, &FIX_SENSOR);
+    /* (as the game makes it: the segment and 0.4 of its length in front of it, on its right going from its end
+       to its start, where the bullet comes from) */
+    world_box(s->body, 0, -0.2f * len, len / 2, 0.2f * len, &FIX_SENSOR);
   }
   rp = pins;
   for (int i = 0; i < npin; i++) {
@@ -397,11 +408,13 @@ bool game_load(int level, uint8_t *buf) {
     p->t = (uint8_t)t, p->motor = (uint8_t)motor, p->a = (int8_t)a, p->b = (int8_t)b, p->joint = -1;
     if (t == 2) {
       if (ba < 0 && bb < 0) continue;
-      p->joint = (int16_t)world_revolute(ba, bb, vx[0], vy[0], false, 0, 0, motor != 0, ms, mt);
+      /* (a motor turns at ms radians a second, clockwise when its mcw is set: Box2D's speed is anticlockwise) */
+      p->joint = (int16_t)world_revolute(ba, bb, vx[0], vy[0], false, 0, 0, motor & 1, motor & 2 ? -ms : ms, mt);
       p->x0 = vx[0], p->y0 = vy[0];
     } else if (t == 3) {
       if (ba < 0 && bb < 0) continue;
-      float len = rl > 0 ? rl : sqrtf((lbx - lax) * (lbx - lax) + (lby - lay) * (lby - lay));
+      /* (as long as drawn, and rl longer: the game's rope) */
+      float len = sqrtf((lbx - lax) * (lbx - lax) + (lby - lay) * (lby - lay)) + rl;
       p->joint = (int16_t)world_rope(ba, bb, lax, lay, lbx, lby, len);
       p->x0 = lax, p->y0 = lay, p->x1 = lbx, p->y1 = lby;
     } else if (t == 5) {
@@ -605,7 +618,7 @@ static void blast(float x, float y) {
     float cx, cy, s, cs;
     world_xf(o->body, &cx, &cy, &s, &cs);
     if (o->kind == K_SEG) cx += 0, cy += 0;
-    /* the nearest point of its box: its centre is enough for these sizes */
+    /* from the blast to its middle, and how far its nearest part is */
     float dx = cx - x, dy = cy - y;
     if (o->kind == K_POLY && o->nout) {
       /* (polygons' origins can be far from them: use their outline's middle) */
@@ -618,15 +631,17 @@ static void blast(float x, float y) {
       mx /= o->nout, my /= o->nout;
       dx = cx + cs * mx - s * my - x, dy = cy + s * mx + cs * my - y;
     }
-    float d = sqrtf(dx * dx + dy * dy);
+    float px, py, d = world_nearest(o->body, x, y, &px, &py);
+    if (d > 1) dx = px - x, dy = py - y;   /* (pushed away from the blast at its nearest point) */
     if (d >= BLAST_R) continue;
     if (o->flags & F_EXPL) { if (!pending_blast[i]) pending_blast[i] = 6; continue; }
     if (o->flags & F_BREAK) { remove_obj(i); continue; }
     if (!world_dynamic(o->body)) continue;
-    float m = world_mass(o->body), f = 3.0f * (1 - d / BLAST_R) / (d > 1 ? d : 1);
-    float cap = m * 12.0f / (f * (d > 1 ? d : 1) + 1e-6f);
+    float l = sqrtf(dx * dx + dy * dy);
+    float m = world_mass(o->body), f = BLAST_PUSH * (1 - d / BLAST_R) / (l > 1 ? l : 1);
+    float cap = m * BLAST_SPEED / (f * (l > 1 ? l : 1) + 1e-6f);
     if (cap < 1) f *= cap;
-    world_impulse(o->body, dx * f, dy * f, cx + dx * 0.5f, cy + dy * 0.5f);
+    world_impulse(o->body, dx * f, dy * f, px, py);
   }
 }
 
@@ -663,6 +678,8 @@ static void switch_on(int si) {
           o->gone = 0;
           build_obj(i);
         }
+      } else if (o->flags & F_EXPL) {
+        if (!pending_blast[i]) pending_blast[i] = 1;   /* (a crate of TNT on a switch goes off) */
       } else {
         remove_obj(i);
       }
