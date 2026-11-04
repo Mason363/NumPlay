@@ -851,10 +851,11 @@ Walk right from the title map. Each level leads into the next: get through its s
 | **1** | Rain of Fire: aim with the arrows, OK to cast |
 | **2** | Reinforcements: aim, OK to call them |
 | **3** or **⌫** | The next wave now, for gold (or OK on its flag) |
+| **4** | Your hero: move it with the arrows, OK sends it |
 | **Back** | Close the menu, or pause |
 | **Home** | Save and quit |
 
-Enemies walk the roads, and each one that gets through costs lives. Archers and mages shoot, bombards blast what walks, barracks send soldiers to block the road. At level 4 a tower becomes one of two special towers, with abilities to buy. On the map, OK opens a stage and Left / Right picks Campaign, Heroic or Iron: 3 stars in the Campaign open the other two. **0** opens the upgrades: OK buys one with your stars, ⌫ gives them all back.
+Enemies walk the roads, and each one that gets through costs lives. Archers and mages shoot, bombards blast what walks, barracks send soldiers to block the road. At level 4 a tower becomes one of two special towers, with abilities to buy. On the map, OK opens a stage and Left / Right picks Campaign, Heroic or Iron: 3 stars in the Campaign open the other two. **0** opens the upgrades: OK buys one with your stars, ⌫ gives them all back. **5** opens the Hero Room: 15 stars open it, OK picks a hero and ⌫ gives the stars back. The hero joins at the first wave, levels up from 1 to 10 as it fights and comes back a while after it falls.
 
 <br clear="right">
 
@@ -938,6 +939,22 @@ A party game for 3 to 12 players and one calculator. Add everyone's names and pi
 | **Home** | Save and quit |
 
 Party games for 2, 3 or 4 players, or teams of 2 or 3, on one calculator. Each player has one key, and every game is played with it alone: tap it, hold it, or let it go at the right time. Before each game its rules show with the keys on a keypad, and it starts when everyone has pressed theirs. Each round won is a point, and the first to 3 takes the match.
+
+<br clear="right">
+
+## circloO
+
+<img src="../games/circloo/docs/shot.png" width="320" align="right" alt="circloO">
+
+| Key | What it does |
+| --- | --- |
+| **Left** and **Right** | Roll the ball |
+| **Up** and **Down** | Choose a level on the main menu |
+| **OK** | Confirm |
+| **Back** | Pause |
+| **Home** | Save and quit |
+
+Roll the ball and rock it back and forth to climb the walls. Collect seven circles to complete a level: each one makes the level grow by a ring. A circle with a dot can't be taken by your ball, so push another ball or a bar into it. Beating a level opens the next one, and Hard mode appears once you've beaten ten.
 
 <br clear="right">
 
