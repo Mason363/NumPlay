@@ -1,6 +1,6 @@
 """circloO's fonts (Open Sans and Open Sans Semibold, Apache-2.0) as 4-bit glyphs: src/font.h.
 
-    python3 -I tools/font.py <folder with OpenSans-Regular.ttf and OpenSans-Semibold.ttf> src/font.h
+    python3 tools/font.py <folder with OpenSans-Regular.ttf and OpenSans-Semibold.ttf> src/font.h
 """
 import sys
 from PIL import Image, ImageDraw, ImageFont

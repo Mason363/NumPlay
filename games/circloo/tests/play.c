@@ -79,7 +79,7 @@ static uint32_t autoplay(void) {
 }
 
 int main(int argc, char **argv) {
-  int takeevery = 0, rings = 0, level = 0, frames = 600, fuzz = -1, draw = 0, trace = 0, hard = 0, autop = 0;
+  int dumpkeys = 0, takemax = 99, takeevery = 0, rings = 0, level = 0, frames = 600, fuzz = -1, draw = 0, trace = 0, hard = 0, autop = 0;
   const char *out = "build/shots";
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--level") && i + 1 < argc) level = atoi(argv[++i]);
@@ -97,7 +97,9 @@ int main(int argc, char **argv) {
     } else if (!strcmp(argv[i], "--out") && i + 1 < argc) out = argv[++i];
     else if (!strcmp(argv[i], "--saves") && i + 1 < argc) host_save_dir(argv[++i]);
     else if (!strcmp(argv[i], "--auto")) autop = 1;
+    else if (!strcmp(argv[i], "--dumpkeys")) dumpkeys = 1;
     else if (!strcmp(argv[i], "--take") && i + 1 < argc) takeevery = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--takes") && i + 1 < argc) takemax = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--rings") && i + 1 < argc) rings = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--fuzz") && i + 1 < argc) fuzz = atoi(argv[++i]), rng = (uint32_t)fuzz * 2654435761u + 1;
     else if (!strcmp(argv[i], "--draw")) draw = 1;
@@ -126,13 +128,24 @@ int main(int argc, char **argv) {
       k |= fk;
     }
     host_keys = k;
+    if (dumpkeys) {   /* (the keys as tools/emu.py takes them: from-to ms of each left or right held) */
+      static uint32_t last;
+      static int from;
+      uint32_t lr = k & (K_LEFT | K_RIGHT);
+      if (lr != last || f == frames - 1) {
+        if (last) printf("%s%d-%d:%s", from ? "," : "KEYS ", from * 1000 / 60, f * 1000 / 60, last & K_LEFT ? "left" : "right");
+        if (!last && !from) from = 0;
+        from = f, last = lr;
+        if (f == frames - 1) printf("\n");
+      }
+    }
     host_time += 17;
     if (k & K_HOME) {
       ended = 1;
       break;
     }
     game_tick(k);
-    if (takeevery && g.state == S_PLAY && L.grow == 0 && f % takeevery == takeevery - 1) level_debug_take();
+    if (takeevery && g.state == S_PLAY && L.grow == 0 && L.taken < takemax && f % takeevery == takeevery - 1) level_debug_take();
     if (g.state == S_PLAY && L.ball >= 0) {   /* (a ball fast but not moving: something holds it wrongly) */
       const Body *b = &W.b[L.ball];
       if (b->vx * b->vx + b->vy * b->vy > 9 && b->x == lx && b->y == ly) stuck++;
