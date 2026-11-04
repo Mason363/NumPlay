@@ -350,6 +350,132 @@ __attribute__((noinline)) static void raster_tri(const Poly *q) {
   }
 }
 
+#if NP_SOFT_FLOAT
+/* ---------------------------------------------------------------- the same in integers
+ * (calculators without a floating-point unit: a polygon's depth plane read once a band, its edges stepped exactly from
+ * the corners' 1/8 pixels) */
+#include "np_fixed.h"
+
+/* the depth plane at pixel (x, y) (its middle), 16.16 */
+typedef struct {
+  int64_t za, zb, zc;
+} Plane;
+static inline void plane(const Poly *q, Plane *P) {
+  P->za = fx_from_float(q->a, 16), P->zb = fx_from_float(q->b, 16);
+  P->zc = fx_from_float(q->c, 16) + ((P->za + P->zb) >> 1);
+}
+static inline uint32_t depth_at_fx(const Plane *P, int x, int y) {
+  int64_t z = P->zc + P->zb * y + P->za * x;
+  return z < 0 ? 0 : z > (int64_t)65535 << 16 ? (uint32_t)65535 << 16 : (uint32_t)z;
+}
+static inline uint32_t depth_step_fx(const Plane *P) {
+  return (uint32_t)(P->za > (int64_t)30000 << 16 ? 30000 << 16 : P->za < -((int64_t)30000 << 16) ? -(30000 << 16) : (int32_t)P->za);
+}
+
+/* an edge from (xa, ya) down to (xb, yb), in 1/8 pixels: its x at a row's middle Y, 1/8 pixels with 12 more bits */
+typedef struct {
+  int32_t ya, yb, xa, dx, r, sh;
+} EdgeI;
+static void edge_i(EdgeI *E, int xa, int ya, int xb, int yb) {
+  uint32_t d = (uint32_t)(yb - ya);
+  int s = __builtin_clz(d);
+  E->ya = ya, E->yb = yb, E->xa = xa, E->dx = xb - xa, E->r = fx_rcp(d << s), E->sh = 49 - s;
+}
+static inline int32_t edge_x(const EdgeI *E, int32_t Y) {
+  return (E->xa << 12) + (int32_t)((int64_t)((Y - E->ya) * E->dx) * E->r >> E->sh);
+}
+/* the pixels [x0, x1) between two edges' places, as raster rounds them; false when none */
+static inline bool span_x(int32_t xl, int32_t xr, int *x0, int *x1) {
+  if (xl > xr) {
+    int32_t t = xl;
+    xl = xr, xr = t;
+  }
+  int a = xl <= -(8 << 12) ? 0 : (xl + (4 << 12)) >> 15, b = xr >= SCREEN_W * 8 << 12 ? SCREEN_W : (xr + (4 << 12)) >> 15;
+  if (a < 0) a = 0;
+  *x0 = a, *x1 = b;
+  return a < b;
+}
+
+static void raster_fx(const Poly *q) {
+  int ya = q->y0 > r_y0 ? q->y0 : r_y0, yb = q->y1 < r_y1 ? q->y1 : r_y1;
+  if (ya >= yb) return;
+  const Pos *pp = pos + q->v0;
+  int n = q->n;
+  int64_t area = 0;
+  for (int i = 0, j = n - 1; i < n; j = i++) area += (int64_t)pp[j].x * pp[i].y - (int64_t)pp[i].x * pp[j].y;
+  EdgeI e[2][MAXN];
+  int ne[2] = {0, 0};
+  for (int i = 0, j = n - 1; i < n; j = i++) {
+    int ay = pp[j].y, by = pp[i].y;
+    if (ay == by) continue;
+    int ka = j, kb = i;
+    bool down = by > ay;
+    if (!down) {
+      int t = ay;
+      ay = by, by = t;
+      ka = i, kb = j;
+    }
+    if (by <= ya * 8 || ay >= yb * 8) continue;
+    int side = (down == (area > 0)) ? 1 : 0;
+    int k = ne[side]++;
+    while (k > 0 && e[side][k - 1].ya > ay) e[side][k] = e[side][k - 1], k--;
+    edge_i(&e[side][k], pp[ka].x, ay, pp[kb].x, by);
+  }
+  if (!ne[0] || !ne[1]) return;
+  Plane P;
+  plane(q, &P);
+  uint16_t col = q->color;
+  int alpha = q->alpha >> 3;
+  uint32_t da = depth_step_fx(&P);
+  int li = 0, ri = 0;
+  for (int y = ya; y < yb; y++) {
+    int32_t Y = y * 8 + 4;
+    while (li < ne[0] - 1 && Y >= e[0][li].yb) li++;
+    while (ri < ne[1] - 1 && Y >= e[1][ri].yb) ri++;
+    const EdgeI *L = &e[0][li], *R = &e[1][ri];
+    if (Y < L->ya || Y >= L->yb || Y < R->ya || Y >= R->yb) continue;
+    int x0, x1;
+    if (!span_x(edge_x(L, Y), edge_x(R, Y), &x0, &x1)) continue;
+    uint32_t z = depth_at_fx(&P, x0, y);
+    uint16_t *zb = zbuf + (y - r_y0) * SCREEN_W, *cb = r_col + (y - r_y0) * SCREEN_W;
+    if (alpha >= 31) span_flat(zb + x0, cb + x0, x1 - x0, z, da, col);
+    else
+      for (int x = x0; x < x1; x++, z += da)
+        if ((uint16_t)(z >> 16) > zb[x]) cb[x] = r_mix565(cb[x], col, alpha);
+  }
+}
+
+__attribute__((noinline)) static void raster_tri_fx(const Poly *q) {
+  int ya = q->y0 > r_y0 ? q->y0 : r_y0, yb = q->y1 < r_y1 ? q->y1 : r_y1;
+  if (ya >= yb) return;
+  const Pos *p0 = pos + q->v0, *p1 = p0 + 1, *p2 = p0 + 2, *t;
+  if (p1->y < p0->y) t = p0, p0 = p1, p1 = t;
+  if (p2->y < p1->y) t = p1, p1 = p2, p2 = t;
+  if (p1->y < p0->y) t = p0, p0 = p1, p1 = t;
+  if (p0->y == p2->y) return;
+  EdgeI e02, e;
+  edge_i(&e02, p0->x, p0->y, p2->x, p2->y);
+  Plane P;
+  plane(q, &P);
+  uint32_t da = depth_step_fx(&P);
+  int r0 = (p0->y + 3) >> 3, r1 = (p1->y + 3) >> 3, r2 = (p2->y + 3) >> 3;
+  if (r0 < ya) r0 = ya;
+  if (r2 > yb) r2 = yb;
+  int m = r1 < r0 ? r0 : r1 > r2 ? r2 : r1, x0, x1;
+  for (int half = 0; half < 2; half++) {
+    int ys = half ? m : r0, ye = half ? r2 : m;
+    if ((half ? p1->y == p2->y : p0->y == p1->y) || ys >= ye) continue;
+    if (half) edge_i(&e, p1->x, p1->y, p2->x, p2->y);
+    else edge_i(&e, p0->x, p0->y, p1->x, p1->y);
+    for (int y = ys; y < ye; y++)
+      if (span_x(edge_x(&e02, y * 8 + 4), edge_x(&e, y * 8 + 4), &x0, &x1)) {
+        int k = (y - r_y0) * SCREEN_W + x0;
+        span_flat(zbuf + k, r_col + k, x1 - x0, depth_at_fx(&P, x0, y), da, q->color);
+      }
+  }
+}
+#endif
+
 void r_render(r_band_fn bg, r_band_fn overlay) {
   for (int band = 0; band < NBANDS; band++) {
     r_y0 = band * BAND_H, r_y1 = r_y0 + BAND_H;
@@ -358,6 +484,17 @@ void r_render(r_band_fn bg, r_band_fn overlay) {
     if (bg) bg();
     else
       for (int i = 0; i < SCREEN_W * BAND_H; i++) r_col[i] = 0;
+#if NP_SOFT_FLOAT
+    for (const Poly *q = polys, *e = polys + npolys; q < e; q++)
+      if (q->y1 > r_y0 && q->y0 < r_y1) {
+        if (q->n == 3) raster_tri_fx(q);
+        else raster_fx(q);
+      }
+    for (int i = 0; i < nalpha; i++) {
+      const Poly *q = &polys[MAXP - 1 - i];
+      if (q->y1 > r_y0 && q->y0 < r_y1) raster_fx(q);
+    }
+#else
     for (const Poly *q = polys, *e = polys + npolys; q < e; q++)
       if (q->y1 > r_y0 && q->y0 < r_y1) {
         if (q->n == 3) raster_tri(q);
@@ -368,6 +505,7 @@ void r_render(r_band_fn bg, r_band_fn overlay) {
       const Poly *q = &polys[MAXP - 1 - i];
       if (q->y1 > r_y0 && q->y0 < r_y1) raster(q);
     }
+#endif
     if (overlay) overlay();
     plat_push(0, r_y0, SCREEN_W, BAND_H, r_col);
   }
