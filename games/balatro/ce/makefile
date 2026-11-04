@@ -13,13 +13,13 @@ LTO = YES
 OUTPUT_MAP = YES
 GEN = gen
 DBL ?= -Xclang -mdouble=64
-SHARED = game score jokers cons ev util save draw
+SHARED = game score jokers cons ev save draw
 CEFLAGS = $(DBL) -DNP_PORT=1 -DNP_CE=1 -DNP_APP_ID=\"balatro\" -DNP_APP_NAME=\"Balatro\" \
   -I../src -I../../../platform/include -I$(GEN) -Isrc -Wno-unused-function -Wno-unused-parameter
 # (no inlining: 11 KB smaller; a frame pointer biased per function: 15 KB smaller)
 CFLAGS = -Wall -Oz -fno-inline-functions -mllvm -z80-frame-bias-policy=auto $(XFLAGS) $(CEFLAGS)
-EXTRA_C_SOURCES = $(SHARED:%=../src/%.c) $(GEN)/main.c $(GEN)/ui.c $(GEN)/data.c $(GEN)/ce_art.c
-DEPS = $(GEN)/ce_art.h $(GEN)/main.c $(GEN)/ui.c $(GEN)/data.c
+EXTRA_C_SOURCES = $(SHARED:%=../src/%.c) $(GEN)/main.c $(GEN)/ui.c $(GEN)/util.c $(GEN)/data.c $(GEN)/ce_art.c
+DEPS = $(GEN)/ce_art.h $(GEN)/main.c $(GEN)/ui.c $(GEN)/util.c $(GEN)/data.c
 LINKER_SCRIPT = ce.ld
 # (the toolchain's makefile builds bin/BALATRO.all: everything linked; the rules below cut it up)
 TARGET = $(NAME).all
@@ -34,7 +34,7 @@ ARTVARS = $(shell cat $(GEN)/appvars.txt 2>/dev/null)
 .PHONY: all host check
 all: $(BINDIR)/$(NAME).8xp $(CODEVARS:%=$(BINDIR)/%.8xv) $(BINDIR)/art.stamp
 
-$(GEN)/main.c $(GEN)/ui.c: $(GEN)/%.c: ../src/%.c tools/cesrc.py
+$(GEN)/main.c $(GEN)/ui.c $(GEN)/util.c: $(GEN)/%.c: ../src/%.c tools/cesrc.py
 	$(Q)mkdir -p $(GEN)
 	$(Q)$(PY) tools/cesrc.py $< $@
 

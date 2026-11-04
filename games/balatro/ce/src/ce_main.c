@@ -105,21 +105,24 @@ void eadk_timing_msleep(uint32_t ms) {
 #define KB_MODE (*(volatile uint8_t *)0xF50000)
 #define KB_DATA(g) (*(volatile uint16_t *)(0xF50010 + 2 * (g)))
 #define KB_ON (*(volatile uint8_t *)0xF00020 & 1)
+#define K(k) ((eadk_keyboard_state_t)1 << (k)) /* (made when compiling: the eZ80 shifts 64 bits by calls) */
 static const struct {
-  uint8_t group, bit, key;
+  uint8_t group, bit;
+  eadk_keyboard_state_t key;
 } KEYS[] = {
-    {7, 1 << 1, eadk_key_left}, {7, 1 << 2, eadk_key_right}, {7, 1 << 3, eadk_key_up}, {7, 1 << 0, eadk_key_down},
-    {1, 1 << 5, eadk_key_ok},   {6, 1 << 0, eadk_key_exe},   {6, 1 << 6, eadk_key_back}, {1, 1 << 6, eadk_key_home},
-    {1, 1 << 7, eadk_key_backspace}, {2, 1 << 7, eadk_key_alpha}, {1, 1 << 4, eadk_key_shift},
-    {2, 1 << 6, eadk_key_toolbox}, {5, 1 << 6, eadk_key_var}, {3, 1 << 7, eadk_key_xnt},
+    {7, 1 << 1, K(eadk_key_left)},      {7, 1 << 2, K(eadk_key_right)}, {7, 1 << 3, K(eadk_key_up)},
+    {7, 1 << 0, K(eadk_key_down)},      {1, 1 << 5, K(eadk_key_ok)},    {6, 1 << 0, K(eadk_key_exe)},
+    {6, 1 << 6, K(eadk_key_back)},      {1, 1 << 6, K(eadk_key_home)},  {1, 1 << 7, K(eadk_key_backspace)},
+    {2, 1 << 7, K(eadk_key_alpha)},     {1, 1 << 4, K(eadk_key_shift)}, {2, 1 << 6, K(eadk_key_toolbox)},
+    {5, 1 << 6, K(eadk_key_var)},       {3, 1 << 7, K(eadk_key_xnt)},
 };
 eadk_keyboard_state_t eadk_keyboard_scan(void) {
   KB_MODE = 2;
   while (KB_MODE & 3) {}
   eadk_keyboard_state_t s = 0;
   for (unsigned i = 0; i < sizeof KEYS / sizeof KEYS[0]; i++)
-    if ((uint8_t)KB_DATA(KEYS[i].group) & KEYS[i].bit) s |= (eadk_keyboard_state_t)1 << KEYS[i].key;
-  if (KB_ON) s |= (eadk_keyboard_state_t)1 << eadk_key_home;
+    if ((uint8_t)KB_DATA(KEYS[i].group) & KEYS[i].bit) s |= KEYS[i].key;
+  if (KB_ON) s |= K(eadk_key_home);
   return s;
 }
 

@@ -157,7 +157,7 @@ static uint8_t nearest_fixed(C c, int *d) {
 static void shade_tabs_reset(void);
 
 uint8_t ce_pal(C c) {
-  uint8_t hi = (uint8_t)(c >> 8), h = (uint8_t)((uint8_t)c + (uint8_t)(hi << 3 | hi >> 5)); /* (bytes: the eZ80 shifts by calls) */
+  uint8_t hi = ((const uint8_t *)&c)[1], h = (uint8_t)((uint8_t)c + (uint8_t)(hi << 3 | hi >> 5)); /* (bytes: the eZ80 shifts by calls) */
   if (pcache[h].ok && pcache[h].c == c) {
     uint8_t v = pcache[h].v;
     if (v < CE_DYN0 || v >= CE_SWIRL0) return v;
@@ -381,13 +381,22 @@ static const C code_col[17] = {
     HEXC(0xA782D1), HEXC(0x13AFCE), 0, HEXC(0x4584FA), HEXC(0x4F6367), 0, 0xFFFF, HEXC(0x4CA893), 0,
 };
 
-static const glyph_t *font(int f) { return (f & T_LARGE) ? font_large : (f & T_MED) ? font_med : font_small; }
+/* the flags' low byte (the sizes, T_X2, T_TIGHT...), and T_COND in the next */
+#define FLO(f) ((uint8_t)(f))
+#define FCOND(f) (((const uint8_t *)&(f))[1] & (T_COND >> 8))
+static const glyph_t *font(int f) { return FLO(f) & T_LARGE ? font_large : FLO(f) & T_MED ? font_med : font_small; }
 static const uint8_t *font_bits(int f) {
-  return (f & T_LARGE) ? font_large_bits : (f & T_MED) ? font_med_bits : font_small_bits;
+  return FLO(f) & T_LARGE ? font_large_bits : FLO(f) & T_MED ? font_med_bits : font_small_bits;
 }
-static int glyph_rows(int f) { return (f & T_LARGE) ? FONT_LARGE_H : (f & T_MED) ? FONT_MED_H : FONT_SMALL_H; }
-int g_cap(int f) { return ((f & T_LARGE) ? 11 : (f & T_MED) ? 9 : 7) * ((f & T_X2) ? 2 : 1); }
-int g_pitch(int f) { return ((f & T_LARGE) ? 15 : (f & T_MED) ? 13 : LINE_H) * ((f & T_X2) ? 2 : 1); }
+static int glyph_rows(int f) { return FLO(f) & T_LARGE ? FONT_LARGE_H : FLO(f) & T_MED ? FONT_MED_H : FONT_SMALL_H; }
+int g_cap(int f) {
+  int c = FLO(f) & T_LARGE ? 11 : FLO(f) & T_MED ? 9 : 7;
+  return FLO(f) & T_X2 ? c + c : c;
+}
+int g_pitch(int f) {
+  int p = FLO(f) & T_LARGE ? 15 : FLO(f) & T_MED ? 13 : LINE_H;
+  return FLO(f) & T_X2 ? p + p : p;
+}
 
 static const glyph_t *glyph(int f, unsigned ch, const uint8_t **bits) {
   if ((f & (T_COND | T_LARGE)) == (T_COND | T_LARGE) && ch >= '0' && ch <= '9') {
@@ -421,7 +430,7 @@ static int advance(int f, unsigned ch, const glyph_t *g) {
 /* a size's advances (characters 32 to 130), made when first asked for: measuring texts is a frame's busiest work */
 #define NADV 6
 static struct {
-  uint16_t key;
+  uint8_t key;
   int8_t a[99];
 } advs[NADV];
 static uint8_t adv_next;
@@ -429,17 +438,17 @@ static uint8_t adv_next;
 long ce_adv_made;
 #endif
 static const int8_t *adv_tab(int f) {
-  unsigned key = (unsigned)(f & (T_LARGE | T_MED | T_COND | T_TIGHT)) + 1;
+  uint8_t key = (uint8_t)((FLO(f) & (T_LARGE | T_MED | T_TIGHT)) | (FCOND(f) ? T_X2 : 0)) + 1; /* (T_X2: not a size) */
   for (int i = 0; i < NADV; i++)
     if (advs[i].key == key) return advs[i].a - 32;
   int i = adv_next;
   adv_next = (uint8_t)(adv_next == NADV - 1 ? 0 : adv_next + 1);
   const uint8_t *bits;
   for (unsigned ch = 32; ch <= 130; ch++) {
-    unsigned c = ch > (f & (T_LARGE | T_MED) ? 126u : 130u) ? '?' : ch;
+    unsigned c = ch > (FLO(f) & (T_LARGE | T_MED) ? 126u : 130u) ? '?' : ch;
     advs[i].a[ch - 32] = (int8_t)advance(f, c, glyph(f, c, &bits));
   }
-  advs[i].key = (uint16_t)key;
+  advs[i].key = key;
 #ifdef NP_HOST
   ce_adv_made++;
 #endif
@@ -468,7 +477,7 @@ static int textw(const char *s, int f, int one_line) {
   if (badge) w += 2;
   if (w > best) best = w;
   if (best > 0) best--;
-  return best * ((f & T_X2) ? 2 : 1);
+  return FLO(f) & T_X2 ? best + best : best;
 }
 int g_textw(const char *s, int f) { return textw(s, f, 0); }
 
