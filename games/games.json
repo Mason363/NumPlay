@@ -156,6 +156,7 @@
     "ports": [
       "sdl",
       "web",
+      "ti84ce",
       "nspire",
       "casio-cg"
     ]
@@ -254,8 +255,7 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg",
-      "ti84ce"
+      "casio-cg"
     ]
   },
   {
@@ -297,8 +297,7 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg",
-      "ti84ce"
+      "casio-cg"
     ]
   },
   {
@@ -323,8 +322,7 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg",
-      "ti84ce"
+      "casio-cg"
     ]
   },
   {
@@ -372,8 +370,7 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg",
-      "ti84ce"
+      "casio-cg"
     ]
   },
   {
@@ -398,8 +395,7 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg",
-      "ti84ce"
+      "casio-cg"
     ]
   },
   {
@@ -424,8 +420,7 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg",
-      "ti84ce"
+      "casio-cg"
     ]
   },
   {
@@ -450,8 +445,7 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg",
-      "ti84ce"
+      "casio-cg"
     ]
   },
   {
@@ -500,8 +494,7 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg",
-      "ti84ce"
+      "casio-cg"
     ]
   },
   {
@@ -575,8 +568,7 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg",
-      "ti84ce"
+      "casio-cg"
     ]
   },
   {
@@ -782,8 +774,7 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg",
-      "ti84ce"
+      "casio-cg"
     ]
   },
   {
@@ -1091,6 +1082,7 @@
     "ports": [
       "sdl",
       "web",
+      "ti84ce",
       "nspire",
       "casio-cg"
     ]
@@ -1383,8 +1375,7 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg",
-      "ti84ce"
+      "casio-cg"
     ]
   },
   {
@@ -1492,8 +1483,7 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg",
-      "ti84ce"
+      "casio-cg"
     ]
   },
   {
@@ -1682,8 +1672,7 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg",
-      "ti84ce"
+      "casio-cg"
     ]
   },
   {

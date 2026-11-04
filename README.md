@@ -7,7 +7,7 @@
 <p align="center">
   <b>29 free games for your NumWorks calculator, in one app.</b><br>
   Plus 45 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.<br>
-  Now on the TI-Nspire CX and Casio fx-CG50 too, and soon the TI-84 Plus CE.
+  Now on the TI-84 Plus CE, TI-Nspire CX and Casio fx-CG50 too.
 </p>
 
 <p align="center">
@@ -47,7 +47,7 @@
 
 <table>
   <tr>
-    <td align="center" width="25%"><img src="docs/media/calcs/ti84ce.png" height="150" alt="TI-84 Plus CE"><br><b>TI-84 Plus CE</b><br><sub>and TI-83 Premium CE<br>coming soon</sub></td>
+    <td align="center" width="25%"><a href="docs/calculators/ti-84-plus-ce.md"><img src="docs/media/calcs/ti84ce.png" height="150" alt="TI-84 Plus CE"><br><b>TI-84 Plus CE</b></a><br><sub>and TI-83 Premium CE<br>15 games</sub></td>
     <td align="center" width="25%"><a href="docs/calculators/ti-nspire.md"><img src="docs/media/calcs/nspire.png" height="150" alt="TI-Nspire CX II"><br><b>TI-Nspire CX</b></a><br><sub>CX and CX II, with Ndless<br>76 games</sub></td>
     <td align="center" width="25%"><a href="docs/calculators/casio-fx-cg50.md"><img src="docs/media/calcs/casio_cg50.png" height="150" alt="Casio fx-CG50"><br><b>Casio fx-CG50</b></a><br><sub>and Graph 90+E, fx-CG10, fx-CG20<br>72 games</sub></td>
     <td align="center" width="25%"><a href="docs/porting.md"><img src="docs/media/calcs/raspberrypi.png" height="110" alt="A Raspberry Pi 5"><br><b>Anything else</b></a><br><sub>a computer, a Raspberry Pi,<br>a board with a screen</sub></td>

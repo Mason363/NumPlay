@@ -58,7 +58,7 @@ CE_WARN = -Wall -Werror=shift-count-overflow -Werror=shift-overflow -Wshift-sign
 ifneq ($(PORT_CE),)
 # a game with a CE version of its own (PORT_CE: its folder, a CE toolchain project): its program and appvars
 port: $(PORT_DEPS)
-	$(Q) PATH="$(CEDEV)/bin:$$PATH" $(MAKE) -C $(PORT_CE) --no-print-directory
+	$(Q) env -u MAKEFLAGS -u MFLAGS -u TARGET PATH="$(CEDEV)/bin:$$PATH" $(MAKE) -C $(PORT_CE) --no-print-directory  # (not our TARGET=: the CE toolchain names its program with it)
 	@mkdir -p $(CE_DIR)/bin
 	$(Q) for f in $(PORT_CE)/bin/*.8xp $(PORT_CE)/bin/*.8xv; do [ -f "$$f" ] && cp "$$f" $(CE_DIR)/bin/; done; true
 	@echo "CE      $(CE_DIR)/bin"

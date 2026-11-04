@@ -62,7 +62,7 @@ def outputs(target, g):
     b = os.path.join(GAMES, g, "build", target)
     if target == "ti84ce":  # its program, and the appvars of a game with its own CE version (PORT_CE)
         d = os.path.join(b, g, "bin")
-        fs = sorted(f for f in os.listdir(d) if f.endswith((".8xp", ".8xv"))) if os.path.isdir(d) else []
+        fs = sorted((f for f in os.listdir(d) if f.endswith((".8xp", ".8xv"))), key=lambda f: (not f.endswith(".8xp"), f)) if os.path.isdir(d) else []
         return [(os.path.join(d, f), f) for f in fs] or [(os.path.join(d, ce_name(g) + ".8xp"), ce_name(g) + ".8xp")]
     if target == "nspire":
         return [(os.path.join(b, g + ".tns"), g + ".tns")]
@@ -77,7 +77,8 @@ README = {
     "ti84ce": """NumPlay for the TI-84 Plus CE and the TI-83 Premium CE
 
 How to install
-1. Send the .8xp files to the calculator with TI Connect CE (education.ti.com).
+1. Send the .8xp files to the calculator with TI Connect CE (education.ti.com),
+   and the .8xv files with them: Balatro's and FNAF's pictures.
 2. Send clibs.8xg too. It's the CE C libraries the games need, from
    github.com/CE-Programming/libraries/releases
 3. On OS 5.5 and later the calculator won't start the games by itself.
@@ -85,8 +86,10 @@ How to install
    On an older OS, press prgm, pick a game and press enter twice.
 
 Keys
-Arrows move, enter is OK, clear is Back, mode saves and quits.
-When a game says EXE, press 2nd.
+Arrows move, 2nd is OK, enter is EXE, clear is Back, mode saves and quits.
+
+Balatro and FNAF need most of the RAM free. If one doesn't start,
+archive your other programs.
 """,
     "nspire": """NumPlay for the TI-Nspire CX and CX II
 

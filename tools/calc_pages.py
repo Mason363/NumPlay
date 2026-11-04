@@ -14,11 +14,13 @@ PAGES = [
     ("ti-84-plus-ce", "ti84ce", "TI-84 Plus CE", "ti84ce.png",
      "the TI-84 Plus CE, TI-84 Plus CE Python, TI-84 Plus CE-T and TI-83 Premium CE",
      f"""1. Get `NumPlay-TI84CE.zip` from the [latest release]({REL}) and unzip it.
-2. Send the games you want (`.8xp` files) with [TI Connect CE](https://education.ti.com/en/products/computer-software/ti-connect-ce-sw).
+2. Send the games you want (`.8xp` files, and the `.8xv` files of Balatro and FNAF) with [TI Connect CE](https://education.ti.com/en/products/computer-software/ti-connect-ce-sw).
 3. Press **prgm**, pick a game, press **enter**.
 
-On OS 5.5 and newer, programs like these need [arTIfiCE](https://yvantt.github.io/arTIfiCE/) first. Each game also needs the CE C libraries (`clibs.8xg` from [the CE toolchain's releases](https://github.com/CE-Programming/libraries/releases/latest)), sent once.""",
-     "ti84ce", "The CE is the slowest of these calculators (48 MHz, no floating point unit) and has the least memory, so it gets the lighter games."),
+On OS 5.5 and newer, programs like these need [arTIfiCE](https://yvantt.github.io/arTIfiCE/) first. Each game also needs the CE C libraries (`clibs.8xg` from [the CE toolchain's releases](https://github.com/CE-Programming/libraries/releases/latest)), sent once. Balatro and FNAF need most of the RAM free: if one doesn't start, archive your other programs.
+
+Or pick just the games you want in [NumPlay Studio](https://mason363.github.io/NumPlay/customize/?calc=ti84ce).""",
+     "ti84ce", "The CE is the slowest of these calculators (48 MHz, no floating point unit) and has the least memory, so it gets the lighter games, and Balatro and Five Nights at Freddy's in versions made for it."),
     ("ti-nspire", "nspire", "TI-Nspire CX", "nspire.png",
      "the TI-Nspire CX and CX II, CAS or not",
      f"""1. Install [Ndless](https://ndless.me) on the calculator.

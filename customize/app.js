@@ -1099,7 +1099,7 @@
   const other = () => st.calc !== 'numworks';
   const known = (t) => Object.prototype.hasOwnProperty.call(CALCS, t);
   const portList = (t = st.calc) => (ports && known(t) && ports.targets[t]) || null;
-  const SOON = ['ti84ce'];  // (built, but not fast enough on the calculator yet)
+  const SOON = [];  // (calculators built for, but not ready yet)
   const calcReady = (t) => t === 'numworks' ||
     (!SOON.includes(t) && !!portList(t) && Object.keys(portList(t)).some((id) => buttons.has(id)));
   const onCalc = (id) => !other() || !!portList()[id];
