@@ -3,6 +3,7 @@
 
 const uint8_t *g_common[MAX_PARTS], *g_chap[MAX_PARTS];
 static const uint8_t *chead, *sprites_c, *sprites_h, *anims, *meta, *hair;
+const uint8_t *g_fonts[3];
 const uint8_t *g_tile_flags;
 static const uint8_t *tile_chunks;
 static int ntiles;
@@ -12,7 +13,7 @@ bool g_has_bg;
 int g_bg_scrollx, g_bg_scrolly;
 uint8_t g_bg_map[16];
 int g_chapter_berries;
-const uint8_t *g_remap, *g_remap_red, *g_remap_half;
+const uint8_t *g_remap, *g_remap_red, *g_remap_half, *g_remap_fade;
 static uint16_t pal[256];
 static uint8_t tint[3];
 
@@ -34,6 +35,7 @@ bool data_open(void) {
   if (memcmp(chead, "CELG", 4) || chead[4] != FORMAT) return false;
   const uint8_t *p = chead + 5 + COMMON * 2;
   sprites_c = CPTR(p), anims = CPTR(p + 3), meta = CPTR(p + 6), hair = CPTR(p + 9);
+  for (int i = 0; i < p[12] && i < 3; i++) g_fonts[i] = CPTR(p + 13 + 3 * i);
   memcpy(pal, chead + 5, COMMON * 2);
   return true;
 }
@@ -49,8 +51,8 @@ bool chapter_open(int n) {
   const uint8_t *p = h + 6 + (256 - COMMON) * 2;
   memcpy(tint, p, 3);
   g_chapter_berries = p[3];
-  g_remap_red = p + 4, g_remap_half = p + 4 + 256;
-  p += 4 + 512;
+  g_remap_red = p + 4, g_remap_half = p + 4 + 256, g_remap_fade = p + 4 + 512;
+  p += 4 + 768;
   ntiles = (int)R16(p);
   tile_chunks = p + 3;
   p += 3 + 3 * p[2];
@@ -83,9 +85,22 @@ static uint16_t shade(uint16_t c, int fade) {
   return (uint16_t)((r >> 3) << 10 | (g >> 3) << 5 | (b >> 3));
 }
 static int cur_fade = 256;
+uint8_t pal_nearest(uint32_t rgb) {
+  int r = (int)(rgb >> 19 & 31), g = (int)(rgb >> 11 & 31), b = (int)(rgb >> 3 & 31), best = BLACK;
+  unsigned bd = 0xFFFFFF;
+  for (int i = 3; i < 256; i++) {   /* (not 0, the see-through key, nor the hair's) */
+    uint16_t c = shade(pal[i], 256);
+    int dr = (c >> 10 & 31) - r, dg = (c >> 5 & 31) - g, db = (c & 31) - b;
+    unsigned d = (unsigned)(dr * dr + dg * dg + db * db);
+    if (d < bd) bd = d, best = i;
+  }
+  return (uint8_t)best;
+}
 static uint32_t cur_hair = 0xAC3232;
 static bool hair_set;
+uint8_t g_palette_gen = 1;   /* (changes with the palette: src/text.c finds its shades again) */
 void palette_apply(int fade) {
+  if (++g_palette_gen == 0) g_palette_gen = 1;
   uint16_t out[256];
   cur_fade = fade;
   out[0] = 0;

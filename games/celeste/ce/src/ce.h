@@ -87,7 +87,8 @@ extern uint8_t g_bg8[320 * 180];      /* the room's picture of them */
 extern int g_bg_refx, g_bg_refy;      /* the camera it was made for */
 extern uint8_t g_cells_gen;          /* changes when the rooms' tiles do (draw.c keeps the view's cells) */
 extern int g_chapter_berries;      /* the chapter's strawberries */
-extern const uint8_t *g_remap, *g_remap_red, *g_remap_half;   /* sprites drawn through g_remap if set */
+extern const uint8_t *g_remap, *g_remap_red, *g_remap_half, *g_remap_fade;
+extern const uint8_t *g_fonts[3];      /* Renogare: body text, titles, small (src/text.c) */   /* sprites drawn through g_remap if set */
 
 /* ---------------------------------------------------------------- drawing (draw.c) */
 enum { DF_FLIPX = 1, DF_FLIPY = 2, DF_SOLID = 4 };
@@ -114,8 +115,16 @@ void draw_rect_screen(int x, int y, int w, int h, uint8_t c);   /* view coordina
 void draw_line(int x0, int y0, int x1, int y1, uint8_t c);   /* world */
 void draw_pixel(int x, int y, uint8_t c);
 void draw_circle_fill(int cx, int cy, int r, uint8_t c);
-void draw_text(const char *s, int x, int y, uint8_t c);   /* screen coordinates (0..320, 0..240) */
-int text_width(const char *s);
+void draw_text(const char *s, int x, int y, uint8_t c);   /* a 5 x 7 font (before the appvars are open), screen */
+/* Renogare (src/text.c): FONT_BODY, FONT_TITLE; screen coordinates, (x, y) the line's top left; drawn in rgb over the
+ * colour `under` (its edges in between) */
+enum { FONT_BODY, FONT_TITLE, FONT_SMALL };
+int text_width(int font, const char *s);
+int text_height(int font);
+void text_draw(int font, const char *s, int x, int y, uint32_t rgb, uint32_t under);
+void text_center(int font, const char *s, int cx, int y, uint32_t rgb, uint32_t under);
+void text_right(int font, const char *s, int rx, int y, uint32_t rgb, uint32_t under);
+uint8_t pal_nearest(uint32_t rgb);    /* the palette's colour nearest (as shown) */
 void draw_cells_update(void);          /* the view's cells, for the camera now */
 extern int g_offx, g_offy;            /* the camera in its cell */
 void draw_layers_back(int ca, int cb, int ra, int rb);   /* background, bg tiles: the view's cells [ca, cb] x [ra, rb] */

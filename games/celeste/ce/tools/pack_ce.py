@@ -33,14 +33,83 @@ COMMON = 96             # colours every chapter shares (indices 0 .. COMMON - 1)
 HAIR, HAIR_DARK, WHITE, BLACK = 1, 2, 3, 4   # fixed colours (HAIR and HAIR_DARK change as Madeline's hair does)
 ROPE, ROPE_LIGHT = 5, 6   # ZipMover's ropes (663931) and their teeth (9b6157), drawn as lines
 MARGIN = 4              # tiles kept around each room (transitions show the next one's edges)
-FORMAT = 1              # bumped when the layout changes (the game checks it)
+FORMAT = 2              # bumped when the layout changes (the game checks it)
 
 # (map, chapter number, side): the chapters this build has
 CHAPTERS = [("1-ForsakenCity", 1)]
 AREA_STYLE = {1: dict(jumpthru="wood", spike="default", crumble="default")}
 
 GAMEPLAY = Atlas("Gameplay")
+GUI = Atlas("Gui")      # the menus' pictures, drawn at 1/6 (the game's 1920 x 1080 on 320 x 180)
 H = []                  # gen.h lines
+# the chapters' banners (OuiChapterSelect's title and accent colours)
+TITLE_BASE = {1: (0x6c, 0x7c, 0x81)}
+TITLE_ACCENT = {1: (0x2f, 0x34, 0x4b)}
+# Renogare, the game's font: (face, scale) as the NumWorks port has it (tools/textdata.py), body text and titles
+FONTS = [("renogare64", 1 / 4.8), ("renogare192", 1 / 7.2), ("renogare64", 0.6 / 4.8)]   # (and small: 0.6)
+
+
+def gui_image(path, scale, tint=None):
+    """A Gui picture at `scale` of its size (area-averaged, premultiplied), tinted (multiplied) if asked."""
+    from PIL import Image
+    img = GUI[path].image().astype(np.float32)
+    if tint is not None:
+        img[..., :3] *= np.array(tint, np.float32) / 255
+    h, w = img.shape[:2]
+    ow, oh = max(1, int(round(w * scale))), max(1, int(round(h * scale)))
+    chans = [np.array(Image.fromarray(img[..., k]).resize((ow, oh), Image.BOX)) for k in range(4)]
+    return np.clip(np.round(np.stack(chans, 2)), 0, 255).astype(np.uint8)
+
+
+def font_item(blob):
+    """The fonts (src/text.c): u8 count, then each one's offset (u16, from the item's start); each: u8 line height,
+    u8 base, u8 kerning pairs, then ' '..'~' (95): s8 x, s8 y offset, u8 w, h, u8 advance (quarter pixels), u16 its
+    bitmap (from the font's start: 2 bits a pixel, the left one low, rows padded to bytes); kerning (u8 a, b, s8 quarter
+    pixels)."""
+    from PIL import Image
+    sys.path.insert(0, os.path.join(HERE, "..", "..", "tools"))
+    from textdata import read_fnt
+    codes = list(range(32, 127))
+    fonts = []
+    for face, scale in FONTS:
+        chars, kern, line_h, base = read_fnt(face)
+        page = GUI[face + "_0"].image()[..., 3]
+        recs, bitmaps = [], bytearray()
+        for code in codes:
+            x, y, w, h, xo, yo, xa = chars.get(code, (0, 0, 0, 0, 0, 0, 0))
+            q = np.zeros((0, 0), np.uint8)
+            gx = gy = 0
+            if w and h:
+                g = page[y:y + h, x:x + w].astype(np.float32)
+                fx, fy = xo * scale - np.floor(xo * scale), yo * scale - np.floor(yo * scale)
+                ow, oh = int(np.ceil(w * scale + fx)) + 1, int(np.ceil(h * scale + fy)) + 1
+                big = np.zeros((int(round(oh / scale)) + 2, int(round(ow / scale)) + 2), np.float32)
+                ox, oy = int(round(fx / scale)), int(round(fy / scale))
+                big[oy:oy + h, ox:ox + w] = g
+                a = np.array(Image.fromarray(big).resize((ow, oh), Image.BOX))
+                rows, cols = np.where(a.max(axis=1) > 32)[0], np.where(a.max(axis=0) > 32)[0]
+                if len(rows) and len(cols):
+                    a = a[rows[0]:rows[-1] + 1, cols[0]:cols[-1] + 1]
+                    gx, gy = int(np.floor(xo * scale)) + int(cols[0]), int(np.floor(yo * scale)) + int(rows[0])
+                    q = np.clip(np.round(a / 255 * 3), 0, 3).astype(np.uint8)
+            off = len(bitmaps)
+            for row in q:
+                r = list(row) + [0] * (-len(row) % 4)
+                bitmaps += bytes(r[i] | r[i + 1] << 2 | r[i + 2] << 4 | r[i + 3] << 6 for i in range(0, len(r), 4))
+            recs.append((gx, gy, q.shape[1] if q.size else 0, q.shape[0] if q.size else 0, int(round(xa * scale * 4)), off))
+        kerns = [(a, b, int(round(v * scale * 4))) for (a, b), v in kern.items()
+                 if a in codes and b in codes and int(round(v * scale * 4))]
+        assert len(kerns) < 256
+        it = blob.item("font %s %.3f" % (face, scale))
+        it.u8(int(round(line_h * scale))).u8(int(round(base * scale))).u8(len(kerns))
+        head = 3 + 7 * len(recs) + 3 * len(kerns)
+        for gx, gy, gw, gh, adv, off in recs:
+            it.s8(gx).s8(gy).u8(gw).u8(gh).u8(adv).u16(head + off)
+        for a, b, v in kerns:
+            it.u8(a).u8(b).s8(v)
+        it.raw(bytes(bitmaps))
+        fonts.append(it)
+    return fonts
 
 
 def tex(path):
@@ -445,6 +514,22 @@ class Common:
             self.image(f.path)
         for f in family("collectables/strawberry/wings"):
             self.image(f.path)
+        # the menus' pictures (S_gui_...): the logo, chapter 1's icon and banner, the strawberry count's, the button
+        gi = self.images
+        logo = gui_image("logo", 1 / 6)
+        ys, xs = np.nonzero(logo[..., 3] >= 128)
+        gi["gui/logo"] = logo[ys.min():ys.max() + 1, xs.min():xs.max() + 1]   # (its place on the screen: GUI_LOGO_X, Y)
+        H.append(f"#define GUI_LOGO_X {xs.min()}\n#define GUI_LOGO_Y {ys.min()}")
+        gi["gui/city"] = gui_image("areas/city", 1.25 / 6)
+        title = gui_image("areaselect/title", 1 / 6, TITLE_BASE[1]).astype(np.float32)
+        acc = gui_image("areaselect/accent", 1 / 6, TITLE_ACCENT[1]).astype(np.float32)
+        gi["gui/banner1"] = np.clip(acc + title * (1 - acc[..., 3:] / 255), 0, 255).astype(np.uint8)
+        gi["gui/strawberry"] = gui_image("collectables/strawberry", 1 / 6)
+        gi["gui/strawberry_small"] = gui_image("collectables/strawberry", 0.6 / 6)
+        gi["gui/countbg"] = gui_image("strawberryCountBG", 1 / 6)
+        gi["gui/skull"] = gui_image("collectables/skullBlue", 0.6 / 6)
+        gi["gui/button"] = gui_image("textboxbutton", 1 / 6)
+        gi["gui/x"] = gui_image("x", 1 / 6)
 
     def hair_sprites(self):
         """Madeline's hair as src/player.c draws it: circles down it (hair00 scaled 0.25 + (1 - i / n) * 0.75, for 2-7
@@ -497,12 +582,14 @@ class Common:
         H.append(f"#define S_hair_bangs {first}")
 
     def palette(self):
-        counts = collections.Counter()
+        counts, gui = collections.Counter(), collections.Counter()
         for k, img in self.images.items():
-            count_colors(img, counts)
+            count_colors(img, gui if k.startswith("gui/") else counts)
         fixed = [0, 0x5466, 0x2C33, 0x7FFF, 0x0000,   # 0 black, HAIR, HAIR_DARK, white, black for the art
                  int(c15(np.array([0x66, 0x39, 0x31]))), int(c15(np.array([0x9B, 0x61, 0x57])))]   # ROPE, ROPE_LIGHT
-        extra = kmeans(counts, set(fixed), COMMON - len(fixed))
+        game = kmeans(counts, set(fixed), COMMON - len(fixed) - 16)   # (the game's own exact, the menus' after)
+        extra = game + kmeans(gui, set(fixed + game), COMMON - len(fixed) - len(game))
+        counts.update(gui)
         cols = fixed + extra
         print(f"common: {len(counts)} colours -> {len(cols)}")
         return cols + [0] * (COMMON - len(cols))   # (the chapters' own start at COMMON)
@@ -540,10 +627,14 @@ class Common:
                 hair.u16(v)
         table = self.sprites.table()
         self.blob.add(table)
+        fonts = font_item(self.blob)
         h = self.head
         h.raw(b"CELG").u8(FORMAT)
         h.raw(pal.rgb1555(0, COMMON))
         h.ref(table).ref(anims).ref(meta).ref(hair)
+        h.u8(len(fonts))
+        for f in fonts:
+            h.ref(f)
         H.append(f"#define COMMON {COMMON}")
         H.append(f"#define HAIR {HAIR}\n#define HAIR_DARK {HAIR_DARK}\n#define WHITE {WHITE}\n#define BLACK {BLACK}")
         H.append(f"#define ROPE {ROPE}\n#define ROPE_LIGHT {ROPE_LIGHT}")
@@ -862,8 +953,9 @@ class Chapter:
         h.raw(b"CELC").u8(FORMAT).u8(self.number)
         h.raw(pal.rgb1555(COMMON, 256))
         h.u8(self.tint[0]).u8(self.tint[1]).u8(self.tint[2]).u8(self.nberries)
-        # remaps: each colour tinted red (Color.Red: Madeline tired), and halved (Color.Gray)
-        for f in (lambda c: c * np.array([1, 0, 0]), lambda c: c * 0.5):
+        # remaps: each colour tinted red (Color.Red: Madeline tired), halved (Color.Gray), and under the pause menu's
+        # black (HudRenderer's BackgroundFade, 70 %)
+        for f in (lambda c: c * np.array([1, 0, 0]), lambda c: c * 0.5, lambda c: c * (1 - 178 / 255)):
             for i in range(256):
                 if i == 0 or i >= pal.n:
                     h.u8(i)

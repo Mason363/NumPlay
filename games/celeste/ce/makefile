@@ -1,7 +1,7 @@
 # Celeste for the TI-84 Plus CE: a CE C toolchain project (CEdev v15).
 #   make         bin/CELESTE.8xp and its appvars bin/CEL*.8xv
 #   make host    build/host/celeste: the same game on a computer, for the tests and pictures
-#   make test    the tests (tests/run.py) on the computer build
+#   make tests   Madeline against the NumWorks port (tests/physics.py; make host in games/celeste first)
 #   make data    data/ and src/gen.h again from the game (CELESTE=<its Content folder>)
 all: target appvars
 
@@ -28,10 +28,10 @@ build/host/celeste: $(HOST_SRC) $(wildcard src/*.h)
 	@mkdir -p $(@D)
 	cc $(HOST_FLAGS) -fsanitize=address,undefined $(HOST_SRC) -lz -o $@
 
-test: build/host/celeste
-	python3 tests/run.py build/host/celeste
+tests: build/host/celeste
+	python3 tests/physics.py build/host/celeste ../build/play
 
 data:
 	python3 tools/pack_ce.py
 
-.PHONY: all appvars host test data
+.PHONY: all appvars host tests data
