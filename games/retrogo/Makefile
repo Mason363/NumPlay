@@ -22,13 +22,14 @@ NES_SRC = $(addprefix src/nes/,nes6502.c nes_ppu.c nes_mmc.c mmclist.c nes_apu.c
   $(sort $(wildcard src/nes/mappers/*.c))
 SMS_SRC = src/sms/z80.c src/sms/sms.c src/sms/coleco_bios.c
 GW_SRC = $(addprefix src/gw/,gw.c gw_state.c gw_system.c sm510base.c sm510core.c sm510op.c sm511core.c sm500core.c sm500op.c sm5acore.c)
-CORE_SRC = $(GB_SRC) $(NES_SRC) $(SMS_SRC) $(GW_SRC)
+MD_SRC = $(addprefix src/md/,md.c md_z80.c m68kcpu.c gwenesis_bus.c gwenesis_io.c gwenesis_vdp_mem.c gwenesis_vdp_gfx.c)
+CORE_SRC = $(GB_SRC) $(NES_SRC) $(SMS_SRC) $(GW_SRC) $(MD_SRC)
 APP_SRC = src/main.c src/romtable.c src/pack.c
-CORE_H = $(wildcard src/*.h src/gb/*.h src/nes/*.h src/sms/*.h src/gw/*.h)
+CORE_H = $(wildcard src/*.h src/gb/*.h src/nes/*.h src/sms/*.h src/gw/*.h src/md/*.h) $(BUILD_DIR)/m68k_tab.h
 HEADERS = $(CORE_H) ../common/epsilon_app.h ../common/epsilon_files.h ../common/np_text.h \
   ../../launcher/src/gfx.h ../../launcher/src/np.h ../../launcher/src/font.h
 
-CFLAGS = -std=gnu11 $(shell $(NWLINK) eadk-cflags-device) -Isrc/nes
+CFLAGS = -std=gnu11 $(shell $(NWLINK) eadk-cflags-device) -Isrc/nes -I$(BUILD_DIR)
 CFLAGS += -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-implicit-fallthrough -Wno-missing-field-initializers
 # (gnuboy and nofrendo as they were written)
 CFLAGS += -Wno-old-style-declaration -Wno-misleading-indentation -Wno-unused-but-set-variable -Wno-maybe-uninitialized
@@ -66,6 +67,14 @@ $(BUILD_DIR)/font_data.o: ../../launcher/src/font_data.c ../../launcher/src/font
 	$(Q) $(CC) $(CFLAGS) -Os -c $< -o $@
 $(BUILD_DIR)/xfont.o: ../../launcher/src/xfont.c ../../launcher/src/np_xfont.h $(HEADERS)
 	$(Q) $(CC) $(CFLAGS) -Os -c $< -o $@
+
+# the 68000's opcode table (gwenesis' Musashi), made from its list of opcodes
+$(BUILD_DIR)/m68k_tab.h: tools/m68ktab.py src/md/m68kops.h
+	@mkdir -p $(BUILD_DIR)
+	$(Q) $(PY) tools/m68ktab.py src/md/m68kops.h $@
+# (gwenesis as it was written; its asserts off, as in Retro-Go)
+$(patsubst src/%.c,$(BUILD_DIR)/%.o,$(MD_SRC)) $(patsubst src/%.c,$(BUILD_DIR)/mod/%.o,$(MD_SRC)): CFLAGS += -DNDEBUG \
+  -Wno-unused-function -Wno-unused-variable -Wno-parentheses -Wno-unused-value -Wno-return-type -Wno-pointer-sign
 
 # the games: tools/romtable.py makes the table, empty or with ROMS. It runs at every build and leaves
 # the file as it is when it wouldn't change, so nothing is linked again for nothing.
@@ -106,7 +115,7 @@ $(BUILD_DIR)/sim-module.o: $(CORE_SRC) $(APP_SRC) $(HEADERS)
 
 # ------------------------------------------------------------------ tests on this computer
 HOST_CC = cc
-HOST_CFLAGS = -std=gnu11 -Isrc/nes -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined \
+HOST_CFLAGS = -std=gnu11 -Isrc/nes -I$(BUILD_DIR) -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-sanitize=alignment,shift \
   -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-implicit-fallthrough -Wno-missing-field-initializers
 TEST_ROMS ?= $(HOME)/Documents/Assets/gamesrc/retrogo/roms
 $(BUILD_DIR)/host/core: tests/host_core.c $(CORE_SRC) $(CORE_H)
