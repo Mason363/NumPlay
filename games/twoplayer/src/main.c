@@ -478,12 +478,21 @@ static void tanks_step(void) {
   for (int p = 0; p < 2; p++) {
     if (dead[p]) continue;
     int v = 0, turn = 0;
-    if (is_cpu(p)) tanks_cpu(&v, &turn);
-    else {
-      v = diry(p) < 0 ? 70 : diry(p) * -50, turn = dirx(p) * 8;
+    if (is_cpu(p)) {
+      tanks_cpu(&v, &turn);
+      ta[p] = (ta[p] + turn * ms) & 0x3FFF; /* 8 a ms: half a turn a second */
+    } else {
+      /* the arrows point where to go (diagonals too): the tank turns that way, at half a turn a second, and drives
+         once it faces within an eighth of a turn of it */
+      static const int8_t WANT[9] = {40, 48, 56, 32, -1, 0, 24, 16, 8}; /* in 64ths of a turn, y down */
+      int w = WANT[(diry(p) + 1) * 3 + dirx(p) + 1];
+      if (w >= 0) {
+        int d = (((w << 8) - ta[p] + 0x2000) & 0x3FFF) - 0x2000, step = 8 * ms;
+        ta[p] = (ta[p] + (d > step ? step : d < -step ? -step : d)) & 0x3FFF;
+        v = (d < 0 ? -d : d) <= 0x800 ? 70 : 0;
+      }
       if (acted(p)) fire(p);
     }
-    ta[p] = (ta[p] + turn * ms) & 0x3FFF; /* 8 a ms: half a turn a second */
     int x = tx_[p], y = ty_[p], dx = cos64(ta[p] >> 8) * v * ms / 496, dy = sin64(ta[p] >> 8) * v * ms / 496;
     if (!tank_stuck(p, x + dx, y + dy)) tx_[p] += dx, ty_[p] += dy;
     else if (!tank_stuck(p, x + dx, y)) tx_[p] += dx;

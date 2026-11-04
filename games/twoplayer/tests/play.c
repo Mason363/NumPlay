@@ -123,7 +123,12 @@ static void think(int level, int *p, int *t) {
     SWAP(tx_[0], tx_[1]); SWAP(ty_[0], ty_[1]); SWAP(ta[0], ta[1]); SWAP(dead[0], dead[1]); SWAP(dead_t[0], dead_t[1]);
     SWAP(ai_aim, ai_aim1); SWAP(ai_t, ai_t1); SWAP(ai_shot, ai_shot1);
     for (int i = 0; i < SHELLS; i++) sh[i].own = sh[i].own < 0 ? -1 : 1 - sh[i].own;
-    *p = (v > 0 ? B_UP : 0) | (turn > 0 ? B_RIGHT : turn < 0 ? B_LEFT : 0);
+    /* the arrows point where to go: ahead to drive, an eighth of a turn aside to drive while turning, a quarter
+       to turn on the spot */
+    static const uint8_t DIR8[8] = {B_RIGHT, B_RIGHT | B_DOWN, B_DOWN, B_DOWN | B_LEFT, B_LEFT, B_LEFT | B_UP, B_UP,
+                                    B_UP | B_RIGHT};
+    int k = v > 0 ? 8 : 16, a = (ta[0] >> 8) + (turn > 0 ? k : turn < 0 ? -k : 0);
+    *p = v > 0 || turn ? DIR8[((a + 4) & 63) / 8] : 0;
   } else if (game == CYCLES) {
     static const uint8_t BIT[4] = {B_RIGHT, B_DOWN, B_LEFT, B_UP};
     uint32_t next = bot.next;
