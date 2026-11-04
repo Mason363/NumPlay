@@ -325,7 +325,7 @@ void game_draw(void) {
       hud_draw();
       wipe_draw();
       BENCH(7);
-#ifdef CEL_BENCH
+#if defined(CEL_BENCH) && !defined(CEL_BENCH_PLAIN)   /* (PLAIN: the frame rate alone) */
       {   /* thousands of cycles a frame (over the last 32 frames): update, wait, cells, measure, back, entities, fg,
            * hud, swap, rest */
         static unsigned frames;

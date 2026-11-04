@@ -209,6 +209,19 @@ void draw_line(int x0, int y0, int x1, int y1, uint8_t c) {   /* (x1, y1) left o
   if (dry_box(imin(x0, x1), imin(y0, y1), imax(x0, x1) + 1, imax(y0, y1) + 1, c + (unsigned)(x1 - x0) * 5 + (unsigned)(y1 - y0)))
     return;
   if (imax(x0, x1) < g_clip_x0 || imin(x0, x1) >= g_clip_x1 || imax(y0, y1) < g_clip_y0 || imin(y0, y1) >= g_clip_y1) return;
+  if (y0 == y1) {   /* (level: a row at once) */
+    int a = x0 < x1 ? x0 : x1 + 1, b = x0 < x1 ? x1 : x0 + 1;
+    a = imax(a, g_clip_x0), b = imin(b, g_clip_x1);
+    if (a < b) memset(FB(a, y0), c, (size_t)(b - a));
+    return;
+  }
+  if (x0 == x1) {   /* (upright: down the column) */
+    int a = y0 < y1 ? y0 : y1 + 1, b = y0 < y1 ? y1 : y0 + 1;
+    a = imax(a, g_clip_y0), b = imin(b, g_clip_y1);
+    if (x0 < g_clip_x0 || x0 >= g_clip_x1) return;
+    for (uint8_t *d = FB(x0, a); a < b; a++, d += 320) *d = c;
+    return;
+  }
   int dx = iabs(x1 - x0), dy = -iabs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, err = dx + dy;
   while (x0 != x1 || y0 != y1) {
     if (x0 >= g_clip_x0 && y0 >= g_clip_y0 && x0 < g_clip_x1 && y0 < g_clip_y1) *FB(x0, y0) = c;
