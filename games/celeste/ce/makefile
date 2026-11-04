@@ -12,6 +12,7 @@ COMPRESSED_MODE = zx0
 ARCHIVED = YES
 CFLAGS = -Wall -Wextra -Wno-unused-parameter -Oz $(BENCH)
 HAS_PRINTF = NO
+override TARGET = $(NAME).8xp   # (not the TARGET=ti84ce `make port` passes down: platform/port.mk)
 
 include $(shell cedev-config --makefile)
 
