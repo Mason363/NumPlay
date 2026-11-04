@@ -28,6 +28,7 @@ typedef struct TxtCtx {
 void txt_msg(TxtCtx *c, int i, const char *s);
 void txt_face(TxtCtx *c, int i, char who, int fe);
 void txt_msg_subst(TxtCtx *c, int i, const char *s, const char *a);   /* ~1 in s filled with a */
+void txt_subst_into(char *o, int n, const char *s, const char *a);
 #define MSG(i, id) txt_msg(c, i, str(id))
 #define CHOICE(i, id) (c->choicemsg[i] = str(id))
 #define FACE(i, who, fe) txt_face(c, i, who, fe)
@@ -58,5 +59,6 @@ void gm_scr_text(TxtCtx *c);
 extern int g_noroom;
 /* "with (obj_x) con = n" in the texts' code: the cutscene object obj_x is told to go on to n (g_signal_*) */
 void gm_signal(int obj, int con);
-extern int g_signal_obj, g_signal_con;   /* the last scr_itemget found no room (noroom) */
+extern int g_signal_obj, g_signal_con;
+extern int g_door_dest;   /* the shortcut door's choice (obj_shortcut_door's door_destination) */   /* the last scr_itemget found no room (noroom) */
 #endif

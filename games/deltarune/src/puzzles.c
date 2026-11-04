@@ -435,8 +435,51 @@ static void suits_draw(void) {
   }
 }
 
+/* ---------------------------------------------------------------- Seam's shortcut doors (obj_shortcut_door) */
+/* on from plot 60 (Susie's room's from 154): Z asks where to (scr_text 460), and the dark takes the party there */
+static bool short_on;
+void shortcut_setup(void) {
+  Inst in;
+  if (!world_inst(obj_shortcut_door, 0, &in)) return;
+  short_on = plot() >= 60 && !(g_room == room_forest_fightsusie && plot() < 154);
+  Obj *d = obj_new(short_on ? spr_shortcut_door : spr_shortcut_door_off, in.x, in.y);
+  d->flags |= OF_TALK | OF_SOLID, d->event = EV_SHORTCUT, d->name = ACT_DOOR2;
+  obj_set_box(d, 0, 50, 72, 48);
+  if (short_on) {
+    Obj *l = obj_new(spr_weirdlight, in.x + 6, in.y + 96);
+    l->ispd = FX / 8, l->name = ACT_X6, l->flags |= OF_BACK;
+  }
+}
+int shortcut_event(Ev *c) {
+  EV_BEGIN;
+  g_signal_obj = -1, g_door_dest = -1;
+  if (!short_on) {
+    TALK(obj_shortcut_door_slash_Other_10_gml_13_0);
+    return 1;
+  }
+  talk_msc(460, -1);
+  WAIT_UNTIL(!text_active());
+  if (g_signal_obj != obj_shortcut_door || g_signal_con != 50 || g_door_dest < 0 || !room_open(g_door_dest)) return 1;
+  g_signal_obj = -1;
+  {
+    Obj *l = obj_find(ACT_X6);
+    if (l) obj_free(l);
+    obj_get(ACT_DOOR2)->img = FX;
+  }
+  pl.frozen = true;
+  WAIT(6);
+  g_fade_col = 0, g_fade = 255;
+  WAIT(30);
+  pl.dir = DIR_DOWN;
+  pl.frozen = false;
+  world_fade_in();
+  world_enter_marker(g_door_dest, 23);
+  EV_END;
+}
+
 /* ---------------------------------------------------------------- the room's puzzles, each frame */
 void puzzles_reset(void) {
+  short_on = false;
   memset(&G, 0, sizeof G);
   memset(&SP, 0, sizeof SP);
 }

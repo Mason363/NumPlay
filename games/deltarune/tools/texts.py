@@ -42,7 +42,7 @@ VARS = [
     (r"\bglobal\.larmor\b", "sv.larmor"), (r"\bglobal\.charweapon\[", "sv.weapon["),
     (r"\bglobal\.chararmor1\[", "sv.armor1["), (r"\bglobal\.chararmor2\[", "sv.armor2["), (r"\bglobal\.facing\b", "c->facing"), (r"\bglobal\.item\[", "sv.item["),
     (r"\bglobal\.keyitem\[", "sv.keyitem["), (r"\bglobal\.lv\b", "sv.lv"), (r"\bglobal\.litem\[", "sv.litem["),
-    (r"\bnoroom\b", "g_noroom"), (r"\btype\b", "c->type"), (r"\bargument0\b", "c->arg"), (r"\bargument1\b", "c->arg1"), (r"\bglobal\.msc\b", "c->msc"),
+    (r"\bnoroom\b", "g_noroom"), (r"\bdoor_destination\b", "g_door_dest"), (r"\bdoor_location\b", "g_room"), (r"\btype\b", "c->type"), (r"\bargument0\b", "c->arg"), (r"\bargument1\b", "c->arg1"), (r"\bglobal\.msc\b", "c->msc"),
     (r"\bscr_havechar\(", "have_char("), (r"\bscr_itemcheck\(", "gm_itemcheck("),
     (r"\bscr_keyitemcheck\(", "gm_keyitemcheck("), (r"\bscr_litemcheck\(", "gm_litemcheck("),
     (r"\bscr_weaponcheck_inventory\(", "gm_weaponcheck("), (r"\broom_width\b", "world_room_info()->w"),
@@ -75,7 +75,7 @@ class Tr:
         rest = re.sub(r'"[^"]*"', "", e)
         rest = re.sub(r"\bc->\w+|->\w+|sv\.\w+", "", rest)
         for w in re.findall(r"\b[A-Za-z_][A-Za-z0-9_.]*\b", rest):
-            if w in ("g_room", "g_noroom", "txt_msg_subst", "have_char", "spr_h", "spr_w", "world_scale", "gm_itemcheck", "gm_keyitemcheck", "gm_litemcheck", "gm_weaponcheck",
+            if w in ("g_room", "g_noroom", "g_door_dest", "txt_msg_subst", "have_char", "spr_h", "spr_w", "world_scale", "gm_itemcheck", "gm_keyitemcheck", "gm_litemcheck", "gm_weaponcheck",
                      "world_room_info") or (w.startswith("room_") and w in self.rooms):
                 continue
             if w in self.locals or w.startswith("spr_"):
@@ -202,6 +202,10 @@ class Tr:
             m = re.match(r"con = (\d+)$", ln)
             if within and m:
                 body.append("  gm_signal(%s, %s);" % (within, m.group(1)))
+                continue
+            m = re.match(r"door_destination = (\d+)$", ln)
+            if within and m:
+                body.append("  g_door_dest = %s;" % self.rooms[int(m.group(1))])
                 continue
             s = self.stmt(ln, used)
             if s is not None:

@@ -82,6 +82,7 @@ static struct {
   int dmg_show[3], dmg_t[3], dmg_kind[3];
   int shake;
   int enemy_turns;             /* the enemies' turns gone */
+  bool hold_text;              /* the box's text stays (OK is the enemy's: Rabbick's blowing) */
   int16_t hp_turn[4];          /* HP as the enemies' turn began */
 } B;
 
@@ -839,6 +840,8 @@ void hero_auto_attack(int c, int points) {
     }
 }
 void battle_set_battlemsg(uint16_t id) { battle_say(&id, 1); }
+void battle_text_hold(bool on) { B.hold_text = on; }
+void battle_end_text(void) { B.w_on = false; }
 
 static void fight_update(uint32_t pressed) {
   if (pressed & K_Z) {
@@ -1147,7 +1150,8 @@ void battle_update(uint32_t pressed, uint32_t held) {
   if (B.shake > 0) B.shake--;
   script_ask(BS_STEP, 0);
   bool text_was = B.w_on;
-  if (B.w_on && !writer_update(&B.w, B.phase == P_MENU ? 0 : pressed, B.phase == P_MENU ? 0 : held)) B.w_on = false;
+  bool keys_to_text = B.phase != P_MENU && !B.hold_text;
+  if (B.w_on && !writer_update(&B.w, keys_to_text ? pressed : 0, keys_to_text ? held : 0)) B.w_on = false;
   switch (B.phase) {
     case P_INTRO:
       B.bp = B.bp + ((152 - B.bp) < 40 ? (152 - B.bp + 1) / 2 : 30);

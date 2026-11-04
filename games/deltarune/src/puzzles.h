@@ -6,7 +6,7 @@
 #include "event.h"
 
 /* their events (in dw.c's range) */
-enum { EV_CHEST = 280, EV_GLOW_SWITCH, EV_GLOW_HINT, EV_GLOW_SHAKE, EV_SUITS_BUTTON, EV_PUSHBLOCK };
+enum { EV_CHEST = 280, EV_GLOW_SWITCH, EV_GLOW_HINT, EV_GLOW_SHAKE, EV_SUITS_BUTTON, EV_PUSHBLOCK, EV_SHORTCUT };
 
 bool party_on(int x0, int y0, int x1, int y1, bool followers);   /* Kris's box (or a follower's) over it */
 const char *keyitem_name(int id);
@@ -27,6 +27,8 @@ int suits_row(int i);                         /* the suit in place i (1 spade, 2
 void suits_force(int n, const int8_t *suit);  /* (solved before: as it was left) */
 int suits_button_event(Ev *c);
 
+void shortcut_setup(void);
+int shortcut_event(Ev *c);
 void puzzles_reset(void);
 void puzzles_step(void);
 void puzzles_draw_under(void);

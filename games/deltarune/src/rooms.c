@@ -220,12 +220,19 @@ void room_draw_over(void) {
 void room_menu(void) { menu_open(); }
 
 /* ---------------------------------------------------------------- the common events */
+/* the chapter as far as it is made: no door goes past the Forest's suits room (room_forest_puzzle1) */
+bool room_open(int room) {
+  const uint8_t *o = section(SEC_ORDER);
+  int last = rd16(o + 2 * room_forest_puzzle1);
+  return rd16(o + 2 * room) <= last;
+}
+
 static int ev_door(Ev *c) {
   EV_BEGIN;
   {
     int e;
     int dest = door_dest(c->self->obj, &e);
-    if (dest == g_room) return 1;
+    if (dest == g_room || !room_open(dest)) return 1;
     c->v[0] = dest, c->v[1] = e;
   }
   pl.frozen = true;
@@ -244,20 +251,23 @@ void txt_msg(TxtCtx *c, int i, const char *s) {
   c->msg[i] = s;
   if (i + 1 > c->nmsg) c->nmsg = i + 1;
 }
-void txt_msg_subst(TxtCtx *c, int i, const char *s, const char *a) {
-  static char bufs[4][160];
-  static int k;
-  char *o = bufs[k++ & 3];
+void txt_subst_into(char *o, int cap, const char *s, const char *a) {
   int n = 0;
-  for (int j = 0; s[j] && n < 150; j++) {
+  for (int j = 0; s[j] && n < cap - 1; j++) {
     if (s[j] == '~' && s[j + 1] == '1') {
-      for (const char *q = a; *q && n < 150; q++) o[n++] = *q;
+      for (const char *q = a; *q && n < cap - 1; q++) o[n++] = *q;
       j++;
     } else {
       o[n++] = s[j];
     }
   }
   o[n] = 0;
+}
+void txt_msg_subst(TxtCtx *c, int i, const char *s, const char *a) {
+  static char bufs[4][160];
+  static int k;
+  char *o = bufs[k++ & 3];
+  txt_subst_into(o, 160, s, a);
   txt_msg(c, i, o);
 }
 
@@ -276,6 +286,7 @@ void txt_face(TxtCtx *c, int i, char who, int fe) {
 }
 int g_noroom;
 int g_signal_obj = -1, g_signal_con;
+int g_door_dest = -1;
 void gm_signal(int obj, int con) { g_signal_obj = obj, g_signal_con = con; }
 void gm_itemget(int id) {
   g_noroom = 1;

@@ -6227,26 +6227,26 @@ L64680:;
   MSG(0, scr_text_slash_scr_text_gml_3103_0);
   if (!(c->choice == 0)) goto L64760;
   /* gml: with (obj_shortcut_door) {   // to L64756 */
-  /* gml: door_destination = 61 */
+  g_door_dest = room_field3;
   /* gml: } // end with */
 L64760:;
   if (!(c->choice == 1)) goto L64804;
   /* gml: with (obj_shortcut_door) {   // to L64800 */
-  /* gml: door_destination = 73 */
+  g_door_dest = room_forest_savepoint1;
   /* gml: } // end with */
 L64804:;
   if (!(c->choice == 2)) goto L64848;
   /* gml: with (obj_shortcut_door) {   // to L64844 */
-  /* gml: door_destination = 82 */
+  g_door_dest = room_forest_savepoint2;
   /* gml: } // end with */
 L64848:;
   if (!(c->choice == 3)) goto L64892;
   /* gml: with (obj_shortcut_door) {   // to L64888 */
-  /* gml: door_destination = 97 */
+  g_door_dest = room_forest_fightsusie;
   /* gml: } // end with */
 L64892:;
   /* gml: with (obj_shortcut_door) {   // to L65012 */
-  goto L64964; /* gml: if !(door_destination == door_location) goto L64964 */
+  if (!(g_door_dest == g_room)) goto L64964;
   MSG(0, scr_text_slash_scr_text_gml_3124_0);
   goto L65012;
 L64964:;

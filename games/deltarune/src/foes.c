@@ -10,6 +10,8 @@
 #include "battle.h"
 #include "event.h"
 #include "foes.h"
+#include "gmtexts.h"
+#include "plat.h"
 #include "text.h"
 #include "game.h"
 #include "gfx.h"
@@ -699,6 +701,191 @@ static bool kround_milk(Enemy *e, int t) {
   return false;
 }
 
+/* ================================================================ Rabbick */
+/* a dusty bunny: Blow On (press OK quickly for 90 frames) blows its dust away; its bunnies hop across the box, or
+ * one jumps on top and throws carrots down */
+static void rabbick_talk(Enemy *e) {
+  int rr = rnd_n(4);
+  if (rnd_n(50) == 0) rr = 4;
+  static const uint16_t l[5] = {obj_rabbick_enemy_slash_Step_0_gml_13_0, obj_rabbick_enemy_slash_Step_0_gml_14_0,
+                                obj_rabbick_enemy_slash_Step_0_gml_15_0, obj_rabbick_enemy_slash_Step_0_gml_16_0,
+                                obj_rabbick_enemy_slash_Step_0_gml_17_0};
+  static const uint16_t b[4] = {obj_rabbick_enemy_slash_Step_0_gml_21_0, obj_rabbick_enemy_slash_Step_0_gml_22_0,
+                                obj_rabbick_enemy_slash_Step_0_gml_23_0, obj_rabbick_enemy_slash_Step_0_gml_24_0};
+  uint16_t s = e->v[3] ? b[rr == 4 ? 0 : rr] : l[rr];
+  enemy_say(e, &s, 1);
+}
+static int box_left(void) { return box_cx() - 75; }
+static int box_right(void) { return box_cx() + 75; }
+static int box_top(void) { return box_cy() - 75; }
+static int box_bottom(void) { return box_cy() + 75; }
+/* obj_rabbitbullet: hops from the right to the left */
+static void rabbit_upd(Bullet *b) {
+  /* f: fx, fy; a: jumpsiner, b: jumpspeed, c: jumpheight */
+  b->a++;
+  if (b->alpha < 255 && b->harmless && !b->d) {
+    b->alpha = (uint8_t)min_i(255, b->alpha + 26);
+    if (b->alpha == 255) b->harmless = false;
+  }
+  float bottom = (float)box_bottom() - 20, js = gm_dsin(b->a / (float)b->b * 57.2958f) * b->c;
+  b->fx += b->fvx;
+  b->fy = bottom + js - b->c;
+  b->img = (int16_t)((js > b->c / 2.f ? 0 : js > 0 ? 2 : 1) * 16);
+  if (b->fx <= box_left() - 40) {
+    b->d = 1, b->harmless = true;
+    b->alpha = (uint8_t)max_i(0, b->alpha - 26);
+    if (!b->alpha) b->on = false;
+  }
+  b->x = (int32_t)(b->fx * BFX), b->y = (int32_t)(b->fy * BFX), b->vx = b->vy = 0;
+}
+/* obj_carrotthrower: jumps up, walks the box's top, drops carrots over the SOUL */
+static void carrot_upd(Bullet *b) { bullet_gm(b); }
+static void thrower_upd(Bullet *b) {
+  /* a: buffer, b: dir, c: con, d: timer */
+  b->a++;
+  if (b->a < 19) {
+    b->fvy += 1;
+    bullet_gm(b);
+    return;
+  }
+  if (b->a == 19) b->fvy = 0, b->fvx = 4.f * b->b;
+  b->fy = (float)box_top();
+  if (b->fx <= box_left() + 20 && b->fvx < 0) b->fx += 4, b->fvx = -b->fvx;
+  if (b->fx >= box_right() - 20 && b->fvx > 0) b->fx -= 4, b->fvx = -b->fvx;
+  if (b->c == 0) {
+    b->fx += b->fvx;
+    if (b->a >= 20 && fabsf(b->fx - soul_x()) < 30) b->c = 5, b->img = 0;
+  } else if (b->c == 5) {
+    b->img += 8;
+    if (b->img >= 32 && !b->d) {
+      b->d = 1;
+      int pop = enemies_alive();
+      Bullet *c = gm_bullet(spr_carrotbullet, b->fx, b->fy, (float)(pop >= 3 ? 5 : pop == 2 ? 6 : 7), 270, b->damage);
+      c->upd = carrot_upd, c->r = 6, c->scale = 256, c->ispd = 4, c->angle = 0, c->gp = 9, c->timep = 3;
+    }
+    if (b->img >= 48) {
+      int pop = enemies_alive();
+      b->c = 7, b->d = pop >= 3 ? 30 : pop == 2 ? 22 : 15, b->img = 0;
+    }
+  } else if (b->c == 7) {
+    if (--b->d <= 0) b->c = 0, b->d = 0;
+  }
+  b->x = (int32_t)(b->fx * BFX), b->y = (int32_t)(b->fy * BFX), b->vx = b->vy = 0;
+}
+static bool rabbit_thrower_exists(void) {
+  for (int i = 0; i < MAX_BUL; i++)
+    if (bul[i].on && bul[i].upd == thrower_upd) return true;
+  return false;
+}
+static void rabbick_attack(Enemy *e, int t) {
+  int pop = enemies_alive(), bmax = pop >= 3 ? 60 : pop == 2 ? 46 : 34;
+  if (t == 0) {
+    e->v[4] = rnd_n(2) ? 32 : 30, e->v[5] = 99;
+    if (e->v[4] == 32 && rabbit_thrower_exists()) e->v[4] = 30;
+    if (e->v[4] == 32) {
+      Bullet *b = gm_bullet(spr_rabbitthrower, (float)box_cx(), (float)box_cy(), 0, 0, e->at * 5);
+      b->upd = thrower_upd, b->b = (int16_t)(rnd_n(2) ? 1 : -1), b->fvy = -14, b->fvx = b->b * rnd_n(200) / 100.f;
+      b->harmless = false, b->r = 10, b->angle = 0, b->gp = 9, b->timep = 3;
+      return;
+    }
+  }
+  if (e->v[4] != 30) return;
+  if (++e->v[5] < bmax) return;
+  e->v[5] = 0;
+  Bullet *b = gm_bullet(spr_rabbitbullet, (float)box_right(), (float)box_cy(), 0, 0, e->at * 5);
+  b->upd = rabbit_upd, b->fvx = -3 - rnd_n(100) / 100.f, b->a = (int16_t)rnd_n(100), b->b = (int16_t)(8 + rnd_n(4));
+  b->c = (int16_t)(50 + rnd_n(10)), b->alpha = 0, b->harmless = true, b->r = 10, b->angle = 0, b->gp = 9, b->timep = 3;
+}
+static void rabbick_flavor(Enemy *e) {
+  static const uint16_t f[4] = {obj_rabbick_enemy_slash_Step_0_gml_79_0, obj_rabbick_enemy_slash_Step_0_gml_80_0,
+                                obj_rabbick_enemy_slash_Step_0_gml_81_0, obj_rabbick_enemy_slash_Step_0_gml_82_0};
+  flavor_std(e, f, 4, 0xFFFF, obj_rabbick_enemy_slash_Step_0_gml_83_0, obj_rabbick_enemy_slash_Step_0_gml_84_0);
+}
+/* v: 0 blowing (frames left), 1 blowamt, 2 blowanimtimer, 3 blown, 6 blow all, 7 after the text: 1 spare it, 2 all */
+static char blow_text[80];
+static void blow_say(uint16_t id) {
+  txt_subst_into(blow_text, sizeof blow_text, str(id), "OK");
+  const char *m[1] = {blow_text};
+  battle_say_strs(m, 1);
+}
+static bool rabbick_act(Enemy *e, int act) {
+  switch (act) {
+    case 1: say1(obj_rabbick_enemy_slash_Step_0_gml_118_0); return true;
+    case 2:
+      if (e->v[3]) {
+        say1(obj_rabbick_enemy_slash_Step_0_gml_138_0);
+        e->v[7] = 1;
+        return true;
+      }
+      blow_say(obj_rabbick_enemy_slash_Step_0_gml_128_0);
+      e->v[0] = 90, e->v[6] = 0;
+      battle_text_hold(true);
+      return true;
+    case 3: {
+      int left = 0;
+      for (int i = 0; i < MAX_EN; i++)
+        if (en[i].alive && en[i].def == e->def && !en[i].v[3]) en[i].v[0] = 90, en[i].v[6] = 1, left++;
+      if (!left) {
+        say1(obj_rabbick_enemy_slash_Step_0_gml_175_0);
+        e->v[7] = 2;
+        return true;
+      }
+      blow_say(obj_rabbick_enemy_slash_Step_0_gml_150_0);
+      battle_text_hold(true);
+      return true;
+    }
+    case 4: {
+      if (enemies_alive() > 1) {
+        static const uint16_t ids[2] = {obj_rabbick_enemy_slash_Step_0_gml_186_0, obj_rabbick_enemy_slash_Step_0_gml_188_0};
+        battle_say(ids, 2);
+      } else {
+        say1(obj_rabbick_enemy_slash_Step_0_gml_186_0);
+      }
+      for (int i = 0; i < MAX_EN; i++)
+        if (en[i].alive) en[i].comment = str(obj_rabbick_enemy_slash_Step_0_gml_191_0), en[i].automiss = true;
+      return true;
+    }
+    default: return false;
+  }
+}
+static int rabbick_script(Enemy *e, int ev, int arg) {
+  if (ev == BS_CANMOVE) return 1;
+  if (ev != BS_STEP) return 0;
+  if (arg) return e->v[0] > 0 || e->v[7] != 0;
+  if (e->v[7] && !battle_text_on()) {
+    if (e->v[7] == 2) {
+      for (int i = 0; i < MAX_EN; i++)
+        if (en[i].alive && en[i].def == e->def) enemy_spare(&en[i]);
+    } else {
+      enemy_spare(e);
+    }
+    e->v[7] = 0;
+  }
+  if (e->v[0] <= 0) return 0;
+  /* blowing: OK quickly; the dust shrinks */
+  if (--e->v[2] <= 0 && e->v[1] > 0) e->v[1]--;
+  if (g_pressed & K_Z) e->v[1] += 12, e->v[2] = 20, e->shake = 5;
+  if (--e->v[0] <= 0 || e->v[1] >= 100) {
+    if (e->v[1] >= 100 && !e->v[3]) mercy_add(e, 100), e->v[3] = 1, e->v[1] = 0;
+    e->v[0] = 0;
+    bool any = false;
+    for (int i = 0; i < MAX_EN; i++)
+      if (en[i].alive && en[i].def == e->def && en[i].v[0] > 0) any = true;
+    if (!any) {
+      battle_text_hold(false);
+      battle_end_text();
+    }
+  }
+  return 0;
+}
+static void rabbick_draw(Enemy *e, int x, int y) {
+  int a = e->fade ? max_i(0, 255 - e->fade * 12) : 255;
+  int sc = e->v[3] ? 256 : 256 - e->v[1] * 128 / 100;   /* (image_xscale 2 - blowamt / 100) */
+  uint16_t spr = e->hurt_t ? spr_rabbick_enemy_hurt : (e->mercy >= 100 || e->v[3]) ? spr_rabbick_enemy_spared : spr_rabbick_enemy;
+  if (sc != 256) gfx_sprite_ex(spr, 0, x + e->shake / 2 + (37 - 37 * sc / 256) / 2, y, sc, 256, 0, 0, (uint8_t)a);
+  else gfx_sprite(spr, e->hurt_t ? 0 : e->siner / 5, x + e->shake / 2, y, 0, (uint8_t)a);
+}
+
 /* ================================================================ the table */
 const EnemyDef foes_defs[] = {
   {obj_smallcheckers_enemy, spr_smallchecker_idle, spr_smallchecker_idle, spr_smallchecker_idle, 4, cround_talk, cround_attack,
@@ -707,6 +894,8 @@ const EnemyDef foes_defs[] = {
    ponman_draw, 150, NULL, 0, 0, 0, NULL, 0},
   {obj_jigsawryenemy, spr_jigsawry_idle, spr_jigsawry_hurt, spr_jigsawry_idle, 5, jigsawry_talk, jigsawry_attack, jigsawry_flavor,
    jigsawry_act, NULL, 140, NULL, 0, 0, 0, NULL, 0},
+  {obj_rabbick_enemy, spr_rabbick_enemy, spr_rabbick_enemy_hurt, spr_rabbick_enemy_spared, 5, rabbick_talk, rabbick_attack,
+   rabbick_flavor, rabbick_act, rabbick_draw, 170, NULL, 0, 0, 0, rabbick_script, 0},
   {obj_checkers_enemy, spr_checkers_idle, spr_checkers_idle, spr_checkers_idle, 3, kround_talk, kround_attack, kround_flavor,
    kround_act, NULL, 999, kround_draw_front, 0, 0, 0, kround_script, 0},
 };

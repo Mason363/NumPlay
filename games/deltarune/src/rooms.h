@@ -27,6 +27,7 @@ int room_next(int room, int n);    /* n rooms after it in the original's order (
 void room_step(void);              /* each frame in the overworld: the room's own (its cutscenes start) */
 const char *room_title(int room);
 Obj *room_add_npc(int obj, int x, int y);   /* (an npc a cutscene makes) */
+bool room_open(int room);          /* the chapter goes there so far */
 bool talk_msc(int msc, int side);  /* an npc's scr_text(msc) in the box, its choices going on (side 0 top, -1 by Kris) */
 void room_queue_event(int id);     /* the room's cutscene, started once nothing else runs */  /* the name the SAVE menu shows */
 

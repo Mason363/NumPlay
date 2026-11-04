@@ -91,7 +91,8 @@ static void tiles_step(bool interact) {
 
 static void tiles_draw(void) {
   for (int k = 0; k < MAX_TILES; k++)
-    if (T[k].on && alpha_of(k)) gfx_sprite(spr_checkertile_bullet, 0, (T[k].x - cam_x) / 2, (T[k].y - cam_y) / 2, 0, (uint8_t)alpha_of(k));
+    if (T[k].on && alpha_of(k))   /* (made at scale 1: half the room's own size) */
+      gfx_sprite_ex(spr_checkertile_bullet, 0, (T[k].x - cam_x) / 2, (T[k].y - cam_y) / 2, 128, 128, 0, 0, (uint8_t)alpha_of(k));
 }
 
 /* the white: 20 frames up, everyone moved back to x 340, then down */
@@ -416,7 +417,7 @@ static int ev_kround(Ev *c) {
   WAIT(30);
   for (c->v[0] = 0; c->v[0] < 3; c->v[0]++) {
     Obj *t = mk(spr_checkertile_bullet, 480 - c->v[0] * 40 + 400, 240 + c->v[0] * 40, ACT_X1 + c->v[0]);
-    t->alpha = 0, t->flags |= OF_BACK;
+    t->alpha = 0, t->flags |= OF_BACK, t->scale = 128;   /* (scr_marker: scale 1) */
   }
   for (c->v[0] = 1; c->v[0] <= 40; c->v[0]++) {
     for (int j = 0; j < 3; j++) act(ACT_X1 + j)->alpha = (uint8_t)(c->v[0] <= 10 ? c->v[0] * 25 : max_i(0, 255 - (c->v[0] - 10) * 25));

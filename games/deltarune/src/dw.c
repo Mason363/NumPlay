@@ -98,6 +98,7 @@ void dw_setup(int room) {
   }
   chasers_setup();
   chests_setup();
+  shortcut_setup();
   field_setup(room);
   forest_setup(room);
   castle_setup(room);
@@ -456,6 +457,7 @@ int dw_event(Ev *c) {
     case EV_GLOW_HINT: return glow_hint_event(c);
     case EV_GLOW_SHAKE: return glow_shake_event(c);
     case EV_SUITS_BUTTON: return suits_button_event(c);
+    case EV_SHORTCUT: return shortcut_event(c);
     case EV_DARKSLIDE: return ev_darkslide(c);
     default: return 1;
   }

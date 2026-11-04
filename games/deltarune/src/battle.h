@@ -143,6 +143,8 @@ void bullet_gm(Bullet *b);                       /* an upd: GameMaker's motion (
 void bullets_fade_out(void);                     /* with (obj_regularbullet) active = 0, fading */
 void hero_auto_attack(int c, int points);        /* member c (CH_*) hits the first enemy (a cutscene's FIGHT) */
 void battle_set_battlemsg(uint16_t id);          /* global.battlemsg[0]: the flavour text */
+void battle_text_hold(bool on);
+void battle_end_text(void);                      /* (and gone) */                  /* the box's text stays, OK doesn't go on (a mini-game's) */
 /* a cutscene's guest (the Hathy fight's Lancer): at a moment (BC_*) it slides in from the right, its words go in
  * the box (ids: texts and F_ face changes, -1 after), then it slides out and the battle goes on */
 enum { BC_CLEAN_TURN,                            /* the first enemies' turn, if Kris and the next lost no HP */
