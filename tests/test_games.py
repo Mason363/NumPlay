@@ -325,6 +325,11 @@ GAMES = {
                  presses((1500, "ok"), (2200, "ok"), (3000, "ok"), (4000, "ok"), (8000, "back"))
                  + [(5000, 7000, K["ok"])], 9000,
                  presses((1500, "ok"), (2500, "ok")) + [(3500, 5500, K["ok"])], 6500),
+    # Play, How to Play's three pages, the settings' Start, the intro, a walk; Home saves the round. Next time, from
+    # the copy, the title, then On/Off
+    "amongus": ("AmongUs.nwa", "amongus.sav",
+                presses((1500, "ok"), (2500, "ok"), (3500, "ok"), (4500, "ok"), (5500, "ok"), (7000, "right", 2000)),
+                10000, presses((1500, "down")), 3500),
     # Play, the first level, the gas held a while; Home saves. Next time, from the copy, the map, then On/Off
     "motox3m": ("MotoX3M.nwa", "motox3m.sav",
                 presses((1500, "ok"), (2200, "ok"), (3000, "up", 4000)), 9000,
@@ -428,7 +433,7 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "clashroyale": "clashroyale_saves.py",
           "catninja": "catninja_saves.py",
           "kingdomrush": "kingdomrush_saves.py",
-          "mrbullet": "mrbullet_saves.py", "motox3m": "motox3m_saves.py"}
+          "mrbullet": "mrbullet_saves.py", "motox3m": "motox3m_saves.py", "amongus": "amongus_saves.py"}
 
 
 def paperclips_ok(v):
@@ -729,6 +734,8 @@ CHECKS = {
     "mrbullet": (lambda v: len(v) == 1216 and v[:4] == b"MRB1" and v[8] == 3 and v[604] == 1 and v[1208] == 1,) * 2,
     # "MX3S", version 1, its size (264): the first level open (8), the second locked, the first bike (260)
     "motox3m": (lambda v: len(v) == 264 and v[:4] == b"MX3S" and v[8] <= 3 and v[9] == 0xFF and v[260] == 1,) * 2,
+    # "AUSG", version 1: the round, kept; after the reinstall, from the copy, the same
+    "amongus": (lambda v: v[:4] == b"AUSG" and v[4] == 1,) * 2,
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept

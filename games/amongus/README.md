@@ -79,7 +79,7 @@ A few tasks also take the digit keys: the reactor's buttons, the oxygen code, th
 Inspired by Among Us by Innersloth, not affiliated with them. Go play the original.
 
 * The ship, the players, the tasks, the meetings, the buttons and the kill come from the game's Android release, read by [tools/pack.py](tools/pack.py) into `src/data.bin`. Its rules and numbers follow the game's own code.
-* The text is in **Liberation Sans**, the game's font (SIL Open Font License 1.1, see [LICENSES/OFL-1.1-LiberationSans.txt](LICENSES/OFL-1.1-LiberationSans.txt)).
+* The text is in **Liberation Sans**, the game's font (SIL Open Font License 1.1, see [LICENSES/OFL-1.1-LiberationSans.txt](../../LICENSES/OFL-1.1-LiberationSans.txt)).
 
 Made by Mason Chen as part of NumPlay.
 

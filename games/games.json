@@ -1613,5 +1613,27 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/motox3m",
     "default": false,
     "xl": true
+  },
+  {
+    "id": "amongus",
+    "rank": 45,
+    "title": "Among Us",
+    "tagline": "Find the Impostor, or be one",
+    "credit": "Based on Among Us by Innersloth",
+    "top": "0x1E2C4A",
+    "bottom": "0x0A0E1A",
+    "accent": "0xC51111",
+    "colors": 16,
+    "records": [
+      "amongus.sav",
+      "amongus.set",
+      "amongus_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/amongus",
+    "default": false,
+    "xl": true
   }
 ]
