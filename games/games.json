@@ -254,7 +254,8 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg"
+      "casio-cg",
+      "ti84ce"
     ]
   },
   {
@@ -346,7 +347,8 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg"
+      "casio-cg",
+      "ti84ce"
     ]
   },
   {
@@ -370,7 +372,8 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg"
+      "casio-cg",
+      "ti84ce"
     ]
   },
   {
@@ -648,7 +651,8 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg"
+      "casio-cg",
+      "ti84ce"
     ]
   },
   {
@@ -673,7 +677,8 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg"
+      "casio-cg",
+      "ti84ce"
     ]
   },
   {
@@ -698,7 +703,8 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg"
+      "casio-cg",
+      "ti84ce"
     ]
   },
   {
@@ -723,7 +729,8 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg"
+      "casio-cg",
+      "ti84ce"
     ]
   },
   {
@@ -748,7 +755,8 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg"
+      "casio-cg",
+      "ti84ce"
     ]
   },
   {
@@ -1484,7 +1492,8 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg"
+      "casio-cg",
+      "ti84ce"
     ]
   },
   {
@@ -1564,8 +1573,7 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg",
-      "ti84ce"
+      "casio-cg"
     ]
   },
   {
@@ -1674,7 +1682,8 @@
       "sdl",
       "web",
       "nspire",
-      "casio-cg"
+      "casio-cg",
+      "ti84ce"
     ]
   },
   {
