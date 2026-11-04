@@ -911,6 +911,9 @@ int main(void) {
   np_app_begin();
   color_t *their_strip = gfx_buf;
   gfx_buf = strip;
+#ifdef __TICE__
+  gfx_pure = true; /* (draws only with gfx_*) */
+#endif
   static const uint32_t TEAM[2] = {0xEF4136, 0x2E7CF6};
   for (int p = 0; p < 2; p++)
     team[p] = gfx_rgb(TEAM[p]), light[p] = gfx_rgb(gfx_lerp888(TEAM[p], 0xFFFFFF, 120)), dark[p] = gfx_rgb(gfx_lerp888(TEAM[p], 0, 110));

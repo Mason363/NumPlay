@@ -667,12 +667,39 @@ static uint8_t bg, ink, soft;
 static int clip_x0, clip_x1, clip_y0, clip_y1;  /* what may be drawn on (the canvas, or the screen) */
 
 static uint8_t inv(float e, int v) { return (uint8_t)(v + (255 - 2 * v) * e + 0.5f); }
+#ifdef __TICE__
+/* The TI-84 Plus CE: a band's tiles are drawn only where what draws them changed. The band's calls run once to
+   sign what they would draw (their arguments, hashed into each tile they cover); then only the tiles whose
+   signature changed are drawn (ce_x0 to ce_x1) and sent. */
+#include <string.h>
+static bool signing;
+static uint32_t tsig[TILES_X];
+static int ce_x0, ce_x1 = W;
+static void sign(const int *v, int n, int x0, int x1) {
+  uint32_t h = 2166136261u;
+  for (int i = 0; i < n; i++) h = (h ^ (uint32_t)v[i]) * 16777619u;
+  for (int c = x0 / TILE_W; c <= (x1 - 1) / TILE_W && c < TILES_X; c++) tsig[c] = (tsig[c] ^ h) * 16777619u;
+}
+#endif
 static void clip_screen(void) { clip_x0 = 0, clip_x1 = W, clip_y0 = 0, clip_y1 = H; }
 static void fill(int x, int y, int w, int h, uint8_t c) {
   int x0 = x < clip_x0 ? clip_x0 : x, x1 = x + w > clip_x1 ? clip_x1 : x + w;
   int y0 = y < clip_y0 ? clip_y0 : y, y1 = y + h > clip_y1 ? clip_y1 : y + h;
   if (y0 < band_y) y0 = band_y;
   if (y1 > band_y + BAND) y1 = band_y + BAND;
+#ifdef __TICE__
+  if (x0 >= x1 || y0 >= y1) return;
+  if (signing) {
+    const int v[] = {1, x0, x1, y0, y1, c};
+    sign(v, 6, x0, x1);
+    return;
+  }
+  if (x0 < ce_x0) x0 = ce_x0;
+  if (x1 > ce_x1) x1 = ce_x1;
+  if (x0 >= x1) return;
+  for (int r = y0; r < y1; r++) memset(band + (r - band_y) * W + x0, c, (size_t)(x1 - x0));
+  return;
+#endif
   for (int r = y0; r < y1; r++)
     for (int c2 = x0; c2 < x1; c2++) band[(r - band_y) * W + c2] = c;
 }
@@ -684,6 +711,38 @@ static void blit(int region, int sx, int sy, int w, int h, int dx, int dy, int a
   int y0 = dy < clip_y0 ? clip_y0 : dy, y1 = dy + h > clip_y1 ? clip_y1 : dy + h;
   if (y0 < band_y) y0 = band_y;
   if (y1 > band_y + BAND) y1 = band_y + BAND;
+#ifdef __TICE__
+  if (signing) {
+    if (x0 < x1 && y0 < y1) {
+      const int v[] = {2, region, sx, sy, dx, dy, x0, x1, y0, y1, a};
+      sign(v, 11, x0, x1);
+    }
+    return;
+  }
+  if (x0 < ce_x0) x0 = ce_x0;
+  if (x1 > ce_x1) x1 = ce_x1;
+#endif
+#ifdef __TICE__ /* (the sheet's 2-bit pixels a byte at a time, no shifts) */
+  if (x0 < x1) {
+    static uint8_t px4[256][4];
+    if (!px4[255][0])
+      for (int v = 0; v < 256; v++)
+        for (int k = 0; k < 4; k++) px4[v][k] = (uint8_t)(v >> (2 * k) & 3);
+    for (int y = y0; y < y1; y++) {
+      int u = sx + x0 - dx;
+      const uint8_t *src = sheet + rg->off + (sy + y - dy) * rg->stride + (u >> 2);
+      uint8_t *d = band + (y - band_y) * W, k = (uint8_t)(u & 3);
+      for (int x = x0; x < x1; x++) {
+        uint8_t t = px4[*src][k];
+        if (++k == 4) k = 0, src++;
+        if (!t) continue;
+        if (a >= 256) d[x] = tone[t];
+        else d[x] = (uint8_t)(d[x] + ((tone[t] - d[x]) * a >> 8));
+      }
+    }
+  }
+  return;
+#endif
   for (int y = y0; y < y1; y++) {
     const uint8_t *src = sheet + rg->off + (sy + y - dy) * rg->stride;
     uint8_t *d = band + (y - band_y) * W;
@@ -869,7 +928,45 @@ static uint32_t tile_hash(int x) {
   }
   return h;
 }
+#ifdef __TICE__
+static uint8_t grey_mem[512 + 255];
+/* n (1..255) greys from s as colours at d, through the tables at t (256-aligned) */
+__attribute__((naked)) static void grey_row(uint16_t *d, const uint8_t *s, unsigned n, const uint8_t *t) {
+  __asm__(
+    "ld iy, 0\n"
+    "add iy, sp\n"
+    "push ix\n"
+    "ld ix, (iy + 3)\n"
+    "ld de, (iy + 6)\n"
+    "ld b, (iy + 9)\n"
+    "ld hl, (iy + 12)\n"
+    "1:\n"
+    "ld a, (de)\n"
+    "ld l, a\n"
+    "ld a, (hl)\n"
+    "ld (ix + 0), a\n"
+    "inc h\n"
+    "ld a, (hl)\n"
+    "ld (ix + 1), a\n"
+    "dec h\n"
+    "inc de\n"
+    "lea ix, ix + 2\n"
+    "djnz 1b\n"
+    "pop ix\n"
+    "ret\n");
+}
+#endif
 static void send_band(int b) {
+#ifdef __TICE__ /* (the TI-84 Plus CE: the tiles that changed, ce_x0 to ce_x1, not hashed) */
+  uint8_t *t = (uint8_t *)(((unsigned)grey_mem + 255) & ~255u); /* the colours' low bytes, then their high bytes */
+  if (!t[256 + 255])
+    for (int v = 0; v < 256; v++) t[v] = (uint8_t)rgb((uint8_t)v), t[256 + v] = (uint8_t)(rgb((uint8_t)v) >> 8);
+  int w = ce_x1 - ce_x0;
+  for (int y = 0; y < BAND; y++)
+    for (int i = 0; i < w; i += 160) grey_row(upload + y * w + i, band + y * W + ce_x0 + i, (unsigned)(w - i < 160 ? w - i : 160), t);
+  eadk_display_push_rect((eadk_rect_t){(uint16_t)ce_x0, (uint16_t)(b * BAND), (uint16_t)w, BAND}, upload);
+  return;
+#endif
   int run = -1;
   for (int c = 0; c <= TILES_X; c++) {
     bool changed = false;
@@ -881,6 +978,19 @@ static void send_band(int b) {
     if (changed && run < 0) run = c;
     if (!changed && run >= 0) {
       int x = run * TILE_W, w = (c - run) * TILE_W;
+#ifdef __TICE__ /* (a table of the 256 greys) */
+      {
+        static uint16_t grey[256];
+        if (!grey[255])
+          for (int v = 0; v < 256; v++) grey[v] = rgb((uint8_t)v);
+        for (int y = 0; y < BAND; y++) {
+          const uint8_t *q = band + y * W + x;
+          uint16_t *u = upload + y * w;
+          for (int i = 0; i < w; i++) u[i] = grey[q[i]];
+        }
+      }
+      if (0)
+#endif
       for (int y = 0; y < BAND; y++)
         for (int i = 0; i < w; i++) upload[y * w + i] = rgb(band[y * W + x + i]);
       eadk_display_push_rect((eadk_rect_t){(uint16_t)x, (uint16_t)(b * BAND), (uint16_t)w, BAND}, upload);
@@ -897,6 +1007,31 @@ static void frame(void) {
   int cw = container_w();
   for (int b = 0; b < BANDS; b++) {
     band_y = b * BAND;
+#ifdef __TICE__
+    signing = true, ce_x0 = 0, ce_x1 = W;
+    for (int c = 0; c < TILES_X; c++) tsig[c] = 2166136261u;
+    const int v[] = {bg, tone[1], tone[2], tone[3], soft, ink, cw, menu, menu_sel};
+    sign(v, 9, 0, W);
+    draw_canvas(cw);
+    if (menu) draw_menu();
+    draw_hints();
+    signing = false;
+    int first = -1, last = -1;
+    for (int c = 0; c < TILES_X; c++)
+      if (!hashes_valid || tsig[c] != hashes[b][c]) {
+        if (first < 0) first = c;
+        last = c, hashes[b][c] = tsig[c];
+      }
+    if (first < 0) continue;
+    ce_x0 = first * TILE_W, ce_x1 = (last + 1) * TILE_W;
+    for (int y = 0; y < BAND; y++) memset(band + y * W + ce_x0, bg, (size_t)(ce_x1 - ce_x0));
+    draw_canvas(cw);
+    if (menu) draw_menu();
+    draw_hints();
+    send_band(b);
+    ce_x0 = 0, ce_x1 = W;
+    continue;
+#endif
     for (int i = 0; i < W * BAND; i++) band[i] = bg;
     draw_canvas(cw);
     if (menu) draw_menu();

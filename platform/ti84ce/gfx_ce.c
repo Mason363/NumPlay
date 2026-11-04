@@ -160,11 +160,13 @@ void gfx_list(const void *p, unsigned bytes) {
     bytes -= n;
   }
 }
-void gfx_list_always(void) {
+void gfx_list_rows(int top, int bottom) {
   if (!gfx_listing) return;
-  for (cursor_t *k = strip_of[gfx_y0], *e = strip_of[gfx_y1 - 1]; k <= e; k++)
-    k->whole = false, k->changed = k->full = true;
+  top = NP_MAX(top, gfx_y0), bottom = NP_MIN(bottom, gfx_y1);
+  if (top >= bottom) return;
+  for (cursor_t *k = strip_of[top], *e = strip_of[bottom - 1]; k <= e; k++) k->whole = false, k->changed = k->full = true;
 }
+void gfx_list_always(void) { gfx_list_rows(gfx_y0, gfx_y1); }
 #define LIST(top, bottom, kind, ...)                                                                      \
   do {                                                                                                    \
     if (gfx_listing) {                                                                                    \

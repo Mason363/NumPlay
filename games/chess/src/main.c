@@ -37,11 +37,17 @@ static C buf[900];
 
 /* ------------------------------------------------------------ Drawing */
 
+#ifdef __TICE__ /* the TI-84 Plus CE: its own mixing (the same colours, without a 24-bit int's overflow) */
+#include "../../../platform/ti84ce/ce_draw.h"
+__attribute__((naked)) static C ce_mix(C a, C b, unsigned t) { __asm__(CE_MIX_ASM); }
+static C mix(C a, C b, int t) { return ce_mix(a, b, (unsigned)t); }
+#else
 static C mix(C a, C b, int t) {
   uint32_t A = (a | a << 16) & 0x07E0F81F, B = (b | b << 16) & 0x07E0F81F;
   uint32_t M = ((A * (32 - t) + B * t) >> 5) & 0x07E0F81F;
   return M | M >> 16;
 }
+#endif
 
 static void fill(int x, int y, int w, int h, C c) {
   eadk_display_push_rect_uniform((eadk_rect_t){x, y, w, h}, c);

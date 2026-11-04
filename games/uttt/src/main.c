@@ -236,6 +236,9 @@ int main(void) {
   np_app_begin();
   color_t *their_strip = gfx_buf;
   gfx_buf = strip;
+#ifdef __TICE__
+  gfx_pure = true; /* (draws only with gfx_*) */
+#endif
   team[0] = HEX(0xFF4D6D), team[1] = HEX(0x3EC5FF);
   now = (uint32_t)eadk_timing_millis();
   seed = eadk_random() | 1;

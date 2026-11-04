@@ -255,6 +255,25 @@ static void overlay(void) {
 /* the picture's rows in the strip, through the cabinet's film */
 static void scene(void *ctx) {
   gfx_fill(0, gfx_y0, SCREEN_W, gfx_y1 - gfx_y0, 0);
+#ifdef __TICE__ /* (the TI-84 Plus CE: the picture's rows in the strips' lists; drawn a byte at a time, no shifts) */
+  if (gfx_listing) {
+    gfx_list(vram[gfx_y0], (unsigned)(gfx_y1 - gfx_y0) * sizeof vram[0]);
+  } else {
+    static const uint8_t bit[8] = {0x80, 0x40, 0x20, 0x10, 8, 4, 2, 1};
+    for (int y = gfx_y0; y < gfx_y1; y++) {
+      int py = y + OFF;
+      color_t c = py >= TOPY && py < 64 ? RED : py >= 184 ? GREEN : WHITE, *o = gfx_buf + (y - gfx_y0) * SCREEN_W + X0;
+      bool low = py >= LY;
+      for (int i = 0, x = 0; i < 28; i++, x += 8) {
+        uint8_t b = vram[y][i];
+        if (b)
+          for (int k = 0; k < 8; k++)
+            if (b & bit[k]) o[x + k] = low && (x + k < 16 || x + k >= 134) ? WHITE : c;
+      }
+    }
+  }
+  if (0)
+#endif
   for (int y = gfx_y0; y < gfx_y1; y++) {
     int py = y + OFF;
     color_t c = py >= TOPY && py < 64 ? RED : py >= 184 ? GREEN : WHITE, *o = gfx_buf + (y - gfx_y0) * SCREEN_W + X0;

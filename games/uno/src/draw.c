@@ -48,6 +48,12 @@ void uno_card_name(int c, char *out) {
 /* ------------------------------------------------------------------ shapes, smoothed */
 static inline void put32(int x, int y, color_t c, int t) {
   if (t <= 0 || x < 0 || x >= SCREEN_W || y < gfx_y0 || y >= gfx_y1) return;
+#ifdef __TICE__
+  if (gfx_listing) { /* (its strip is drawn every time) */
+    gfx_list_rows(y, y + 1);
+    return;
+  }
+#endif
   color_t *d = &gfx_buf[(y - gfx_y0) * SCREEN_W + x];
   *d = t >= 32 ? c : gfx_mix(*d, c, t);
 }
@@ -68,6 +74,15 @@ static void oval(float cx, float cy, float a, float b, color_t c, const color_t 
   float ey = __builtin_sqrtf(a * a * ay * ay + b * b * by * by);
   int r0, r1;
   if (!rows(cy - ey, cy + ey, &r0, &r1)) return;
+#ifdef __TICE__
+  if (gfx_listing) { /* (what it depends on, in the strips' lists) */
+    const float v[] = {cx, cy, a, b};
+    gfx_list(v, sizeof v);
+    gfx_list(&c, sizeof c);
+    if (quarters) gfx_list(quarters, 4 * sizeof *quarters);
+    return;
+  }
+#endif
   /* u^2 + v^2 = 1 as A x^2 + B x y + C y^2 = 1, for the ellipse grown and shrunk by 0.75 pixel */
   float Ao[2], Bo[2], Co[2];
   for (int k = 0; k < 2; k++) {

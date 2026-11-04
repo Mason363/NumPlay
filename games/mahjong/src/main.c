@@ -391,6 +391,14 @@ static char *cat(char *o, const char *s) {
 }
 
 static void face_art(int k, int x, int y) {
+#ifdef __TICE__
+  if (gfx_listing) { /* (what it depends on, in the strips' lists) */
+    const int v[] = {k, x, y};
+    gfx_list(v, sizeof v);
+    gfx_list(pal, sizeof pal);
+    return;
+  }
+#endif
   const uint8_t *a = art + k * (ART_W / 2 * ART_H);
   int r0 = y < gfx_y0 ? gfx_y0 - y : 0, r1 = y + ART_H > gfx_y1 ? gfx_y1 - y : ART_H;
   for (int r = r0; r < r1; r++) {

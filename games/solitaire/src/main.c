@@ -91,10 +91,18 @@ static int min(int a, int b) { return a < b ? a : b; }
 static int max(int a, int b) { return a > b ? a : b; }
 
 /* f over b; a from 0 (all b) to 32 (all f) */
+#ifdef __TICE__ /* the TI-84 Plus CE: its own mixing (the same colours) */
+#include "../../../platform/ti84ce/ce_draw.h"
+__attribute__((naked)) static color ce_mix(color a, color b, unsigned t) { __asm__(CE_MIX_ASM); }
+#endif
 static color mix(color f, color b, int a) {
+#ifdef __TICE__
+  return ce_mix(b, f, (unsigned)a);
+#else
   uint32_t x = (f | (uint32_t)f << 16) & 0x07E0F81F, y = (b | (uint32_t)b << 16) & 0x07E0F81F;
   y = (y + ((x - y) * (uint32_t)a >> 5)) & 0x07E0F81F;
   return (color)(y | y >> 16);
+#endif
 }
 static void fill(int x, int y, int w, int h, color c) {
   int x0 = max(x, rx), x1 = min(x + w, rx + rw), y0 = max(y, ry), y1 = min(y + h, ry + rh);

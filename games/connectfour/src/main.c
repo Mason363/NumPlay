@@ -41,10 +41,18 @@ static const color THEME[2][4] = {
   {RGB(0x1F2740), RGB(0x080B14), RGB(0xE9EEF8), RGB(0x8C98B4)},
 };
 
+#ifdef __TICE__ /* the TI-84 Plus CE: its own mixing (the same colours) */
+#include "../../../platform/ti84ce/ce_draw.h"
+__attribute__((naked)) static color ce_mix(color a, color b, unsigned t) { __asm__(CE_MIX_ASM); }
+#endif
 static color mix(color f, color b, int a) { /* f over b, a from 0 to 32 */
+#ifdef __TICE__
+  return ce_mix(b, f, (unsigned)a);
+#else
   uint32_t x = (f | (uint32_t)f << 16) & 0x07E0F81F, y = (b | (uint32_t)b << 16) & 0x07E0F81F;
   y = (y + ((x - y) * (uint32_t)a >> 5)) & 0x07E0F81F;
   return (color)(y | y >> 16);
+#endif
 }
 static int clamp(int v, int a, int b) { return v < a ? a : v > b ? b : v; }
 static int iabs(int v) { return v < 0 ? -v : v; }

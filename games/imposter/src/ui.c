@@ -97,6 +97,14 @@ static void cubic(int t, int32_t *w) {
 /* n letters of s, s256/256 times the font's size, from x on the baseline: each pixel the font's coverage
  * between its pixels (bicubic), sharpened as much as the letters grow */
 static void big_run(const char *s, int n, int x, int base, int s256, color_t c) {
+#ifdef __TICE__
+  if (gfx_listing) { /* (what it depends on, in the strips' lists) */
+    const int v[] = {n, x, base, s256, c};
+    gfx_list(v, sizeof v);
+    gfx_list(s, (unsigned)n);
+    return;
+  }
+#endif
   int32_t pen = (int32_t)x * 256; /* in 1/256 pixels */
   int32_t du = (int32_t)(((uint32_t)1 << 24) / (uint32_t)s256); /* the font's 1/65536 pixels a screen pixel */
   int sharp = 16 + (s256 - 256) * BIG_SHARP / 64;  /* (in 1/16) */

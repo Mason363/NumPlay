@@ -20,6 +20,7 @@ void gfx_render(gfx_scene_t scene, void *ctx, int y0, int y1);
 extern bool gfx_listing, gfx_pure;
 void gfx_list(const void *p, unsigned bytes);
 void gfx_list_always(void);
+void gfx_list_rows(int top, int bottom); /* the strips over these rows: drawn every time */
 /* fn(a) draws (with gfx_*) in the box x, y, w, h what a[0..n) say (8 at most): one call in the strips' lists */
 void gfx_call(void (*fn)(const int *a), const int *a, int n, int x, int y, int w, int h);
 #endif

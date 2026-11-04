@@ -374,6 +374,9 @@ int main(void) {
   np_app_begin();
   color_t *their_strip = gfx_buf;
   gfx_buf = strip;
+#ifdef __TICE__
+  gfx_pure = true; /* (draws only with gfx_*) */
+#endif
   units();
   uint32_t now = (uint32_t)eadk_timing_millis(), tick = now, repeat_at = 0, shown = ~0u, len = 0;
   seed = eadk_random() ^ now;
