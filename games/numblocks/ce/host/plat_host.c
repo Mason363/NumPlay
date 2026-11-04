@@ -32,13 +32,27 @@ static uint32_t key_bit(const char *s) {
     {"pick", K_PICK}, {"enter", K_ENTER}, {"ok", K_OK}, {"esc", K_ESC}};
   for (unsigned i = 0; i < sizeof t / sizeof t[0]; i++)
     if (!strcmp(s, t[i].n)) return t[i].k;
-  if (s[0] >= '1' && s[0] <= '9' && !s[1]) return K_SLOT1 << (s[0] - '1');
+  if (s[0] >= '1' && s[0] <= '9' && !s[1]) return K_SLOT(s[0] - 0x31);
   fprintf(stderr, "unknown key %s\n", s);
   return 0;
 }
 
+static uint8_t gfx_mem[70000], tex_mem[70000];
+static void load_bin(const char *name, uint8_t *mem, unsigned size) {
+  char p[1024];
+  snprintf(p, sizeof p, "%s/%s", GFX_DIR, name);
+  FILE *g = fopen(p, "rb");
+  if (!g || fread(mem, 1, 70000, g) != size) {
+    fprintf(stderr, "no %s\n", p);
+    exit(1);
+  }
+  fclose(g);
+}
 void plat_init(void) {
   scr = screen_mem;
+  load_bin("NBCEDAT.bin", gfx_mem, GFX_SIZE);
+  load_bin("NBCETEX.bin", tex_mem, TEXDAT_SIZE);
+  gfx = gfx_mem, texdat = tex_mem;
   memcpy(pal, pal_rgb, sizeof pal);
   const char *e;
   if ((e = getenv("NB_FRAMES"))) frames = atoi(e);

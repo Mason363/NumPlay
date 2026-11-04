@@ -167,8 +167,9 @@ enum {
   K_ATTACK = 1 << 11, K_USE = 1 << 12, K_INV = 1 << 13,               /* 2nd, clear, vars */
   K_PAUSE = 1 << 14, K_HOME = 1 << 15, K_DROP = 1 << 16, K_PICK = 1 << 17,   /* (-), mode, x,T,θ,n, log */
   K_ENTER = 1 << 18,                                                  /* enter */
-  K_SLOT1 = 1 << 19   /* K_SLOT1 << n: digit n + 1 */
+  K_SLOT1 = 1 << 19   /* K_SLOT(n): digit n + 1 */
 };
+#define K_SLOT(n) ((uint32_t)K_SLOT1 << (n))
 #define K_OK K_ATTACK   /* 2nd: OK in screens */
 #define K_ESC K_USE     /* clear: back in screens */
 uint32_t keys_now(void);

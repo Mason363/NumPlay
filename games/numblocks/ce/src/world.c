@@ -84,8 +84,6 @@ static void edit_log(int x, int y, int z, int b) {
 
 /* ---------------------------------------------------------------- light */
 /* the window's edges: a step from a cell on one leaves the window */
-static inline int wx_of(int slot) { return win_x + ((slot - win_x) & 31); }
-static inline int wz_of(int slot) { return win_z + ((slot - win_z) & 31); }
 static inline int wy_of(int slot) { return win_y + ((slot - win_y) & 31); }
 
 /* the queues: in the 3D view's picture (light is never spread while it is drawn) */

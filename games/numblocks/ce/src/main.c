@@ -97,7 +97,7 @@ static void act(void) {
       int s = world_free_slot();
       if (!s) break;
       loading("Building terrain");
-      uint32_t seed = plat_ms() * 2654435761u ^ (uint32_t)rnd(1 << 30);
+      uint32_t seed = plat_ms() * 2654435761u ^ (uint32_t)rnd(0x7FFFFF);
       new_world(s, cur_name, seed, new_mode);
       if (pl.mode) {
         /* Creative starts with a hotbar of building blocks */

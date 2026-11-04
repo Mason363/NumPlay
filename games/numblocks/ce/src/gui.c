@@ -223,7 +223,7 @@ static void layout(void) {
       add_player_slots(8, 84);
       break;
     case GUI_CHEST:
-      panel_sprite = SP_CHEST;
+      panel_sprite = SP_CHEST, panel_h = 167;
       for (int i = 0; i < 27; i++) add_slot(8 + (i % 9) * 18, 18 + (i / 9) * 18, &gui_tile->s[i], SK_NORMAL);
       add_player_slots(8, 85);
       break;
@@ -243,6 +243,7 @@ static void layout(void) {
 static void draw_panel(void) {
   int px = panel_x, py = panel_y;
   sprite(panel_sprite, px, py);
+  if (gui != GUI_CREATIVE) sprite(SP_INV_BOTTOM, px, py + (gui == GUI_CHEST ? 80 : 79));
   if (gui == GUI_INVENTORY) {
     sprite(SP_STEVE, px + 39, py + 16);
     text_plain(px + 86, py + 16, "Crafting", C_DARK);
@@ -639,7 +640,7 @@ void gui_input(uint32_t keys, uint32_t pressed) {
     if (pressed & K_ENTER) click(sel, 1, false), shown = false;
     if (pressed & (K_ESC | K_INV)) gui_close();
     for (int k = 0; k < 9; k++)
-      if ((pressed & (K_SLOT1 << k)) && slots[sel].s && slots[sel].kind == SK_NORMAL) {
+      if ((pressed & K_SLOT(k)) && slots[sel].s && slots[sel].kind == SK_NORMAL) {
         /* a number: swap with that hotbar slot (Minecraft's number keys over a slot) */
         Stack t = pl.inv[k];
         pl.inv[k] = *slots[sel].s, *slots[sel].s = t;

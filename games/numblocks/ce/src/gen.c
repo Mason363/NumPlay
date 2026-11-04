@@ -99,7 +99,7 @@ void gen_column(int x, int z, Column *c) {
 
 /* caves: a cell is cut out where two smooth 3D noises are both near their middle (worm-like tunnels); the
  * lattice is 16 x 8 x 16 blocks, the noise read once a column at each lattice level and blended down it */
-static int cave_x = 1 << 30, cave_z;
+static int cave_x = -32768, cave_z = -32768;
 static uint8_t cave_a[WORLD_H / 8 + 1], cave_b[WORLD_H / 8 + 1];
 static int noise3_col(int x, int z, int ly, int s) {
   int xi = x >> 4, zi = z >> 4;

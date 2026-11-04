@@ -42,14 +42,6 @@ static fx clip_move(fx x, fx y, fx z, int a, fx d) {
   return d;
 }
 
-static bool box_free(fx x, fx y, fx z) {
-  for (int i = FXI(x - W2); i <= FXI(x + W2 - 1); i++)
-    for (int j = FXI(y); j <= FXI(y + BOX_H - 1); j++)
-      for (int k = FXI(z - W2); k <= FXI(z + W2 - 1); k++)
-        if (solid_at(i, j, k)) return false;
-  return true;
-}
-
 /* standing on something, a little lower? (sneaking keeps the player from walking off an edge) */
 static bool ground_under(fx x, fx y, fx z) { return clip_move(x, y, z, 1, -C(0.6)) != -C(0.6); }
 
@@ -114,8 +106,8 @@ int ray_pick(int reach, int *hx, int *hy, int *hz, int *face) {
   for (int k = 0; k < 3; k++) {
     c[k] = FXI(o[k]);
     int32_t frac = o[k] - (fx)c[k] * FX1;
-    if (d[k] > 0) step[k] = 1, tdel[k] = (int32_t)(((int32_t)FX1 << 14) / d[k]), tmax[k] = (int32_t)(((int64_t)(FX1 - frac) << 14) / d[k]);
-    else if (d[k] < 0) step[k] = -1, tdel[k] = (int32_t)(((int32_t)FX1 << 14) / -d[k]), tmax[k] = (int32_t)(((int64_t)frac << 14) / -d[k]);
+    if (d[k] > 0) step[k] = 1, tdel[k] = (int32_t)(((int32_t)FX1 << 14) / d[k]), tmax[k] = (int32_t)(((int32_t)(FX1 - frac) << 14) / d[k]);
+    else if (d[k] < 0) step[k] = -1, tdel[k] = (int32_t)(((int32_t)FX1 << 14) / -d[k]), tmax[k] = (int32_t)(((int32_t)frac << 14) / -d[k]);
     else step[k] = 0, tdel[k] = tmax[k] = 0x7FFFFFFF;
   }
   int f = -1;
@@ -311,7 +303,7 @@ void player_tick(uint32_t keys, uint32_t pressed) {
   /* (done each frame in main.c) */
   /* the hotbar */
   for (int k = 0; k < 9; k++)
-    if (pressed & (K_SLOT1 << k)) pl.slot = k;
+    if (pressed & K_SLOT(k)) pl.slot = k;
   int fw = (keys & K_FWD ? 98 : 0) - (keys & K_BACK ? 98 : 0);
   int st = (keys & K_SLEFT ? 98 : 0) - (keys & K_SRIGHT ? 98 : 0);
   pl.sneaking = (keys & K_SNEAK) && !pl.flying;

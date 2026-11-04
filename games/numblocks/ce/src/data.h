@@ -109,9 +109,13 @@ enum { T_NONE, T_PICKAXE, T_AXE, T_SHOVEL, T_SWORD };
 enum { BIOME_OCEAN, BIOME_PLAINS, BIOME_DESERT, BIOME_EXTREME_HILLS, BIOME_FOREST, BIOME_TAIGA, BIOME_BEACH, BIOME_BIRCH_FOREST, BIOME_COLD_TAIGA, N_BIOMES };
 extern const uint8_t tint_of_biome[N_BIOMES];
 extern const uint8_t pal_rgb[256 * 3];   /* 1-15: the sky's (set at run time) */
-extern const uint8_t tex_px[NTEX][256];   /* (v * 16 + u); 0 see-through */
-extern const uint8_t shade_cm[N_SHADE][256];   /* a colour at each level of light (31 full) */
-extern const uint8_t pal_cube[4096];   /* the nearest colour: [r][g][b], 16 levels each (CUBE_LEVELS) */
+/* the appvar NBCETEX: the textures (v * 16 + u; 0 see-through), each colour at each level of light
+ * (31 full), the nearest colour of a point [r][g][b] of 16 levels each (cube_levels) */
+extern const uint8_t *texdat;
+#define TEXDAT_SIZE (NTEX * 256 + N_SHADE * 256 + 4096)
+#define tex_px ((const uint8_t (*)[256])texdat)
+#define shade_cm ((const uint8_t (*)[256])(texdat + NTEX * 256))
+#define pal_cube (texdat + NTEX * 256 + N_SHADE * 256)
 /* faces -Y +Y -Z +Z -X +X; blk_tint: the faces whose texture has N_TINTS copies, one per biome tint */
 extern const uint8_t blk_tex[B_N][6], blk_tint[B_N], blk_model[B_N], blk_flags[B_N], blk_light[B_N];
 extern const uint8_t blk_opacity[B_N], blk_hard[B_N], blk_tool[B_N], blk_drop[B_N];
@@ -121,10 +125,12 @@ extern const uint8_t it_kind[IT_N], it_speed[IT_N], it_dmg[IT_N];   /* it_kind: 
 extern const uint16_t it_dur[IT_N];
 extern const char *const it_label[IT_N], *const blk_label[B_N];
 extern const uint8_t recipes[], smelt[];
-extern const uint8_t spr_data[], spr_w[], spr_h[], icon_px[], icon_of[B_N + IT_N];
-extern const uint32_t spr_off[];
-extern const uint8_t font_bits[96 * 8], font_w[96];
 extern const uint8_t cube_levels[16];
+#include "gfx.h"
+/* the pictures, in the appvar NBCEDAT */
+#define font_bits (gfx + GFX_FONT)
+#define font_w (gfx + GFX_FONT_W)
+#define icon_of (gfx + GFX_ICON_OF)
 #define TX_STONE 0
 #define TX_DIRT 1
 #define TX_GRASS_TOP_GRASS 2
@@ -223,21 +229,22 @@ extern const uint8_t cube_levels[16];
 #define SP_INVENTORY 16
 #define SP_CRAFTING_TABLE 17
 #define SP_FURNACE 18
-#define SP_FLAME 19
-#define SP_ARROW 20
-#define SP_CREATIVE 21
-#define SP_SCROLLER 22
-#define SP_DIRT 23
-#define SP_SUN 24
-#define SP_MOON_0 25
-#define SP_MOON_1 26
-#define SP_MOON_2 27
-#define SP_MOON_3 28
-#define SP_MOON_4 29
-#define SP_MOON_5 30
-#define SP_MOON_6 31
-#define SP_MOON_7 32
-#define SP_CHEST 33
-#define SP_STEVE 34
+#define SP_INV_BOTTOM 19
+#define SP_FLAME 20
+#define SP_ARROW 21
+#define SP_CREATIVE 22
+#define SP_SCROLLER 23
+#define SP_DIRT 24
+#define SP_SUN 25
+#define SP_MOON_0 26
+#define SP_MOON_1 27
+#define SP_MOON_2 28
+#define SP_MOON_3 29
+#define SP_MOON_4 30
+#define SP_MOON_5 31
+#define SP_MOON_6 32
+#define SP_MOON_7 33
+#define SP_CHEST 34
+#define SP_STEVE 35
 
 #endif

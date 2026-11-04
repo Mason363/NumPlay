@@ -396,23 +396,26 @@ SPRITES = [
     ('xp_bg', 'gui/icons', 0, 64, 182, 5),
     ('xp', 'gui/icons', 0, 69, 182, 5),
     ('crosshair', 'gui/icons', 0, 0, 16, 16),
-    ('inventory', 'gui/container/inventory', 0, 0, 176, 166),
-    ('crafting_table', 'gui/container/crafting_table', 0, 0, 176, 166),
-    ('furnace', 'gui/container/furnace', 0, 0, 176, 166),
+    # the containers: their tops, and the player's inventory below (rows 79 on: the same in all three)
+    ('inventory', 'gui/container/inventory', 0, 0, 176, 79),
+    ('crafting_table', 'gui/container/crafting_table', 0, 0, 176, 79),
+    ('furnace', 'gui/container/furnace', 0, 0, 176, 79),
+    ('inv_bottom', 'gui/container/inventory', 0, 79, 176, 87),
     ('flame', 'gui/container/furnace', 176, 0, 14, 14),
     ('arrow', 'gui/container/furnace', 176, 14, 24, 17),
     ('creative', 'gui/container/creative_inventory/tab_items', 0, 0, 195, 136),
     ('scroller', 'gui/container/creative_inventory/tabs', 232, 0, 12, 15),
     ('dirt', 'gui/options_background', 0, 0, 16, 16),
-    ('sun', 'environment/sun', 0, 0, 32, 32),
-] + [(f'moon_{k}', 'environment/moon_phases', (k % 4) * 32, (k // 4) * 32, 32, 32) for k in range(8)]
+    ('sun', 'environment/sun', 8, 8, 16, 16),
+] + [(f'moon_{k}', 'environment/moon_phases', (k % 4) * 32 + 8, (k // 4) * 32 + 8, 16, 16) for k in range(8)]
 
 
 def chest_image(jar):
+    """the chest's top (its 27 slots), drawn above the inventory's bottom at row 80"""
     g54 = jar.image('gui/container/generic_54')
-    chest = Image.new('RGBA', (176, 71 + 96))
+    chest = Image.new('RGBA', (176, 80))
     chest.paste(g54.crop((0, 0, 176, 71)), (0, 0))
-    chest.paste(g54.crop((0, 126, 176, 222)), (0, 71))
+    chest.paste(g54.crop((0, 126, 176, 135)), (0, 71))
     return chest
 
 
@@ -423,6 +426,14 @@ def sprite_images(jar):
     out.append(('chest', chest_image(jar)))
     out.append(('steve', nbpack.steve_front(jar)))
     return out
+
+
+def rle_with_rows(idx, w, h):
+    d, rows = rle(idx, w, h)
+    tab = []
+    for r in rows:
+        tab += [r & 255, r >> 8]
+    return tab + d
 
 
 def icon_images(jar, tex_names, tex_images):
@@ -581,9 +592,11 @@ def main():
     tools = [None, 'pickaxe', 'axe', 'shovel']
     out = ['/* Made by tools/pack.py from Minecraft 1.8.8\'s pictures: see data.h. */', '#include "data.h"', '']
     out += carr('pal_rgb[256 * 3]', 'uint8_t', [int(v) for c in pal for v in c])
-    out += carr('tex_px[NTEX][256]', 'uint8_t', [v for t in tex_idx for v in t], 32)
-    out += carr('shade_cm[N_SHADE][256]', 'uint8_t', shade, 32)
-    out += carr('pal_cube[4096]', 'uint8_t', cube, 32)
+    # the appvar NBCETEX (gfx/NBCETEX.bin): the textures, the shade rows and the colour cube, read in place
+    texbin = bytes([v for t in tex_idx for v in t]) + bytes(shade) + bytes(cube)
+    assert len(texbin) <= 65505, len(texbin)
+    os.makedirs(os.path.join(CE, 'gfx'), exist_ok=True)
+    open(os.path.join(CE, 'gfx', 'NBCETEX.bin'), 'wb').write(texbin)
     out += carr('blk_tex[B_N][6]', 'uint8_t', [v for f in faces for v in f])
     out += carr('blk_tint[B_N]', 'uint8_t', tintmask)
     out += carr('blk_model[B_N]', 'uint8_t', [model_ids.index(b['model']) for b in BLOCKS])
@@ -654,38 +667,51 @@ def main():
     out += carr('smelt[]', 'uint8_t', [v for a, b in SMELT for v in (iid(a), iid(b))] + [255, 255])
     open(os.path.join(CE, 'src', 'data.c'), 'w').write('\n'.join(out) + '\n')
 
-    # --- gfx.c: the screens' pictures, icons and font
-    g = ['/* Made by tools/pack.py from Minecraft 1.8.8\'s pictures: see data.h. */', '#include "data.h"', '']
-    spr_data, spr_off, spr_w, spr_h, spr_rows = [], [], [], [], []
+    # --- the appvar NBCEDAT (gfx/NBCEDAT.bin): the screens' pictures, the icons and the font, read in place
+    #   "NBGX", the version, then the parts at the offsets gfx.h names: sprites (a 2-byte offset each, then each
+    #   one's rows: a 2-byte offset a row, then its runs), widths, heights; icons the same, 16 x 16 each, and which
+    #   icon each block and item has (255 none); the font's bits and widths
+    blob = bytearray(b'NBGX') + bytes([1, 0])
+    parts = {}
+
+    def part(name, data):
+        parts[name] = len(blob)
+        blob.extend(data)
+    spr_bytes, spr_off = [], []
     for n, im in sprites:
         w, h = im.size
-        idx = to_idx(im, True)
-        d, rows = rle(idx, w, h)
-        spr_off.append(len(spr_data))
-        spr_rows.append(len(spr_data))
-        rowtab = []
-        for r in rows:
-            rowtab += [r & 255, r >> 8]
-        spr_data += rowtab + d
-        spr_w.append(w)
-        spr_h.append(h)
-    g += carr('spr_data[]', 'uint8_t', spr_data, 32)
-    g += carr('spr_off[]', 'uint32_t', spr_off)
-    g += carr('spr_w[]', 'uint8_t', spr_w)
-    g += carr('spr_h[]', 'uint8_t', spr_h)
-    ic = []
-    icon_of = []
+        spr_off.append(len(spr_bytes))
+        spr_bytes += rle_with_rows(to_idx(im, True), w, h)
+    n_spr = len(sprites)
+    hdr = 2 * n_spr
+    part('SPR', b''.join((o + hdr).to_bytes(2, 'little') for o in spr_off) + bytes(spr_bytes))
+    part('SPR_W', bytes(im.size[0] for n, im in sprites))
+    part('SPR_H', bytes(im.size[1] for n, im in sprites))
+    ic_bytes, ic_off, icon_of = [], [], []
     for im in icons:
         if im is None:
             icon_of.append(255)
             continue
-        icon_of.append(len(ic) // 256)
-        ic += to_idx(im, True)
-    g += carr('icon_px[]', 'uint8_t', ic, 32)
-    g += carr('icon_of[B_N + IT_N]', 'uint8_t', icon_of)
-    g += carr('font_bits[96 * 8]', 'uint8_t', font_bits, 32)
-    g += carr('font_w[96]', 'uint8_t', font_w, 32)
-    open(os.path.join(CE, 'src', 'gfx.c'), 'w').write('\n'.join(g) + '\n')
+        icon_of.append(len(ic_off))
+        ic_off.append(len(ic_bytes))
+        ic_bytes += rle_with_rows(to_idx(im, True), 16, 16)
+    hdr = 2 * len(ic_off)
+    part('ICON', b''.join((o + hdr).to_bytes(2, 'little') for o in ic_off) + bytes(ic_bytes))
+    part('ICON_OF', bytes(icon_of))
+    part('FONT', bytes(font_bits))
+    part('FONT_W', bytes(font_w))
+    assert len(blob) <= 65505, len(blob)
+    os.makedirs(os.path.join(CE, 'gfx'), exist_ok=True)
+    open(os.path.join(CE, 'gfx', 'NBCEDAT.bin'), 'wb').write(bytes(blob))
+    g = ['/* Made by tools/pack.py: where the parts of the appvar NBCEDAT (gfx/NBCEDAT.bin) are. */',
+         '#ifndef NBCE_GFX_H', '#define NBCE_GFX_H', '#include <stdint.h>',
+         'extern const uint8_t *gfx;   /* the appvar\'s data */', f'#define GFX_SIZE {len(blob)}',
+         f'#define GFX_VERSION 1']
+    for k, v in parts.items():
+        g.append(f'#define GFX_{k} {v}')
+    g += ['#endif', '']
+    open(os.path.join(CE, 'src', 'gfx.h'), 'w').write('\n'.join(g))
+    print(f'NBCEDAT: {len(blob)} bytes (sprites {len(spr_bytes)}, icons {len(ic_bytes)})')
 
     # --- data.h
     h = ['/* Made by tools/pack.py: the blocks, items, textures and pictures of NumBlocks on the CE. */',
@@ -702,9 +728,13 @@ def main():
           'enum { ' + ', '.join(f'BIOME_{b[0]}' for b in BIOMES) + ', N_BIOMES };',
           'extern const uint8_t tint_of_biome[N_BIOMES];',
           'extern const uint8_t pal_rgb[256 * 3];   /* 1-15: the sky\'s (set at run time) */',
-          'extern const uint8_t tex_px[NTEX][256];   /* (v * 16 + u); 0 see-through */',
-          'extern const uint8_t shade_cm[N_SHADE][256];   /* a colour at each level of light (31 full) */',
-          'extern const uint8_t pal_cube[4096];   /* the nearest colour: [r][g][b], 16 levels each (CUBE_LEVELS) */',
+          '/* the appvar NBCETEX: the textures (v * 16 + u; 0 see-through), each colour at each level of light',
+          ' * (31 full), the nearest colour of a point [r][g][b] of 16 levels each (cube_levels) */',
+          'extern const uint8_t *texdat;',
+          '#define TEXDAT_SIZE (NTEX * 256 + N_SHADE * 256 + 4096)',
+          '#define tex_px ((const uint8_t (*)[256])texdat)',
+          '#define shade_cm ((const uint8_t (*)[256])(texdat + NTEX * 256))',
+          '#define pal_cube (texdat + NTEX * 256 + N_SHADE * 256)',
           '/* faces -Y +Y -Z +Z -X +X; blk_tint: the faces whose texture has N_TINTS copies, one per biome tint */',
           'extern const uint8_t blk_tex[B_N][6], blk_tint[B_N], blk_model[B_N], blk_flags[B_N], blk_light[B_N];',
           'extern const uint8_t blk_opacity[B_N], blk_hard[B_N], blk_tool[B_N], blk_drop[B_N];',
@@ -714,10 +744,12 @@ def main():
           'extern const uint16_t it_dur[IT_N];',
           'extern const char *const it_label[IT_N], *const blk_label[B_N];',
           'extern const uint8_t recipes[], smelt[];',
-          'extern const uint8_t spr_data[], spr_w[], spr_h[], icon_px[], icon_of[B_N + IT_N];',
-          'extern const uint32_t spr_off[];',
-          'extern const uint8_t font_bits[96 * 8], font_w[96];',
-          'extern const uint8_t cube_levels[16];']
+          'extern const uint8_t cube_levels[16];',
+          '#include "gfx.h"',
+          '/* the pictures, in the appvar NBCEDAT */',
+          '#define font_bits (gfx + GFX_FONT)',
+          '#define font_w (gfx + GFX_FONT_W)',
+          '#define icon_of (gfx + GFX_ICON_OF)']
     for i, n in enumerate(tnames):
         if i == 0 or tnames[i - 1] != n:
             h.append(f'#define TX_{n.upper().replace("@", "").replace(":", "_")} {i}')
@@ -730,7 +762,7 @@ def main():
         carr('tint_of_biome[N_BIOMES]', 'uint8_t', [TINT_OF_BIOME[b[0]] for b in BIOMES]) +
         carr('cube_levels[16]', 'uint8_t', CUBE_LEVELS)) + '\n')
     print(f'{len(tex_idx)} textures, {B_N} blocks, {len(ITEMS)} items, {len(RECIPES)} recipes, '
-          f'sprites {len(spr_data)} bytes, icons {len(ic) // 256}')
+          f'{len(icons)} icons')
 
 
 if __name__ == '__main__':

@@ -5,6 +5,7 @@
 #include "draw.h"
 
 Canvas cv;
+const uint8_t *gfx, *texdat;
 
 void canvas_screen(void) { cv = (Canvas){scr, SCREEN_W, 0, 0, SCREEN_W, SCREEN_H}; }
 
@@ -56,11 +57,8 @@ void text_plain(int x, int y, const char *s, uint8_t c) { glyphs(s, x, y, c, 1);
 void text_center(int cx, int y, const char *s, uint8_t c) { text(cx - text_width(s) / 2, y, s, c); }
 void text_big(int x, int y, const char *s, uint8_t c, int scale) { glyphs(s, x, y, c, scale); }
 
-/* a GUI picture (gfx.c): its rows are runs; x, y its top left; sx, sy, w, h a part of it (w 0: all) */
-void sprite_part(int id, int x, int y, int sx, int sy, int w, int h) {
-  const uint8_t *base = spr_data + spr_off[id];
-  int sw = spr_w[id], sh = spr_h[id];
-  if (!w) w = sw, h = sh;
+/* a picture kept as runs (tools/pack.py rle): x, y its top left; sx, sy, w, h a part of it */
+static void runs(const uint8_t *base, int sw, int sh, int x, int y, int sx, int sy, int w, int h) {
   for (int r = sy; r < sy + h && r < sh; r++) {
     const uint8_t *p = base + (base[r * 2] | base[r * 2 + 1] << 8) + sh * 2;
     int col = 0, dy = y + r - sy;
@@ -83,16 +81,21 @@ void sprite_part(int id, int x, int y, int sx, int sy, int w, int h) {
     }
   }
 }
+/* a GUI picture (the appvar's sprites): sx, sy, w, h a part of it (w 0: all) */
+void sprite_part(int id, int x, int y, int sx, int sy, int w, int h) {
+  const uint8_t *t = gfx + GFX_SPR;
+  int sw = gfx[GFX_SPR_W + id], sh = gfx[GFX_SPR_H + id];
+  if (!w) w = sw, h = sh;
+  runs(t + (t[id * 2] | t[id * 2 + 1] << 8), sw, sh, x, y, sx, sy, w, h);
+}
 void sprite(int id, int x, int y) { sprite_part(id, x, y, 0, 0, 0, 0); }
 
 void icon(int id, int x, int y) {
-  if (id <= 0 || id >= B_N + IT_N + IT0 - B_N) return;
+  if (id <= 0 || id >= IT0 + IT_N || (id >= B_N && id < IT0)) return;
   int k = id >= IT0 ? B_N + id - IT0 : id;
-  if (k >= B_N + IT_N || icon_of[k] == 255) return;
-  const uint8_t *s = icon_px + icon_of[k] * 256;
-  for (int r = 0; r < 16; r++)
-    for (int c = 0; c < 16; c++)
-      if (s[r * 16 + c]) put(x + c, y + r, s[r * 16 + c]);
+  if (icon_of[k] == 255) return;
+  const uint8_t *t = gfx + GFX_ICON;
+  runs(t + (t[icon_of[k] * 2] | t[icon_of[k] * 2 + 1] << 8), 16, 16, x, y, 0, 0, 16, 16);
 }
 
 /* a stack in a slot: its icon, its count (bottom right, white), a tool's wear bar */
