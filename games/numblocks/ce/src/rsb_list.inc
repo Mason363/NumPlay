@@ -59,4 +59,8 @@
 	\m	c2_lerp
 	\m	Lc2_edge
 	\m	Lc2_next
+	\m	proj_iy
+	\m	code_iy
+	\m	_rs_face
+	\m	fc_corner
 	.endm

@@ -62,6 +62,8 @@ _rs_build:	.d24	RSF_BUILD
 	.set	_rs_shade, t__rs_shade
 	.global	_rs_clip2
 	.set	_rs_clip2, t__rs_clip2
+	.global	_rs_face
+	.set	_rs_face, t__rs_face
 
 	.section	.data._rs_vars
 	.global	r_tex
@@ -159,6 +161,22 @@ r_ku:	.ds	48
 r_kv:	.ds	48
 	.global	kt_base
 kt_base:	.d24	0
+	.global	_rs_ck
+_rs_ck:	.ds	72
+	.global	_rs_fs
+_rs_fs:	.d24	0, 0, 0, 0, 0, 0, 65535, 0, 0, 0, 65535, 65535, 0, 0, 0, 65535
+	.global	_rs_fclip
+_rs_fclip:	.db	0
+	.global	fc_p
+fc_p:	.d24	0
+	.global	fc_clip
+fc_clip:	.db	0
+	.global	fc_side
+fc_side:	.db	0
+	.global	pj_out
+pj_out:	.d24	0
+	.global	rs_facec
+rs_facec:	.db	36, 45, 9, 0, 18, 27, 63, 54, 27, 18, 0, 9, 54, 63, 45, 36, 18, 54, 36, 0, 63, 27, 9, 45, 18, 63, 45, 0, 54, 27, 9, 36
 	.global	c2_k
 c2_k:	.db	0
 	.global	c2_left

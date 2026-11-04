@@ -22,6 +22,7 @@ int RS(rs_code)(int x, int y, int z);
 void RS(rs_compose)(uint8_t *dst, const uint8_t *a, const uint8_t *f);
 int RS(rs_lerp)(int a, int b, int f);
 uint8_t RS(rs_clip2)(const SV *in, uint8_t n, SV *out, uint8_t k);
+uint8_t RS(rs_face)(uint8_t f);
 void RS(rs_shade)(uint8_t *p, const uint8_t *row);
 void RS(rs_expand)(const uint8_t *src, uint8_t *dst, const uint8_t *sky, const uint8_t *hud);
 void RS(rs_shade)(uint8_t *p, const uint8_t *row) {
@@ -285,6 +286,33 @@ uint8_t RS(rs_cells)(const uint8_t *mask, uint8_t slot, uint8_t up, uint8_t down
     if (mask[b >> 3] >> (b & 7) & 1) out[n++] = (int8_t)-t;
   }
   return n;
+}
+
+#ifndef __ez80__
+int rs_ck[24];
+SV rs_fs[4] = {{0, 0, 0, 0}, {0, 0, 65535, 0}, {0, 0, 65535, 65535}, {0, 0, 0, 65535}};
+uint8_t rs_fclip;
+#endif
+static const uint8_t FACEC[8][4] = {{4, 5, 1, 0}, {2, 3, 7, 6}, {3, 2, 0, 1}, {6, 7, 5, 4},
+                                    {2, 6, 4, 0}, {7, 3, 1, 5}, {2, 7, 5, 0}, {6, 3, 1, 4}};
+uint8_t RS(rs_face)(uint8_t f) {
+  uint8_t clip = 0, side = 255;
+  for (int i = 0; i < 4; i++) {
+    const int *c = rs_ck + 3 * FACEC[f][i];
+    int code = RS(rs_code)(c[0], c[1], c[2]);
+    clip |= (uint8_t)code, side &= (uint8_t)(code >> 8);
+  }
+  if (side) return 0;
+  rs_fclip = clip;
+  if (clip) return 1;
+  for (int i = 0; i < 4; i++) {
+    const int *c = rs_ck + 3 * FACEC[f][i];
+    RS(rs_proj)(c[0], c[1], c[2], &rs_fs[i].x);
+  }
+  for (int i = 0; i < 4; i++)
+    if ((unsigned)rs_fs[i].x > RW * 16 || (unsigned)rs_fs[i].y > RH * 16) return 2;
+  RS(rs_poly)(rs_fs, 4);
+  return 0;
 }
 
 #ifndef __ez80__

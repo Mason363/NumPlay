@@ -25,6 +25,14 @@ int rs_code(int x, int y, int z);
 void rs_compose(uint8_t *dst, const uint8_t *a, const uint8_t *f);
 /* the polygon cut to a side of the screen (k 0: x >= 0, 1: x <= 2560, 2: y >= 0, 3: y <= 1920): into out, how many */
 uint8_t rs_clip2(const SV *in, uint8_t n, SV *out, uint8_t k);
+/* a cell's corners in camera space (corner k: x, y, z at rs_ck[3k..], bits of k x 1, y 2, z 4), and face f of it
+ * (0..5 -Y +Y -Z +Z -X +X, 6 and 7 a plant's quads) with rs_setup's texture: passed by when past a side of the view,
+ * drawn when all on the screen (0); 1 when to be cut by planes (rs_fclip: rs_code's), 2 when projected into rs_fs but
+ * not all on the screen */
+extern int rs_ck[24];
+extern SV rs_fs[4];
+extern uint8_t rs_fclip;
+uint8_t rs_face(uint8_t f);
 /* p[i] = row[p[i]] for 256 bytes, row 256-byte aligned */
 void rs_shade(uint8_t *p, const uint8_t *row);
 /* a + floor((b - a) f / 256), a and b 0..255, f 0..256 */

@@ -895,6 +895,10 @@ b_clamp20:
 b__rs_proj:
 	ld	iy, 0
 	add	iy, sp
+	ld	hl, (iy+12)
+	ld	(pj_out), hl
+; (iy + 3: x, y, z; pj_out: where to)
+b_proj_iy:
 	ld	hl, (iy+9)		; z
 	call	t_pr_z
 	ld	hl, (iy+3)
@@ -908,7 +912,7 @@ b__rs_proj:
 	ld	hl, 960
 	or	a, a
 	sbc	hl, de
-	ld	iy, (iy+12)
+	ld	iy, (pj_out)
 	ld	(iy+3), hl
 	pop	hl
 	ld	(iy+0), hl
@@ -1765,6 +1769,8 @@ b_Lq_done:
 b__rs_code:
 	ld	iy, 0
 	add	iy, sp
+; (iy + 3: x, y, z)
+b_code_iy:
 	ld	bc, 0
 	ld	hl, (iy+9)
 	ld	de, NEAR
@@ -2468,4 +2474,112 @@ b_c2_lerp:
 	call	t_mulhi
 	pop	de
 	add	hl, de
+	ret
+
+; ------------------------------------------------------------------------------------------------- rs_face
+; uint8_t rs_face(uint8_t f)
+; face f of the cell whose corners are in rs_ck (corner k's x, y, z at k x 9 bytes; f 0..5 -Y +Y -Z +Z -X +X, 6 and 7
+; a plant's two quads), with the texture rs_setup was given: passed by when all its corners are past one side of the
+; view; 1 when it is to be cut by a plane (rs_fclip the planes); else projected into rs_fs: drawn (0) when all on the
+; screen, else 2 (to be cut to it)
+b__rs_face:
+	ld	iy, 0
+	add	iy, sp
+	ld	l, (iy+3)
+	ld	h, 4
+	mlt	hl
+	ld	de, rs_facec
+	add	hl, de
+	ld	(fc_p), hl		; its 4 corners' offsets
+	xor	a, a
+	ld	(fc_clip), a
+	dec	a
+	ld	(fc_side), a
+	ld	b, 4
+.Lfc_code:
+	push	bc
+	call	t_fc_corner		; iy: the corner's x - 3
+	call	t_code_iy
+	ld	a, (fc_clip)
+	or	a, l
+	ld	(fc_clip), a
+	ld	a, (fc_side)
+	and	a, h
+	ld	(fc_side), a
+	pop	bc
+	djnz	.Lfc_code
+	ld	a, (fc_side)
+	or	a, a
+	jr	nz, .Lfc_none
+	ld	a, (fc_clip)
+	ld	(_rs_fclip), a
+	or	a, a
+	jr	z, .Lfc_proj
+	ld	a, 1
+	ret
+.Lfc_none:
+	xor	a, a
+	ret
+.Lfc_proj:
+	; each corner projected into rs_fs
+	ld	hl, (fc_p)
+	ld	de, -4
+	add	hl, de
+	ld	(fc_p), hl
+	ld	hl, _rs_fs
+	ld	(pj_out), hl
+	ld	b, 4
+.Lfc_p:
+	push	bc
+	call	t_fc_corner
+	call	t_proj_iy
+	ld	hl, (pj_out)
+	ld	de, 12
+	add	hl, de
+	ld	(pj_out), hl
+	pop	bc
+	djnz	.Lfc_p
+	; all on the screen: 0 <= x <= 2560, 0 <= y <= 1920
+	ld	iy, _rs_fs
+	ld	b, 4
+.Lfc_on:
+	ld	hl, (iy+0)
+	ld	de, RW * 16 + 1
+	or	a, a
+	sbc	hl, de
+	jr	nc, .Lfc_off		; (x < 0 too: as unsigned, past)
+	ld	hl, (iy+3)
+	ld	de, 120 * 16 + 1
+	or	a, a
+	sbc	hl, de
+	jr	nc, .Lfc_off
+	lea	iy, iy+12
+	djnz	.Lfc_on
+	ld	a, 4
+	ld	hl, 0
+	ld	l, a
+	push	hl
+	ld	hl, _rs_fs
+	push	hl
+	call	t__rs_poly
+	pop	hl
+	pop	hl
+	xor	a, a
+	ret
+.Lfc_off:
+	ld	a, 2
+	ret
+
+; iy: the next corner of the face (fc_p) as x - 3, for code_iy and proj_iy
+b_fc_corner:
+	ld	hl, (fc_p)
+	ld	a, (hl)
+	inc	hl
+	ld	(fc_p), hl
+	ld	hl, _rs_ck - 3
+	ld	de, 0
+	ld	e, a
+	add	hl, de
+	push	hl
+	pop	iy
 	ret

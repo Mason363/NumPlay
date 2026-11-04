@@ -24,7 +24,7 @@ uint32_t stat_faces, stat_spans, stat_px, stat_cells;
 #ifdef HOST
 extern unsigned long st_cols, st_list, st_frus, st_cov, st_culled;
 #endif
-int view_dist = 10;
+int view_dist = 8;
 uint8_t render_stale = 1;   /* rbuf no longer the last picture (its memory used for something else, the world changed) */
 uint32_t world_time;
 int crack_stage = -1;
@@ -426,7 +426,7 @@ static void quad(uint8_t split) {
 }
 
 /* the cell's corners, camera space: corner k (bits x 1, y 2, z 4) at ck[3k..3k+2] */
-static int ck[24];
+#define ck rs_ck   /* (rs.s: rs_face reads them) */
 static void corners(int x, int y, int z) {
   ck[0] = x, ck[1] = y, ck[2] = z;
   ck[3] = x + rxx, ck[4] = y + uxx, ck[5] = z + fxx;
@@ -493,6 +493,41 @@ static int nb_index(int f) {
 
 static uint16_t blk_tex_off[B_N];   /* b x 6 */
 
+/* face f of the cell (its corners in ck): whole by rs_face (assembly) when far enough, else cut in parts (quad) */
+static void face(uint8_t f, uint8_t split) {
+  if (split > 1) {
+    /* (cut only as much as its depth varies: a face seen straight on is not bent by the texture's straight lines) */
+    face_corners(f);
+    int z0 = fq[2], z1 = fq[2];
+    if (fq[5] < z0) z0 = fq[5];
+    if (fq[5] > z1) z1 = fq[5];
+    if (fq[8] < z0) z0 = fq[8];
+    if (fq[8] > z1) z1 = fq[8];
+    if (fq[11] < z0) z0 = fq[11];
+    if (fq[11] > z1) z1 = fq[11];
+    int d = z1 - z0, d4 = d + d;
+    d4 += d4;
+    if (z0 > 0 && d4 < z0) split = 1;
+    else if (split == 4 && z0 > 0 && d < z0) split = 2;
+    if (split > 1) {
+      quad(split);
+      return;
+    }
+  }
+  stat_faces++;
+  rs_setup(s_tex, s_cm, s_alpha);
+  uint8_t r = rs_face(f);
+
+  if (r == 2) raster(rs_fs, 4);
+  else if (r == 1) {
+    face_corners(f);
+    static CV q[4] = {{0, 0, 0, 0, 0}, {0, 0, 0, 65535, 0}, {0, 0, 0, 65535, 65535}, {0, 0, 0, 0, 65535}};
+    q[0].x = fq[0], q[0].y = fq[1], q[0].z = fq[2], q[1].x = fq[3], q[1].y = fq[4], q[1].z = fq[5];
+    q[2].x = fq[6], q[2].y = fq[7], q[2].z = fq[8], q[3].x = fq[9], q[3].y = fq[10], q[3].z = fq[11];
+    draw_quad(q, 4, rs_fclip);
+  }
+}
+
 __attribute__((noinline)) static void cell(uint8_t b, int X, int Y, int Z, int fog) {
   stat_cells++;
   corners(X, Y, Z);
@@ -513,10 +548,8 @@ __attribute__((noinline)) static void cell(uint8_t b, int X, int Y, int Z, int f
     s_tex = tex_of(tex);
     s_cm = shade_of(light_level(wlight[c_idx], 1), fog);
     s_alpha = 1;
-    face_corners(6);
-    quad(split);
-    face_corners(7);
-    quad(split);
+    face(6, split);
+    face(7, split);
     return;
   }
   s_alpha = (blk_flags[b] & BF_ALPHA) != 0;
@@ -543,8 +576,7 @@ __attribute__((noinline)) static void cell(uint8_t b, int X, int Y, int Z, int f
       tex = f == 3 || f == 4 ? bt[3] : bt[2];
     s_tex = mined ? crack_of(tex) : tex_of(tex);
     s_cm = shade_of(light_level(lb, f), fog);
-    face_corners(f);
-    quad(split);
+    face(f, split);
   }
 }
 
