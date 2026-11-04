@@ -7,7 +7,7 @@
 #define SCREEN_H 240
 #define BAND 24
 
-enum { F_SMALL, F_MEDIUM, F_BIG };
+enum { F_SMALL, F_MEDIUM, F_LARGE, F_BIG };
 enum { AL_LEFT, AL_CENTER, AL_RIGHT };
 
 void gfx_init(uint16_t *band);

@@ -10,7 +10,7 @@
 
 static uint16_t *fb;
 static int by0;
-static const Font *const fonts[3] = {&font_small, &font_medium, &font_big};
+static const Font *const fonts[4] = {&font_small, &font_medium, &font_large, &font_big};
 
 void gfx_init(uint16_t *band) { fb = band; }
 void gfx_band(int y0) { by0 = y0; }

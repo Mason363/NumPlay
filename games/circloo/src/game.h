@@ -54,7 +54,7 @@ typedef struct {
   bool complete;
 } Level;
 
-enum { S_MENU, S_PLAY, S_PAUSE, S_DONE, S_CREDITS };
+enum { S_MENU, S_PLAY, S_PAUSE, S_DONE, S_CREDITS, S_HELP };
 
 typedef struct {
   bool running;

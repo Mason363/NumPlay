@@ -115,7 +115,7 @@ bool save_write(void) {
 
 /* ---- the menus ---- */
 
-enum { IT_MODE, IT_LEVEL, IT_CREDITS, IT_CONTINUE, IT_RETRY, IT_MAIN, IT_NEXT };
+enum { IT_MODE, IT_LEVEL, IT_HELP, IT_CREDITS, IT_CONTINUE, IT_RETRY, IT_MAIN, IT_NEXT };
 #define SLIDE 8
 
 static int levels_in(int m) { return m ? NHARD : NBASE; }
@@ -137,6 +137,7 @@ static void menu(int state, int sel) {
   if (state == S_MENU) {
     if (save.unlocked[0] > 10) g.items[g.nitems++] = IT_MODE;
     g.items[g.nitems++] = IT_LEVEL;
+    g.items[g.nitems++] = IT_HELP;
     g.items[g.nitems++] = IT_CREDITS;
   } else if (state == S_PAUSE) {
     g.items[g.nitems++] = IT_CONTINUE, g.items[g.nitems++] = IT_RETRY, g.items[g.nitems++] = IT_MAIN;
@@ -198,6 +199,7 @@ static void act(int item) {
     colours_for((float)g.pick[save.hard]);
     break;
   case IT_LEVEL: g.zoom = 1; break;
+  case IT_HELP: g.state = S_HELP; break;
   case IT_CREDITS: g.state = S_CREDITS; break;
   case IT_CONTINUE: g.state = S_PLAY; break;
   case IT_RETRY: start(L.level, L.hard); break;
@@ -239,8 +241,11 @@ void game_tick(uint32_t keys) {
     if (L.complete) complete();
     return;
   case S_CREDITS:
-    if (press & (K_BACK | K_OK)) main_menu();
+  case S_HELP: {
+    int item = g.state == S_HELP ? IT_HELP : IT_CREDITS;
+    if (press & (K_BACK | K_OK)) main_menu(), g.sel = g.from = sel_of(item);
     return;
+  }
   case S_DONE:
     level_tick(0);   /* (the level goes on moving behind) */
     break;
@@ -272,6 +277,7 @@ static const char *label(int item, char *buf) {
   switch (item) {
   case IT_MODE: return save.hard ? "Hard mode" : "Normal#mode";
   case IT_LEVEL: snprintf(buf, 8, "%d", g.pick[save.hard]); return buf;
+  case IT_HELP: return "How to play";
   case IT_CREDITS: return "Credits";
   case IT_CONTINUE: return "Continue";
   case IT_RETRY: return "Retry level";
@@ -299,6 +305,20 @@ static const char *hint(int item) {
   return "Use the left and right arrow keys to select an option. Press OK to confirm.";
 }
 
+/* the widest word of a label */
+static int word_w(int font, const char *s) {
+  int w = 0;
+  while (*s) {
+    int n = 0;
+    while (s[n] && s[n] != ' ' && s[n] != '#') n++;
+    int ww = gfx_text_w(font, s, n);
+    if (ww > w) w = ww;
+    s += n;
+    if (*s) s++;
+  }
+  return w;
+}
+
 static void draw_menu(void) {
   uint16_t A = g.hue_a, B = g.hue_b;
   if (g.state == S_MENU) gfx_fill(A);
@@ -309,11 +329,12 @@ static void draw_menu(void) {
   char buf[32];
   for (int i = 0; i < g.nitems; i++) {
     float d = fabsf(i - pos), id = d < 1 ? 1 - d : 0;
-    float x = SCREEN_W / 2 + (i - pos) * 160, y = SCREEN_H / 2, r = 20 + 60 * id;
+    float x = SCREEN_W / 2 + (i - pos) * 150, y = 108, r = 17 + 51 * id;
     if (x + r < 0 || x - r > SCREEN_W) continue;
     gfx_disc(x, y, r, B, 256);
     int font = id > 0.7f ? F_BIG : id > 0.3f ? F_MEDIUM : F_SMALL;
     const char *s = label(g.items[i], buf);
+    while (font > F_SMALL && word_w(font, s) > r * 1.75f) font--;
     int w = (int)(r * 1.8f), n = gfx_wrap(font, 0, 0, s, w, 0, 0, AL_CENTER, 0), h = gfx_font_h(font);
     char sub[48] = "";
     if (id > 0.7f) {
@@ -365,6 +386,21 @@ static void draw_menu(void) {
   if (g.zoom) gfx_disc(SCREEN_W / 2, SCREEN_H / 2, 80 + g.zoom * 14, B, 256);
 }
 
+static void draw_help(void) {
+  uint16_t A = g.hue_a, B = g.hue_b;
+  gfx_fill(A);
+  gfx_disc(SCREEN_W / 2, -150, 210, B, 256);
+  gfx_text(F_LARGE, SCREEN_W / 2, 12, "How to play", 99, A, 256, AL_CENTER);
+  gfx_disc(42, 88, 13, B, 256), gfx_disc(42, 88, 10, mix(A, 0, 51), 256);
+  gfx_disc(42, 128, 6.4f, B, 256), gfx_disc(42, 128, 5.1f, A, 256);
+  gfx_disc(42, 168, 6.4f, B, 256), gfx_disc(42, 168, 5.1f, A, 256), gfx_disc(42, 168, 3.2f, B, 256);
+  gfx_wrap(F_SMALL, 64, 80, "Left and right roll the ball.", 240, B, 256, AL_LEFT, 1);
+  gfx_wrap(F_SMALL, 64, 113, "Collect seven circles to complete a level. Each one makes it grow.", 240, B, 256, AL_LEFT, 1);
+  gfx_wrap(F_SMALL, 64, 153, "A circle with a dot is taken by another ball, not yours.", 240, B, 256, AL_LEFT, 1);
+  gfx_wrap(F_SMALL, SCREEN_W / 2, 200, "Back pauses. Home saves and quits.", 300, B, 256, AL_CENTER, 1);
+  gfx_wrap(F_SMALL, SCREEN_W / 2, SCREEN_H - 18, "OK or Back to go back", 300, mix(B, 0xFFFF, 64), 256, AL_CENTER, 1);
+}
+
 static void draw_credits(void) {
   uint16_t A = g.hue_a, B = g.hue_b;
   gfx_fill(A);
@@ -378,12 +414,13 @@ static void draw_credits(void) {
 }
 
 void game_draw(void) {
-  if (g.state != S_MENU && g.state != S_CREDITS && L.ball >= 0) {
+  if (g.state != S_MENU && g.state != S_CREDITS && g.state != S_HELP && L.ball >= 0) {
     g.camx = W.b[L.ball].x / PX_M, g.camy = W.b[L.ball].y / PX_M;
   }
   for (int y = 0; y < SCREEN_H; y += BAND) {
     gfx_band(y);
     if (g.state == S_CREDITS) draw_credits();
+    else if (g.state == S_HELP) draw_help();
     else {
       if (g.state != S_MENU) level_draw();
       if (g.state != S_PLAY) draw_menu();

@@ -8,7 +8,7 @@ from PIL import Image, ImageDraw, ImageFont
 # (name, file, pixel size): the game's fnt_small/fnt_medium, fnt_quitebig_semibold and fnt_big_semibold at the
 # calculator's scale, kept readable
 FONTS = [("small", "OpenSans-Regular.ttf", 12), ("medium", "OpenSans-Semibold.ttf", 16),
-         ("big", "OpenSans-Semibold.ttf", 34)]
+         ("large", "OpenSans-Semibold.ttf", 24), ("big", "OpenSans-Semibold.ttf", 34)]
 FIRST, LAST = 32, 126
 
 
