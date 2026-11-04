@@ -558,3 +558,23 @@ _blit_rle_clip:
 .Lk_done:
 	pop	ix
 	ret
+
+/* void blit_remap(uint8_t *d, const uint8_t *tab, unsigned n): d[i] = tab[d[i]], tab 256-aligned, 0 < n < 65536 */
+	.global	_blit_remap
+	.type	_blit_remap, @function
+_blit_remap:
+	ld	iy, 0
+	add	iy, sp
+	ld	hl, (iy + 3)
+	ld	de, (iy + 6)
+	ld	bc, (iy + 9)
+.Lm_px:
+	ld	e, (hl)
+	ld	a, (de)
+	ld	(hl), a
+	inc	hl
+	dec	bc
+	ld	a, b
+	or	a, c
+	jr	nz, .Lm_px
+	ret

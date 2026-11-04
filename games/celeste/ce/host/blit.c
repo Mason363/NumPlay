@@ -25,7 +25,9 @@ void blit_row(const Cell *cells, unsigned n, uint8_t *dst, unsigned rows) {
 void blit_clip(const Cell *cell, uint8_t *dst, unsigned a, unsigned b, unsigned rows) {
   if (cell->drawn & rows) tile_rows(cell, dst, a, b, rows);
 }
-void blit_copy(uint8_t *dst, const uint8_t *src, unsigned n) { memcpy(dst, src, n); }
+void blit_copy(uint8_t *dst, const uint8_t *src, unsigned n) {   /* (forwards a byte at a time, as LDIR) */
+  while (n--) *dst++ = *src++;
+}
 void blit_rle(uint8_t *dst, const uint8_t *rows, unsigned nrows) {
   for (unsigned r = 0; r < nrows; r++, dst += 320) {
     uint8_t *d = dst;
@@ -87,4 +89,7 @@ void blit_rle_clip(uint8_t *dst, const uint8_t *rows, unsigned skip, unsigned nr
       rows += 2 + n;
     }
   }
+}
+void blit_remap(uint8_t *d, const uint8_t *tab, unsigned n) {
+  for (; n; n--, d++) *d = tab[*d];
 }

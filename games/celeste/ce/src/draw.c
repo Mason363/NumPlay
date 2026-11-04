@@ -236,7 +236,7 @@ void draw_circle_fill(int cx, int cy, int r, uint8_t c) {
     draw_rect(cx - w, cy + y, 2 * w + 1, 1, c);
   }
 }
-void draw_clear_screen(uint8_t c) { memset(g_fb, c, 320 * 240); }
+void draw_clear_screen(uint8_t c) { g_fb[0] = c, blit_copy(g_fb + 1, g_fb, 320 * 240 - 1); }   /* (LDIR: the byte along) */
 
 /* ---------------------------------------------------------------- the tile layers */
 /* the view's cells: each one's fg and bg tiles (the current room's grid over the other's), and where the background

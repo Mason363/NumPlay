@@ -149,6 +149,7 @@ void blit_copy(uint8_t *dst, const uint8_t *src, unsigned n);
 void blit_rect(uint8_t *dst, const uint8_t *src, unsigned w, unsigned h, unsigned src_step);
 void blit_rle(uint8_t *dst, const uint8_t *rows, unsigned nrows);
 void blit_rle_flip(uint8_t *dst, const uint8_t *rows, unsigned nrows);
+void blit_remap(uint8_t *d, const uint8_t *tab, unsigned n);   /* d[i] = tab[d[i]]; tab 256-aligned */
 void blit_rle_clip(uint8_t *dst, const uint8_t *rows, unsigned skip, unsigned nrows, unsigned xa, unsigned xb);   /* mirrored: dst the top row's rightmost */
 void build_cells(const uint8_t *fg, const uint8_t *bg, const TEnt *table, Cell *ofg, Cell *obg, uint8_t *vis, unsigned n);
 /* the view's cells (draw.c), kept while the camera stays in the same ones: 41 x 24 */

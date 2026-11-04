@@ -54,15 +54,17 @@ void text_draw(int font, const char *s, int x, int y, uint32_t rgb, uint32_t und
     const uint8_t *g = glyph(f, c);
     int gx = ((pen + 2) >> 2) + (int8_t)g[0], gy = y + (int8_t)g[1], w = g[2], h = g[3], stride = (w + 3) >> 2;
     const uint8_t *bits = f + R16(g + 5);
-    for (int r = 0; r < h; r++, bits += stride) {
-      int sy = gy + r;
-      if ((unsigned)sy >= 240) continue;
-      uint8_t *d = g_fb + sy * 320;
-      for (int i = 0; i < w; i++) {
-        int a = bits[i >> 2] >> ((i & 3) * 2) & 3, sx = gx + i;
-        if (a && (unsigned)sx < 320) d[sx] = shade[a];
+    if (gx < 0 || gx + w > 320 || gy < 0 || gy + h > 240) continue;   /* (none of it, unless all of it fits) */
+    uint8_t *row = g_fb + gy * 320 + gx;
+    for (int r = 0; r < h; r++, bits += stride, row += 320) {
+      uint8_t *d = row;
+      for (int i = 0; i < stride; i++) {   /* four pixels a byte, the first in its low bits */
+        uint8_t v = bits[i];
+        for (int k = 0; k < 4; k++, d++, v >>= 2)
+          if (v & 3) *d = shade[v & 3];
       }
     }
+    plat_poll();   /* (menus take a while to draw: a quick press still counts) */
     pen += g[4];
     if (printable((uint8_t)s[1])) pen += kern(f, c, (uint8_t)s[1]);
   }

@@ -245,9 +245,11 @@ static void pause_draw(void) {
   text_center(FONT_TITLE, "PAUSED", 160, y - 14, C_GRAY, 0);
   for (int i = 0; i < 3; i++) text_center(FONT_BODY, items[i], 160, y + 18 + i * 14, i == sel ? highlight() : C_WHITE, 0);
 }
-static void fade_view(void) {
-  uint8_t *p = g_fb + VIEW_Y * 320;
-  for (unsigned n = 320 * VIEW_H; n; n--, p++) *p = g_remap_fade[*p];
+static void fade_view(void) {   /* (the table copied to a 256-aligned place in the scratch RAM first) */
+  extern uint8_t *g_scratch;
+  uint8_t *tab = (uint8_t *)(((uintptr_t)g_scratch + 255) & ~(uintptr_t)255);
+  memcpy(tab, g_remap_fade, 256);
+  blit_remap(g_fb + VIEW_Y * 320, tab, 320 * VIEW_H);
 }
 void game_draw(void) {
   static int paused;   /* (frames drawn paused: the black goes into both buffers) */
