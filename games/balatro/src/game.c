@@ -1112,7 +1112,7 @@ int shop_reroll(void) {
 }
 
 static void redeem(int v) {
-  R.vouchers |= 1u << v;
+  R.vouchers |= (uint32_t)1 << v;
   switch (v) {
     case V_OVERSTOCK_NORM: case V_OVERSTOCK_PLUS:
       R.shop_jokers_max++;

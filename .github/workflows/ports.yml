@@ -243,7 +243,6 @@ jobs:
           n() { unzip -Z1 "zips/$1" | grep -vc '^README.txt$'; }
           for _ in 1 2 3; do
             gh release upload "$tag" --clobber \
-              "zips/NumPlay-TI84CE.zip#NumPlay-TI84CE.zip · $(n NumPlay-TI84CE.zip) games for the TI-84 Plus CE and TI-83 Premium CE" \
               "zips/NumPlay-Nspire.zip#NumPlay-Nspire.zip · $(n NumPlay-Nspire.zip) games for the TI-Nspire CX and CX II, with Ndless" \
               "zips/NumPlay-CasioCG.zip#NumPlay-CasioCG.zip · $(n NumPlay-CasioCG.zip) games for the Casio fx-CG50 and Graph 90+E" \
               && exit 0
