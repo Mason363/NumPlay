@@ -208,19 +208,32 @@ static void give_tasks(void) {
 
 /* ---- the game ---- */
 
-static void spawn_circle(void) {
-  /* ShipStatus.SpawnPlayer: on a circle of SpawnRadius around the spawn centre, in player order */
-  int n = g.nplayers;
-  for (int i = 0; i < n; i++) {
-    Player *P = &g.p[i];
-    float a = 6.2831853f * i / n - 1.5707963f;
-    P->pos = (V2){-0.72f + cosf(a) * 1.6f, 0.62f + sinf(a) * 1.6f - FEET_Y};
-    P->vel = (V2){0, 0};
-    P->vent = NONE;
-    P->vent_anim = 0;
-    P->busy = 0;
-    P->flip = cosf(a) > 0;
+/* ShipStatus.SpawnPlayer: up, turned by the player's number, SpawnRadius out from the spawn centre, then
+ * 0.3636 up (the player's picture over its feet) */
+void spawn_at_table(int i) {
+  Player *P = &g.p[i];
+  float a = 6.2831853f * (i - 1) / g.nplayers + 1.5707963f;
+  V2 p = {-0.72f + cosf(a) * 1.6f, 0.62f + sinf(a) * 1.6f + 0.3636f - FEET_Y};
+  /* (where the circle meets the table, the game's physics pushes the player out: so do we, away from it) */
+  const V2 table = {-0.86f, 0.84f};
+  for (int k = 0; k < 40; k++) {
+    V2 q = ship_move(p, (V2){0, 0}, PLAYER_R + 0.02f);
+    bool inside = !ship_wall_between(table, p);
+    if (!inside && fabsf(q.x - p.x) + fabsf(q.y - p.y) < 1e-4f) break;
+    float dx = p.x - table.x, dy = p.y - table.y, l = sqrtf(dx * dx + dy * dy) + 1e-6f;
+    p.x += dx / l * 0.05f, p.y += dy / l * 0.05f;
   }
+  P->pos = p;
+  P->vel = (V2){0, 0};
+  P->vent = NONE;
+  P->vent_anim = 0;
+  P->walking = 0;
+  P->busy = 0;
+  P->flip = cosf(a) > 0.01f;
+}
+
+static void spawn_circle(void) {
+  for (int i = 0; i < g.nplayers; i++) spawn_at_table(i);
 }
 
 void game_new(void) {
@@ -332,7 +345,7 @@ void kill_player(int killer, int victim) {
     g.overlay = O_NONE;
   }
   for (int i = 0; i < g.nplayers; i++)
-    if (g.p[i].alive && i != killer && i != g.me) bot_see(i);
+    if (g.p[i].alive && i != killer && is_bot(i)) bot_saw_kill(i, killer), bot_see(i);
   check_win();
 }
 
@@ -364,6 +377,7 @@ bool sabotage_ready(void) { return g.sab == SAB_NONE && g.sab_cd <= 0; }
 void sabotage(int kind) {
   if (!sabotage_ready()) return;
   g.sab = (uint8_t)kind;
+  g.sab_age = 0;
   g.sab_t = 30;   /* the Skeld's meltdown and oxygen: 30 seconds */
   g.o2_done = 0;
   g.reactor_hold[0] = g.reactor_hold[1] = NONE;

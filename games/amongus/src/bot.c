@@ -166,6 +166,17 @@ static bool plan(int i, V2 goal) {
   return true;
 }
 
+#ifdef HOST
+/* (tests) is p walled in: no walkable cell within 1.5 units that a straight line reaches */
+bool bot_enclosed(V2 p) {
+  int cx = (int)floorf((p.x - NAV_X0) / NAV_CS), cy = (int)floorf((p.y - NAV_Y0) / NAV_CS);
+  for (int y = cy - 3; y <= cy + 3; y++)
+    for (int x = cx - 3; x <= cx + 3; x++)
+      if (nav_ok(x, y) && !ship_wall_between(p, cell_pos(y * NAV_W + x))) return false;
+  return true;
+}
+#endif
+
 /* ---- perception ---- */
 
 static float dist2(V2 a, V2 b) { return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y); }
@@ -204,7 +215,7 @@ void bot_see(int i) {
       if (g.opt.visual && Q->busy && !Q->imp && (Q->bot.task < MAX_TASKS) &&
           TASK_DEFS[Q->tasks[Q->bot.task].def].type == T_SUBMIT_SCAN)
         B->sus[j] = -100, B->scanned = (uint8_t)j;
-      if (j == g.me && Q->vent_anim) {
+      if (Q->vent_anim) {
         B->saw_vent = (uint8_t)j, B->saw_vent_room = Q->room;
         suspect(B, j, 100);
       }
@@ -235,8 +246,8 @@ void bot_see(int i) {
   }
 }
 
-/* a kill seen as it happens (called by kill_player for each living bot) */
-static void saw_kill_check(int i, int killer) {
+/* a kill seen as it happens (kill_player asks each living bot) */
+void bot_saw_kill(int i, int killer) {
   Bot *B = &g.p[i].bot;
   if (g.p[i].imp) return;
   if (can_see(i, killer)) {
@@ -247,6 +258,34 @@ static void saw_kill_check(int i, int killer) {
 }
 
 /* ---- deciding ---- */
+
+/* how many crewmates (but j) are near player j */
+static int company(int j) {
+  int n = 0;
+  for (int k = 0; k < g.nplayers; k++)
+    if (k != j && g.p[k].alive && !g.p[k].imp && g.p[k].vent == NONE && dist2(g.p[k].pos, g.p[j].pos) < 4.5f * 4.5f) n++;
+  return n;
+}
+
+/* an impostor goes after the crewmate most alone (and nearest): false if nobody is worth it */
+static bool start_hunt(int i) {
+  Player *P = &g.p[i];
+  Bot *B = &P->bot;
+  int best = -1;
+  float bs = -1e9f;
+  for (int j = 0; j < g.nplayers; j++) {
+    const Player *Q = &g.p[j];
+    if (!Q->alive || Q->imp || Q->vent != NONE) continue;
+    float s = -company(j) * 8 - sqrtf(dist2(P->pos, Q->pos)) * 0.6f + rnd_f() * 4;
+    if (s > bs) bs = s, best = j;
+  }
+  if (best < 0 || bs < -30) return false;
+  B->state = B_HUNT;
+  B->task = (uint8_t)best;
+  B->t = 0;
+  B->stuck_t = 0;
+  return true;
+}
 
 static float task_time(const Task *t) {
   switch (TASK_DEFS[t->def].type) {
@@ -305,55 +344,50 @@ static int next_task(int i, int *task) {
   return best;
 }
 
-static int fix_console(int i, int sab, int nth) {
-  /* the sabotage's consoles: reactor and oxygen have two */
-  int found = 0, last = -1;
-  for (int c = 0; c < N_CONSOLES; c++) {
-    const ConsoleRec *C = &CONSOLES[c];
-    if (C->kind) continue;
-    int t = sab == SAB_REACTOR ? T_RESET_REACTOR : sab == SAB_O2 ? T_RESTORE_O2 : sab == SAB_LIGHTS ? T_FIX_LIGHTS
-                                                                                                 : T_FIX_COMMS;
-    if (!(C->types >> t & 1)) continue;
-    if (found == nth) return c;
-    found++, last = c;
-  }
-  (void)i;
-  return last;
-}
-
-/* how many bots already go to fix console c */
-static int fixers(int c, int except) {
+/* the consoles that fix the sabotage and still need someone (reactor and oxygen have two) */
+static int fix_consoles(int *out) {
+  static const uint8_t FIX[] = {0, T_RESET_REACTOR, T_RESTORE_O2, T_FIX_LIGHTS, T_FIX_COMMS};
   int n = 0;
-  for (int j = 0; j < g.nplayers; j++)
-    if (j != except && j != g.me && g.p[j].alive && g.p[j].bot.cons == c &&
-        (g.p[j].bot.state == B_FIX || (g.p[j].bot.state == B_WALK && g.p[j].bot.target == G_FIX)))
-      n++;
+  for (int c = 0; c < N_CONSOLES && n < 4; c++) {
+    const ConsoleRec *C = &CONSOLES[c];
+    if (C->kind || !(C->types >> FIX[g.sab] & 1)) continue;
+    if (g.sab == SAB_O2 && (g.o2_done >> (C->room == R_ADMIN ? 0 : 1) & 1)) continue;
+    out[n++] = c;
+  }
   return n;
 }
 
-static bool want_fix(int i) {
-  Player *P = &g.p[i];
-  if (!g.sab || !P->alive) return false;
-  if (P->bot.state == B_FIX || (P->bot.state == B_WALK && P->bot.target == G_FIX)) return false;
-  if (P->bot.state == B_REPORT) return false;
-  /* the closest ones go: two to each of the critical sabotages, one or two to the others */
-  int need = (g.sab == SAB_REACTOR || g.sab == SAB_O2) ? 2 : 1;
-  for (int k = 0; k < need; k++) {
-    int c = fix_console(i, g.sab, k);
-    if (c < 0) continue;
-    if (fixers(c, i) >= 1) continue;
-    /* am I among the closest of those free */
-    float my = dist2(P->pos, stand(c));
-    int closer = 0;
-    for (int j = 0; j < g.nplayers; j++)
-      if (j != i && j != g.me && g.p[j].alive && (!g.p[j].imp || g.p[j].bot.with == 1) && dist2(g.p[j].pos, stand(c)) < my)
-        closer++;
-    if (closer < 2 || (P->imp && rnd_n(4) == 0)) {
-      go(i, stand(c), G_FIX, c);
-      return true;
+static bool fixing(int j, int c) {
+  const Bot *B = &g.p[j].bot;
+  return (B->state == B_FIX || (B->state == B_WALK && B->target == G_FIX)) && B->cons == c;
+}
+
+/* a sabotage: the nearest free crewmate goes to each console that needs someone (after a moment to notice it) */
+void bots_dispatch(void) {
+  if (!g.sab || g.sab_age < 1.5f || (int)(g.t * 30) % 10) return;
+  int cons[4], n = fix_consoles(cons);
+  for (int k = 0; k < n; k++) {
+    int c = cons[k];
+    bool covered = false;
+    for (int j = 0; j < g.nplayers; j++) covered |= is_bot(j) && g.p[j].alive && !g.p[j].imp && fixing(j, c);
+    if (covered) continue;
+    int best = -1;
+    float bd = 1e9f;
+    for (int j = 0; j < g.nplayers; j++) {
+      const Player *Q = &g.p[j];
+      if (!is_bot(j) || !Q->alive || Q->imp || Q->vent != NONE || Q->bot.state == B_REPORT) continue;
+      bool busy = false;
+      for (int m = 0; m < n; m++) busy |= fixing(j, cons[m]);
+      if (busy) continue;
+      float d = dist2(Q->pos, stand(c));
+      /* (lights and comms can wait for a task to be done) */
+      if (Q->bot.state == B_TASK && (g.sab == SAB_LIGHTS || g.sab == SAB_COMMS)) d += 200;
+      if (d < bd) bd = d, best = j;
     }
+    if (best < 0) continue;
+    g.p[best].busy = 0;
+    go(best, stand(cons[k]), G_FIX, cons[k]);
   }
-  return false;
 }
 
 static void wander(int i) {
@@ -365,7 +399,6 @@ static void wander(int i) {
 static void decide(int i) {
   Player *P = &g.p[i];
   Bot *B = &P->bot;
-  if (want_fix(i)) return;
   if (!P->imp) {
     int t = -1, c = next_task(i, &t);
     if (c >= 0) {
@@ -392,27 +425,7 @@ static void decide(int i) {
     wander(i);
     return;
   }
-  if (P->kill_cd < 6 && rnd_n(3)) {
-    /* someone alone */
-    int best = -1;
-    float bs = -1e9f;
-    for (int j = 0; j < g.nplayers; j++) {
-      const Player *Q = &g.p[j];
-      if (!Q->alive || Q->imp) continue;
-      int company = 0;
-      for (int k = 0; k < g.nplayers; k++)
-        if (k != j && g.p[k].alive && !g.p[k].imp && dist2(g.p[k].pos, Q->pos) < 16) company++;
-      float s = -company * 10 - sqrtf(dist2(P->pos, Q->pos)) + rnd_f() * 4;
-      if (s > bs) bs = s, best = j;
-    }
-    if (best >= 0) {
-      B->state = B_HUNT;
-      B->task = (uint8_t)best;
-      B->t = 0;
-      B->think = 0;
-      return;
-    }
-  }
+  if (P->kill_cd < 5 && start_hunt(i)) return;
   /* a task to fake: the console of one of its (fake) tasks, or any */
   int t = -1, c = next_task(i, &t);
   if (c < 0 || rnd_n(3) == 0) c = rnd_n(N_CONSOLES);
@@ -465,7 +478,7 @@ static void arrive(int i) {
       return;
     }
     B->state = B_TASK;
-    B->t = task_time(t) * (0.8f + 0.5f * rnd_f());
+    B->t = task_time(t) * (0.9f + 0.6f * rnd_f());
     P->busy = 1;
     return;
   }
@@ -503,13 +516,12 @@ static void arrive(int i) {
 static void impostor_tick(int i) {
   Player *P = &g.p[i];
   Bot *B = &P->bot;
+
   /* kill whoever is in reach when nobody would see */
   if (P->kill_cd <= 0 && P->vent == NONE) {
     int t = kill_target(i);
     if (t >= 0 && !witnessed(i, t, g.p[t].pos) && !witnessed(i, t, P->pos) && rnd_n(4) == 0) {
       kill_player(i, t);
-      for (int j = 0; j < g.nplayers; j++)
-        if (j != i && g.p[j].alive && j != g.me) saw_kill_check(j, i);
       /* away from the body: a vent close by, else somewhere else */
       int v = nearest_vent(P->pos, 3.5f);
       if (v >= 0 && rnd_n(3)) {
@@ -521,10 +533,18 @@ static void impostor_tick(int i) {
       return;
     }
   }
-  /* sabotage now and then */
-  if (sabotage_ready() && P->alive && rnd_n(30 * 25) == 0) {
-    int r = rnd_n(100);
-    sabotage(r < 35 ? SAB_LIGHTS : r < 55 ? SAB_COMMS : r < 80 ? SAB_REACTOR : SAB_O2);
+  /* the kill nearly ready: off to find someone */
+  if (P->kill_cd < 4 && P->vent == NONE && rnd_n(15) == 0 &&
+      (B->state == B_TASK || B->state == B_WAIT || B->state == B_IDLE ||
+       (B->state == B_WALK && (B->target == G_FAKE || B->target == G_WANDER))))
+    start_hunt(i);
+  /* sabotage now and then, and the lights when about to kill */
+  if (sabotage_ready() && P->alive) {
+    if (P->kill_cd < 3 && B->state == B_HUNT && company(B->task) && rnd_n(30 * 4) == 0) sabotage(SAB_LIGHTS);
+    else if (rnd_n(30 * 35) == 0) {
+      int r = rnd_n(100);
+      sabotage(r < 35 ? SAB_LIGHTS : r < 55 ? SAB_COMMS : r < 80 ? SAB_REACTOR : SAB_O2);
+    }
   }
   if (rnd_n(30 * 40) == 0) {
     static const uint8_t DR[] = {R_CAFETERIA, R_STORAGE, R_ELECTRICAL, R_MEDBAY, R_SECURITY, R_UPPER_ENGINE,
@@ -565,10 +585,11 @@ void bot_tick(int i) {
     impostor_tick(i);
     if (g.screen != S_PLAY) return;
   }
-  if (!P->imp && P->alive && B->state != B_FIX && B->state != B_REPORT && g.sab) {
-    if (rnd_n(30) == 0 && want_fix(i)) return;
+  if (P->imp && P->alive && g.sab && rnd_n(400) == 0 && B->state != B_HUNT && B->state != B_VENT) {
+    /* to the sabotage, as if to fix it */
+    int cons[4], n = fix_consoles(cons);
+    if (n) go(i, stand(cons[rnd_n(n)]), G_FAKE, cons[0]);
   }
-  if (P->imp && P->alive && g.sab && rnd_n(200) == 0 && B->state != B_HUNT && B->state != B_VENT) want_fix(i);
   switch (B->state) {
   case B_IDLE:
     walk(i, (V2){0, 0});
@@ -622,7 +643,10 @@ void bot_tick(int i) {
         } else
           task_step_done(i, B->task);
       }
-      B->state = B_IDLE;
+      B->state = B_WAIT;
+      B->t = 0.4f + rnd_f() * 1.6f;
+      /* now and then a look around before the next task */
+      if (!P->imp && rnd_n(4) == 0) wander(i);
     }
     break;
   case B_FIX: {
@@ -651,7 +675,12 @@ void bot_tick(int i) {
       B->state = B_IDLE;
       break;
     }
-    B->think -= 0;
+    /* in company for a while: someone else */
+    B->stuck_t = company(B->task) > 1 ? B->stuck_t + DT : 0;
+    if (B->stuck_t > 5) {
+      if (!start_hunt(i)) B->state = B_IDLE;
+      break;
+    }
     B->t -= DT;
     if (B->t <= 0 || B->pi >= B->plen) {
       B->t = 0.7f;
@@ -739,9 +768,22 @@ void bot_meeting_start(void) {
   g.nlines = 0;
   g.line_shown = 0;
   float at = 1.5f;
+  /* a body: who each crewmate last saw in its room lately is a little suspect */
+  if (g.reported != NONE) {
+    int room = NONE;
+    for (int b = 0; b < MAXP; b++)
+      if (g.bodies[b].on && g.bodies[b].who == g.reported) room = ship_room_at(g.bodies[b].pos);
+    for (int i = 0; i < g.nplayers; i++) {
+      if (!is_bot(i) || !g.p[i].alive || g.p[i].imp) continue;
+      Bot *B = &g.p[i].bot;
+      for (int j = 0; j < g.nplayers; j++)
+        if (j != i && g.p[j].alive && B->seen_room[j] == room && room != R_HALLWAY && g.t - B->seen_t[j] < 25)
+          suspect(B, j, B->with_t[j] > 20 ? 5 : 15);
+    }
+  }
   /* the caller first */
   int c = g.caller;
-  if (c != g.me) {
+  if (is_bot(c)) {
     Bot *B = &g.p[c].bot;
     if (g.reported != NONE) {
       queue(c, L_BODY_IN, g.reported, g.p[c].imp ? g.p[c].room : B->body_room, at), at += 1.6f;
@@ -766,7 +808,7 @@ void bot_meeting_start(void) {
   /* the others, in a random order */
   int order[MAXP], n = 0;
   for (int i = 0; i < g.nplayers; i++)
-    if (i != g.me && i != c && g.p[i].alive) order[n++] = i;
+    if (is_bot(i) && i != c && g.p[i].alive) order[n++] = i;
   for (int k = n - 1; k > 0; k--) {
     int j = rnd_n(k + 1), t = order[k];
     order[k] = order[j], order[j] = t;
@@ -814,7 +856,7 @@ void bot_meeting_tick(void) {
     int k = queue_kind[qnext], a = queue_a[qnext];
     if (k == L_SAW_KILL || k == L_SAW_VENT || k == L_SUS || k == L_NEAR_BODY) {
       for (int i = 0; i < g.nplayers; i++) {
-        if (i == who || i == g.me || !g.p[i].alive || g.p[i].imp) continue;
+        if (i == who || !is_bot(i) || !g.p[i].alive || g.p[i].imp) continue;
         Bot *B = &g.p[i].bot;
         if (i == a) {
           suspect(B, who, 25);   /* being accused */
@@ -827,7 +869,7 @@ void bot_meeting_tick(void) {
     }
     if (k == L_SCANNED)
       for (int i = 0; i < g.nplayers; i++)
-        if (i != g.me && !g.p[i].imp && g.p[i].bot.sus[who] < 30) suspect(&g.p[i].bot, a, -40);
+        if (is_bot(i) && !g.p[i].imp && g.p[i].bot.sus[who] < 30) suspect(&g.p[i].bot, a, -40);
     qnext++;
   }
 }
@@ -835,7 +877,7 @@ void bot_meeting_tick(void) {
 /* the bots' votes (each at its own moment in the voting time) */
 void bot_votes(void) {
   for (int i = 0; i < g.nplayers; i++) {
-    if (i == g.me || !g.p[i].alive || g.votes[i] != NONE) continue;
+    if (!is_bot(i) || !g.p[i].alive || g.votes[i] != NONE) continue;
     if (g.meet_stage != 1) continue;
     /* decide after a few seconds of voting, or soon after everyone spoke */
     float when = 2.0f + (float)((i * 37 + g.nlines * 11) % 9);
@@ -852,8 +894,12 @@ void bot_votes(void) {
         if (!g.p[j].imp && g.p[j].alive && counts[j] > bc) bc = counts[j], best = j;
       g.votes[i] = (uint8_t)(bc ? best : (w >= 0 && s > 10 && rnd_n(2)) ? w : SKIP);
     } else {
-      g.votes[i] = (uint8_t)(w >= 0 && s >= 35 ? w : SKIP);
+      /* sure enough: that one; half sure: with the crowd if it's the same one */
+      int counts[MAXP + 1] = {0};
+      for (int j = 0; j < g.nplayers; j++)
+        if (g.votes[j] != NONE && g.votes[j] != SKIP) counts[g.votes[j]]++;
+      bool crowd = w >= 0 && counts[w] >= 2 && s >= 15 && B->sus[w] > -30;
+      g.votes[i] = (uint8_t)(w >= 0 && (s >= 30 || crowd) ? w : SKIP);
     }
-    (void)B;
   }
 }

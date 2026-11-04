@@ -94,6 +94,49 @@ static void open_minigame(int kind) {
   g.cam = (V2){P->pos.x, P->pos.y + FEET_Y};
 }
 
+/* a scene set up straight away (screenshots): kill, report, emergency, meeting, eject, map, sabmap, admin, reactor,
+ * lights */
+static void scene(const char *name) {
+  Player *P = &g.p[g.me];
+  int other = g.me == 1 ? 2 : 1, imp = -1;
+  for (int i = 0; i < g.nplayers; i++)
+    if (g.p[i].imp && i != g.me) imp = i;
+  g.screen = S_PLAY;
+  g.screen_t = 0;
+  if (!strcmp(name, "kill")) {
+    if (imp >= 0) kill_player(imp, g.me);
+  } else if (!strcmp(name, "report")) {
+    kill_player(imp >= 0 ? imp : other, other);
+    start_meeting(g.me, other);
+  } else if (!strcmp(name, "emergency")) {
+    start_meeting(other, NONE);
+  } else if (!strcmp(name, "meeting") || !strcmp(name, "eject")) {
+    kill_player(imp >= 0 ? imp : other, other);
+    start_meeting(3, other);
+    g.screen = S_REPORT;
+    g.screen_t = 2.6f;
+    game_tick(0);
+    if (!strcmp(name, "eject")) {
+      g.meet_t = 999;
+      g.meet_stage = 1;
+      for (int i = 0; i < g.nplayers; i++) g.votes[i] = (uint8_t)(imp >= 0 ? imp : 4);
+      game_tick(0);
+      g.meet_t = 6;
+      game_tick(0);
+    }
+  } else if (!strcmp(name, "map")) {
+    map_open(O_MAP);
+  } else if (!strcmp(name, "sabmap")) {
+    map_open(O_SABMAP);
+  } else if (!strcmp(name, "admin")) {
+    map_open(O_ADMIN);
+  } else if (!strcmp(name, "reactor") || !strcmp(name, "lights") || !strcmp(name, "o2") || !strcmp(name, "comms")) {
+    g.sab_cd = 0;
+    sabotage(name[0] == 'r' ? SAB_REACTOR : name[0] == 'l' ? SAB_LIGHTS : name[0] == 'o' ? SAB_O2 : SAB_COMMS);
+  }
+  (void)P;
+}
+
 static uint32_t frng = 1;
 static uint32_t frnd(void) {
   frng ^= frng << 13, frng ^= frng >> 17, frng ^= frng << 5;
@@ -101,9 +144,11 @@ static uint32_t frnd(void) {
 }
 
 int main(int argc, char **argv) {
-  int frames = 300, trace = 0, start = 0, bots = -1, mgkind = -1;
+  int frames = 300, trace = 0, start = 0, bots = -1, mgkind = -1, imps = -1, killcd = -1, walk_frames = 0;
+  const char *scene_name = NULL;
+  float at_x = 1e9f, at_y = 0;
   uint32_t seed = 0;
-  bool fuzz = false, draw = false;
+  bool fuzz = false, draw = false, shot_end = false, walled = false;
   const char *out = "build/shots";
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--frames")) frames = atoi(argv[++i]);
@@ -113,10 +158,17 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[i], "--start")) start = !strcmp(argv[++i], "imp") ? 2 : 1;
     else if (!strcmp(argv[i], "--auto")) autopilot = true;
     else if (!strcmp(argv[i], "--draw")) draw = true;
+    else if (!strcmp(argv[i], "--walled")) walled = true;
     else if (!strcmp(argv[i], "--trace")) trace = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--seed")) seed = (uint32_t)atoi(argv[++i]);
     else if (!strcmp(argv[i], "--bots")) bots = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--imps")) imps = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--killcd")) killcd = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--mg")) mgkind = atoi(argv[++i]), start = start ? start : 1;
+    else if (!strcmp(argv[i], "--scene")) scene_name = argv[++i], start = start ? start : 1;
+    else if (!strcmp(argv[i], "--at")) at_x = (float)atof(argv[++i]), at_y = (float)atof(argv[++i]);
+    else if (!strcmp(argv[i], "--walk")) walk_frames = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--shot-end")) shot_end = true;
     else if (!strcmp(argv[i], "--fuzz")) fuzz = true, frng = (uint32_t)atoi(argv[++i]) * 2654435761u + 1;
     else if (!strcmp(argv[i], "--shots")) {
       const char *s = argv[++i];
@@ -137,12 +189,20 @@ int main(int argc, char **argv) {
   game_init();
   if (start) {
     if (bots >= 0) g.opt.bots = (uint8_t)bots;
+    if (imps >= 0) g.opt.impostors = (uint8_t)imps;
+    if (killcd >= 0) g.opt.kill_cd = (uint8_t)(killcd * 2);
     g.opt.role = (uint8_t)start;
     g.rng = seed * 2654435761u + 77;
     game_new();
+    g.screen = S_PLAY;
+    /* (the round a little under way: the bots spread out) */
+    for (int f = 0; f < walk_frames; f++) game_tick(0), host_time += 33;
+    if (at_x < 1e8f) g.p[g.me].pos = (V2){at_x, at_y}, g.cam = (V2){at_x, at_y + FEET_Y};
     if (mgkind >= 0) open_minigame(mgkind);
+    if (scene_name) scene(scene_name);
   }
   uint32_t fk = 0;
+  int meetings = 0, ejects = 0, wrong = 0, prev_scr = -1;
   static int hist[16];
   for (int f = 0; f < frames && game_running; f++) {
     uint32_t k = 0;
@@ -160,7 +220,18 @@ int main(int argc, char **argv) {
     if (autopilot && (g.screen == S_INTRO || g.screen == S_EJECT) && f % 20 == 0) k |= K_OK;
     host_keys = k;
     hist[g.screen & 15]++;
+    if (g.screen == S_REPORT && prev_scr != S_REPORT) meetings++;
+    if (g.screen == S_EJECT && prev_scr != S_EJECT) ejects += g.ejected != NONE, wrong += g.ejected != NONE && !g.p[g.ejected].imp;
+    prev_scr = g.screen;
     game_tick(k);
+    /* nobody walled in (inside a table or a wall) */
+    if (walled && f % 15 == 0)
+      for (int i = 0; i < g.nplayers; i++) {
+        extern bool bot_enclosed(V2 p);
+        static bool told[MAXP];
+        if (g.p[i].alive && g.p[i].vent == NONE && !told[i] && bot_enclosed(g.p[i].pos))
+          told[i] = true, printf("WALLED f%d player %d (%.3f,%.3f)\n", f, i, g.p[i].pos.x, g.p[i].pos.y);
+      }
     host_time += 33;
     bool shot = every ? f % every == 0 : false;
     for (int i = 0; i < nshots; i++) shot |= shots[i] == f;
@@ -173,14 +244,22 @@ int main(int argc, char **argv) {
     if (trace && f % trace == 0)
       printf("t%5d screen %d ov %d me (%.2f %.2f) room %d alive %d imp %d sab %d tasks %.2f\n", f, g.screen, g.overlay,
              g.p[g.me].pos.x, g.p[g.me].pos.y, g.p[g.me].room, g.p[g.me].alive, g.p[g.me].imp, g.sab, tasks_progress());
-    if (g.screen == S_END && autopilot && g.screen_t > 1) break;
+    if (g.screen == S_END && autopilot && g.screen_t > 3) {
+      if (shot_end) {
+        char p[512];
+        snprintf(p, sizeof p, "%s/end.ppm", out);
+        game_draw();
+        host_shot(p);
+      }
+      break;
+    }
   }
   if (fuzz)
     printf("SCREENS title %d lobby %d intro %d play %d report %d meeting %d eject %d end %d howto %d pause %d killed %d\n",
            hist[0], hist[1], hist[2], hist[3], hist[4], hist[5], hist[6], hist[7], hist[8], hist[9], hist[10]);
   int alive = 0;
   for (int i = 0; i < g.nplayers; i++) alive += g.p[i].alive;
-  printf("END screen %d winner %d reason %d t %.1f alive %d tasks %.2f imp %d\n", g.screen, g.winner, g.end_reason, g.t,
-         alive, tasks_progress(), g.p[g.me].imp);
+  printf("END screen %d winner %d reason %d t %.1f alive %d tasks %.2f imp %d meetings %d ejected %d wrong %d\n", g.screen,
+         g.winner, g.end_reason, g.t, alive, tasks_progress(), g.p[g.me].imp, meetings, ejects, wrong);
   return 0;
 }

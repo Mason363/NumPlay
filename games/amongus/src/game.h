@@ -96,7 +96,7 @@ typedef struct {
   float door_cd[N_ROOMS];
   /* sabotage */
   uint8_t sab, switches, o2_done, sab_fixing;
-  float sab_t, sab_cd, light;
+  float sab_t, sab_cd, light, sab_age;   /* sab_age: how long the sabotage has been on */
   uint32_t o2_code;
   uint8_t reactor_hold[2], comms_ok, pad0;
   float reactor_held;
@@ -121,6 +121,8 @@ typedef struct {
 
 extern Game g;
 extern bool autopilot;
+/* is player i played by the bots' brain (the others, and in tests the player too) */
+static inline bool is_bot(int i) { return i != g.me || autopilot; }
 
 /* the tasks a ship gives (ShipStatus' lists) */
 typedef struct {
@@ -144,6 +146,7 @@ void game_init(void);
 void game_tick(uint32_t keys);
 void game_draw(void);
 void game_new(void);           /* a new game from the lobby's settings */
+void spawn_at_table(int i);
 bool game_save(void);
 bool game_load(void);
 void settings_save(void);
@@ -182,6 +185,8 @@ void bot_meeting_start(void);
 void bot_meeting_tick(void);
 void bot_votes(void);
 void bot_see(int i);
+void bot_saw_kill(int i, int killer);
+void bots_dispatch(void);
 
 /* the minigames (mg.c) */
 void mg_open(int cons, int task);
@@ -195,6 +200,7 @@ void hud_draw(void);
 void screens_tick(uint32_t keys, uint32_t pressed);
 void screens_draw(void);
 void map_draw(int mode);
+void map_open(int mode);
 void map_tick(uint32_t pressed, int mode);
 void meeting_tick(uint32_t keys, uint32_t pressed);
 void meeting_draw(void);

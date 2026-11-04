@@ -30,6 +30,8 @@ static inline bool gfx_rows(int y0, int y1) { return y1 > gfx_y0 && y0 < gfx_y0 
 /* the mix table's alphas (the players' pictures), and a colour's palette for them */
 extern const uint8_t *gfx_mix_alpha;
 void gfx_mix_palette(uint16_t *pal, uint32_t body, uint32_t shadow, uint32_t visor);
+/* the same from another mix table (the kill's frames) */
+void gfx_mix_palette_of(int table, int n, uint16_t *pal, uint32_t body, uint32_t shadow, uint32_t visor);
 
 /* a picture with its pivot at (x, y), mirrored, alpha 0-256, inside the clip rectangle; pal: the colours of a P_MIX
  * picture (NULL for the picture's own) */

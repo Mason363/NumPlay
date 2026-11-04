@@ -149,6 +149,7 @@ static void world_tick(void) {
     if (g.door_cd[r] > 0) g.door_cd[r] -= DT;
   if (g.emergency_cd > 0) g.emergency_cd -= DT;
   if (g.sab == SAB_NONE && g.sab_cd > 0) g.sab_cd -= DT;
+  if (g.sab) g.sab_age += DT;
   /* lights: the switches' value moves the light (SwitchSystem: 255 to 0 over about a second) */
   bool dark = g.sab == SAB_LIGHTS;
   g.light += dark ? -DT : DT;
@@ -232,21 +233,27 @@ static void do_action(void) {
     mg_open(what, MAX_TASKS);
     break;
   case ACT_ADMIN:
-    g.overlay = O_ADMIN;
-    g.sel = 0;
+    map_open(O_ADMIN);
     break;
   case ACT_USE:
     mg_open(what, console_use(g.me, what));
     break;
   default:
+    /* an impostor's button with nothing to use: Sabotage */
+    if (P->imp) map_open(O_SABMAP);
     break;
   }
 }
 
 void play_tick(uint32_t keys, uint32_t pressed) {
   Player *P = &g.p[g.me];
-  bool human = g.screen == S_PLAY;
-  if (!human) walk(g.me, (V2){0, 0});
+  int screen = g.screen;
+  if (screen == S_PLAY && autopilot) {
+    /* (tests: the bots' brain plays the player) */
+    g.overlay = O_NONE;
+    bot_tick(g.me);
+  } else if (screen != S_PLAY)
+    walk(g.me, (V2){0, 0});
   else if (g.overlay == O_NONE) {
     V2 dir = {0, 0};
     if (keys & K_LEFT) dir.x -= 1;
@@ -260,15 +267,12 @@ void play_tick(uint32_t keys, uint32_t pressed) {
     }
     walk(g.me, dir);
     if (pressed & K_OK) do_action();
-    if ((pressed & K_EXE) && P->kill_cd <= 0) {
+    if ((pressed & K_EXE) && P->kill_cd <= 0 && g.screen == S_PLAY && g.overlay == O_NONE) {
       int t = kill_target(g.me);
       if (t >= 0) kill_player(g.me, t);
     }
-    if (pressed & K_TOOL) {
-      g.overlay = P->imp ? O_SABMAP : O_MAP;
-      g.sel = 0;
-    }
-    if (pressed & K_BACK) {
+    if ((pressed & K_TOOL) && g.screen == S_PLAY && g.overlay == O_NONE) map_open(P->imp ? O_SABMAP : O_MAP);
+    if ((pressed & K_BACK) && g.screen == S_PLAY && g.overlay == O_NONE) {
       g.back_screen = S_PLAY;
       g.screen = S_PAUSE;
       g.sel = 0;
@@ -279,12 +283,11 @@ void play_tick(uint32_t keys, uint32_t pressed) {
     if (g.overlay == O_TASK) mg_tick(keys, pressed);
     else map_tick(pressed, g.overlay);
   }
-  int screen = g.screen;
-  if (screen != S_PLAY && screen != S_KILLED) return;
-  for (int i = 0; i < g.nplayers; i++)
+  if (g.screen != screen || (screen != S_PLAY && screen != S_KILLED)) return;
+  for (int i = 0; i < g.nplayers && g.screen == screen; i++)
     if (i != g.me) bot_tick(i);
   if (g.screen != screen) return;
+  bots_dispatch();
   world_tick();
-  /* bodies a crewmate bot sees */
   check_win();
 }

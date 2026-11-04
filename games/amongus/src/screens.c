@@ -270,7 +270,8 @@ static void intro_draw(void) {
   art_stars(0, 0);
   if (t < 1.6f) {
     /* "Shhhhhh!" */
-    gfx_text(FONT_HUGE, 160, 130, "Shhhhhh!", IMP_RED, 0x0000, 2, 1);
+    float k = t < 0.25f ? 0.6f + 1.6f * t : 1;
+    gfx_pic(pic(PIC_UI_NO_SHH), 160, 120, k, k, 0, NULL, 256);
     return;
   }
   const Player *M = &g.p[g.me];

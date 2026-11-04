@@ -93,27 +93,26 @@ static void draw_tasks(void) {
   (void)buf;
 }
 
-/* a round button with its name, and a cooldown number over it */
-static void button(int x, int y, const char *name, bool on, int cd) {
-  uint16_t c = on ? 0xFFFF : 0x8410;
-  gfx_disc((float)x, (float)y, 17, 0x0000, on ? 150 : 90);
-  gfx_text(FONT_MID, x, y + 4, name, c, 0x0000, 1, 1);
+/* a button of the game's (its picture has its name), see-through when it can't be used, a cooldown number over it */
+static void button(int x, int y, int pic_id, bool on, int cd) {
+  gfx_spr(pic(pic_id), x, y, false, NULL, on ? 256 : 96);
   if (cd > 0) {
     char b[8];
     snprintf(b, sizeof b, "%d", cd);
-    gfx_text(FONT_BIG, x, y - 6, b, 0xFFFF, 0x0000, 1, 1);
+    gfx_text(FONT_HUGE, x, y + 9, b, 0xFFFF, 0x0000, 2, 1);
   }
 }
 
-static const char *act_name(int a) {
+/* the action button's picture and word (for the key line) */
+static int act_pic(int a, bool imp, const char **word) {
   switch (a) {
-  case 1: return "USE";
-  case 2: return "REPORT";
-  case 3: return "VENT";
-  case 4: return "USE";
-  case 5: return "ADMIN";
-  case 6: return "SECURITY";
-  default: return "USE";
+  case 2: *word = "report"; return PIC_UI_REPORTBUTTON;
+  case 3: *word = "vent"; return PIC_UI_VENT;
+  case 5: *word = "admin"; return PIC_UI_MAPADMIN;
+  case 6: *word = "cameras"; return PIC_UI_SECURITY;
+  case 1:
+  case 4: *word = "use"; return PIC_UI_USEBUTTON;
+  default: *word = imp ? "sabotage" : "use"; return imp ? PIC_UI_SABOTAGE : PIC_UI_USEBUTTON;
   }
 }
 
@@ -141,23 +140,21 @@ void hud_draw(void) {
     gfx_fill(SCREEN_W - 6, 6, 6, SCREEN_H - 24, 0xF800, 150);
   }
   int what = -1, a = hud_action(&what);
+  if (M->vent != NONE) a = 3;
   char keys[96];
-  const char *act = a ? act_name(a) : NULL;
-  if (M->vent != NONE) act = "VENT";
-  bool kill_on = M->imp && M->alive;
-  if (kill_on) {
+  const char *word;
+  bool imp = M->imp && M->alive;
+  int bp = act_pic(a, M->imp, &word);
+  button(296, 204, bp, a != 0 || M->imp, 0);
+  if (imp) {
     int cd = M->kill_cd > 0 ? (int)ceilf(M->kill_cd) : 0;
-    button(290, 196, "KILL", cd == 0 && kill_target(g.me) >= 0, cd);
+    button(254, 204, PIC_UI_KILLBUTTON, cd == 0 && kill_target(g.me) >= 0, cd);
   }
-  button(kill_on ? 248 : 290, 196, act ? act : (M->imp ? "SABOTAGE" : "USE"), act != NULL, 0);
   if (M->vent != NONE)
     snprintf(keys, sizeof keys, "arrows other vents   OK leave   toolbox sabotage   Back pause");
-  else if (M->imp && M->alive)
-    snprintf(keys, sizeof keys, "OK %s   EXE kill   toolbox sabotage   Back pause", act ? act : "use");
+  else if (imp)
+    snprintf(keys, sizeof keys, "OK %s   EXE kill   toolbox sabotage   Back pause", word);
   else
-    snprintf(keys, sizeof keys, "arrows walk   OK %s   toolbox map   Back pause", act ? act : "use");
-  for (char *p = keys; *p; p++)
-    if (*p >= 'A' && *p <= 'Z' && p > keys && p[-1] == ' ' && p[1] >= 'A' && p[1] <= 'Z')
-      for (char *q = p; *q && *q != ' '; q++) *q = (char)(*q - 'A' + 'a');
+    snprintf(keys, sizeof keys, "arrows walk   OK %s   toolbox %s   Back pause", word, M->imp ? "sabotage" : "map");
   draw_keys(keys);
 }

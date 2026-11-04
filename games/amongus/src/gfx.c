@@ -22,8 +22,12 @@ void gfx_frame(void (*draw)(void)) {
 
 /* the game's player shader: red is the body, green the visor, blue the shadow */
 void gfx_mix_palette(uint16_t *pal, uint32_t body, uint32_t shadow, uint32_t visor) {
-  const uint8_t *m = (const uint8_t *)blob(BLOB_MIX);
-  for (int i = 0; i < N_MIX; i++, m += 4) {
+  gfx_mix_palette_of(BLOB_MIX, N_MIX, pal, body, shadow, visor);
+}
+
+void gfx_mix_palette_of(int table, int n, uint16_t *pal, uint32_t body, uint32_t shadow, uint32_t visor) {
+  const uint8_t *m = (const uint8_t *)blob(table);
+  for (int i = 0; i < n; i++, m += 4) {
     int c[3];
     for (int k = 0; k < 3; k++) {
       int sh = 16 - 8 * k;
