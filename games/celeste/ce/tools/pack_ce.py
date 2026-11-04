@@ -31,7 +31,7 @@ GEN_H = os.path.join(HERE, "..", "src", "gen.h")
 PART_MAX = 65000        # bytes of an appvar
 COMMON = 96             # colours every chapter shares (indices 0 .. COMMON - 1)
 HAIR, HAIR_DARK, WHITE, BLACK = 1, 2, 3, 4   # fixed colours (HAIR and HAIR_DARK change as Madeline's hair does)
-ROPE, ROPE_LIGHT = 5, 6   # ZipMover's ropes (663931) and their teeth (9b6157), drawn as lines
+ROPE, ROPE_LIGHT, WIRE = 5, 6, 7   # ZipMover's ropes (663931) and their teeth (9b6157), Wire (595866): lines
 MARGIN = 4              # tiles kept around each room (transitions show the next one's edges)
 FORMAT = 2              # bumped when the layout changes (the game checks it)
 
@@ -586,7 +586,8 @@ class Common:
         for k, img in self.images.items():
             count_colors(img, gui if k.startswith("gui/") else counts)
         fixed = [0, 0x5466, 0x2C33, 0x7FFF, 0x0000,   # 0 black, HAIR, HAIR_DARK, white, black for the art
-                 int(c15(np.array([0x66, 0x39, 0x31]))), int(c15(np.array([0x9B, 0x61, 0x57])))]   # ROPE, ROPE_LIGHT
+                 int(c15(np.array([0x66, 0x39, 0x31]))), int(c15(np.array([0x9B, 0x61, 0x57]))),   # ROPE, ROPE_LIGHT
+                 int(c15(np.array([0x59, 0x58, 0x66])))]   # WIRE
         game = kmeans(counts, set(fixed), COMMON - len(fixed) - 16)   # (the game's own exact, the menus' after)
         extra = game + kmeans(gui, set(fixed + game), COMMON - len(fixed) - len(game))
         counts.update(gui)
@@ -637,7 +638,7 @@ class Common:
             h.ref(f)
         H.append(f"#define COMMON {COMMON}")
         H.append(f"#define HAIR {HAIR}\n#define HAIR_DARK {HAIR_DARK}\n#define WHITE {WHITE}\n#define BLACK {BLACK}")
-        H.append(f"#define ROPE {ROPE}\n#define ROPE_LIGHT {ROPE_LIGHT}")
+        H.append(f"#define ROPE {ROPE}\n#define ROPE_LIGHT {ROPE_LIGHT}\n#define WIRE {WIRE}")
         return self.blob.write()
 
 
@@ -981,7 +982,8 @@ class Chapter:
         out = []
         for d in ("up", "down", "left", "right"):
             out += [s.path for s in family("danger/spikes/%s_%s" % (st["spike"], d))]
-        out += ["objects/zipmover/block", "objects/zipmover/cog"]
+        out += ["objects/zipmover/block", "objects/zipmover/cog", "objects/checkpoint/bg/%d" % self.number,
+                "scenery/memorial/memorial"] + [s.path for s in family("objects/campfire/fire")]
         out += [s.path for s in family("objects/zipmover/light") + family("objects/zipmover/innercog")]
         return out
 
@@ -1233,6 +1235,23 @@ class Chapter:
             vals += self.block_tiles(r, x, y, w, h, c, blend)
         elif n == "zipMover":
             vals += self.zip_ids
+        elif n == "wire":
+            flags |= 1 if a("above", False) else 0
+        elif n in ("checkpoint", "memorial", "bonfire"):
+            # a picture (its bottom middle at the place), or frames of one: [first sprite, frames, time a frame (1/600 s)]
+            if n == "checkpoint":
+                paths, delay = ["objects/checkpoint/bg/" + (a("bg", "") or str(self.number))], 0
+            elif n == "memorial":
+                paths, delay = ["scenery/memorial/memorial"], 0
+            else:   # Bonfire: the campfire's idle, or its burn loop (fire 7-15, 0.09 s)
+                fire = [s.path for s in family("objects/campfire/fire")]
+                paths, delay = (fire[7:16], 54) if str(a("mode", "unlit")).lower() == "lit" else (fire[:1], 0)
+            first = None
+            for k, path in enumerate(paths):
+                i = self.sprites.add(path, self.pal.map(self.image(path)))
+                first = i if first is None else first
+                assert i == first + k
+            vals += [first, len(paths), delay]
         elif n in ("strawberry", "goldenBerry"):
             flags |= 1 if a("winged", False) else 0
             flags |= 2 if a("moon", False) else 0
@@ -1252,10 +1271,6 @@ class Chapter:
             flags |= (1 if a("xOnly", False) else 0) | (2 if a("yOnly", False) else 0)
         elif n == "eventTrigger":
             vals += [EVENTS.setdefault(a("event", ""), len(EVENTS))]
-        elif n == "bonfire":
-            flags |= {"unlit": 0, "lit": 1, "smoking": 2}.get(str(a("mode", "unlit")).lower(), 0)
-        elif n == "wire":
-            flags |= 1 if a("above", False) else 0
         rec = bytearray(struct.pack("<BBhhHHH", t, 0, x, y, w, h, int(e.get("id", 0)) & 0xFFFF))
         rec.append(len(nodes))
         for nx, ny in nodes:

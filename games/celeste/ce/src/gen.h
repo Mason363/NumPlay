@@ -525,6 +525,7 @@
 #define BLACK 4
 #define ROPE 5
 #define ROPE_LIGHT 6
+#define WIRE 7
 #define ET_player 0
 #define ET_spikesUp 1
 #define ET_spikesDown 2

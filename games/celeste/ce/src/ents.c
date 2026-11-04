@@ -690,6 +690,32 @@ static void zip_render(Ent *e) {
     }
   draw_sprite(csprite(rec_val(e->rec, 1) + e->a0), x + w / 2 - 4, y, 0);
 }
+/* ---------------------------------------------------------------- pictures: checkpoint, memorial, bonfire */
+/* a picture with its bottom middle at the place, or its frames in turn (values: first sprite, frames, time a frame) */
+static void picture_render(Ent *e) {
+  int n = rec_val(e->rec, 1), f = n > 1 ? (int)(g_level.frame * DTU / (unsigned)rec_val(e->rec, 2) % (unsigned)n) : 0;
+  const uint8_t *sp = csprite(rec_val(e->rec, 0) + f);
+  draw_sprite(sp, e->x - sp[0] / 2, e->y - sp[1], 0);
+}
+
+/* ---------------------------------------------------------------- wire */
+/* Wire: a curve from its place to its node sagging 24 px in the middle (SimpleCurve, its control point there: no wind
+ * in this chapter), drawn as 16 lines in its colour (WIRE: 595866) */
+static void wire_render(Ent *e) {
+  Room *rm = &g_level.rooms[e->room];
+  const uint8_t *n = rec_node(e->rec, 0);
+  int bx = rm->x + REC_X(e->rec), by = rm->y + REC_Y(e->rec), ex = rm->x + S16(n), ey = rm->y + S16(n + 2);
+  int cx = bx + ex, cy = by + ey + 48;   /* (the control point in half pixels) */
+  int px = bx, py = by;
+  for (int i = 1; i <= 16; i++) {   /* (1 - t)^2 b + 2 (1 - t) t c + t^2 e, t = i / 16, in 1/512 px */
+    int u = 16 - i;
+    int qx = (u * u * 2 * bx + 2 * u * i * cx + i * i * 2 * ex + 256) >> 9;
+    int qy = (u * u * 2 * by + 2 * u * i * cy + i * i * 2 * ey + 256) >> 9;
+    draw_line(px, py, qx, qy, (uint8_t)e->a0);
+    px = qx, py = qy;
+  }
+}
+
 /* ZipMoverPathRenderer (depth 5000): the two ropes with their teeth moving along them, a cog at each end turning a
  * full turn as it goes; all once more in black a pixel lower first, and a black frame round the block after */
 static void zippath_lines(Ent *path, Ent *z, int fx, int fy, int tx, int ty, int off, bool black) {
@@ -838,6 +864,19 @@ static Ent *spawn(const uint8_t *r, int slot, bool trigger) {
     case ET_dashBlock: box(e, w, h, 0, 0), e->flags |= EF_SOLID, e->depth = -12999; break;
     case ET_fakeWall: box(e, w, h, 0, 0), e->flags &= ~EF_COLLIDABLE, e->depth = -13000, e->t0 = 256; break;
     case ET_coverupWall: box(e, w, h, 0, 0), e->flags &= ~EF_COLLIDABLE, e->depth = -13000, e->t0 = 256; break;
+    case ET_checkpoint: case ET_memorial: case ET_bonfire: {   /* (Checkpoint 9990, Memorial 100, the campfire -5) */
+      const uint8_t *sp = csprite(rec_val(r, 0));
+      e->flags = EF_VISIBLE, e->depth = type == ET_checkpoint ? 9990 : type == ET_memorial ? 100 : -5;
+      box(e, sp[0], sp[1], -sp[0] / 2, -sp[1]);
+      break;
+    }
+    case ET_wire: {   /* (its box round the curve: both ends, and the sag) */
+      const uint8_t *n = rec_node(r, 0);
+      int ex = rm->x + S16(n), ey = rm->y + S16(n + 2);
+      e->flags = EF_VISIBLE, e->depth = (fl & 1) ? -8500 : 2000, e->a0 = WIRE;
+      box(e, iabs(ex - x) + 1, iabs(ey - y) + 26, imin(ex, x) - x, imin(ey, y) - y);
+      break;
+    }
     case ET_zipMover: {
       box(e, w, h, 0, 0), e->flags |= EF_SOLID, e->depth = -9999, e->a0 = 1;
       Ent *p = ent_new(ZIP_PATH, x, y);   /* (its box round both ends, for leaving it out when far) */
@@ -963,6 +1002,8 @@ static void ent_draw(Ent *e) {
     case ET_fakeWall: case ET_coverupWall: fakewall_render(e); break;
     case ET_zipMover: zip_render(e); break;
     case ZIP_PATH: zippath_render(e); break;
+    case ET_wire: wire_render(e); break;
+    case ET_checkpoint: case ET_memorial: case ET_bonfire: picture_render(e); break;
     case 200: {
       const uint8_t *s = sprite(anim_sprite(e));
       draw_sprite(s, e->x - s[0] / 2, e->y - s[1] / 2, 0);
@@ -1019,7 +1060,8 @@ void ents_render(int dmax, int dmin) {
 static bool ent_static(const Ent *e) {   /* what never changes how it looks (until it goes) */
   switch (e->type) {
     case ET_spikesUp: case ET_spikesDown: case ET_spikesLeft: case ET_spikesRight: return !e->ptr;
-    case ET_jumpThru: case ET_dashBlock: return true;
+    case ET_jumpThru: case ET_dashBlock: case ET_wire: return true;
+    case ET_checkpoint: case ET_memorial: case ET_bonfire: return rec_val(e->rec, 1) <= 1;
   }
   return false;
 }
