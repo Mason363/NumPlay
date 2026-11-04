@@ -5,7 +5,7 @@
  * A game draws straight into the LCD's memory, a rectangle at a time, as on a NumWorks: nothing is copied but what
  * it sends. Time is the 32768 Hz clock (timer 1).
  *
- * Build defines: NP_APP_ID (the game's id). The appvar is "NP" and the id's first 6 letters. */
+ * Build defines: NP_APP_ID (the game's id). The appvar is "NP" and the id (6 letters at most). */
 #include <eadk.h>
 #include <fileioc.h>
 #include <keypadc.h>
@@ -151,16 +151,18 @@ bool eadk_usb_is_plugged(void) { return false; }
 const char *eadk_external_data = 0;
 size_t eadk_external_data_size = 0;
 
-/* the files: a 4 KB buffer, the appvar "NP" + the id's first 6 letters */
+/* the files: a 4 KB buffer, kept in the appvar */
 #define STORAGE_SIZE 4096
 static uint8_t storage[STORAGE_SIZE + 16];
 static bool loaded;
 static char var[9];
 
-static const char *var_name(void) {
+static const char *var_name(void) { /* NP, then the id: its first 5 letters and its last past 6 (NPflappd, NPflappk) */
   if (!var[0]) {
+    const char *id = NP_APP_ID;
+    size_t n = strlen(id);
     var[0] = 'N', var[1] = 'P';
-    for (int i = 0; i < 6 && NP_APP_ID[i]; i++) var[2 + i] = NP_APP_ID[i];
+    for (size_t i = 0; i < 6 && i < n; i++) var[2 + i] = id[i < 5 || n <= 6 ? i : n - 1];
   }
   return var;
 }
