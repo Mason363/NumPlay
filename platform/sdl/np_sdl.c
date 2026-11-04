@@ -13,6 +13,9 @@
 #include <string.h>
 #include <eadk.h>
 #include "np_port.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 #ifndef NP_APP_ID
 #define NP_APP_ID "numplay"
@@ -26,6 +29,7 @@ static SDL_Renderer *ren;
 static SDL_Texture *tex;
 static uint16_t fb[EADK_SCREEN_WIDTH * EADK_SCREEN_HEIGHT];
 static bool dirty, quitting, headless, started;
+static bool tapped[SDL_SCANCODE_COUNT];
 static uint64_t t0, last_present;
 
 /* ---- scripted keys and pictures (tests) ---- */
@@ -86,7 +90,9 @@ static void script_shots(uint64_t now) {
 
 /* the RAM after a game's own (the NumWorks gives a game what its software leaves): 256 KB here */
 #define NP_HEAP_SIZE (256 * 1024)
-#if defined(__APPLE__)
+#if defined(__EMSCRIPTEN__)
+/* (WebAssembly has no labels around a block: the few games that use _heap_start don't build for the web yet) */
+#elif defined(__APPLE__)
 __asm__(".data\n.p2align 4\n.globl __heap_start\n__heap_start:\n.space 262144\n.globl __heap_end\n__heap_end:\n");
 #else
 __asm__(".section .bss\n.balign 16\n.globl _heap_start\n_heap_start:\n.space 262144\n.globl _heap_end\n_heap_end:\n"
@@ -124,6 +130,9 @@ static void start(void) {
 }
 
 static void present(void) {
+#ifdef __EMSCRIPTEN__
+  emscripten_sleep(0); /* (the page gets its turn: the game's loop never returns, Asyncify lets it pause) */
+#endif
   last_present = SDL_GetTicks();
   if (!dirty || headless) return;
   dirty = false;
@@ -137,8 +146,10 @@ static void present(void) {
 static void pump(void) {
   start();
   SDL_Event e;
-  while (!headless && SDL_PollEvent(&e))
+  while (!headless && SDL_PollEvent(&e)) {
     if (e.type == SDL_EVENT_QUIT) quitting = true;
+    if (e.type == SDL_EVENT_KEY_DOWN) tapped[e.key.scancode] = true; /* (a tap shorter than a frame still counts) */
+  }
   script_shots(SDL_GetTicks() - t0);
   if (SDL_GetTicks() - last_present >= 16) present();
 }
@@ -207,7 +218,8 @@ eadk_keyboard_state_t eadk_keyboard_scan(void) {
   const bool *down = headless ? NULL : SDL_GetKeyboardState(&n);
   eadk_keyboard_state_t s = 0;
   for (size_t i = 0; i < sizeof KEYS / sizeof KEYS[0]; i++)
-    if ((int)KEYS[i].sc < n && down[KEYS[i].sc]) s |= (eadk_keyboard_state_t)1 << KEYS[i].key;
+    if (((int)KEYS[i].sc < n && down[KEYS[i].sc]) || tapped[KEYS[i].sc]) s |= (eadk_keyboard_state_t)1 << KEYS[i].key;
+  memset(tapped, 0, sizeof tapped);
   if (quitting) s |= (eadk_keyboard_state_t)1 << eadk_key_home | (eadk_keyboard_state_t)1 << eadk_key_on_off;
   return s | script_keys(SDL_GetTicks() - t0);
 }
@@ -271,15 +283,35 @@ static void storage_path(char *p, size_t n) {
   snprintf(p, n, "%s/%s.files", dir, NP_APP_ID);
 }
 
+#ifdef __EMSCRIPTEN__
+/* in a browser: the records in the page's localStorage, as base64 */
+EM_JS(int, web_load, (const char *key, uint8_t *buf, int max), {
+  var v = localStorage.getItem(UTF8ToString(key));
+  if (!v) return 0;
+  var b = atob(v), n = Math.min(b.length, max);
+  for (var i = 0; i < n; i++) HEAPU8[buf + i] = b.charCodeAt(i);
+  return n;
+});
+EM_JS(void, web_save, (const char *key, const uint8_t *buf, int n), {
+  var s = "";
+  for (var i = 0; i < n; i++) s += String.fromCharCode(HEAPU8[buf + i]);
+  try { localStorage.setItem(UTF8ToString(key), btoa(s)); } catch (e) {}
+});
+#endif
 uint8_t *np_storage(uint32_t *size) {
   if (!storage_loaded) {
     storage_loaded = true;
+#ifdef __EMSCRIPTEN__
+    size_t n = (size_t)web_load("numplay:" NP_APP_ID, storage, STORAGE_SIZE);
+    if (n) {
+#else
     char p[600];
     storage_path(p, sizeof p);
     FILE *f = fopen(p, "rb");
     if (f) {
       size_t n = fread(storage, 1, STORAGE_SIZE, f);
       fclose(f);
+#endif
       /* (a file that isn't a list of records ending with a zero size starts empty) */
       uint32_t at = 0;
       while (at + 2 <= n && (storage[at] | storage[at + 1] << 8)) at += storage[at] | storage[at + 1] << 8;
@@ -291,6 +323,12 @@ uint8_t *np_storage(uint32_t *size) {
 }
 
 void np_storage_changed(void) {
+#ifdef __EMSCRIPTEN__
+  uint32_t used = 0;
+  while (used + 2 <= STORAGE_SIZE && (storage[used] | storage[used + 1] << 8)) used += storage[used] | storage[used + 1] << 8;
+  web_save("numplay:" NP_APP_ID, storage, (int)used + 2);
+  return;
+#endif
   char p[600], tmp[620];
   storage_path(p, sizeof p);
   snprintf(tmp, sizeof tmp, "%s.new", p);
@@ -304,7 +342,13 @@ void np_storage_changed(void) {
 }
 
 bool np_slow(void) { return false; }
-const char *np_target(void) { return "sdl"; }
+const char *np_target(void) {
+#ifdef __EMSCRIPTEN__
+  return "web";
+#else
+  return "sdl";
+#endif
+}
 void np_begin(void) { start(); }
 int np_end(void) {
   script_shots(~(uint64_t)0 >> 1); /* (the pictures not taken yet: the last screen) */

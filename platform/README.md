@@ -10,7 +10,7 @@ Every NumPlay game talks to its calculator through one interface: [EADK](include
 | TI-Nspire CX, CX II | nspire | `.tns` | next |
 | Casio fx-CG50, Graph 90+E | casio-cg | `.g3a` | next |
 | Casio Graph 35+E II | casio-fx | `.g1a` | later |
-| A web browser | web | WebAssembly | next |
+| A web browser | [sdl](sdl/) with Emscripten | WebAssembly | first games |
 
 ## A game on another target
 

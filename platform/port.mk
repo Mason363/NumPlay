@@ -39,6 +39,20 @@ $(CE_DIR)/bin/$(CE_NAME).8xp: $(PORT_SRC) $(wildcard $(NP_PLATFORM)/include/*.h)
 	  > $(CE_DIR)/makefile
 	$(Q) PATH="$(CEDEV)/bin:$$PATH" $(MAKE) -C $(CE_DIR) --no-print-directory TARGET=$(CE_NAME).8xp
 	@echo "CE      $@"
+else ifeq ($(TARGET),web)
+# Emscripten: the computer build (sdl/np_sdl.c) in a page; Asyncify lets the game's endless loop pause for the page.
+# A game's data in a .S file (.incbin) comes in through #embed instead: PORT_DATA = symbol:file
+WEB_DATA = $(if $(PORT_DATA),$(PORT_OUT)/data_embed.c)
+port: $(PORT_OUT)/$(PORT_ID).html
+$(PORT_OUT)/data_embed.c: $(lastword $(subst :, ,$(PORT_DATA)))
+	@mkdir -p $(@D)
+	@printf '__attribute__((aligned(4))) const unsigned char %s[] = {\n#embed "%s"\n};\n' \
+	  '$(firstword $(subst :, ,$(PORT_DATA)))' '$(abspath $(lastword $(subst :, ,$(PORT_DATA))))' > $@
+$(PORT_OUT)/$(PORT_ID).html: $(PORT_SRC) $(WEB_DATA) $(wildcard $(NP_PLATFORM)/include/*.h) $(NP_PLATFORM)/sdl/np_sdl.c
+	@mkdir -p $(@D)
+	$(Q) emcc $(PORT_CFLAGS) -g0 -O2 --use-port=sdl3 -sASYNCIFY -sALLOW_MEMORY_GROWTH -sENVIRONMENT=web \
+	  $(PORT_SRC) $(WEB_DATA) $(NP_PLATFORM)/sdl/np_sdl.c $(PORT_COMMON) -o $@
+	@echo "WEB     $@"
 else
 port:
 	@echo "TARGET=$(TARGET): not a target yet (platform/README.md lists them)"; exit 1

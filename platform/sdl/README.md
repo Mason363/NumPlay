@@ -1,10 +1,13 @@
-# NumPlay on a computer
+# NumPlay on a computer and in a browser
 
-Windows, macOS, Linux and a Raspberry Pi, with [SDL 3](https://libsdl.org).
+Windows, macOS, Linux and a Raspberry Pi, with [SDL 3](https://libsdl.org), and any web browser, the same code built with [Emscripten](https://emscripten.org).
 
 ```
 make port TARGET=sdl        (in a game's folder): build/sdl/<game>
+make port TARGET=web        build/web/<game>.html, .js and .wasm
 ```
+
+In a browser, saves go to the page's local storage. A game with its data in a `.S` file names it for the web build: `PORT_DATA = symbol:file`.
 
 | Key | NumWorks key |
 | --- | --- |
