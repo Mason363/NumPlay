@@ -9,6 +9,7 @@ enum {
   EV_NONE, EV_DOOR, EV_SAVE, EV_READ, EV_NPC, EV_ROOM, EV_TREASURE, EV_MENU_SAVE,
   EV_LW_FIRST = 100,
   EV_DW_FIRST = 200,
+  EV_CHASE_BATTLE = 299,
   EV_FIELD_FIRST = 300,
   EV_FOREST_FIRST = 400,
   EV_CASTLE_FIRST = 500,
@@ -37,4 +38,11 @@ void dw_setup(int room);
 int dw_event(Ev *c);
 void dw_step(void);
 void dw_draw(void);
+/* the overworld's enemies (chase.c, obj_chaseenemy) */
+void chasers_setup(void);
+void chasers_step(void);
+void chasers_draw(void);
+void chaser_add(int x, int y, int radius);
+bool chasers_any(void);
+int chase_battle_event(Ev *c);
 #endif

@@ -21,7 +21,7 @@
 enum { FC_NONE, FC_SUSIE, FC_RALSEI, FC_NOELLE, FC_TORIEL, FC_LANCER, FC_SANS, FC_UNDYNE = 9, FC_ASGORE,
        FC_ALPHYS, FC_BERDLY, FC_C, FC_JOCK, FC_RUDY, FC_CATTY, FC_BRATTY, FC_RURUS, FC_BURGERPANTS, FC_KING };
 
-#define MAX_MSG 16
+#define MAX_MSG 32
 
 /* the dialogue box: messages added, then opened */
 void text_clear(void);
@@ -39,6 +39,10 @@ int text_cue(void);                           /* the last \M cue (global.flag[20
 void text_set_cue(int v);
 int text_msgno(void);                         /* the message shown now */
 void text_close(void);
+/* after a \\C choice, hook(choice) may give the box more messages (text_add...): it goes on with them, as
+ * the original's scr_text(global.msc + 1) does; once, then the hook is cleared */
+void text_on_choice(void (*hook)(int choice));
+bool text_chose(void);                        /* the box closed on a choice */
 
 /* a writer anywhere (the battle's text, a bubble): the same marks */
 typedef struct {

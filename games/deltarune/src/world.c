@@ -67,9 +67,9 @@ static bool box_hits_solid(int x0, int y0, int x1, int y1, const uint8_t *s) {
   }
 }
 
-static bool box_free(int x0, int y0, int x1, int y1, int ignore) {
+static bool box_free_ex(int x0, int y0, int x1, int y1, int ignore, bool enemy) {
   for (int i = 0; i < ri.nsolid; i++)
-    if (box_hits_solid(x0, y0, x1, y1, ri.solids + 10 * i)) return false;
+    if ((enemy || !ri.solids[10 * i + 1]) && box_hits_solid(x0, y0, x1, y1, ri.solids + 10 * i)) return false;
   for (int i = 0; i < MAX_OBJS; i++) {
     const Obj *o = &objs[i];
     if ((o->flags & (OF_SOLID | OF_GONE)) != OF_SOLID || i == ignore) continue;
@@ -78,6 +78,8 @@ static bool box_free(int x0, int y0, int x1, int y1, int ignore) {
   }
   return true;
 }
+static bool box_free(int x0, int y0, int x1, int y1, int ignore) { return box_free_ex(x0, y0, x1, y1, ignore, false); }
+bool world_box_free(int x0, int y0, int x1, int y1, bool enemy) { return box_free_ex(x0, y0, x1, y1, -1, enemy); }
 
 bool world_place_free(int x, int y, int ignore) {
   int x0, y0, x1, y1;

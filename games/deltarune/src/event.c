@@ -6,10 +6,28 @@
 static Ev cur;
 static bool running;
 
+/* the face changes a list asks for: "\\F0\\Ex\\Fw%" (made once each, they last) */
+static const char *face_msg(int code) {
+  static char made[48][12];
+  static int codes[48], n;
+  for (int i = 0; i < n; i++)
+    if (codes[i] == code) return made[i];
+  int k = n < 48 ? n++ : 47;
+  char *m = made[k], who = (char)((code >> 8) & 0xFF);
+  int fe = code & 0xFF, j = 0;
+  m[j++] = '\\', m[j++] = 'F', m[j++] = '0';
+  if (who) m[j++] = '\\', m[j++] = 'E', m[j++] = (char)(fe < 10 ? '0' + fe : 'A' + fe - 10), m[j++] = '\\', m[j++] = 'F', m[j++] = who;
+  m[j++] = '%', m[j] = 0;
+  codes[k] = code;
+  return m;
+}
+void say_add(const int *ids) {
+  for (int i = 0; ids[i] >= 0; i++) text_add(ids[i] & 0x40000 ? face_msg(ids[i]) : str((uint16_t)ids[i]));
+}
 void say_list(int fc, int fe, const int *ids) {
   text_clear();
   text_face(fc, fe);
-  for (int i = 0; ids[i] >= 0; i++) text_add(str((uint16_t)ids[i]));
+  say_add(ids);
   text_open();
 }
 

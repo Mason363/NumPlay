@@ -17,6 +17,8 @@ typedef struct TxtCtx {
   int fc, fe;                /* the face the box starts with */
   int choice, facing, msc, arg, arg1;
   int tempflag[16];
+  int gone, hidden;          /* instance_destroy(), visible = 0 (its create) */
+  int ispd;                  /* image_speed, 1/16 (-1: as made) */
   const char *msg[MAX_MSG];
   int nmsg;                  /* messages set (the highest + 1) */
   const char *choicemsg[4];
@@ -48,5 +50,8 @@ void gm_npc_sign_create(TxtCtx *c);
 void gm_npc_sign_talk(TxtCtx *c);
 void gm_npc_facing_create(TxtCtx *c);
 void gm_npc_facing_talk(TxtCtx *c);
+void gm_npc_room_animated_create(TxtCtx *c);
+void gm_npc_room_animated_talk(TxtCtx *c);
 void gm_scr_text(TxtCtx *c);
+extern int g_noroom;   /* the last scr_itemget found no room (noroom) */
 #endif

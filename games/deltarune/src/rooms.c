@@ -153,7 +153,8 @@ void room_setup(int room) {
       obj_set_box(o, 0, 10 * s, 20 * s, 10 * s);
       o->event = EV_SAVE;
       o->name = ACT_SAVE;
-    } else if (in.obj == obj_npc_room || in.obj == obj_npc_sign || in.obj == obj_npc_facing) {
+    } else if (in.obj == obj_npc_room || in.obj == obj_npc_sign || in.obj == obj_npc_facing ||
+               in.obj == obj_npc_room_animated) {
       npc_setup(&in);
     }
   }
@@ -219,38 +220,49 @@ void txt_face(TxtCtx *c, int i, char who, int fe) {
   m[n++] = '%', m[n] = 0;
   txt_msg(c, i, m);
 }
+int g_noroom;
 void gm_itemget(int id) {
+  g_noroom = 1;
   for (int i = 0; i < NITEMS; i++)
     if (!sv.item[i]) {
       sv.item[i] = (uint8_t)id;
+      g_noroom = 0;
       return;
     }
 }
 void gm_keyitemget(int id) {
+  g_noroom = 1;
   for (int i = 0; i < NITEMS; i++)
     if (!sv.keyitem[i]) {
       sv.keyitem[i] = (uint8_t)id;
+      g_noroom = 0;
       return;
     }
 }
 void gm_weaponget(int id) {
+  g_noroom = 1;
   for (int i = 0; i < NITEMS; i++)
     if (!sv.weapons[i]) {
       sv.weapons[i] = (uint8_t)id;
+      g_noroom = 0;
       return;
     }
 }
 void gm_armorget(int id) {
+  g_noroom = 1;
   for (int i = 0; i < NITEMS; i++)
     if (!sv.armors[i]) {
       sv.armors[i] = (uint8_t)id;
+      g_noroom = 0;
       return;
     }
 }
 void gm_litemget(int id) {
+  g_noroom = 1;
   for (int i = 0; i < 8; i++)
     if (!sv.litem[i]) {
       sv.litem[i] = (uint8_t)id;
+      g_noroom = 0;
       return;
     }
 }
@@ -289,6 +301,7 @@ static void tc_begin(const Obj *o) {
       break;
     }
   }
+  tc.spr = o->spr;
   tc.read = reads[o->inst & 255];
   tc.talked = tc.read;
   tc.facing = pl.dir;
@@ -305,6 +318,22 @@ static bool tc_say(void) {
   return true;
 }
 
+/* a choice made (obj_choicer_neo): scr_text(global.msc + 1) goes on */
+static void tc_choice(int choice) {
+  tc.choice = choice;
+  tc.msc++;
+  tc.arg = tc.msc;
+  tc.nmsg = 0;
+  memset(tc.msg, 0, sizeof tc.msg);
+  memset(tc.choicemsg, 0, sizeof tc.choicemsg);
+  int msc = tc.msc;
+  gm_scr_text(&tc);
+  for (int i = 0; i < tc.nmsg; i++) text_add(tc.msg[i] ? tc.msg[i] : " %");
+  if (tc.choicemsg[0]) text_set_choices(tc.choicemsg[0], tc.choicemsg[1], tc.choicemsg[2], tc.choicemsg[3]);
+  /* (a choice in the new messages: it goes on again) */
+  if (tc.msc != msc || tc.choicemsg[0]) text_on_choice(tc_choice);
+}
+
 /* obj_readable_room1, obj_npc_room...: what it says, by the room, where it is, how often it was read */
 static int ev_read(Ev *c) {
   EV_BEGIN;
@@ -313,10 +342,12 @@ static int ev_read(Ev *c) {
     case obj_npc_room: gm_npc_room_talk(&tc); break;
     case obj_npc_sign: gm_npc_sign_talk(&tc); break;
     case obj_npc_facing: gm_npc_facing_talk(&tc); break;
+    case obj_npc_room_animated: gm_npc_room_animated_talk(&tc); break;
     default: gm_readable_room1(&tc); break;
   }
   reads[c->self->inst & 255]++;
   if (!tc_say()) return 1;
+  if (tc.msc) text_on_choice(tc_choice);
   WAIT_UNTIL(!text_active());
   EV_END;
 }
@@ -324,17 +355,21 @@ static int ev_read(Ev *c) {
 /* an npc's sprite (its create) */
 static void npc_setup(const Inst *in) {
   memset(&tc, 0, sizeof tc);
-  tc.x = in->x, tc.y = in->y, tc.spr = 0xFFFF;
+  tc.x = in->x, tc.y = in->y, tc.spr = 0xFFFF, tc.ispd = -1;
   switch (in->obj) {
     case obj_npc_room: gm_npc_room_create(&tc); break;
     case obj_npc_sign: gm_npc_sign_create(&tc); break;
     case obj_npc_facing: gm_npc_facing_create(&tc); break;
+    case obj_npc_room_animated: gm_npc_room_animated_create(&tc); break;
     default: break;
   }
+  if (tc.gone) return;
   Obj *o = obj_new(tc.spr, tc.x, tc.y);
   o->flags |= OF_TALK | OF_SOLID;
+  if (tc.hidden) o->flags |= OF_HIDDEN;
   o->obj = in->obj, o->inst = (int16_t)in->n;
   o->event = EV_READ;
+  o->ispd = tc.ispd >= 0 ? tc.ispd : in->obj == obj_npc_room_animated ? FX / 5 : 0;
   /* its box: its sprite's (the original's interactablesolid) */
   int s = world_scale();
   int w = tc.spr != 0xFFFF ? spr_w(tc.spr) * s : 20, h = tc.spr != 0xFFFF ? spr_h(tc.spr) * s : 20;

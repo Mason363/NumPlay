@@ -83,7 +83,7 @@ clean:
 # the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
 PORT_ID = deltarune
 PORT_NAME = Deltarune
-PORT_SRC = src/battle.c src/blk.c src/dw.c src/enemies.c src/event.c src/game.c src/gmtexts.c src/lw.c src/main.c src/menu.c src/res.c src/rooms.c src/save.c src/tables.c src/text.c src/world.c src/lzma/LzmaDec.c src/gfx.c src/plat_eadk.c
+PORT_SRC = src/battle.c src/blk.c src/chase.c src/dw.c src/enemies.c src/event.c src/game.c src/gmtexts.c src/lw.c src/main.c src/menu.c src/res.c src/rooms.c src/save.c src/tables.c src/text.c src/world.c src/lzma/LzmaDec.c src/gfx.c src/plat_eadk.c
 PORT_ASM = src/data.S
 PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
 include ../../platform/port.mk

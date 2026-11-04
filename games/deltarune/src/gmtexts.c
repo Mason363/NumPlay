@@ -28,14 +28,14 @@ L68:;
   /* gml: } // end with */
   MSG(0, obj_readable_room1_slash_Other_10_gml_11_0);
   if (!(g_room == room_krisroom)) goto L976;
-  goto L280; /* gml: if !(y < 150) goto L280 */
+  if (!(c->y < 150)) goto L280;
   MSG(0, obj_readable_room1_slash_Other_10_gml_17_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_18_0);
   goto L316;
 L280:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_22_0);
 L316:;
-  goto L612; /* gml: if !(x > 100) goto L612 */
+  if (!(c->x > 100)) goto L612;
   MSG(0, obj_readable_room1_slash_Other_10_gml_28_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_29_0);
   if (!(0 == 1)) goto L464;
@@ -45,93 +45,93 @@ L464:;
   MSG(1, obj_readable_room1_slash_Other_10_gml_33_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_34_0);
 L556:;
-  goto L612; /* gml: if !(read > 0) goto L612 */
+  if (!(c->read > 0)) goto L612;
   MSG(0, obj_readable_room1_slash_Other_10_gml_38_0);
 L612:;
-  goto L668; /* gml: if !(x > 136) goto L668 */
+  if (!(c->x > 136)) goto L668;
   MSG(0, obj_readable_room1_slash_Other_10_gml_45_0);
 L668:;
-  goto L724; /* gml: if !(x > 192) goto L724 */
+  if (!(c->x > 192)) goto L724;
   MSG(0, obj_readable_room1_slash_Other_10_gml_50_0);
 L724:;
-  goto L920; /* gml: if !(x > 220) goto L920 */
+  if (!(c->x > 220)) goto L920;
   MSG(0, obj_readable_room1_slash_Other_10_gml_55_0);
-  goto L868; /* gml: if !((global.tempflag[10] == 1) && (global.plot < 10)) goto L868 */
+  if (!((c->tempflag[10] == 1) && (sv.plot < 10))) goto L868;
   c->msc = 402;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L868:;
   if (!(sv.plot >= 250)) goto L920;
   c->msc = 400;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L920:;
-  goto L976; /* gml: if !(x > 250) goto L976 */
+  if (!(c->x > 250)) goto L976;
   MSG(0, obj_readable_room1_slash_Other_10_gml_71_0);
 L976:;
   if (!(g_room == room_krishallway)) goto L1456;
   MSG(0, obj_readable_room1_slash_Other_10_gml_79_0);
-  goto L1088; /* gml: if !(x > 120) goto L1088 */
+  if (!(c->x > 120)) goto L1088;
   MSG(0, obj_readable_room1_slash_Other_10_gml_83_0);
 L1088:;
-  goto L1144; /* gml: if !(x > 160) goto L1144 */
+  if (!(c->x > 160)) goto L1144;
   MSG(0, obj_readable_room1_slash_Other_10_gml_87_0);
 L1144:;
-  goto L1200; /* gml: if !(x > 220) goto L1200 */
+  if (!(c->x > 220)) goto L1200;
   MSG(0, obj_readable_room1_slash_Other_10_gml_91_0);
 L1200:;
-  goto L1456; /* gml: if !(x > 320) goto L1456 */
+  if (!(c->x > 320)) goto L1456;
   MSG(0, obj_readable_room1_slash_Other_10_gml_96_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_97_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_98_0);
   MSG(3, obj_readable_room1_slash_Other_10_gml_99_0);
   MSG(4, obj_readable_room1_slash_Other_10_gml_100_0);
-  goto L1456; /* gml: if !(read > 0) goto L1456 */
+  if (!(c->read > 0)) goto L1456;
   MSG(0, obj_readable_room1_slash_Other_10_gml_103_0);
 L1456:;
   if (!(g_room == room_torhouse)) goto L2044;
-  goto L1532; /* gml: if !(x > 190) goto L1532 */
+  if (!(c->x > 190)) goto L1532;
   MSG(0, obj_readable_room1_slash_Other_10_gml_113_0);
 L1532:;
-  goto L1588; /* gml: if !(x > 220) goto L1588 */
+  if (!(c->x > 220)) goto L1588;
   MSG(0, obj_readable_room1_slash_Other_10_gml_118_0);
 L1588:;
-  goto L1700; /* gml: if !(x > 260) goto L1700 */
+  if (!(c->x > 260)) goto L1700;
   MSG(0, obj_readable_room1_slash_Other_10_gml_123_0);
   if (!(sv.plot >= 250)) goto L1700;
   MSG(0, obj_readable_room1_slash_Other_10_gml_126_0);
 L1700:;
-  goto L1756; /* gml: if !(x > 300) goto L1756 */
+  if (!(c->x > 300)) goto L1756;
   MSG(0, obj_readable_room1_slash_Other_10_gml_132_0);
 L1756:;
-  goto L1876; /* gml: if !(x > 340) goto L1876 */
+  if (!(c->x > 340)) goto L1876;
   MSG(0, obj_readable_room1_slash_Other_10_gml_137_0);
   if (!(sv.flag[262] >= 4)) goto L1876;
   MSG(0, obj_readable_room1_slash_Other_10_gml_140_0);
 L1876:;
-  goto L1932; /* gml: if !(x > 369) goto L1932 */
+  if (!(c->x > 369)) goto L1932;
   MSG(0, obj_readable_room1_slash_Other_10_gml_146_0);
 L1932:;
-  goto L1988; /* gml: if !(x > 440) goto L1988 */
+  if (!(c->x > 440)) goto L1988;
   MSG(0, obj_readable_room1_slash_Other_10_gml_151_0);
 L1988:;
-  goto L2044; /* gml: if !(x > 560) goto L2044 */
+  if (!(c->x > 560)) goto L2044;
   MSG(0, obj_readable_room1_slash_Other_10_gml_157_0);
 L2044:;
   if (!(g_room == room_torbathroom)) goto L2364;
-  goto L2156; /* gml: if !(x >= 100) goto L2156 */
+  if (!(c->x >= 100)) goto L2156;
   MSG(0, obj_readable_room1_slash_Other_10_gml_167_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_168_0);
 L2156:;
-  goto L2236; /* gml: if !((x >= 160) && (x <= 190)) goto L2236 */
+  if (!((c->x >= 160) && (c->x <= 190))) goto L2236;
   c->msc = 355;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L2236:;
-  goto L2364; /* gml: if !(x >= 190) goto L2364 */
+  if (!(c->x >= 190)) goto L2364;
   MSG(0, obj_readable_room1_slash_Other_10_gml_177_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_178_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_179_0);
 L2364:;
   if (!(g_room == room_schoollobby)) goto L3692;
-  goto L2748; /* gml: if !((x >= 140) && (x < 240)) goto L2748 */
+  if (!((c->x >= 140) && (c->x < 240))) goto L2748;
   if (!(tempvar == 0)) goto L2488;
   MSG(0, obj_readable_room1_slash_Other_10_gml_190_0);
 L2488:;
@@ -151,46 +151,46 @@ L2712:;
   tempvar = (tempvar + 1);
   /* gml: } // end with */
 L2748:;
-  goto L2804; /* gml: if !(x == 240) goto L2804 */
+  if (!(c->x == 240)) goto L2804;
   MSG(0, obj_readable_room1_slash_Other_10_gml_199_0);
 L2804:;
-  goto L2932; /* gml: if !(x >= 280) goto L2932 */
+  if (!(c->x >= 280)) goto L2932;
   MSG(0, obj_readable_room1_slash_Other_10_gml_204_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_205_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_206_0);
 L2932:;
-  goto L3024; /* gml: if !(x < 140) goto L3024 */
+  if (!(c->x < 140)) goto L3024;
   MSG(0, obj_readable_room1_slash_Other_10_gml_211_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_212_0);
 L3024:;
-  goto L3396; /* gml: if !(x >= 520) goto L3396 */
+  if (!(c->x >= 520)) goto L3396;
   MSG(0, obj_readable_room1_slash_Other_10_gml_217_0);
-  goto L3136; /* gml: if !(read == 1) goto L3136 */
+  if (!(c->read == 1)) goto L3136;
   MSG(0, obj_readable_room1_slash_Other_10_gml_218_0);
 L3136:;
-  goto L3192; /* gml: if !(read >= 2) goto L3192 */
+  if (!(c->read >= 2)) goto L3192;
   MSG(0, obj_readable_room1_slash_Other_10_gml_219_0);
 L3192:;
   if (!(sv.plot < 10)) goto L3396;
   MSG(0, obj_readable_room1_slash_Other_10_gml_223_0);
   FACE(1, 'S', 1);
   MSG(2, obj_readable_room1_slash_Other_10_gml_225_0);
-  goto L3396; /* gml: if !(read >= 1) goto L3396 */
+  if (!(c->read >= 1)) goto L3396;
   FACE(0, 'S', 9);
   MSG(1, obj_readable_room1_slash_Other_10_gml_230_0);
 L3396:;
-  goto L3524; /* gml: if !(x >= 560) goto L3524 */
+  if (!(c->x >= 560)) goto L3524;
   MSG(0, obj_readable_room1_slash_Other_10_gml_237_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_238_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_239_0);
 L3524:;
-  goto L3580; /* gml: if !(x >= 690) goto L3580 */
+  if (!(c->x >= 690)) goto L3580;
   MSG(0, obj_readable_room1_slash_Other_10_gml_245_0);
 L3580:;
-  goto L3636; /* gml: if !(x == 760) goto L3636 */
+  if (!(c->x == 760)) goto L3636;
   MSG(0, obj_readable_room1_slash_Other_10_gml_251_0);
 L3636:;
-  goto L3692; /* gml: if !(x == 780) goto L3692 */
+  if (!(c->x == 780)) goto L3692;
   MSG(0, obj_readable_room1_slash_Other_10_gml_255_0);
 L3692:;
   if (!(g_room == room_alphysclass)) goto L4372;
@@ -200,58 +200,58 @@ L3692:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_269_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_270_0);
 L3876:;
-  goto L4004; /* gml: if !(x > 240) goto L4004 */
+  if (!(c->x > 240)) goto L4004;
   c->fe = 1;
   c->fc = 11;
   /* gml: global.typer = 20 */
   MSG(0, obj_readable_room1_slash_Other_10_gml_278_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_279_0);
 L4004:;
-  goto L4188; /* gml: if !(x < 200) goto L4188 */
+  if (!(c->x < 200)) goto L4188;
   MSG(0, obj_readable_room1_slash_Other_10_gml_284_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_285_0);
   if (!(sv.plot >= 250)) goto L4188;
   MSG(0, obj_readable_room1_slash_Other_10_gml_289_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_290_0);
 L4188:;
-  goto L4244; /* gml: if !(x < 150) goto L4244 */
+  if (!(c->x < 150)) goto L4244;
   MSG(0, obj_readable_room1_slash_Other_10_gml_298_0);
 L4244:;
-  goto L4372; /* gml: if !(x < 80) goto L4372 */
+  if (!(c->x < 80)) goto L4372;
   MSG(0, obj_readable_room1_slash_Other_10_gml_304_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_305_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_306_0);
 L4372:;
   if (!(g_room == room_torielclass)) goto L5040;
-  goto L4928; /* gml: if !(y <= (room_height / 2)) goto L4928 */
-  goto L4520; /* gml: if !(x >= 100) goto L4520 */
+  if (!(c->y <= (world_room_info()->h / 2))) goto L4928;
+  if (!(c->x >= 100)) goto L4520;
   MSG(0, obj_readable_room1_slash_Other_10_gml_318_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_319_0);
 L4520:;
-  goto L4612; /* gml: if !(x >= 130) goto L4612 */
+  if (!(c->x >= 130)) goto L4612;
   MSG(0, obj_readable_room1_slash_Other_10_gml_323_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_324_0);
 L4612:;
-  goto L4664; /* gml: if !(x >= 170) goto L4664 */
+  if (!(c->x >= 170)) goto L4664;
   c->msc = 350;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L4664:;
-  goto L4720; /* gml: if !(x >= 198) goto L4720 */
+  if (!(c->x >= 198)) goto L4720;
   MSG(0, obj_readable_room1_slash_Other_10_gml_333_0);
 L4720:;
-  goto L4812; /* gml: if !(x >= 204) goto L4812 */
+  if (!(c->x >= 204)) goto L4812;
   MSG(0, obj_readable_room1_slash_Other_10_gml_338_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_339_0);
 L4812:;
-  goto L4868; /* gml: if !(x >= 230) goto L4868 */
+  if (!(c->x >= 230)) goto L4868;
   MSG(0, obj_readable_room1_slash_Other_10_gml_343_0);
 L4868:;
-  goto L4924; /* gml: if !(x >= 256) goto L4924 */
+  if (!(c->x >= 256)) goto L4924;
   MSG(0, obj_readable_room1_slash_Other_10_gml_347_0);
 L4924:;
   goto L5040;
 L4928:;
-  goto L5004; /* gml: if !(x <= (room_width / 2)) goto L5004 */
+  if (!(c->x <= (world_room_info()->w / 2))) goto L5004;
   MSG(0, obj_readable_room1_slash_Other_10_gml_354_0);
   goto L5040;
 L5004:;
@@ -261,33 +261,33 @@ L5040:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_366_0);
 L5096:;
   if (!(g_room == room_school_unusedroom)) goto L5544;
-  goto L5172; /* gml: if !(x < 80) goto L5172 */
+  if (!(c->x < 80)) goto L5172;
   MSG(0, obj_readable_room1_slash_Other_10_gml_371_0);
 L5172:;
-  goto L5228; /* gml: if !(x > 100) goto L5228 */
+  if (!(c->x > 100)) goto L5228;
   MSG(0, obj_readable_room1_slash_Other_10_gml_372_0);
 L5228:;
-  goto L5312; /* gml: if !((x > 160) && (y < 100)) goto L5312 */
+  if (!((c->x > 160) && (c->y < 100))) goto L5312;
   MSG(0, obj_readable_room1_slash_Other_10_gml_373_0);
 L5312:;
-  goto L5396; /* gml: if !((x > 160) && (y > 100)) goto L5396 */
+  if (!((c->x > 160) && (c->y > 100))) goto L5396;
   MSG(0, obj_readable_room1_slash_Other_10_gml_374_0);
 L5396:;
-  goto L5452; /* gml: if !(x > 220) goto L5452 */
+  if (!(c->x > 220)) goto L5452;
   MSG(0, obj_readable_room1_slash_Other_10_gml_375_0);
 L5452:;
-  goto L5544; /* gml: if !(x > 250) goto L5544 */
+  if (!(c->x > 250)) goto L5544;
   MSG(0, obj_readable_room1_slash_Other_10_gml_378_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_379_0);
 L5544:;
   if (!(g_room == room_hospital_lobby)) goto L5708;
-  goto L5656; /* gml: if !(x <= 160) goto L5656 */
+  if (!(c->x <= 160)) goto L5656;
   MSG(0, obj_readable_room1_slash_Other_10_gml_388_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_389_0);
 L5656:;
-  goto L5708; /* gml: if !(x >= 160) goto L5708 */
+  if (!(c->x >= 160)) goto L5708;
   c->msc = 360;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L5708:;
   if (!((g_room == room_dark2) || ((g_room == room_dark3) || (g_room == room_dark7)))) goto L5812;
   MSG(0, obj_readable_room1_slash_Other_10_gml_400_0);
@@ -301,11 +301,11 @@ L5864:;
 L5920:;
   if (!(g_room == room_castle_town)) goto L6068;
   MSG(0, obj_readable_room1_slash_Other_10_gml_416_0);
-  goto L6032; /* gml: if !(read >= 1) goto L6032 */
+  if (!(c->read >= 1)) goto L6032;
   MSG(0, obj_readable_room1_slash_Other_10_gml_419_0);
 L6032:;
   /* gml: with (obj_readable_room1) {   // to L6064 */
-  /* gml: read = (read + 1) */
+  c->read = (c->read + 1);
   /* gml: } // end with */
 L6068:;
   if (!(g_room == room_castle_front)) goto L6336;
@@ -315,7 +315,7 @@ L6068:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_429_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_430_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_431_0);
-  goto L6336; /* gml: if !(read > 0) goto L6336 */
+  if (!(c->read > 0)) goto L6336;
   c->fe = 1;
   MSG(0, obj_readable_room1_slash_Other_10_gml_435_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_436_0);
@@ -339,7 +339,7 @@ L6612:;
 L6716:;
   if (!(g_room == room_field_puzzletutorial)) goto L6768;
   c->msc = 250;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L6768:;
   if (!(g_room == room_field_checkers5)) goto L6824;
   MSG(0, obj_readable_room1_slash_Other_10_gml_476_0);
@@ -348,16 +348,16 @@ L6824:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_481_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_482_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_483_0);
-  goto L7008; /* gml: if !(read >= 1) goto L7008 */
+  if (!(c->read >= 1)) goto L7008;
   MSG(0, obj_readable_room1_slash_Other_10_gml_486_0);
 L7008:;
-  goto L7556; /* gml: if !(y >= 400) goto L7556 */
-  goto L7252; /* gml: if !(x < 600) goto L7252 */
+  if (!(c->y >= 400)) goto L7556;
+  if (!(c->x < 600)) goto L7252;
   MSG(0, obj_readable_room1_slash_Other_10_gml_493_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_494_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_495_0);
   MSG(3, obj_readable_room1_slash_Other_10_gml_496_0);
-  goto L7248; /* gml: if !(read >= 1) goto L7248 */
+  if (!(c->read >= 1)) goto L7248;
   MSG(0, obj_readable_room1_slash_Other_10_gml_499_0);
 L7248:;
   goto L7488;
@@ -365,7 +365,7 @@ L7252:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_504_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_505_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_506_0);
-  goto L7488; /* gml: if !(x >= 1100) goto L7488 */
+  if (!(c->x >= 1100)) goto L7488;
   MSG(0, obj_readable_room1_slash_Other_10_gml_510_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_511_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_512_0);
@@ -375,11 +375,11 @@ L7488:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_519_0);
 L7556:;
   if (!(g_room == room_forest_area5)) goto L8324;
-  goto L7668; /* gml: if !(x <= 340) goto L7668 */
+  if (!(c->x <= 340)) goto L7668;
   MSG(0, obj_readable_room1_slash_Other_10_gml_530_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_531_0);
 L7668:;
-  goto L8232; /* gml: if !((x >= 600) && (x <= 1300)) goto L8232 */
+  if (!((c->x >= 600) && (c->x <= 1300))) goto L8232;
   if (!(sv.flag[237] == 0)) goto L8196;
   sv.flag[237] = 1;
   /* gml: snd_play(103) */
@@ -395,35 +395,35 @@ L7668:;
 L8084:;
   /* gml: with (obj_tempblock_room) {   // to L8188 */
   /* gml: with ((tree)) {   // to L8120 */
-  /* gml: instance_destroy() */
+  c->gone = 1;
   /* gml: } // end with */
   /* gml: with ((block)) {   // to L8152 */
-  /* gml: instance_destroy() */
+  c->gone = 1;
   /* gml: } // end with */
   /* gml: with ((talkto)) {   // to L8184 */
-  /* gml: instance_destroy() */
+  c->gone = 1;
   /* gml: } // end with */
   /* gml: } // end with */
   goto L8232;
 L8196:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_559_0);
 L8232:;
-  goto L8324; /* gml: if !(x >= 1350) goto L8324 */
+  if (!(c->x >= 1350)) goto L8324;
   MSG(0, obj_readable_room1_slash_Other_10_gml_564_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_565_0);
 L8324:;
   if (!(g_room == room_forest_starwalker)) goto L8504;
   MSG(0, obj_readable_room1_slash_Other_10_gml_571_0);
-  goto L8480; /* gml: if !(read == 0) goto L8480 */
+  if (!(c->read == 0)) goto L8480;
   /* gml: snd_play(97) */
   MSG(0, obj_readable_room1_slash_Other_10_gml_575_0);
   sv.gold = (sv.gold + 40);
 L8480:;
-  /* gml: read = (read + 1) */
+  c->read = (c->read + 1);
 L8504:;
   if (!(g_room == room_cc_prison_cells)) goto L9372;
   sv.flag[231] = (sv.flag[231] + 1);
-  goto L8716; /* gml: if !(x < 400) goto L8716 */
+  if (!(c->x < 400)) goto L8716;
   c->fc = 2;
   /* gml: global.typer = 31 */
   c->fe = 0;
@@ -431,24 +431,24 @@ L8504:;
   FACE(1, 'S', 7);
   MSG(2, obj_readable_room1_slash_Other_10_gml_593_0);
 L8716:;
-  goto L8892; /* gml: if !((x >= 600) && (y < 200)) goto L8892 */
+  if (!((c->x >= 600) && (c->y < 200))) goto L8892;
   MSG(0, obj_readable_room1_slash_Other_10_gml_598_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_599_0);
-  goto L8892; /* gml: if !(read >= 1) goto L8892 */
+  if (!(c->read >= 1)) goto L8892;
   MSG(0, obj_readable_room1_slash_Other_10_gml_602_0);
 L8892:;
-  goto L9124; /* gml: if !((x >= 600) && (y > 200)) goto L9124 */
+  if (!((c->x >= 600) && (c->y > 200))) goto L9124;
   MSG(0, obj_readable_room1_slash_Other_10_gml_608_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_609_0);
-  goto L9068; /* gml: if !(read >= 1) goto L9068 */
+  if (!(c->read >= 1)) goto L9068;
   MSG(0, obj_readable_room1_slash_Other_10_gml_610_0);
 L9068:;
   if (!(sv.plot >= 155)) goto L9124;
   MSG(0, obj_readable_room1_slash_Other_10_gml_613_0);
 L9124:;
-  goto L9372; /* gml: if !(x >= 720) goto L9372 */
+  if (!(c->x >= 720)) goto L9372;
   c->msc = 295;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
   if (!have_char(2)) goto L9372;
   /* gml: global.typer = 30 */
   c->fc = 1;
@@ -482,7 +482,7 @@ L9816:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_666_0);
 L9872:;
   if (!(g_room == room_man)) goto L10120;
-  goto L10020; /* gml: if !(y >= 220) goto L10020 */
+  if (!(c->y >= 220)) goto L10020;
   if (!(sv.flag[910] < 2)) goto L9980;
   MSG(0, obj_readable_room1_slash_Other_10_gml_673_0);
   goto L10016;
@@ -496,11 +496,11 @@ L10020:;
   goto L10120;
 L10088:;
   c->msc = 600;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L10120:;
   if (!(g_room == room_cc_throneroom)) goto L10232;
   MSG(0, obj_readable_room1_slash_Other_10_gml_695_0);
-  goto L10232; /* gml: if !(y >= 260) goto L10232 */
+  if (!(c->y >= 260)) goto L10232;
   MSG(0, obj_readable_room1_slash_Other_10_gml_698_0);
 L10232:;
   if (!(g_room == room_cc_prison_prejoker)) goto L10428;
@@ -517,31 +517,31 @@ L10368:;
   if (!(sv.flag[241] >= 5)) goto L10408;
   c->msc = 415;
 L10408:;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L10428:;
   if (!(g_room == room_cc_1f)) goto L10816;
-  goto L10504; /* gml: if !(x < 500) goto L10504 */
+  if (!(c->x < 500)) goto L10504;
   MSG(0, obj_readable_room1_slash_Other_10_gml_721_0);
 L10504:;
-  goto L10724; /* gml: if !((x < 1300) && (x > 500)) goto L10724 */
+  if (!((c->x < 1300) && (c->x > 500))) goto L10724;
   MSG(0, obj_readable_room1_slash_Other_10_gml_726_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_727_0);
   if (!(sv.flag[240] == 1)) goto L10724;
   MSG(0, obj_readable_room1_slash_Other_10_gml_730_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_731_0);
 L10724:;
-  goto L10816; /* gml: if !(x > 1300) goto L10816 */
+  if (!(c->x > 1300)) goto L10816;
   MSG(0, obj_readable_room1_slash_Other_10_gml_738_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_739_0);
 L10816:;
   if (!(g_room == room_cc_rudinn)) goto L10928;
   MSG(0, obj_readable_room1_slash_Other_10_gml_746_0);
-  goto L10928; /* gml: if !(y < 130) goto L10928 */
+  if (!(c->y < 130)) goto L10928;
   MSG(0, obj_readable_room1_slash_Other_10_gml_749_0);
 L10928:;
   if (!(g_room == room_cc_2f)) goto L11040;
   MSG(0, obj_readable_room1_slash_Other_10_gml_755_0);
-  goto L11040; /* gml: if !(y < 250) goto L11040 */
+  if (!(c->y < 250)) goto L11040;
   MSG(0, obj_readable_room1_slash_Other_10_gml_758_0);
 L11040:;
   if (!(g_room == room_cc_rurus1)) goto L11344;
@@ -549,7 +549,7 @@ L11040:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_766_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_767_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_768_0);
-  goto L11344; /* gml: if !(read >= 1) goto L11344 */
+  if (!(c->read >= 1)) goto L11344;
   MSG(0, obj_readable_room1_slash_Other_10_gml_772_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_773_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_774_0);
@@ -560,19 +560,19 @@ L11344:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_782_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_783_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_784_0);
-  goto L11576; /* gml: if !(read >= 1) goto L11576 */
+  if (!(c->read >= 1)) goto L11576;
   MSG(0, obj_readable_room1_slash_Other_10_gml_788_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_789_0);
 L11576:;
   if (!(g_room == room_cc_6f)) goto L11688;
   MSG(0, obj_readable_room1_slash_Other_10_gml_796_0);
-  goto L11688; /* gml: if !(read >= 1) goto L11688 */
+  if (!(c->read >= 1)) goto L11688;
   MSG(0, obj_readable_room1_slash_Other_10_gml_799_0);
 L11688:;
   if (!(g_room == room_cc_hathy)) goto L12036;
   MSG(0, obj_readable_room1_slash_Other_10_gml_805_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_806_0);
-  goto L11864; /* gml: if !(read == 0) goto L11864 */
+  if (!(c->read == 0)) goto L11864;
   /* gml: with (obj_readable_room1) {   // to L11860 */
   if (!(sv.flag[252] == 0)) goto L11860;
   tempvar = (tempvar + 1);
@@ -589,10 +589,10 @@ L11864:;
 L12036:;
   if (!(g_room == room_cc_clover)) goto L12332;
   MSG(0, obj_readable_room1_slash_Other_10_gml_824_0);
-  goto L12332; /* gml: if !(x > (room_width / 2)) goto L12332 */
-  goto L12296; /* gml: if !(y < (room_height / 2)) goto L12296 */
+  if (!(c->x > (world_room_info()->w / 2))) goto L12332;
+  if (!(c->y < (world_room_info()->h / 2))) goto L12296;
   MSG(0, obj_readable_room1_slash_Other_10_gml_829_0);
-  goto L12292; /* gml: if !(read >= 1) goto L12292 */
+  if (!(c->read >= 1)) goto L12292;
   MSG(0, obj_readable_room1_slash_Other_10_gml_832_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_833_0);
 L12292:;
@@ -601,44 +601,44 @@ L12296:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_838_0);
 L12332:;
   if (!(g_room == room_cc_lancer)) goto L12884;
-  goto L12652; /* gml: if !(y <= 220) goto L12652 */
-  goto L12428; /* gml: if !(x < 200) goto L12428 */
+  if (!(c->y <= 220)) goto L12652;
+  if (!(c->x < 200)) goto L12428;
   MSG(0, obj_readable_room1_slash_Other_10_gml_849_0);
 L12428:;
-  goto L12512; /* gml: if !((x > 300) && (x < 350)) goto L12512 */
+  if (!((c->x > 300) && (c->x < 350))) goto L12512;
   MSG(0, obj_readable_room1_slash_Other_10_gml_853_0);
 L12512:;
-  goto L12592; /* gml: if !((x > 350) && (x < 400)) goto L12592 */
+  if (!((c->x > 350) && (c->x < 400))) goto L12592;
   c->msc = 430;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L12592:;
-  goto L12648; /* gml: if !(x >= 400) goto L12648 */
+  if (!(c->x >= 400)) goto L12648;
   MSG(0, obj_readable_room1_slash_Other_10_gml_862_0);
 L12648:;
   goto L12884;
 L12652:;
-  goto L12744; /* gml: if !(x < 200) goto L12744 */
+  if (!(c->x < 200)) goto L12744;
   MSG(0, obj_readable_room1_slash_Other_10_gml_869_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_870_0);
 L12744:;
-  goto L12828; /* gml: if !((x > 250) && (x < 320)) goto L12828 */
+  if (!((c->x > 250) && (c->x < 320))) goto L12828;
   MSG(0, obj_readable_room1_slash_Other_10_gml_874_0);
 L12828:;
-  goto L12884; /* gml: if !(x > 320) goto L12884 */
+  if (!(c->x > 320)) goto L12884;
   MSG(0, obj_readable_room1_slash_Other_10_gml_878_0);
 L12884:;
   if (!(g_room == room_cc_prisonelevator)) goto L12936;
   c->msc = 435;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L12936:;
   if (!(g_room == room_cc_elevator)) goto L12988;
   c->msc = 440;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L12988:;
   if (!(g_room == room_cc_prisonlancer)) goto L13684;
   MSG(0, obj_readable_room1_slash_Other_10_gml_898_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_899_0);
-  goto L13684; /* gml: if !(x >= 560) goto L13684 */
+  if (!(c->x >= 560)) goto L13684;
   MSG(0, obj_readable_room1_slash_Other_10_gml_902_0);
   if (!(have_char(2) && have_char(3))) goto L13684;
   c->fe = 0;
@@ -654,23 +654,23 @@ L12988:;
   FACE(7, 'S', 2);
   MSG(8, obj_readable_room1_slash_Other_10_gml_916_0);
   MSG(9, obj_readable_room1_slash_Other_10_gml_917_0);
-  goto L13684; /* gml: if !(read >= 1) goto L13684 */
+  if (!(c->read >= 1)) goto L13684;
   MSG(0, obj_readable_room1_slash_Other_10_gml_920_0);
   FACE(1, 'S', 2);
   MSG(2, obj_readable_room1_slash_Other_10_gml_922_0);
 L13684:;
   if (!(g_room == room_hospital_rudy)) goto L15168;
-  goto L14016; /* gml: if !((x <= 75) && (y < 160)) goto L14016 */
+  if (!((c->x <= 75) && (c->y < 160))) goto L14016;
   MSG(0, obj_readable_room1_slash_Other_10_gml_932_0);
   FACE(1, 'r', 0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_934_0);
   MSG(3, obj_readable_room1_slash_Other_10_gml_935_0);
   MSG(4, obj_readable_room1_slash_Other_10_gml_936_0);
   MSG(5, obj_readable_room1_slash_Other_10_gml_937_0);
-  goto L14016; /* gml: if !(read >= 1) goto L14016 */
+  if (!(c->read >= 1)) goto L14016;
   MSG(0, obj_readable_room1_slash_Other_10_gml_940_0);
 L14016:;
-  goto L14304; /* gml: if !((x <= 75) && (y > 160)) goto L14304 */
+  if (!((c->x <= 75) && (c->y > 160))) goto L14304;
   if (!(sv.flag[255] < 2)) goto L14204;
   /* gml: global.typer = 55 */
   c->fc = 15;
@@ -683,207 +683,207 @@ L14204:;
   FACE(1, 'r', 2);
   MSG(2, obj_readable_room1_slash_Other_10_gml_959_0);
 L14304:;
-  goto L14572; /* gml: if !((x >= 95) && (x <= 105)) goto L14572 */
+  if (!((c->x >= 95) && (c->x <= 105))) goto L14572;
   MSG(0, obj_readable_room1_slash_Other_10_gml_969_0);
   FACE(1, 'r', 2);
   MSG(2, obj_readable_room1_slash_Other_10_gml_971_0);
-  goto L14572; /* gml: if !(read >= 1) goto L14572 */
+  if (!(c->read >= 1)) goto L14572;
   FACE(1, 'r', 2);
   MSG(2, obj_readable_room1_slash_Other_10_gml_975_0);
   MSG(3, obj_readable_room1_slash_Other_10_gml_976_0);
 L14572:;
-  goto L14920; /* gml: if !(x == 205) goto L14920 */
+  if (!(c->x == 205)) goto L14920;
   MSG(0, obj_readable_room1_slash_Other_10_gml_982_0);
   FACE(1, 'r', 4);
   MSG(2, obj_readable_room1_slash_Other_10_gml_984_0);
   MSG(3, obj_readable_room1_slash_Other_10_gml_985_0);
   MSG(4, obj_readable_room1_slash_Other_10_gml_986_0);
-  goto L14920; /* gml: if !(read >= 1) goto L14920 */
+  if (!(c->read >= 1)) goto L14920;
   MSG(0, obj_readable_room1_slash_Other_10_gml_989_0);
   FACE(1, 'r', 0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_991_0);
   MSG(3, obj_readable_room1_slash_Other_10_gml_992_0);
 L14920:;
-  goto L15112; /* gml: if !(x > 215) goto L15112 */
+  if (!(c->x > 215)) goto L15112;
   MSG(0, obj_readable_room1_slash_Other_10_gml_999_0);
   FACE(1, 'r', 0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_1001_0);
   MSG(3, obj_readable_room1_slash_Other_10_gml_1002_0);
   MSG(4, obj_readable_room1_slash_Other_10_gml_1003_0);
 L15112:;
-  goto L15168; /* gml: if !(x > 230) goto L15168 */
+  if (!(c->x > 230)) goto L15168;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1011_0);
 L15168:;
   if (!(g_room == room_hospital_hallway)) goto L15224;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1017_0);
 L15224:;
   if (!(g_room == room_hospital_room2)) goto L15728;
-  goto L15452; /* gml: if !(y >= 160) goto L15452 */
+  if (!(c->y >= 160)) goto L15452;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1024_0);
   if (!(tempvar >= 1)) goto L15392;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1027_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1028_0);
 L15392:;
   /* gml: with (obj_readable_room1) {   // to L15444 */
-  goto L15444; /* gml: if !(y >= 160) goto L15444 */
+  if (!(c->y >= 160)) goto L15444;
   tempvar = (tempvar + 1);
 L15444:;
   /* gml: } // end with */
   goto L15728;
 L15452:;
-  goto L15544; /* gml: if !(x <= 140) goto L15544 */
+  if (!(c->x <= 140)) goto L15544;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1041_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1042_0);
 L15544:;
-  goto L15636; /* gml: if !(x >= 150) goto L15636 */
+  if (!(c->x >= 150)) goto L15636;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1046_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1047_0);
 L15636:;
-  goto L15728; /* gml: if !(x >= 200) goto L15728 */
+  if (!(c->x >= 200)) goto L15728;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1051_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1052_0);
 L15728:;
   if (!(g_room == room_library)) goto L16860;
-  goto L16004; /* gml: if !(x < 80) goto L16004 */
+  if (!(c->x < 80)) goto L16004;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1063_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1064_0);
-  goto L16004; /* gml: if !(y > 80) goto L16004 */
+  if (!(c->y > 80)) goto L16004;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1069_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1070_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_1071_0);
   MSG(3, obj_readable_room1_slash_Other_10_gml_1072_0);
 L16004:;
-  goto L16188; /* gml: if !(x > 70) goto L16188 */
+  if (!(c->x > 70)) goto L16188;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1080_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1081_0);
-  goto L16188; /* gml: if !(y > 80) goto L16188 */
+  if (!(c->y > 80)) goto L16188;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1085_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1086_0);
 L16188:;
-  goto L16588; /* gml: if !(x > 110) goto L16588 */
+  if (!(c->x > 110)) goto L16588;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1093_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1094_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_1095_0);
   MSG(3, obj_readable_room1_slash_Other_10_gml_1096_0);
   MSG(4, obj_readable_room1_slash_Other_10_gml_1097_0);
   MSG(5, obj_readable_room1_slash_Other_10_gml_1098_0);
-  goto L16588; /* gml: if !(read >= 1) goto L16588 */
+  if (!(c->read >= 1)) goto L16588;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1102_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1103_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_1104_0);
   MSG(3, obj_readable_room1_slash_Other_10_gml_1105_0);
 L16588:;
-  goto L16680; /* gml: if !(x > 150) goto L16680 */
+  if (!(c->x > 150)) goto L16680;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1111_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1112_0);
 L16680:;
-  goto L16808; /* gml: if !(x > 190) goto L16808 */
+  if (!(c->x > 190)) goto L16808;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1117_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1118_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_1119_0);
 L16808:;
-  goto L16860; /* gml: if !(x > 220) goto L16860 */
+  if (!(c->x > 220)) goto L16860;
   c->msc = 185;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L16860:;
   if (!(g_room == room_graveyard)) goto L17084;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1134_0);
-  goto L16972; /* gml: if !(x >= 150) goto L16972 */
+  if (!(c->x >= 150)) goto L16972;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1137_0);
 L16972:;
-  goto L17028; /* gml: if !(x >= 200) goto L17028 */
+  if (!(c->x >= 200)) goto L17028;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1141_0);
 L17028:;
-  goto L17084; /* gml: if !(x >= 290) goto L17084 */
+  if (!(c->x >= 290)) goto L17084;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1145_0);
 L17084:;
   if (!(g_room == room_townhall)) goto L17272;
-  goto L17160; /* gml: if !(x >= 180) goto L17160 */
+  if (!(c->x >= 180)) goto L17160;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1158_0);
 L17160:;
-  goto L17216; /* gml: if !(x >= 240) goto L17216 */
+  if (!(c->x >= 240)) goto L17216;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1163_0);
 L17216:;
-  goto L17272; /* gml: if !(y >= 160) goto L17272 */
+  if (!(c->y >= 160)) goto L17272;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1166_0);
 L17272:;
   if (!(g_room == room_beach)) goto L17324;
   c->msc = 192;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L17324:;
   if (!(g_room == room_diner)) goto L17380;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1178_0);
 L17380:;
   if (!(g_room == room_flowershop_1f)) goto L17720;
-  goto L17588; /* gml: if !(y > 100) goto L17588 */
-  goto L17476; /* gml: if !(x < 100) goto L17476 */
+  if (!(c->y > 100)) goto L17588;
+  if (!(c->x < 100)) goto L17476;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1185_0);
 L17476:;
-  goto L17532; /* gml: if !(x < 70) goto L17532 */
+  if (!(c->x < 70)) goto L17532;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1186_0);
 L17532:;
-  goto L17588; /* gml: if !(x < 50) goto L17588 */
+  if (!(c->x < 50)) goto L17588;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1187_0);
 L17588:;
-  goto L17720; /* gml: if !(y < 80) goto L17720 */
-  goto L17664; /* gml: if !(x == 140) goto L17664 */
+  if (!(c->y < 80)) goto L17720;
+  if (!(c->x == 140)) goto L17664;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1192_0);
 L17664:;
-  goto L17720; /* gml: if !(x != 140) goto L17720 */
+  if (!(c->x != 140)) goto L17720;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1193_0);
 L17720:;
   if (!(g_room == room_flowershop_2f)) goto L18472;
-  goto L17796; /* gml: if !(y < 50) goto L17796 */
+  if (!(c->y < 50)) goto L17796;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1202_0);
 L17796:;
-  goto L18020; /* gml: if !(y > 60) goto L18020 */
+  if (!(c->y > 60)) goto L18020;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1206_0);
-  goto L17908; /* gml: if !(x >= 60) goto L17908 */
+  if (!(c->x >= 60)) goto L17908;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1207_0);
 L17908:;
-  goto L17964; /* gml: if !(x >= 180) goto L17964 */
+  if (!(c->x >= 180)) goto L17964;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1209_0);
 L17964:;
-  goto L18020; /* gml: if !(x >= 260) goto L18020 */
+  if (!(c->x >= 260)) goto L18020;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1212_0);
 L18020:;
-  goto L18420; /* gml: if !(y > 120) goto L18420 */
-  goto L18172; /* gml: if !(x < 160) goto L18172 */
+  if (!(c->y > 120)) goto L18420;
+  if (!(c->x < 160)) goto L18172;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1219_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1220_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_1221_0);
   goto L18420;
 L18172:;
-  goto L18364; /* gml: if !(read == 0) goto L18364 */
+  if (!(c->read == 0)) goto L18364;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1227_0);
   FACE(1, 'A', 4);
   MSG(2, obj_readable_room1_slash_Other_10_gml_1229_0);
   MSG(3, obj_readable_room1_slash_Other_10_gml_1230_0);
   MSG(4, obj_readable_room1_slash_Other_10_gml_1231_0);
 L18364:;
-  goto L18420; /* gml: if !(read >= 1) goto L18420 */
+  if (!(c->read >= 1)) goto L18420;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1235_0);
 L18420:;
-  goto L18472; /* gml: if !(x == 225) goto L18472 */
+  if (!(c->x == 225)) goto L18472;
   c->msc = 210;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L18472:;
   if (!(g_room == room_alphysalley)) goto L18644;
-  goto L18552; /* gml: if !(x <= 130) goto L18552 */
+  if (!(c->x <= 130)) goto L18552;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1250_0);
   goto L18644;
 L18552:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1254_0);
-  goto L18644; /* gml: if !(y <= 100) goto L18644 */
+  if (!(c->y <= 100)) goto L18644;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1257_0);
 L18644:;
   if (!(g_room == room_town_south)) goto L19016;
-  goto L18756; /* gml: if !(x <= 100) goto L18756 */
+  if (!(c->x <= 100)) goto L18756;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1266_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1267_0);
 L18756:;
-  goto L19016; /* gml: if !((x > 200) && (x < 300)) goto L19016 */
-  goto L18980; /* gml: if !(read == 0) goto L18980 */
+  if (!((c->x > 200) && (c->x < 300))) goto L19016;
+  if (!(c->read == 0)) goto L18980;
   /* gml: snd_play(22) */
   MSG(0, obj_readable_room1_slash_Other_10_gml_1274_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1275_0);
@@ -896,64 +896,64 @@ L18980:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1281_0);
 L19016:;
   if (!(g_room == room_town_mid)) goto L19772;
-  goto L19128; /* gml: if !(x > 260) goto L19128 */
+  if (!(c->x > 260)) goto L19128;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1291_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1292_0);
 L19128:;
-  goto L19220; /* gml: if !(x >= 300) goto L19220 */
+  if (!(c->x >= 300)) goto L19220;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1296_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1297_0);
 L19220:;
-  goto L19276; /* gml: if !(x >= 360) goto L19276 */
+  if (!(c->x >= 360)) goto L19276;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1301_0);
 L19276:;
-  goto L19772; /* gml: if !(x >= 1240) goto L19772 */
+  if (!(c->x >= 1240)) goto L19772;
   /* gml: snd_play(22) */
   MSG(0, obj_readable_room1_slash_Other_10_gml_1307_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1308_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_1309_0);
-  goto L19552; /* gml: if !(x >= 1500) goto L19552 */
+  if (!(c->x >= 1500)) goto L19552;
   MSG(1, obj_readable_room1_slash_Other_10_gml_1312_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_1313_0);
   MSG(3, obj_readable_room1_slash_Other_10_gml_1314_0);
 L19552:;
-  goto L19644; /* gml: if !(x >= 1640) goto L19644 */
+  if (!(c->x >= 1640)) goto L19644;
   MSG(1, obj_readable_room1_slash_Other_10_gml_1319_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_1320_0);
 L19644:;
-  goto L19772; /* gml: if !(x >= 1860) goto L19772 */
+  if (!(c->x >= 1860)) goto L19772;
   MSG(1, obj_readable_room1_slash_Other_10_gml_1324_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_1325_0);
   MSG(3, obj_readable_room1_slash_Other_10_gml_1326_0);
 L19772:;
   if (!(g_room == room_town_north)) goto L20584;
-  goto L19848; /* gml: if !(x <= 250) goto L19848 */
+  if (!(c->x <= 250)) goto L19848;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1338_0);
 L19848:;
-  goto L20004; /* gml: if !((x >= 500) && (x <= 570)) goto L20004 */
+  if (!((c->x >= 500) && (c->x <= 570))) goto L20004;
   c->fc = 16;
   /* gml: global.typer = 5 */
   c->fe = 6;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1345_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1346_0);
 L20004:;
-  goto L20096; /* gml: if !(x >= 580) goto L20096 */
+  if (!(c->x >= 580)) goto L20096;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1350_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1351_0);
 L20096:;
-  goto L20188; /* gml: if !(x >= 650) goto L20188 */
+  if (!(c->x >= 650)) goto L20188;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1355_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1356_0);
 L20188:;
-  goto L20244; /* gml: if !(x >= 800) goto L20244 */
+  if (!(c->x >= 800)) goto L20244;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1360_0);
 L20244:;
-  goto L20584; /* gml: if !((x >= 1090) && (x <= 1130)) goto L20584 */
+  if (!((c->x >= 1090) && (c->x <= 1130))) goto L20584;
   /* gml: snd_play(22) */
   MSG(0, obj_readable_room1_slash_Other_10_gml_1365_0);
   MSG(1, obj_readable_room1_slash_Other_10_gml_1366_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_1367_0);
-  goto L20584; /* gml: if !(read >= 1) goto L20584 */
+  if (!(c->read >= 1)) goto L20584;
   MSG(1, obj_readable_room1_slash_Other_10_gml_1371_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_1372_0);
   MSG(3, obj_readable_room1_slash_Other_10_gml_1373_0);
@@ -963,15 +963,15 @@ L20584:;
   MSG(0, obj_readable_room1_slash_Other_10_gml_1383_0);
 L20640:;
   /* gml: mydialoguer = instance_create(0, 0, 5) */
-  /* gml: read = (read + 1) */
+  c->read = (c->read + 1);
 }
 
 void gm_npc_room_create(TxtCtx *c) {
   int tempvar = 0;
   /* gml: myinteract = 0 */
-  /* gml: talked = 0 */
+  c->talked = 0;
   tempvar = 0;
-  /* gml: image_speed = 0 */
+  c->ispd = 0;
   /* gml: depthcancel = 0 */
   /* gml: normalanim = 1 */
   /* gml: remanimspeed = 0 */
@@ -1002,75 +1002,75 @@ L368:;
 L400:;
   if (!(g_room == room_townhall)) goto L496;
   c->spr = spr_npc_businessguy;
-  goto L464; /* gml: if !(x > 100) goto L464 */
+  if (!(c->x > 100)) goto L464;
   c->spr = spr_npc_receptionist;
 L464:;
-  goto L496; /* gml: if !(x > 200) goto L496 */
+  if (!(c->x > 200)) goto L496;
   c->spr = spr_npc_politicsbear;
 L496:;
   if (!(g_room == room_diner)) goto L888;
-  goto L548; /* gml: if !(x < 120) goto L548 */
+  if (!(c->x < 120)) goto L548;
   c->spr = spr_npc_cattiwaitress;
 L548:;
-  goto L580; /* gml: if !(x < 60) goto L580 */
+  if (!(c->x < 60)) goto L580;
   c->spr = spr_npc_dragonfamily;
 L580:;
-  goto L640; /* gml: if !((x >= 120) && (x <= 140)) goto L640 */
+  if (!((c->x >= 120) && (c->x <= 140))) goto L640;
   c->spr = spr_npc_qc;
 L640:;
-  goto L804; /* gml: if !(y > 130) goto L804 */
-  goto L692; /* gml: if !(x > 180) goto L692 */
+  if (!(c->y > 130)) goto L804;
+  if (!(c->x > 180)) goto L692;
   c->spr = spr_npc_dresslion;
 L692:;
-  goto L748; /* gml: if !(x > 240) goto L748 */
+  if (!(c->x > 240)) goto L748;
   c->spr = spr_npc_greenfire;
   /* gml: depth = 4000 */
   /* gml: depthcancel = 1 */
 L748:;
-  goto L804; /* gml: if !(x > 260) goto L804 */
+  if (!(c->x > 260)) goto L804;
   c->spr = spr_npc_flanneldemon;
   /* gml: depth = 4000 */
   /* gml: depthcancel = 1 */
 L804:;
-  goto L888; /* gml: if !(y < 120) goto L888 */
-  goto L856; /* gml: if !(x > 160) goto L856 */
+  if (!(c->y < 120)) goto L888;
+  if (!(c->x > 160)) goto L856;
   c->spr = spr_npc_most_improved_1997;
 L856:;
-  goto L888; /* gml: if !(x > 200) goto L888 */
+  if (!(c->x > 200)) goto L888;
   c->spr = spr_npc_icewolf;
 L888:;
   if (!(g_room == room_town_south)) goto L972;
-  goto L940; /* gml: if !(x > 560) goto L940 */
+  if (!(c->x > 560)) goto L940;
   c->spr = spr_npc_donutcar;
 L940:;
-  goto L972; /* gml: if !(x > 720) goto L972 */
+  if (!(c->x > 720)) goto L972;
   c->spr = spr_npc_snailcar;
 L972:;
   if (!(g_room == room_town_church)) goto L1004;
   c->spr = spr_npc_alvin;
 L1004:;
   if (!(g_room == room_town_mid)) goto L1088;
-  goto L1056; /* gml: if !(x >= 1800) goto L1056 */
+  if (!(c->x >= 1800)) goto L1056;
   c->spr = spr_mkid_dt;
 L1056:;
-  goto L1088; /* gml: if !(x >= 1900) goto L1088 */
+  if (!(c->x >= 1900)) goto L1088;
   c->spr = spr_snowy_dt;
 L1088:;
   if (!(g_room == room_town_north)) goto L1204;
-  goto L1140; /* gml: if !(x >= 480) goto L1140 */
+  if (!(c->x >= 480)) goto L1140;
   c->spr = spr_npc_catty;
 L1140:;
-  goto L1172; /* gml: if !(x >= 640) goto L1172 */
+  if (!(c->x >= 640)) goto L1172;
   c->spr = spr_npc_cattydad;
 L1172:;
-  goto L1204; /* gml: if !(x >= 880) goto L1204 */
+  if (!(c->x >= 880)) goto L1204;
   c->spr = spr_npc_bratty;
 L1204:;
   if (!(g_room == room_beach)) goto L1288;
-  goto L1256; /* gml: if !(x >= 60) goto L1256 */
+  if (!(c->x >= 60)) goto L1256;
   c->spr = spr_npc_rgbun;
 L1256:;
-  goto L1288; /* gml: if !(x >= 100) goto L1288 */
+  if (!(c->x >= 100)) goto L1288;
   c->spr = spr_npc_rgdragon;
 L1288:;
   if (!(sv.darkzone == 1)) goto L4948;
@@ -1084,40 +1084,40 @@ L1364:;
 L1444:;
   if (!(g_room == room_field_topchef)) goto L1528;
   c->spr = spr_topchef;
-  goto L1528; /* gml: if !(y <= 120) goto L1528 */
+  if (!(c->y <= 120)) goto L1528;
   c->spr = spr_smoldercake;
   /* gml: alarm[11] = 1 */
 L1528:;
   if (!(g_room == room_field_puzzletutorial)) goto L1600;
   c->spr = spr_npc_puzzlepiece;
   if (!(sv.flag[251] == 1)) goto L1600;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L1600:;
   if (!(g_room == room_field_maze)) goto L1684;
-  goto L1652; /* gml: if !(x < 1600) goto L1652 */
+  if (!(c->x < 1600)) goto L1652;
   c->spr = spr_jigsawry_idle;
 L1652:;
-  goto L1684; /* gml: if !(x > 1600) goto L1684 */
+  if (!(c->x > 1600)) goto L1684;
   c->spr = spr_lancer_dt;
 L1684:;
   if (!(g_room == room_field_boxpuzzle)) goto L1716;
   c->spr = spr_npc_block_broken;
 L1716:;
   if (!(g_room == room_field_checkers7)) goto L1832;
-  goto L1820; /* gml: if !(x <= (room_width / 2)) goto L1820 */
+  if (!(c->x <= (world_room_info()->w / 2))) goto L1820;
   c->spr = spr_npc_mrelegance;
   if (!(sv.plot >= 60)) goto L1816;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L1816:;
   goto L1832;
 L1820:;
   c->spr = spr_npc_mrsociety;
 L1832:;
   if (!(g_room == room_forest_savepoint1)) goto L1956;
-  goto L1944; /* gml: if !(x <= (room_width / 2)) goto L1944 */
+  if (!(c->x <= (world_room_info()->w / 2))) goto L1944;
   c->spr = spr_npc_puzzlepiece;
   if (!(sv.flag[251] == 0)) goto L1940;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L1940:;
   goto L1956;
 L1944:;
@@ -1127,25 +1127,25 @@ L1956:;
   c->spr = spr_diamond_overworld;
 L1988:;
   if (!(g_room == room_forest_area2A)) goto L2104;
-  goto L2056; /* gml: if !(x <= (room_width / 2)) goto L2056 */
+  if (!(c->x <= (world_room_info()->w / 2))) goto L2056;
   c->spr = spr_jackperson;
 L2056:;
-  goto L2104; /* gml: if !(x >= (room_width / 2)) goto L2104 */
+  if (!(c->x >= (world_room_info()->w / 2))) goto L2104;
   c->spr = spr_ballperson;
 L2104:;
   if (!(g_room == room_forest_area3A)) goto L2220;
-  goto L2172; /* gml: if !(x <= (room_width / 2)) goto L2172 */
+  if (!(c->x <= (world_room_info()->w / 2))) goto L2172;
   c->spr = spr_blockler_b;
 L2172:;
-  goto L2220; /* gml: if !(x >= (room_width / 2)) goto L2220 */
+  if (!(c->x >= (world_room_info()->w / 2))) goto L2220;
   c->spr = spr_blockler_o;
 L2220:;
   if (!(g_room == room_forest_savepoint2)) goto L2344;
   c->spr = spr_bakesale_rudinn;
-  goto L2312; /* gml: if !((x >= 800) && (x <= 880)) goto L2312 */
+  if (!((c->x >= 800) && (c->x <= 880))) goto L2312;
   c->spr = spr_bakesale_hathy;
 L2312:;
-  goto L2344; /* gml: if !(x >= 980) goto L2344 */
+  if (!(c->x >= 980)) goto L2344;
   c->spr = spr_bakesale_lancer;
 L2344:;
   if (!(g_room == room_forest_area4)) goto L2376;
@@ -1155,14 +1155,14 @@ L2376:;
   c->spr = spr_npc_originalstarwalker;
 L2408:;
   if (!(g_room == room_forest_savepoint_relax)) goto L2560;
-  goto L2460; /* gml: if !(x <= 200) goto L2460 */
+  if (!(c->x <= 200)) goto L2460;
   c->spr = spr_diamond_overworld;
 L2460:;
-  goto L2560; /* gml: if !(x > 260) goto L2560 */
+  if (!(c->x > 260)) goto L2560;
   if (!(sv.plot >= 90)) goto L2512;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L2512:;
-  goto L2548; /* gml: if !(y >= 240) goto L2548 */
+  if (!(c->y >= 240)) goto L2548;
   c->spr = spr_lancer_dark_relax;
   goto L2560;
 L2548:;
@@ -1171,7 +1171,7 @@ L2560:;
   if (!(g_room == room_forest_fightsusie)) goto L2624;
   c->spr = spr_lancer_dt;
   if (!(sv.plot >= 150)) goto L2624;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L2624:;
   if (!(g_room == room_cc_prison_cells)) goto L2656;
   c->spr = spr_diamond_trash;
@@ -1179,7 +1179,7 @@ L2656:;
   if (!(g_room == room_cc_prison2)) goto L3520;
   sv.flag[296] = 1;
   c->spr = spr_npc_gouldensam;
-  goto L2924; /* gml: if !((x > 240) && (x < 440)) goto L2924 */
+  if (!((c->x > 240) && (c->x < 440))) goto L2924;
   /* gml: king = instance_create(-100, -100, 84) */
   /* gml: (king).x = x */
   /* gml: (king).y = y */
@@ -1187,24 +1187,24 @@ L2656:;
   /* gml: scr_depth() */
   /* gml: (king).depth = (depth - 10) */
 L2924:;
-  goto L3120; /* gml: if !((x > 480) && (x < 680)) goto L3120 */
-  /* gml: x = (x + 4) */
+  if (!((c->x > 480) && (c->x < 680))) goto L3120;
+  c->x = (c->x + 4);
   /* gml: puzz = instance_create(-100, -100, 84) */
   /* gml: (puzz).x = 660 */
   /* gml: (puzz).y = 130 */
   /* gml: (puzz).sprite_index = 326 */
   tempvar = 1;
 L3120:;
-  goto L3316; /* gml: if !((x > 680) && (x < 900)) goto L3316 */
-  /* gml: x = (x + 8) */
+  if (!((c->x > 680) && (c->x < 900))) goto L3316;
+  c->x = (c->x + 8);
   /* gml: rudinn = instance_create(-100, -100, 84) */
   /* gml: (rudinn).x = 900 */
   /* gml: (rudinn).y = 115 */
   /* gml: (rudinn).sprite_index = 499 */
   tempvar = 2;
 L3316:;
-  goto L3520; /* gml: if !((x > 900) && (x < 1120)) goto L3520 */
-  /* gml: x = (x + 12) */
+  if (!((c->x > 900) && (c->x < 1120))) goto L3520;
+  c->x = (c->x + 12);
   tempvar = 3;
   /* gml: animal = instance_create(-100, -100, 84) */
   /* gml: (animal).x = x */
@@ -1225,20 +1225,20 @@ L3616:;
 L3648:;
   if (!(g_room == room_cc_clover)) goto L3744;
   c->spr = spr_clubs_overworld;
-  goto L3712; /* gml: if !(x < 160) goto L3712 */
+  if (!(c->x < 160)) goto L3712;
   c->spr = spr_diamond_overworld;
 L3712:;
-  goto L3744; /* gml: if !(x > 400) goto L3744 */
+  if (!(c->x > 400)) goto L3744;
   c->spr = spr_heartenemy_overworld;
 L3744:;
   if (!(g_room == room_cc_throneroom)) goto L4348;
   if (!(sv.plot < 240)) goto L3800;
-  /* gml: instance_destroy() */
+  c->gone = 1;
   goto L4348;
 L3800:;
-  goto L4284; /* gml: if !((y < 300) && (y > 80)) goto L4284 */
+  if (!((c->y < 300) && (c->y > 80))) goto L4284;
   c->spr = spr_npc_gouldensam;
-  goto L4108; /* gml: if !(x < (room_width / 2)) goto L4108 */
+  if (!(c->x < (world_room_info()->w / 2))) goto L4108;
   /* gml: king = instance_create(-100, -100, 84) */
   /* gml: (king).x = x */
   /* gml: (king).y = y */
@@ -1246,7 +1246,7 @@ L3800:;
   /* gml: scr_depth() */
   /* gml: (king).depth = (depth - 10) */
   if (!(sv.flag[296] == 0)) goto L4104;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L4104:;
   goto L4280;
 L4108:;
@@ -1256,11 +1256,11 @@ L4108:;
   /* gml: (animal).y = y */
   /* gml: (animal).sprite_index = 353 */
   if (!(sv.flag[296] == 0)) goto L4280;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L4280:;
   goto L4348;
 L4284:;
-  goto L4336; /* gml: if !(x < (room_width / 2)) goto L4336 */
+  if (!(c->x < (world_room_info()->w / 2))) goto L4336;
   c->spr = spr_diamond_overworld;
   goto L4348;
 L4336:;
@@ -1268,54 +1268,54 @@ L4336:;
 L4348:;
   if (!(g_room == room_cc_preroof)) goto L4528;
   if (!(sv.plot < 240)) goto L4400;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L4400:;
-  goto L4432; /* gml: if !(x > 180) goto L4432 */
+  if (!(c->x > 180)) goto L4432;
   c->spr = spr_diamond_overworld;
 L4432:;
-  goto L4464; /* gml: if !(x > 320) goto L4464 */
+  if (!(c->x > 320)) goto L4464;
   c->spr = spr_heartenemy_overworld;
 L4464:;
-  goto L4496; /* gml: if !(x > 460) goto L4496 */
+  if (!(c->x > 460)) goto L4496;
   c->spr = spr_clubs_overworld;
 L4496:;
-  goto L4528; /* gml: if !(x > 680) goto L4528 */
+  if (!(c->x > 680)) goto L4528;
   c->spr = spr_diamond_overworld;
 L4528:;
   if (!(g_room == room_cc_kingbattle)) goto L4948;
   if (!(sv.plot < 240)) goto L4580;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L4580:;
-  goto L4612; /* gml: if !(x < 440) goto L4612 */
+  if (!(c->x < 440)) goto L4612;
   c->spr = spr_rurus_idle;
 L4612:;
-  goto L4900; /* gml: if !(y < 160) goto L4900 */
-  goto L4664; /* gml: if !(x == 398) goto L4664 */
+  if (!(c->y < 160)) goto L4900;
+  if (!(c->x == 398)) goto L4664;
   c->spr = spr_npc_mrsociety;
 L4664:;
-  goto L4696; /* gml: if !(x == 522) goto L4696 */
+  if (!(c->x == 522)) goto L4696;
   c->spr = spr_npc_mrelegance;
 L4696:;
-  goto L4728; /* gml: if !(x == 740) goto L4728 */
+  if (!(c->x == 740)) goto L4728;
   c->spr = spr_blockler_b;
 L4728:;
-  goto L4760; /* gml: if !(x == 820) goto L4760 */
+  if (!(c->x == 820)) goto L4760;
   c->spr = spr_blockler_o;
 L4760:;
-  goto L4792; /* gml: if !(x == 940) goto L4792 */
+  if (!(c->x == 940)) goto L4792;
   c->spr = spr_blockler_o;
 L4792:;
-  goto L4824; /* gml: if !(x == 1020) goto L4824 */
+  if (!(c->x == 1020)) goto L4824;
   c->spr = spr_blockler_b;
 L4824:;
-  goto L4896; /* gml: if !(x > 1140) goto L4896 */
+  if (!(c->x > 1140)) goto L4896;
   c->spr = spr_npc_puzzlepiece_happy;
   if (!(sv.flag[216] == 1)) goto L4896;
   c->spr = spr_npc_puzzlepiece_shaved;
 L4896:;
   goto L4948;
 L4900:;
-  goto L4936; /* gml: if !(x < 900) goto L4936 */
+  if (!(c->x < 900)) goto L4936;
   c->spr = spr_jackperson;
   goto L4948;
 L4936:;
@@ -1335,9 +1335,9 @@ L56:;
   c->fc = 0;
   c->fe = 0;
   /* gml: global.interact = 1 */
-  /* gml: image_speed = 0.2 */
+  c->ispd = 3;
   if (!(sv.darkzone == 1)) goto L152;
-  /* gml: image_speed = 0.2 */
+  c->ispd = 3;
 L152:;
   MSG(0, obj_npc_room_slash_Other_10_gml_11_0);
   if (!(g_room == room_krisroom)) goto L280;
@@ -1348,14 +1348,14 @@ L280:;
   MSG(0, obj_npc_room_slash_Other_10_gml_21_0);
   if (!(sv.plot >= 250)) goto L424;
   c->msc = 455;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
   /* gml: global.typer = 7 */
   c->fc = 4;
   c->fe = 0;
 L424:;
   if (!(g_room == room_alphysclass)) goto L488;
   c->msc = 100;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
   c->fc = 4;
 L488:;
   if (!(g_room == room_castle_tutorial)) goto L544;
@@ -1375,15 +1375,15 @@ L728:;
 L828:;
   if (!(g_room == room_field2A)) goto L880;
   c->msc = 145;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L880:;
   if (!(g_room == room_field_puzzle1)) goto L932;
   c->msc = 147;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L932:;
   if (!(g_room == room_field_topchef)) goto L1948;
-  goto L1916; /* gml: if !(y >= 160) goto L1916 */
-  /* gml: image_speed = 0.334 */
+  if (!(c->y >= 160)) goto L1916;
+  c->ispd = 5;
   /* gml: normalanim = 2 */
   MSG(0, obj_npc_room_slash_Other_10_gml_81_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_82_0);
@@ -1392,7 +1392,7 @@ L932:;
   FACE(4, 'R', 8);
   MSG(5, obj_npc_room_slash_Other_10_gml_86_0);
   MSG(6, obj_npc_room_slash_Other_10_gml_87_0);
-  goto L1304; /* gml: if !(talked >= 1) goto L1304 */
+  if (!(c->talked >= 1)) goto L1304;
   MSG(0, obj_npc_room_slash_Other_10_gml_90_0);
 L1304:;
   if (!have_char(2)) goto L1796;
@@ -1403,7 +1403,7 @@ L1304:;
   MSG(4, obj_npc_room_slash_Other_10_gml_99_0);
   FACE(5, 'S', 2);
   MSG(6, obj_npc_room_slash_Other_10_gml_101_0);
-  goto L1796; /* gml: if !(talked >= 1) goto L1796 */
+  if (!(c->talked >= 1)) goto L1796;
   MSG(0, obj_npc_room_slash_Other_10_gml_104_0);
   FACE(1, 'S', 0);
   MSG(2, obj_npc_room_slash_Other_10_gml_106_0);
@@ -1414,16 +1414,16 @@ L1304:;
 L1796:;
   if (!gm_itemcheck(6)) goto L1852;
   c->msc = 465;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L1852:;
   if (!(sv.flag[253] == 1)) goto L1912;
   c->msc = 470;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L1912:;
   goto L1948;
 L1916:;
   c->msc = 149;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L1948:;
   if (!(g_room == room_field_maze)) goto L2656;
   MSG(0, obj_npc_room_slash_Other_10_gml_137_0);
@@ -1436,17 +1436,17 @@ L1948:;
 L2164:;
   MSG(2, obj_npc_room_slash_Other_10_gml_147_0);
 L2200:;
-  goto L2256; /* gml: if !(talked >= 1) goto L2256 */
+  if (!(c->talked >= 1)) goto L2256;
   MSG(0, obj_npc_room_slash_Other_10_gml_152_0);
 L2256:;
   if (!have_char(2)) goto L2436;
   MSG(0, obj_npc_room_slash_Other_10_gml_157_0);
   FACE(1, 'S', 2);
   MSG(2, obj_npc_room_slash_Other_10_gml_159_0);
-  goto L2436; /* gml: if !(talked >= 1) goto L2436 */
+  if (!(c->talked >= 1)) goto L2436;
   MSG(0, obj_npc_room_slash_Other_10_gml_165_0);
 L2436:;
-  goto L2656; /* gml: if !(x > 1600) goto L2656 */
+  if (!(c->x > 1600)) goto L2656;
   c->fc = 5;
   c->fe = 0;
   /* gml: global.typer = 32 */
@@ -1466,16 +1466,16 @@ L2784:;
   MSG(1, obj_npc_room_slash_Other_10_gml_194_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_195_0);
   MSG(3, obj_npc_room_slash_Other_10_gml_196_0);
-  goto L3184; /* gml: if !(x <= (room_width / 2)) goto L3184 */
+  if (!(c->x <= (world_room_info()->w / 2))) goto L3184;
   MSG(0, obj_npc_room_slash_Other_10_gml_200_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_201_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_202_0);
-  goto L3184; /* gml: if !(talked >= 1) goto L3184 */
+  if (!(c->talked >= 1)) goto L3184;
   MSG(0, obj_npc_room_slash_Other_10_gml_205_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_206_0);
 L3184:;
-  goto L3548; /* gml: if !(y >= (room_height / 2)) goto L3548 */
-  goto L3404; /* gml: if !(x <= (room_width / 2)) goto L3404 */
+  if (!(c->y >= (world_room_info()->h / 2))) goto L3548;
+  if (!(c->x <= (world_room_info()->w / 2))) goto L3404;
   MSG(0, obj_npc_room_slash_Other_10_gml_214_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_215_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_216_0);
@@ -1498,7 +1498,7 @@ L3548:;
   FACE(5, 'R', 8);
   MSG(6, obj_npc_room_slash_Other_10_gml_242_0);
   MSG(7, obj_npc_room_slash_Other_10_gml_243_0);
-  goto L4200; /* gml: if !(talked >= 1) goto L4200 */
+  if (!(c->talked >= 1)) goto L4200;
   FACE(0, 'R', 8);
   MSG(1, obj_npc_room_slash_Other_10_gml_248_0);
   FACE(2, 'S', 0);
@@ -1513,16 +1513,16 @@ L4200:;
   MSG(1, obj_npc_room_slash_Other_10_gml_263_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_264_0);
   MSG(3, obj_npc_room_slash_Other_10_gml_265_0);
-  goto L4456; /* gml: if !(talked >= 1) goto L4456 */
+  if (!(c->talked >= 1)) goto L4456;
   MSG(0, obj_npc_room_slash_Other_10_gml_269_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_270_0);
 L4456:;
   if (!(g_room == room_field_checkers7)) goto L5100;
-  goto L4736; /* gml: if !(sprite_index == 360) goto L4736 */
+  if (!(c->spr == spr_npc_mrelegance)) goto L4736;
   MSG(0, obj_npc_room_slash_Other_10_gml_278_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_279_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_280_0);
-  goto L4732; /* gml: if !(talked >= 1) goto L4732 */
+  if (!(c->talked >= 1)) goto L4732;
   MSG(0, obj_npc_room_slash_Other_10_gml_284_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_285_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_286_0);
@@ -1532,7 +1532,7 @@ L4736:;
   MSG(0, obj_npc_room_slash_Other_10_gml_292_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_293_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_294_0);
-  goto L4972; /* gml: if !(talked >= 1) goto L4972 */
+  if (!(c->talked >= 1)) goto L4972;
   MSG(0, obj_npc_room_slash_Other_10_gml_297_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_298_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_299_0);
@@ -1543,7 +1543,7 @@ L4972:;
   MSG(2, obj_npc_room_slash_Other_10_gml_306_0);
 L5100:;
   if (!(g_room == room_forest_savepoint1)) goto L5952;
-  goto L5468; /* gml: if !(sprite_index == 323) goto L5468 */
+  if (!(c->spr == spr_npc_puzzlepiece)) goto L5468;
   MSG(0, obj_npc_room_slash_Other_10_gml_316_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_317_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_318_0);
@@ -1552,11 +1552,11 @@ L5100:;
   MSG(0, obj_npc_room_slash_Other_10_gml_322_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_323_0);
 L5376:;
-  goto L5468; /* gml: if !(talked >= 1) goto L5468 */
+  if (!(c->talked >= 1)) goto L5468;
   MSG(0, obj_npc_room_slash_Other_10_gml_327_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_328_0);
 L5468:;
-  goto L5952; /* gml: if !(sprite_index == 360) goto L5952 */
+  if (!(c->spr == spr_npc_mrelegance)) goto L5952;
   MSG(0, obj_npc_room_slash_Other_10_gml_334_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_335_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_336_0);
@@ -1570,21 +1570,21 @@ L5768:;
   MSG(0, obj_npc_room_slash_Other_10_gml_346_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_347_0);
 L5860:;
-  goto L5952; /* gml: if !(talked >= 1) goto L5952 */
+  if (!(c->talked >= 1)) goto L5952;
   MSG(0, obj_npc_room_slash_Other_10_gml_352_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_353_0);
 L5952:;
   if (!(g_room == room_forest_area1)) goto L6192;
-  goto L6192; /* gml: if !(sprite_index == 499) goto L6192 */
+  if (!(c->spr == spr_diamond_overworld)) goto L6192;
   MSG(0, obj_npc_room_slash_Other_10_gml_365_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_366_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_367_0);
   MSG(3, obj_npc_room_slash_Other_10_gml_368_0);
-  goto L6192; /* gml: if !(talked >= 1) goto L6192 */
+  if (!(c->talked >= 1)) goto L6192;
   MSG(0, obj_npc_room_slash_Other_10_gml_372_0);
 L6192:;
   if (!(g_room == room_forest_area2A)) goto L7048;
-  goto L6940; /* gml: if !(x <= (room_width / 2)) goto L6940 */
+  if (!(c->x <= (world_room_info()->w / 2))) goto L6940;
   MSG(0, obj_npc_room_slash_Other_10_gml_383_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_384_0);
   if (!((sv.flag[108] == 1) && (sv.flag[233] == 0))) goto L6528;
@@ -1599,15 +1599,15 @@ L6528:;
   MSG(2, obj_npc_room_slash_Other_10_gml_399_0);
   sv.flag[233] = 1;
 L6684:;
-  goto L6848; /* gml: if !((global.flag[108] == 1) && ((scr_weaponcheck_inventory(9) == 0) && (global.charweapon[3] != 9))) goto L6848 */
+  if (!((sv.flag[108] == 1) && ((gm_weaponcheck(9) == 0) && (sv.weapon[3] != 9)))) goto L6848;
   MSG(0, obj_npc_room_slash_Other_10_gml_406_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_407_0);
 L6848:;
-  goto L6940; /* gml: if !(talked >= 1) goto L6940 */
+  if (!(c->talked >= 1)) goto L6940;
   MSG(0, obj_npc_room_slash_Other_10_gml_412_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_413_0);
 L6940:;
-  goto L7048; /* gml: if !(x >= (room_width / 2)) goto L7048 */
+  if (!(c->x >= (world_room_info()->w / 2))) goto L7048;
   MSG(0, obj_npc_room_slash_Other_10_gml_420_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_421_0);
 L7048:;
@@ -1619,30 +1619,30 @@ L7160:;
   if (!(g_room == room_forest_area3A)) goto L7544;
   MSG(0, obj_npc_room_slash_Other_10_gml_436_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_437_0);
-  goto L7308; /* gml: if !(talked >= 1) goto L7308 */
+  if (!(c->talked >= 1)) goto L7308;
   MSG(0, obj_npc_room_slash_Other_10_gml_442_0);
 L7308:;
-  goto L7544; /* gml: if !(x >= (room_width / 2)) goto L7544 */
+  if (!(c->x >= (world_room_info()->w / 2))) goto L7544;
   MSG(0, obj_npc_room_slash_Other_10_gml_448_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_449_0);
-  goto L7544; /* gml: if !(talked >= 1) goto L7544 */
+  if (!(c->talked >= 1)) goto L7544;
   MSG(0, obj_npc_room_slash_Other_10_gml_454_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_455_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_456_0);
 L7544:;
   if (!(g_room == room_forest_savepoint2)) goto L7808;
-  goto L7616; /* gml: if !(x < 800) goto L7616 */
+  if (!(c->x < 800)) goto L7616;
   c->msc = 325;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L7616:;
-  goto L7696; /* gml: if !((x >= 800) && (x <= 880)) goto L7696 */
+  if (!((c->x >= 800) && (c->x <= 880))) goto L7696;
   c->msc = 327;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L7696:;
-  goto L7808; /* gml: if !(x >= 920) goto L7808 */
+  if (!(c->x >= 920)) goto L7808;
   if (!(sv.plot < 80)) goto L7772;
   c->msc = 330;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
   goto L7808;
 L7772:;
   MSG(0, obj_npc_room_slash_Other_10_gml_486_0);
@@ -1651,7 +1651,7 @@ L7808:;
   MSG(0, obj_npc_room_slash_Other_10_gml_493_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_494_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_495_0);
-  goto L7992; /* gml: if !(talked >= 1) goto L7992 */
+  if (!(c->talked >= 1)) goto L7992;
   MSG(0, obj_npc_room_slash_Other_10_gml_498_0);
 L7992:;
   if (!(g_room == room_forest_starwalker)) goto L8104;
@@ -1664,13 +1664,13 @@ L8104:;
   MSG(1, obj_npc_room_slash_Other_10_gml_512_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_513_0);
   MSG(3, obj_npc_room_slash_Other_10_gml_514_0);
-  goto L8324; /* gml: if !(talked >= 1) goto L8324 */
+  if (!(c->talked >= 1)) goto L8324;
   MSG(0, obj_npc_room_slash_Other_10_gml_515_0);
 L8324:;
   if (!(sv.plot >= 90)) goto L8380;
   MSG(0, obj_npc_room_slash_Other_10_gml_519_0);
 L8380:;
-  goto L9152; /* gml: if !(sprite_index == 226) goto L9152 */
+  if (!(c->spr == spr_lancer_dark_relax)) goto L9152;
   c->fc = 2;
   c->fe = 0;
   /* gml: global.typer = 31 */
@@ -1688,7 +1688,7 @@ L8380:;
   MSG(11, obj_npc_room_slash_Other_10_gml_538_0);
   FACE(12, 'S', 2);
   MSG(13, obj_npc_room_slash_Other_10_gml_540_0);
-  goto L9152; /* gml: if !(talked >= 1) goto L9152 */
+  if (!(c->talked >= 1)) goto L9152;
   c->fc = 5;
   c->fe = 3;
   /* gml: global.typer = 32 */
@@ -1699,7 +1699,7 @@ L8380:;
   MSG(4, obj_npc_room_slash_Other_10_gml_551_0);
   MSG(5, obj_npc_room_slash_Other_10_gml_552_0);
 L9152:;
-  goto L9772; /* gml: if !(sprite_index == 156) goto L9772 */
+  if (!(c->spr == spr_susie_dark_relax)) goto L9772;
   c->fc = 2;
   c->fe = 6;
   /* gml: global.typer = 31 */
@@ -1714,7 +1714,7 @@ L9152:;
   MSG(8, obj_npc_room_slash_Other_10_gml_568_0);
   FACE(9, 'S', 2);
   MSG(10, obj_npc_room_slash_Other_10_gml_570_0);
-  goto L9772; /* gml: if !(talked >= 1) goto L9772 */
+  if (!(c->talked >= 1)) goto L9772;
   c->fc = 1;
   c->fe = 1;
   /* gml: global.typer = 30 */
@@ -1730,7 +1730,7 @@ L9772:;
   MSG(0, obj_npc_room_slash_Other_10_gml_591_0);
   FACE(1, 'L', 3);
   MSG(2, obj_npc_room_slash_Other_10_gml_593_0);
-  goto L10048; /* gml: if !(talked >= 1) goto L10048 */
+  if (!(c->talked >= 1)) goto L10048;
   MSG(0, obj_npc_room_slash_Other_10_gml_597_0);
   FACE(1, 'L', 3);
   MSG(2, obj_npc_room_slash_Other_10_gml_599_0);
@@ -1738,11 +1738,11 @@ L10048:;
   if (!(g_room == room_cc_prison_cells)) goto L10196;
   MSG(0, obj_npc_room_slash_Other_10_gml_606_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_607_0);
-  goto L10196; /* gml: if !(talked >= 1) goto L10196 */
+  if (!(c->talked >= 1)) goto L10196;
   MSG(0, obj_npc_room_slash_Other_10_gml_610_0);
 L10196:;
   if (!(g_room == room_cc_prison2)) goto L11092;
-  goto L10440; /* gml: if !(sprite_index == 340) goto L10440 */
+  if (!(c->spr == spr_npc_gouldensam)) goto L10440;
   MSG(0, obj_npc_room_slash_Other_10_gml_618_0);
   goto L10328; /* gml: if !(tempvar == 1) goto L10328 */
   MSG(0, obj_npc_room_slash_Other_10_gml_619_0);
@@ -1753,33 +1753,33 @@ L10384:;
   goto L10440; /* gml: if !(tempvar == 3) goto L10440 */
   MSG(0, obj_npc_room_slash_Other_10_gml_621_0);
 L10440:;
-  goto L10624; /* gml: if !(sprite_index == 353) goto L10624 */
+  if (!(c->spr == spr_npc_cage_animals)) goto L10624;
   MSG(0, obj_npc_room_slash_Other_10_gml_626_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_627_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_628_0);
-  goto L10624; /* gml: if !(talked >= 1) goto L10624 */
+  if (!(c->talked >= 1)) goto L10624;
   MSG(0, obj_npc_room_slash_Other_10_gml_632_0);
 L10624:;
-  goto L10844; /* gml: if !(sprite_index == 352) goto L10844 */
+  if (!(c->spr == spr_npc_cage_king)) goto L10844;
   MSG(0, obj_npc_room_slash_Other_10_gml_638_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_639_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_640_0);
-  goto L10844; /* gml: if !(talked >= 1) goto L10844 */
+  if (!(c->talked >= 1)) goto L10844;
   MSG(0, obj_npc_room_slash_Other_10_gml_644_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_645_0);
 L10844:;
-  goto L11000; /* gml: if !(sprite_index == 499) goto L11000 */
+  if (!(c->spr == spr_diamond_overworld)) goto L11000;
   MSG(0, obj_npc_room_slash_Other_10_gml_653_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_654_0);
   if (!(sv.flag[40] >= 2)) goto L11000;
   MSG(0, obj_npc_room_slash_Other_10_gml_659_0);
 L11000:;
-  goto L11092; /* gml: if !(sprite_index == 326) goto L11092 */
+  if (!(c->spr == spr_npc_puzzlepiece_jail)) goto L11092;
   MSG(0, obj_npc_room_slash_Other_10_gml_665_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_666_0);
 L11092:;
   if (!(g_room == room_cc_rudinn)) goto L12380;
-  goto L11224; /* gml: if !(x <= (room_width / 2)) goto L11224 */
+  if (!(c->x <= (world_room_info()->w / 2))) goto L11224;
   MSG(0, obj_npc_room_slash_Other_10_gml_675_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_676_0);
   goto L12380;
@@ -1803,7 +1803,7 @@ L11472:;
   MSG(6, obj_npc_room_slash_Other_10_gml_700_0);
   MSG(7, obj_npc_room_slash_Other_10_gml_701_0);
   gm_itemget(13);
-  goto L11932; /* gml: if !(noroom == 1) goto L11932 */
+  if (!(g_noroom == 1)) goto L11932;
   FACE(7, 'R', 8);
   MSG(8, obj_npc_room_slash_Other_10_gml_706_0);
   FACE(9, 'S', 2);
@@ -1829,14 +1829,14 @@ L12120:;
 L12320:;
   if (!(sv.flag[243] == 0)) goto L12380;
   c->msc = 425;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L12380:;
   if (!(g_room == room_cc_rurus1)) goto L12472;
   MSG(0, obj_npc_room_slash_Other_10_gml_746_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_747_0);
 L12472:;
   if (!(g_room == room_cc_hathy)) goto L13464;
-  goto L12604; /* gml: if !(x <= (room_width / 2)) goto L12604 */
+  if (!(c->x <= (world_room_info()->w / 2))) goto L12604;
   MSG(0, obj_npc_room_slash_Other_10_gml_754_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_755_0);
   goto L13464;
@@ -1888,38 +1888,38 @@ L13556:;
   MSG(0, obj_npc_room_slash_Other_10_gml_817_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_818_0);
 L13784:;
-  goto L13840; /* gml: if !(x < 160) goto L13840 */
+  if (!(c->x < 160)) goto L13840;
   MSG(0, obj_npc_room_slash_Other_10_gml_823_0);
 L13840:;
-  goto L14024; /* gml: if !(x > 400) goto L14024 */
+  if (!(c->x > 400)) goto L14024;
   MSG(0, obj_npc_room_slash_Other_10_gml_827_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_828_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_829_0);
-  goto L14024; /* gml: if !(talked >= 1) goto L14024 */
+  if (!(c->talked >= 1)) goto L14024;
   MSG(0, obj_npc_room_slash_Other_10_gml_832_0);
 L14024:;
   if (!(g_room == room_cc_throneroom)) goto L15308;
-  goto L14364; /* gml: if !(y < 300) goto L14364 */
-  goto L14176; /* gml: if !(sprite_index == 340) goto L14176 */
+  if (!(c->y < 300)) goto L14364;
+  if (!(c->spr == spr_npc_gouldensam)) goto L14176;
   MSG(0, obj_npc_room_slash_Other_10_gml_844_0);
   goto L14176; /* gml: if !(tempvar == 1) goto L14176 */
   MSG(0, obj_npc_room_slash_Other_10_gml_845_0);
 L14176:;
-  goto L14268; /* gml: if !(sprite_index == 353) goto L14268 */
+  if (!(c->spr == spr_npc_cage_animals)) goto L14268;
   MSG(0, obj_npc_room_slash_Other_10_gml_849_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_850_0);
 L14268:;
-  goto L14360; /* gml: if !(sprite_index == 352) goto L14360 */
+  if (!(c->spr == spr_npc_cage_king)) goto L14360;
   MSG(0, obj_npc_room_slash_Other_10_gml_855_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_856_0);
 L14360:;
   goto L15308;
 L14364:;
-  goto L14604; /* gml: if !(x < (room_width / 2)) goto L14604 */
+  if (!(c->x < (world_room_info()->w / 2))) goto L14604;
   MSG(0, obj_npc_room_slash_Other_10_gml_865_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_866_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_867_0);
-  goto L14600; /* gml: if !(talked >= 1) goto L14600 */
+  if (!(c->talked >= 1)) goto L14600;
   MSG(0, obj_npc_room_slash_Other_10_gml_870_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_871_0);
 L14600:;
@@ -1949,34 +1949,34 @@ L14860:;
   sv.flag[295] = 1;
 L15308:;
   if (!(g_room == room_cc_preroof)) goto L15800;
-  goto L15384; /* gml: if !(x > 180) goto L15384 */
+  if (!(c->x > 180)) goto L15384;
   MSG(0, obj_npc_room_slash_Other_10_gml_913_0);
 L15384:;
-  goto L15532; /* gml: if !(x > 320) goto L15532 */
+  if (!(c->x > 320)) goto L15532;
   MSG(0, obj_npc_room_slash_Other_10_gml_917_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_918_0);
-  goto L15532; /* gml: if !(talked >= 1) goto L15532 */
+  if (!(c->talked >= 1)) goto L15532;
   MSG(0, obj_npc_room_slash_Other_10_gml_919_0);
 L15532:;
-  goto L15672; /* gml: if !(x > 460) goto L15672 */
+  if (!(c->x > 460)) goto L15672;
   MSG(0, obj_npc_room_slash_Other_10_gml_923_0);
   /* gml: global.msg[1] = (scr_84_get_lang_string("obj_npc_room_slash_Other_10_gml_924_0") + "/") */
   MSG(2, obj_npc_room_slash_Other_10_gml_925_0);
 L15672:;
-  goto L15800; /* gml: if !(x > 680) goto L15800 */
+  if (!(c->x > 680)) goto L15800;
   MSG(0, obj_npc_room_slash_Other_10_gml_930_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_931_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_932_0);
 L15800:;
   if (!(g_room == room_cc_kingbattle)) goto L17332;
-  goto L16392; /* gml: if !(sprite_index == 317) goto L16392 */
+  if (!(c->spr == spr_rurus_idle)) goto L16392;
   c->fc = 18;
   c->fe = 0;
   MSG(0, obj_npc_room_slash_Other_10_gml_944_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_945_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_946_0);
   MSG(3, obj_npc_room_slash_Other_10_gml_947_0);
-  goto L16392; /* gml: if !(talked >= 1) goto L16392 */
+  if (!(c->talked >= 1)) goto L16392;
   c->fc = 1;
   c->fe = 0;
   /* gml: global.typer = 30 */
@@ -1991,43 +1991,43 @@ L15800:;
   FACE(8, 'S', 2);
   MSG(9, obj_npc_room_slash_Other_10_gml_964_0);
 L16392:;
-  goto L17164; /* gml: if !(y < 160) goto L17164 */
-  goto L16540; /* gml: if !(x == 398) goto L16540 */
+  if (!(c->y < 160)) goto L17164;
+  if (!(c->x == 398)) goto L16540;
   MSG(0, obj_npc_room_slash_Other_10_gml_972_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_973_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_974_0);
 L16540:;
-  goto L16688; /* gml: if !(x == 522) goto L16688 */
+  if (!(c->x == 522)) goto L16688;
   MSG(0, obj_npc_room_slash_Other_10_gml_978_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_979_0);
-  goto L16688; /* gml: if !(talked >= 1) goto L16688 */
+  if (!(c->talked >= 1)) goto L16688;
   MSG(0, obj_npc_room_slash_Other_10_gml_982_0);
 L16688:;
-  goto L16744; /* gml: if !(x == 740) goto L16744 */
+  if (!(c->x == 740)) goto L16744;
   MSG(0, obj_npc_room_slash_Other_10_gml_988_0);
 L16744:;
-  goto L16800; /* gml: if !(x == 820) goto L16800 */
+  if (!(c->x == 820)) goto L16800;
   MSG(0, obj_npc_room_slash_Other_10_gml_992_0);
 L16800:;
-  goto L16856; /* gml: if !(x == 940) goto L16856 */
+  if (!(c->x == 940)) goto L16856;
   MSG(0, obj_npc_room_slash_Other_10_gml_996_0);
 L16856:;
-  goto L16912; /* gml: if !(x == 1020) goto L16912 */
+  if (!(c->x == 1020)) goto L16912;
   MSG(0, obj_npc_room_slash_Other_10_gml_1000_0);
 L16912:;
-  goto L17160; /* gml: if !(x > 1140) goto L17160 */
+  if (!(c->x > 1140)) goto L17160;
   MSG(0, obj_npc_room_slash_Other_10_gml_1004_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1005_0);
   if (!(sv.flag[216] == 1)) goto L17068;
   MSG(1, obj_npc_room_slash_Other_10_gml_1008_0);
 L17068:;
-  goto L17160; /* gml: if !(talked >= 1) goto L17160 */
+  if (!(c->talked >= 1)) goto L17160;
   MSG(0, obj_npc_room_slash_Other_10_gml_1013_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1014_0);
 L17160:;
   goto L17332;
 L17164:;
-  goto L17296; /* gml: if !(x < 900) goto L17296 */
+  if (!(c->x < 900)) goto L17296;
   MSG(0, obj_npc_room_slash_Other_10_gml_1022_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1023_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_1024_0);
@@ -2045,45 +2045,45 @@ L17332:;
 L17432:;
   c->msc = 181;
 L17444:;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L17464:;
   if (!(g_room == room_library)) goto L17648;
   MSG(0, obj_npc_room_slash_Other_10_gml_1049_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1050_0);
-  goto L17648; /* gml: if !(talked >= 1) goto L17648 */
+  if (!(c->talked >= 1)) goto L17648;
   MSG(0, obj_npc_room_slash_Other_10_gml_1054_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1055_0);
 L17648:;
   if (!(g_room == room_graveyard)) goto L17700;
   c->msc = 190;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L17700:;
   if (!(g_room == room_townhall)) goto L18360;
   MSG(0, obj_npc_room_slash_Other_10_gml_1068_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1069_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_1070_0);
   MSG(3, obj_npc_room_slash_Other_10_gml_1071_0);
-  goto L17956; /* gml: if !(talked >= 1) goto L17956 */
+  if (!(c->talked >= 1)) goto L17956;
   MSG(0, obj_npc_room_slash_Other_10_gml_1074_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1075_0);
 L17956:;
-  goto L18140; /* gml: if !(x > 100) goto L18140 */
+  if (!(c->x > 100)) goto L18140;
   MSG(0, obj_npc_room_slash_Other_10_gml_1081_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1082_0);
-  goto L18140; /* gml: if !(talked >= 1) goto L18140 */
+  if (!(c->talked >= 1)) goto L18140;
   MSG(0, obj_npc_room_slash_Other_10_gml_1086_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1087_0);
 L18140:;
-  goto L18360; /* gml: if !(x > 200) goto L18360 */
+  if (!(c->x > 200)) goto L18360;
   MSG(0, obj_npc_room_slash_Other_10_gml_1097_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1098_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_1099_0);
-  goto L18360; /* gml: if !(talked >= 1) goto L18360 */
+  if (!(c->talked >= 1)) goto L18360;
   MSG(0, obj_npc_room_slash_Other_10_gml_1103_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1104_0);
 L18360:;
   if (!(g_room == room_diner)) goto L20472;
-  goto L18804; /* gml: if !(sprite_index == 265) goto L18804 */
+  if (!(c->spr == spr_npc_cattiwaitress)) goto L18804;
   c->fc = 13;
   c->fe = 0;
   MSG(0, obj_npc_room_slash_Other_10_gml_1118_0);
@@ -2093,18 +2093,18 @@ L18360:;
   MSG(4, obj_npc_room_slash_Other_10_gml_1122_0);
   MSG(5, obj_npc_room_slash_Other_10_gml_1123_0);
   MSG(6, obj_npc_room_slash_Other_10_gml_1124_0);
-  goto L18804; /* gml: if !(talked >= 1) goto L18804 */
+  if (!(c->talked >= 1)) goto L18804;
   MSG(0, obj_npc_room_slash_Other_10_gml_1128_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1129_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_1130_0);
 L18804:;
-  goto L18952; /* gml: if !(sprite_index == 263) goto L18952 */
+  if (!(c->spr == spr_npc_dragonfamily)) goto L18952;
   MSG(0, obj_npc_room_slash_Other_10_gml_1136_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1137_0);
-  goto L18952; /* gml: if !(talked >= 1) goto L18952 */
+  if (!(c->talked >= 1)) goto L18952;
   MSG(0, obj_npc_room_slash_Other_10_gml_1139_0);
 L18952:;
-  goto L19768; /* gml: if !((x >= 120) && (x <= 140)) goto L19768 */
+  if (!((c->x >= 120) && (c->x <= 140))) goto L19768;
   MSG(0, obj_npc_room_slash_Other_10_gml_1145_0);
   if (!(sv.flag[261] == 0)) goto L19768;
   MSG(0, obj_npc_room_slash_Other_10_gml_1151_0);
@@ -2124,57 +2124,57 @@ L18952:;
   sv.flag[261] = 1;
   /* gml: noroom = 0 */
   gm_litemget(1);
-  goto L19768; /* gml: if !(noroom == 1) goto L19768 */
+  if (!(g_noroom == 1)) goto L19768;
   sv.flag[261] = 2;
   MSG(11, obj_npc_room_slash_Other_10_gml_1172_0);
   MSG(12, obj_npc_room_slash_Other_10_gml_1173_0);
   MSG(13, obj_npc_room_slash_Other_10_gml_1174_0);
 L19768:;
-  goto L19788; /* gml: if !(x > 240) goto L19788 */
+  if (!(c->x > 240)) goto L19788;
 L19788:;
-  goto L20140; /* gml: if !(y > 140) goto L20140 */
-  goto L19956; /* gml: if !(x > 180) goto L19956 */
+  if (!(c->y > 140)) goto L20140;
+  if (!(c->x > 180)) goto L19956;
   MSG(0, obj_npc_room_slash_Other_10_gml_1198_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1199_0);
-  goto L19956; /* gml: if !(talked >= 1) goto L19956 */
+  if (!(c->talked >= 1)) goto L19956;
   MSG(0, obj_npc_room_slash_Other_10_gml_1202_0);
 L19956:;
-  goto L20140; /* gml: if !(x > 260) goto L20140 */
+  if (!(c->x > 260)) goto L20140;
   MSG(0, obj_npc_room_slash_Other_10_gml_1212_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1213_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_1214_0);
-  goto L20140; /* gml: if !(talked >= 1) goto L20140 */
+  if (!(c->talked >= 1)) goto L20140;
   MSG(0, obj_npc_room_slash_Other_10_gml_1217_0);
 L20140:;
-  goto L20288; /* gml: if !(sprite_index == 260) goto L20288 */
+  if (!(c->spr == spr_npc_most_improved_1997)) goto L20288;
   MSG(0, obj_npc_room_slash_Other_10_gml_1226_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1227_0);
-  goto L20288; /* gml: if !(talked >= 1) goto L20288 */
+  if (!(c->talked >= 1)) goto L20288;
   MSG(0, obj_npc_room_slash_Other_10_gml_1231_0);
 L20288:;
-  goto L20472; /* gml: if !(sprite_index == 258) goto L20472 */
+  if (!(c->spr == spr_npc_icewolf)) goto L20472;
   MSG(0, obj_npc_room_slash_Other_10_gml_1237_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1238_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_1239_0);
-  goto L20472; /* gml: if !(talked >= 1) goto L20472 */
+  if (!(c->talked >= 1)) goto L20472;
   MSG(0, obj_npc_room_slash_Other_10_gml_1243_0);
 L20472:;
   if (!(g_room == room_town_south)) goto L20712;
-  goto L20584; /* gml: if !(sprite_index == 307) goto L20584 */
+  if (!(c->spr == spr_npc_donutcar)) goto L20584;
   MSG(0, obj_npc_room_slash_Other_10_gml_1255_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1256_0);
 L20584:;
-  goto L20712; /* gml: if !(sprite_index == 308) goto L20712 */
+  if (!(c->spr == spr_npc_snailcar)) goto L20712;
   MSG(0, obj_npc_room_slash_Other_10_gml_1260_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1261_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_1262_0);
 L20712:;
   if (!(g_room == room_town_mid)) goto L21384;
-  goto L20784; /* gml: if !(sprite_index == 280) goto L20784 */
+  if (!(c->spr == spr_npc_burgerpants)) goto L20784;
   c->msc = 340;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L20784:;
-  goto L21220; /* gml: if !(sprite_index == 153) goto L21220 */
+  if (!(c->spr == spr_mkid_dt)) goto L21220;
   MSG(0, obj_npc_room_slash_Other_10_gml_1276_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1277_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_1278_0);
@@ -2183,26 +2183,26 @@ L20784:;
   MSG(5, obj_npc_room_slash_Other_10_gml_1281_0);
   MSG(6, obj_npc_room_slash_Other_10_gml_1282_0);
   MSG(7, obj_npc_room_slash_Other_10_gml_1283_0);
-  goto L21220; /* gml: if !(talked >= 1) goto L21220 */
+  if (!(c->talked >= 1)) goto L21220;
   MSG(0, obj_npc_room_slash_Other_10_gml_1287_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1288_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_1289_0);
 L21220:;
-  goto L21384; /* gml: if !(sprite_index == 149) goto L21384 */
+  if (!(c->spr == spr_snowy_dt)) goto L21384;
   MSG(0, obj_npc_room_slash_Other_10_gml_1295_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1296_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_1297_0);
   MSG(3, obj_npc_room_slash_Other_10_gml_1298_0);
 L21384:;
   if (!(g_room == room_town_north)) goto L21888;
-  goto L21480; /* gml: if !(sprite_index == 288) goto L21480 */
+  if (!(c->spr == spr_npc_catty)) goto L21480;
   c->fc = 16;
   /* gml: global.typer = 5 */
   c->msc = 215;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L21480:;
-  goto L21812; /* gml: if !(sprite_index == 286) goto L21812 */
-  goto L21668; /* gml: if !(talked == 0) goto L21668 */
+  if (!(c->spr == spr_npc_cattydad)) goto L21812;
+  if (!(c->talked == 0)) goto L21668;
   MSG(0, obj_npc_room_slash_Other_10_gml_1316_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1317_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_1318_0);
@@ -2214,20 +2214,20 @@ L21668:;
   MSG(2, obj_npc_room_slash_Other_10_gml_1325_0);
   MSG(3, obj_npc_room_slash_Other_10_gml_1326_0);
 L21812:;
-  goto L21888; /* gml: if !(sprite_index == 287) goto L21888 */
+  if (!(c->spr == spr_npc_bratty)) goto L21888;
   c->fc = 17;
   /* gml: global.typer = 5 */
   c->msc = 220;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L21888:;
   if (!(g_room == room_town_church)) goto L21940;
   c->msc = 345;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L21940:;
   if (!(g_room == room_hospital_lobby)) goto L22252;
   MSG(0, obj_npc_room_slash_Other_10_gml_1348_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1349_0);
-  goto L22160; /* gml: if !(talked >= 1) goto L22160 */
+  if (!(c->talked >= 1)) goto L22160;
   MSG(0, obj_npc_room_slash_Other_10_gml_1353_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1354_0);
   MSG(2, obj_npc_room_slash_Other_10_gml_1355_0);
@@ -2237,42 +2237,42 @@ L22160:;
   MSG(1, obj_npc_room_slash_Other_10_gml_1362_0);
 L22252:;
   if (!(g_room == room_beach)) goto L22456;
-  goto L22364; /* gml: if !(sprite_index == 310) goto L22364 */
+  if (!(c->spr == spr_npc_rgbun)) goto L22364;
   MSG(0, obj_npc_room_slash_Other_10_gml_1371_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1372_0);
 L22364:;
-  goto L22456; /* gml: if !(sprite_index == 311) goto L22456 */
+  if (!(c->spr == spr_npc_rgdragon)) goto L22456;
   MSG(0, obj_npc_room_slash_Other_10_gml_1376_0);
   MSG(1, obj_npc_room_slash_Other_10_gml_1377_0);
 L22456:;
   /* gml: remanimspeed = image_speed */
   /* gml: myinteract = 3 */
   /* gml: mydialoguer = instance_create(0, 0, 5) */
-  /* gml: talked = (talked + 1) */
+  c->talked = (c->talked + 1);
 }
 
 void gm_npc_sign_create(TxtCtx *c) {
   /* gml: myinteract = 0 */
-  /* gml: image_speed = 0 */
+  c->ispd = 0;
   /* gml: setdepth = 1 */
-  /* gml: read = 0 */
+  c->read = 0;
   if (!(sv.darkzone == 1)) goto L92;
   /* gml: image_xscale = 2 */
   /* gml: image_yscale = 2 */
 L92:;
   if (!(g_room == room_cc_prison_cells)) goto L176;
   c->spr = spr_ironshackle;
-  /* gml: image_index = 0 */
+  c->img = 0;
   if (!(sv.flag[105] == 1)) goto L176;
-  /* gml: image_index = 1 */
+  c->img = 1;
 L176:;
   if (!(g_room == room_cc_prison2)) goto L248;
   c->spr = spr_npc_originalstarwalker;
   if (!(sv.flag[254] == 0)) goto L248;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L248:;
   if (!(g_room == room_cc_throneroom)) goto L344;
-  goto L332; /* gml: if !((x >= 220) && (x <= 400)) goto L332 */
+  if (!((c->x >= 220) && (c->x <= 400))) goto L332;
   c->spr = spr_darkthrone;
   goto L344;
 L332:;
@@ -2282,25 +2282,25 @@ L344:;
   c->spr = spr_flowercontainer;
   /* gml: num = 0 */
   /* gml: colortxt = scr_84_get_lang_string("obj_npc_sign_slash_Create_0_gml_45_0") */
-  goto L596; /* gml: if !(x > 170) goto L596 */
+  if (!(c->x > 170)) goto L596;
   /* gml: num = 1 */
   /* gml: colortxt = scr_84_get_lang_string("obj_npc_sign_slash_Create_0_gml_50_0") */
-  goto L536; /* gml: if !(y > 110) goto L536 */
+  if (!(c->y > 110)) goto L536;
   /* gml: num = 5 */
   /* gml: colortxt = scr_84_get_lang_string("obj_npc_sign_slash_Create_0_gml_51_0") */
 L536:;
-  goto L596; /* gml: if !(y > 130) goto L596 */
+  if (!(c->y > 130)) goto L596;
   /* gml: num = 6 */
   /* gml: colortxt = scr_84_get_lang_string("obj_npc_sign_slash_Create_0_gml_52_0") */
 L596:;
-  goto L776; /* gml: if !(x < 140) goto L776 */
+  if (!(c->x < 140)) goto L776;
   /* gml: num = 2 */
   /* gml: colortxt = scr_84_get_lang_string("obj_npc_sign_slash_Create_0_gml_57_0") */
-  goto L716; /* gml: if !(y > 110) goto L716 */
+  if (!(c->y > 110)) goto L716;
   /* gml: num = 3 */
   /* gml: colortxt = scr_84_get_lang_string("obj_npc_sign_slash_Create_0_gml_58_0") */
 L716:;
-  goto L776; /* gml: if !(y > 130) goto L776 */
+  if (!(c->y > 130)) goto L776;
   /* gml: num = 4 */
   /* gml: colortxt = scr_84_get_lang_string("obj_npc_sign_slash_Create_0_gml_59_0") */
 L776:;
@@ -2333,10 +2333,10 @@ L56:;
   /* gml: global.interact = 1 */
   MSG(0, obj_npc_sign_slash_Other_10_gml_8_0);
   if (!(g_room == room_field1)) goto L292;
-  goto L220; /* gml: if !(x < (room_width / 2)) goto L220 */
+  if (!(c->x < (world_room_info()->w / 2))) goto L220;
   MSG(0, obj_npc_sign_slash_Other_10_gml_12_0);
 L220:;
-  goto L292; /* gml: if !(x > (room_width / 2)) goto L292 */
+  if (!(c->x > (world_room_info()->w / 2))) goto L292;
   MSG(0, obj_npc_sign_slash_Other_10_gml_13_0);
 L292:;
   if (!(g_room == room_field2)) goto L348;
@@ -2348,20 +2348,20 @@ L348:;
   MSG(2, obj_npc_sign_slash_Other_10_gml_43_0);
 L520:;
   if (!(g_room == room_field_maze)) goto L912;
-  goto L596; /* gml: if !(y > 80) goto L596 */
+  if (!(c->y > 80)) goto L596;
   MSG(0, obj_npc_sign_slash_Other_10_gml_49_0);
 L596:;
-  goto L688; /* gml: if !(y > 200) goto L688 */
+  if (!(c->y > 200)) goto L688;
   MSG(0, obj_npc_sign_slash_Other_10_gml_52_0);
   MSG(1, obj_npc_sign_slash_Other_10_gml_53_0);
 L688:;
-  goto L744; /* gml: if !(y > 640) goto L744 */
+  if (!(c->y > 640)) goto L744;
   MSG(0, obj_npc_sign_slash_Other_10_gml_55_0);
 L744:;
-  goto L828; /* gml: if !((y > 1000) && (x > 1000)) goto L828 */
+  if (!((c->y > 1000) && (c->x > 1000))) goto L828;
   MSG(0, obj_npc_sign_slash_Other_10_gml_56_0);
 L828:;
-  goto L912; /* gml: if !((y > 1000) && (x < 600)) goto L912 */
+  if (!((c->y > 1000) && (c->x < 600))) goto L912;
   MSG(0, obj_npc_sign_slash_Other_10_gml_57_0);
 L912:;
   if (!(g_room == room_field_getsusie)) goto L968;
@@ -2378,7 +2378,7 @@ L1152:;
   if (!(g_room == room_field_secret1)) goto L1300;
   MSG(0, obj_npc_sign_slash_Other_10_gml_80_0);
   MSG(1, obj_npc_sign_slash_Other_10_gml_81_0);
-  goto L1300; /* gml: if !(read >= 1) goto L1300 */
+  if (!(c->read >= 1)) goto L1300;
   MSG(0, obj_npc_sign_slash_Other_10_gml_84_0);
 L1300:;
   if (!(g_room == room_forest_puzzle1)) goto L1392;
@@ -2390,17 +2390,17 @@ L1412:;
   if (!(g_room == room_cc_prison_cells)) goto L1500;
   sv.flag[231] = (sv.flag[231] + 1);
   c->msc = 300;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L1500:;
   if (!(g_room == room_cc_prison2)) goto L1592;
   MSG(0, obj_npc_sign_slash_Other_10_gml_161_0);
   MSG(1, obj_npc_sign_slash_Other_10_gml_162_0);
 L1592:;
   if (!(g_room == room_cc_throneroom)) goto L1724;
-  goto L1668; /* gml: if !(sprite_index == 351) goto L1668 */
+  if (!(c->spr == spr_darkthrone)) goto L1668;
   MSG(0, obj_npc_sign_slash_Other_10_gml_169_0);
 L1668:;
-  goto L1724; /* gml: if !(sprite_index == 350) goto L1724 */
+  if (!(c->spr == spr_darkmoney)) goto L1724;
   MSG(0, obj_npc_sign_slash_Other_10_gml_173_0);
 L1724:;
   if (!(g_room == room_flowershop_2f)) goto L1796;
@@ -2412,12 +2412,12 @@ L1796:;
 L1888:;
   if (!(g_room == room_beach)) goto L1940;
   c->msc = 192;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L1940:;
   if (!(g_room == room_town_krisyard)) goto L1996;
   MSG(0, obj_npc_sign_slash_Other_10_gml_196_0);
 L1996:;
-  /* gml: read = (read + 1) */
+  c->read = (c->read + 1);
   /* gml: myinteract = 3 */
   /* gml: mydialoguer = instance_create(0, 0, 5) */
 }
@@ -2430,8 +2430,8 @@ void gm_npc_facing_create(TxtCtx *c) {
   /* gml: myinteract = 0 */
   /* gml: facing = 0 */
   /* gml: dfacing = 0 */
-  /* gml: image_speed = 0 */
-  /* gml: talked = 0 */
+  c->ispd = 0;
+  c->talked = 0;
   /* gml: ourcase = 0 */
   if (!(sv.darkzone == 1)) goto L164;
   /* gml: image_xscale = 2 */
@@ -2445,40 +2445,40 @@ L164:;
   /* gml: facing = 2 */
   /* gml: dfacing = 2 */
   /* gml: ourcase = 1 */
-  goto L404; /* gml: if !(y < 172) goto L404 */
+  if (!(c->y < 172)) goto L404;
   c->tspr[0] = spr_noelle_dt;
   c->tspr[1] = spr_noelle_ut_r;
   c->tspr[2] = spr_noelle_ut;
   c->tspr[3] = spr_noelle_ut_l;
-  goto L404; /* gml: if !(x > 120) goto L404 */
+  if (!(c->x > 120)) goto L404;
   c->tspr[2] = spr_berdly_ut;
   c->tspr[1] = spr_berdly_ut_r;
   c->tspr[3] = spr_berdly_ut_l;
   c->tspr[0] = spr_berdly_ut;
 L404:;
-  goto L540; /* gml: if !(y > 172) goto L540 */
+  if (!(c->y > 172)) goto L540;
   c->tspr[0] = spr_catti_ut;
   c->tspr[2] = spr_catti_ut;
   c->tspr[1] = spr_catti_ut;
   c->tspr[3] = spr_catti_ut;
-  goto L540; /* gml: if !(x > 120) goto L540 */
+  if (!(c->x > 120)) goto L540;
   c->tspr[0] = spr_mkid_ut;
   c->tspr[1] = spr_mkid_ut_r;
   c->tspr[3] = spr_mkid_ut_l;
   c->tspr[2] = spr_mkid_ut;
 L540:;
-  goto L676; /* gml: if !(y > 212) goto L676 */
+  if (!(c->y > 212)) goto L676;
   c->tspr[0] = spr_jockington_ut;
   c->tspr[2] = spr_jockington_ut;
   c->tspr[1] = spr_jockington_rt;
   c->tspr[3] = spr_jockington_lt;
-  goto L676; /* gml: if !(x > 120) goto L676 */
+  if (!(c->x > 120)) goto L676;
   c->tspr[2] = spr_snowy_ut;
   c->tspr[3] = spr_snowy_ut_l;
   c->tspr[1] = spr_snowy_ut_r;
   c->tspr[0] = spr_snowy_ut;
 L676:;
-  goto L768; /* gml: if !(y < 100) goto L768 */
+  if (!(c->y < 100)) goto L768;
   /* gml: facing = 0 */
   /* gml: dfacing = 0 */
   c->tspr[0] = spr_alphysd;
@@ -2495,7 +2495,7 @@ L768:;
   c->tspr[3] = spr_lancer_lt;
   if (!(g_room == room_field2)) goto L912;
   if (!(sv.plot >= 35)) goto L912;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L912:;
   if (!(g_room == room_forest_maze_deadend)) goto L1104;
   /* gml: facing = 0 */
@@ -2509,7 +2509,7 @@ L988:;
   c->tspr[1] = spr_lancer_rt;
   c->tspr[3] = spr_lancer_lt;
   if (!(sv.plot >= 120)) goto L1104;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L1104:;
   if (!(g_room == room_forest_maze_deadend2)) goto L1264;
   /* gml: facing = 2 */
@@ -2520,17 +2520,17 @@ L1104:;
   c->tspr[1] = spr_susier_dark;
   c->tspr[3] = spr_susiel_dark;
   if (!(sv.plot >= 120)) goto L1264;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L1264:;
   if (!(g_room == room_field_boxpuzzle)) goto L1524;
   /* gml: type = 0 */
-  goto L1424; /* gml: if !(x < (room_width / 2)) goto L1424 */
+  if (!(c->x < (world_room_info()->w / 2))) goto L1424;
   c->spr = spr_ralseid;
   c->tspr[0] = spr_ralseid;
   c->tspr[2] = spr_ralseiu;
   c->tspr[1] = spr_ralseir;
   c->tspr[3] = spr_ralseil;
-  /* gml: y = (y + sprite_height) */
+  c->y = (c->y + (spr_h(c->spr) * world_scale()));
   goto L1524;
 L1424:;
   /* gml: type = 1 */
@@ -2539,29 +2539,29 @@ L1424:;
   c->tspr[2] = spr_susieu_dark;
   c->tspr[1] = spr_susier_dark;
   c->tspr[3] = spr_susiel_dark;
-  /* gml: y = (y + sprite_height) */
+  c->y = (c->y + (spr_h(c->spr) * world_scale()));
 L1524:;
   if (!(g_room == room_cc_kingbattle)) goto L1664;
   if (!(sv.plot < 240)) goto L1576;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L1576:;
   c->spr = spr_ralseid;
   c->tspr[0] = spr_ralseid;
   c->tspr[2] = spr_ralseiu;
   c->tspr[1] = spr_ralseir;
   c->tspr[3] = spr_ralseil;
-  /* gml: y = (y + sprite_height) */
+  c->y = (c->y + (spr_h(c->spr) * world_scale()));
 L1664:;
   if (!(g_room == room_cc_throneroom)) goto L1816;
   if (!(sv.plot < 240)) goto L1716;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L1716:;
   c->spr = spr_lancer_dt;
   c->tspr[0] = spr_lancer_dt;
   c->tspr[2] = spr_lancer_ut;
   c->tspr[1] = spr_lancer_rt;
   c->tspr[3] = spr_lancer_lt;
-  /* gml: y = (y + sprite_height) */
+  c->y = (c->y + (spr_h(c->spr) * world_scale()));
   /* gml: depthbonus = -250 */
 L1816:;
   if (!(g_room == room_forest_area1)) goto L2056;
@@ -2572,7 +2572,7 @@ L1816:;
   c->tspr[3] = spr_susiel_dark;
   /* gml: facing = 1 */
   /* gml: dfacing = 1 */
-  goto L2024; /* gml: if !(x >= 1160) goto L2024 */
+  if (!(c->x >= 1160)) goto L2024;
   /* gml: facing = 3 */
   /* gml: dfacing = 3 */
   c->spr = spr_lancer_lt;
@@ -2582,10 +2582,10 @@ L1816:;
   c->tspr[3] = spr_lancer_lt;
 L2024:;
   if (!(sv.plot > 70)) goto L2056;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L2056:;
   if (!(g_room == room_forest_area3)) goto L2268;
-  goto L2184; /* gml: if !(x >= 600) goto L2184 */
+  if (!(c->x >= 600)) goto L2184;
   /* gml: facing = 2 */
   /* gml: dfacing = 2 */
   c->spr = spr_lancer_ut;
@@ -2604,7 +2604,7 @@ L2184:;
   c->tspr[3] = spr_susielt_dark;
 L2268:;
   if (!(g_room == room_library)) goto L2588;
-  goto L2404; /* gml: if !(x < 120) goto L2404 */
+  if (!(c->x < 120)) goto L2404;
   /* gml: facing = 1 */
   /* gml: dfacing = 1 */
   c->tspr[0] = spr_berdly_library_r;
@@ -2614,7 +2614,7 @@ L2268:;
   /* gml: depthcancel = 1 */
   /* gml: depth = 4000 */
 L2404:;
-  goto L2496; /* gml: if !(x > 150) goto L2496 */
+  if (!(c->x > 150)) goto L2496;
   /* gml: facing = 1 */
   /* gml: dfacing = 1 */
   c->tspr[0] = spr_jockington_ut;
@@ -2622,7 +2622,7 @@ L2404:;
   c->tspr[1] = spr_jockington_rt;
   c->tspr[3] = spr_jockington_lt;
 L2496:;
-  goto L2588; /* gml: if !(x > 220) goto L2588 */
+  if (!(c->x > 220)) goto L2588;
   /* gml: facing = 3 */
   /* gml: dfacing = 3 */
   c->tspr[0] = spr_tem_sit_l;
@@ -2678,10 +2678,10 @@ L3048:;
   c->tspr[2] = spr_noelle_ut;
   c->tspr[1] = spr_noelle_rt;
   if (!(sv.flag[255] < 1)) goto L3180;
-  /* gml: instance_destroy() */
+  c->gone = 1;
 L3180:;
   /* gml: scr_npcdir() */
-  /* gml: y = (y - sprite_height) */
+  c->y = (c->y - (spr_h(c->spr) * world_scale()));
   goto L3252; /* gml: if !(depthcancel == 0) goto L3252 */
   /* gml: scr_depth() */
 L3252:;
@@ -2697,18 +2697,18 @@ L56:;
   c->fc = 0;
   c->fe = 0;
   /* gml: global.interact = 1 */
-  /* gml: image_speed = 0.2 */
+  c->ispd = 3;
   if (!(sv.darkzone == 1)) goto L152;
-  /* gml: image_speed = 0.1 */
+  c->ispd = 2;
 L152:;
   MSG(0, obj_npc_facing_slash_Other_10_gml_10_0);
   if (!(g_room == room_alphysclass)) goto L2916;
   goto L536; /* gml: if !(utsprite == 130) goto L536 */
   c->msc = 100;
-  goto L272; /* gml: if !(talked > 0) goto L272 */
+  if (!(c->talked > 0)) goto L272;
   c->msc = 102;
 L272:;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
   c->fe = 0;
   c->fc = 3;
   /* gml: global.typer = 12 */
@@ -2716,7 +2716,7 @@ L272:;
   MSG(0, obj_npc_facing_slash_Other_10_gml_29_0);
   MSG(1, obj_npc_facing_slash_Other_10_gml_30_0);
   MSG(2, obj_npc_facing_slash_Other_10_gml_31_0);
-  goto L536; /* gml: if !(talked >= 1) goto L536 */
+  if (!(c->talked >= 1)) goto L536;
   /* gml: global.typer = 23 */
   c->fe = 3;
   MSG(0, obj_npc_facing_slash_Other_10_gml_37_0);
@@ -2731,7 +2731,7 @@ L536:;
   MSG(3, obj_npc_facing_slash_Other_10_gml_51_0);
   MSG(4, obj_npc_facing_slash_Other_10_gml_52_0);
   MSG(5, obj_npc_facing_slash_Other_10_gml_53_0);
-  goto L900; /* gml: if !(talked > 0) goto L900 */
+  if (!(c->talked > 0)) goto L900;
   MSG(0, obj_npc_facing_slash_Other_10_gml_57_0);
   MSG(1, obj_npc_facing_slash_Other_10_gml_58_0);
 L900:;
@@ -2740,7 +2740,7 @@ L900:;
   MSG(0, obj_npc_facing_slash_Other_10_gml_65_0);
   MSG(1, obj_npc_facing_slash_Other_10_gml_66_0);
   MSG(2, obj_npc_facing_slash_Other_10_gml_67_0);
-  goto L1096; /* gml: if !(talked > 0) goto L1096 */
+  if (!(c->talked > 0)) goto L1096;
   MSG(0, obj_npc_facing_slash_Other_10_gml_71_0);
 L1096:;
   goto L1644; /* gml: if !(utsprite == 148) goto L1644 */
@@ -2748,7 +2748,7 @@ L1096:;
   MSG(1, obj_npc_facing_slash_Other_10_gml_82_0);
   MSG(2, obj_npc_facing_slash_Other_10_gml_83_0);
   MSG(3, obj_npc_facing_slash_Other_10_gml_84_0);
-  goto L1388; /* gml: if !(talked > 0) goto L1388 */
+  if (!(c->talked > 0)) goto L1388;
   MSG(0, obj_npc_facing_slash_Other_10_gml_88_0);
   MSG(1, obj_npc_facing_slash_Other_10_gml_89_0);
   MSG(2, obj_npc_facing_slash_Other_10_gml_90_0);
@@ -2759,21 +2759,21 @@ L1388:;
   MSG(2, obj_npc_facing_slash_Other_10_gml_98_0);
   MSG(3, obj_npc_facing_slash_Other_10_gml_99_0);
   MSG(4, obj_npc_facing_slash_Other_10_gml_100_0);
-  goto L1644; /* gml: if !(talked > 0) goto L1644 */
+  if (!(c->talked > 0)) goto L1644;
   MSG(0, obj_npc_facing_slash_Other_10_gml_104_0);
 L1644:;
   goto L2012; /* gml: if !(utsprite == 152) goto L2012 */
   MSG(0, obj_npc_facing_slash_Other_10_gml_114_0);
   MSG(1, obj_npc_facing_slash_Other_10_gml_115_0);
   MSG(2, obj_npc_facing_slash_Other_10_gml_116_0);
-  goto L1828; /* gml: if !(talked > 0) goto L1828 */
+  if (!(c->talked > 0)) goto L1828;
   MSG(0, obj_npc_facing_slash_Other_10_gml_120_0);
 L1828:;
   if (!(sv.plot >= 3)) goto L2012;
   MSG(0, obj_npc_facing_slash_Other_10_gml_126_0);
   MSG(1, obj_npc_facing_slash_Other_10_gml_127_0);
   MSG(2, obj_npc_facing_slash_Other_10_gml_128_0);
-  goto L2012; /* gml: if !(talked > 0) goto L2012 */
+  if (!(c->talked > 0)) goto L2012;
   MSG(0, obj_npc_facing_slash_Other_10_gml_132_0);
 L2012:;
   goto L2220; /* gml: if !(utsprite == 139) goto L2220 */
@@ -2791,7 +2791,7 @@ L2220:;
   MSG(1, obj_npc_facing_slash_Other_10_gml_160_0);
   MSG(2, obj_npc_facing_slash_Other_10_gml_161_0);
   MSG(3, obj_npc_facing_slash_Other_10_gml_162_0);
-  goto L2488; /* gml: if !(talked > 0) goto L2488 */
+  if (!(c->talked > 0)) goto L2488;
   MSG(0, obj_npc_facing_slash_Other_10_gml_166_0);
   MSG(1, obj_npc_facing_slash_Other_10_gml_167_0);
 L2488:;
@@ -2807,7 +2807,7 @@ L2580:;
   MSG(1, obj_npc_facing_slash_Other_10_gml_186_0);
   MSG(2, obj_npc_facing_slash_Other_10_gml_187_0);
   MSG(3, obj_npc_facing_slash_Other_10_gml_188_0);
-  goto L2848; /* gml: if !(talked > 0) goto L2848 */
+  if (!(c->talked > 0)) goto L2848;
   c->fe = 7;
   MSG(0, obj_npc_facing_slash_Other_10_gml_192_0);
 L2848:;
@@ -2867,7 +2867,7 @@ L3984:;
   MSG(1, obj_npc_facing_slash_Other_10_gml_270_0); /* gml: global.msg[1] = scr_84_get_subst_string(scr_84_get_lang_string("obj_npc_facing_slash_Other_10_gml_270_0"), input_name) */
   FACE(2, 'S', 9);
   MSG(3, obj_npc_facing_slash_Other_10_gml_272_0); /* gml: global.msg[3] = scr_84_get_subst_string(scr_84_get_lang_string("obj_npc_facing_slash_Other_10_gml_272_0"), input_name) */
-  goto L4452; /* gml: if !(talked >= 1) goto L4452 */
+  if (!(c->talked >= 1)) goto L4452;
   MSG(0, obj_npc_facing_slash_Other_10_gml_276_0); /* gml: global.msg[0] = scr_84_get_subst_string(scr_84_get_lang_string("obj_npc_facing_slash_Other_10_gml_276_0"), input_name) */
   FACE(1, 'S', 2);
   MSG(2, obj_npc_facing_slash_Other_10_gml_278_0);
@@ -2887,13 +2887,13 @@ L4592:;
   c->fe = 1;
   MSG(0, obj_npc_facing_slash_Other_10_gml_307_0);
   MSG(1, obj_npc_facing_slash_Other_10_gml_308_0);
-  goto L4776; /* gml: if !(talked >= 1) goto L4776 */
+  if (!(c->talked >= 1)) goto L4776;
   MSG(0, obj_npc_facing_slash_Other_10_gml_312_0);
 L4776:;
   if (!(sv.flag[231] >= 3)) goto L5640;
   /* gml: shack = 0 */
   /* gml: moss = 0 */
-  goto L4900; /* gml: if !((global.chararmor1[1] == 5) || global.chararmor2[1]) goto L4900 */
+  if (!((sv.armor1[1] == 5) || sv.armor2[1])) goto L4900;
   /* gml: shack = 1 */
 L4900:;
   if (!(sv.flag[106] == 1)) goto L4940;
@@ -2931,7 +2931,7 @@ L5640:;
   c->fc = 2;
   c->fe = 0;
   c->msc = 255;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
   goto L6288;
 L5760:;
   /* gml: global.typer = 30 */
@@ -2947,7 +2947,7 @@ L5760:;
   MSG(7, obj_npc_facing_slash_Other_10_gml_382_0);
   FACE(8, 'S', 2);
   MSG(9, obj_npc_facing_slash_Other_10_gml_384_0);
-  goto L6288; /* gml: if !(x >= 1160) goto L6288 */
+  if (!(c->x >= 1160)) goto L6288;
   /* gml: global.typer = 32 */
   c->fc = 5;
   c->fe = 3;
@@ -2968,7 +2968,7 @@ L6288:;
   MSG(6, obj_npc_facing_slash_Other_10_gml_412_0);
   FACE(7, 'S', 7);
   MSG(8, obj_npc_facing_slash_Other_10_gml_414_0);
-  goto L7120; /* gml: if !(talked >= 1) goto L7120 */
+  if (!(c->talked >= 1)) goto L7120;
   MSG(0, obj_npc_facing_slash_Other_10_gml_419_0);
   MSG(1, obj_npc_facing_slash_Other_10_gml_420_0);
   MSG(2, obj_npc_facing_slash_Other_10_gml_421_0);
@@ -2984,7 +2984,7 @@ L6288:;
   FACE(12, 'R', 9);
   MSG(13, obj_npc_facing_slash_Other_10_gml_432_0);
 L7120:;
-  goto L7380; /* gml: if !(talked < -50) goto L7380 */
+  if (!(c->talked < -50)) goto L7380;
   c->fe = 2;
   MSG(0, obj_npc_facing_slash_Other_10_gml_438_0);
   FACE(1, 'L', 2);
@@ -3021,7 +3021,7 @@ L7672:;
   MSG(8, obj_npc_facing_slash_Other_10_gml_478_0);
   FACE(9, 'S', 6);
   MSG(10, obj_npc_facing_slash_Other_10_gml_480_0);
-  goto L8276; /* gml: if !(talked >= 1) goto L8276 */
+  if (!(c->talked >= 1)) goto L8276;
   /* gml: global.typer = 31 */
   c->fc = 2;
   c->fe = 0;
@@ -3030,7 +3030,7 @@ L7672:;
   FACE(2, 'S', 6);
   MSG(3, obj_npc_facing_slash_Other_10_gml_492_0);
 L8276:;
-  goto L8440; /* gml: if !(x >= 600) goto L8440 */
+  if (!(c->x >= 600)) goto L8440;
   /* gml: global.typer = 32 */
   c->fc = 5;
   c->fe = 0;
@@ -3055,14 +3055,14 @@ L8440:;
   MSG(10, obj_npc_facing_slash_Other_10_gml_522_0);
   FACE(11, 'R', 9);
   MSG(12, obj_npc_facing_slash_Other_10_gml_524_0);
-  goto L9072; /* gml: if !(talked >= 1) goto L9072 */
+  if (!(c->talked >= 1)) goto L9072;
   MSG(0, obj_npc_facing_slash_Other_10_gml_527_0);
   FACE(1, 'L', 2);
   MSG(2, obj_npc_facing_slash_Other_10_gml_529_0);
   MSG(3, obj_npc_facing_slash_Other_10_gml_530_0);
 L9072:;
   /* gml: with (obj_npc_facing) {   // to L9104 */
-  /* gml: talked = (talked + 1) */
+  c->talked = (c->talked + 1);
   /* gml: } // end with */
 L9108:;
   if (!(g_room == room_forest_maze_deadend)) goto L9652;
@@ -3076,7 +3076,7 @@ L9108:;
   MSG(4, obj_npc_facing_slash_Other_10_gml_545_0);
   FACE(5, 'R', 9);
   MSG(6, obj_npc_facing_slash_Other_10_gml_547_0);
-  goto L9512; /* gml: if !(talked >= 1) goto L9512 */
+  if (!(c->talked >= 1)) goto L9512;
   MSG(0, obj_npc_facing_slash_Other_10_gml_550_0);
   FACE(1, 'R', 8);
   MSG(2, obj_npc_facing_slash_Other_10_gml_552_0);
@@ -3100,7 +3100,7 @@ L9652:;
   FACE(6, 'R', 8);
   MSG(7, obj_npc_facing_slash_Other_10_gml_575_0);
   MSG(8, obj_npc_facing_slash_Other_10_gml_576_0);
-  goto L10064; /* gml: if !(talked >= 1) goto L10064 */
+  if (!(c->talked >= 1)) goto L10064;
   MSG(0, obj_npc_facing_slash_Other_10_gml_579_0);
 L10064:;
   if (!(sv.flag[294] >= 2)) goto L10204;
@@ -3186,7 +3186,7 @@ L11796:;
 L12164:;
   if (!(g_room == room_library)) goto L13388;
   if (!(g_room == room_library)) goto L13388;
-  goto L13004; /* gml: if !(x < 140) goto L13004 */
+  if (!(c->x < 140)) goto L13004;
   c->fc = 12;
   /* gml: global.typer = 13 */
   MSG(0, obj_npc_facing_slash_Other_10_gml_700_0);
@@ -3198,7 +3198,7 @@ L12348:;
   MSG(3, obj_npc_facing_slash_Other_10_gml_705_0);
   MSG(4, obj_npc_facing_slash_Other_10_gml_706_0);
   MSG(5, obj_npc_facing_slash_Other_10_gml_707_0);
-  goto L12692; /* gml: if !(talked >= 1) goto L12692 */
+  if (!(c->talked >= 1)) goto L12692;
   MSG(0, obj_npc_facing_slash_Other_10_gml_711_0);
   MSG(1, obj_npc_facing_slash_Other_10_gml_712_0);
   MSG(2, obj_npc_facing_slash_Other_10_gml_713_0);
@@ -3212,9 +3212,9 @@ L12692:;
   MSG(4, obj_npc_facing_slash_Other_10_gml_723_0);
   MSG(5, obj_npc_facing_slash_Other_10_gml_724_0);
   sv.flag[256] = 1;
-  /* gml: talked = -1 */
+  c->talked = -1;
 L13004:;
-  goto L13296; /* gml: if !((x > 150) && (x < 220)) goto L13296 */
+  if (!((c->x > 150) && (c->x < 220))) goto L13296;
   c->fc = 14;
   c->fe = 0;
   MSG(0, obj_npc_facing_slash_Other_10_gml_739_0);
@@ -3222,10 +3222,10 @@ L13004:;
   MSG(2, obj_npc_facing_slash_Other_10_gml_741_0);
   NOFACE(3);
   MSG(4, obj_npc_facing_slash_Other_10_gml_743_0);
-  goto L13296; /* gml: if !(talked >= 1) goto L13296 */
+  if (!(c->talked >= 1)) goto L13296;
   MSG(0, obj_npc_facing_slash_Other_10_gml_747_0);
 L13296:;
-  goto L13388; /* gml: if !(x > 220) goto L13388 */
+  if (!(c->x > 220)) goto L13388;
   MSG(0, obj_npc_facing_slash_Other_10_gml_753_0);
   MSG(1, obj_npc_facing_slash_Other_10_gml_754_0);
 L13388:;
@@ -3238,7 +3238,7 @@ L13388:;
   MSG(2, obj_npc_facing_slash_Other_10_gml_769_0);
   MSG(3, obj_npc_facing_slash_Other_10_gml_770_0);
   MSG(4, obj_npc_facing_slash_Other_10_gml_771_0);
-  goto L13716; /* gml: if !(talked >= 1) goto L13716 */
+  if (!(c->talked >= 1)) goto L13716;
   MSG(0, obj_npc_facing_slash_Other_10_gml_775_0);
   MSG(1, obj_npc_facing_slash_Other_10_gml_776_0);
 L13716:;
@@ -3254,16 +3254,16 @@ L13844:;
   c->fe = 0;
   /* gml: global.typer = 20 */
   c->msc = 285;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L13932:;
   if (!(g_room == room_town_south)) goto L13996;
   /* gml: global.typer = 17 */
   c->msc = 335;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L13996:;
   if (!(g_room == room_town_mid)) goto L14172;
-  /* gml: image_speed = 0 */
-  /* gml: image_index = 0 */
+  c->ispd = 0;
+  c->img = 0;
   /* gml: global.typer = 14 */
   c->fc = 6;
   c->fe = 0;
@@ -3271,7 +3271,7 @@ L13996:;
   if (!(sv.flag[273] >= 1)) goto L14128;
   c->msc = 371;
 L14128:;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
   /* gml: with (obj_town_event) {   // to L14168 */
   /* gml: con = 70 */
   /* gml: } // end with */
@@ -3282,160 +3282,325 @@ L14172:;
   /* gml: global.typer = 12 */
   c->fc = 3;
   c->fe = 0;
-  /* gml: scr_text(global.msc) */
+  c->arg = c->msc; gm_scr_text(c);
 L14280:;
   /* gml: remanimspeed = image_speed */
   /* gml: myinteract = 3 */
   /* gml: mydialoguer = instance_create(0, 0, 5) */
-  /* gml: talked = (talked + 1) */
+  c->talked = (c->talked + 1);
+}
+
+void gm_npc_room_animated_create(TxtCtx *c) {
+  /* gml: myinteract = 0 */
+  c->talked = 0;
+  c->ispd = 3;
+  /* gml: depthcancel = 0 */
+  if (!(sv.darkzone == 1)) goto L100;
+  /* gml: image_xscale = 2 */
+  /* gml: image_yscale = 2 */
+L100:;
+  if (!(g_room == room_dark1)) goto L200;
+  c->spr = spr_shine;
+  goto L200; /* gml: if !((global.time > 14400) || (global.flag[10] == 1)) goto L200 */
+  c->gone = 1;
+L200:;
+  if (!(g_room == room_town_mid)) goto L268;
+  if (!(c->x >= 320)) goto L256;
+  c->spr = spr_npc_icemascot_fake;
+  goto L268;
+L256:;
+  c->spr = spr_npc_icemascot2;
+L268:;
+  if (!(g_room == room_diner)) goto L324;
+  c->spr = spr_npc_greenfire;
+  /* gml: depth = 4000 */
+  /* gml: depthcancel = 1 */
+L324:;
+  if (!(g_room == room_cc_clover)) goto L356;
+  c->spr = spr_cc_boombox;
+L356:;
+  if (!(g_room == room_cc_6f)) goto L388;
+  c->spr = spr_smallchecker_front;
+L388:;
+  if (!(g_room == room_cc_throneroom)) goto L452;
+  if (!(sv.plot < 240)) goto L440;
+  c->gone = 1;
+L440:;
+  c->spr = spr_smallchecker_front;
+L452:;
+  if (!(g_room == room_field_maze)) goto L516;
+  c->spr = spr_jigsawry_clobbered;
+  if (!(sv.plot >= 150)) goto L516;
+  c->gone = 1;
+L516:;
+  if (!(g_room == room_forest_savepoint_relax)) goto L568;
+  c->ispd = 2;
+  c->spr = spr_diamond_fan;
+L568:;
+  goto L600; /* gml: if !(depthcancel == 0) goto L600 */
+  /* gml: scr_depth() */
+L600:;
+}
+
+void gm_npc_room_animated_talk(TxtCtx *c) {
+  c->msc = 0;
+  /* gml: global.typer = 5 */
+  if (!(sv.darkzone == 1)) goto L56;
+  /* gml: global.typer = 6 */
+L56:;
+  c->fc = 0;
+  c->fe = 0;
+  /* gml: global.interact = 1 */
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_8_0);
+  if (!(g_room == room_dark1)) goto L448;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_12_0);
+  MSG(1, obj_npc_room_animated_slash_Other_10_gml_13_0);
+  /* gml: global.msg[2] = ((scr_84_get_lang_string("obj_npc_room_animated_slash_Other_10_gml_14_0") + scr_get_input_name(6)) + scr_84_get_lang_string("obj_npc_room_animated_slash_Other_10_gml_14_1")) */
+  /* gml: global.writersnd[0] = 97 */
+  /* gml: global.writersnd[8] = 134 */
+  if (!(sv.flag[10] == 1)) goto L404;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_20_0);
+L404:;
+  /* gml: with (obj_npc_room_animated) {   // to L424 */
+  c->hidden = 1;
+  /* gml: } // end with */
+  sv.flag[10] = 1;
+L448:;
+  if (!(g_room == room_town_mid)) goto L1184;
+  if (!(c->spr == spr_npc_icemascot2)) goto L904;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_31_0);
+  MSG(1, obj_npc_room_animated_slash_Other_10_gml_32_0);
+  MSG(2, obj_npc_room_animated_slash_Other_10_gml_33_0);
+  MSG(3, obj_npc_room_animated_slash_Other_10_gml_34_0);
+  MSG(4, obj_npc_room_animated_slash_Other_10_gml_35_0);
+  MSG(5, obj_npc_room_animated_slash_Other_10_gml_36_0);
+  MSG(6, obj_npc_room_animated_slash_Other_10_gml_37_0);
+  MSG(7, obj_npc_room_animated_slash_Other_10_gml_38_0);
+  if (!(c->talked >= 1)) goto L904;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_42_0);
+  MSG(1, obj_npc_room_animated_slash_Other_10_gml_43_0);
+  MSG(2, obj_npc_room_animated_slash_Other_10_gml_44_0);
+L904:;
+  if (!(c->spr == spr_npc_icemascot_fake)) goto L960;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_51_0);
+L960:;
+  if (!(c->spr == spr_npc_icemascot1)) goto L1184;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_56_0);
+  MSG(1, obj_npc_room_animated_slash_Other_10_gml_57_0);
+  MSG(2, obj_npc_room_animated_slash_Other_10_gml_58_0);
+  MSG(3, obj_npc_room_animated_slash_Other_10_gml_59_0);
+  MSG(4, obj_npc_room_animated_slash_Other_10_gml_60_0);
+  /* gml: with (obj_town_event) {   // to L1180 */
+  /* gml: con = 20 */
+  /* gml: } // end with */
+L1184:;
+  if (!(g_room == room_diner)) goto L1368;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_67_0);
+  MSG(1, obj_npc_room_animated_slash_Other_10_gml_68_0);
+  MSG(2, obj_npc_room_animated_slash_Other_10_gml_69_0);
+  if (!(c->talked >= 1)) goto L1368;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_72_0);
+L1368:;
+  if (!(g_room == room_cc_clover)) goto L1424;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_78_0);
+L1424:;
+  if (!(g_room == room_cc_6f)) goto L1516;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_83_0);
+  MSG(1, obj_npc_room_animated_slash_Other_10_gml_84_0);
+L1516:;
+  if (!(g_room == room_cc_throneroom)) goto L1608;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_89_0);
+  MSG(1, obj_npc_room_animated_slash_Other_10_gml_90_0);
+L1608:;
+  if (!(g_room == room_field_maze)) goto L1760;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_95_0);
+  if (!have_char(2)) goto L1760;
+  c->fc = 1;
+  /* gml: global.typer = 30 */
+  c->fe = 1;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_101_0);
+L1760:;
+  if (!(g_room == room_forest_savepoint_relax)) goto L2508;
+  if (!(c->y >= 200)) goto L2132;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_109_0);
+  MSG(1, obj_npc_room_animated_slash_Other_10_gml_110_0);
+  MSG(2, obj_npc_room_animated_slash_Other_10_gml_111_0);
+  if (!(c->talked >= 1)) goto L2036;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_114_0);
+  MSG(1, obj_npc_room_animated_slash_Other_10_gml_115_0);
+  MSG(2, obj_npc_room_animated_slash_Other_10_gml_116_0);
+L2036:;
+  if (!(sv.plot >= 90)) goto L2128;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_121_0);
+  MSG(1, obj_npc_room_animated_slash_Other_10_gml_122_0);
+L2128:;
+  goto L2508;
+L2132:;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_128_0);
+  MSG(1, obj_npc_room_animated_slash_Other_10_gml_129_0);
+  FACE(2, 'S', 2);
+  MSG(3, obj_npc_room_animated_slash_Other_10_gml_131_0);
+  MSG(4, obj_npc_room_animated_slash_Other_10_gml_132_0);
+  NOFACE(5);
+  MSG(6, obj_npc_room_animated_slash_Other_10_gml_134_0);
+  if (!(c->talked >= 1)) goto L2416;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_137_0);
+L2416:;
+  if (!(sv.plot >= 90)) goto L2508;
+  MSG(0, obj_npc_room_animated_slash_Other_10_gml_141_0);
+  MSG(1, obj_npc_room_animated_slash_Other_10_gml_142_0);
+L2508:;
+  /* gml: myinteract = 3 */
+  /* gml: mydialoguer = instance_create(0, 0, 5) */
+  c->talked = (c->talked + 1);
 }
 
 void gm_scr_text(TxtCtx *c) {
   int afford = 0, tempvar = 0;
-  /* gml: if (argument0 == 0) goto L2320 */
-  /* gml: if (argument0 == 10) goto L2324 */
-  /* gml: if (argument0 == 11) goto L2556 */
-  /* gml: if (argument0 == 100) goto L2916 */
-  /* gml: if (argument0 == 101) goto L3160 */
-  /* gml: if (argument0 == 102) goto L3336 */
-  /* gml: if (argument0 == 103) goto L3400 */
-  /* gml: if (argument0 == 104) goto L3576 */
-  /* gml: if (argument0 == 105) goto L3748 */
-  /* gml: if (argument0 == 110) goto L3776 */
-  /* gml: if (argument0 == 111) goto L4076 */
-  /* gml: if (argument0 == 120) goto L4260 */
-  /* gml: if (argument0 == 121) goto L4660 */
-  /* gml: if (argument0 == 122) goto L5048 */
-  /* gml: if (argument0 == 125) goto L5864 */
-  /* gml: if (argument0 == 126) goto L6192 */
-  /* gml: if (argument0 == 130) goto L6500 */
-  /* gml: if (argument0 == 131) goto L6760 */
-  /* gml: if (argument0 == 132) goto L7068 */
-  /* gml: if (argument0 == 133) goto L7368 */
-  /* gml: if (argument0 == 135) goto L7636 */
-  /* gml: if (argument0 == 136) goto L7928 */
-  /* gml: if (argument0 == 140) goto L8296 */
-  /* gml: if (argument0 == 141) goto L9020 */
-  /* gml: if (argument0 == 145) goto L9260 */
-  /* gml: if (argument0 == 146) goto L9720 */
-  /* gml: if (argument0 == 147) goto L9936 */
-  /* gml: if (argument0 == 148) goto L10396 */
-  /* gml: if (argument0 == 149) goto L10612 */
-  /* gml: if (argument0 == 150) goto L10912 */
-  /* gml: if (argument0 == 175) goto L11112 */
-  /* gml: if (argument0 == 176) goto L11416 */
-  /* gml: if (argument0 == 180) goto L13864 */
-  /* gml: if (argument0 == 181) goto L14156 */
-  /* gml: if (argument0 == 182) goto L14960 */
-  /* gml: if (argument0 == 185) goto L16136 */
-  /* gml: if (argument0 == 186) goto L16356 */
-  /* gml: if (argument0 == 190) goto L16776 */
-  /* gml: if (argument0 == 191) goto L17068 */
-  /* gml: if (argument0 == 192) goto L17184 */
-  /* gml: if (argument0 == 193) goto L17504 */
-  /* gml: if (argument0 == 195) goto L17676 */
-  /* gml: if (argument0 == 196) goto L18076 */
-  /* gml: if (argument0 == 197) goto L18472 */
-  /* gml: if (argument0 == 198) goto L19076 */
-  /* gml: if (argument0 == 210) goto L19968 */
-  /* gml: if (argument0 == 211) goto L20372 */
-  /* gml: if (argument0 == 215) goto L21272 */
-  /* gml: if (argument0 == 216) goto L21792 */
-  /* gml: if (argument0 == 220) goto L22776 */
-  /* gml: if (argument0 == 221) goto L23032 */
-  /* gml: if (argument0 == 225) goto L24016 */
-  /* gml: if (argument0 == 226) goto L24284 */
-  /* gml: if (argument0 == 227) goto L24960 */
-  /* gml: if (argument0 == 228) goto L25636 */
-  /* gml: if (argument0 == 230) goto L26384 */
-  /* gml: if (argument0 == 231) goto L26604 */
-  /* gml: if (argument0 == 235) goto L27444 */
-  /* gml: if (argument0 == 236) goto L27664 */
-  /* gml: if (argument0 == 240) goto L28288 */
-  /* gml: if (argument0 == 241) goto L28508 */
-  /* gml: if (argument0 == 245) goto L29828 */
-  /* gml: if (argument0 == 246) goto L30048 */
-  /* gml: if (argument0 == 250) goto L30856 */
-  /* gml: if (argument0 == 251) goto L31152 */
-  /* gml: if (argument0 == 255) goto L31508 */
-  /* gml: if (argument0 == 256) goto L32328 */
-  /* gml: if (argument0 == 270) goto L33616 */
-  /* gml: if (argument0 == 285) goto L34192 */
-  /* gml: if (argument0 == 286) goto L34448 */
-  /* gml: if (argument0 == 290) goto L36044 */
-  /* gml: if (argument0 == 291) goto L36240 */
-  /* gml: if (argument0 == 295) goto L36424 */
-  /* gml: if (argument0 == 296) goto L36744 */
-  /* gml: if (argument0 == 300) goto L36968 */
-  /* gml: if (argument0 == 301) goto L37288 */
-  /* gml: if (argument0 == 305) goto L37528 */
-  /* gml: if (argument0 == 306) goto L37856 */
-  /* gml: if (argument0 == 310) goto L37968 */
-  /* gml: if (argument0 == 311) goto L38248 */
-  /* gml: if (argument0 == 315) goto L38324 */
-  /* gml: if (argument0 == 316) goto L38568 */
-  /* gml: if (argument0 == 325) goto L39508 */
-  /* gml: if (argument0 == 326) goto L39860 */
-  /* gml: if (argument0 == 327) goto L40124 */
-  /* gml: if (argument0 == 328) goto L40344 */
-  /* gml: if (argument0 == 330) goto L40608 */
-  /* gml: if (argument0 == 331) goto L41028 */
-  /* gml: if (argument0 == 335) goto L42304 */
-  /* gml: if (argument0 == 336) goto L42896 */
-  /* gml: if (argument0 == 340) goto L43556 */
-  /* gml: if (argument0 == 341) goto L43956 */
-  /* gml: if (argument0 == 345) goto L45084 */
-  /* gml: if (argument0 == 346) goto L45352 */
-  /* gml: if (argument0 == 350) goto L45632 */
-  /* gml: if (argument0 == 351) goto L45828 */
-  /* gml: if (argument0 == 355) goto L45928 */
-  /* gml: if (argument0 == 356) goto L46204 */
-  /* gml: if (argument0 == 360) goto L46316 */
-  /* gml: if (argument0 == 361) goto L46584 */
-  /* gml: if (argument0 == 365) goto L46728 */
-  /* gml: if (argument0 == 370) goto L47428 */
-  /* gml: if (argument0 == 371) goto L47660 */
-  /* gml: if (argument0 == 372) goto L48320 */
-  /* gml: if (argument0 == 373) goto L48888 */
-  /* gml: if (argument0 == 375) goto L50124 */
-  /* gml: if (argument0 == 376) goto L50548 */
-  /* gml: if (argument0 == 380) goto L51112 */
-  /* gml: if (argument0 == 381) goto L51452 */
-  /* gml: if (argument0 == 385) goto L52436 */
-  /* gml: if (argument0 == 386) goto L53200 */
-  /* gml: if (argument0 == 387) goto L54404 */
-  /* gml: if (argument0 == 400) goto L55856 */
-  /* gml: if (argument0 == 401) goto L56088 */
-  /* gml: if (argument0 == 402) goto L56228 */
-  /* gml: if (argument0 == 403) goto L56496 */
-  /* gml: if (argument0 == 405) goto L56756 */
-  /* gml: if (argument0 == 406) goto L57836 */
-  /* gml: if (argument0 == 410) goto L58240 */
-  /* gml: if (argument0 == 411) goto L58532 */
-  /* gml: if (argument0 == 415) goto L58844 */
-  /* gml: if (argument0 == 420) goto L58884 */
-  /* gml: if (argument0 == 425) goto L59080 */
-  /* gml: if (argument0 == 426) goto L59312 */
-  /* gml: if (argument0 == 430) goto L60168 */
-  /* gml: if (argument0 == 431) goto L60364 */
-  /* gml: if (argument0 == 435) goto L60520 */
-  /* gml: if (argument0 == 436) goto L60728 */
-  /* gml: if (argument0 == 440) goto L61232 */
-  /* gml: if (argument0 == 441) goto L61428 */
-  /* gml: if (argument0 == 445) goto L61592 */
-  /* gml: if (argument0 == 446) goto L62040 */
-  /* gml: if (argument0 == 450) goto L62212 */
-  /* gml: if (argument0 == 451) goto L62644 */
-  /* gml: if (argument0 == 455) goto L62756 */
-  /* gml: if (argument0 == 456) goto L63036 */
-  /* gml: if (argument0 == 460) goto L64264 */
-  /* gml: if (argument0 == 461) goto L64680 */
-  /* gml: if (argument0 == 465) goto L65020 */
-  /* gml: if (argument0 == 466) goto L65252 */
-  /* gml: if (argument0 == 470) goto L65592 */
-  /* gml: if (argument0 == 471) goto L65852 */
-  /* gml: if (argument0 == 600) goto L66100 */
-  /* gml: if (argument0 == 601) goto L66332 */
+  if ((c->arg == 0)) goto L2320;
+  if ((c->arg == 10)) goto L2324;
+  if ((c->arg == 11)) goto L2556;
+  if ((c->arg == 100)) goto L2916;
+  if ((c->arg == 101)) goto L3160;
+  if ((c->arg == 102)) goto L3336;
+  if ((c->arg == 103)) goto L3400;
+  if ((c->arg == 104)) goto L3576;
+  if ((c->arg == 105)) goto L3748;
+  if ((c->arg == 110)) goto L3776;
+  if ((c->arg == 111)) goto L4076;
+  if ((c->arg == 120)) goto L4260;
+  if ((c->arg == 121)) goto L4660;
+  if ((c->arg == 122)) goto L5048;
+  if ((c->arg == 125)) goto L5864;
+  if ((c->arg == 126)) goto L6192;
+  if ((c->arg == 130)) goto L6500;
+  if ((c->arg == 131)) goto L6760;
+  if ((c->arg == 132)) goto L7068;
+  if ((c->arg == 133)) goto L7368;
+  if ((c->arg == 135)) goto L7636;
+  if ((c->arg == 136)) goto L7928;
+  if ((c->arg == 140)) goto L8296;
+  if ((c->arg == 141)) goto L9020;
+  if ((c->arg == 145)) goto L9260;
+  if ((c->arg == 146)) goto L9720;
+  if ((c->arg == 147)) goto L9936;
+  if ((c->arg == 148)) goto L10396;
+  if ((c->arg == 149)) goto L10612;
+  if ((c->arg == 150)) goto L10912;
+  if ((c->arg == 175)) goto L11112;
+  if ((c->arg == 176)) goto L11416;
+  if ((c->arg == 180)) goto L13864;
+  if ((c->arg == 181)) goto L14156;
+  if ((c->arg == 182)) goto L14960;
+  if ((c->arg == 185)) goto L16136;
+  if ((c->arg == 186)) goto L16356;
+  if ((c->arg == 190)) goto L16776;
+  if ((c->arg == 191)) goto L17068;
+  if ((c->arg == 192)) goto L17184;
+  if ((c->arg == 193)) goto L17504;
+  if ((c->arg == 195)) goto L17676;
+  if ((c->arg == 196)) goto L18076;
+  if ((c->arg == 197)) goto L18472;
+  if ((c->arg == 198)) goto L19076;
+  if ((c->arg == 210)) goto L19968;
+  if ((c->arg == 211)) goto L20372;
+  if ((c->arg == 215)) goto L21272;
+  if ((c->arg == 216)) goto L21792;
+  if ((c->arg == 220)) goto L22776;
+  if ((c->arg == 221)) goto L23032;
+  if ((c->arg == 225)) goto L24016;
+  if ((c->arg == 226)) goto L24284;
+  if ((c->arg == 227)) goto L24960;
+  if ((c->arg == 228)) goto L25636;
+  if ((c->arg == 230)) goto L26384;
+  if ((c->arg == 231)) goto L26604;
+  if ((c->arg == 235)) goto L27444;
+  if ((c->arg == 236)) goto L27664;
+  if ((c->arg == 240)) goto L28288;
+  if ((c->arg == 241)) goto L28508;
+  if ((c->arg == 245)) goto L29828;
+  if ((c->arg == 246)) goto L30048;
+  if ((c->arg == 250)) goto L30856;
+  if ((c->arg == 251)) goto L31152;
+  if ((c->arg == 255)) goto L31508;
+  if ((c->arg == 256)) goto L32328;
+  if ((c->arg == 270)) goto L33616;
+  if ((c->arg == 285)) goto L34192;
+  if ((c->arg == 286)) goto L34448;
+  if ((c->arg == 290)) goto L36044;
+  if ((c->arg == 291)) goto L36240;
+  if ((c->arg == 295)) goto L36424;
+  if ((c->arg == 296)) goto L36744;
+  if ((c->arg == 300)) goto L36968;
+  if ((c->arg == 301)) goto L37288;
+  if ((c->arg == 305)) goto L37528;
+  if ((c->arg == 306)) goto L37856;
+  if ((c->arg == 310)) goto L37968;
+  if ((c->arg == 311)) goto L38248;
+  if ((c->arg == 315)) goto L38324;
+  if ((c->arg == 316)) goto L38568;
+  if ((c->arg == 325)) goto L39508;
+  if ((c->arg == 326)) goto L39860;
+  if ((c->arg == 327)) goto L40124;
+  if ((c->arg == 328)) goto L40344;
+  if ((c->arg == 330)) goto L40608;
+  if ((c->arg == 331)) goto L41028;
+  if ((c->arg == 335)) goto L42304;
+  if ((c->arg == 336)) goto L42896;
+  if ((c->arg == 340)) goto L43556;
+  if ((c->arg == 341)) goto L43956;
+  if ((c->arg == 345)) goto L45084;
+  if ((c->arg == 346)) goto L45352;
+  if ((c->arg == 350)) goto L45632;
+  if ((c->arg == 351)) goto L45828;
+  if ((c->arg == 355)) goto L45928;
+  if ((c->arg == 356)) goto L46204;
+  if ((c->arg == 360)) goto L46316;
+  if ((c->arg == 361)) goto L46584;
+  if ((c->arg == 365)) goto L46728;
+  if ((c->arg == 370)) goto L47428;
+  if ((c->arg == 371)) goto L47660;
+  if ((c->arg == 372)) goto L48320;
+  if ((c->arg == 373)) goto L48888;
+  if ((c->arg == 375)) goto L50124;
+  if ((c->arg == 376)) goto L50548;
+  if ((c->arg == 380)) goto L51112;
+  if ((c->arg == 381)) goto L51452;
+  if ((c->arg == 385)) goto L52436;
+  if ((c->arg == 386)) goto L53200;
+  if ((c->arg == 387)) goto L54404;
+  if ((c->arg == 400)) goto L55856;
+  if ((c->arg == 401)) goto L56088;
+  if ((c->arg == 402)) goto L56228;
+  if ((c->arg == 403)) goto L56496;
+  if ((c->arg == 405)) goto L56756;
+  if ((c->arg == 406)) goto L57836;
+  if ((c->arg == 410)) goto L58240;
+  if ((c->arg == 411)) goto L58532;
+  if ((c->arg == 415)) goto L58844;
+  if ((c->arg == 420)) goto L58884;
+  if ((c->arg == 425)) goto L59080;
+  if ((c->arg == 426)) goto L59312;
+  if ((c->arg == 430)) goto L60168;
+  if ((c->arg == 431)) goto L60364;
+  if ((c->arg == 435)) goto L60520;
+  if ((c->arg == 436)) goto L60728;
+  if ((c->arg == 440)) goto L61232;
+  if ((c->arg == 441)) goto L61428;
+  if ((c->arg == 445)) goto L61592;
+  if ((c->arg == 446)) goto L62040;
+  if ((c->arg == 450)) goto L62212;
+  if ((c->arg == 451)) goto L62644;
+  if ((c->arg == 455)) goto L62756;
+  if ((c->arg == 456)) goto L63036;
+  if ((c->arg == 460)) goto L64264;
+  if ((c->arg == 461)) goto L64680;
+  if ((c->arg == 465)) goto L65020;
+  if ((c->arg == 466)) goto L65252;
+  if ((c->arg == 470)) goto L65592;
+  if ((c->arg == 471)) goto L65852;
+  if ((c->arg == 600)) goto L66100;
+  if ((c->arg == 601)) goto L66332;
   goto L66492;
   goto L66496;
 L2320:;
@@ -3450,7 +3615,7 @@ L2324:;
   MSG(2, scr_text_slash_scr_text_gml_13_0);
   goto L66496;
 L2556:;
-  goto L2616; /* gml: if !(global.choice == 0) goto L2616 */
+  if (!(c->choice == 0)) goto L2616;
   MSG(0, scr_text_slash_scr_text_gml_19_0);
   goto L2912;
 L2616:;
@@ -3478,14 +3643,14 @@ L2916:;
   txt_msg(c, 6, " ");
   goto L66496;
 L3160:;
-  goto L3276; /* gml: if !(global.choice == 1) goto L3276 */
+  if (!(c->choice == 1)) goto L3276;
   MSG(0, scr_text_slash_scr_text_gml_50_0);
   MSG(1, scr_text_slash_scr_text_gml_51_0);
   /* gml: with (obj_classscene) {   // to L3272 */
   /* gml: con = 20 */
   /* gml: } // end with */
 L3276:;
-  goto L3332; /* gml: if !(global.choice == 0) goto L3332 */
+  if (!(c->choice == 0)) goto L3332;
   MSG(0, scr_text_slash_scr_text_gml_56_0);
 L3332:;
   goto L66496;
@@ -3494,14 +3659,14 @@ L3336:;
   txt_msg(c, 1, " ");
   goto L66496;
 L3400:;
-  goto L3516; /* gml: if !(global.choice == 1) goto L3516 */
+  if (!(c->choice == 1)) goto L3516;
   MSG(0, scr_text_slash_scr_text_gml_68_0);
   MSG(1, scr_text_slash_scr_text_gml_69_0);
   /* gml: with (obj_classscene) {   // to L3512 */
   /* gml: con = 20 */
   /* gml: } // end with */
 L3516:;
-  goto L3572; /* gml: if !(global.choice == 0) goto L3572 */
+  if (!(c->choice == 0)) goto L3572;
   MSG(0, scr_text_slash_scr_text_gml_74_0);
 L3572:;
   goto L66496;
@@ -3530,13 +3695,13 @@ L4036:;
 L4072:;
   goto L66496;
 L4076:;
-  goto L4220; /* gml: if !(global.choice == 0) goto L4220 */
+  if (!(c->choice == 0)) goto L4220;
   MSG(0, scr_text_slash_scr_text_gml_111_0);
   sv.flag[100] = 1;
   gm_itemget(3);
   /* gml: with (obj_readable_room1) {   // to L4212 */
   /* gml: with ((shine)) {   // to L4208 */
-  /* gml: instance_destroy() */
+  c->gone = 1;
   /* gml: } // end with */
   /* gml: } // end with */
   goto L4256;
@@ -3563,7 +3728,7 @@ L4660:;
   CHOICE(1, scr_text_slash_scr_text_gml_140_0);
   c->choicemsg[2] = " ";
   c->choicemsg[3] = " ";
-  goto L4840; /* gml: if !(global.choice == 0) goto L4840 */
+  if (!(c->choice == 0)) goto L4840;
   MSG(0, scr_text_slash_scr_text_gml_145_0);
   goto L5044;
 L4840:;
@@ -3576,7 +3741,7 @@ L4840:;
 L5044:;
   goto L66496;
 L5048:;
-  goto L5108; /* gml: if !(global.choice == 0) goto L5108 */
+  if (!(c->choice == 0)) goto L5108;
   MSG(0, scr_text_slash_scr_text_gml_162_0);
   goto L5860;
 L5108:;
@@ -3620,7 +3785,7 @@ L5864:;
   txt_msg(c, 5, " ");
   goto L66496;
 L6192:;
-  goto L6428; /* gml: if !(global.choice == 0) goto L6428 */
+  if (!(c->choice == 0)) goto L6428;
   c->fe = 7;
   sv.flag[204] = 1;
   MSG(0, scr_text_slash_scr_text_gml_210_0);
@@ -3646,7 +3811,7 @@ L6500:;
   txt_msg(c, 2, " ");
   goto L66496;
 L6760:;
-  goto L6904; /* gml: if !(global.choice == 0) goto L6904 */
+  if (!(c->choice == 0)) goto L6904;
   c->fe = 3;
   MSG(0, scr_text_slash_scr_text_gml_241_0);
   MSG(1, scr_text_slash_scr_text_gml_242_0);
@@ -3671,7 +3836,7 @@ L7068:;
   txt_msg(c, 3, " ");
   goto L66496;
 L7368:;
-  goto L7512; /* gml: if !(global.choice == 0) goto L7512 */
+  if (!(c->choice == 0)) goto L7512;
   c->fe = 3;
   MSG(0, scr_text_slash_scr_text_gml_272_0);
   MSG(1, scr_text_slash_scr_text_gml_273_0);
@@ -3696,7 +3861,7 @@ L7636:;
   txt_msg(c, 4, " ");
   goto L66496;
 L7928:;
-  goto L8012; /* gml: if !(global.choice == 0) goto L8012 */
+  if (!(c->choice == 0)) goto L8012;
   MSG(0, scr_text_slash_scr_text_gml_302_0);
   /* gml: with (obj_tutorialbattleevent) {   // to L8004 */
   /* gml: con = 20 */
@@ -3738,7 +3903,7 @@ L8296:;
 L9020:;
   MSG(0, scr_text_slash_scr_text_gml_342_0);
   MSG(1, scr_text_slash_scr_text_gml_343_0);
-  goto L9256; /* gml: if !(global.choice == 1) goto L9256 */
+  if (!(c->choice == 1)) goto L9256;
   MSG(0, scr_text_slash_scr_text_gml_347_0);
   MSG(1, scr_text_slash_scr_text_gml_348_0);
   MSG(2, scr_text_slash_scr_text_gml_349_0);
@@ -3765,9 +3930,9 @@ L9652:;
 L9716:;
   goto L66496;
 L9720:;
-  goto L9896; /* gml: if !(global.choice == 0) goto L9896 */
+  if (!(c->choice == 0)) goto L9896;
   gm_itemget(1);
-  goto L9856; /* gml: if !(noroom == 0) goto L9856 */
+  if (!(g_noroom == 0)) goto L9856;
   MSG(0, scr_text_slash_scr_text_gml_387_0);
   sv.flag[101] = (sv.flag[101] + 1);
   goto L9892;
@@ -3799,9 +3964,9 @@ L10328:;
 L10392:;
   goto L66496;
 L10396:;
-  goto L10572; /* gml: if !(global.choice == 0) goto L10572 */
+  if (!(c->choice == 0)) goto L10572;
   gm_itemget(1);
-  goto L10532; /* gml: if !(noroom == 0) goto L10532 */
+  if (!(g_noroom == 0)) goto L10532;
   MSG(0, scr_text_slash_scr_text_gml_433_0);
   sv.flag[102] = (sv.flag[102] + 1);
   goto L10568;
@@ -3828,9 +3993,9 @@ L10872:;
 L10908:;
   goto L66496;
 L10912:;
-  goto L11072; /* gml: if !(global.choice == 0) goto L11072 */
+  if (!(c->choice == 0)) goto L11072;
   gm_keyitemget(3);
-  goto L11032; /* gml: if !(noroom == 0) goto L11032 */
+  if (!(g_noroom == 0)) goto L11032;
   MSG(0, scr_text_slash_scr_text_gml_472_0);
   sv.flag[103] = 1;
   goto L11068;
@@ -3854,7 +4019,7 @@ L11112:;
   txt_msg(c, 4, " ");
   goto L66496;
 L11416:;
-  goto L12332; /* gml: if !(global.choice == 0) goto L12332 */
+  if (!(c->choice == 0)) goto L12332;
   c->fc = 0;
   /* gml: global.typer = 6 */
   MSG(0, scr_text_slash_scr_text_gml_507_0);
@@ -3884,7 +4049,7 @@ L11416:;
   MSG(24, scr_text_slash_scr_text_gml_531_0);
   sv.flag[214] = 1;
 L12332:;
-  goto L12944; /* gml: if !(global.choice == 1) goto L12944 */
+  if (!(c->choice == 1)) goto L12944;
   c->fc = 0;
   /* gml: global.typer = 6 */
   MSG(0, scr_text_slash_scr_text_gml_539_0);
@@ -3905,7 +4070,7 @@ L12332:;
   MSG(15, scr_text_slash_scr_text_gml_554_0);
   sv.flag[214] = 2;
 L12944:;
-  goto L13860; /* gml: if !(global.choice == 2) goto L13860 */
+  if (!(c->choice == 2)) goto L13860;
   c->fc = 0;
   /* gml: global.typer = 6 */
   MSG(0, scr_text_slash_scr_text_gml_562_0);
@@ -3963,7 +4128,7 @@ L14156:;
   MSG(3, scr_text_slash_scr_text_gml_621_0);
   MSG(4, scr_text_slash_scr_text_gml_624_0);
   MSG(5, scr_text_slash_scr_text_gml_625_0);
-  goto L14920; /* gml: if !(global.choice == 1) goto L14920 */
+  if (!(c->choice == 1)) goto L14920;
   c->fe = 1;
   MSG(0, scr_text_slash_scr_text_gml_629_0);
   MSG(1, scr_text_slash_scr_text_gml_630_0);
@@ -3977,7 +4142,7 @@ L14956:;
   goto L66496;
 L14960:;
   MSG(0, scr_text_slash_scr_text_gml_641_0);
-  goto L15424; /* gml: if !(global.choice == 0) goto L15424 */
+  if (!(c->choice == 0)) goto L15424;
   c->fe = 0;
   MSG(0, scr_text_slash_scr_text_gml_645_0);
   MSG(1, scr_text_slash_scr_text_gml_646_0);
@@ -3991,7 +4156,7 @@ L14960:;
   MSG(9, scr_text_slash_scr_text_gml_654_0);
   MSG(10, scr_text_slash_scr_text_gml_655_0);
 L15424:;
-  goto L15840; /* gml: if !(global.choice == 1) goto L15840 */
+  if (!(c->choice == 1)) goto L15840;
   MSG(0, scr_text_slash_scr_text_gml_659_0);
   MSG(1, scr_text_slash_scr_text_gml_660_0);
   MSG(2, scr_text_slash_scr_text_gml_661_0);
@@ -4004,14 +4169,14 @@ L15424:;
   MSG(9, scr_text_slash_scr_text_gml_668_0);
   MSG(10, scr_text_slash_scr_text_gml_669_0);
 L15840:;
-  goto L16040; /* gml: if !(global.choice == 2) goto L16040 */
+  if (!(c->choice == 2)) goto L16040;
   MSG(0, scr_text_slash_scr_text_gml_673_0);
   MSG(1, scr_text_slash_scr_text_gml_674_0);
   MSG(2, scr_text_slash_scr_text_gml_675_0);
   MSG(3, scr_text_slash_scr_text_gml_676_0);
   MSG(4, scr_text_slash_scr_text_gml_677_0);
 L16040:;
-  goto L16132; /* gml: if !(global.choice == 3) goto L16132 */
+  if (!(c->choice == 3)) goto L16132;
   MSG(0, scr_text_slash_scr_text_gml_682_0);
   MSG(1, scr_text_slash_scr_text_gml_683_0);
 L16132:;
@@ -4036,7 +4201,7 @@ L16356:;
   MSG(7, scr_text_slash_scr_text_gml_706_0);
   MSG(8, scr_text_slash_scr_text_gml_707_0);
   MSG(9, scr_text_slash_scr_text_gml_708_0);
-  goto L16772; /* gml: if !(global.choice < 1) goto L16772 */
+  if (!(c->choice < 1)) goto L16772;
   MSG(0, scr_text_slash_scr_text_gml_709_0);
 L16772:;
   goto L66496;
@@ -4052,10 +4217,10 @@ L16776:;
   txt_msg(c, 4, " ");
   goto L66496;
 L17068:;
-  goto L17124; /* gml: if !(global.choice == 0) goto L17124 */
+  if (!(c->choice == 0)) goto L17124;
   MSG(0, scr_text_slash_scr_text_gml_727_0);
 L17124:;
-  goto L17180; /* gml: if !(global.choice == 1) goto L17180 */
+  if (!(c->choice == 1)) goto L17180;
   MSG(0, scr_text_slash_scr_text_gml_733_0);
 L17180:;
   goto L66496;
@@ -4073,12 +4238,12 @@ L17184:;
 L17500:;
   goto L66496;
 L17504:;
-  goto L17616; /* gml: if !(global.choice == 0) goto L17616 */
+  if (!(c->choice == 0)) goto L17616;
   MSG(0, scr_text_slash_scr_text_gml_756_0);
   MSG(1, scr_text_slash_scr_text_gml_757_0);
   sv.flag[257] = 1;
 L17616:;
-  goto L17672; /* gml: if !(global.choice == 1) goto L17672 */
+  if (!(c->choice == 1)) goto L17672;
   MSG(0, scr_text_slash_scr_text_gml_763_0);
 L17672:;
   goto L66496;
@@ -4101,14 +4266,14 @@ L18076:;
   CHOICE(1, scr_text_slash_scr_text_gml_787_0);
   c->choicemsg[2] = " ";
   c->choicemsg[3] = " ";
-  goto L18384; /* gml: if !(global.choice == 0) goto L18384 */
+  if (!(c->choice == 0)) goto L18384;
   MSG(0, scr_text_slash_scr_text_gml_794_0);
   MSG(1, scr_text_slash_scr_text_gml_795_0);
   MSG(2, scr_text_slash_scr_text_gml_796_0);
   MSG(3, scr_text_slash_scr_text_gml_797_0);
   txt_msg(c, 4, " ");
 L18384:;
-  goto L18468; /* gml: if !(global.choice == 1) goto L18468 */
+  if (!(c->choice == 1)) goto L18468;
   sv.flag[258] = 3;
   sv.flag[20] = 1;
   txt_msg(c, 0, "%%%");
@@ -4119,11 +4284,11 @@ L18472:;
   CHOICE(1, scr_text_slash_scr_text_gml_810_0);
   CHOICE(2, scr_text_slash_scr_text_gml_811_0);
   CHOICE(3, scr_text_slash_scr_text_gml_812_0);
-  goto L18692; /* gml: if !(global.choice == 0) goto L18692 */
+  if (!(c->choice == 0)) goto L18692;
   sv.flag[259] = 1;
   MSG(0, scr_text_slash_scr_text_gml_817_0);
 L18692:;
-  goto L18768; /* gml: if !(global.choice == 1) goto L18768 */
+  if (!(c->choice == 1)) goto L18768;
   sv.flag[259] = 2;
   MSG(0, scr_text_slash_scr_text_gml_822_0);
 L18768:;
@@ -4139,28 +4304,28 @@ L18960:;
   txt_msg(c, 6, " ");
   goto L66496;
 L19076:;
-  goto L19244; /* gml: if !(global.choice == 0) goto L19244 */
+  if (!(c->choice == 0)) goto L19244;
   sv.flag[258] = 2;
   sv.flag[260] = 1;
   MSG(0, scr_text_slash_scr_text_gml_840_0);
   MSG(1, scr_text_slash_scr_text_gml_841_0);
   MSG(2, scr_text_slash_scr_text_gml_842_0);
 L19244:;
-  goto L19412; /* gml: if !(global.choice == 1) goto L19412 */
+  if (!(c->choice == 1)) goto L19412;
   sv.flag[258] = 2;
   sv.flag[260] = 2;
   MSG(0, scr_text_slash_scr_text_gml_848_0);
   MSG(1, scr_text_slash_scr_text_gml_849_0);
   MSG(2, scr_text_slash_scr_text_gml_850_0);
 L19412:;
-  goto L19580; /* gml: if !(global.choice == 2) goto L19580 */
+  if (!(c->choice == 2)) goto L19580;
   sv.flag[258] = 2;
   sv.flag[260] = 3;
   MSG(0, scr_text_slash_scr_text_gml_857_0);
   MSG(1, scr_text_slash_scr_text_gml_858_0);
   MSG(2, scr_text_slash_scr_text_gml_859_0);
 L19580:;
-  goto L19684; /* gml: if !(global.choice == 3) goto L19684 */
+  if (!(c->choice == 3)) goto L19684;
   sv.flag[258] = 3;
   sv.flag[260] = 4;
   sv.flag[20] = 1;
@@ -4181,7 +4346,7 @@ L19968:;
   CHOICE(1, scr_text_slash_scr_text_gml_880_0);
   CHOICE(2, scr_text_slash_scr_text_gml_881_0);
   c->choicemsg[3] = " ";
-  goto L20296; /* gml: if !(read == 0) goto L20296 */
+  if (!(c->read == 0)) goto L20296;
   MSG(0, scr_text_slash_scr_text_gml_885_0);
   FACE(1, 'A', 0);
   MSG(2, scr_text_slash_scr_text_gml_887_0);
@@ -4197,7 +4362,7 @@ L20372:;
   c->fc = 0;
   /* gml: global.typer = 5 */
   MSG(0, scr_text_slash_scr_text_gml_902_0);
-  goto L21048; /* gml: if !(global.choice == 0) goto L21048 */
+  if (!(c->choice == 0)) goto L21048;
   if (!(sv.flag[263] == 2)) goto L20516;
   MSG(0, scr_text_slash_scr_text_gml_907_0);
 L20516:;
@@ -4225,10 +4390,10 @@ L21000:;
 L21028:;
   sv.flag[263] = 2;
 L21048:;
-  goto L21104; /* gml: if !(global.choice == 1) goto L21104 */
+  if (!(c->choice == 1)) goto L21104;
   MSG(0, scr_text_slash_scr_text_gml_943_0);
 L21104:;
-  goto L21268; /* gml: if !(global.choice == 2) goto L21268 */
+  if (!(c->choice == 2)) goto L21268;
   MSG(0, scr_text_slash_scr_text_gml_947_0);
   MSG(1, scr_text_slash_scr_text_gml_948_0);
   MSG(2, scr_text_slash_scr_text_gml_949_0);
@@ -4254,7 +4419,7 @@ L21768:;
   sv.flag[265] = 1;
   goto L66496;
 L21792:;
-  goto L22064; /* gml: if !(global.choice == 0) goto L22064 */
+  if (!(c->choice == 0)) goto L22064;
   MSG(0, scr_text_slash_scr_text_gml_979_0);
   MSG(1, scr_text_slash_scr_text_gml_980_0);
   MSG(2, scr_text_slash_scr_text_gml_981_0);
@@ -4263,7 +4428,7 @@ L21792:;
   MSG(5, scr_text_slash_scr_text_gml_984_0);
   MSG(6, scr_text_slash_scr_text_gml_985_0);
 L22064:;
-  goto L22372; /* gml: if !(global.choice == 1) goto L22372 */
+  if (!(c->choice == 1)) goto L22372;
   MSG(0, scr_text_slash_scr_text_gml_989_0);
   MSG(1, scr_text_slash_scr_text_gml_990_0);
   MSG(2, scr_text_slash_scr_text_gml_991_0);
@@ -4273,7 +4438,7 @@ L22064:;
   MSG(6, scr_text_slash_scr_text_gml_995_0);
   MSG(7, scr_text_slash_scr_text_gml_996_0);
 L22372:;
-  goto L22644; /* gml: if !(global.choice == 2) goto L22644 */
+  if (!(c->choice == 2)) goto L22644;
   MSG(0, scr_text_slash_scr_text_gml_1000_0);
   MSG(1, scr_text_slash_scr_text_gml_1001_0);
   MSG(2, scr_text_slash_scr_text_gml_1002_0);
@@ -4282,7 +4447,7 @@ L22372:;
   MSG(5, scr_text_slash_scr_text_gml_1005_0);
   MSG(6, scr_text_slash_scr_text_gml_1006_0);
 L22644:;
-  goto L22772; /* gml: if !(global.choice == 3) goto L22772 */
+  if (!(c->choice == 3)) goto L22772;
   MSG(0, scr_text_slash_scr_text_gml_1010_0);
   MSG(1, scr_text_slash_scr_text_gml_1011_0);
   MSG(2, scr_text_slash_scr_text_gml_1012_0);
@@ -4298,7 +4463,7 @@ L22776:;
   MSG(2, scr_text_slash_scr_text_gml_1023_0);
   goto L66496;
 L23032:;
-  goto L23268; /* gml: if !(global.choice == 0) goto L23268 */
+  if (!(c->choice == 0)) goto L23268;
   MSG(0, scr_text_slash_scr_text_gml_1029_0);
   MSG(1, scr_text_slash_scr_text_gml_1030_0);
   MSG(2, scr_text_slash_scr_text_gml_1031_0);
@@ -4306,7 +4471,7 @@ L23032:;
   MSG(4, scr_text_slash_scr_text_gml_1033_0);
   MSG(5, scr_text_slash_scr_text_gml_1034_0);
 L23268:;
-  goto L23612; /* gml: if !(global.choice == 1) goto L23612 */
+  if (!(c->choice == 1)) goto L23612;
   MSG(0, scr_text_slash_scr_text_gml_1039_0);
   MSG(1, scr_text_slash_scr_text_gml_1040_0);
   MSG(2, scr_text_slash_scr_text_gml_1041_0);
@@ -4317,7 +4482,7 @@ L23268:;
   MSG(7, scr_text_slash_scr_text_gml_1046_0);
   MSG(8, scr_text_slash_scr_text_gml_1047_0);
 L23612:;
-  goto L23920; /* gml: if !(global.choice == 2) goto L23920 */
+  if (!(c->choice == 2)) goto L23920;
   MSG(0, scr_text_slash_scr_text_gml_1052_0);
   MSG(1, scr_text_slash_scr_text_gml_1053_0);
   MSG(2, scr_text_slash_scr_text_gml_1054_0);
@@ -4327,7 +4492,7 @@ L23612:;
   MSG(6, scr_text_slash_scr_text_gml_1058_0);
   MSG(7, scr_text_slash_scr_text_gml_1059_0);
 L23920:;
-  goto L24012; /* gml: if !(global.choice == 3) goto L24012 */
+  if (!(c->choice == 3)) goto L24012;
   MSG(0, scr_text_slash_scr_text_gml_1063_0);
   MSG(1, scr_text_slash_scr_text_gml_1064_0);
 L24012:;
@@ -4347,7 +4512,7 @@ L24284:;
   CHOICE(1, scr_text_slash_scr_text_gml_1081_0);
   c->choicemsg[2] = " ";
   c->choicemsg[3] = " ";
-  goto L24872; /* gml: if !(global.choice == 0) goto L24872 */
+  if (!(c->choice == 0)) goto L24872;
   afford = 1;
   if (!(sv.gold >= 50)) goto L24484;
   sv.gold = (sv.gold - 50);
@@ -4383,7 +4548,7 @@ L24960:;
   CHOICE(1, scr_text_slash_scr_text_gml_1121_0);
   c->choicemsg[2] = " ";
   c->choicemsg[3] = " ";
-  goto L25548; /* gml: if !(global.choice == 0) goto L25548 */
+  if (!(c->choice == 0)) goto L25548;
   afford = 1;
   if (!(sv.gold >= 20)) goto L25160;
   sv.gold = (sv.gold - 20);
@@ -4415,7 +4580,7 @@ L25548:;
 L25632:;
   goto L66496;
 L25636:;
-  goto L26104; /* gml: if !(global.choice == 0) goto L26104 */
+  if (!(c->choice == 0)) goto L26104;
   afford = 1;
   if (!(sv.gold >= 1)) goto L25716;
   sv.gold = (sv.gold - 1);
@@ -4465,7 +4630,7 @@ L26384:;
   goto L66496;
 L26604:;
   MSG(0, scr_text_slash_scr_text_gml_1211_0);
-  goto L26888; /* gml: if !(global.choice == 0) goto L26888 */
+  if (!(c->choice == 0)) goto L26888;
   MSG(0, scr_text_slash_scr_text_gml_1214_0);
   MSG(1, scr_text_slash_scr_text_gml_1215_0);
   MSG(2, scr_text_slash_scr_text_gml_1216_0);
@@ -4474,7 +4639,7 @@ L26604:;
   NOFACE(5);
   MSG(6, scr_text_slash_scr_text_gml_1220_0);
 L26888:;
-  goto L27100; /* gml: if !(global.choice == 1) goto L27100 */
+  if (!(c->choice == 1)) goto L27100;
   MSG(0, scr_text_slash_scr_text_gml_1224_0);
   MSG(1, scr_text_slash_scr_text_gml_1225_0);
   FACE(2, 'R', 1);
@@ -4482,7 +4647,7 @@ L26888:;
   NOFACE(4);
   MSG(5, scr_text_slash_scr_text_gml_1229_0);
 L27100:;
-  goto L27440; /* gml: if !(global.choice == 2) goto L27440 */
+  if (!(c->choice == 2)) goto L27440;
   MSG(0, scr_text_slash_scr_text_gml_1233_0);
   MSG(1, scr_text_slash_scr_text_gml_1234_0);
   MSG(2, scr_text_slash_scr_text_gml_1235_0);
@@ -4505,14 +4670,14 @@ L27444:;
   goto L66496;
 L27664:;
   MSG(0, scr_text_slash_scr_text_gml_1260_0);
-  goto L27876; /* gml: if !(global.choice == 0) goto L27876 */
+  if (!(c->choice == 0)) goto L27876;
   MSG(0, scr_text_slash_scr_text_gml_1263_0);
   FACE(1, 'R', 9);
   MSG(2, scr_text_slash_scr_text_gml_1265_0);
   NOFACE(3);
   MSG(4, scr_text_slash_scr_text_gml_1267_0);
 L27876:;
-  goto L28088; /* gml: if !(global.choice == 1) goto L28088 */
+  if (!(c->choice == 1)) goto L28088;
   MSG(0, scr_text_slash_scr_text_gml_1272_0);
   MSG(1, scr_text_slash_scr_text_gml_1273_0);
   FACE(2, 'R', 1);
@@ -4520,7 +4685,7 @@ L27876:;
   NOFACE(4);
   MSG(5, scr_text_slash_scr_text_gml_1277_0);
 L28088:;
-  goto L28284; /* gml: if !(global.choice == 2) goto L28284 */
+  if (!(c->choice == 2)) goto L28284;
   MSG(0, scr_text_slash_scr_text_gml_1281_0);
   MSG(1, scr_text_slash_scr_text_gml_1282_0);
   FACE(2, 'R', 10);
@@ -4538,7 +4703,7 @@ L28288:;
   goto L66496;
 L28508:;
   MSG(0, scr_text_slash_scr_text_gml_1299_0);
-  goto L28976; /* gml: if !(global.choice == 0) goto L28976 */
+  if (!(c->choice == 0)) goto L28976;
   MSG(0, scr_text_slash_scr_text_gml_1302_0);
   FACE(1, 'S', 2);
   MSG(2, scr_text_slash_scr_text_gml_1304_0);
@@ -4554,7 +4719,7 @@ L28884:;
   MSG(0, scr_text_slash_scr_text_gml_1317_0);
   MSG(1, scr_text_slash_scr_text_gml_1318_0);
 L28976:;
-  goto L29456; /* gml: if !(global.choice == 1) goto L29456 */
+  if (!(c->choice == 1)) goto L29456;
   MSG(0, scr_text_slash_scr_text_gml_1325_0);
   MSG(1, scr_text_slash_scr_text_gml_1326_0);
   MSG(2, scr_text_slash_scr_text_gml_1327_0);
@@ -4571,7 +4736,7 @@ L29324:;
   MSG(0, scr_text_slash_scr_text_gml_1341_0);
   MSG(1, scr_text_slash_scr_text_gml_1342_0); /* gml: global.msg[1] = scr_84_get_subst_string(scr_84_get_lang_string("scr_text_slash_scr_text_gml_1342_0"), input_name) */
 L29456:;
-  goto L29824; /* gml: if !(global.choice == 2) goto L29824 */
+  if (!(c->choice == 2)) goto L29824;
   MSG(0, scr_text_slash_scr_text_gml_1348_0);
   FACE(1, 'S', 0);
   MSG(2, scr_text_slash_scr_text_gml_1350_0);
@@ -4596,7 +4761,7 @@ L29828:;
   goto L66496;
 L30048:;
   MSG(0, scr_text_slash_scr_text_gml_1382_0);
-  goto L30368; /* gml: if !(global.choice == 0) goto L30368 */
+  if (!(c->choice == 0)) goto L30368;
   MSG(0, scr_text_slash_scr_text_gml_1385_0);
   MSG(1, scr_text_slash_scr_text_gml_1386_0);
   MSG(2, scr_text_slash_scr_text_gml_1387_0);
@@ -4606,7 +4771,7 @@ L30048:;
   NOFACE(6);
   MSG(7, scr_text_slash_scr_text_gml_1392_0);
 L30368:;
-  goto L30688; /* gml: if !(global.choice == 1) goto L30688 */
+  if (!(c->choice == 1)) goto L30688;
   MSG(0, scr_text_slash_scr_text_gml_1397_0);
   MSG(1, scr_text_slash_scr_text_gml_1398_0);
   FACE(2, 'R', 0);
@@ -4617,7 +4782,7 @@ L30368:;
   NOFACE(7);
   MSG(8, scr_text_slash_scr_text_gml_1405_0);
 L30688:;
-  goto L30852; /* gml: if !(global.choice == 2) goto L30852 */
+  if (!(c->choice == 2)) goto L30852;
   MSG(0, scr_text_slash_scr_text_gml_1409_0);
   MSG(1, scr_text_slash_scr_text_gml_1410_0);
   MSG(2, scr_text_slash_scr_text_gml_1411_0);
@@ -4637,7 +4802,7 @@ L30856:;
 L31148:;
   goto L66496;
 L31152:;
-  goto L31448; /* gml: if !(global.choice == 0) goto L31448 */
+  if (!(c->choice == 0)) goto L31448;
   MSG(0, scr_text_slash_scr_text_gml_1433_0);
   MSG(1, scr_text_slash_scr_text_gml_1434_0);
   afford = 1;
@@ -4654,7 +4819,7 @@ L31356:;
   MSG(0, scr_text_slash_scr_text_gml_1440_0);
   MSG(1, scr_text_slash_scr_text_gml_1441_0);
 L31448:;
-  goto L31504; /* gml: if !(global.choice == 1) goto L31504 */
+  if (!(c->choice == 1)) goto L31504;
   MSG(0, scr_text_slash_scr_text_gml_1446_0);
 L31504:;
   goto L66496;
@@ -4687,7 +4852,7 @@ L31508:;
   goto L66496;
 L32328:;
   sv.flag[232] = 1;
-  goto L32860; /* gml: if !(global.choice == 0) goto L32860 */
+  if (!(c->choice == 0)) goto L32860;
   FACE(0, 'R', 6);
   MSG(1, scr_text_slash_scr_text_gml_1488_0);
   MSG(2, scr_text_slash_scr_text_gml_1489_0);
@@ -4704,7 +4869,7 @@ L32328:;
   FACE(13, 'S', 6);
   MSG(14, scr_text_slash_scr_text_gml_1501_0);
 L32860:;
-  goto L33172; /* gml: if !(global.choice == 1) goto L33172 */
+  if (!(c->choice == 1)) goto L33172;
   NOFACE(0);
   MSG(1, scr_text_slash_scr_text_gml_1507_0);
   MSG(2, scr_text_slash_scr_text_gml_1508_0);
@@ -4715,7 +4880,7 @@ L32860:;
   FACE(7, 'L', 3);
   MSG(8, scr_text_slash_scr_text_gml_1514_0);
 L33172:;
-  goto L33612; /* gml: if !(global.choice == 2) goto L33612 */
+  if (!(c->choice == 2)) goto L33612;
   FACE(0, 'S', 2);
   MSG(1, scr_text_slash_scr_text_gml_1521_0);
   MSG(2, scr_text_slash_scr_text_gml_1522_0);
@@ -4767,7 +4932,7 @@ L34192:;
   goto L66496;
 L34448:;
   MSG(0, scr_text_slash_scr_text_gml_1596_0);
-  goto L34828; /* gml: if !(global.choice == 0) goto L34828 */
+  if (!(c->choice == 0)) goto L34828;
   MSG(0, scr_text_slash_scr_text_gml_1599_0);
   MSG(1, scr_text_slash_scr_text_gml_1600_0);
   MSG(2, scr_text_slash_scr_text_gml_1601_0);
@@ -4778,7 +4943,7 @@ L34448:;
   MSG(7, scr_text_slash_scr_text_gml_1606_0);
   MSG(8, scr_text_slash_scr_text_gml_1607_0);
 L34828:;
-  goto L35100; /* gml: if !(global.choice == 1) goto L35100 */
+  if (!(c->choice == 1)) goto L35100;
   MSG(0, scr_text_slash_scr_text_gml_1611_0);
   MSG(1, scr_text_slash_scr_text_gml_1612_0);
   MSG(2, scr_text_slash_scr_text_gml_1613_0);
@@ -4787,7 +4952,7 @@ L34828:;
   MSG(5, scr_text_slash_scr_text_gml_1616_0);
   MSG(6, scr_text_slash_scr_text_gml_1617_0);
 L35100:;
-  goto L35912; /* gml: if !(global.choice == 2) goto L35912 */
+  if (!(c->choice == 2)) goto L35912;
   MSG(0, scr_text_slash_scr_text_gml_1624_0);
   MSG(1, scr_text_slash_scr_text_gml_1625_0);
   MSG(2, scr_text_slash_scr_text_gml_1626_0);
@@ -4811,7 +4976,7 @@ L35100:;
   MSG(20, scr_text_slash_scr_text_gml_1644_0);
   MSG(21, scr_text_slash_scr_text_gml_1645_0);
 L35912:;
-  goto L36040; /* gml: if !(global.choice == 3) goto L36040 */
+  if (!(c->choice == 3)) goto L36040;
   MSG(0, scr_text_slash_scr_text_gml_1650_0);
   MSG(1, scr_text_slash_scr_text_gml_1651_0);
   MSG(2, scr_text_slash_scr_text_gml_1652_0);
@@ -4826,17 +4991,17 @@ L36044:;
   txt_msg(c, 1, " ");
   goto L66496;
 L36240:;
-  goto L36292; /* gml: if !(global.choice == 0) goto L36292 */
+  if (!(c->choice == 0)) goto L36292;
   /* gml: with (obj_suitspuzz) {   // to L36288 */
   /* gml: event_user(2) */
   /* gml: } // end with */
 L36292:;
-  goto L36344; /* gml: if !(global.choice == 1) goto L36344 */
+  if (!(c->choice == 1)) goto L36344;
   /* gml: with (obj_suitspuzz) {   // to L36340 */
   /* gml: event_user(3) */
   /* gml: } // end with */
 L36344:;
-  goto L36396; /* gml: if !(global.choice == 2) goto L36396 */
+  if (!(c->choice == 2)) goto L36396;
   /* gml: with (obj_suitspuzz) {   // to L36392 */
   /* gml: event_user(4) */
   /* gml: } // end with */
@@ -4857,14 +5022,14 @@ L36424:;
 L36740:;
   goto L66496;
 L36744:;
-  goto L36908; /* gml: if !(global.choice == 0) goto L36908 */
+  if (!(c->choice == 0)) goto L36908;
   /* gml: global.hp[1] = global.maxhp[1] */
   /* gml: snd_play(104) */
   MSG(0, scr_text_slash_scr_text_gml_1702_0);
   MSG(1, scr_text_slash_scr_text_gml_1703_0);
   sv.flag[106] = 1;
 L36908:;
-  goto L36964; /* gml: if !(global.choice == 1) goto L36964 */
+  if (!(c->choice == 1)) goto L36964;
   MSG(0, scr_text_slash_scr_text_gml_1708_0);
 L36964:;
   goto L66496;
@@ -4882,19 +5047,19 @@ L36968:;
 L37284:;
   goto L66496;
 L37288:;
-  goto L37468; /* gml: if !(global.choice == 0) goto L37468 */
+  if (!(c->choice == 0)) goto L37468;
   gm_armorget(5);
-  goto L37388; /* gml: if !(noroom == 1) goto L37388 */
+  if (!(g_noroom == 1)) goto L37388;
   MSG(0, scr_text_slash_scr_text_gml_1733_0);
   goto L37468;
 L37388:;
   /* gml: with (obj_npc_sign) {   // to L37408 */
-  /* gml: image_index = 1 */
+  c->img = 1;
   /* gml: } // end with */
   MSG(0, scr_text_slash_scr_text_gml_1738_0);
   sv.flag[105] = 1;
 L37468:;
-  goto L37524; /* gml: if !(global.choice == 1) goto L37524 */
+  if (!(c->choice == 1)) goto L37524;
   MSG(0, scr_text_slash_scr_text_gml_1744_0);
 L37524:;
   goto L66496;
@@ -4941,7 +5106,7 @@ L38324:;
   goto L66496;
 L38568:;
   MSG(0, scr_text_slash_scr_text_gml_1795_0);
-  goto L39332; /* gml: if !(global.choice == 0) goto L39332 */
+  if (!(c->choice == 0)) goto L39332;
   /* gml: which = 0 */
   if (!(gm_keyitemcheck(4) && (gm_keyitemcheck(6) && gm_keyitemcheck(7)))) goto L38728;
   /* gml: which = 3 */
@@ -4949,7 +5114,7 @@ L38728:;
   goto L38844; /* gml: if !(scr_keyitemcheck(3) && (which == 0)) goto L38844 */
   /* gml: which = 1 */
   gm_itemget(6);
-  goto L38844; /* gml: if !(noroom == 1) goto L38844 */
+  if (!(g_noroom == 1)) goto L38844;
   /* gml: which = 2 */
 L38844:;
   goto L39008; /* gml: if !(which == 0) goto L39008 */
@@ -4976,10 +5141,10 @@ L39216:;
   /* gml: con = 50 */
   /* gml: } // end with */
 L39332:;
-  goto L39388; /* gml: if !(global.choice == 1) goto L39388 */
+  if (!(c->choice == 1)) goto L39388;
   MSG(0, scr_text_slash_scr_text_gml_1841_0);
 L39388:;
-  goto L39504; /* gml: if !(global.choice == 2) goto L39504 */
+  if (!(c->choice == 2)) goto L39504;
   MSG(0, scr_text_slash_scr_text_gml_1845_0);
   MSG(1, scr_text_slash_scr_text_gml_1846_0);
   /* gml: with (obj_npc_hammerguy) {   // to L39500 */
@@ -5002,10 +5167,10 @@ L39508:;
 L39856:;
   goto L66496;
 L39860:;
-  goto L40084; /* gml: if !(global.choice == 0) goto L40084 */
+  if (!(c->choice == 0)) goto L40084;
   if (!(sv.gold >= 40)) goto L40044;
   gm_itemget(13);
-  goto L40004; /* gml: if !(noroom == 0) goto L40004 */
+  if (!(g_noroom == 0)) goto L40004;
   sv.gold = (sv.gold - 40);
   MSG(0, scr_text_slash_scr_text_gml_1877_0);
   goto L40040;
@@ -5031,10 +5196,10 @@ L40124:;
   txt_msg(c, 2, " ");
   goto L66496;
 L40344:;
-  goto L40568; /* gml: if !(global.choice == 0) goto L40568 */
+  if (!(c->choice == 0)) goto L40568;
   if (!(sv.gold >= 40)) goto L40528;
   gm_itemget(12);
-  goto L40488; /* gml: if !(noroom == 0) goto L40488 */
+  if (!(g_noroom == 0)) goto L40488;
   sv.gold = (sv.gold - 40);
   MSG(0, scr_text_slash_scr_text_gml_1918_0);
   goto L40524;
@@ -5068,10 +5233,10 @@ L40608:;
   txt_msg(c, 7, " ");
   goto L66496;
 L41028:;
-  goto L42100; /* gml: if !(global.choice == 0) goto L42100 */
+  if (!(c->choice == 0)) goto L42100;
   if (!(sv.gold >= 40)) goto L41896;
   gm_itemget(9);
-  goto L41416; /* gml: if !(noroom == 0) goto L41416 */
+  if (!(g_noroom == 0)) goto L41416;
   sv.gold = (sv.gold - 40);
   c->fc = 1;
   c->fe = 1;
@@ -5154,26 +5319,26 @@ L42872:;
   sv.flag[270] = 1;
   goto L66496;
 L42896:;
-  goto L43096; /* gml: if !(global.choice == 0) goto L43096 */
+  if (!(c->choice == 0)) goto L43096;
   MSG(0, scr_text_slash_scr_text_gml_2053_0);
   MSG(1, scr_text_slash_scr_text_gml_2054_0);
   MSG(2, scr_text_slash_scr_text_gml_2055_0);
   MSG(3, scr_text_slash_scr_text_gml_2056_0);
   MSG(4, scr_text_slash_scr_text_gml_2057_0);
 L43096:;
-  goto L43260; /* gml: if !(global.choice == 1) goto L43260 */
+  if (!(c->choice == 1)) goto L43260;
   MSG(0, scr_text_slash_scr_text_gml_2061_0);
   MSG(1, scr_text_slash_scr_text_gml_2062_0);
   MSG(2, scr_text_slash_scr_text_gml_2063_0);
   MSG(3, scr_text_slash_scr_text_gml_2064_0);
 L43260:;
-  goto L43424; /* gml: if !(global.choice == 2) goto L43424 */
+  if (!(c->choice == 2)) goto L43424;
   MSG(0, scr_text_slash_scr_text_gml_2068_0);
   MSG(1, scr_text_slash_scr_text_gml_2069_0);
   MSG(2, scr_text_slash_scr_text_gml_2070_0);
   MSG(3, scr_text_slash_scr_text_gml_2071_0);
 L43424:;
-  goto L43552; /* gml: if !(global.choice == 3) goto L43552 */
+  if (!(c->choice == 3)) goto L43552;
   MSG(0, scr_text_slash_scr_text_gml_2075_0);
   MSG(1, scr_text_slash_scr_text_gml_2076_0);
   MSG(2, scr_text_slash_scr_text_gml_2077_0);
@@ -5196,7 +5361,7 @@ L43932:;
   sv.flag[271] = 2;
   goto L66496;
 L43956:;
-  goto L44300; /* gml: if !(global.choice == 0) goto L44300 */
+  if (!(c->choice == 0)) goto L44300;
   MSG(0, scr_text_slash_scr_text_gml_2102_0);
   MSG(1, scr_text_slash_scr_text_gml_2103_0);
   MSG(2, scr_text_slash_scr_text_gml_2104_0);
@@ -5207,7 +5372,7 @@ L43956:;
   MSG(7, scr_text_slash_scr_text_gml_2109_0);
   MSG(8, scr_text_slash_scr_text_gml_2110_0);
 L44300:;
-  goto L44644; /* gml: if !(global.choice == 1) goto L44644 */
+  if (!(c->choice == 1)) goto L44644;
   MSG(0, scr_text_slash_scr_text_gml_2114_0);
   MSG(1, scr_text_slash_scr_text_gml_2115_0);
   MSG(2, scr_text_slash_scr_text_gml_2116_0);
@@ -5218,7 +5383,7 @@ L44300:;
   MSG(7, scr_text_slash_scr_text_gml_2121_0);
   MSG(8, scr_text_slash_scr_text_gml_2122_0);
 L44644:;
-  goto L44988; /* gml: if !(global.choice == 2) goto L44988 */
+  if (!(c->choice == 2)) goto L44988;
   MSG(0, scr_text_slash_scr_text_gml_2127_0);
   MSG(1, scr_text_slash_scr_text_gml_2128_0);
   MSG(2, scr_text_slash_scr_text_gml_2129_0);
@@ -5229,7 +5394,7 @@ L44644:;
   MSG(7, scr_text_slash_scr_text_gml_2134_0);
   MSG(8, scr_text_slash_scr_text_gml_2135_0);
 L44988:;
-  goto L45080; /* gml: if !(global.choice == 3) goto L45080 */
+  if (!(c->choice == 3)) goto L45080;
   MSG(0, scr_text_slash_scr_text_gml_2140_0);
   MSG(1, scr_text_slash_scr_text_gml_2141_0);
 L45080:;
@@ -5245,7 +5410,7 @@ L45084:;
   MSG(3, scr_text_slash_scr_text_gml_2153_0);
   goto L66496;
 L45352:;
-  goto L45556; /* gml: if !(global.choice == 0) goto L45556 */
+  if (!(c->choice == 0)) goto L45556;
   MSG(0, scr_text_slash_scr_text_gml_2159_0);
   MSG(1, scr_text_slash_scr_text_gml_2160_0);
   MSG(2, scr_text_slash_scr_text_gml_2161_0);
@@ -5266,7 +5431,7 @@ L45632:;
   MSG(1, scr_text_slash_scr_text_gml_2178_0);
   goto L66496;
 L45828:;
-  goto L45888; /* gml: if !(global.choice == 0) goto L45888 */
+  if (!(c->choice == 0)) goto L45888;
   MSG(0, scr_text_slash_scr_text_gml_2184_0);
   goto L45924;
 L45888:;
@@ -5286,7 +5451,7 @@ L45928:;
 L46200:;
   goto L66496;
 L46204:;
-  goto L46276; /* gml: if !(global.choice == 0) goto L46276 */
+  if (!(c->choice == 0)) goto L46276;
   txt_msg(c, 0, "%%");
   /* gml: with (obj_town_event) {   // to L46268 */
   /* gml: con = 60 */
@@ -5307,7 +5472,7 @@ L46316:;
   MSG(3, scr_text_slash_scr_text_gml_2230_0);
   goto L66496;
 L46584:;
-  goto L46688; /* gml: if !(global.choice == 0) goto L46688 */
+  if (!(c->choice == 0)) goto L46688;
   /* gml: with (obj_npc_room) {   // to L46624 */
   tempvar = 1;
   /* gml: } // end with */
@@ -5354,14 +5519,14 @@ L47660:;
   CHOICE(1, scr_text_slash_scr_text_gml_2281_0);
   CHOICE(2, scr_text_slash_scr_text_gml_2282_0);
   c->choicemsg[3] = " ";
-  goto L47992; /* gml: if !(global.choice == 0) goto L47992 */
+  if (!(c->choice == 0)) goto L47992;
   MSG(0, scr_text_slash_scr_text_gml_2286_0);
   MSG(1, scr_text_slash_scr_text_gml_2287_0);
   MSG(2, scr_text_slash_scr_text_gml_2288_0);
   MSG(3, scr_text_slash_scr_text_gml_2289_0);
   MSG(4, scr_text_slash_scr_text_gml_2290_0);
 L47992:;
-  goto L48156; /* gml: if !(global.choice == 1) goto L48156 */
+  if (!(c->choice == 1)) goto L48156;
   MSG(0, scr_text_slash_scr_text_gml_2294_0);
   MSG(1, scr_text_slash_scr_text_gml_2295_0);
   MSG(2, scr_text_slash_scr_text_gml_2296_0);
@@ -5381,25 +5546,25 @@ L48320:;
   CHOICE(1, scr_text_slash_scr_text_gml_2311_0);
   CHOICE(2, scr_text_slash_scr_text_gml_2312_0);
   CHOICE(3, scr_text_slash_scr_text_gml_2313_0);
-  goto L48628; /* gml: if !(global.choice == 0) goto L48628 */
+  if (!(c->choice == 0)) goto L48628;
   MSG(0, scr_text_slash_scr_text_gml_2317_0);
   MSG(1, scr_text_slash_scr_text_gml_2318_0);
   MSG(2, scr_text_slash_scr_text_gml_2319_0);
   MSG(3, scr_text_slash_scr_text_gml_2320_0);
 L48628:;
-  goto L48756; /* gml: if !(global.choice == 1) goto L48756 */
+  if (!(c->choice == 1)) goto L48756;
   MSG(0, scr_text_slash_scr_text_gml_2324_0);
   MSG(1, scr_text_slash_scr_text_gml_2325_0);
   MSG(2, scr_text_slash_scr_text_gml_2326_0);
 L48756:;
-  goto L48884; /* gml: if !(global.choice == 2) goto L48884 */
+  if (!(c->choice == 2)) goto L48884;
   MSG(0, scr_text_slash_scr_text_gml_2332_0);
   MSG(1, scr_text_slash_scr_text_gml_2333_0);
   MSG(2, scr_text_slash_scr_text_gml_2334_0);
 L48884:;
   goto L66496;
 L48888:;
-  goto L49484; /* gml: if !(global.choice == 0) goto L49484 */
+  if (!(c->choice == 0)) goto L49484;
   MSG(0, scr_text_slash_scr_text_gml_2341_0);
   if (!(sv.flag[274] == 2)) goto L49044;
   MSG(0, scr_text_slash_scr_text_gml_2344_0);
@@ -5421,7 +5586,7 @@ L49108:;
   sv.flag[274] = 1;
   /* gml: scr_phoneadd(202) */
 L49484:;
-  goto L49720; /* gml: if !(global.choice == 1) goto L49720 */
+  if (!(c->choice == 1)) goto L49720;
   MSG(0, scr_text_slash_scr_text_gml_2371_0);
   MSG(1, scr_text_slash_scr_text_gml_2372_0);
   MSG(2, scr_text_slash_scr_text_gml_2373_0);
@@ -5429,7 +5594,7 @@ L49484:;
   MSG(4, scr_text_slash_scr_text_gml_2375_0);
   MSG(5, scr_text_slash_scr_text_gml_2376_0);
 L49720:;
-  goto L50064; /* gml: if !(global.choice == 2) goto L50064 */
+  if (!(c->choice == 2)) goto L50064;
   MSG(0, scr_text_slash_scr_text_gml_2380_0);
   MSG(1, scr_text_slash_scr_text_gml_2381_0);
   MSG(2, scr_text_slash_scr_text_gml_2382_0);
@@ -5440,7 +5605,7 @@ L49720:;
   MSG(7, scr_text_slash_scr_text_gml_2387_0);
   MSG(8, scr_text_slash_scr_text_gml_2388_0);
 L50064:;
-  goto L50120; /* gml: if !(global.choice == 3) goto L50120 */
+  if (!(c->choice == 3)) goto L50120;
   MSG(0, scr_text_slash_scr_text_gml_2392_0);
 L50120:;
   goto L66496;
@@ -5466,15 +5631,15 @@ L50548:;
 L50596:;
   /* gml: scr_phonename() */
   MSG(0, scr_text_slash_scr_text_gml_2417_0);
-  goto L50720; /* gml: if !(global.choice == 0) goto L50720 */
+  if (!(c->choice == 0)) goto L50720;
   MSG(0, scr_text_slash_scr_text_gml_2418_0);
   sv.flag[275] = 1;
 L50720:;
-  goto L50796; /* gml: if !(global.choice == 1) goto L50796 */
+  if (!(c->choice == 1)) goto L50796;
   MSG(0, scr_text_slash_scr_text_gml_2419_0);
   sv.flag[275] = 2;
 L50796:;
-  goto L50872; /* gml: if !(global.choice == 2) goto L50872 */
+  if (!(c->choice == 2)) goto L50872;
   MSG(0, scr_text_slash_scr_text_gml_2420_0);
   sv.flag[275] = 3;
 L50872:;
@@ -5482,7 +5647,7 @@ L50872:;
   MSG(2, scr_text_slash_scr_text_gml_2422_0);
   MSG(3, scr_text_slash_scr_text_gml_2423_0);
   MSG(4, scr_text_slash_scr_text_gml_2424_0);
-  goto L51108; /* gml: if !(global.choice == 3) goto L51108 */
+  if (!(c->choice == 3)) goto L51108;
   MSG(0, scr_text_slash_scr_text_gml_2427_0);
   MSG(1, scr_text_slash_scr_text_gml_2428_0);
 L51108:;
@@ -5500,7 +5665,7 @@ L51112:;
   MSG(5, scr_text_slash_scr_text_gml_2443_0);
   goto L66496;
 L51452:;
-  goto L52032; /* gml: if !(global.choice == 0) goto L52032 */
+  if (!(c->choice == 0)) goto L52032;
   if (!(sv.flag[33] < 40)) goto L51608;
   MSG(0, scr_text_slash_scr_text_gml_2451_0);
   MSG(1, scr_text_slash_scr_text_gml_2452_0);
@@ -5520,7 +5685,7 @@ L51744:;
   MSG(9, scr_text_slash_scr_text_gml_2469_0);
   MSG(10, scr_text_slash_scr_text_gml_2470_0);
 L52032:;
-  goto L52432; /* gml: if !(global.choice == 1) goto L52432 */
+  if (!(c->choice == 1)) goto L52432;
   if (!(sv.flag[33] < 40)) goto L52116;
   MSG(0, scr_text_slash_scr_text_gml_2478_0);
 L52116:;
@@ -5567,7 +5732,7 @@ L53200:;
   CHOICE(1, scr_text_slash_scr_text_gml_2525_0);
   CHOICE(2, scr_text_slash_scr_text_gml_2526_0);
   CHOICE(3, scr_text_slash_scr_text_gml_2527_0);
-  goto L53872; /* gml: if !(global.choice == 0) goto L53872 */
+  if (!(c->choice == 0)) goto L53872;
   MSG(0, scr_text_slash_scr_text_gml_2530_0);
   MSG(1, scr_text_slash_scr_text_gml_2531_0);
   MSG(2, scr_text_slash_scr_text_gml_2532_0);
@@ -5585,13 +5750,13 @@ L53824:;
   if (!(sv.flag[276] < 2)) goto L53872;
   sv.flag[276] = 2;
 L53872:;
-  goto L54036; /* gml: if !(global.choice == 1) goto L54036 */
+  if (!(c->choice == 1)) goto L54036;
   MSG(0, scr_text_slash_scr_text_gml_2552_0);
   MSG(1, scr_text_slash_scr_text_gml_2553_0);
   MSG(2, scr_text_slash_scr_text_gml_2554_0);
   MSG(3, scr_text_slash_scr_text_gml_2555_0);
 L54036:;
-  goto L54344; /* gml: if !(global.choice == 2) goto L54344 */
+  if (!(c->choice == 2)) goto L54344;
   MSG(0, scr_text_slash_scr_text_gml_2559_0);
   MSG(1, scr_text_slash_scr_text_gml_2560_0);
   MSG(2, scr_text_slash_scr_text_gml_2561_0);
@@ -5601,12 +5766,12 @@ L54036:;
   MSG(6, scr_text_slash_scr_text_gml_2565_0);
   MSG(7, scr_text_slash_scr_text_gml_2566_0);
 L54344:;
-  goto L54400; /* gml: if !(global.choice == 3) goto L54400 */
+  if (!(c->choice == 3)) goto L54400;
   MSG(0, scr_text_slash_scr_text_gml_2570_0);
 L54400:;
   goto L66496;
 L54404:;
-  goto L54748; /* gml: if !(global.choice == 0) goto L54748 */
+  if (!(c->choice == 0)) goto L54748;
   MSG(0, scr_text_slash_scr_text_gml_2583_0);
   MSG(1, scr_text_slash_scr_text_gml_2584_0);
   MSG(2, scr_text_slash_scr_text_gml_2585_0);
@@ -5617,7 +5782,7 @@ L54404:;
   MSG(7, scr_text_slash_scr_text_gml_2590_0);
   MSG(8, scr_text_slash_scr_text_gml_2591_0);
 L54748:;
-  goto L55164; /* gml: if !(global.choice == 1) goto L55164 */
+  if (!(c->choice == 1)) goto L55164;
   MSG(0, scr_text_slash_scr_text_gml_2595_0);
   MSG(1, scr_text_slash_scr_text_gml_2596_0);
   MSG(2, scr_text_slash_scr_text_gml_2597_0);
@@ -5630,7 +5795,7 @@ L54748:;
   MSG(9, scr_text_slash_scr_text_gml_2604_0);
   MSG(10, scr_text_slash_scr_text_gml_2605_0);
 L55164:;
-  goto L55544; /* gml: if !(global.choice == 2) goto L55544 */
+  if (!(c->choice == 2)) goto L55544;
   MSG(0, scr_text_slash_scr_text_gml_2609_0);
   MSG(1, scr_text_slash_scr_text_gml_2610_0);
   MSG(2, scr_text_slash_scr_text_gml_2611_0);
@@ -5642,7 +5807,7 @@ L55164:;
   MSG(8, scr_text_slash_scr_text_gml_2617_0);
   MSG(9, scr_text_slash_scr_text_gml_2618_0);
 L55544:;
-  goto L55852; /* gml: if !(global.choice == 3) goto L55852 */
+  if (!(c->choice == 3)) goto L55852;
   MSG(0, scr_text_slash_scr_text_gml_2622_0);
   MSG(1, scr_text_slash_scr_text_gml_2623_0);
   MSG(2, scr_text_slash_scr_text_gml_2624_0);
@@ -5663,13 +5828,13 @@ L55856:;
   MSG(2, scr_text_slash_scr_text_gml_2641_0);
   goto L66496;
 L56088:;
-  goto L56168; /* gml: if !(global.choice == 0) goto L56168 */
+  if (!(c->choice == 0)) goto L56168;
   /* gml: with (obj_krisroom) {   // to L56128 */
   /* gml: con = 50 */
   /* gml: } // end with */
   MSG(0, scr_text_slash_scr_text_gml_2648_0);
 L56168:;
-  goto L56224; /* gml: if !(global.choice == 1) goto L56224 */
+  if (!(c->choice == 1)) goto L56224;
   MSG(0, scr_text_slash_scr_text_gml_2652_0);
 L56224:;
   goto L66496;
@@ -5684,7 +5849,7 @@ L56228:;
   MSG(3, scr_text_slash_scr_text_gml_2664_0);
   goto L66496;
 L56496:;
-  goto L56696; /* gml: if !(global.choice == 0) goto L56696 */
+  if (!(c->choice == 0)) goto L56696;
   CHOICE(0, scr_text_slash_scr_text_gml_2670_0);
   CHOICE(1, scr_text_slash_scr_text_gml_2671_0);
   c->choicemsg[2] = " ";
@@ -5694,7 +5859,7 @@ L56496:;
   /* gml: } // end with */
   MSG(0, scr_text_slash_scr_text_gml_2676_0);
 L56696:;
-  goto L56752; /* gml: if !(global.choice == 1) goto L56752 */
+  if (!(c->choice == 1)) goto L56752;
   MSG(0, scr_text_slash_scr_text_gml_2680_0);
 L56752:;
   goto L66496;
@@ -5742,14 +5907,14 @@ L57836:;
   if (!(sv.flag[241] == 0)) goto L58004;
   sv.flag[241] = 1;
 L58004:;
-  goto L58120; /* gml: if !(global.choice == 0) goto L58120 */
+  if (!(c->choice == 0)) goto L58120;
   MSG(0, scr_text_slash_scr_text_gml_2731_0);
   MSG(1, scr_text_slash_scr_text_gml_2732_0);
   /* gml: with (obj_event_room) {   // to L58116 */
   /* gml: con = 20 */
   /* gml: } // end with */
 L58120:;
-  goto L58236; /* gml: if !(global.choice == 1) goto L58236 */
+  if (!(c->choice == 1)) goto L58236;
   MSG(0, scr_text_slash_scr_text_gml_2737_0);
   MSG(1, scr_text_slash_scr_text_gml_2738_0);
   /* gml: with (obj_event_room) {   // to L58232 */
@@ -5776,14 +5941,14 @@ L58580:;
   gm_keyitemremove(5);
   gm_keyitemremove(6);
   gm_keyitemremove(7);
-  goto L58760; /* gml: if !(global.choice == 0) goto L58760 */
+  if (!(c->choice == 0)) goto L58760;
   NOFACE(0);
   MSG(1, scr_text_slash_scr_text_gml_2765_0);
   /* gml: with (obj_event_room) {   // to L58756 */
   /* gml: con = 5 */
   /* gml: } // end with */
 L58760:;
-  goto L58840; /* gml: if !(global.choice == 1) goto L58840 */
+  if (!(c->choice == 1)) goto L58840;
   MSG(0, scr_text_slash_scr_text_gml_2770_0);
   /* gml: with (obj_event_room) {   // to L58836 */
   /* gml: con = 5 */
@@ -5811,7 +5976,7 @@ L59080:;
   MSG(2, scr_text_slash_scr_text_gml_2795_0);
   goto L66496;
 L59312:;
-  goto L59784; /* gml: if !(global.choice == 0) goto L59784 */
+  if (!(c->choice == 0)) goto L59784;
   FACE(0, 'R', 6);
   MSG(1, scr_text_slash_scr_text_gml_2806_0);
   MSG(2, scr_text_slash_scr_text_gml_2807_0);
@@ -5837,7 +6002,7 @@ L59784:;
   MSG(4, scr_text_slash_scr_text_gml_2825_0);
   MSG(5, scr_text_slash_scr_text_gml_2826_0);
   gm_itemget(13);
-  goto L60144; /* gml: if !(noroom == 1) goto L60144 */
+  if (!(g_noroom == 1)) goto L60144;
   FACE(5, 'R', 6);
   MSG(6, scr_text_slash_scr_text_gml_2831_0);
   FACE(7, 'S', 2);
@@ -5855,7 +6020,7 @@ L60168:;
   MSG(1, scr_text_slash_scr_text_gml_2845_0);
   goto L66496;
 L60364:;
-  goto L60480; /* gml: if !(global.choice == 0) goto L60480 */
+  if (!(c->choice == 0)) goto L60480;
   /* gml: snd_play(15) */
   MSG(0, scr_text_slash_scr_text_gml_2852_0);
   MSG(1, scr_text_slash_scr_text_gml_2853_0);
@@ -5874,7 +6039,7 @@ L60520:;
   goto L66496;
 L60728:;
   txt_msg(c, 0, "%%");
-  goto L60956; /* gml: if !(global.choice == 0) goto L60956 */
+  if (!(c->choice == 0)) goto L60956;
   if (!(sv.flag[239] != 0)) goto L60920;
   /* gml: with (obj_elevatorcontroller) {   // to L60912 */
   if (!(sv.flag[239] == 1)) goto L60876;
@@ -5892,7 +6057,7 @@ L60912:;
 L60920:;
   MSG(0, scr_text_slash_scr_text_gml_2892_0);
 L60956:;
-  goto L61092; /* gml: if !(global.choice == 1) goto L61092 */
+  if (!(c->choice == 1)) goto L61092;
   if (!(sv.flag[239] != 1)) goto L61056;
   /* gml: with (obj_elevatorcontroller) {   // to L61048 */
   /* gml: dir = 1 */
@@ -5903,7 +6068,7 @@ L60956:;
 L61056:;
   MSG(0, scr_text_slash_scr_text_gml_2908_0);
 L61092:;
-  goto L61228; /* gml: if !(global.choice == 2) goto L61228 */
+  if (!(c->choice == 2)) goto L61228;
   if (!(sv.flag[239] != 3)) goto L61192;
   /* gml: with (obj_elevatorcontroller) {   // to L61184 */
   /* gml: dir = -1 */
@@ -5925,7 +6090,7 @@ L61232:;
   goto L66496;
 L61428:;
   txt_msg(c, 0, "%%");
-  goto L61588; /* gml: if !(global.choice == 0) goto L61588 */
+  if (!(c->choice == 0)) goto L61588;
   /* gml: with (obj_elevatorcontroller) {   // to L61584 */
   if (!(sv.flag[239] == 1)) goto L61548;
   /* gml: dir = 1 */
@@ -5958,7 +6123,7 @@ L61592:;
   MSG(7, scr_text_slash_scr_text_gml_2979_0);
   goto L66496;
 L62040:;
-  goto L62136; /* gml: if !(global.choice == 0) goto L62136 */
+  if (!(c->choice == 0)) goto L62136;
   MSG(0, scr_text_slash_scr_text_gml_2985_0);
   MSG(1, scr_text_slash_scr_text_gml_2986_0);
   goto L62208;
@@ -5999,7 +6164,7 @@ L62924:;
   MSG(1, scr_text_slash_scr_text_gml_3027_0);
   goto L66496;
 L63036:;
-  goto L63308; /* gml: if !(global.choice == 0) goto L63308 */
+  if (!(c->choice == 0)) goto L63308;
   MSG(0, scr_text_slash_scr_text_gml_3033_0);
   MSG(1, scr_text_slash_scr_text_gml_3034_0);
   MSG(2, scr_text_slash_scr_text_gml_3035_0);
@@ -6008,7 +6173,7 @@ L63036:;
   MSG(5, scr_text_slash_scr_text_gml_3038_0);
   MSG(6, scr_text_slash_scr_text_gml_3039_0);
 L63308:;
-  goto L63652; /* gml: if !(global.choice == 1) goto L63652 */
+  if (!(c->choice == 1)) goto L63652;
   MSG(0, scr_text_slash_scr_text_gml_3043_0);
   MSG(1, scr_text_slash_scr_text_gml_3044_0);
   MSG(2, scr_text_slash_scr_text_gml_3045_0);
@@ -6019,7 +6184,7 @@ L63308:;
   MSG(7, scr_text_slash_scr_text_gml_3050_0);
   MSG(8, scr_text_slash_scr_text_gml_3051_0);
 L63652:;
-  goto L64168; /* gml: if !(global.choice == 2) goto L64168 */
+  if (!(c->choice == 2)) goto L64168;
   MSG(0, scr_text_slash_scr_text_gml_3055_0);
   MSG(1, scr_text_slash_scr_text_gml_3056_0);
   MSG(2, scr_text_slash_scr_text_gml_3057_0);
@@ -6036,7 +6201,7 @@ L63652:;
   gm_litemremove(4);
   sv.flag[262] = 3;
 L64168:;
-  goto L64260; /* gml: if !(global.choice == 3) goto L64260 */
+  if (!(c->choice == 3)) goto L64260;
   MSG(0, scr_text_slash_scr_text_gml_3077_0);
   MSG(1, scr_text_slash_scr_text_gml_3078_0);
 L64260:;
@@ -6060,22 +6225,22 @@ L64676:;
   goto L66496;
 L64680:;
   MSG(0, scr_text_slash_scr_text_gml_3103_0);
-  goto L64760; /* gml: if !(global.choice == 0) goto L64760 */
+  if (!(c->choice == 0)) goto L64760;
   /* gml: with (obj_shortcut_door) {   // to L64756 */
   /* gml: door_destination = 61 */
   /* gml: } // end with */
 L64760:;
-  goto L64804; /* gml: if !(global.choice == 1) goto L64804 */
+  if (!(c->choice == 1)) goto L64804;
   /* gml: with (obj_shortcut_door) {   // to L64800 */
   /* gml: door_destination = 73 */
   /* gml: } // end with */
 L64804:;
-  goto L64848; /* gml: if !(global.choice == 2) goto L64848 */
+  if (!(c->choice == 2)) goto L64848;
   /* gml: with (obj_shortcut_door) {   // to L64844 */
   /* gml: door_destination = 82 */
   /* gml: } // end with */
 L64848:;
-  goto L64892; /* gml: if !(global.choice == 3) goto L64892 */
+  if (!(c->choice == 3)) goto L64892;
   /* gml: with (obj_shortcut_door) {   // to L64888 */
   /* gml: door_destination = 97 */
   /* gml: } // end with */
@@ -6100,7 +6265,7 @@ L65020:;
   MSG(2, scr_text_slash_scr_text_gml_3143_0);
   goto L66496;
 L65252:;
-  goto L65532; /* gml: if !(global.choice == 0) goto L65532 */
+  if (!(c->choice == 0)) goto L65532;
   gm_itemremove(6);
   gm_itemget(7);
   MSG(0, scr_text_slash_scr_text_gml_3151_0);
@@ -6111,7 +6276,7 @@ L65252:;
   MSG(4, scr_text_slash_scr_text_gml_3156_0);
   sv.flag[253] = 1;
 L65532:;
-  goto L65588; /* gml: if !(global.choice == 1) goto L65588 */
+  if (!(c->choice == 1)) goto L65588;
   MSG(0, scr_text_slash_scr_text_gml_3161_0);
 L65588:;
   goto L66496;
@@ -6129,15 +6294,15 @@ L65776:;
 L65848:;
   goto L66496;
 L65852:;
-  goto L66040; /* gml: if !(global.choice == 0) goto L66040 */
+  if (!(c->choice == 0)) goto L66040;
   gm_itemget(7);
   MSG(0, scr_text_slash_scr_text_gml_3186_0);
   /* gml: global.writersnd[0] = 97 */
   MSG(1, scr_text_slash_scr_text_gml_3188_0);
-  goto L66040; /* gml: if !(noroom == 1) goto L66040 */
+  if (!(g_noroom == 1)) goto L66040;
   MSG(0, scr_text_slash_scr_text_gml_3191_0);
 L66040:;
-  goto L66096; /* gml: if !(global.choice == 1) goto L66096 */
+  if (!(c->choice == 1)) goto L66096;
   MSG(0, scr_text_slash_scr_text_gml_3196_0);
 L66096:;
   goto L66496;
@@ -6152,7 +6317,7 @@ L66100:;
   goto L66496;
 L66332:;
   sv.flag[910] = 2;
-  goto L66452; /* gml: if !(global.choice == 0) goto L66452 */
+  if (!(c->choice == 0)) goto L66452;
   MSG(0, scr_text_slash_scr_text_gml_3214_0);
   /* gml: snd_play(29) */
   gm_keyitemget(2);

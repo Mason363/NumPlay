@@ -78,6 +78,7 @@ void world_update(void);
 void world_draw(void);
 void world_draw_scene(void);            /* the room and its things, without the box */
 bool world_place_free(int x, int y, int ignore);   /* Kris's box with its top-left at (x, y): no solid */
+bool world_box_free(int x0, int y0, int x1, int y1, bool enemy);   /* (enemy: the enemies' own walls too) */
 void world_camera(void);
 void world_fade_to(int room, int entrance);
 bool world_fading(void);

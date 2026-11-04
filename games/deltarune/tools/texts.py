@@ -25,6 +25,8 @@ ENTRIES = [
     ("gml_Object_obj_npc_sign_Other_10", "gm_npc_sign_talk"),
     ("gml_Object_obj_npc_facing_Create_0", "gm_npc_facing_create"),
     ("gml_Object_obj_npc_facing_Other_10", "gm_npc_facing_talk"),
+    ("gml_Object_obj_npc_room_animated_Create_0", "gm_npc_room_animated_create"),
+    ("gml_Object_obj_npc_room_animated_Other_10", "gm_npc_room_animated_talk"),
     ("gml_Script_scr_text", "gm_scr_text"),
 ]
 LOCALS = {"tempvar", "afford", "itemflag", "itemtype", "t_itemid"}
@@ -35,14 +37,16 @@ VARS = [
     (r"\bglobal\.filechoice\b", "0"), (r"\bglobal\.darkzone\b", "sv.darkzone"), (r"\bglobal\.gold\b", "sv.gold"),
     (r"\bglobal\.lgold\b", "sv.lgold"), (r"\bglobal\.hp\[", "sv.hp["), (r"\bglobal\.maxhp\[", "sv.maxhp["),
     (r"\bglobal\.char\[", "sv.chr["), (r"\bglobal\.choice\b", "c->choice"), (r"\bglobal\.lweapon\b", "sv.lweapon"),
-    (r"\bglobal\.larmor\b", "sv.larmor"), (r"\bglobal\.facing\b", "c->facing"), (r"\bglobal\.item\[", "sv.item["),
+    (r"\bglobal\.larmor\b", "sv.larmor"), (r"\bglobal\.charweapon\[", "sv.weapon["),
+    (r"\bglobal\.chararmor1\[", "sv.armor1["), (r"\bglobal\.chararmor2\[", "sv.armor2["), (r"\bglobal\.facing\b", "c->facing"), (r"\bglobal\.item\[", "sv.item["),
     (r"\bglobal\.keyitem\[", "sv.keyitem["), (r"\bglobal\.lv\b", "sv.lv"), (r"\bglobal\.litem\[", "sv.litem["),
-    (r"\bargument0\b", "c->arg"), (r"\bargument1\b", "c->arg1"), (r"\bglobal\.msc\b", "c->msc"),
+    (r"\bnoroom\b", "g_noroom"), (r"\bargument0\b", "c->arg"), (r"\bargument1\b", "c->arg1"), (r"\bglobal\.msc\b", "c->msc"),
     (r"\bscr_havechar\(", "have_char("), (r"\bscr_itemcheck\(", "gm_itemcheck("),
     (r"\bscr_keyitemcheck\(", "gm_keyitemcheck("), (r"\bscr_litemcheck\(", "gm_litemcheck("),
     (r"\bscr_weaponcheck_inventory\(", "gm_weaponcheck("), (r"\broom_width\b", "world_room_info()->w"),
     (r"\broom_height\b", "world_room_info()->h"), (r"\bx\b", "c->x"), (r"\by\b", "c->y"), (r"\bread\b", "c->read"),
-    (r"\btalked\b", "c->talked"), (r"\bimage_index\b", "c->img"), (r"\bsprite_index\b", "c->spr"),
+    (r"\btalked\b", "c->talked"), (r"\bsprite_height\b", "(spr_h(c->spr) * world_scale())"),
+    (r"\bsprite_width\b", "(spr_w(c->spr) * world_scale())"), (r"\bimage_index\b", "c->img"), (r"\bsprite_index\b", "c->spr"),
 ]
 
 
@@ -60,17 +64,18 @@ class Tr:
         """an expression in C, or None when it uses what the game hasn't got"""
         e = re.sub(r"\broom (==|!=|<|>|<=|>=) (\d+)\b", lambda m: "g_room %s %s" % (m.group(1), self.rooms[int(m.group(2))]), e)
         e = re.sub(r'scr_84_get_lang_string\("([^"]+)"\)', r"\1", e)
+        e = re.sub(r"\bsprite_index (==|!=) (\d+)\b", lambda m: "sprite_index %s %s" % (m.group(1), self.spr[int(m.group(2))]), e)
         for pat, rep in VARS:
             e = re.sub(pat, rep, e)
         e = e.replace("\\", "\\\\")
         # anything left that looks like a name the game hasn't got
         rest = re.sub(r'"[^"]*"', "", e)
-        rest = re.sub(r"->\w+|sv\.\w+", "", rest)
+        rest = re.sub(r"\bc->\w+|->\w+|sv\.\w+", "", rest)
         for w in re.findall(r"\b[A-Za-z_][A-Za-z0-9_.]*\b", rest):
-            if w in ("g_room", "have_char", "gm_itemcheck", "gm_keyitemcheck", "gm_litemcheck", "gm_weaponcheck",
+            if w in ("g_room", "g_noroom", "have_char", "spr_h", "spr_w", "world_scale", "gm_itemcheck", "gm_keyitemcheck", "gm_litemcheck", "gm_weaponcheck",
                      "world_room_info") or (w.startswith("room_") and w in self.rooms):
                 continue
-            if w in self.locals:
+            if w in self.locals or w.startswith("spr_"):
                 continue
             if w in ("abs", "floor", "round"):
                 continue
@@ -134,7 +139,15 @@ class Tr:
         m = re.match(r"sprite_index = (\d+)$", ln)
         if m:
             return "c->spr = %s;" % self.spr[int(m.group(1))]
-        m = re.match(r"(global\.flag\[.+\]|global\.plot|global\.gold|global\.lgold|read|talked|c->\w+|image_index) = (.+)$", ln)
+        if ln == "instance_destroy()":
+            return "c->gone = 1;"
+        m = re.match(r"image_speed = ([\d.]+)$", ln)
+        if m:
+            return "c->ispd = %d;" % round(float(m.group(1)) * 16)
+        m = re.match(r"visible = ([01])$", ln)
+        if m:
+            return "c->hidden = %d;" % (1 - int(m.group(1)))
+        m = re.match(r"(global\.flag\[.+\]|global\.plot|global\.gold|global\.lgold|read|talked|x|y|c->\w+|image_index) = (.+)$", ln)
         if m:
             lhs, rhs = self.expr(m.group(1)), self.expr(m.group(2))
             if lhs and rhs:
