@@ -6,7 +6,7 @@ The TI-84 Plus CE, TI-84 Plus CE Python and TI-83 Premium CE, with the [CE C too
 make port TARGET=ti84ce        (in a game's folder): build/ti84ce/<game>/bin/<GAME>.8xp
 ```
 
-`CEDEV` points to the toolchain (default `~/Documents/Assets/toolchains/CEdev`).
+`CEDEV` points to the toolchain (default `~/Documents/Assets/toolchains/CEdev`). `platform/ti84ce/toolchain.sh DIR` puts its release (v15.0) in DIR, on Linux or macOS.
 
 | Key | NumWorks key |
 | --- | --- |

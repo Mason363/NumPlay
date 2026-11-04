@@ -6,7 +6,7 @@ The TI-Nspire CX and CX II (and their CAS models), with [Ndless](https://ndless.
 make port TARGET=nspire        (in a game's folder): build/nspire/<game>.tns
 ```
 
-`NDLESS_SDK` points to Ndless's `ndless-sdk` folder, with its toolchain built (`toolchain/build_toolchain.sh`), then `make build-libsyscalls build-libndls build-thirdparty build-tools` in it.
+`NDLESS_SDK` points to Ndless's `ndless-sdk` folder, with its toolchain built (`toolchain/build_toolchain.sh`), then `make build-libsyscalls build-libndls build-thirdparty build-tools` in it. `platform/nspire/toolchain.sh DIR` does all of it from Ndless's source, on Linux or macOS (about an hour): `NDLESS_SDK` is then `DIR/ndless-sdk`.
 
 | Key | NumWorks key |
 | --- | --- |
