@@ -30,6 +30,7 @@ void hero_bullet(Bullet *b);
 void hero_draw_bullet(const Bullet *b, int x, int y);
 void hero_draw_decals(void);        /* mines, tar */
 void hero_draw_hud(bool selected);  /* the portrait, at the battlefield's top left */
+void hero_draw_info(void);          /* its box in the side bar */
 
 /* the player's orders */
 Soldier *hero_soldier(void);        /* the hero on the field (0: none yet) */

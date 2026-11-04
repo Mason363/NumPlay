@@ -1289,3 +1289,28 @@ void hero_draw_hud(bool selected) {
   if (selected) gfx_frame_rect(ox - 1, oy - 1, 23, 26, RGB(0xFFE14D));
   gfx_text_o(FONT_SMALL, ox + 23, oy, "4", RGB(0xFFE14D));
 }
+
+/* the side bar's box while the hero is picked (the game's info panel: its name, life, level and respawn) */
+void hero_draw_info(void) {
+  Soldier *so = hero_soldier();
+  if (!so || gfx_y0 + BAND_H < 166) return;
+  gfx_fill(1, 166, 38, 74, RGB(0x1E140B));
+  gfx_fill(1, 166, 38, 1, RGB(0x8A6A3A));
+  int y = 168 + gfx_text_box(FONT_SMALL, 3, 168, 35, hero_name(H.id), RGB(0xF4E6C8));
+  char s[8], t[8];
+  int n = so->health > 0 ? so->health : 0, k = 0;
+  do t[k++] = (char)('0' + n % 10), n /= 10;
+  while (n && k < 7);
+  for (int i = 0; i < k; i++) s[i] = t[k - 1 - i];
+  s[k] = 0;
+  spr_anim(AN_UI_HEART, 0, false, 3, y + 1, false);
+  gfx_text(FONT_SMALL, 18, y, s, RGB(0xF4E6C8));
+  char l[8] = "Lvl 1";
+  if (H.level == 10) l[4] = '1', l[5] = '0', l[6] = 0;
+  else l[4] = (char)('0' + H.level);
+  gfx_text(FONT_SMALL, 3, y + 14, l, RGB(0x9A8A70));
+  char r[8] = "R 15s";
+  int sec = hs()->respawn / FPS;
+  r[2] = (char)('0' + sec / 10), r[3] = (char)('0' + sec % 10);
+  gfx_text(FONT_SMALL, 3, y + 25, r, RGB(0x9A8A70));
+}

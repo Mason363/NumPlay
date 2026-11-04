@@ -616,7 +616,8 @@ static void draw_selection(void) {
 static void draw_side(void) {
   draw_sidebar(P.mode == M_AIM ? (P.aim == AIM_FIRE ? 1 : P.aim == AIM_REINF ? 2 : 0) : 0);
   /* what is selected: an enemy's life and armour, a tower's numbers */
-  if (P.mode == M_SELECT && P.sel_kind == SEL_ENEMY && EN(P.sel)) draw_enemy_info(EN(P.sel));
+  if (P.mode == M_AIM && P.aim == AIM_HERO) hero_draw_info();
+  else if (P.mode == M_SELECT && P.sel_kind == SEL_ENEMY && EN(P.sel)) draw_enemy_info(EN(P.sel));
   else if (P.mode == M_SELECT && P.sel_kind == SEL_SPOT) draw_spot_info(&B.spot[P.sel]);
 }
 
