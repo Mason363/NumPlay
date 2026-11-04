@@ -7,6 +7,7 @@
 #include <string.h>
 #include "battle.h"
 #include "game.h"
+#include "gmath.h"
 #include "gfx.h"
 #include "menu.h"
 #include "res.h"
@@ -272,6 +273,7 @@ void enemy_defeat_run(Enemy *e) {
     return;
   }
   e->alive = false, e->killed = true, e->fade = 1;
+  if (!e->outcome) e->outcome = 1;
   B.gold += monster_defs[e->type].gold;
 }
 void enemy_leave(Enemy *e) { e->alive = false, e->fade = 1; }
@@ -281,7 +283,29 @@ void enemy_spare(Enemy *e) {
     return;
   }
   e->alive = false, e->spared = true, e->fade = 1;
+  if (!e->outcome) e->outcome = 2;
   B.gold += monster_defs[e->type].gold;
+}
+
+/* GameMaker's motion for a bullet: its speed's friction (negative: it speeds up) and gravity */
+void bullet_gm(Bullet *b) {
+  float sp = sqrtf(b->fvx * b->fvx + b->fvy * b->fvy);
+  if (b->fric && sp > 0) {
+    float ns = sp - b->fric;
+    if (ns < 0) ns = 0;
+    b->fvx *= ns / sp, b->fvy *= ns / sp;
+  }
+  if (b->grav) b->fvx += lengthdir_x(b->grav, b->gdir), b->fvy += lengthdir_y(b->grav, b->gdir);
+  b->fx += b->fvx, b->fy += b->fvy;
+  b->x = (int32_t)(b->fx * BFX), b->y = (int32_t)(b->fy * BFX), b->vx = b->vy = 0;
+}
+void bullets_fade_out(void) {
+  for (int i = 0; i < MAX_BUL; i++)
+    if (bul[i].on) {
+      bul[i].harmless = true;
+      bul[i].alpha = (uint8_t)max_i(0, bul[i].alpha - 26);
+      if (!bul[i].alpha) bul[i].on = false;
+    }
 }
 
 /* ---------------------------------------------------------------- starting */
@@ -664,7 +688,7 @@ static void do_spell(int k) {
       if (e->tired) {
         battle_sayf(scr_spelltext_slash_scr_spelltext_gml_23_0, char_name(h->c), NULL);
         if (e->def && (e->def->flags & EF_STAYS)) e->def->script(e, BS_PACIFIED, 0);
-        else enemy_spare(e);
+        else e->outcome = 3, enemy_spare(e);
       } else if (e->mercy >= 100) {
         battle_sayf(scr_spelltext_slash_scr_spelltext_gml_36_0, char_name(h->c), NULL);
       } else {
@@ -790,7 +814,7 @@ static void hero_attack(int k) {
   int at = sv.at[h->c] + weapon_defs[sv.weapon[h->c]].at + armor_defs[sv.armor1[h->c]].at + armor_defs[sv.armor2[h->c]].at;
   int dmg = (at * h->points + 10) / 20 - e->df * 3;
   if (dmg < 0) dmg = 0;
-  if (h->points == 0) dmg = -1;   /* a miss */
+  if (h->points == 0 || e->automiss) dmg = -1;   /* a miss */
   h->anim_t = 1;
   e->dmg_show = dmg, e->dmg_t = 40, e->dmg_kind = h->c;
   if (dmg > 0) {
@@ -800,6 +824,21 @@ static void hero_attack(int k) {
     if (e->hp <= 0) enemy_defeat_run(e);
   }
 }
+
+/* a cutscene's FIGHT (C. Round's ACT, Susie on her own): member c hits the first enemy with these points */
+void hero_auto_attack(int c, int points) {
+  for (int k = 0; k < B.nh; k++)
+    if (B.h[k].c == c) {
+      for (int i = 0; i < MAX_EN; i++)
+        if (en[i].alive) {
+          B.h[k].target = i;
+          break;
+        }
+      B.h[k].points = points;
+      hero_attack(k);
+    }
+}
+void battle_set_battlemsg(uint16_t id) { battle_say(&id, 1); }
 
 static void fight_update(uint32_t pressed) {
   if (pressed & K_Z) {
@@ -959,6 +998,10 @@ static void bullets_update(void) {
   for (int i = 0; i < MAX_BUL; i++) {
     Bullet *b = &bul[i];
     if (!b->on) continue;
+    if (b->upd) {
+      b->upd(b);
+      if (!b->on) continue;
+    }
     b->vx += b->ax, b->vy += b->ay;
     b->x += b->vx, b->y += b->vy;
     b->t++;
@@ -1055,7 +1098,29 @@ static void win_check(void) {
   B.result = BR_WON;
 }
 
+/* scr_monsterdefeat's counts: flag 40 beaten, 41 spared, 42 pacified, 43 (Susie's own); 50 how it went; and the
+ * Field's Rudinns (event_user 11) */
+static void outcomes(void) {
+  int v = 0, s = 0, p = 0;
+  for (int i = 0; i < MAX_EN; i++) {
+    Enemy *e = &en[i];
+    if (!e->type) continue;
+    set_flag(51 + i, e->outcome);
+    if (e->outcome == 1) set_flag(40, flag(40) + 1), v++;
+    if (e->outcome == 2) set_flag(41, flag(41) + 1), s++;
+    if (e->outcome == 3) set_flag(42, flag(42) + 1), p++;
+    if (e->outcome == 5) set_flag(43, flag(43) + 1);
+  }
+  set_flag(50, v ? 1 : s ? 2 : p ? 3 : 0);
+  for (int i = 0; i < MAX_EN; i++) {
+    if (!en[i].type || !en[i].outcome || en[i].outcome == 4) continue;
+    if (g_room == room_field1) set_flag(500, flag(500) + 1);
+    if (g_room == room_field2 && flag(50) != 0) set_flag(501, flag(50));
+  }
+}
+
 static void finish(void) {
+  if (B.result == BR_WON) outcomes();
   memset(&CM, 0, sizeof CM);
   B.over = true;
   B.phase = P_DONE;
@@ -1214,7 +1279,7 @@ static void draw_heroes(void) {
 static void draw_enemies(void) {
   for (int i = 0; i < MAX_EN; i++) {
     Enemy *e = &en[i];
-    if (!e->type || (e->fade >= 20)) continue;
+    if (!e->type || (e->fade >= 20) || e->hidden) continue;
     const EnemyDef *d = e->def;
     int x = bx2(e->x), y = bx2(e->y);
     int a = e->fade ? 255 - e->fade * 12 : 255;

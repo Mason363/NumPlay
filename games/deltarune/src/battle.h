@@ -78,9 +78,13 @@ typedef struct Enemy {
   uint16_t pic;                        /* or a picture in the bubble (obj_heartblcon), 0 none */
   bool rest;                           /* no attack this turn (said in its talk) */
   int dmg_show, dmg_t, dmg_kind;       /* the number over it */
+  bool hidden;                         /* not drawn (its attack is itself: K. Round's leap...) */
+  bool automiss;                       /* warned: the party's FIGHT misses it (global.automiss) */
+  uint8_t outcome;                     /* global.flag[51 + i]: 1 beaten, 2 spared, 3 pacified, 4 a boss's */
+  float f[6];                          /* its own (in floats) */
 } Enemy;
 
-typedef struct {
+typedef struct Bullet_ {
   uint16_t spr;
   int32_t x, y, vx, vy, ax, ay;        /* 1/16 unit */
   int16_t r;                           /* hit radius (units), or a box */
@@ -98,6 +102,8 @@ typedef struct {
   int8_t target;                       /* party member hit (0-2), 3 all */
   uint8_t gp, timep;                   /* grazepoints, timepoints (5, 5) */
   bool keep;                           /* not gone when it hits (the bike...): off the screen too */
+  void (*upd)(struct Bullet_ *b);      /* its own step, before it moves (NULL none) */
+  float fx, fy, fvx, fvy, fric, grav, gdir;   /* (an upd's own: GameMaker's speed, friction, gravity) */
 } Bullet;
 
 extern Enemy en[MAX_EN];
@@ -133,6 +139,10 @@ bool battle_text_on(void);                       /* the box's text is showing */
 void battle_hide_hero(int c, bool hide);
 void battle_hero_pos(int c, int *x, int *y);     /* its place, units */
 int battle_hp_lost(int c);                       /* HP member c lost in this battle */
+void bullet_gm(Bullet *b);                       /* an upd: GameMaker's motion (fvx, fvy, friction, gravity) */
+void bullets_fade_out(void);                     /* with (obj_regularbullet) active = 0, fading */
+void hero_auto_attack(int c, int points);        /* member c (CH_*) hits the first enemy (a cutscene's FIGHT) */
+void battle_set_battlemsg(uint16_t id);          /* global.battlemsg[0]: the flavour text */
 /* a cutscene's guest (the Hathy fight's Lancer): at a moment (BC_*) it slides in from the right, its words go in
  * the box (ids: texts and F_ face changes, -1 after), then it slides out and the battle goes on */
 enum { BC_CLEAN_TURN,                            /* the first enemies' turn, if Kris and the next lost no HP */
