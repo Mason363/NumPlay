@@ -405,6 +405,11 @@ void piece_spawn(int sprite, int layer, int order, int flags, float x, float y, 
                  float bounce, float spin_factor, float mirror, float vx, float vy, bool resting);   /* (obj.c: debris) */
 void vm_activate_children(uint16_t name, bool on);       /* ActivateAllChildren of a script object, by name */
 void vm_set_active(uint16_t name, bool on);              /* (script objects by name: on, off) */
+void vm_send_named(uint16_t name, int ev);               /* (an event to script objects by name) */
+void vm_activate_children_at(uint16_t name, float x, float y, bool on);   /* (of those so named, the nearest's) */
+#ifdef HK_FW
+void enemies_vm_event(int ev);   /* (the scripts' events the game's own code hears: enemy_fw.c) */
+#endif
 /* the message as an item is taken (msg.c: MSG_*), the HUD Blanker (a white screen the scripts fade) */
 void msg_show(int item);
 bool msg_shown(void);

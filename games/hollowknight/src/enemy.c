@@ -20,7 +20,7 @@ enum {
   EF_FK, EF_FKHEAD, EF_GFLY, EF_HATCHER, EF_HATCHLING, EF_SLUG, EF_MOSSWALKER, EF_PIGEON, EF_PLANTTRAP, EF_SHAKER,
   EF_MOSQUITO, EF_FATFLY, EF_MOSSCHARGER, EF_MOSSKNIGHT, EF_HORNET, EF_MENDER,
   /* (Hollow Knight: Fungal Wastes: HK_FW) */
-  EF_FUNGLING, EF_FUNGOON, EF_AMBLOOM, EF_SHRUMELING, EF_OGRE, EF_SPORG
+  EF_FUNGLING, EF_FUNGOON, EF_AMBLOOM, EF_SHRUMELING, EF_OGRE, EF_SPORG, EF_MANTIS, EF_MANTISFLYER, EF_MANTISLORD
 };
 enum { R_IDLE, R_TURN, R_WALK, R_A1, R_A2, R_A3, R_A4, R_A5, R_A6, R_A7, R_A8, R_DEATH_AIR, R_DEATH_LAND, NUM_ROLES };
 typedef struct {
@@ -413,6 +413,11 @@ static void death_shake(const Enemy *e) {
 static void shade_killed(Enemy *e);
 static void blocker_die(Enemy *e);
 static void gfly_die(Enemy *e);
+#ifdef HK_FW
+static void mlord_die(Enemy *e);
+static void mlord_fixed(Enemy *e);
+static void mlord_corpse_update(Enemy *e);
+#endif
 static void hatchling_reset(Enemy *e);
 static void hatcher_corpse_smash(const Enemy *e);
 static void hornet_corpse_start(Enemy *e);
@@ -438,6 +443,14 @@ static void enemy_die(Enemy *e, float direction, bool has_direction) {
   if (FSM(e) == EF_MENDER) g_pd.mender_state = 2;   /* (Killed) */
   if (FSM(e) == EF_GFLY) gfly_die(e);
   else if (FSM(e) == EF_HORNET) hornet_corpse_start(e);
+#ifdef HK_FW
+  else if (FSM(e) == EF_MANTISLORD) {
+    mlord_die(e);
+    death_shake(e);
+    FREEZE_MOMENT_1();
+    return;
+  }
+#endif
   else if (FSM(e) == EF_HATCHLING) {
     /* (deathReset: back to its cage) */
     death_shake(e);
@@ -6572,6 +6585,12 @@ void enemies_fixed(void) {
       continue;
     }
     if (e->mode == EM_ALIVE && (FSM(e) == EF_FKHEAD || (e->flags & 128))) continue;   /* (the head: its body's; off) */
+#ifdef HK_FW
+    if (FSM(e) == EF_MANTISLORD) {
+      if (e->mode == EM_ALIVE) mlord_fixed(e);   /* (kinematic; its corpse stays) */
+      continue;
+    }
+#endif
     if (e->mode == EM_ALIVE && ((FSM(e) == EF_MOSSWALKER && e->b1) || FSM(e) == EF_PIGEON || FSM(e) == EF_PLANTTRAP || FSM(e) == EF_SPORG)) {
       /* (a kinematic body, a trigger, frames' colliders: nothing stops them) */
       recoil_fixed(e);
@@ -6727,6 +6746,10 @@ void enemies_update(void) {
       shade_update(e);
     else if (FSM(e) == EF_HORNET)
       hornet_corpse_update(e);
+#ifdef HK_FW
+    else if (FSM(e) == EF_MANTISLORD)
+      mlord_corpse_update(e);
+#endif
     else if (FSM(e) == EF_BLOCKER)
       blocker_corpse(e);
     else if (e->st == CS_DEATH_ANIM && !e->anim.playing)

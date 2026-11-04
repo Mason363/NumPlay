@@ -45,10 +45,13 @@ ENEMY_VARS = {"Zombie Swipe": (["Lunge Speed", "Idle Time"], ["Coward"]),
               "Zombie Guard": (["Chase Distance", "Roam Distance"], ["Start Facing Left"])}
 # enemies whose body is a trigger, whose body is only their frames' colliders, and other children that are ranges
 TRIGGER_BODIES = {"Pigeon", "Shroom Turret"}
-FRAME_BODIES = {"Plant Trap Control", "Mossy Control"}
+FRAME_BODIES = {"Plant Trap Control", "Mossy Control", "Mantis Lord"}
 RANGES = {"Moss Walker": ("Wake Range",), "Pigeon": ("Hero Range", "Enemy Range"), "Plant Trap Control": ("Detector",),
           "Moss Knight Control": ("Wake Box",), "Mender Bug Ctrl": ("Hero Detect",), "Fungus Flyer": ("Attack R", "Attack L"),
-          "Shroom Brawler": ("Smash Region",), "Shroom Turret": ("Hero Detect",)}
+          "Shroom Brawler": ("Smash Region",), "Shroom Turret": ("Hero Detect",),
+          "Mantis": ("Front Range", "Back Range", "Above Range"), "Mantis Flyer": ("Attack Range",)}
+# (enemies whose solid children hurt too: a Mantis' head and sting)
+SOLID_HITS = {"Mantis", "Mantis Flyer"}
 # (an arena's enemies its Start wakes (1) and its Wave 2 (2): WAKE sent to each, by _arenas)
 ARENA_WAKES = {}
 # (enemies whose attacks start with their colliders off: those still kept, off)
@@ -511,7 +514,8 @@ def _enemy(o, by_id, persist, name, d=None, strings=None, owners=None):
         q = by_id[ch]
         qd = next((c.get("v") for c in q["c"] if c.get("class") == "DamageHero" and c.get("v") is not None), None)
         qc = next((c for c in q["c"] if c["type"] in ("BoxCollider2D", "PolygonCollider2D") and c.get("v") and
-                   c["v"].get("m_IsTrigger") and (c["v"].get("m_Enabled", 1) or fsm.get("name") in HITBOXES_OFF)), None)
+                   (c["v"].get("m_IsTrigger") or fsm.get("name") in SOLID_HITS) and
+                   (c["v"].get("m_Enabled", 1) or fsm.get("name") in HITBOXES_OFF)), None)
         zone = q["name"] == "Battle Range"
         if (qd is None and not zone) or qc is None:
             continue
@@ -589,6 +593,11 @@ def _enemy(o, by_id, persist, name, d=None, strings=None, owners=None):
         wr = kid.get("Wake Region")
         bits = (1 if (var.get("Facing Right") or [0, False])[1] else 0) | (2 if wr and wr["self_active"] else 0)
         out.append(rec(ENT_BOX, ET_VARS, p=(sp[0], sp[1], ARENA_WAKES.get(o["id"], 0), 0), box=cbox, a=bits))
+    if fsm.get("name") == "Mantis Lord":
+        # (which of the three: the first, then the two together; its Throw Point)
+        kid = {by_id[ch]["name"]: by_id[ch] for ch in o.get("children", [])}
+        tp = kid.get("Throw Point", {}).get("lpos", [0, 0])
+        out.append(rec(ENT_BOX, ET_VARS, p=(tp[0], tp[1], 0, 0), a={"Mantis Lord S1": 1, "Mantis Lord S2": 2}.get(o["name"], 0)))
     if fsm.get("name") == "Shroom Turret":
         # (Sporg: its Fire Angle, its Spawn Point from it)
         q = next((by_id[ch] for ch in o.get("children", []) if by_id[ch]["name"] == "Spawn Point"), None)
@@ -869,7 +878,8 @@ def room(d, rooms, strings, persist, name, sprites=None, owners=None, rec_base=0
     prebattle = set()
     groups = {}
     marker_index = {}
-    objs = [o for o in d["objects"] if o["active"]]
+    # (and the Mantis Lords, off till their fight wakes them: src/enemy_fw.c)
+    objs = [o for o in d["objects"] if o["active"] or any((c.get("fsm") or {}).get("name") == "Mantis Lord" for c in o["c"])]
     by_id = {o["id"]: o for o in d["objects"]}
     arena_gone, arena_counted, arena_later = _arenas(d, by_id)
     import state
@@ -966,7 +976,7 @@ def room(d, rooms, strings, persist, name, sprites=None, owners=None, rec_base=0
             battles.append((len(recs), (ref("CameraLock 1") or [0, 0, 0])[2], (ref("CameraLock 2") or [0, 0, 0])[2]))
             recs.append(rec(ENT_OBJ, OK_BATTLE, _trigger(o) or (0, 0, 0, 0), (-1, -1, 1, 0), group=g_arm,
                             persist=persist.id(name, o["path"]) if persistent else NO_PERSIST))
-        if f and "False Knight" not in f["vars"]:
+        if f and "False Knight" not in f["vars"] and "Lord S1" not in f["vars"]:   # (the Mantis Lords': enemy_fw.c's)
             # an arena: its trigger (or none: an enemy starts it), its camera lock (fixed up below), how many it counts
             # down and the wait after
             acts = lambda n: [a for a in ((_state(f, n) or {}).get("actions") or []) if a.get("enabled", True)]

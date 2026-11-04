@@ -24,7 +24,7 @@ KNIGHT = ("resources.assets", 20600, [
     # (the Mantis Claw's: sliding down a wall, the jump off it, a slash from it, its puff; Mark of Pride's slashes)
     "Wall Slide", "Walljump", "Wall Slash", "Walljump Puff", "SlashEffect M", "SlashEffectAlt M", "UpSlashEffect M",
     "DownSlashEffect M",
-])
+] + (["Challenge Start", "Challenge End"] if os.environ.get("HK_PART") == "2" else []))   # (the Mantis Lords' challenge)
 
 # enemy kinds: name, the FSM (or component) that runs them, their library, the C code for that FSM, and the clips each
 # role plays (src/enemy.c: R_*); the corpse's from its library (by default the enemy's)
@@ -120,6 +120,19 @@ FW_KINDS = [
     # (Sporg; its Spore Bombs' clips are its library's: CLIP_SPORG_IDLE_2, CLIP_SPORG_EXPLODE)
     ("sporg", "Shroom Turret", ("sharedassets167.assets", 154), "SPORG",
      {"IDLE": "Idle 1", "A1": "Sleep to Idle", "A2": "Attack", "A3": "Sleep", "DEATH_AIR": "Death"}, ["Idle 2", "Explode"]),
+    # (Mantis Village: its warriors and youths; a warrior bows once the Lords are beaten: CLIP_MANTIS_*)
+    ("mantis", "Mantis", ("sharedassets176.assets", 177), "MANTIS",
+     {"IDLE": "Idle", "TURN": "Turn", "WALK": "Walk", "A1": "Attack Antic", "A2": "Attack 1", "A3": "Attack 2",
+      "A4": "Attack Recover", "A5": "Up Attack Antic", "A6": "Up Attack Slash", "A7": "Up Attack Recover", "A8": "Walk B",
+      "DEATH_AIR": "Death Air"}, ["Bow", "Bow End", "Turn To Bow"]),
+    ("mantisflyer", "Mantis Flyer", ("sharedassets176.assets", 203), "MANTISFLYER",
+     {"IDLE": "Fly", "A1": "Rest", "A2": "Startle", "A3": "Turn To Fly", "A4": "Attack Antic", "A5": "Attack",
+      "A6": "Attack Recover"}),
+    # (the Mantis Lords: their code plays their clips by name, CLIP_MANTISLORD_*; their lances, their corpses')
+    ("mantislord", "Mantis Lord", ("sharedassets180.assets", 84), "MANTISLORD", {"IDLE": "Wall Ready"},
+     ["Wall Arrive", "Dash Arrive", "Dash Antic", "Dash Attack", "Dash Recover", "Dash Leave", "Dstab Arrive",
+      "Dstab Attack", "Dstab Land", "Dstab Leave", "Throw Antic", "Throw", "Wall Leave 1", "Wall Leave 2",
+      "Mantis Air Projectile", "Death New 1", "Death New 2"]),
 ]
 if os.environ.get("HK_PART") == "2":
     ENEMY_KINDS += FW_KINDS

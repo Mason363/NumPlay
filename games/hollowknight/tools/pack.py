@@ -791,7 +791,8 @@ def main():
     secs["RVAR"].b += rvar
     # (the children enemy.c knows by name)
     str_ids = {n: STRINGS.id(n) for n in ("Attack Range", "Evade Range", "Spit Range", "Wake Box", "Slash Hitbox",
-                                          "Slash2 Hitbox", "door_stagExit") + (("Smash Hits",) if PART == 2 else ())}
+                                          "Slash2 Hitbox", "door_stagExit") +
+              (("Smash Hits", "Head Box", "Head Box F", "Slash Forward", "Slash Up", "Sting Hit", "Dash Hit") if PART == 2 else ())}
     secs["STR"].b += STRINGS.blob()
     secs["TEXT"].b += TEXTS.blob()
     secs["FONT"].b += TEXTS.fonts()
@@ -854,7 +855,7 @@ def main():
         for e in vm.NAMED_EVENTS:   # (each room's number for it; 255: its scripts don't know it)
             ids = [vm.BUILT[r].named_events.get(e, 255) if r in vm.BUILT else 255 for r in ROOMS]
             f.write("#define VMEV_%s {%s}\n" % (e.upper().replace(" ", "_"), ", ".join(str(i) for i in ids)))
-        for name in ("NPC Title", "Visited", "Display Right", "Hornet Saver", "Item") + (("Arena Item", "Arena Item Kept") if PART == 2 else ()):
+        for name in ("NPC Title", "Visited", "Display Right", "Hornet Saver", "Item") + (("Arena Item", "Arena Item Kept", "Mantis Lord Throne 1", "Mantis Lord Throne 3") if PART == 2 else ()):
             f.write("#define VMSTR_%s %d\n" % (name.upper().replace(" ", "_"), vm.STR.index[name]))
         for name, i in str_ids.items():
             f.write("#define STR_%s %d\n" % (name.upper().replace(" ", "_"), i))

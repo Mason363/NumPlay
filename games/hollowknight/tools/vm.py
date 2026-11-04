@@ -70,8 +70,16 @@ ROOMS = {
                    "Mantis Floor Gate", "Inspect Region"],
     "Fungus2_12": ["Inspect Region"],
     "Fungus2_15": ["Mantis Lever", "Mantis Lever (1)", "Mantis Lever (2)", "Mantis Lever (3)", "Mantis Lever (4)", "Mantis Gate",
-                   "Mantis Gate (1)", "Mantis Gate (2)", "Mantis Gate (3)", "Mantis Gate (4)", "Breakable Wall", "mantis_cage_up"],
-    "Fungus2_31": ["Mantis Chest/Item/Shiny Item Charm", "Mantis Chest (1)/Item/Shiny Item", "Lords Undefeated Group"],
+                   "Mantis Gate (1)", "Mantis Gate (2)", "Mantis Gate (3)", "Mantis Gate (4)", "Breakable Wall", "mantis_cage_up",
+                   "deepnest_mantis_gate",
+                   # (the Mantis Lords' fight, Fungus2_15_boss: their thrones, the challenge, the cage, the floors; the
+                   # Lords and their two battles are enemy_fw.c's; then Fungus2_15_boss_defeated, their thrones)
+                   "Mantis Battle/Mantis Lord Throne 1", "Mantis Battle/Mantis Lord Throne 2",
+                   "Mantis Battle/Mantis Lord Throne 3", "Mantis Battle/mantis_lord_opening_floors",
+                   "Mantis Battle/mantis_lord_opening_floors (1)", "Mantis Battle/Challenge Prompt",
+                   "Mantis Battle/mantis_cage_down", "Mantis Battle/Bow Range",
+                   "Mantis Lord Throne 1", "Mantis Lord Throne 2", "Mantis Lord Throne 3", "Bow Range"],
+    "Fungus2_31": ["Mantis Chest/Item", "Mantis Chest (1)/Item", "Lords Undefeated Group"],
 }
 def _piece(doc, q, rigid=True):
     """A piece of debris (a sprite with a Rigidbody2D: how it falls, bounces and spins) -> FlingPiece's operands."""
@@ -155,6 +163,13 @@ def _behaviours(rm, o):
                                                        "animationCompleteEvent": ["event", "FINISHED"]})],
              {"FINISHED": "Idle"})])})
     import ents
+    rb = next((c.get("v") or {} for c in o["c"] if c["type"] == "Rigidbody2D"), None)
+    if (rm.name, o["path"]) in VM_NAMES and rb is not None and rb.get("m_BodyType", 0) == 0 and rb.get("m_GravityScale", 1) > 0:
+        # (an item the game turns on in the air: a body, it falls as it comes on)
+        out.append({"fsm": _fsm("Fall", "Init", {}, [
+            ("Init", [("SetGravity2dScale", {"gameObject": "Owner", "gravityScale": rb.get("m_GravityScale", 1)}),
+                      ("FlingObject", {"flungObject": "Owner", "speedMin": 0, "speedMax": 0, "angleMin": 270,
+                                       "angleMax": 270})], {})])})
     pdf = ents.pd_flags()
     for bn, off_if in _conds(o, pdf)[2:]:
         # (a DeactivateIfPlayerdata past the two its record keeps: a script that turns it off as it starts)
@@ -208,7 +223,7 @@ SKIP_PATHS = {("Crossroads_04", "_Transition Gates/Mender Door/Inspect"), ("Cros
 # tollbooth Crossroads_16 drops into; the game's Knight comes up to it first by rooms this port leaves out, so here the
 # tollbooth is the way on to Crossroads_21 and the False Knight
 PULLED = {("Crossroads_03", "_Props/Toll Gate Switch")}
-MAX_OBJS, MAX_FSMS, MAX_VARS, MAX_ANIMS = 48, 29, 256, 20   # (src/vm.c)
+MAX_OBJS, MAX_FSMS, MAX_VARS, MAX_ANIMS = 64, 44, 256, 24   # (src/vm.c)
 # map pieces of their own a script marks visited (AddToScenesVisited), as their room's (src/map.c: after the rooms)
 MAP_SCENES = {"Crossroads_21_b": "Crossroads_21"}
 MAX_ROOM_BITS = 128   # (src/game.h)
@@ -298,7 +313,10 @@ for e in ("FINISHED", "CONVO_FINISH", "CONVO START", "CONVO END", "BIG TITLE STA
 FIXED_EVENTS = len(EVENTS.list)   # (src/data.h: VMEV_*)
 # events the game's code sends that only some rooms' scripts know, numbered as each room numbers its own (src/data.h:
 # VMEV_*, by room): the Elder Baldur's corpse's, a shop's charm lesson's
-NAMED_EVENTS = ("UPDATE SHAMAN", "SHOP REGION INACTIVE", "SHOP REGION ACTIVE")
+NAMED_EVENTS = ("UPDATE SHAMAN", "SHOP REGION INACTIVE", "SHOP REGION ACTIVE",
+                # (the Mantis Lords' fight: between the thrones' scripts and enemy_fw.c)
+                "MLORD START MAIN", "MLORD START SUB", "MANTIS DEFEATED", "MLORD BOW", "MANTIS DEFEAT", "MLORD CAGE UP",
+                "MLORD FLOOR EXTEND", "MLORD GATE OPEN", "RETURN")
 
 # ---------------------------------------------------------------- the actions it runs: name -> (opcode, operands)
 # operand kinds: f i b s o value slots (u16), F I B S O V output variables (u8: 255 none), e event (u8), t event target,
@@ -485,7 +503,7 @@ HERO_METHODS = ["RelinquishControl", "RegainControl", "StopAnimationControl", "S
                 "FindGroundPoint", "SetBenchRespawn", "SetHazardRespawn", "RelinquishControlNotVelocity",
                 "SetCState", "SaveGame", "AffectedByGravity", "ResetHardLandingTimer", "StopPlayingAudio", "CanInspect",
                 "CanInput", "GetState", "CancelHeroJump", "ForceHardLanding", "AddHealth", "TryAddMPChargeSpa", "RecoilLeft",
-                "RecoilRight", "CharmUpdate", "RefreshOvercharm"]
+                "RecoilRight", "CharmUpdate", "RefreshOvercharm", "FlipSprite"]
 # (GetState's states, by name: its argument)
 HERO_STATES = ["onGround", "attacking", "upAttacking", "downAttacking", "dashing", "backDashing", "willHardLand",
                "spellQuake"]   # (backDashing, spellQuake: never here)
@@ -535,8 +553,6 @@ class Room:
         # (the scenes it loads with it, the first of them: their objects there only as they are, by a PlayerData bool)
         import scene
         for an, flag, val, which in scene.additive(name):
-            if which != 1:
-                continue
             da = unity.scene(an)
             ids = {q["id"] for q in da["objects"]}
             k = lambda i, an=an: ("sc", an, i)
@@ -547,7 +563,7 @@ class Room:
                 c["children"] = [k(x) for x in q.get("children", [])]
                 c["_doc"], c["_key"], c["_scene"], c["_raw"] = da, k, an, q["id"]
                 if c["parent"] is None:
-                    c["_variant"] = (flag, val)
+                    c["_variant"] = (flag, val if which == 1 else not val)   # (the alternative: with the bool the other way)
                 self.by_id[c["id"]] = c
                 self.by_path.setdefault(q["path"], c)
         self.objs, self.obj_index = [], {}
@@ -863,6 +879,15 @@ class Compiler:
             self.consts.append(v)
         return self.nvars + self.consts.index(v)
 
+    def const3(self, v):
+        """a vector's three constants, one after another (read so: src/vm.c)"""
+        vs = [_u32(float(c)) for c in v[:3]]
+        for i in range(len(self.consts) - 2):
+            if self.consts[i:i + 3] == vs:
+                return self.nvars + i
+        self.consts += vs
+        return self.nvars + len(self.consts) - 3
+
     def found_nothing(self, v):
         """a gameObject variable only FindChild sets, from its owner, naming a child it does not have"""
         if not (isinstance(v, str) and v.startswith("$")):
@@ -1018,10 +1043,7 @@ class Compiler:
                 return struct.pack("<H", 0xFFFF)
             if isinstance(v, str):
                 return struct.pack("<H", self.value(v, "f"))
-            a = self.const(float(v[0]))
-            self.const(float(v[1]))
-            self.const(float(v[2]))
-            return struct.pack("<H", a)
+            return struct.pack("<H", self.const3(v))
         if kind == "e":
             return bytes([self.event(v)])
         if kind == "es":
@@ -1081,7 +1103,8 @@ class Compiler:
                  "AudioPlayInState", "FadeAudio", "PlayRandomSound", "SetRotation", "RandomFloat",
                  "GetLastEvent", "SetBoxCollider2DSize", "Tk2dSpriteSetColor", "SetTextMeshProColor",
                  "AudioPlayRandom", "SetName", "GameObjectIsNull", "PlayVibrationV2",
-                 "SpawnFromPool", "SpawnRandomObjects", "Rotate", "GetEventSender", "GetMidPoint", "SetAudioClip"):
+                 "SpawnFromPool", "SpawnRandomObjects", "Rotate", "GetEventSender", "GetMidPoint", "SetAudioClip",
+                 "ApplyMusicCue", "GGCheckIfBossScene"):   # (music; Godhome's: never here)
             return None
         if n in ("SetMaterialColor", "GetMaterialColor", "EaseColor") and self.f["name"] != "Blanker Control":
             # (colors: only the stag stations' Stag Blanker's, black as the room comes in, then faded out to show it)
@@ -1667,8 +1690,8 @@ def prepare(rooms, sprites, texts):
             for c in o["c"] + _behaviours(rm, o):
                 f = c.get("fsm")
                 # (a door's own scripts: the game's gates are its doors here)
-                if not f or f["name"] in SKIP_FSMS or _tinks(f) or _spins(f) or \
-                        any(c2.get("class") == "TransitionPoint" for c2 in o["c"]):
+                if not f or f["name"] in SKIP_FSMS or _tinks(f) or _spins(f) or c.get("enabled") is False or \
+                        any(c2.get("class") == "TransitionPoint" for c2 in o["c"]):   # (a component off: never runs)
                     continue
                 cp = Compiler(rm, o, f)
                 body, init = cp.compile()
@@ -1777,7 +1800,9 @@ def room_blob(name, clip_index, sprites, owners=(), persist=None):
         m = np.array(o["m3"]).reshape(3, 3)
         sx = float(np.hypot(m[0, 0], m[1, 0])) * (1 if m[0, 0] >= 0 else -1)
         sy = float(np.hypot(m[0, 1], m[1, 1])) * (1 if m[1, 1] >= 0 else -1)
-        fl = (OF_ACTIVE if o.get("self_active", o["active"]) else 0)
+        # (its own on or off under a script object; a script's root as it is in the scene: off under what is off)
+        fl = (OF_ACTIVE if (o.get("self_active", o["active"]) if parent != 0xFFFF or "self_active" not in o else
+                            o["active"] or o.get("_variant")) else 0)
         box = None
         # (one its scripts hear the nail hit: its collider, a trigger or not, is what the nail's trigger meets)
         nail = any((a["name"] == "Trigger2dEvent" and dict(a["params"]).get("collideTag") == "Nail Attack") or
