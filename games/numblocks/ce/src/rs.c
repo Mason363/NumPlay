@@ -25,9 +25,21 @@ uint8_t RS(rs_clip2)(const SV *in, uint8_t n, SV *out, uint8_t k);
 uint8_t RS(rs_face)(uint8_t f);
 void RS(rs_shade)(uint8_t *p, const uint8_t *row, uint16_t n);
 void RS(rs_rle)(uint8_t *q, const uint8_t *p, int sw);
+uint8_t *RS(rs_runs_of)(const uint8_t *h, uint8_t *o, uint8_t rows);
 void RS(rs_expand)(const uint8_t *src, uint8_t *dst, const uint8_t *sky, const uint8_t *hud);
 void RS(rs_shade)(uint8_t *p, const uint8_t *row, uint16_t n) {
   for (unsigned i = 0; i < n; i++) p[i] = row[p[i]];
+}
+
+uint8_t *RS(rs_runs_of)(const uint8_t *h, uint8_t *o, uint8_t rows) {
+  for (; rows; rows--, h += HUD_W)
+    for (int x = 0; x < HUD_W;) {
+      uint8_t t = 0, n = 0;
+      while (x < HUD_W && !h[x]) x++, t++;
+      while (x < HUD_W && h[x]) x++, n++;
+      *o++ = t, *o++ = n;
+    }
+  return o;
 }
 
 void RS(rs_rle)(uint8_t *q, const uint8_t *p, int sw) {

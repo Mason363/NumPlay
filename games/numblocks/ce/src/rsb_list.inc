@@ -77,4 +77,10 @@
 	\m	Lws_done
 	\m	Lwsb
 	\m	_rs_rle
+	\m	r_hudrow
+	\m	r_cols
+	\m	r_px
+	\m	r_skip
+	\m	Lex_next
+	\m	_rs_runs_of
 	.endm

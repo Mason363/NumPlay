@@ -84,7 +84,7 @@ bool hud_draw(void) {
     last_id = held()->id, last_slot = pl.slot;
   }
   if (s == sig && !hud_dirty) return false;
-  sig = s, hud_dirty = false;
+  sig = s, hud_dirty = false, hud_changed = 1;
   cv = (Canvas){hud_layer, HUD_W, HUD_X, HUD_Y, HUD_W, HUD_H};
   memset(hud_layer, 0, HUD_W * HUD_H);
   int x0 = SCREEN_W / 2 - 91, yb = SCREEN_H - 22;
@@ -267,6 +267,7 @@ static void layout(void) {
 static void strip_keep(void) {
   int x = panel_x - 2, w = panel_w + 4, y = panel_y - STRIP_H;
   for (int r = 0; r < STRIP_H; r++) memcpy(hud_layer + r * w, scr + (y + r) * SCREEN_W + x, (size_t)w);
+  hud_changed = 1;
 }
 
 static void draw_panel(void) {

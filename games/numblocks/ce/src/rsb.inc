@@ -1127,6 +1127,8 @@ b__rs_expand:
 	add	iy, sp
 	ld	hl, (iy+15)
 	ld	(r_hud), hl
+	ld	hl, _rs_hruns
+	ld	(r_hrun), hl
 	ld	a, 31			; (rows left under 31: under the HUD; none without one)
 	add	hl, de
 	or	a, a
@@ -1154,6 +1156,7 @@ b__rs_expand:
 	ld	bc, 320
 	ldir
 	pop	hl
+b_Lex_next:
 .Lex_next:
 	inc	ix
 	ld	a, (r_rows)
@@ -1164,6 +1167,22 @@ b__rs_expand:
 	ret
 
 .Lex_hudrow:
+	; (each screen row its own HUD row: from the runs, each pixel written once)
+	ld	a, (_rs_hruns_ok)
+	or	a, a
+	jr	z, .Lex_hudold
+	ld	(r_srow), hl
+	ld	a, (ix+0)
+	ld	(r_sky), a
+	call	t_r_hudrow
+	ld	hl, (r_srow)
+	call	t_r_hudrow
+	ld	hl, (r_srow)
+	ld	bc, RW
+	add	hl, bc
+	ld	iy, r_hudlim
+	jr	.Lex_next
+.Lex_hudold:
 	push	de
 	ld	de, r_line
 	ld	c, (ix+0)
@@ -1189,7 +1208,7 @@ b__rs_expand:
 	ld	bc, 640
 	ldir
 	pop	hl
-	jr	.Lex_next
+	jp	t_Lex_next
 
 ; b pairs of pixels from hl doubled to de (0: c, the row's sky); hl and de after them (flash/rsf.s has it too)
 b_r_double:
@@ -3115,4 +3134,180 @@ b__rs_rle:
 	exx
 	jr	.Lrl_run
 .Lrl_done:
+	ret
+
+; ------------------------------------------------------------------------------------------------- the HUD's rows
+; (rs_expand: a screen row under the HUD written once, from the HUD layer's runs (rs_hruns: pairs see-through,
+; drawn, each row's adding up to HUD_W) and the world's row doubled; r_odd: the column at the second half of hl's
+; pixel; r_sky the row's sky)
+
+; a screen row of the HUD's: the world's row (hl, in rbuf) doubled where the HUD (r_hud, its runs at r_hrun) lets
+; it through, the HUD's pixels elsewhere; de the screen row, after it at the end; r_hud and r_hrun on to the next
+b_r_hudrow:
+	xor	a, a
+	ld	(r_odd), a
+	ld	a, HUD_X
+	call	t_r_cols
+	ld	iy, (r_hrun)
+	ld	a, HUD_W
+	ld	(r_left), a
+.Lhr_run:
+	ld	a, (iy+0)
+	call	t_r_cols		; the see-through: the world
+	push	hl
+	ld	hl, (r_hud)
+	ld	bc, 0
+	ld	c, (iy+0)
+	add	hl, bc
+	ld	c, (iy+1)		; the HUD's own
+	inc	c
+	dec	c
+	jr	z, .Lhr_none
+	ldir
+.Lhr_none:
+	ld	(r_hud), hl
+	pop	hl
+	ld	a, (iy+1)
+	call	t_r_skip		; (the world under them passed by)
+	ld	a, (r_left)
+	sub	a, (iy+0)
+	sub	a, (iy+1)
+	ld	(r_left), a
+	lea	iy, iy+2
+	jr	nz, .Lhr_run
+	ld	(r_hrun), iy
+	ld	a, 320 - HUD_X - HUD_W
+	jp	t_r_cols
+
+; a columns of the world (0..255) to de, doubled from hl (0: the sky); hl and de after them
+b_r_cols:
+	or	a, a
+	ret	z
+	ld	b, a
+	ld	a, (r_sky)
+	ld	c, a
+	ld	a, (r_odd)
+	or	a, a
+	jr	z, .Lrc_even
+	xor	a, a
+	ld	(r_odd), a
+	ld	a, (hl)			; the second half of hl's pixel
+	inc	hl
+	or	a, a
+	jr	nz, .Lrc_a
+	ld	a, c
+.Lrc_a:
+	ld	(de), a
+	inc	de
+	dec	b
+	ret	z
+.Lrc_even:
+	srl	b			; whole pixels; carry: the first half of one after them
+	jr	nc, .Lrc_whole
+	ld	a, 1
+	ld	(r_odd), a
+	inc	b
+	dec	b
+	call	nz, t_r_px
+	ld	a, (hl)			; (hl stays on that pixel)
+	or	a, a
+	jr	nz, .Lrc_b
+	ld	a, c
+.Lrc_b:
+	ld	(de), a
+	inc	de
+	ret
+.Lrc_whole:
+	inc	b
+	dec	b
+	ret	z
+	jp	t_r_px
+
+; b pixels from hl doubled to de (0: c, the sky)
+b_r_px:
+	ld	a, (hl)
+	inc	hl
+	or	a, a
+	jr	nz, .Lrp_a
+	ld	a, c
+.Lrp_a:
+	ld	(de), a
+	inc	de
+	ld	(de), a
+	inc	de
+	djnz	b_r_px
+	ret
+
+; a columns of the world passed by (hl on, r_odd), none written
+b_r_skip:
+	ld	b, a
+	ld	a, (r_odd)
+	add	a, b			; columns from the start of hl's pixel
+	srl	a			; whole pixels; carry: half into the next
+	ld	b, a
+	ld	a, 0
+	rla
+	ld	(r_odd), a
+	push	de
+	ld	de, 0
+	ld	e, b
+	add	hl, de
+	pop	de
+	ret
+
+; uint8_t *rs_runs_of(const uint8_t *h, uint8_t *o, uint8_t rows): the HUD layer's rows (h, HUD_W each) as runs
+; into o: pairs (see-through, drawn), each row's adding up to HUD_W; after them (render.c makes sure they fit)
+b__rs_runs_of:
+	ld	iy, 0
+	add	iy, sp
+	ld	hl, (iy+3)
+	ld	de, (iy+6)
+	ld	a, (iy+9)
+	ld	(r_left), a		; rows left
+.Lru_row:
+	ld	b, HUD_W		; pixels left in the row
+.Lru_pair:
+	ld	c, 0
+.Lru_t:
+	ld	a, (hl)
+	or	a, a
+	jr	nz, .Lru_tend
+	inc	hl
+	inc	c
+	djnz	.Lru_t
+	; (the row ends see-through)
+	ld	a, c
+	ld	(de), a
+	inc	de
+	xor	a, a
+	ld	(de), a
+	inc	de
+	jr	.Lru_next
+.Lru_tend:
+	ld	a, c
+	ld	(de), a
+	inc	de
+	ld	c, 0
+.Lru_n:
+	ld	a, (hl)
+	or	a, a
+	jr	z, .Lru_nend
+	inc	hl
+	inc	c
+	djnz	.Lru_n
+	ld	a, c
+	ld	(de), a
+	inc	de
+	jr	.Lru_next
+.Lru_nend:
+	ld	a, c
+	ld	(de), a
+	inc	de
+	jr	.Lru_pair
+.Lru_next:
+	ld	a, (r_left)
+	dec	a
+	ld	(r_left), a
+	jr	nz, .Lru_row
+	ex	de, hl
 	ret

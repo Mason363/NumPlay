@@ -37,6 +37,9 @@ uint8_t rs_face(uint8_t f);
 void rs_shade(uint8_t *p, const uint8_t *row, uint16_t n);
 /* a picture's row of runs (tools/pack.py rle) to q (its column 0), sw pixels; 0 see-through */
 void rs_rle(uint8_t *q, const uint8_t *p, int sw);
+/* the HUD layer's rows (h, HUD_W each) as runs into o: pairs (see-through, drawn), each row's adding up to HUD_W
+ * (at most HUD_W + 1 bytes a row); after them */
+uint8_t *rs_runs_of(const uint8_t *h, uint8_t *o, uint8_t rows);
 /* a + floor((b - a) f / 256), a and b 0..255, f 0..256 */
 int rs_lerp(int a, int b, int f);
 /* the 160 x 120 picture to the screen at 2x, 0s as the row's sky colour (sky[y]); from screen row 180 on, the HUD's

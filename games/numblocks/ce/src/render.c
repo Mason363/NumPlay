@@ -825,4 +825,19 @@ void render_init(void) {
 }
 
 /* the picture to the screen: the sky in what is not drawn, the HUD over it */
-void render_show(bool hud) { rs_expand(rbuf, scr, sky_row, hud ? hud_layer : 0); }
+/* the HUD layer's rows as runs, for rs_expand: pairs (see-through, drawn), each row's adding up to HUD_W (none
+ * when they do not fit: rs_expand then goes over each pixel) */
+uint8_t rs_hruns[1600], rs_hruns_ok, hud_changed = 1;
+static void hud_runs(void) {
+  uint8_t *o = rs_hruns;
+  rs_hruns_ok = 0;
+  for (int r = 0; r < HUD_H; r++) {
+    if (o + HUD_W + 1 > rs_hruns + sizeof rs_hruns) return;
+    o = rs_runs_of(hud_layer + r * HUD_W, o, 1);   /* (in assembly) */
+  }
+  rs_hruns_ok = 1;
+}
+void render_show(bool hud) {
+  if (hud && hud_changed) hud_runs(), hud_changed = 0;
+  rs_expand(rbuf, scr, sky_row, hud ? hud_layer : 0);
+}

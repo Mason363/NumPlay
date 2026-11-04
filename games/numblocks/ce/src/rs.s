@@ -62,6 +62,8 @@ _rs_build:	.d24	RSF_BUILD
 	.set	_rs_shade, t__rs_shade
 	.global	_rs_rle
 	.set	_rs_rle, t__rs_rle
+	.global	_rs_runs_of
+	.set	_rs_runs_of, t__rs_runs_of
 	.global	_rs_clip2
 	.set	_rs_clip2, t__rs_clip2
 	.global	_rs_face
@@ -159,6 +161,16 @@ r_hud:	.d24	0
 r_rows:	.db	0
 	.global	r_hudlim
 r_hudlim:	.db	0
+	.global	r_srow
+r_srow:	.d24	0
+	.global	r_hrun
+r_hrun:	.d24	0
+	.global	r_odd
+r_odd:	.db	0
+	.global	r_sky
+r_sky:	.db	0
+	.global	r_left
+r_left:	.db	0
 	.global	r_line
 r_line:	.ds	320
 	.global	r_line2
@@ -452,6 +464,8 @@ r_rtab:
 	.extern	_rs_cell
 	.extern	_plat_poll
 	.extern	_wexp
+	.extern	_rs_hruns
+	.extern	_rs_hruns_ok
 	.extern	_wblk
 	.extern	_wlight
 	.extern	_blk_light
