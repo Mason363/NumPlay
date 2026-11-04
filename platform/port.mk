@@ -59,18 +59,41 @@ $(PORT_OUT)/$(PORT_ID).tns: $(NS_SRC) $(PORT_ASM) $(wildcard $(NP_PLATFORM)/incl
 	@echo "NSPIRE  $@"
 else ifeq ($(TARGET),web)
 # Emscripten: the computer build (sdl/np_sdl.c) in a page; Asyncify lets the game's endless loop pause for the page.
-# A game's data in a .S file (.incbin) comes in through #embed instead: PORT_DATA = symbol:file
-WEB_DATA = $(if $(PORT_DATA),$(PORT_OUT)/data_embed.c)
+# The data files of PORT_ASM come in as C (platform/embed.py: #embed), WebAssembly having no assembler for them.
+WEB_DATA = $(if $(PORT_ASM),$(PORT_OUT)/data_embed.c)
 port: $(PORT_OUT)/$(PORT_ID).html
-$(PORT_OUT)/data_embed.c: $(lastword $(subst :, ,$(PORT_DATA)))
+$(PORT_OUT)/data_embed.c: $(PORT_ASM) $(NP_PLATFORM)/embed.py
 	@mkdir -p $(@D)
-	@printf '__attribute__((aligned(4))) const unsigned char %s[] = {\n#embed "%s"\n};\n' \
-	  '$(firstword $(subst :, ,$(PORT_DATA)))' '$(abspath $(lastword $(subst :, ,$(PORT_DATA))))' > $@
-$(PORT_OUT)/$(PORT_ID).html: $(PORT_SRC) $(WEB_DATA) $(wildcard $(NP_PLATFORM)/include/*.h) $(NP_PLATFORM)/sdl/np_sdl.c
+	$(Q) python3 $(NP_PLATFORM)/embed.py $@ $(filter -D% -I%,$(PORT_FLAGS)) $(PORT_ASM)
+$(PORT_OUT)/$(PORT_ID).html: $(PORT_SRC) $(WEB_DATA) $(wildcard $(NP_PLATFORM)/include/*.h) $(NP_PLATFORM)/sdl/np_sdl.c \
+  $(NP_PLATFORM)/sdl/shell.html
 	@mkdir -p $(@D)
 	$(Q) emcc $(PORT_CFLAGS) -g0 -O2 --use-port=sdl3 -sASYNCIFY -sALLOW_MEMORY_GROWTH -sENVIRONMENT=web \
+	  --shell-file $(NP_PLATFORM)/sdl/shell.html \
 	  $(PORT_SRC) $(WEB_DATA) $(NP_PLATFORM)/sdl/np_sdl.c $(PORT_COMMON) -o $@
 	@echo "WEB     $@"
+else ifeq ($(TARGET),casio-cg)
+# the fx-CG50 / Graph 90+E: GCC for sh3eb-elf and libfxcg (FXCG: their folder, see platform/casio-cg/README.md)
+FXCG ?= $(HOME)/Documents/Assets/toolchains/casio
+CG_PATH = $(FXCG)/sh3eb/bin
+CG_DIR = $(PORT_OUT)/$(PORT_ID)
+CG_SRC = $(PORT_SRC) $(NP_PLATFORM)/casio-cg/np_casio_cg.c $(PORT_COMMON)
+CG_LIBC = $(FXCG)/newlib/sh-elf
+CG_FLAGS = $(PORT_CFLAGS) -Os -mb -m4a-nofpu -mhitachi -nostdlib -ffunction-sections -fdata-sections \
+  -isystem $(CG_LIBC)/include -idirafter $(FXCG)/libfxcg/include
+port: $(PORT_OUT)/$(PORT_ID).g3a
+$(PORT_OUT)/$(PORT_ID).g3a: $(CG_SRC) $(PORT_ASM) $(wildcard $(NP_PLATFORM)/include/*.h) $(NP_PLATFORM)/casio-cg/addin.ld \
+  $(NP_PLATFORM)/casio-cg/g3a.py
+	@mkdir -p $(CG_DIR)
+	$(Q) n=0; objs=; for f in $(CG_SRC) $(PORT_ASM); do n=$$((n+1)); objs="$$objs $(CG_DIR)/f$$n.o"; \
+	  PATH="$(CG_PATH):$$PATH" sh3eb-elf-gcc $(CG_FLAGS) -c $$f -o $(CG_DIR)/f$$n.o || exit 1; \
+	  case $$f in *.S) PATH="$(CG_PATH):$$PATH" sh3eb-elf-objcopy --prefix-symbols=_ $(CG_DIR)/f$$n.o;; esac; done; \
+	  PATH="$(CG_PATH):$$PATH" sh3eb-elf-gcc -mb -m4a-nofpu -mhitachi -nostdlib -T$(NP_PLATFORM)/casio-cg/addin.ld \
+	  $$objs -Wl,--gc-sections -Wl,-u,initialize -L$(CG_LIBC)/lib -L$(FXCG)/sdk/lib -lc -lm -lgcc -lfxcg -lc -lgcc \
+	  -o $(CG_DIR)/$(PORT_ID).elf
+	$(Q) PATH="$(CG_PATH):$$PATH" sh3eb-elf-objcopy -O binary -R .ilram $(CG_DIR)/$(PORT_ID).elf $(CG_DIR)/$(PORT_ID).bin
+	$(Q) python3 $(NP_PLATFORM)/casio-cg/g3a.py $(CG_DIR)/$(PORT_ID).bin $@ --name "$(PORT_NAME)" --icon src/icon.png
+	@echo "CASIO   $@"
 else
 port:
 	@echo "TARGET=$(TARGET): not a target yet (platform/README.md lists them)"; exit 1

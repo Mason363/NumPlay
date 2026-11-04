@@ -91,7 +91,9 @@ static void script_shots(uint64_t now) {
 /* the RAM after a game's own (the NumWorks gives a game what its software leaves): 256 KB here */
 #define NP_HEAP_SIZE (256 * 1024)
 #if defined(__EMSCRIPTEN__)
-/* (WebAssembly has no labels around a block: the few games that use _heap_start don't build for the web yet) */
+/* (WebAssembly: two labels in one block of the module's data) */
+__asm__(".section .bss.np_heap,\"\",@\n.p2align 4\n.globl _heap_start\n_heap_start:\n.skip 262144\n.size _heap_start, 262144\n"
+        ".globl _heap_end\n_heap_end:\n.skip 16\n.size _heap_end, 16\n");
 #elif defined(__APPLE__)
 __asm__(".data\n.p2align 4\n.globl __heap_start\n__heap_start:\n.space 262144\n.globl __heap_end\n__heap_end:\n");
 #else
