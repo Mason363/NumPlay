@@ -101,8 +101,8 @@ static int play(const char *s, const char *film, int trace) {
     while (n--) {
       step(in), t++;
       if (trace && (!(t % trace) || dead || won))
-        printf("%4d x %6.1f y %6.1f vx %5.1f vy %5.1f%s%s%s\n", t, hx / 256.0, hy / 256.0, vx * 60 / 256.0,
-               vy * 60 / 256.0, ground ? " ground" : "", dead ? " DEAD" : "", won ? " DOOR" : "");
+        printf("%4d x %6.1f y %6.1f vx %5.1f vy %5.1f size %dx%d%s%s%s\n", t, hx / 256.0, hy / 256.0, vx * 60 / 256.0,
+               vy * 60 / 256.0, hw, hh, ground ? " ground" : "", dead ? " DEAD" : "", won ? " DOOR" : "");
       if (film && !(t & 1)) {
         draw();
         snprintf(path, sizeof path, "%s/f_%04d.ppm", film, t / 2);
@@ -131,7 +131,7 @@ static struct {
 } vars[] = {
 #define V(x) {&(x), sizeof(x)}
   V(ob), V(st), V(rule), V(no), V(ns), V(nr), V(gcol), V(cnt), V(at_), V(hx), V(hy), V(vx), V(vy), V(hw), V(hh),
-  V(hsx), V(hsy), V(tsx), V(tsy), V(hgl), V(run), V(jumpv), V(maxup), V(maxdown), V(back), V(downjump), V(dir),
+  V(hsx), V(hsy), V(tsx), V(tsy), V(hgl), V(shape), V(run), V(jumpv), V(maxup), V(maxdown), V(back), V(downjump), V(dir),
   V(slide), V(pushx), V(gx), V(gy), V(keyev), V(face), V(ground), V(coyote), V(jumping), V(anim), V(dead), V(won),
   V(frozen), V(born), V(started), V(flapped), V(held_in), V(frame), V(shake), V(shake_n), V(modes), V(waiting),
 };

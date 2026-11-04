@@ -2,7 +2,7 @@
 #ifndef MB_DATA_H
 #define MB_DATA_H
 #define LEVEL_COUNT 596
-#define LEVEL_MAX_BYTES 3104
+#define LEVEL_MAX_BYTES 3456
 #define MODE_COUNT 4
 #define MODE_FIRST {0, 320, 404, 488, 596}
 #define PIC_BG 0

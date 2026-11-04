@@ -60,7 +60,7 @@ void eadk_display_pull_rect(eadk_rect_t r, eadk_color_t *px) {
     }
 }
 /* the LCD shows its memory as it is drawn (as the NumWorks's does): no wait, every frame counts on the CE */
-bool eadk_display_wait_for_vblank(void) { return true; }
+__attribute__((noinline)) bool eadk_display_wait_for_vblank(void) { return true; } /* (kept: tools/ce_emu counts frames by it) */
 
 /* the NumWorks keys on the CE keypad: (group, bit) for each. 2nd is OK, next to the arrows like the NumWorks's,
  * and enter is EXE, at the bottom right like it */

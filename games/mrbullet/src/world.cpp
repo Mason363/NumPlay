@@ -141,6 +141,14 @@ extern "C" bool world_poly(int b, const float *xy, int n, const WFix *f) {
   b2PolygonShape p;
   p.Set(v, n);
   if (p.m_count < 3) return false;
+  /* (and anything else it made that box of: a point of it outside the piece's points) */
+  b2AABB box;
+  box.lowerBound = box.upperBound = v[0];
+  for (int i = 1; i < n; i++) box.lowerBound = b2Min(box.lowerBound, v[i]), box.upperBound = b2Max(box.upperBound, v[i]);
+  for (int i = 0; i < p.m_count; i++)
+    if (p.m_vertices[i].x < box.lowerBound.x - U || p.m_vertices[i].x > box.upperBound.x + U ||
+        p.m_vertices[i].y < box.lowerBound.y - U || p.m_vertices[i].y > box.upperBound.y + U)
+      return false;
   return add_shape(b, &p, f);
 }
 
@@ -150,8 +158,8 @@ extern "C" bool world_chain(int b, float *xy, int n, const WFix *f) {
   int m = 0;
   for (int i = 0; i < n; i++) {
     b2Vec2 p(xy[2 * i] * U, -xy[2 * i + 1] * U);
-    /* (the rounded corners' points 3 units apart at most: fewer edges, each a box in the broad phase) */
-    if (m && b2DistanceSquared(p, v[m - 1]) < 9.0f * U * U) continue;
+    /* (points closer than a unit: one) */
+    if (m && b2DistanceSquared(p, v[m - 1]) < 1.0f * U * U) continue;
     v[m++] = p;
   }
   while (m > 3 && b2DistanceSquared(v[0], v[m - 1]) < 0.25f * U * U) m--;
@@ -357,6 +365,25 @@ extern "C" int world_query(float x0, float y0, float x1, float y1, int *out, int
   box.upperBound = b2Vec2(fmaxf(x0, x1) * U, -fminf(y0, y1) * U);
   world->QueryAABB(&q, box);
   return q.n;
+}
+
+extern "C" float world_nearest(int b, float x, float y, float *nx, float *ny) {
+  /* the nearest point of the body's shapes' boxes to (x, y), and how far it is */
+  float best = 1e9f;
+  *nx = x, *ny = y;
+  if (!world_alive(b)) return best;
+  b2Vec2 p = M(x, y);
+  for (b2Fixture *f = bodies[b]->GetFixtureList(); f; f = f->GetNext()) {
+    if (f->IsSensor()) continue;
+    for (int c = 0; c < f->GetShape()->GetChildCount(); c++) {
+      b2AABB box;
+      f->GetShape()->ComputeAABB(&box, bodies[b]->GetTransform(), c);
+      b2Vec2 q = b2Clamp(p, box.lowerBound, box.upperBound);
+      float d = b2Distance(p, q) / U;
+      if (d < best) best = d, *nx = q.x / U, *ny = -q.y / U;
+    }
+  }
+  return best;
 }
 
 extern "C" int world_bodies(void) { return world ? world->GetBodyCount() : 0; }
