@@ -1,0 +1,5 @@
+bin/
+build/
+obj/
+last.png
+*.sav
