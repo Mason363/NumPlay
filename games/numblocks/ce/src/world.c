@@ -542,8 +542,11 @@ bool world_busy(void) {
 }
 
 bool world_behind(void) {
-  /* (more rows to make than the view's edge can wait for: it sees 13 blocks at most, the window holds 16) */
-  return want_x - win_x > 3 || win_x - want_x > 3 || want_z - win_z > 3 || win_z - want_z > 3;
+  /* (more rows to make than the view's edge can wait for: the window holds 15 blocks ahead, the view sees
+   * view_dist + 1, 9 at 8, 11 at 10) */
+  extern int view_dist;
+  int k = 13 - view_dist;
+  return want_x - win_x > k || win_x - want_x > k || want_z - win_z > k || win_z - want_z > k;
 }
 
 /* one row (or level) of the window made: the side the player went towards */
