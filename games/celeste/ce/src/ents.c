@@ -593,6 +593,8 @@ static void zip_moveto(Ent *e, bool back, f32 pct) {   /* Platform.MoveTo(Vector
   plat_move_h(e, f_sub(x, f_add(f_int(e->x), e->remx)));
   plat_move_v(e, f_sub(y, f_add(f_int(e->y), e->remy)));
 }
+#define ZIP_PATH 201   /* (its path: ropes and cogs, an entity of its own behind it) */
+#define F_4096 0x45800000ul
 static void zip_update(Ent *e) {
   shake_update(e);
   e->liftx = e->lifty = 0;
@@ -609,6 +611,7 @@ static void zip_update(Ent *e) {
       break;
     case 2:   /* there in half a second, Ease.SineIn */
       zip_moveto(e, false, zip_out[e->t0]);
+      e->a1 = (int16_t)f_round(f_mul(zip_out[e->t0], F_4096));   /* (its percent, in 4096ths) */
       if (++e->t0 >= ZIP_OUT_N) {
         shake_start(e, TIM(.2f));
         level_shake(TIM(.3f) / DTU);
@@ -621,6 +624,7 @@ static void zip_update(Ent *e) {
       break;
     case 4:   /* back in two seconds */
       zip_moveto(e, true, zip_back[e->t0]);
+      e->a1 = (int16_t)(4096 - f_round(f_mul(zip_back[e->t0], F_4096)));
       if (++e->t0 >= ZIP_BACK_N) {
         shake_start(e, TIM(.2f));
         e->a0 = 1, e->t1 = TIM(.5f), st = 5;
@@ -633,10 +637,74 @@ static void zip_update(Ent *e) {
   }
   e->sub = (uint8_t)((e->sub & 0x80) | st);
 }
+/* ZipMover.Render: black inside, cogs turning in it (12 frames; every other one the other way, at half brightness;
+ * those on the sides cut so they stay inside), the block's edges, the light on top. Its pictures: the record's values
+ * (tools/pack_ce.py zip_sprites). a1: its percent (4096ths) */
 static void zip_render(Ent *e) {
-  int x = e->x + e->a2, y = e->y + e->a3, w = e->hw, h = e->hh;
+  int x = e->x + e->a2, y = e->y + e->a3, w = e->hw, h = e->hh, p = e->a1;
   draw_rect(x + 1, y + 1, w - 2, h - 2, BLACK);
-  tiles_render(e, 0, w / 8, rec_nvals(e->rec), e->a2, e->a3);
+  int blk = rec_val(e->rec, 0), inner = rec_val(e->rec, 2);
+  int c0 = g_clip_x0, c1 = g_clip_x1, r0 = g_clip_y0, r1 = g_clip_y1;
+  g_clip_x0 = imax(c0, x + 1 - g_camx), g_clip_x1 = imin(c1, x + w - 1 - g_camx);
+  g_clip_y0 = imax(r0, y + 1 - g_camy), g_clip_y1 = imin(r1, y + h - 1 - g_camy);
+  if (g_clip_x0 < g_clip_x1 && g_clip_y0 < g_clip_y1) {
+    int num = 1, k = 0;
+    for (int i = 4; i <= h - 4; i += 8) {
+      int num3 = num;
+      for (int j = 4; j <= w - 4; j += 8, k++) {
+        /* frame: (pi / 3 a cog + num percent 4 pi) / (pi / 2), its fraction in twelfths */
+        int f = fdiv(8 * k * 4096 + num * 96 * p, 4096) % 12;
+        if (f < 0) f += 12;
+        int lx = j <= 4 ? j - 5 : j >= w - 4 ? j - 7 : j - 6, ly = i <= 4 ? i - 5 : i >= h - 4 ? i - 7 : i - 6;
+        draw_sprite(csprite(inner + f + (num < 0 ? 12 : 0)), x + lx, y + ly, 0);
+        num = -num;
+      }
+      if (num3 == num) num = -num;
+    }
+  }
+  g_clip_x0 = c0, g_clip_x1 = c1, g_clip_y0 = r0, g_clip_y1 = r1;
+  for (int k = 0; k * 8 < w; k++)
+    for (int l = 0; l * 8 < h; l++) {
+      int a = k == 0 ? 0 : k * 8 + 8 != w ? 1 : 2, b = l == 0 ? 0 : l * 8 + 8 != h ? 1 : 2;
+      if (a != 1 || b != 1) draw_sprite(csprite(blk + a + 3 * b), x + k * 8, y + l * 8, 0);
+    }
+  draw_sprite(csprite(rec_val(e->rec, 1) + e->a0), x + w / 2 - 4, y, 0);
+}
+/* ZipMoverPathRenderer (depth 5000): the two ropes with their teeth moving along them, a cog at each end turning a
+ * full turn as it goes; all once more in black a pixel lower first, and a black frame round the block after */
+static void zippath_lines(Ent *z, int fx, int fy, int tx, int ty, int off, bool black) {
+  int dx = tx - fx, dy = ty - fy, len = isqrt24(dx * dx + dy * dy);
+  int ux = len ? dx * 256 / len : 0, uy = len ? dy * 256 / len : 0;   /* (1/256 px) */
+  int px = -uy, py = ux;   /* Perpendicular */
+  int ax = fx * 256 + px * 3, ay = (fy + off) * 256 + py * 3, bx = fx * 256 - px * 4, by = (fy + off) * 256 - py * 4;
+  int ex = (tx - fx) * 256, ey = (ty - fy) * 256;
+  uint8_t rope = black ? BLACK : ROPE, light = black ? BLACK : ROPE_LIGHT;
+#define PX(v) (((v) + 128) >> 8)
+  draw_line(PX(ax), PX(ay), PX(ax + ex), PX(ay + ey), rope);
+  draw_line(PX(bx), PX(by), PX(bx + ex), PX(by + ey), rope);
+  /* the teeth: 2 px every 4 along each, starting 4 - (percent 8 pi) % 4 in */
+  int n = 1024 - (int)((long)z->a1 * 1608 / 1024 % 1024);   /* (1/256 px) */
+  for (; n < len * 256; n += 1024) {
+    int sx = ax + px + (ux * n >> 8), sy = ay + py + (uy * n >> 8);
+    int qx = bx + ex - (ux * n >> 8), qy = by + ey - (uy * n >> 8);
+    draw_line(PX(sx), PX(sy), PX(sx + ux * 2), PX(sy + uy * 2), light);
+    draw_line(PX(qx), PX(qy), PX(qx - ux * 2), PX(qy - uy * 2), light);
+  }
+#undef PX
+  int cog = rec_val(z->rec, 3) + ((z->a1 + 64) >> 7 & 31) + (black ? 32 : 0);
+  draw_sprite(csprite(cog), fx - 9, fy + off - 9, 0);
+  draw_sprite(csprite(cog), tx - 9, ty + off - 9, 0);
+}
+static void zippath_render(Ent *e) {
+  Ent *z = e->ptr;
+  Room *rm = &g_level.rooms[z->room];
+  const uint8_t *n = rec_node(z->rec, 0);
+  int w = z->hw, h = z->hh;
+  int fx = rm->x + REC_X(z->rec) + w / 2, fy = rm->y + REC_Y(z->rec) + h / 2;
+  int tx = rm->x + S16(n) + w / 2, ty = rm->y + S16(n + 2) + h / 2;
+  zippath_lines(z, fx, fy, tx, ty, 1, true);
+  zippath_lines(z, fx, fy, tx, ty, 0, false);
+  draw_rect(z->x + z->a2 - 1, z->y + z->a3 - 1, w + 2, h + 2, BLACK);
 }
 
 /* ---------------------------------------------------------------- triggers */
@@ -746,7 +814,17 @@ static Ent *spawn(const uint8_t *r, int slot, bool trigger) {
     case ET_dashBlock: box(e, w, h, 0, 0), e->flags |= EF_SOLID, e->depth = -12999; break;
     case ET_fakeWall: box(e, w, h, 0, 0), e->flags &= ~EF_COLLIDABLE, e->depth = -13000, e->t0 = 256; break;
     case ET_coverupWall: box(e, w, h, 0, 0), e->flags &= ~EF_COLLIDABLE, e->depth = -13000, e->t0 = 256; break;
-    case ET_zipMover: box(e, w, h, 0, 0), e->flags |= EF_SOLID, e->depth = -9999, e->a0 = 1; break;
+    case ET_zipMover: {
+      box(e, w, h, 0, 0), e->flags |= EF_SOLID, e->depth = -9999, e->a0 = 1;
+      Ent *p = ent_new(ZIP_PATH, x, y);   /* (its box round both ends, for leaving it out when far) */
+      if (p) {
+        const uint8_t *n = rec_node(r, 0);
+        int tx = rm->x + S16(n), ty = rm->y + S16(n + 2);
+        p->flags = EF_VISIBLE, p->room = (uint8_t)slot, p->depth = 5000, p->ptr = e;
+        box(p, iabs(tx - x) + w, iabs(ty - y) + h, imin(tx, x) - x, imin(ty, y) - y);
+      }
+      break;
+    }
     default:
       e->flags = EF_ACTIVE | EF_VISIBLE;   /* scenery not drawn yet */
       e->type = 100;
@@ -860,6 +938,7 @@ static void ent_draw(Ent *e) {
     case ET_fallingBlock: case ET_dashBlock: block_render(e); break;
     case ET_fakeWall: case ET_coverupWall: fakewall_render(e); break;
     case ET_zipMover: zip_render(e); break;
+    case ZIP_PATH: zippath_render(e); break;
     case 200: {
       const uint8_t *s = sprite(anim_sprite(e));
       draw_sprite(s, e->x - s[0] / 2, e->y - s[1] / 2, 0);

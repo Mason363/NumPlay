@@ -204,11 +204,14 @@ void draw_pixel(int x, int y, uint8_t c) {
   if (dry_box(x, y, x + 1, y + 1, c)) return;
   if (x >= g_clip_x0 && y >= g_clip_y0 && x < g_clip_x1 && y < g_clip_y1) *FB(x, y) = c;
 }
-void draw_line(int x0, int y0, int x1, int y1, uint8_t c) {
+void draw_line(int x0, int y0, int x1, int y1, uint8_t c) {   /* (x1, y1) left out */
+  x0 -= g_camx, y0 -= g_camy, x1 -= g_camx, y1 -= g_camy;
+  if (dry_box(imin(x0, x1), imin(y0, y1), imax(x0, x1) + 1, imax(y0, y1) + 1, c + (unsigned)(x1 - x0) * 5 + (unsigned)(y1 - y0)))
+    return;
+  if (imax(x0, x1) < g_clip_x0 || imin(x0, x1) >= g_clip_x1 || imax(y0, y1) < g_clip_y0 || imin(y0, y1) >= g_clip_y1) return;
   int dx = iabs(x1 - x0), dy = -iabs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, err = dx + dy;
-  for (int guard = 0; guard < 2000; guard++) {
-    draw_pixel(x0, y0, c);
-    if (x0 == x1 && y0 == y1) break;
+  while (x0 != x1 || y0 != y1) {
+    if (x0 >= g_clip_x0 && y0 >= g_clip_y0 && x0 < g_clip_x1 && y0 < g_clip_y1) *FB(x0, y0) = c;
     int e2 = 2 * err;
     if (e2 >= dy) err += dy, x0 += sx;
     if (e2 <= dx) err += dx, y0 += sy;

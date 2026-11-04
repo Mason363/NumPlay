@@ -9,6 +9,7 @@ lives in archived appvars the game reads in place: CELG0.. (what every chapter d
 tiles, rooms, decals and background). An appvar holds 64 KB at most, so a blob is laid out over several of them, and
 its pointers are 3 bytes: the offset in the appvar, then which one (src/data.c)."""
 import collections
+import math
 import os
 import random
 import re
@@ -30,6 +31,7 @@ GEN_H = os.path.join(HERE, "..", "src", "gen.h")
 PART_MAX = 65000        # bytes of an appvar
 COMMON = 96             # colours every chapter shares (indices 0 .. COMMON - 1)
 HAIR, HAIR_DARK, WHITE, BLACK = 1, 2, 3, 4   # fixed colours (HAIR and HAIR_DARK change as Madeline's hair does)
+ROPE, ROPE_LIGHT = 5, 6   # ZipMover's ropes (663931) and their teeth (9b6157), drawn as lines
 MARGIN = 4              # tiles kept around each room (transitions show the next one's edges)
 FORMAT = 1              # bumped when the layout changes (the game checks it)
 
@@ -498,7 +500,8 @@ class Common:
         counts = collections.Counter()
         for k, img in self.images.items():
             count_colors(img, counts)
-        fixed = [0, 0x5466, 0x2C33, 0x7FFF, 0x0000]   # 0 black, HAIR, HAIR_DARK, white, black for the art
+        fixed = [0, 0x5466, 0x2C33, 0x7FFF, 0x0000,   # 0 black, HAIR, HAIR_DARK, white, black for the art
+                 int(c15(np.array([0x66, 0x39, 0x31]))), int(c15(np.array([0x9B, 0x61, 0x57])))]   # ROPE, ROPE_LIGHT
         extra = kmeans(counts, set(fixed), COMMON - len(fixed))
         cols = fixed + extra
         print(f"common: {len(counts)} colours -> {len(cols)}")
@@ -543,6 +546,7 @@ class Common:
         h.ref(table).ref(anims).ref(meta).ref(hair)
         H.append(f"#define COMMON {COMMON}")
         H.append(f"#define HAIR {HAIR}\n#define HAIR_DARK {HAIR_DARK}\n#define WHITE {WHITE}\n#define BLACK {BLACK}")
+        H.append(f"#define ROPE {ROPE}\n#define ROPE_LIGHT {ROPE_LIGHT}")
         return self.blob.write()
 
 
@@ -820,6 +824,7 @@ class Chapter:
         self.decal_ids = {}
         for p in ent_paths:
             self.sprites.add(p, pal.map(self.image(p)))
+        self.zip_ids = self.zip_sprites(pal)
         # the backgrounds' 16 colours (chapter palette indices), then each room's picture: 4 bits a pixel (the left
         # one low), zx0 packed; rooms with the same picture share it
         bgpal = Palette([0] + bgcols, reserved=False)
@@ -884,7 +889,53 @@ class Chapter:
         out = []
         for d in ("up", "down", "left", "right"):
             out += [s.path for s in family("danger/spikes/%s_%s" % (st["spike"], d))]
+        out += ["objects/zipmover/block", "objects/zipmover/cog"]
+        out += [s.path for s in family("objects/zipmover/light") + family("objects/zipmover/innercog")]
         return out
+
+    def zip_sprites(self, pal):
+        """ZipMover's pictures (src/ents.c zip_render): the block's 8 x 8 parts (part (a, b) at a + 3 b), the light's 4
+        frames, the 12 inner cogs and the same at half brightness (Color.White * 0.5 over the black inside), and the cog
+        turned 32 ways round (18 x 18, its middle at (9, 9): point sampled, as the game draws it turned), then the same
+        in black (its shadow, a pixel lower). Their first ids: [block, light, inner, cog], each zip mover's values."""
+        S = self.sprites
+        blk = self.image("objects/zipmover/block")
+        ids = [S.add(("zip block", 0), pal.map(blk[0:8, 0:8]))]
+        for k in range(1, 9):
+            a, b = k % 3, k // 3
+            assert S.add(("zip block", k), pal.map(blk[b * 8:b * 8 + 8, a * 8:a * 8 + 8])) == ids[0] + k
+        lights = family("objects/zipmover/light")
+        inner = family("objects/zipmover/innercog")
+        assert len(lights) == 4 and len(inner) == 12
+        ids.append(S.add(("zip light", 0), pal.map(lights[0].image())))
+        for k in range(1, 4):
+            assert S.add(("zip light", k), pal.map(lights[k].image())) == ids[1] + k
+        ids.append(S.add(("zip inner", 0), pal.map(inner[0].image())))
+        for k in range(1, 24):
+            img = inner[k % 12].image()
+            if k >= 12:
+                img = img.copy()
+                img[..., :3] //= 2
+            assert S.add(("zip inner", k), pal.map(img)) == ids[2] + k
+        cog = self.image("objects/zipmover/cog")
+        ch, cw = cog.shape[:2]
+        for k in range(64):
+            ang = (k % 32) * math.pi * 2 / 32
+            c, s_ = math.cos(ang), math.sin(ang)
+            out = np.zeros((18, 18, 4), np.uint8)
+            for y in range(18):
+                for x in range(18):
+                    dx, dy = x + 0.5 - 9, y + 0.5 - 9
+                    sx, sy = math.floor(c * dx + s_ * dy + cw / 2), math.floor(-s_ * dx + c * dy + ch / 2)
+                    if 0 <= sx < cw and 0 <= sy < ch:
+                        out[y, x] = cog[sy, sx]
+            if k >= 32:
+                out[..., :3] = 0
+            i = S.add(("zip cog", k), pal.map(out))
+            if k == 0:
+                ids.append(i)
+            assert i == ids[3] + k
+        return ids
 
     def room(self, r, cells):
         ROOM_FLAGS = [("dark", 1), ("space", 2), ("underwater", 4), ("disableDownTransition", 8), ("whisper", 16)]
@@ -1089,7 +1140,7 @@ class Chapter:
                 flags |= 4 if blend else 0
             vals += self.block_tiles(r, x, y, w, h, c, blend)
         elif n == "zipMover":
-            pass
+            vals += self.zip_ids
         elif n in ("strawberry", "goldenBerry"):
             flags |= 1 if a("winged", False) else 0
             flags |= 2 if a("moon", False) else 0

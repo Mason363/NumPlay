@@ -134,6 +134,8 @@ unsigned plat_keys(void) {
     for (int i = 0; i < 320 * 180; i++) nt += g_bg8[i] != 0;
     { int cnt[256] = {0}; for (int i = 0; i < g_nents; i++) if (g_ents[i].type != 255) cnt[g_ents[i].type]++;
       printf("ents:"); for (int t = 0; t < 256; t++) if (cnt[t]) printf(" %d:%d", t, cnt[t]); printf("\n"); }
+    for (int i = 0; i < g_nents; i++)
+      if (g_ents[i].type == ET_zipMover) printf("zip at %d %d (%d x %d)\n", g_ents[i].x - rm->x, g_ents[i].y - rm->y, g_ents[i].hw, g_ents[i].hh);
     printf("room %s tw %d th %d ntiles %d fg %d bg %d bg4 %d hasbg %d map %d %d %d\n", level_room_name(), rm->tw, rm->th,
            rm->ntiles, nf, nb, nt, g_has_bg, g_bg_map[0], g_bg_map[1], g_bg_map[2]);
   }
