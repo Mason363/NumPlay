@@ -31,6 +31,20 @@ static void run_ticks(int n, uint32_t keys) {
 }
 /* every hazard respawn point of every room (the gates' and the hazard triggers'): ground under it, in the room; and
  * whether the room has hazards at all */
+/* (a gate no gate leads to (or one of the other part might): its marker is never where the Knight comes back) */
+static bool gate_entered(int r, const char *gate) {
+  bool found = false;
+  for (int q = 0; q < NUM_ROOMS && !found; q++) {
+    if (!room_load(q)) continue;
+    int n;
+    const Ent *es = room_ents(&n);
+    for (int i = 0; i < n && !found; i++)
+      found = es[i].type == ENT_GATE && (es[i].a == r || (es[i].a & 0x8000)) && !strcmp(str_at(es[i].s1), gate);
+  }
+  room_load(r);
+  return found;
+}
+
 static int markers_test(void) {
   int bad = 0;
   for (int r = 0; r < NUM_ROOMS; r++) {
@@ -54,10 +68,14 @@ static int markers_test(void) {
       float x = es[m].x0, y = es[m].y0;
       bool ground = phys_ray(x, y, 0, -1, 50, CF_TERRAIN, &hit);
       bool in = x > 0 && x < g_room.h->w && y > 0 && y < g_room.h->h;
-      if (!ground || !in || (ground && hit.dist > 15))
-        printf("%s %s ent %d (%s) marker %d at %.2f,%.2f: %s%s (hazards in the room: %d)\n", hazards ? "BAD " : "note", room_name(r), i,
-               es[i].type == ENT_GATE ? str_at(es[i].s0) : "trigger", m, x, y, ground ? "" : "no ground below", in ? "" : " outside the room", hazards);
-      bad += hazards && (!ground || !in);
+      if (!ground || !in || (ground && hit.dist > 15)) {
+        bool used = es[i].type != ENT_GATE || gate_entered(r, str_at(es[i].s0));
+        es = room_ents(&n);
+        printf("%s %s ent %d (%s) marker %d at %.2f,%.2f: %s%s (hazards in the room: %d)%s\n", hazards && used ? "BAD " : "note",
+               room_name(r), i, es[i].type == ENT_GATE ? str_at(es[i].s0) : "trigger", m, x, y, ground ? "" : "no ground below",
+               in ? "" : " outside the room", hazards, used ? "" : ", a gate never come in by");
+        bad += hazards && used && (!ground || !in);
+      }
     }
   }
   printf("markers: %d bad\n", bad);
@@ -247,13 +265,18 @@ static int arenas_test(void) {
     printf("%s %s: won in %.1f s, %d gates shut in the fight%s\n", why[0] ? "FAIL" : "ok  ", name, t * 0.02f, shut_in_fight, why);
   }
   printf("arenas: %d, %d failing\n", total, fails);
-  return fails || !total ? 1 : 0;
+#ifdef ROOM_TOWN
+  return fails || !total ? 1 : 0;   /* (the first part has some) */
+#else
+  return fails ? 1 : 0;
+#endif
 }
 
 /* the charms (issue #138): OK changes nothing away from a bench. Resting at one: a charm equipped (its effect on:
  * Lifeblood Heart's lifeblood), none past the notches, one unequipped, one overcharmed on the fifth try and taken off
  * again; Home as one moves (inv_settle) saves it in its place, and a load brings them back */
 static int charm_fails;
+#ifdef ROOM_TOWN   /* (the first part's) */
 static void charm_check(bool ok, const char *what) {
   printf("%s charms: %s (equipped %d %d %d, notches %d of %d)\n", ok ? "ok  " : "FAIL", what, g_pd.equipped[0],
          g_pd.equipped[1], g_pd.equipped[2], g_pd.charm_slots_filled, g_pd.charm_slots);
@@ -349,6 +372,49 @@ static void station_new(int stag_at) {
   pd_set_flag(PDF_OPENED_CROSSROADS, true), pd_set_flag(PDF_OPENED_GREENPATH, true), pd_set_flag(PDF_MET_STAG, true);
   g_pd.stag_position1 = (uint8_t)(stag_at + 1);
 }
+#endif
+
+/* every way into another part of Hallownest (another app): the Knight through it, the game saved with the way he went
+ * (its room among all, its gate) and loaded again with it */
+static int cross_test(void) {
+  extern void host_save_dir(const char *d);
+  if (getenv("HKSAVES")) host_save_dir(getenv("HKSAVES"));
+  int fails = 0, total = 0;
+  for (int r = 0; r < NUM_ROOMS; r++) {
+    if (!room_load(r)) continue;
+    int n;
+    const Ent *es = room_ents(&n);
+    for (int i = 0; i < n; i++) {
+      if (es[i].type != ENT_GATE || !(es[i].a & 0x8000) || es[i].a == 0xFFFF) continue;
+      int to = es[i].a & 0x7FFF;
+      char gate[32], entry[32];
+      snprintf(gate, sizeof gate, "%s", str_at(es[i].s0));
+      snprintf(entry, sizeof entry, "%s", str_at(es[i].s1));
+      game_new();
+      save_select(0);
+      if (!game_enter_gate(r, gate)) continue;
+      run_ticks(150, 0);   /* (in, the Knight free) */
+      /* (back out the way he came: the gate's side) */
+      room_ents(&n);
+      const Ent *e = &room_ents(&n)[i];
+      int k = gate_kind_of(e);
+      uint32_t key = k == GATE_LEFT ? K_LEFT : k == GATE_RIGHT ? K_RIGHT : k == GATE_TOP ? K_JUMP : 0;
+      if (k == GATE_BOTTOM || k == GATE_TOP) g_hero.body.x = (e->x0 + e->x1) / 2, g_hero.body.y = k == GATE_BOTTOM ? e->y1 + 1 : e->y0 - 1;
+      run_ticks(200, key);
+      total++;
+      char why[200] = "";
+      if (g_pd.cross_room != to + 1 || strcmp(g_pd.cross_gate, entry)) snprintf(why, sizeof why, " not saved (%d %s)", g_pd.cross_room, g_pd.cross_gate);
+      memset(&g_pd, 0, sizeof g_pd);
+      if (!save_load(0) || g_pd.cross_room != to + 1 || strcmp(g_pd.cross_gate, entry)) strcat(why, " not in the save");
+      printf("%s cross %s %s -> room %d (part %d) by %s%s\n", why[0] ? "FAIL" : "ok  ", room_name(r), gate, to, room_part(to) + 1, entry, why);
+      fails += why[0] != 0;
+    }
+  }
+  printf("crossings: %d, %d failing\n", total, fails);
+  return fails ? 1 : 0;
+}
+
+#ifdef ROOM_TOWN   /* (the first part's) */
 static int stations_test(void) {
   if (getenv("HKSAVES")) {
     extern void host_save_dir(const char *d);
@@ -656,6 +722,7 @@ static int respawn_test(void) {
   printf("respawn: %d failing\n", respawn_fails);
   return respawn_fails ? 1 : 0;
 }
+#endif
 
 /* the ground's seams, as the calculator rounds: from many places in every room the Knight lands on the ground, then is
  * put a few float steps lower (as near as rounding leaves him), and must walk both ways where no wall stops him; and
@@ -679,6 +746,7 @@ static float ulps(float v, int n) {   /* (n float steps down, or up) */
   for (int i = 0; i < abs(n); i++) v = nextafterf(v, n < 0 ? -1e9f : 1e9f);
   return v;
 }
+
 static int seams_test(void) {
   int fails = 0, floors = 0, walls = 0;
   const Hero *h = &g_hero;
@@ -818,8 +886,11 @@ static void text_room(const char *room, float x, float y, const char *flags) {
     while (*f && *f != ',') f++;
     if (*f) f++;
   }
+  int at = -1;
   for (int r = 0; r < NUM_ROOMS; r++)
-    if (!strcmp(room_name(r), room)) game_enter(r, x, y, true);
+    if (!strcmp(room_name(r), room)) at = r;
+  if (at >= 0) game_enter(at, x, y, true);
+  else game_enter(0, 10, 10, true);   /* (a room of another part: this part's first, for the texts on top) */
 }
 static int texts_test(void) {
   g_text_audit = true;
@@ -877,6 +948,12 @@ static int texts_test(void) {
   game_new();
   menu_start();
   text_keys("menus", "_*40,O*2,_*40,B*2,_*30,D*2,_*10,O*2,_*40,O*2,_*40,O*2,_*30", true);
+  /* the note as the Knight goes into another part of Hallownest: either app named */
+  for (int k = 0; k < 2; k++) {
+    menu_start();
+    menu_cross(k);
+    text_keys(k ? "note: the way on, in the second app" : "note: the way on, in the first app", "_*40", true);
+  }
   /* the messages as the fireball and the dash are taken; a relic's notice; the charm tutorial */
   text_room("Crossroads_01", 40, 12, "");
   msg_show(MSG_FIREBALL);
@@ -919,6 +996,7 @@ static int texts_test(void) {
 
 /* each shop's first charm: bought (each row from the top, as bought until one is a charm), its lesson up as the shop
  * closes, then sent away by a key once it stops, the Knight's control given back (a shop's lesson: Input) */
+#ifdef ROOM_TOWN   /* (the first part's) */
 static int shop_charm_test(void) {
   static const struct { const char *room; float x; const char *flags; } shops[] = {
       {"Room_mapper", 17.35f, "123,149"}, {"Room_shop", 15.6f, "23,122"}, {"Room_Charm_Shop", 17.14f, "124"}};
@@ -1074,17 +1152,22 @@ static int way_test(void) {
   return fails ? 1 : 0;
 }
 
+#endif
+
 static int gates_test(const char *which) {
+#ifdef ROOM_TOWN
   if (!strcmp(which, "way")) return way_test();
-  if (!strcmp(which, "texts")) return texts_test();
-  if (!strcmp(which, "seams")) return seams_test();
-  if (!strcmp(which, "markers")) return markers_test();
-  if (!strcmp(which, "arenas")) return arenas_test();
   if (!strcmp(which, "charms")) return charms_test();
   if (!strcmp(which, "stations")) return stations_test();
   if (!strcmp(which, "shaman")) return shaman_test();
   if (!strcmp(which, "respawn")) return respawn_test();
   if (!strcmp(which, "shopcharm")) return shop_charm_test();
+#endif
+  if (!strcmp(which, "texts")) return texts_test();
+  if (!strcmp(which, "seams")) return seams_test();
+  if (!strcmp(which, "markers")) return markers_test();
+  if (!strcmp(which, "arenas")) return arenas_test();
+  if (!strcmp(which, "cross")) return cross_test();
   if (!strncmp(which, "wander:", 7)) {   /* (wander:ROOM|all:seed:ticks) */
     char room[64];
     int seed = 1, ticks = 6000;
@@ -1320,7 +1403,10 @@ int main(int argc, char **argv) {
       menu_start();
     /* (HKLOAD=slot: that save loaded, the Knight at its respawn point) */
     else if (getenv("HKLOAD")) {
-      if (!save_load(atoi(getenv("HKLOAD"))) || (getenv("HKGEO") && (g_pd.geo = atoi(getenv("HKGEO")), 0)) || !game_respawn()) {
+      /* (as the menu loads it: by the way the Knight came into this part, else at his bench, else where this part's
+       * world meets another's) */
+      if (!save_load(atoi(getenv("HKLOAD"))) || (getenv("HKGEO") && (g_pd.geo = atoi(getenv("HKGEO")), 0)) ||
+          !(game_enter_cross() || game_respawn() || game_enter_home())) {
         printf("load failed\n");
         return 1;
       }
@@ -1439,6 +1525,11 @@ int main(int argc, char **argv) {
              g_pd.trinkets[0], g_pd.trinkets[1], g_pd.trinkets[2], g_pd.trinkets[3], g_pd.charms_owned, np, g_pd.health,
              g_pd.health_blue, g_pd.mp, (int)g_pd.geo, g_pd.grubs_collected, g_pd.max_health, g_pd.heart_pieces,
              g_pd.vessel_fragments, g_pd.mp_reserve_max, g_pd.shaman, g_pd.fireball_level);
+      /* (the rooms visited and mapped, by their bits) */
+      printf("rooms:");
+      for (int i = 0; i < MAX_ROOM_BITS; i++)
+        if (g_pd.rooms_visited[i >> 3] >> (i & 7) & 1) printf(" %d%s", i, g_pd.rooms_mapped[i >> 3] >> (i & 7) & 1 ? "m" : "");
+      printf("\n");
     }
     return 0;
   }

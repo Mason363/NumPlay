@@ -11,11 +11,12 @@
 #endif
 
 #define DT 0.02f
-#define MAX_VM_OBJS 48
-#define MAX_VM_ANIMS 20   /* (its objects that animate: an animator, a wave, a fade) */   /* (tools/vm.py: MAX_OBJS, MAX_FSMS, MAX_VARS) */
-#define MAX_VM_FSMS 29
-#define MAX_VM_VARS 232
-#define MAX_MOVERS 4
+#define MAX_VM_OBJS 64
+#define MAX_VM_ANIMS 24   /* (its objects that animate: an animator, a wave, a fade) */   /* (tools/vm.py: MAX_OBJS, MAX_FSMS, MAX_VARS) */
+#define MAX_VM_FSMS 44
+#define MAX_VM_VARS 256
+#define MAX_MOVERS 8
+#define MAX_LATER 6   /* (events sent with a delay, waiting) */
 #define NONE 0xFFFF
 #define OWNER 0xFF0F
 enum { O_HERO = 0xFF00, O_HERO_LIGHT, O_DIALOGUE_MANAGER, O_DIALOGUE_TEXT, O_AREA_TITLE, O_CAMERA_PARENT, O_MAIN_CAMERA,
@@ -111,6 +112,12 @@ static struct {
   uint64_t touch, touch_was;   /* (objects whose colliders the Knight touches, this step and the one before) */
   float nail_dir, spell_dir, dmg_dir;   /* (the nail's last blow, the spell's way; the hit's: damages_enemy's direction) */
   uint8_t dmg_type;                     /* (its attackType: 0 the nail, 2 a spell) */
+  struct {   /* (SendEvent's delay: the sender, its target's operands, the event, the time left) */
+    int8_t fsm;
+    uint8_t ev;
+    const uint8_t *target;
+    float t;
+  } later[MAX_LATER];
 } vm;
 
 /* ---------------------------------------------------------------- the data (VMDEF: definitions, string tables) */
@@ -238,6 +245,7 @@ static int pd_int(int i) {
     case 22: return (int)g_pd.stag_position1 - 1;
     case 23: return g_pd.stations_opened;
     case 25: return g_pd.mender_state;
+    case 26: return g_pd.charm_slots;
     default: return 0;
   }
 }
@@ -260,6 +268,7 @@ static void pd_set_int(int i, int v) {
     case 22: g_pd.stag_position1 = (uint8_t)(v + 1); break;
     case 23: g_pd.stations_opened = (uint8_t)v; break;
     case 25: g_pd.mender_state = (uint8_t)v; break;
+    case 26: g_pd.charm_slots = (uint8_t)v; break;
   }
 }
 
@@ -559,6 +568,9 @@ static void obj_event(int o, int ev, uint16_t fsm_name) {
 
 /* events the game's own objects hear */
 static void game_event(int ev) {
+#ifdef HK_FW
+  enemies_vm_event(ev);   /* (the Mantis Lords' fight's) */
+#endif
   if (ev >= VMEV_BG_CLOSE && ev <= VMEV_BG_DESTROY) gates_event(ev - VMEV_BG_CLOSE);
   else if (ev == VMEV_NPC_TITLE_DOWN) title_npc_down();
   else if (ev == VMEV_NPC_CONVO_START) title_npc_convo_start();
@@ -689,9 +701,17 @@ static bool act(Fsm *f, const uint8_t *a, int mode) {
       Rd t = r;
       r.p += 5;
       int ev = rb(&r);
-      r.p += 2;
+      float delay = fval(f, rv(&r));
       bool every = rb(&r);
-      send(f, &t, ev);
+      if (delay >= DT) {
+        /* (later: held till then, sent as it would have been) */
+        for (int k = 0; k < MAX_LATER; k++)
+          if (!vm.later[k].target) {
+            vm.later[k].fsm = (int8_t)(f - vm.fsms), vm.later[k].ev = (uint8_t)ev, vm.later[k].target = t.p, vm.later[k].t = delay;
+            break;
+          }
+      } else
+        send(f, &t, ev);
       return !every;
     }
     case VMOP_SENDEVENTOF: {
@@ -1475,6 +1495,11 @@ static bool act(Fsm *f, const uint8_t *a, int mode) {
         case 25: hero_add_mp_charge((int)a0); break;   /* (TryAddMPChargeSpa) */
         case 26: hero_recoil_left(); break;
         case 27: hero_recoil_right(); break;
+        case 28: hero_charm_update(); break;   /* (CharmUpdate) */
+        case 30: hero_face(!h->cs.facing_right); break;   /* (FlipSprite) */
+        case 29:   /* (RefreshOvercharm: a notch more, no longer overcharmed) */
+          if (pd_flag(PDF_OVERCHARMED) && g_pd.charm_slots_filled <= g_pd.charm_slots) pd_set_flag(PDF_OVERCHARMED, false);
+          break;
         case 21: {
           /* (GetState: tools/vm.py's HERO_STATES) */
           int k = (int)a0;
@@ -1661,6 +1686,32 @@ static float ease(int type, float k) {
   }
 }
 
+/* an event to the objects of a name (the Mantis Lords' thrones: RETURN) */
+void vm_send_named(uint16_t name, int ev) {
+  for (int o = 0; o < vm.nobjs; o++)
+    if (vm.rec[o].name == name && obj_active(o)) obj_event(o, ev, NONE);
+}
+
+/* the objects the game names on or off (an arena's item: tools/vm.py's VM_NAMES) */
+void vm_set_active(uint16_t name, bool on) {
+  for (int o = 0; o < vm.nobjs; o++)
+    if (vm.rec[o].name == name && !(vm.objs[o].flags & OF_COND_OFF)) obj_set_active(o, on);
+}
+
+/* (a chest's Item: of the objects so named, the one nearest a place, its children on) */
+void vm_activate_children_at(uint16_t name, float x, float y, bool on) {
+  int best = -1;
+  float bd = 1e9f;
+  for (int o = 0; o < vm.nobjs; o++)
+    if (vm.rec[o].name == name && !(vm.objs[o].flags & OF_COND_OFF)) {
+      float d = fabsf(vm.objs[o].x - x) + fabsf(vm.objs[o].y - y);
+      if (d < bd) bd = d, best = o;
+    }
+  if (best >= 0)
+    for (int c = 0; c < vm.nobjs; c++)
+      if (vm.rec[c].parent == best) obj_set_active(c, on);
+}
+
 /* ActivateAllChildren of an object the game names (Hornet's Hornet Saver) */
 void vm_activate_children(uint16_t name, bool on) {
   for (int o = 0; o < vm.nobjs; o++)
@@ -1839,6 +1890,13 @@ void vm_enter(void) {
 
 void vm_tick(void) {
   if (!vm.nfsms) return;
+  /* (the events sent with a delay, as their time comes) */
+  for (int k = 0; k < MAX_LATER; k++)
+    if (vm.later[k].target && (vm.later[k].t -= DT) <= 0) {
+      Rd t = {vm.later[k].target};
+      vm.later[k].target = NULL;
+      send(&vm.fsms[vm.later[k].fsm], &t, vm.later[k].ev);
+    }
   /* (FSMs whose objects came on: their Start) */
   for (int i = 0; i < vm.nfsms; i++)
     if (vm.fsms[i].pending && !vm.fsms[i].on && obj_active(vm.fsms[i].owner)) fsm_start(&vm.fsms[i]);
@@ -2023,8 +2081,8 @@ void vm_debug(void) {
   printf("   vm");
   for (int i = 0; i < vm.nfsms; i++) {
     const Fsm *f = &vm.fsms[i];
-    if (f->on) printf(" %d:%d", i, f->state);
-    else printf(" %d:-", i);
+    if (f->on) printf(" %d(%d):%d", i, f->owner, f->state);
+    else printf(" %d(%d):-", i, f->owner);
   }
   printf("\n");
   if (getenv("VMOBJ"))

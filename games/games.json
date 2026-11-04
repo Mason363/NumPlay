@@ -872,6 +872,38 @@
     ]
   },
   {
+    "id": "hkfungal",
+    "rank": 48,
+    "title": "Hollow Knight: Fungal Wastes",
+    "tagline": "Hallownest past Greenpath",
+    "credit": "Based on Hollow Knight by Team Cherry",
+    "top": "0x35606B",
+    "bottom": "0x0A1418",
+    "accent": "0xE8EEF5",
+    "colors": 16,
+    "heap": 20480,
+    "records": [
+      "hk1.sav",
+      "hk2.sav",
+      "hk3.sav",
+      "hk4.sav",
+      "hollowknight_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png",
+      "docs/lords.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/hkfungal",
+    "default": false,
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
+  },
+  {
     "id": "undertale",
     "rank": 3,
     "title": "Undertale",

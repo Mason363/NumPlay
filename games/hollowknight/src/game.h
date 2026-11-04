@@ -4,6 +4,7 @@
 
 /* ---------------------------------------------------------------- PlayerData (what a save keeps) */
 #define MAX_PERSIST 1024
+#define MAX_ROOM_BITS 128   /* (the rooms a save keeps bits of: tools/vm.py) */
 #define SCENE_NAME 32
 /* the game's many bools (PlayerData's), by number: new ones only ever added at the end (saves keep them) */
 enum {
@@ -40,7 +41,11 @@ enum {
   PDF_SALUBRA_CONVO_COMBO, PDF_SALUBRA_CONVO_OVERCHARM, PDF_SALUBRA_CONVO_TRUTH, PDF_SLY_CONVO_MAPPER,
   PDF_OPENED_CROSSROADS, PDF_OPENED_GREENPATH, PDF_TRAVELLING, PDF_STAG_REMEMBER1, PDF_STAG_CONVO_TISO,
   PDF_QUIRREL_LEFT_EGG_TEMPLE, PDF_MET_CORNIFER, PDF_CORN_CROSSROADS_ENCOUNTERED, PDF_CORNIFER_INTRODUCED, PDF_MENDER_SIGN_BROKEN,
-  PDF_FALSE_KNIGHT_WALL_REPAIRED, PDF_FALSE_KNIGHT_WALL_BROKEN, PDF_COUNT
+  PDF_FALSE_KNIGHT_WALL_REPAIRED, PDF_FALSE_KNIGHT_WALL_BROKEN, PDF_VISITED_FUNGUS, PDF_VISITED_RUINS,
+  PDF_DEFEATED_MANTIS_LORDS, PDF_MAGE_LORD_DEFEATED, PDF_OPENED_FUNGAL_WASTES, PDF_HAS_WALLJUMP,
+  PDF_CAN_WALL_JUMP, PDF_NOTCH_SHROOM_OGRES, PDF_QUIRREL_LEFT_STATION, PDF_QUIRREL_MANTIS_ENCOUNTERED,
+  PDF_ENCOUNTERED_GATEKEEPER, PDF_MAP_FUNGAL_WASTES, PDF_CORN_FUNGAL_WASTES_ENCOUNTERED, PDF_CORN_FUNGAL_WASTES_LEFT,
+  PDF_ENTERED_MANTIS_LORD_AREA, PDF_COUNT
 };
 typedef struct {
   /* (saved: the layout only ever grows into reserved) */
@@ -74,14 +79,20 @@ typedef struct {
   uint8_t current_inv_pane;     /* (currentInvPane) */
   uint8_t stag_position1;       /* (stagPosition + 1: 0 none yet, 1 Dirtmouth, 2 Crossroads, 3 Greenpath) */
   uint8_t stations_opened;      /* (stationsOpened) */
-  /* (scenesVisited, scenesMapped (the quill's), scenesEncounteredCocoon (a lifeblood cocoon broken there): by room) */
-  uint8_t rooms_visited[5], rooms_mapped[5], rooms_cocoon[5];
+  uint8_t old_rooms[3][5];      /* (versions 1 and 2: the rooms' bits below, 40 of each) */
   uint8_t map_key_pref;         /* (mapKeyPref: the map's key and its pins shown 0, the pins only 1, neither 2) */
   uint8_t mender_state;         /* (menderState: 1 the sign broken once, 2 the Mender Bug killed) */
   uint8_t reserved[13];
   /* (save version 2 on) the markers placed on the map (placedMarkers_b, _r, _y, _w: their places, 1/100 map units) */
   uint8_t markers_placed[4];
   int16_t markers[4][6][2];
+  /* (save version 3 on) scenesVisited, scenesMapped (the quill's), scenesEncounteredCocoon (a lifeblood cocoon broken
+   * there): by room, the map's own pieces from the last bit down */
+  uint8_t rooms_visited[MAX_ROOM_BITS / 8], rooms_mapped[MAX_ROOM_BITS / 8], rooms_cocoon[MAX_ROOM_BITS / 8];
+  /* (the way the Knight last left this app for another part of Hallownest: the room's number among every part's
+   * rooms + 1 (0: none), the gate there he comes in by) */
+  uint8_t cross_room;
+  char cross_gate[15];
   /* (saved apart, by the objects' names: their states) */
   uint8_t persist[MAX_PERSIST / 8];
   /* (not saved) */
@@ -89,6 +100,7 @@ typedef struct {
 } PlayerData;
 #define PD_SAVED offsetof(PlayerData, persist)
 #define PD_SAVED_V1 offsetof(PlayerData, markers_placed)   /* (a version 1 save's: no markers) */
+#define PD_SAVED_V2 offsetof(PlayerData, rooms_visited)    /* (a version 2 save's: the rooms' bits in old_rooms) */
 extern PlayerData g_pd;
 static inline bool pd_flag(int f) { return g_pd.flags[f >> 3] >> (f & 7) & 1; }
 /* (equippedCharm_N) */
@@ -121,7 +133,7 @@ void save_set_respawn_kind(const char *marker, bool facing_right, int type);   /
 enum { ENT_CAMLOCK = 1, ENT_GATE, ENT_HAZARD_MARKER, ENT_RESPAWN, ENT_HAZARD_TRIGGER, ENT_MASK, ENT_DAMAGE, ENT_SHAPE,
        ENT_BOX, ENT_OBJ, ENT_PIECE, ENT_SHADE_MARKER };   /* (shape, box, piece: more of the record before) */
 enum { OK_BREAKABLE = 1, OK_ENEMY, OK_GREAT_DOOR, OK_GEO_ROCK, OK_CHEST, OK_BENCH, OK_BATTLE, OK_FK_FLOOR, OK_BGATE,
-       OK_ARENA, OK_EVENT, OK_SUMMON, OK_COND, OK_PROP, OK_DRIP, OK_COCOON, OK_AREA };   /* objects (ENT_OBJ's flags) */
+       OK_ARENA, OK_EVENT, OK_SUMMON, OK_COND, OK_PROP, OK_DRIP, OK_COCOON, OK_AREA, OK_SHROOM };   /* objects (ENT_OBJ's flags) */
 /* an enemy record's s1: starts alert (or first); startles; one of an arena's Pre Battle Enemies; its death counts for its arena; gone once its arena's
  * fight is over; spawned by its mother's burster; there only once its arena's fight is over; its FSMs off till near
  * the camera (FSMActivator); then its death's effects
@@ -143,9 +155,14 @@ void arena_set_activated(void);  /* Activated: its fight over (and saved) */
 bool arena_done(void);
 void enemies_summon(void);       /* SUMMON: the summoners bring their enemies */
 void enemies_battle_start(void); /* BATTLE START */
+#ifdef HK_FW
+void enemies_wake(int wave);      /* WAKE: an arena's enemies its wave wakes (ents.py: ARENA_WAKES) */
+int enemies_wave_hp(int wave);    /* (the HP of the first of them alive, else -1) */
+#endif
 void enemies_hornet_wake(void);  /* WAKE (to Hornet) */
 void enemies_hornet_saver(bool on);   /* her Hornet Saver's walls (ActivateAllChildren) */
-enum { HB_BOUNCE = 1, HB_RECOIL = 2 };    /* a hit box (ENT_BOX's flags): a down slash bounces off it, a slash recoils */
+enum { HB_BOUNCE = 1, HB_RECOIL = 2, HB_SHROOM = 4 };   /* a hit box (ENT_BOX's flags): a down slash bounces off it, a slash
+                                                         recoils; (obj_nail's) a bounce shroom */
 enum { HAZ_NONE, HAZ_NORMAL, HAZ_SPIKES, HAZ_ACID, HAZ_LAVA, HAZ_PIT };   /* DamageHero.hazardType */
 enum { MK_SECRET = 1, MK_REMASK = 2, MK_SIMPLE = 4 };   /* masks: the unmasker, remasker and inverse FSMs */
 enum { CL_PREVENT_UP = 1, CL_PREVENT_DOWN = 2, CL_MAX_PRIORITY = 4 };
@@ -181,6 +198,9 @@ void obj_draw(void);
 void obj_keep_cocoons(void);
 void obj_swing_start(void);                                  /* a slash's hit shape on: what it hits, once */
 int obj_nail(const float *pts, int npts, float direction);   /* -> HB_* of what it touches */
+#ifdef HK_FW
+void shrooms_touched(int col);   /* the Knight touched a collider: a bounce shroom's Phys Box? */
+#endif
 float rand_range(float lo, float hi);   /* Random.Range (floats) */
 
 /* enemies, their corpses, geo (enemy.c) */
@@ -198,7 +218,11 @@ void body_bounce(Body *b, float pvx, float pvy, int had, float factor);   /* Obj
 void geo_fling_at(int type, int n, float x, float y, float smin, float smax, float amin, float amax, float spread);
 int cardinal(float degrees);            /* DirectionUtils.GetCardinalDirection */
 const Ent *room_ents(int *n);
+#ifdef HK_FW
+#define MAX_ENTS 576   /* (Fungus2_18's bounce shrooms) */
+#else
 #define MAX_ENTS 448
+#endif
 
 /* ---------------------------------------------------------------- the game */
 typedef struct {
@@ -216,7 +240,7 @@ typedef struct {
   float hazard_t;
   /* a scene transition */
   uint8_t scene_phase;
-  int16_t next_room;
+  int32_t next_room;   /* (0x8000 and a room's number among every part's: a room of another part) */
   uint16_t next_entry;
   float scene_t, next_delay;
   /* the camera's fade to black */
@@ -240,7 +264,7 @@ enum { TS_WAITING_TO_TRANSITION, TS_EXITING_SCENE, TS_WAITING_TO_ENTER_LEVEL, TS
 enum { GATE_TOP, GATE_RIGHT, GATE_LEFT, GATE_BOTTOM, GATE_DOOR, GATE_UNKNOWN };
 enum { SIDE_TOP, SIDE_LEFT, SIDE_RIGHT, SIDE_BOTTOM };
 enum { ATK_NORMAL, ATK_UP, ATK_DOWN };
-enum { SLASH_NORMAL, SLASH_ALT, SLASH_UP, SLASH_DOWN };
+enum { SLASH_NORMAL, SLASH_ALT, SLASH_UP, SLASH_DOWN, SLASH_WALL };
 enum { DAMAGE_FULL, DAMAGE_HAZARD_ONLY, DAMAGE_NONE };
 #define RECOIL_DURATION 0.2f
 #define RECOIL_DURATION_STAL 0.08f   /* (Stalwart Shell) */
@@ -250,7 +274,7 @@ typedef struct {   /* HeroControllerStates */
   bool looking_up, looking_down, looking_up_anim, looking_down_anim, bouncing, recoiling_left, recoiling_right;
   bool recoiling, recoil_frozen, dead, hazard_death, hazard_respawning, will_hard_land, casting, cast_recoiling;
   bool prevent_dash, dash_cooldown, in_walk_zone, touching_wall, touching_non_slider, was_on_ground, transitioning;
-  bool invulnerable, focusing;
+  bool invulnerable, focusing, wall_sliding, shroom_bouncing;
 } CState;
 
 typedef struct {
@@ -268,6 +292,10 @@ typedef struct {
   float transition_vx, transition_vy;
   bool accepting_input, control_relinquished, doing_hazard_respawn, landed_event;
   bool touching_wall_l, touching_wall_r;
+  /* (the Mantis Claw's: sliding down a wall, then the jump off it, its push away held a few steps) */
+  bool wall_sliding_l, wall_sliding_r, wall_locked, wall_jumped_l, wall_jumped_r, wall_slashing;
+  int wall_lock_steps, wall_unstick_steps;
+  float wj_speed, wj_decel;
   bool hidden, hit_buffered, enter_without_input;
   float prevent_cast;   /* (PreventCastByDialogueEnd: casts kept back a moment) */
   float parry_t;        /* (NailParry: unhurt by enemies a moment) */
@@ -384,6 +412,12 @@ void soul_orbs_fling(int n, float x, float y, float smin, float smax, float amin
 void piece_spawn(int sprite, int layer, int order, int flags, float x, float y, float z, float rot, float gravity,
                  float bounce, float spin_factor, float mirror, float vx, float vy, bool resting);   /* (obj.c: debris) */
 void vm_activate_children(uint16_t name, bool on);       /* ActivateAllChildren of a script object, by name */
+void vm_set_active(uint16_t name, bool on);              /* (script objects by name: on, off) */
+void vm_send_named(uint16_t name, int ev);               /* (an event to script objects by name) */
+void vm_activate_children_at(uint16_t name, float x, float y, bool on);   /* (of those so named, the nearest's) */
+#ifdef HK_FW
+void enemies_vm_event(int ev);   /* (the scripts' events the game's own code hears: enemy_fw.c) */
+#endif
 /* the message as an item is taken (msg.c: MSG_*), the HUD Blanker (a white screen the scripts fade) */
 void msg_show(int item);
 bool msg_shown(void);
@@ -432,6 +466,9 @@ void fx_dash_burst(float x, float y, bool facing_right, bool on_ground);
 void game_new(void);
 bool game_enter(int room, float x, float y, bool facing_right);
 bool game_enter_gate(int room, const char *gate);   /* (a new game: through its entry gate) */
+bool game_enter_home(void);   /* (the Knight come in where this part's world meets another's: CROSS_HOME) */
+bool game_enter_cross(void);  /* (a save from another part, the Knight gone from it into this one: by that way) */
+int room_part(int global);    /* (the part of Hallownest a room is in, by its number among all: 0 the first) */
 bool game_respawn(void);   /* the Knight at the save's respawn point (a loaded game, after dying) */
 void game_tick(uint32_t keys);   /* 1/50 s */
 void game_draw(void);
@@ -489,6 +526,7 @@ int text_fit(int text, float w, float room);   /* (a description's style: the fi
 int charm_cost(int id);         /* (charmCost_N) */
 bool charm_equipped(int id);
 bool menu_quit(void);
+void menu_cross(int part);   /* the Knight gone into another part of Hallownest (another app): the game saved, a note */
 
 /* ---------------------------------------------------------------- text (text.c) */
 #define TEXT_BR 10     /* (in a text: a line break, a page break) */

@@ -7,7 +7,7 @@ import unity, tk2d, text
 ROOT = "_GameCameras/HudCamera/Inventory/"
 # the items the Inventory pane lists after the fixed ones (Build Equipment List: its order), by what has them:
 # (object, its name and description, the PlayerData that has it: a bool, or an int above 0)
-EQUIPMENT = [("Dash Cloak", "DASH", "hasDash"), ("Lantern", "LANTERN", "hasLantern"),
+EQUIPMENT = [("Dash Cloak", "DASH", "hasDash"), ("Mantis Claw", "WALLJUMP", "hasWalljump"), ("Lantern", "LANTERN", "hasLantern"),
              ("Map and Quill", "MAP", "hasMap"), ("City Key", "CITYKEY", "hasCityKey"), ("Simple Key", "SIMPLEKEY", "simpleKeys"),
              ("Rancid Egg", "RANCIDEGG", "rancidEggs")]
 # (the map and the quill: Map's sprite, then its own, as they are had)

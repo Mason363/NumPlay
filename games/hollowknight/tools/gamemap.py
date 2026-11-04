@@ -1,7 +1,7 @@
 """The map (Game_Map: the areas' rooms as Cornifer drew them, rough until the quill maps them; their pins, the arrows to
 the areas next to them, the areas' names; the compass, the shade's mark) and the quick map's HUD (Quick Map): MAP_*
 defines for data.h (src/map.c). Places are in the map's units from its root; the HUD shows them at its scale."""
-import math
+import math, os
 import unity, text
 
 GAME_MAP = ("resources.assets", 4808)
@@ -16,6 +16,11 @@ AREAS = (("Town_Tutorial", None, (4.07, -11.62), "TOWN", "Town", (4, -8.642), (2
          ("Crossroads", "mapCrossroads", (-0.04, -7.88), "CROSSROADS", "Crossroads", (-0.04, -7.58), (2.51, -5.65), None),
          ("Green_Path", "mapGreenpath", (16.31, -7.87), "GREEN_PATH", "Greenpath", (16.42, -7.32), (-0.12, -6),
           (None, 17.26, None, -6.22)))
+if os.environ.get("HK_PART") == "2":   # (Cornifer's in the Fungal Wastes: the second part's)
+    AREAS += (("Fungal Wastes", "mapFungalWastes", (5.05, 0.47), "WASTES", "Fungal Wastes", (4.56, 1.31), (2.58, -9.18),
+               (None, None, None, 4.14)),)
+# (Pos 2: the wide map with the Fungal Wastes' map had, by so much from Pos 1)
+WIDE_POS_2 = (0.76, -1.41)
 QUICK_K = 1.55   # (the map's scale: the quick map's (Check Area))
 # the inventory's map (Inventory/Map/World Map: UI Control): the Wide Map's place (Pos 1: the top areas' maps only),
 # the map zoomed into from there (Map Zoom: the wide map's place and these, at 0.436; to 1.3), the pan's bounds
@@ -34,7 +39,7 @@ COCOON = "hasPinCocoon"         # (pin_blue_health: SetupMap's, by the rooms a c
 
 
 def build(sprites, texts, res, rooms, pd_flags, room_zone):
-    """rooms: the rooms this part of the game has (their order); pd_flags: PlayerData bools -> flags; room_zone(room) ->
+    """rooms: the rooms by their bits in the save (vm.room_bits); pd_flags: PlayerData bools -> flags; room_zone(room) ->
     its map zone (SceneManager's mapZone)"""
     d = unity.prefab(*GAME_MAP)
     by = {o["path"]: o for o in d["objects"]}
@@ -321,6 +326,7 @@ def pane(sprites, texts, res, h, hb, sh, flag):
     wx, wy = rel(hb[WM + "Wide Map"], dx, dy)
     zx, zy = hb[WM + "Wide Map"]["pos"][0] + dx + ZOOM_FROM[0], hb[WM + "Wide Map"]["pos"][1] + dy + ZOOM_FROM[1]
     out["MAP_ZOOM"] = "{%s, %s, %s, %s}" % (U(zx), U(zy), U(ZOOM_K0), U(ZOOM_K))
+    out["MAP_WIDE_POS_2_DX"], out["MAP_WIDE_POS_2_DY"] = U(WIDE_POS_2[0] - WIDE_POS[0]), U(WIDE_POS_2[1] - WIDE_POS[1])
     out["MAP_PAN"] = "{%s}" % ", ".join(U(v) for v in PAN)
     gm = unity.prefab(*GAME_MAP)
     gmc = next(c["v"] for c in gm["objects"][0]["c"] if (c.get("class") or c["type"]) == "GameMap")

@@ -10,7 +10,7 @@
 
 #define DT 0.02f
 #define HUD_PX (FOCAL / (-1.342f - CAM_Z))
-#define NSTATIONS 3
+#define NSTATIONS STAG_N
 #define RESERVE 80   /* (the frame's instances kept for it) */
 #define STAG_TITLE_OVER 0.16f   /* (Stations' baseline over its divider, as the game has it) */
 #define STAG_KEYS_GAP 0.15f     /* (between the two actions' lines) */
@@ -78,7 +78,8 @@ void stag_travel(void) {
   sg.prev = g_hero.keys;
 }
 
-static const int16_t scenes_str[NSTATIONS] = STAG_SCENES_STR, scenes_room[NSTATIONS] = STAG_SCENES_ROOM;
+static const int16_t scenes_str[NSTATIONS] = STAG_SCENES_STR;
+static const uint16_t scenes_room[NSTATIONS] = STAG_SCENES_ROOM;   /* (0x8000 and its number: a room of the other app) */
 static int room_named(int str) {
   for (int i = 0; i < NSTATIONS; i++)
     if (scenes_str[i] == str) return scenes_room[i];

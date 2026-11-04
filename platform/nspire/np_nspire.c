@@ -15,6 +15,9 @@
 #ifndef NP_APP_ID
 #define NP_APP_ID "numplay"
 #endif
+#ifndef NP_FILES_ID /* (its files' name: the game's own, or that of the game whose saves it shares) */
+#define NP_FILES_ID NP_APP_ID
+#endif
 
 /* the RAM after a game's own: 1 MB (the CX has 64) */
 __asm__(".section .bss\n.balign 16\n.globl _heap_start\n_heap_start:\n.space 1048576\n.globl _heap_end\n_heap_end:\n"
@@ -182,7 +185,7 @@ size_t eadk_external_data_size = 0;
 #define STORAGE_SIZE (64 * 1024)
 static uint8_t storage[STORAGE_SIZE + 64];
 static bool loaded;
-#define SAVE_PATH "/documents/ndless/numplay_" NP_APP_ID ".sav.tns"
+#define SAVE_PATH "/documents/ndless/numplay_" NP_FILES_ID ".sav.tns"
 static uint32_t storage_end(void) {
   uint32_t at = 0;
   while (at + 2 <= STORAGE_SIZE && (storage[at] | storage[at + 1] << 8)) at += storage[at] | storage[at + 1] << 8;

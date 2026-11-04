@@ -45,14 +45,14 @@ static bool held(void) { return g_hero.keys & K_MAP; }
 static bool pressed(void) { return (g_hero.keys & K_MAP) && !(g_hero.prev_keys & K_MAP); }
 
 /* ---------------------------------------------------------------- PlayerData's lists */
-static bool bit(const uint8_t *b, int i) { return i >= 0 && i < 40 && (b[i >> 3] >> (i & 7) & 1); }
+static bool bit(const uint8_t *b, int i) { return i >= 0 && i < MAX_ROOM_BITS && (b[i >> 3] >> (i & 7) & 1); }
 static void set_bit(uint8_t *b, int i) {
-  if (i >= 0 && i < 40) b[i >> 3] |= (uint8_t)(1 << (i & 7));
+  if (i >= 0 && i < MAX_ROOM_BITS) b[i >> 3] |= (uint8_t)(1 << (i & 7));
 }
 
-void map_room_entered(void) { set_bit(g_pd.rooms_visited, g_room.id); }   /* (SceneManager: scenesVisited) */
+void map_room_entered(void) { set_bit(g_pd.rooms_visited, ROOM_BASE + g_room.id); }   /* (SceneManager: scenesVisited) */
 void map_scene_visited(int r) { set_bit(g_pd.rooms_visited, r); }          /* (AddToScenesVisited: a map piece) */
-void map_cocoon_broken(void) { set_bit(g_pd.rooms_cocoon, g_room.id); }   /* (AddToCocoonList) */
+void map_cocoon_broken(void) { set_bit(g_pd.rooms_cocoon, ROOM_BASE + g_room.id); }   /* (AddToCocoonList) */
 
 static bool have_area(int a) { return areas[a].have == -1 || (areas[a].have >= 0 && pd_flag(areas[a].have)); }
 
@@ -410,7 +410,7 @@ static void draw_area(int a, float ox, float oy, float k, bool quick) {
 static bool compass_at(float ox, float oy, float k, float *x, float *y) {
   for (int i = 0; i < NMROOMS; i++) {
     const MapRoom *r = &rooms[i];
-    if (r->room != g_room.id || r->w <= 0 || !g_room.h || g_room.h->w <= 0 || g_room.h->h <= 0) continue;
+    if (r->room != ROOM_BASE + g_room.id || r->w <= 0 || !g_room.h || g_room.h->w <= 0 || g_room.h->h <= 0) continue;
     *x = ox + (r->x - r->w / 2 + g_hero.body.x / g_room.h->w * r->w) * k;
     *y = oy + (r->y - r->h / 2 + g_hero.body.y / g_room.h->h * r->h) * k;
     return true;
@@ -423,7 +423,8 @@ static bool shade_at(float ox, float oy, float k, float *x, float *y) {
   if (!g_pd.soul_limited) return false;
   for (int i = 0; i < NMROOMS; i++) {
     const MapRoom *r = &rooms[i];
-    if (r->room == 255 || strcmp(room_name(r->room), g_pd.shade_scene)) continue;
+    int lr = r->room - ROOM_BASE;   /* (its number in this part) */
+    if (r->room == 255 || lr < 0 || lr >= NUM_ROOMS || strcmp(room_name(lr), g_pd.shade_scene)) continue;
     *x = ox + r->x * k, *y = oy + r->y * k;
     return true;
   }
@@ -553,7 +554,7 @@ static const struct { int16_t sprite; float x, y, minx, maxx, miny, maxy, speed,
 static const struct { float x, y, k0, k; } zoom = MAP_ZOOM;
 static const float pan_base[4] = MAP_PAN;
 
-enum { A_TOWN, A_CROSSROADS, A_GREENPATH };   /* (MAP_AREAS' order) */
+enum { A_TOWN, A_CROSSROADS, A_GREENPATH, A_FUNGAL };   /* (MAP_AREAS' order; the Fungal Wastes the second part's) */
 enum { MP_WIDE, MP_ZOOM, MP_ZOOMED, MP_ZOOM_OUT, MP_MARKERS, MP_MARKER_CANCEL };
 #define ARROW_L (-1)
 #define ARROW_R (-2)
@@ -580,24 +581,43 @@ static void select_area(int a) {
 /* UI Control's moves (each way: the areas tried in order, their maps had; then where it goes) */
 static int wide_move(int from, uint32_t dir) {
   bool cr = have_area(A_CROSSROADS), gp = have_area(A_GREENPATH);
+#ifdef HK_FW
+  bool fw = have_area(A_FUNGAL);
+#else
+  const bool fw = false;
+#endif
   switch (from) {
     case A_TOWN:   /* (T Down, T Left, T Right) */
-      if (dir & K_DOWN) return cr ? A_CROSSROADS : gp ? A_GREENPATH : A_TOWN;
+      if (dir & K_DOWN) return cr ? A_CROSSROADS : fw ? A_FUNGAL : gp ? A_GREENPATH : A_TOWN;
       if (dir & K_LEFT) return gp ? A_GREENPATH : ARROW_L;
       return dir & K_RIGHT ? ARROW_R : A_TOWN;
     case A_CROSSROADS:   /* (CR Up, CR Left, CR Right, CR Down) */
       if (dir & K_UP) return A_TOWN;
-      if (dir & K_LEFT) return gp ? A_GREENPATH : ARROW_L;
+      if (dir & K_LEFT) return gp ? A_GREENPATH : fw ? A_FUNGAL : ARROW_L;
+      if (dir & K_DOWN) return fw ? A_FUNGAL : A_CROSSROADS;
       return dir & K_RIGHT ? ARROW_R : A_CROSSROADS;
     case A_GREENPATH:   /* (GP Up, GP Right, GP Left, GP Down) */
       if (dir & K_UP) return A_TOWN;
       if (dir & K_RIGHT) return cr ? A_CROSSROADS : A_TOWN;
+      if (dir & K_DOWN) return fw ? A_FUNGAL : A_GREENPATH;
       return dir & K_LEFT ? ARROW_L : A_GREENPATH;
+    case A_FUNGAL:   /* (FW Up, FW Left, FW Right, FW Down) */
+      if (dir & K_UP) return cr ? A_CROSSROADS : gp ? A_GREENPATH : A_TOWN;
+      if (dir & K_LEFT) return gp ? A_GREENPATH : ARROW_L;
+      return dir & K_RIGHT ? ARROW_R : A_FUNGAL;
     case ARROW_L:   /* (To Map) */
-      return dir & K_RIGHT ? (gp ? A_GREENPATH : A_TOWN) : ARROW_L;
+      return dir & K_RIGHT ? (gp ? A_GREENPATH : fw ? A_FUNGAL : A_TOWN) : ARROW_L;
     default:   /* (To Map 2) */
       return dir & K_LEFT ? (cr ? A_CROSSROADS : A_TOWN) : ARROW_R;
   }
+}
+
+/* (Pos Check: the wide map lower with the Fungal Wastes' map had, Pos 2) */
+static void wide_pos(float *dx, float *dy) {
+  *dx = *dy = 0;
+#ifdef HK_FW
+  if (have_area(A_FUNGAL)) *dx = MAP_WIDE_POS_2_DX, *dy = MAP_WIDE_POS_2_DY;
+#endif
 }
 
 /* (WorldMap's bounds: widened by the areas had, or the one the Knight is in with the compass on) */
@@ -641,7 +661,9 @@ void map_pane_enter(bool shortcut) {
 static void zoom_in(void) {
   /* Map Zoom: the pieces unselected and down, the pane's arrows away; Game_Map from the wide map's place (0.436) */
   mp.st = MP_ZOOM, mp.t = 0;
-  mp.x = zoom.x, mp.y = zoom.y, mp.k = zoom.k0;
+  float dx, dy;
+  wide_pos(&dx, &dy);
+  mp.x = zoom.x + dx, mp.y = zoom.y + dy, mp.k = zoom.k0;
 }
 
 static void zoomed(void) {
@@ -762,7 +784,9 @@ int map_pane_tick(uint32_t keys, uint32_t pressed, uint32_t move, bool repeat) {
       float q = fminf(1, mp.t / ZOOM_TIME), e = sinf(q * 1.5707964f);
       const WidePiece *w = &wide[mp.sel];
       mp.k = zoom.k0 + (zoom.k - zoom.k0) * e;
-      mp.x = zoom.x + (w->zx - zoom.x) * e, mp.y = zoom.y + (w->zy - zoom.y) * e;
+      float dx, dy;
+      wide_pos(&dx, &dy);
+      mp.x = zoom.x + dx + (w->zx - zoom.x - dx) * e, mp.y = zoom.y + dy + (w->zy - zoom.y - dy) * e;
       if (mp.t >= ZOOM_TIME + 0.05f) zoomed();
       break;
     }
@@ -783,7 +807,9 @@ int map_pane_tick(uint32_t keys, uint32_t pressed, uint32_t move, bool repeat) {
     case MP_ZOOM_OUT: {
       float q = fminf(1, mp.t / ZOOM_OUT_TIME);
       mp.k = zoom.k + (zoom.k0 - zoom.k) * q;
-      mp.x = mp.ox + (zoom.x - mp.ox) * q, mp.y = mp.oy + (zoom.y - mp.oy) * q;
+      float dx, dy;
+      wide_pos(&dx, &dy);
+      mp.x = mp.ox + (zoom.x + dx - mp.ox) * q, mp.y = mp.oy + (zoom.y + dy - mp.oy) * q;
       if (mp.t >= 0.35f) {
         /* Reset: the area chosen again */
         mp.st = MP_WIDE, mp.wide_a = 1;
@@ -849,6 +875,9 @@ void map_pane_draw(float ox, float oy, float a, uint8_t white, bool current) {
   /* the wide map: the areas had (Dirtmouth always), their names; chosen: white (in the wide map only) */
   float wa = current ? mp.wide_a : 1;
   if (wa > 0) {
+    float pdx, pdy;
+    wide_pos(&pdx, &pdy);
+    ox += pdx, oy += pdy;
     uint8_t wa8 = (uint8_t)(wa * 255 + 0.5f);
     /* (the names, in the smallest of the bigger text: those of areas side by side moved apart where they would meet) */
     float nx[NAREAS], hw[NAREAS];
@@ -873,6 +902,7 @@ void map_pane_draw(float ox, float oy, float a, uint8_t white, bool current) {
     int z = area_of_zone();
     if (charm_on(2) && z >= 0 && mc.compass.sprite >= 0)
       hud_sprite(mc.compass.sprite, ox + wide[z].cx, oy + wide[z].cy, MAP_WIDE_COMPASS_K, 0, map_tint(0xFFFFFF, wa8));
+    ox -= pdx, oy -= pdy;
   }
   /* Game_Map, zoomed into: its areas had, the marks on it */
   bool map_on = current && !mp.closed && (st == MP_ZOOM || st == MP_ZOOMED || st == MP_MARKERS ||

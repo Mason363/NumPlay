@@ -237,9 +237,10 @@ bool spell_busy(void) { return sp.state != SP_INACTIVE && sp.state != SP_BUTTON_
 void spell_cast(bool up, bool down) {
   (void)up, (void)down;
   if (g_pd.mp < MP_COST || !hero_can_cast() || g_pd.fireball_level <= 0) return;
-  /* Wallside? (no wall sliding here), Fireball Antic: the Knight held still in the air */
+  /* Wallside?: on a wall, turned away from it; Fireball Antic: the Knight held still in the air */
   Hero *h = &g_hero;
   sp.can_cancel = true;
+  if (h->cs.wall_sliding) hero_face(!h->cs.facing_right);
   anim_play_from_frame(&h->anim, CLIP_KNIGHT_FIREBALL_ANTIC, 0);
   hero_relinquish_control();
   hero_stop_anim_control();

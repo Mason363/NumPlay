@@ -2,7 +2,7 @@
 
 <img src="../media/calcs/casio_cg50.png" height="200" align="right" alt="Casio fx-CG50">
 
-72 free games for the Casio fx-CG50, Graph 90+E, fx-CG10 and fx-CG20: NumBlocks, Hollow Knight, NumDrive, Balatro, Undertale, NumDash and more. The same games as on the NumWorks, made for this calculator's screen and keys.
+73 free games for the Casio fx-CG50, Graph 90+E, fx-CG10 and fx-CG20: NumBlocks, Hollow Knight, NumDrive, Balatro, Undertale, NumDash and more. The same games as on the NumWorks, made for this calculator's screen and keys.
 
 > [!IMPORTANT]
 > **Beta testers wanted.** These builds haven't run on a real Casio fx-CG50 yet. [Sign up](https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml) to try each one first, and tell me what works.
@@ -35,7 +35,7 @@ Or pick just the games you want in [NumPlay Studio](https://mason363.github.io/N
 
 Games save by themselves, and when you leave with Home.
 
-## The 72 games
+## The 73 games
 
 An add-in can be 2 MB at most, so Celeste, FNAF World and Champion Island aren't here.
 
@@ -113,6 +113,7 @@ An add-in can be 2 MB at most, so Celeste, FNAF World and Champion Island aren't
 | [Among Us](../../games/amongus/README.md) | Find the Impostor, or be one |
 | [Imposter](../../games/imposter/README.md) | One of you doesn't know the word |
 | [2 3 4 Players](../../games/fourplayer/README.md) | One key each, 14 party games |
+| [Hollow Knight: Fungal Wastes](../../games/hkfungal/README.md) | Hallownest past Greenpath |
 
 <br clear="right">
 

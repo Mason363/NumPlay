@@ -19,7 +19,7 @@
 ## Highlights
 
 * **The start of the journey:** King's Pass, Dirtmouth, the Forgotten Crossroads with the False Knight, Gruz Mother and the Ancestral Mound, then Greenpath up to Hornet and the Mothwing Cloak, with the rooms along the way and their secrets.
-* **The Knight moves like in the game:** the same jumps, nail slashes, recoils, pogos, dash, focus and Vengeful Spirit.
+* **The Knight moves like in the game:** the same jumps, nail slashes, recoils, pogos, dash, focus and Vengeful Spirit. Once the Mantis Claw is found in [Hollow Knight: Fungal Wastes](../hkfungal/README.md), he slides down walls and jumps off them here too.
 * **Its creatures and bosses:** from Crawlids and Vengeflies to Moss Knights and Mosskin, the False Knight, Gruz Mother and Hornet, each with its own attacks.
 * **The people of Hallownest:** Elderbug, Sly, Iselda, Cornifer, Salubra, the Snail Shaman, Quirrel, Tiso, the Stag and the Grubfather, with all they have to say.
 * **Everything to find and spend:** geo, charms and what they do, mask shards, vessel fragments, grubs, relics, the map, the quill and its markers, the stag stations and the shops.
@@ -58,7 +58,7 @@ Hit enemies with the nail to fill your soul, then hold the spell key to focus it
 | --- | --- |
 | Arrows | Move, look up and down, aim the nail up or down |
 | Up | Talk, read, rest at a bench, go through a door |
-| OK | Jump |
+| OK | Jump, and off a wall once you have the Mantis Claw |
 | Back | Nail |
 | Shift | Dash, once you have the Mothwing Cloak |
 | Alpha | Hold to focus and heal, tap to cast a spell |
@@ -72,7 +72,7 @@ In menus, OK or EXE confirms and Back goes back. In the inventory, left and righ
 ## Good to know
 
 * **One app at a time:** Hollow Knight takes all the room the calculator has for apps. Installing it from the NumWorks website swaps out NumPlay and the other apps, and installing NumPlay again swaps it back out. Your saves in each one are kept.
-* **Only the start of the game:** it ends with Hornet in Greenpath. The ways on to places further in stay shut, like Jiji's door, the lift down to the mines and the Dream Nail's paths, and so do the Forgotten Crossroads' side rooms off the way to Greenpath, like Brooding Mawlek's and the Glowing Womb. The way to the False Knight is past the Temple of the Black Egg, through a tollbooth that starts open, as the rooms it's opened from in the game aren't in.
+* **Only the start of the game:** it ends with Hornet in Greenpath. The way down from the Crossroads to the Fungal Wastes goes on in [Hollow Knight: Fungal Wastes](../hkfungal/README.md), an app of its own with the same saves. The ways on to places further in stay shut, like Jiji's door, the lift down to the mines and the Dream Nail's paths, and so do the Forgotten Crossroads' side rooms off the way to Greenpath, like Brooding Mawlek's and the Glowing Womb. The way to the False Knight is past the Temple of the Black Egg, through a tollbooth that starts open, as the rooms it's opened from in the game aren't in.
 * **No music or sound:** the calculator has no speaker.
 * **Text made to read:** what there is to read is bigger than in the game, in its own typefaces, and a shop shows what an item does beside its window.
 * **A few things are simpler:** dust, sparks and other particles are left out, and characters and scenery are drawn a little less finely so the whole game fits.

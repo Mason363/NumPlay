@@ -26,7 +26,7 @@ static const int16_t key_texts[MENU_NKEYS][2] = MENU_KEYS;   /* (what a key does
 static const ZonePiece zone_bgs[MENU_SLOT_NZONES] = MENU_SLOT_ZONES;
 static const int16_t zone_texts[MENU_SLOT_NZONES] = TXT_ZONES;
 
-enum { MS_TITLE, MS_PROFILES, MS_GAME, MS_PAUSE, MS_HELP, MS_LOADING };
+enum { MS_TITLE, MS_PROFILES, MS_GAME, MS_PAUSE, MS_HELP, MS_LOADING, MS_CROSS };
 /* (the save profiles' rows: the slots, then Back; a slot's Clear Save, its prompt's Yes and No) */
 enum { PS_SLOT, PS_CLEAR, PS_PROMPT_NO, PS_PROMPT_YES };
 
@@ -39,6 +39,7 @@ static struct {
   SaveStats stats[SAVE_SLOTS];
   char num[SAVE_SLOTS][3], geo[SAVE_SLOTS][12], time[SAVE_SLOTS][16];
   bool quit, fresh;           /* (loading: a new game) */
+  uint8_t cross_part;         /* (MS_CROSS: the part of Hallownest the way leads into) */
 } mn;
 
 /* a number's digits at p (at least `width`, zero padded) -> past them */
@@ -79,6 +80,12 @@ void menu_start(void) {
 }
 
 bool menu_quit(void) { return mn.quit; }
+
+static const int16_t cross_apps[CROSS_NAPPS] = TXT_CROSS_APPS;
+void menu_cross(int part) {
+  go(MS_CROSS, 0);
+  mn.cross_part = (uint8_t)part;
+}
 bool menu_in_game(void) {
   return mn.screen == MS_GAME || mn.screen == MS_PAUSE || (mn.screen == MS_HELP && mn.from == MS_PAUSE);
 }
@@ -88,6 +95,7 @@ bool menu_in_game(void) {
 static void new_game(int slot) {
   game_new();
   save_select(slot);
+#ifdef ROOM_TUTORIAL_01   /* (the first part's) */
   if (game_enter_gate(ROOM_TUTORIAL_01, "top1")) {
     g_game.fade = 1, g_screen_fade = 255;   /* (from black) */
     game_fade_scene_in();
@@ -101,6 +109,7 @@ static void new_game(int slot) {
   for (int i = 0; i < n; i++)
     if (e[i].type == ENT_RESPAWN) x = e[i].x0, y = e[i].y0, right = e[i].flags & FACING_RIGHT;
   game_enter(ROOM_TUTORIAL_01, x, y, right);
+#endif
 }
 
 static void help_open(int from, int slot) {
@@ -117,8 +126,8 @@ static void pick_slot(int slot) {
   if (mn.state[slot] == 1) {
     /* (the slot says Loading..., the screen fades out, then the game loads) */
     mn.screen = MS_LOADING, mn.fresh = false, mn.slot = (uint8_t)slot, mn.t = 0;
-  } else if (mn.state[slot] == 0)
-    help_open(MS_PROFILES, slot);   /* (how to play first) */
+  } else if (mn.state[slot] == 0 && HK_PART_N == 1)
+    help_open(MS_PROFILES, slot);   /* (how to play first; a new game begins in the first part only) */
   /* (a corrupted save: only cleared) */
 }
 
@@ -131,7 +140,10 @@ static void load_game(void) {
     return;
   }
   game_new();
-  if (!save_load(slot) || !game_respawn()) {
+  /* (the way the Knight went into this part of Hallownest from another; else his bench; else, his bench in another
+   * part, where this part's world meets it) */
+  bool loaded = save_load(slot) && (game_enter_cross() || game_respawn() || game_enter_home());
+  if (!loaded) {
     /* (a file that does not load after all: shown as corrupted) */
     go(MS_PROFILES, slot);
     mn.state[slot] = -1;
@@ -202,6 +214,11 @@ bool menu_tick(uint32_t keys) {
       /* (drawn once faded: then the load, the screen as it was meanwhile) */
       if (mn.t > FADE_TIME + DT) load_game();
       return true;
+    case MS_CROSS:
+      /* (the way on is in another app: Quit Game; Back, the title) */
+      if (p & K_OK) mn.quit = true;
+      else if (p & K_BACK) go(MS_TITLE, 0);
+      return true;
     case MS_PAUSE:
       /* Continue, How to Play, Quit to Menu */
       if (p & K_UP) mn.sel = (uint8_t)((mn.sel + 2) % 3);
@@ -225,6 +242,7 @@ bool menu_tick(uint32_t keys) {
 static uint8_t white(int slot, float a) { return gfx_dyn_tint(29 + slot, 255, 255, 255, (uint8_t)(a * 255 + 0.5f)); }
 
 static void piece(const Piece *pc, float cx, float cy, bool flip, uint8_t tint) {
+  if (pc->sprite < 0) return;   /* (none: an area of another part's, by name only) */
   Inst in;
   sprite_inst(pc->sprite, cx + (flip ? -pc->ox : pc->ox), cy + pc->oy, 0, flip ? -pc->sx : pc->sx, pc->sy, tint, &in);
   gfx_hud(&in, 0);
@@ -276,7 +294,9 @@ static void draw_slot(int i, float a) {
     return;
   }
   if (mn.state[i] == 0) {
-    text_id(STYLE_MENU, TXT_PROFILE_NEW_GAME, cx + MENU_SLOT_NEW_X, cy, 1, a);
+    /* (a new game: in the first part only) */
+    text_id(HK_PART_N == 1 ? STYLE_MENU : STYLE_MENU_SMALL, HK_PART_N == 1 ? TXT_PROFILE_NEW_GAME : TXT_CROSS_NEW,
+            cx + MENU_SLOT_NEW_X, cy, 1, a);
     return;
   }
   if (mn.state[i] < 0) {
@@ -366,6 +386,14 @@ void menu_draw(void) {
     case MS_HELP:
       if (mn.from == MS_PAUSE) gfx_hud_fill(-15, -9, 15, 9, gfx_dyn_tint(31, 0, 0, 0, (uint8_t)(0.8f * 255 + 0.5f)));
       draw_help(a, false);
+      break;
+    case MS_CROSS:
+      /* the way on: in which app; the game saved; Quit Game */
+      piece(&logo, 0, MENU_LOGO_Y, false, white(0, a));
+      text_id(STYLE_MENU, TXT_CROSS_TO, 0, MENU_START_Y + 0.9f, 0, a);
+      text_id(STYLE_MENU, cross_apps[mn.cross_part < CROSS_NAPPS ? mn.cross_part : 0], 0, MENU_START_Y, 0, a);
+      text_id(STYLE_MENU_SMALL, TXT_CROSS_SAVED, 0, MENU_HELP_Y, 0, a);
+      button(TXT_MAIN_QUIT, 0, MENU_QUIT_Y, true, a);
       break;
     case MS_LOADING: {
       /* what was there fading out, Loading... where it was chosen (LoadingGameText) */

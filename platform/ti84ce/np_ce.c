@@ -22,6 +22,9 @@
 #ifndef NP_APP_ID
 #define NP_APP_ID "numplay"
 #endif
+#ifndef NP_FILES_ID /* (its files' name: the game's own, or that of the game whose saves it shares) */
+#define NP_FILES_ID NP_APP_ID
+#endif
 
 static uint16_t *const lcd = (uint16_t *)lcd_Ram;
 
@@ -169,7 +172,7 @@ static char var[9];
 
 static const char *var_name(void) { /* NP, then the id: its first 5 letters and its last past 6 (NPflappd, NPflappk) */
   if (!var[0]) {
-    const char *id = NP_APP_ID;
+    const char *id = NP_FILES_ID;
     size_t n = strlen(id);
     var[0] = 'N', var[1] = 'P';
     for (size_t i = 0; i < 6 && i < n; i++) var[2 + i] = id[i < 5 || n <= 6 ? i : n - 1];

@@ -75,6 +75,9 @@ def place(r):
 SLOT = "SaveProfileScreen/Content/SaveSlots/Slot%s"
 ACTIVE = SLOT + "/ActiveSaveSlot%d"
 ZONES = {2: "KINGS_PASS", 4: "TOWN", 5: "CROSSROADS", 6: "GREEN_PATH", 22: "SHAMAN_TEMPLE"}   # (GlobalEnums.MapZone)
+# (the second part's, Hollow Knight: Fungal Wastes; the first part names them, without their backgrounds)
+ZONES_FW = {9: "WASTES", 24: "QUEENS_STATION", 35: "MANTIS_VILLAGE"}
+ZONES_ALL = {**ZONES, **ZONES_FW}
 MENU_K = 1.6   # (the menus' text, bigger: the game's is hard to read at this screen's size)
 
 
@@ -138,7 +141,11 @@ def build(sprites, texts):
     rel = lambda path: (at(path)[0] - s1x, at(path)[1] - s1y)
     bgx, bgy, bgw, bgh = at(SLOT % "One" + "/Background")
     zones = []
-    for z in sorted(ZONES):
+    part = int(os.environ.get("HK_PART") or 1)
+    for z in sorted(ZONES_ALL):
+        if part == 1 and z in ZONES_FW:
+            zones.append("{%d, {-1, 0, 0, 1, 1}}" % z)
+            continue
         ref = next(a["backgroundImage"] for a in next(c["v"] for c in by["SaveProfileScreen/Content/SaveSlots"]["c"]
                                                        if c.get("class") == "SaveSlotBackgrounds")["areaBackgrounds"]
                    if a["areaName"] == z)
@@ -216,8 +223,14 @@ def build(sprites, texts):
                                       "strike it down to win them back.\n"
                                       "Spend geo in Dirtmouth's shops, and find\n"
                                       "Cornifer in the Crossroads for a map.", "TUTE")
-    out["TXT_ZONES"] = "{%s}" % ", ".join("%d" % texts.add(text.clean(sh["Map Zones"][ZONES[z]]), "MENU_SMALL")
-                                          for z in sorted(ZONES))
+    out["TXT_ZONES"] = "{%s}" % ", ".join("%d" % texts.add(text.clean(sh["Map Zones"][ZONES_ALL[z]]), "MENU_SMALL")
+                                          for z in sorted(ZONES_ALL))
+    # (the parts of Hallownest, each an app: the way on from one into another, a new game in the first only)
+    out["TXT_CROSS_TO"] = texts.add("The way on is in", "MENU")
+    out["TXT_CROSS_APPS"] = "{%s}" % ", ".join(str(texts.add(n, "MENU")) for n in ("Hollow Knight", "Hollow Knight: Fungal Wastes"))
+    out["CROSS_NAPPS"] = 2
+    out["TXT_CROSS_SAVED"] = texts.add("Saved. Install it to go on.", "MENU_SMALL")
+    out["TXT_CROSS_NEW"] = texts.add("Begins in Hollow Knight", "MENU_SMALL")
     # (the characters the numbers need: slots, geo, play time)
     texts.add("1234.", "MENU_TITLE")
     texts.add("0123456789hm", "MENU_SMALL")

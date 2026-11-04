@@ -6,10 +6,36 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import unity, scene, visible, art, actors, coll, ents, font, text, vm
 
-SRC = os.path.join(HERE, "..", "src")
-ALL_ROOMS = [l.strip() for l in open(os.path.join(HERE, "rooms.txt")) if l.strip() and not l.startswith("#")]
-# (scenes loaded with others are part of those: two variants of the room, by a PlayerData bool)
-ROOMS = [r for r in ALL_ROOMS if r not in scene.additive_scenes(ALL_ROOMS)]
+SRC = os.environ.get("HK_OUT") or os.path.join(HERE, "..", "src")
+# the game in apps of the calculator's usual size, each its part of Hallownest (its rooms' list), sharing the saves:
+# HK_PART=2 the second, Hollow Knight: Fungal Wastes (rooms_fw.txt), into data_fw.bin and data_fw.h. The parts' rooms
+# are numbered as one list (their bits in the saves), the first's first: ROOM_BASE, a part's first
+PART = int(os.environ.get("HK_PART") or 1)
+PART_ROOMS = ["rooms.txt", "rooms_fw.txt"]
+OUT = ["data", "data_fw"][PART - 1]
+
+
+def _room_list(f):
+    rooms = [l.strip() for l in open(os.path.join(HERE, f)) if l.strip() and not l.startswith("#")]
+    return rooms, [r for r in rooms if r not in scene.additive_scenes(rooms)]
+
+
+ALL_ROOMS, ROOMS = _room_list(PART_ROOMS[PART - 1])
+GLOBAL_ROOMS = [r for f in PART_ROOMS for r in _room_list(f)[1]]   # (every part's, in their order)
+ROOM_BASE = GLOBAL_ROOMS.index(ROOMS[0])
+ents.GLOBAL_ROOMS[:] = GLOBAL_ROOMS
+vm.ROOM_BASE[0] = ROOM_BASE
+
+
+def cross_home():
+    """Where this part's world leads into another's (the first gate of its rooms to a room of another part): its
+    room, its gate; where a save from another part comes in when its bench is not here"""
+    for i, r in enumerate(ROOMS):
+        for o in unity.scene(r)["objects"]:
+            v = next((c.get("v") for c in o["c"] if c.get("class") == "TransitionPoint" and c.get("v")), None)
+            if v and v.get("targetScene") in GLOBAL_ROOMS and v["targetScene"] not in ROOMS:
+                return i, o["name"]
+    return 0, ""
 VARIANT_ROOMS = [r for r in ROOMS if scene.additive(r)]
 STRINGS = ents.Strings()
 PERSIST = ents.Persist()
@@ -488,9 +514,19 @@ def main():
         fleurs["SPRITE_MSG_" + name] = SPRITES.id(pmsg, ref or sr["m_Sprite"], max(o["lscale"][:2]), res)
     fleurs["SPRITE_MSG_ICON_FIREBALL"] = SPRITES.id(unity.scene("Crossroads_ShamanTemple"), [4, 44], 1.5607, hud_res)
     fleurs["SPRITE_MSG_ICON_DASH"] = SPRITES.id(unity.scene("Fungus1_04"), [10, 22], 1.5607, hud_res)
+    if PART == 2:
+        fleurs["SPRITE_MSG_ICON_WALLJUMP"] = SPRITES.id(unity.scene("Fungus2_14"), [4, 337], 1.5607, hud_res)
     # (a Moss Knight's grass ball: a Unity sprite)
     pgb = unity.prefab("sharedassets149.assets", 34)
     fleurs["SPRITE_GRASS_BALL"] = SPRITES.id(pgb, next(c["v"] for c in pgb["objects"][0]["c"] if c["type"] == "SpriteRenderer")["m_Sprite"], 1)
+    if PART == 2:
+        # (the gas the Fungoons spit: their Gas Attack particles' texture, 4 units wide)
+        fleurs["SPRITE_GAS"] = SPRITES.tex("sharedassets128.assets", 7, 4.0)
+        # (a Spore Bomb's Gas Explosion: its orange flash)
+        pge = unity.prefab("resources.assets", 5660)
+        of = next(o for o in pge["objects"] if o["name"] == "orange flash")
+        fleurs["SPRITE_GAS_FLASH"] = SPRITES.id(pge, next(c["v"] for c in of["c"] if c["type"] == "SpriteRenderer")["m_Sprite"],
+                                                of["lscale"][0])
     # (a soul orb: Soul Orb R's sprite, as stretched as it gets; its sorting)
     pso = unity.prefab(*vm.SOUL_ORB)
     fleurs["SPRITE_SOUL_ORB"] = SPRITES.id(pso, next(c["v"] for c in pso["objects"][0]["c"] if c["type"] == "SpriteRenderer")["m_Sprite"], 2)
@@ -513,7 +549,7 @@ def main():
         fleurs["TUTE_" + name] = "{%d, %.4ff, %.4ff}" % (s, kx, ky)
     # the focus tutorial King's Pass's first tablet shows (Focus_prompt_temp, the HUD's where it is): its picture, its
     # lines (Prompts: in the message's style) by their rects' tops, centred or ending at x, the key to hold (Cast's: its
-    # box's left); a line no nearer the one above than its height (the text bigger)
+    # box's left); a line no nearer the one above than a line's height at the game's own size
     fdoc = unity.scene("Tutorial_01")
     fby = {o["path"]: o for o in fdoc["objects"]}
     froot = "_Props/Tut_tablet_top/Focus_prompt_temp"
@@ -534,7 +570,7 @@ def main():
         al = tm["m_textAlignment"] % 4
         assert al in (1, 2), n
         if rows:
-            top = min(top, prev - text.STYLES["MSG"][2] / text.HUD_PX)
+            top = min(top, prev - text._style("Perpetua", 3.73 * 1.4407, text.HUD_PX, *text.PERPETUA)[2] / text.HUD_PX)
         prev = top
         rows.append("{%d, %.4ff, %.4ff, %d}" % (TEXTS.id(gt["sheetName"], gt["convName"], "MSG"),
                                                 (x0 + x1) / 2 if al == 1 else x1, top, al - 1))
@@ -569,7 +605,7 @@ def main():
     fleurs.update(collect.build())
     fleurs.update(stag.build(SPRITES, TEXTS, hud_res, actors.clip_id, ents.pd_flags(), vm.STR.id, ROOMS))
     import gamemap
-    fleurs.update(gamemap.build(SPRITES, TEXTS, hud_res, list(ROOMS) + list(vm.MAP_SCENES), ents.pd_flags(),
+    fleurs.update(gamemap.build(SPRITES, TEXTS, hud_res, vm.room_bits(ROOMS, ROOM_BASE), ents.pd_flags(),
                                 lambda r: scene.settings(unity.scene(vm.MAP_SCENES.get(r, r))).get("map_zone") or 0))
     fleurs["ROOM_ZONES"] = "{%s}" % ", ".join(str(scene.settings(unity.scene(r)).get("map_zone") or 0) for r in ROOMS)
     for i, item in enumerate(text.MSGS):
@@ -755,7 +791,8 @@ def main():
     secs["RVAR"].b += rvar
     # (the children enemy.c knows by name)
     str_ids = {n: STRINGS.id(n) for n in ("Attack Range", "Evade Range", "Spit Range", "Wake Box", "Slash Hitbox",
-                                          "Slash2 Hitbox", "door_stagExit")}
+                                          "Slash2 Hitbox", "door_stagExit") +
+              (("Smash Hits", "Head Box", "Head Box F", "Slash Forward", "Slash Up", "Sting Hit", "Dash Hit") if PART == 2 else ())}
     secs["STR"].b += STRINGS.blob()
     secs["TEXT"].b += TEXTS.blob()
     secs["FONT"].b += TEXTS.fonts()
@@ -781,14 +818,18 @@ def main():
         table += struct.pack("<II", pos + len(body), len(secs[k].b))
         body += secs[k].b
     data = head + table + body
-    open(os.path.join(SRC, "data.bin"), "wb").write(data)
+    open(os.path.join(SRC, OUT + ".bin"), "wb").write(data)
     sizes = {k: len(secs[k].b) for k in SECTIONS}
-    print("data.bin", len(data), sizes, "%.0fs" % (time.time() - t0))
-    with open(os.path.join(SRC, "data.h"), "w") as f:
+    print(OUT + ".bin", len(data), sizes, "%.0fs" % (time.time() - t0))
+    with open(os.path.join(SRC, OUT + ".h"), "w") as f:
         f.write("/* made by tools/pack.py */\n#pragma once\n")
         for i, k in enumerate(SECTIONS):
             f.write("#define SEC_%s %d\n" % (k, i))
-        f.write("#define NUM_ROOMS %d\n" % len(ROOMS))
+        f.write("#define NUM_ROOMS %d\n#define ROOM_BASE %d\n#define HK_PART_N %d\n" % (len(ROOMS), ROOM_BASE, PART))
+        home = cross_home()
+        f.write("#define CROSS_HOME_ROOM %d\n#define CROSS_HOME_GATE \"%s\"\n" % home)
+        bases = [GLOBAL_ROOMS.index(_room_list(r)[1][0]) for r in PART_ROOMS]
+        f.write("#define PART_BASES {%s}\n" % ", ".join(str(b) for b in bases))
         for i, r in enumerate(ROOMS):
             f.write("#define ROOM_%s %d\n" % (r.upper(), i))
         for i, c in enumerate(clips):
@@ -814,7 +855,7 @@ def main():
         for e in vm.NAMED_EVENTS:   # (each room's number for it; 255: its scripts don't know it)
             ids = [vm.BUILT[r].named_events.get(e, 255) if r in vm.BUILT else 255 for r in ROOMS]
             f.write("#define VMEV_%s {%s}\n" % (e.upper().replace(" ", "_"), ", ".join(str(i) for i in ids)))
-        for name in ("NPC Title", "Visited", "Display Right", "Hornet Saver", "Item"):
+        for name in ("NPC Title", "Visited", "Display Right", "Hornet Saver", "Item") + (("Arena Item", "Arena Item Kept", "Mantis Lord Throne 1", "Mantis Lord Throne 3") if PART == 2 else ()):
             f.write("#define VMSTR_%s %d\n" % (name.upper().replace(" ", "_"), vm.STR.index[name]))
         for name, i in str_ids.items():
             f.write("#define STR_%s %d\n" % (name.upper().replace(" ", "_"), i))
