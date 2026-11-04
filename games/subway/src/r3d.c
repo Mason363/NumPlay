@@ -582,6 +582,227 @@ static void raster(const Poly *q) {
   }
 }
 
+#if NP_SOFT_FLOAT
+/* ---------------------------------------------------------------- the same in integers
+ * (calculators without a floating-point unit: a polygon's planes read once a band into 16.16, its edges and their
+ * light and texture places stepped exactly from the corners, the perspective's divisions a reciprocal) */
+#include "np_fixed.h"
+
+/* an edge from (xa, ya) down to (xb, yb), in 1/8 pixels, with its light and texture places at the top and their
+ * changes down it */
+typedef struct {
+  int32_t ya, yb, xa, dx, r, sh;
+  int32_t s, ds, u, du, v, dv;
+} EdgeI;
+static void edge_i(EdgeI *E, int xa, int ya, int xb, int yb) {
+  uint32_t d = (uint32_t)(yb - ya);
+  int s = __builtin_clz(d);
+  E->ya = ya, E->yb = yb, E->xa = xa, E->dx = xb - xa, E->r = fx_rcp(d << s), E->sh = 49 - s;
+}
+/* its x at a row's middle Y: 1/8 pixels with 12 more bits */
+static inline int32_t edge_x(const EdgeI *E, int32_t Y) {
+  return (E->xa << 12) + (int32_t)((int64_t)((Y - E->ya) * E->dx) * E->r >> E->sh);
+}
+/* a value going from a at its top by da down it, at Y: 16.16 */
+static inline int32_t edge_v(const EdgeI *E, int32_t a, int32_t da, int32_t Y) {
+  return (a << 16) + (int32_t)((int64_t)((Y - E->ya) * da) * E->r >> (E->sh - 4));
+}
+static inline int32_t tex16(int64_t t) {
+  return t > (int64_t)16000 << 16 ? 16000 << 16 : t < -((int64_t)16000 << 16) ? -(16000 << 16) : (int32_t)t;
+}
+/* u = qu / qz and v = qv / qz, as raster finds them (qz under 1 counts as 1) */
+static inline void persp(int64_t qz, int64_t qu, int64_t qv, int32_t *u, int32_t *v) {
+  if (qz <= 65536) {
+    *u = tex16(qu), *v = tex16(qv);
+    return;
+  }
+  uint32_t d = qz >= (int64_t)1 << 32 ? 0xFFFFFFFFu : (uint32_t)qz;
+  int s = __builtin_clz(d);
+  int32_t r = fx_rcp(d << s);
+  *u = tex16((int64_t)fx_sat32(qu >> 16) * r >> (29 - s));
+  *v = tex16((int64_t)fx_sat32(qv >> 16) * r >> (29 - s));
+}
+
+static void raster_fx(const Poly *q) {
+  int ya = q->y0 > r_y0 ? q->y0 : r_y0, yb = q->y1 < r_y1 ? q->y1 : r_y1;
+  if (ya >= yb) return;
+  const Pos *pp = pos + q->v0;
+  const Attr *at = q->kind == K_SHADE || q->kind == K_TEX ? attr + q->at : NULL;
+  int n = q->n;
+  int64_t area = 0;
+  for (int i = 0, j = n - 1; i < n; j = i++) area += (int64_t)pp[j].x * pp[i].y - (int64_t)pp[i].x * pp[j].y;
+  EdgeI e[2][MAXN];
+  int ne[2] = {0, 0};
+  for (int i = 0, j = n - 1; i < n; j = i++) {
+    int ay = pp[j].y, by = pp[i].y;
+    if (ay == by) continue;
+    int ka = j, kb = i;
+    bool down = by > ay;
+    if (!down) {
+      int t = ay;
+      ay = by, by = t;
+      ka = i, kb = j;
+    }
+    if (by <= ya * 8 || ay >= yb * 8) continue;
+    int side = (down == (area > 0)) ? 1 : 0;
+    int k = ne[side]++;
+    while (k > 0 && e[side][k - 1].ya > ay) e[side][k] = e[side][k - 1], k--;
+    EdgeI *E = &e[side][k];
+    edge_i(E, pp[ka].x, ay, pp[kb].x, by);
+    if (at) {
+      int32_t sa = (int32_t)(at[ka] & 255), sb = (int32_t)(at[kb] & 255);
+      int32_t ua = (int32_t)(at[ka] >> 8 & 4095), ub = (int32_t)(at[kb] >> 8 & 4095);
+      int32_t va = (int32_t)(at[ka] >> 20), vb = (int32_t)(at[kb] >> 20);
+      E->s = sa, E->ds = sb - sa, E->u = ua, E->du = ub - ua, E->v = va, E->dv = vb - va;
+    }
+  }
+  if (!ne[0] || !ne[1]) return;
+  uint16_t col = q->color;
+  int kind = q->kind;
+  const Texture *tx = kind == K_TEX || kind == K_PERSP ? r_tex[q->color] : NULL;
+  int alpha = q->alpha >> 3;
+  int64_t za = fx_from_float(q->a, 16), zb16 = fx_from_float(q->b, 16), zc = fx_from_float(q->c, 16) + ((za + zb16) >> 1);
+  int32_t da = za > (int64_t)30000 << 16 ? 30000 << 16 : za < -((int64_t)30000 << 16) ? -(30000 << 16) : (int32_t)za;
+  int64_t ua = 0, ub = 0, uc = 0, va = 0, vb = 0, vc = 0;
+  if (kind == K_PERSP) {
+    const UV *w = &uvs[q->extra];
+    ua = fx_from_float(w->ua, 16), ub = fx_from_float(w->ub, 16), uc = fx_from_float(w->uc, 16) + ((ua + ub) >> 1);
+    va = fx_from_float(w->va, 16), vb = fx_from_float(w->vb, 16), vc = fx_from_float(w->vc, 16) + ((va + vb) >> 1);
+  }
+  int li = 0, ri = 0;
+  for (int y = ya; y < yb; y++) {
+    int32_t Y = y * 8 + 4;
+    while (li < ne[0] - 1 && Y >= e[0][li].yb) li++;
+    while (ri < ne[1] - 1 && Y >= e[1][ri].yb) ri++;
+    const EdgeI *L = &e[0][li], *R = &e[1][ri];
+    if (Y < L->ya || Y >= L->yb || Y < R->ya || Y >= R->yb) continue;
+    int32_t xl = edge_x(L, Y), xr = edge_x(R, Y);
+    if (xl > xr) {
+      int32_t t = xl;
+      xl = xr, xr = t;
+      const EdgeI *T = L;
+      L = R, R = T;
+    }
+    int x0 = xl <= -(8 << 12) ? 0 : (xl + (4 << 12)) >> 15, x1 = xr >= SCREEN_W * 8 << 12 ? SCREEN_W : (xr + (4 << 12)) >> 15;
+    if (x0 < 0) x0 = 0;
+    if (x0 >= x1) continue;
+    int64_t qz = zc + zb16 * y + za * x0;
+    uint32_t z = qz < 0 ? 0 : qz > (int64_t)65535 << 16 ? (uint32_t)65535 << 16 : (uint32_t)qz;
+    uint16_t *zb = zbuf + (y - r_y0) * SCREEN_W, *cb = r_col + (y - r_y0) * SCREEN_W;
+    if (kind == K_FLAT) {
+      if (alpha >= 31) {
+        for (int x = x0; x < x1; x++, z += (uint32_t)da) {
+          uint16_t zz = (uint16_t)(z >> 16);
+          if (zz > zb[x]) zb[x] = zz, cb[x] = col;
+        }
+      } else {
+        for (int x = x0; x < x1; x++, z += (uint32_t)da)
+          if ((uint16_t)(z >> 16) > zb[x]) cb[x] = r_mix565(cb[x], col, alpha);
+      }
+      continue;
+    }
+    if (kind == K_PERSP) {
+      const uint8_t *px = tx->px;
+      const uint16_t *pal = tx->pal;
+      uint32_t wm = (1u << tx->wl) - 1, hmask = ((1u << tx->hl) - 1) << tx->wl;
+      int vs = 16 - tx->wl, light = q->alpha;
+      bool clear = tx->clear;
+      int64_t qu = uc + ub * y + ua * x0, qv = vc + vb * y + va * x0;
+      int32_t u = 0, v = 0;
+      bool known = false;
+      for (int x = x0; x < x1;) {
+        int n = x1 - x < 16 ? x1 - x : 16;
+        uint16_t *zp = zb + x, *cp = cb + x, *ze = zp + n;
+        int64_t qz2 = qz + za * n, qu2 = qu + ua * n, qv2 = qv + va * n;
+        uint32_t zt = z;
+        uint16_t *zq = zp;
+        while (zq < ze && (uint16_t)(zt >> 16) <= *zq) zq++, zt += (uint32_t)da;
+        if (zq == ze) {
+          z = zt, x += n;
+          qz = qz2, qu = qu2, qv = qv2;
+          known = false;
+          continue;
+        }
+        if (!known) persp(qz, qu, qv, &u, &v);
+        int32_t u2, v2;
+        persp(qz2, qu2, qv2, &u2, &v2);
+        uint32_t du, dv;
+        if (n == 16) du = (uint32_t)((u2 - u) >> 4), dv = (uint32_t)((v2 - v) >> 4);
+        else {
+          /* (over n without a division: 2^32 / n, rounded up) */
+          static const int64_t over[16] = {0, 4294967296, 2147483648, 1431655766, 1073741824, 858993460, 715827883,
+                                          613566757, 536870912, 477218589, 429496730, 390451573, 357913942, 330382100,
+                                          306783379, 286331154};
+          du = (uint32_t)(int32_t)((u2 - u) * over[n] >> 32), dv = (uint32_t)(int32_t)((v2 - v) * over[n] >> 32);
+        }
+        uint32_t uu = (uint32_t)u, vv = (uint32_t)v;
+        if (light >= 32 && !clear) {
+          for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
+            uint16_t d = (uint16_t)(z >> 16);
+            if (d > *zp) *zp = d, *cp = pal[px[(vv >> vs & hmask) | (uu >> 16 & wm)]];
+          }
+        } else if (light >= 32) {
+          for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
+            uint16_t d = (uint16_t)(z >> 16);
+            if (d <= *zp) continue;
+            uint8_t t = px[(vv >> vs & hmask) | (uu >> 16 & wm)];
+            if (t) *zp = d, *cp = pal[t];
+          }
+        } else {
+          for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
+            uint16_t d = (uint16_t)(z >> 16);
+            if (d <= *zp) continue;
+            uint8_t t = px[(vv >> vs & hmask) | (uu >> 16 & wm)];
+            if (clear && !t) continue;
+            *zp = d, *cp = r_mix565(0, pal[t], light);
+          }
+        }
+        x += n;
+        qz = qz2, qu = qu2, qv = qv2, u = u2, v = v2;
+        known = true;
+      }
+      continue;
+    }
+    /* shaded, and maybe textured: the light and the texture place from the edges, across (1 / width a reciprocal) */
+    int32_t sl = edge_v(L, L->s, L->ds, Y), sr = edge_v(R, R->s, R->ds, Y), w = xr - xl;
+    int32_t off = (x0 << 15) + (1 << 14) - xl, rw = 0, shw = 0;
+    if (w > 328) {   /* (0.01 pixels) */
+      shw = __builtin_clz((uint32_t)w);
+      rw = fx_rcp((uint32_t)w << shw);
+    }
+#define ACROSS(a, b) (rw ? (int32_t)((int64_t)((b) - (a)) * rw >> (46 - shw)) : 0)
+    int32_t ds = ACROSS(sl, sr), s = sl + (int32_t)((int64_t)ds * off >> 15);
+    if (kind == K_SHADE) {
+      for (int x = x0; x < x1; x++, z += (uint32_t)da, s += ds) {
+        uint16_t zz = (uint16_t)(z >> 16);
+        if (zz <= zb[x]) continue;
+        int k = s >> 19;
+        zb[x] = zz, cb[x] = k >= 32 ? col : r_mix565(0, col, k < 0 ? 0 : k);
+      }
+    } else {
+      int32_t ul = edge_v(L, L->u, L->du, Y), ur = edge_v(R, R->u, R->du, Y);
+      int32_t vl = edge_v(L, L->v, L->dv, Y), vr = edge_v(R, R->v, R->dv, Y);
+      int32_t dux = ACROSS(ul, ur), dvx = ACROSS(vl, vr);
+      /* (texture places are in 1/4 texels) */
+      int32_t u = (ul + (int32_t)((int64_t)dux * off >> 15)) >> 2, du = dux >> 2;
+      int32_t v = (vl + (int32_t)((int64_t)dvx * off >> 15)) >> 2, dv = dvx >> 2;
+      uint32_t wm = (1u << tx->wl) - 1, hm = (1u << tx->hl) - 1;
+      int wl = tx->wl, clear = tx->clear;
+      for (int x = x0; x < x1; x++, z += (uint32_t)da, s += ds, u += du, v += dv) {
+        uint16_t zz = (uint16_t)(z >> 16);
+        if (zz <= zb[x]) continue;
+        uint8_t t = tx->px[(((uint32_t)v >> 16) & hm) << wl | (((uint32_t)u >> 16) & wm)];
+        if (clear && !t) continue;
+        int k = s >> 19;
+        uint16_t c = tx->pal[t];
+        zb[x] = zz, cb[x] = k >= 32 ? c : r_mix565(0, c, k < 0 ? 0 : k);
+      }
+    }
+#undef ACROSS
+  }
+}
+#endif
+
 uint16_t r_floor_depth(float z) {
   float d = ZK / z;
   d -= d * (1.0f / 256);   /* (a hair farther: a shadow lying on it is drawn, what is under it is not) */
@@ -611,7 +832,11 @@ void r_render(r_band_fn bg, r_band_fn overlay) {
       for (int i = 0; i < SCREEN_W * BAND_H; i++) r_col[i] = 0;
     for (int i = 0; i < npolys; i++) {
       const Poly *q = &polys[order[i]];
+#if NP_SOFT_FLOAT
+      if (q->y1 > r_y0 && q->y0 < r_y1) raster_fx(q);
+#else
       if (q->y1 > r_y0 && q->y0 < r_y1) raster(q);
+#endif
     }
     if (overlay) overlay();
     plat_push(0, r_y0, SCREEN_W, BAND_H, r_col);
