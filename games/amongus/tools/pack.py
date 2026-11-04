@@ -419,7 +419,6 @@ def make_world(m, out):
         return best
 
     # consoles
-    KIND = {"task": 0, "MapRoomConsole": 1, "EmergencyConsole": 2, "SurvConsole": 3}
     cons = [c for c in m["consoles"] if c["kind"] in KIND]
     rows = []
     for c in cons:
@@ -453,6 +452,28 @@ def make_world(m, out):
     open(out, "w").write("\n".join(lines) + "\n")
 
 
+KIND = {"task": 0, "MapRoomConsole": 1, "EmergencyConsole": 2, "SurvConsole": 3}
+
+
+def console_masks(sm, D):
+    """each console's own picture as a mask (a bit a pixel, rows of whole bytes), for its outline when usable:
+    consoles.json and consoles/ from extract_consoles.py, in the order of world.h's CONSOLES"""
+    pics = json.load(open(os.path.join(REF, "consoles.json")))
+    masks, recs = b"", []
+    for c in [c for c in sm["consoles"] if c["kind"] in KIND]:
+        e = [p for p in pics if abs(p["x"] - c["x"]) < 0.01 and abs(p["y"] - c["y"]) < 0.01][0]
+        im = Image.open(os.path.join(REF, "consoles", e["img"] + ".png")).convert("RGBA")
+        a = np.asarray(im)[:, :, 3] >= 100
+        w = (im.width + 7) // 8 * 8
+        a = np.pad(a, ((0, 0), (0, w - im.width)))
+        recs.append((len(masks), e["px"], e["py"], im.width, im.height))
+        masks += np.packbits(a, axis=1, bitorder="little").tobytes()
+    D("/* each console's picture (world.h's order): where its mask starts, its top-left in ship pixels, its size */")
+    D("typedef struct { uint16_t off; int16_t x, y; uint8_t w, h; } ConsPic;")
+    D("static const ConsPic CONS_PIC[%d] = {%s};" % (len(recs), ", ".join("{%d, %d, %d, %d, %d}" % r for r in recs)))
+    return masks + b"\0" * (-len(masks) % 4)
+
+
 def cname(s):
     return "".join(c if c.isalnum() else "_" for c in s).upper()
 
@@ -481,6 +502,7 @@ def main():
         front.append((len(masks), f["x"], f["y"], im.width, im.height, f["z"]))
         masks += np.packbits(a, axis=1, bitorder="little").tobytes()
     tiles.append(("FRONT_MASKS", masks + b"\0" * (-len(masks) % 4)))
+    tiles.append(("CONS_MASKS", console_masks(sm, D)))
     door_ids = {}
     for kind in ("side", "front"):
         dm = sm["door_" + kind]

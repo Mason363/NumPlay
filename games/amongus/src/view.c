@@ -9,6 +9,12 @@
 
 View view;
 int kill_target(int i);
+int console_use(int i, int c);
+int hud_action(int *what);
+
+/* the consoles the player can use from here (outlined), and the one OK would use (lit too) */
+static uint8_t usable[8];
+static int nusable, main_cons;
 
 /* ---- the camera: the ship's pixels at the screen's top-left ---- */
 
@@ -137,6 +143,13 @@ void view_prepare(void) {
       view.pts[2 * k + 1] = -pts[2 * k + 1] * PX_PER_UNIT + SHIP_OY - view.cy;
     }
   }
+  nusable = 0, main_cons = -1;
+  if (g.screen == S_PLAY && g.overlay == O_NONE && M->vent == NONE) {
+    int what = -1, act = hud_action(&what);
+    for (int c = 0; c < N_CONSOLES && nusable < 8; c++)
+      if (console_use(g.me, c) >= 0) usable[nusable++] = (uint8_t)c;
+    if (act == 1 || act >= 4) main_cons = what;
+  }
   nitems = 0;
   view.target = -1;
   if (M->imp && M->alive && M->kill_cd <= 0 && g.screen == S_PLAY) view.target = kill_target(g.me);
@@ -217,6 +230,32 @@ static void draw_vents(void) {
   }
 }
 
+/* the usable consoles' yellow outline (Console.SetOutline), the one OK would use lit up */
+static void draw_outlines(void) {
+  const uint8_t *masks = (const uint8_t *)blob(BLOB_CONS_MASKS);
+  for (int k = 0; k < nusable; k++) {
+    const ConsPic *C = &CONS_PIC[usable[k]];
+    const uint8_t *m = masks + C->off;
+    int stride = (C->w + 7) >> 3, x0 = C->x - view.cx, y0 = C->y - view.cy;
+    bool lit = usable[k] == main_cons;
+#define IN(u, v) ((unsigned)(u) < C->w && (unsigned)(v) < C->h && (m[(v) * stride + ((u) >> 3)] >> ((u) & 7) & 1))
+    for (int y = y0 - 1; y <= y0 + C->h; y++) {
+      if (y < gfx_y0 || y >= gfx_y0 + BAND) continue;
+      uint16_t *row = gfx_band + (y - gfx_y0) * SCREEN_W;
+      int v = y - y0;
+      for (int x = x0 - 1; x <= x0 + C->w; x++) {
+        if ((unsigned)x >= SCREEN_W) continue;
+        int u = x - x0;
+        if (IN(u, v)) {
+          if (lit) row[x] = blend(row[x], 0xFFE0, 60);
+        } else if (IN(u - 1, v) || IN(u + 1, v) || IN(u, v - 1) || IN(u, v + 1))
+          row[x] = 0xFFE0;
+      }
+    }
+#undef IN
+  }
+}
+
 /* outside the light: the ship darker (and nobody there) */
 static void draw_dark(void) {
   if (!view.dark) return;
@@ -270,6 +309,7 @@ static void draw_names(void) {
 void view_draw(void) {
   draw_tiles();
   draw_vents();
+  draw_outlines();
   draw_items();
   draw_dark();
   draw_names();
