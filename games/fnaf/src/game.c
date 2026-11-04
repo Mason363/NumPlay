@@ -1,9 +1,14 @@
 /* The scenes around the nights: the title, the newspaper, how to play, the night's card, 6 AM, the
- * paychecks and the pink slip, the game over, the custom night and Golden Freddy; keys and saves. */
+ * paychecks and the pink slip, the game over, the custom night and Golden Freddy; keys and saves. The TI-84 Plus
+ * CE version (ce/) has drawings of its own: FNAF_CE leaves these out. */
 #include <string.h>
 #include "game.h"
+#ifndef FNAF_CE
 #include "gfx.h"
 #include "res.h"
+#else
+#include "plat.h"
+#endif
 
 Game g;
 static uint32_t seed = 0x2C1B3C6Du;
@@ -82,6 +87,7 @@ static void title_step(void) {
   }
 }
 
+#ifndef FNAF_CE
 static void title_draw(void) {
   gfx_fill(0, gfx_y0, SCREEN_W, BAND_H, BLACK);
   pic_draw(PIC_TITLE0 + face, 0, 0);
@@ -107,17 +113,22 @@ static void title_draw(void) {
     gfx_text(FONT_HUD, 44, y0 + 18 * g.menu_n + 4, s, WHITE);
   }
 }
+#endif
 
 /* ------------------------------------------------------------------ the newspaper, how to play, the card */
+#ifndef FNAF_CE
 static int fade_in_out(float t, float in, float hold, float out) {   /* 0 black to 32 */
   float a = t < in ? t / in : t < hold ? 1 : t < hold + out ? 1 - (t - hold) / out : 0;
   return (int)(a * 32);
 }
+#endif
 
+#ifndef FNAF_CE
 static void news_draw(void) {
   pic_draw(PIC_NEWSPAPER, 0, 0);
   gfx_dim(0, gfx_y0, SCREEN_W, BAND_H, fade_in_out(g.t, 2, 7, 2));
 }
+#endif
 
 static void news_step(void) {
   if (pressed(K_OK) && g.t > 2 && g.t < 7) g.t = 7;
@@ -130,6 +141,7 @@ static void news_step(void) {
   }
 }
 
+#ifndef FNAF_CE
 static void keys_draw(void) {
   static const char *const rows[][2] = {
     {"In the office", NULL},
@@ -160,6 +172,7 @@ static void keys_draw(void) {
   gfx_text_c(FONT_TEXT, 160, 209, "camera drains it. Survive until 6 AM.", RGB(0xC8C8C8));
   if ((int)(g.t * 2) & 1) gfx_text_c(FONT_HUD, 160, 226, "OK", WHITE);
 }
+#endif
 
 static void keys_step(void) {
   if (!pressed(K_OK | K_BACK) || g.t < 0.4f) return;
@@ -174,9 +187,12 @@ static void keys_step(void) {
     start_night(g.n.night ? g.n.night : 1);
 }
 
+#ifndef FNAF_CE
 static const char *const nth[] = {"", "1st Night", "2nd Night", "3rd Night", "4th Night", "5th Night", "6th Night",
                                   "7th Night"};
+#endif
 
+#ifndef FNAF_CE
 static void intro_draw(void) {
   gfx_fill(0, gfx_y0, SCREEN_W, BAND_H, BLACK);
   gfx_text_c(FONT_HUGE, 160, 92, "12:00 AM", WHITE);
@@ -184,6 +200,7 @@ static void intro_draw(void) {
   if (g.t < 0.15f) gfx_static(0, gfx_y0, SCREEN_W, BAND_H, 20, rnd());
   if (g.t > 1.2f) gfx_dim(0, gfx_y0, SCREEN_W, BAND_H, (int)((2.2f - g.t) * 32));
 }
+#endif
 
 static void intro_step(void) {
   if (g.t < 2.2f) return;
@@ -221,6 +238,7 @@ static void night_scene_step(void) {
   night_step();
 }
 
+#ifndef FNAF_CE
 static void pause_draw(void) {
   view_night();
   gfx_dim(0, gfx_y0, SCREEN_W, BAND_H, 9);
@@ -239,6 +257,7 @@ static void pause_draw(void) {
     if (g.pause_item == i) gfx_text(FONT_BIG, 88, 104 + 20 * i, ">>", WHITE);
   }
 }
+#endif
 
 /* ------------------------------------------------------------------ 6 AM, the paychecks */
 static void six_begin(void) {
@@ -251,6 +270,7 @@ static void six_begin(void) {
   caption("*chimes*");
 }
 
+#ifndef FNAF_CE
 static void six_draw(void) {
   gfx_fill(0, gfx_y0, SCREEN_W, BAND_H, BLACK);
   /* 5 rolls up into 6 */
@@ -266,6 +286,7 @@ static void six_draw(void) {
   gfx_text_c(FONT_TEXT, 160, 170, g.t > 6.2f ? "*children cheering*" : "*chimes*", RGB(0xA0A0A0));
   gfx_dim(0, gfx_y0, SCREEN_W, BAND_H, fade_in_out(g.t, 1, 10.5f, 1));
 }
+#endif
 
 static void six_step(void) {
   if (g.t < DT * 1.5f) six_begin();
@@ -279,11 +300,13 @@ static void six_step(void) {
   }
 }
 
+#ifndef FNAF_CE
 static void paper_draw(void) {
   static const int pics[3] = {PIC_PAYCHECK, PIC_OVERTIME, PIC_PINKSLIP};
   pic_draw(pics[g.paper], 0, 0);
   gfx_dim(0, gfx_y0, SCREEN_W, BAND_H, fade_in_out(g.t, 2, 17, 2));
 }
+#endif
 
 static void paper_step(void) {
   if (pressed(K_OK) && g.t > 2 && g.t < 17) g.t = 17;
@@ -291,6 +314,7 @@ static void paper_step(void) {
 }
 
 /* ------------------------------------------------------------------ the end of a night */
+#ifndef FNAF_CE
 static void over_draw(void) {
   if (g.t < 2.5f) {
     gfx_fill(0, gfx_y0, SCREEN_W, BAND_H, BLACK);
@@ -301,24 +325,30 @@ static void over_draw(void) {
   gfx_static(0, gfx_y0, SCREEN_W, BAND_H, g.t < 3 ? 26 : 6, rnd());
   gfx_text_r(FONT_HUGE, 306, 200, "Game Over", WHITE);
 }
+#endif
 
 static void over_step(void) {
   if ((pressed(K_OK) && g.t > 3) || g.t > 13) go(SC_TITLE);
 }
 
+#ifndef FNAF_CE
 static void golden_draw(void) {
   pic_draw(PIC_GOLDEN, ((int)(g.t * 60) & 2) - 1, 0);
   gfx_static(0, gfx_y0, SCREEN_W, BAND_H, 6 + (int)(rnd() % 8), rnd());
 }
+#endif
 
 static void golden_step(void) {
   if (g.t > 1.6f) g.running = false;   /* and the game is gone, as it crashes on a computer */
 }
 
 /* ------------------------------------------------------------------ the custom night */
+#ifndef FNAF_CE
 static const int faces[4] = {PIC_FACE_FREDDY, PIC_FACE_BONNIE, PIC_FACE_CHICA, PIC_FACE_FOXY};
 static const char *const names[4] = {"Freddy", "Bonnie", "Chica", "Foxy"};
+#endif
 
+#ifndef FNAF_CE
 static void custom_draw(void) {
   gfx_fill(0, gfx_y0, SCREEN_W, BAND_H, BLACK);
   gfx_text_c(FONT_BIG, 160, 14, "Customize Night", WHITE);
@@ -338,6 +368,7 @@ static void custom_draw(void) {
   gfx_text(FONT_TEXT, 12, 214, "< > pick   up down: level", RGB(0x909090));
   gfx_text_r(FONT_BIG, 308, 208, "Ready", (int)(g.t * 2) & 1 ? WHITE : RGB(0xC0C0C0));
 }
+#endif
 
 static void custom_step(void) {
   if (pressed(K_LEFT | K_DIGIT(4))) g.custom_sel = (uint8_t)((g.custom_sel + 3) % 4);
@@ -394,6 +425,7 @@ void game_step(uint32_t keys) {
   }
 }
 
+#ifndef FNAF_CE
 void game_draw(void) {
   static void (*const draws[])(void) = {
     [SC_TITLE] = title_draw, [SC_NEWS] = news_draw, [SC_KEYS] = keys_draw, [SC_INTRO] = intro_draw,
@@ -401,3 +433,4 @@ void game_draw(void) {
     [SC_OVER] = over_draw, [SC_CUSTOM] = custom_draw, [SC_GOLDEN] = golden_draw};
   gfx_frame(g.scene == SC_NIGHT && g.paused ? pause_draw : draws[g.scene]);
 }
+#endif

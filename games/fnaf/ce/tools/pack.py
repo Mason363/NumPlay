@@ -17,7 +17,7 @@ import sys
 import tempfile
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CE = os.path.dirname(HERE)
@@ -72,8 +72,13 @@ def resize(a, w, h):
         np.float64)
 
 
-def halfv(a):
-    return resize(a, a.shape[1], (a.shape[0] + 1) // 2)
+def halfv(a, sharpen=False):
+    """at half height (the calculator shows each row twice); the office a little sharper for it"""
+    im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
+    im = im.resize((im.width, (im.height + 1) // 2), Image.LANCZOS)
+    if sharpen:
+        im = im.filter(ImageFilter.UnsharpMask(radius=1.0, percent=50, threshold=1))
+    return np.asarray(im).astype(np.float64)
 
 
 class Pic:
@@ -118,14 +123,14 @@ def mb_box(a, b, thresh=10):
 
 def office_pictures(N):
     g = group("office")
-    office = halfv(N["OFFICE"])
+    office = halfv(sharpen=True, a=N["OFFICE"])
     base = pic("OFFICE", office, g, "office")
     define("OFFICE_W", office.shape[1])
     # the lights: each side's lit doorway, a patch over the office (with Bonnie or Chica: over it again)
     for side, lit, who in (("L", "OFFICE_LL", "OFFICE_LLB"), ("R", "OFFICE_RL", "OFFICE_RLC")):
-        a, b = halfv(N[lit]), halfv(N[who])
+        a, b = halfv(sharpen=True, a=N[lit]), halfv(sharpen=True, a=N[who])
         x0, y0, x1, y1 = [min(v1, v2) if k < 2 else max(v1, v2)
-                          for k, (v1, v2) in enumerate(zip(mb_box(a, office), mb_box(b, office)))]
+                          for k, (v1, v2) in enumerate(zip(mb_box(a, office, 24), mb_box(b, office, 24)))]
         p = pic(f"LIGHT_{side}", pad8(a)[y0:y1, x0:x1], g, "office", x=x0, y=y0)
         pic(f"LIGHT_{side}_WHO", pad8(b)[y0:y1, x0:x1], g, "office", base=p, skip=TIGHT, x=x0, y=y0)
         define(f"LIGHT_{side}_X", x0)
@@ -134,14 +139,14 @@ def office_pictures(N):
         define(f"LIGHT_{side}_H", y1 - y0)
     # the doors, buttons, fan and Golden Freddy, as the NumWorks version places them (rows halved)
     for n in ("DOOR_L", "DOOR_R"):
-        pic(n, halfv(N[n]), g, "office")
+        pic(n, halfv(sharpen=True, a=N[n]), g, "office")
     for n in [f"PANEL_{s}{k}" for s in "LR" for k in range(4)] + ["FAN0", "FAN1", "FAN2", "OFFICE_GOLD"]:
-        pic(n, halfv(N[n]), g, "office")
+        pic(n, halfv(sharpen=True, a=N[n]), g, "office")
     # out of power: the dark office, and Freddy's face in the doorway (a patch)
-    dark = halfv(N["DARK"])
+    dark = halfv(sharpen=True, a=N["DARK"])
     pic("DARK", dark, g, "office")
-    df = halfv(N["DARK_FREDDY"])
-    x0, y0, x1, y1 = mb_box(df, dark, 6)
+    df = halfv(sharpen=True, a=N["DARK_FREDDY"])
+    x0, y0, x1, y1 = mb_box(df, dark, 20)
     pic("DARK_FREDDY", pad8(df)[y0:y1, x0:x1], g, "office", x=x0, y=y0)
     for k, v in zip("XYWH", (x0, y0, x1 - x0, y1 - y0)):
         define(f"DARK_FREDDY_{k}", v)
@@ -169,17 +174,19 @@ def camera_pictures(N):
             pic("CAM2B_GOLD", halfv(N["CAM2B_GOLD"]), g, "cam", base=first, skip=TIGHT)
 
 
-def anim(name, frames, grp, quality="scare"):
+def anim(name, frames, grp, quality="scare", chain=True):
+    """160 x 120 frames, each coded over the one before (chain), or on its own (played both ways)"""
     prev = None
     for i, a in enumerate(frames):
-        prev = pic(f"{name}{i}", resize(a, 160, 120), grp, quality, base=prev, skip=ANIM if prev else None)
+        p = pic(f"{name}{i}", resize(a, 160, 120), grp, quality, base=prev, skip=ANIM if prev else None)
+        prev = p if chain else None
     define(f"{name}_N", len(frames))
 
 
 def scare_pictures(N):
     for name, n in (("BONNIE", 10), ("CHICA", 15), ("FREDDY", 20), ("FOXY", 19), ("POWEROUT", 21)):
         anim(name, [N[f"{name}{i}"] for i in range(n)], group(name.lower()))
-    anim("FLIP", [N[f"FLIP{i}"] for i in range(11)], group("flip"))
+    anim("FLIP", [N[f"FLIP{i}"] for i in range(11)], group("flip"), chain=False)
     # the hallucinations' pictures (a frame now and then): small
     g = group("halluc")
     pic("HALLUC_GOLDEN", resize(N["GOLDEN"], 160, 120), g, "scare")
@@ -312,7 +319,7 @@ def main():
     blob("TABLES", C.tables_blob(Q, cc))
     gnames = list(GROUPS)
     for n in gnames:
-        blob("MAP_" + n.upper(), zx0(GROUPS[n].blob(UI_RGB) + remaps(GROUPS[n])))
+        blob("MAP_" + n.upper(), zx0(GROUPS[n].blob(UI_RGB) + remaps(GROUPS[n]) + bytes([GROUPS[n].phases])))
     pic_ids = {p.name: i for i, p in enumerate(PICS)}
     for p, st in zip(PICS, streams):
         blob("PIC_" + p.name, C.write(p.coded, st, codes, p.q, pic_ids[p.base.name] if p.base else None))
