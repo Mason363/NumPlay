@@ -1,7 +1,7 @@
 /* NumPlay on a computer (Windows, macOS, Linux, a Raspberry Pi) with SDL 3: the 320 x 240 screen in a window, the
  * NumWorks keypad on the keyboard (platform/sdl/README.md), the files in one file per game.
  *
- * Build defines: NP_APP_ID (the game's id: its files' name), NP_APP_NAME (the window's title). In the environment:
+ * Build defines: NP_APP_ID (the game's id: its files' name, or NP_FILES_ID's), NP_APP_NAME (the window's title). In the environment:
  * NP_SAVES the folder for the files (default ~/.numplay), NP_SCALE the window's size, 1 to 6 (default 3).
  *
  * Tests (tools/verify.py), with NP_HEADLESS=1 for no window: NP_KEYS "1500-1700:ok,3000:back" holds keys
@@ -19,6 +19,9 @@
 
 #ifndef NP_APP_ID
 #define NP_APP_ID "numplay"
+#endif
+#ifndef NP_FILES_ID /* (its files' name: the game's own, or that of the game whose saves it shares) */
+#define NP_FILES_ID NP_APP_ID
 #endif
 #ifndef NP_APP_NAME
 #define NP_APP_NAME "NumPlay"
@@ -282,7 +285,7 @@ static void storage_path(char *p, size_t n) {
     SDL_CreateDirectory(home);
     dir = home;
   }
-  snprintf(p, n, "%s/%s.files", dir, NP_APP_ID);
+  snprintf(p, n, "%s/%s.files", dir, NP_FILES_ID);
 }
 
 #ifdef __EMSCRIPTEN__
@@ -304,7 +307,7 @@ uint8_t *np_storage(uint32_t *size) {
   if (!storage_loaded) {
     storage_loaded = true;
 #ifdef __EMSCRIPTEN__
-    size_t n = (size_t)web_load("numplay:" NP_APP_ID, storage, STORAGE_SIZE);
+    size_t n = (size_t)web_load("numplay:" NP_FILES_ID, storage, STORAGE_SIZE);
     if (n) {
 #else
     char p[600];
@@ -328,7 +331,7 @@ void np_storage_changed(void) {
 #ifdef __EMSCRIPTEN__
   uint32_t used = 0;
   while (used + 2 <= STORAGE_SIZE && (storage[used] | storage[used + 1] << 8)) used += storage[used] | storage[used + 1] << 8;
-  web_save("numplay:" NP_APP_ID, storage, (int)used + 2);
+  web_save("numplay:" NP_FILES_ID, storage, (int)used + 2);
   return;
 #endif
   char p[600], tmp[620];

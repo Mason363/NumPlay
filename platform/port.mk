@@ -7,11 +7,13 @@
 #   PORT_DEPS   files its build makes first (generated tables its sources include)
 #   PORT_FONT   its own copy of the launcher's font_data.c, if it has one (not in PORT_SRC then)
 #   PORT_CXX    its C++ files (a physics engine...), and PORT_CXXFLAGS their own flags: no exceptions, no RTTI
+#   PORT_ICON   its icon, if not src/icon.png
 # then `make port TARGET=sdl` builds build/sdl/<id>. TARGET: sdl (a computer, a Raspberry Pi).
 TARGET ?= sdl
 NP_PLATFORM := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
 NP_ROOT := $(NP_PLATFORM)/..
 PORT_OUT = build/$(TARGET)
+PORT_ICON ?= src/icon.png
 # the font eadk_display_draw_string draws with: the launcher's (a game with its own copy of it names that instead)
 PORT_FONT ?= $(NP_ROOT)/launcher/src/font_data.c
 PORT_COMMON = $(NP_PLATFORM)/common/eadk_text.c $(PORT_FONT) \
@@ -130,7 +132,7 @@ $(PORT_OUT)/$(PORT_ID).g3a: $(PORT_DEPS) $(CG_SRC) $(PORT_ASM) $(PORT_CXX_OBJ) $
 	  $$objs $(PORT_CXX_OBJ) -Wl,--gc-sections -Wl,-u,initialize -L$(CG_LIBC)/lib -L$(FXCG)/sdk/lib $(if $(PORT_CXX),-lstdc++) -lc -lm -lgcc -lfxcg -lc -lgcc \
 	  -o $(CG_DIR)/$(PORT_ID).elf
 	$(Q) PATH="$(CG_PATH):$$PATH" sh3eb-elf-objcopy -O binary -R .ilram $(CG_DIR)/$(PORT_ID).elf $(CG_DIR)/$(PORT_ID).bin
-	$(Q) python3 $(NP_PLATFORM)/casio-cg/g3a.py $(CG_DIR)/$(PORT_ID).bin $@ --name "$(PORT_NAME)" --icon src/icon.png
+	$(Q) python3 $(NP_PLATFORM)/casio-cg/g3a.py $(CG_DIR)/$(PORT_ID).bin $@ --name "$(PORT_NAME)" --icon $(PORT_ICON)
 	@echo "CASIO   $@"
 else
 port:
