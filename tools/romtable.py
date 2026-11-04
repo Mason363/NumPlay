@@ -40,13 +40,28 @@ def entry_name(path):
     return name[:k]
 
 
+def trim(data, system):
+    """The padding a ROM's file has to reach a power of two (16 KB banks at its end, all 0xFF or all 0x00) left out:
+    the cores repeat the banks a game has for those it lacks, as a flash cart does, and games never read their padding.
+    Not for NES files (their banks follow a header) or ColecoVision; the Master System's 32 KB rule stays as it was."""
+    if system not in (1, 2, 4, 5, 6) or len(data) % 16384:
+        return data
+    keep = 0x8000 if system <= 2 else (len(data) if len(data) <= 0x8000 else 0xC000)
+    pad, n = data[-1], len(data)
+    if pad not in (0x00, 0xFF):
+        return data
+    while n - 16384 >= keep and data[n - 16384:n].count(pad) == 16384:
+        n -= 16384
+    return data[:n]
+
+
 def table(paths):
     roms = []
     for p in paths:
         ext = os.path.splitext(p)[1].lower()
         if ext not in SYSTEMS:
             sys.exit(f"romtable: {p}: not a .gb, .gbc, .nes, .sms, .gg, .sg or .col file")
-        roms.append((open(p, "rb").read(), SYSTEMS[ext], entry_name(p)))
+        roms.append((trim(open(p, "rb").read(), SYSTEMS[ext]), SYSTEMS[ext], entry_name(p)))
     out = bytearray(struct.pack("<III", MAGIC, VERSION, len(roms)))
     out += bytes(ENTRY * len(roms))
     for i, (data, system, name) in enumerate(roms):

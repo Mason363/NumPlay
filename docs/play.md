@@ -898,6 +898,23 @@ On the Skeld with up to 9 bots. As a crewmate, do your tasks, report bodies and 
 
 <br clear="right">
 
+## Imposter
+
+<img src="../games/imposter/docs/shot.png" width="320" align="right" alt="Imposter">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** | Choose |
+| **OK** | Pick, see your role, hide it |
+| **EXE** | The next player, while adding names |
+| **Letter keys** | Type a name |
+| **Back** | Back, the settings |
+| **Home** | Save and quit |
+
+A party game for 3 to 12 players and one calculator. Add everyone's names and pick the categories. Pass the calculator around: each player sees the secret word alone, then hides it, except the imposter, who only sees the category (or nothing). In turn, everyone says one word about the secret. Then vote out loud. Caught, the imposter loses. Not caught, the imposter wins.
+
+<br clear="right">
+
 ## NumPico
 
 <img src="../games/numpico/docs/shot.png" width="320" align="right" alt="NumPico playing Combo Pool">

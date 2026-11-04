@@ -57,6 +57,7 @@ In 1x on the Game Boy and the Game Gear, the keys are written on the side of the
 ## Good to know
 
 - No sound: the calculator has no speaker.
+- Game Boy and Sega games go in without the empty space their files are padded with (up to a quarter of a game), so more of them fit.
 - The calculator has about 42 KB for every app's saves. A Game Boy or NES state takes 2 to 10 KB, a Master System or Game Gear one 3 to 15 KB, a Game Boy Color one up to 30 KB, so keep the slots you need and delete the others in the launcher (Delete save).
 - The calculator has no clock for apps: a Game Boy game's clock runs while you play, and you can set it in Options, RTC config.
 - Cartridges with more than 32 KB of RAM (a few Game Boy Color games) and NES mappers nofrendo doesn't have say so instead of starting.
