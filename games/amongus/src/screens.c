@@ -307,9 +307,16 @@ static void intro_draw(void) {
     gfx_text(FONT_HUGE, 160, 52, "Crewmate", CREW_BLUE, 0x0000, 2, 1);
     int k = 0;
     for (int i = 0; i < g.nplayers; i++) k += g.p[i].imp;
-    char b[48];
-    snprintf(b, sizeof b, "There %s %d Impostor%s among us", k == 1 ? "is" : "are", k, k == 1 ? "" : "s");
-    gfx_text(FONT_MID, 160, 74, b, WHITE, 0x0000, 1, 1);
+    /* "There is 1 Impostor among us", the Impostors in red */
+    char a[16], b[16];
+    const char *c = " among us";
+    snprintf(a, sizeof a, "There %s ", k == 1 ? "is" : "are");
+    snprintf(b, sizeof b, "%d Impostor%s", k, k == 1 ? "" : "s");
+    int wa = gfx_text_width(FONT_MID, a), wb = gfx_text_width(FONT_MID, b), wc = gfx_text_width(FONT_MID, c);
+    int x = 160 - (wa + wb + wc) / 2;
+    gfx_text(FONT_MID, x, 74, a, WHITE, 0x0000, 1, 0);
+    gfx_text(FONT_MID, x + wa, 74, b, IMP_RED, 0x0000, 1, 0);
+    gfx_text(FONT_MID, x + wa + wb, 74, c, WHITE, 0x0000, 1, 0);
   }
 }
 
@@ -322,7 +329,8 @@ static void end_draw(void) {
   for (int i = 0; i < g.nplayers; i++)
     if ((g.p[i].imp != 0) == (g.winner == 1)) who[n++] = (uint8_t)i;
   art_lineup(who, n, g.screen_t);
-  gfx_text(FONT_HUGE, 160, 52, won ? "Victory" : "Defeat", won ? CREW_BLUE : IMP_RED, 0x0000, 2, 1);
+  /* (Victory in the winners' colour: blue for the crew, red for the Impostors) */
+  gfx_text(FONT_HUGE, 160, 52, won ? "Victory" : "Defeat", won && g.winner == 0 ? CREW_BLUE : IMP_RED, 0x0000, 2, 1);
   static const char *const WHY[2][4] = {{"Crewmates voted out the Impostors", "", "Crewmates finished their tasks", ""},
                                          {"", "Impostors killed the crew", "", "Impostors sabotaged the ship"}};
   const char *why = WHY[g.winner & 1][g.end_reason & 3];

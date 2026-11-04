@@ -209,6 +209,13 @@ void bot_see(int i) {
     if (seen) {
       B->seen_t[j] = g.t;
       B->seen_room[j] = Q->room;
+      /* and who was with them */
+      int with = NONE;
+      float wd = 2.2f * 2.2f;
+      for (int k = 0; k < g.nplayers; k++)
+        if (k != j && k != i && g.p[k].alive && g.p[k].vent == NONE && dist2(g.p[k].pos, Q->pos) < wd && can_see(i, k))
+          wd = dist2(g.p[k].pos, Q->pos), with = k;
+      B->seen_with[j] = (uint8_t)with;
       B->with_t[j] += 0.2f;
       if (B->with_t[j] > 60) B->with_t[j] = 60;
       /* a visual task proves a crewmate */
@@ -558,6 +565,7 @@ static void impostor_tick(int i) {
 void bot_init(int i) {
   Bot *B = &g.p[i].bot;
   memset(B, 0, sizeof *B);
+  memset(B->seen_with, NONE, sizeof B->seen_with);
   B->state = B_WAIT;
   B->t = 0.5f + rnd_f() * 1.5f;
   B->saw_kill = B->saw_vent = B->near_body = B->found_body = NONE;
@@ -727,7 +735,7 @@ void bot_tick(int i) {
 
 enum {
   L_BODY_IN, L_NEAR_BODY, L_SAW_KILL, L_SAW_VENT, L_WAS_IN, L_WITH, L_SUS, L_WHO, L_WHERE, L_SKIP, L_NOT_ME,
-  L_SCANNED, L_BUTTON
+  L_SCANNED, L_BUTTON, L_SAW_WITH
 };
 
 static void say(int who, int kind, int a, int b) {
@@ -825,6 +833,14 @@ void bot_meeting_start(void) {
       queue(i, L_SAW_VENT, B->saw_vent, B->saw_vent_room, at);
       continue;
     }
+    /* the one last seen with the dead */
+    int v = g.reported;
+    if (!g.p[i].imp && v != NONE && B->seen_with[v] != NONE && B->seen_with[v] != i && g.p[B->seen_with[v]].alive &&
+        g.t - B->seen_t[v] < 40) {
+      suspect(B, B->seen_with[v], 25);
+      queue(i, L_SAW_WITH, B->seen_with[v], B->seen_room[v], at);
+      continue;
+    }
     int r = rnd_n(10);
     if (!g.p[i].imp && B->scanned != NONE && g.p[B->scanned].alive && r < 3) {
       queue(i, L_SCANNED, B->scanned, 0, at);
@@ -854,7 +870,7 @@ void bot_meeting_tick(void) {
     if (g.p[who].alive) say(who, queue_kind[qnext], queue_a[qnext], queue_b[qnext]);
     /* what's said moves the listeners: an accusation weighs by how much the speaker is trusted */
     int k = queue_kind[qnext], a = queue_a[qnext];
-    if (k == L_SAW_KILL || k == L_SAW_VENT || k == L_SUS || k == L_NEAR_BODY) {
+    if (k == L_SAW_KILL || k == L_SAW_VENT || k == L_SUS || k == L_NEAR_BODY || k == L_SAW_WITH) {
       for (int i = 0; i < g.nplayers; i++) {
         if (i == who || !is_bot(i) || !g.p[i].alive || g.p[i].imp) continue;
         Bot *B = &g.p[i].bot;
@@ -863,7 +879,7 @@ void bot_meeting_tick(void) {
           continue;
         }
         int trust = B->sus[who] < -30 ? 2 : B->sus[who] > 40 ? 0 : 1;
-        int w = (k == L_SAW_KILL ? 45 : k == L_SAW_VENT ? 40 : k == L_NEAR_BODY ? 20 : 12) * trust;
+        int w = (k == L_SAW_KILL ? 45 : k == L_SAW_VENT ? 40 : k == L_NEAR_BODY || k == L_SAW_WITH ? 20 : 12) * trust;
         suspect(B, a, w);
       }
     }

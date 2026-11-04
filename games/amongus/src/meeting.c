@@ -17,7 +17,7 @@ void art_confirm(int x, int y, bool yes);
 
 enum {
   L_BODY_IN, L_NEAR_BODY, L_SAW_KILL, L_SAW_VENT, L_WAS_IN, L_WITH, L_SUS, L_WHO, L_WHERE, L_SKIP, L_NOT_ME,
-  L_SCANNED, L_BUTTON
+  L_SCANNED, L_BUTTON, L_SAW_WITH
 };
 
 const char *line_text(const Line *l, char *b, int n) {
@@ -43,6 +43,10 @@ const char *line_text(const Line *l, char *b, int n) {
   case L_NOT_ME: snprintf(b, (size_t)n, "Not me"); break;
   case L_SCANNED: snprintf(b, (size_t)n, "%s scanned, they're safe", a); break;
   case L_BUTTON: snprintf(b, (size_t)n, "I called it. Anyone sus?"); break;
+  case L_SAW_WITH:
+    if (l->b == R_HALLWAY || g.reported == NONE) snprintf(b, (size_t)n, "%s was with %s", a, COLOR_NAMES[g.p[g.reported < MAXP ? g.reported : 0].color]);
+    else snprintf(b, (size_t)n, "%s was with %s in %s", a, COLOR_NAMES[g.p[g.reported].color], r);
+    break;
   default: b[0] = 0;
   }
   return b;

@@ -49,6 +49,7 @@ typedef struct {
   uint8_t near_body, body_room, found_body, said;              /* who it saw near the body it found */
   uint8_t claim_room, with, scanned, pad2;                     /* its alibi */
   float with_t[MAXP];                                          /* time spent with each player lately */
+  uint8_t seen_with[MAXP];   /* who was next to each player when last seen (NONE: alone) */
 } Bot;
 
 typedef struct {
