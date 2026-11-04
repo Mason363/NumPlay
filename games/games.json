@@ -2127,5 +2127,32 @@
       "casio-cg",
       "ti84ce"
     ]
+  },
+  {
+    "id": "fourplayer",
+    "rank": 47,
+    "title": "2 3 4 Players",
+    "tagline": "One key each, 14 party games",
+    "credit": "Inspired by 2 3 4 Player Games by JindoBlu",
+    "top": "0x2B2452",
+    "bottom": "0x100D22",
+    "accent": "0xFFC93C",
+    "colors": 16,
+    "records": [
+      "fourplayer.sav",
+      "fourplayer_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/fourplayer",
+    "default": false,
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   }
 ]

@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>29 free games for your NumWorks calculator, in one app.</b><br>
-  Plus 44 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.<br>
+  Plus 45 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.<br>
   Now on the TI-Nspire CX and Casio fx-CG50 too, and soon the TI-84 Plus CE.
 </p>
 
@@ -48,8 +48,8 @@
 <table>
   <tr>
     <td align="center" width="25%"><img src="docs/media/calcs/ti84ce.png" height="150" alt="TI-84 Plus CE"><br><b>TI-84 Plus CE</b><br><sub>and TI-83 Premium CE<br>coming soon</sub></td>
-    <td align="center" width="25%"><a href="docs/calculators/ti-nspire.md"><img src="docs/media/calcs/nspire.png" height="150" alt="TI-Nspire CX II"><br><b>TI-Nspire CX</b></a><br><sub>CX and CX II, with Ndless<br>75 games</sub></td>
-    <td align="center" width="25%"><a href="docs/calculators/casio-fx-cg50.md"><img src="docs/media/calcs/casio_cg50.png" height="150" alt="Casio fx-CG50"><br><b>Casio fx-CG50</b></a><br><sub>and Graph 90+E, fx-CG10, fx-CG20<br>71 games</sub></td>
+    <td align="center" width="25%"><a href="docs/calculators/ti-nspire.md"><img src="docs/media/calcs/nspire.png" height="150" alt="TI-Nspire CX II"><br><b>TI-Nspire CX</b></a><br><sub>CX and CX II, with Ndless<br>76 games</sub></td>
+    <td align="center" width="25%"><a href="docs/calculators/casio-fx-cg50.md"><img src="docs/media/calcs/casio_cg50.png" height="150" alt="Casio fx-CG50"><br><b>Casio fx-CG50</b></a><br><sub>and Graph 90+E, fx-CG10, fx-CG20<br>72 games</sub></td>
     <td align="center" width="25%"><a href="docs/porting.md"><img src="docs/media/calcs/raspberrypi.png" height="110" alt="A Raspberry Pi 5"><br><b>Anything else</b></a><br><sub>a computer, a Raspberry Pi,<br>a board with a screen</sub></td>
   </tr>
 </table>
@@ -163,29 +163,30 @@ The games with a blue ring are all in one app, **NumPlay.nwa**. The others are b
   </tr>
   <tr>
     <td align="center"><a href="games/twoplayer/README.md"><img src="docs/media/readme/thumb_twoplayer.png" width="240" alt="2 Players"><br><b>2 Players</b></a></td>
+    <td align="center"><a href="games/fourplayer/README.md"><img src="docs/media/readme/thumb_fourplayer.png" width="240" alt="2 3 4 Players"><br><b>2 3 4 Players</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FourPlayers.nwa">Download</a></td>
     <td align="center"><a href="games/chess/README.md"><img src="docs/media/readme/thumb_chess.png" width="240" alt="Chess"><br><b>Chess</b></a></td>
-    <td align="center"><a href="games/invaders/README.md"><img src="docs/media/readme/thumb_invaders.png" width="240" alt="Space Invaders"><br><b>Space Invaders</b></a></td>
   </tr>
   <tr>
+    <td align="center"><a href="games/invaders/README.md"><img src="docs/media/readme/thumb_invaders.png" width="240" alt="Space Invaders"><br><b>Space Invaders</b></a></td>
     <td align="center"><a href="games/breakout/README.md"><img src="docs/media/readme/thumb_breakout.png" width="240" alt="Block Breaker"><br><b>Block Breaker</b></a></td>
     <td align="center"><a href="games/snake/README.md"><img src="docs/media/readme/thumb_snake.png" width="240" alt="Snake"><br><b>Snake</b></a></td>
-    <td align="center"><a href="games/connectfour/README.md"><img src="docs/media/readme/thumb_connectfour.png" width="240" alt="Connect Four"><br><b>Connect Four</b></a></td>
   </tr>
   <tr>
+    <td align="center"><a href="games/connectfour/README.md"><img src="docs/media/readme/thumb_connectfour.png" width="240" alt="Connect Four"><br><b>Connect Four</b></a></td>
     <td align="center"><a href="games/mahjong/README.md"><img src="docs/media/readme/thumb_mahjong.png" width="240" alt="Mahjong"><br><b>Mahjong</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/Mahjong.nwa">Download</a></td>
     <td align="center"><a href="games/g2048/README.md"><img src="docs/media/readme/thumb_g2048.png" width="240" alt="2048"><br><b>2048</b></a></td>
-    <td align="center"><a href="games/solitaire/README.md"><img src="docs/media/readme/thumb_solitaire.png" width="240" alt="Solitaire"><br><b>Solitaire</b></a></td>
   </tr>
   <tr>
+    <td align="center"><a href="games/solitaire/README.md"><img src="docs/media/readme/thumb_solitaire.png" width="240" alt="Solitaire"><br><b>Solitaire</b></a></td>
     <td align="center"><a href="games/minesweeper/README.md"><img src="docs/media/readme/thumb_minesweeper.png" width="240" alt="Minesweeper"><br><b>Minesweeper</b></a></td>
     <td align="center"><a href="games/uttt/README.md"><img src="docs/media/readme/thumb_uttt.png" width="240" alt="Ultimate Tic-Tac-Toe"><br><b>Ultimate Tic-Tac-Toe</b></a></td>
+  </tr>
+  <tr>
     <td align="center"><a href="games/sudoku/README.md"><img src="docs/media/readme/thumb_sudoku.png" width="240" alt="Sudoku"><br><b>Sudoku</b></a></td>
-  </tr>
-  <tr>
     <td align="center"><a href="games/sokoban/README.md"><img src="docs/media/readme/thumb_sokoban.png" width="240" alt="Sokoban"><br><b>Sokoban</b></a></td>
+    <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-64"><b>Super Mario 64</b></a></td>
   </tr>
   <tr>
-    <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-64"><b>Super Mario 64</b></a></td>
     <td align="center"><a href="https://github.com/Mason363/NumWorks-Super-Mario-Bros"><b>Super Mario Bros.</b></a></td>
     <td align="center"><a href="#roadmap"><b>More on the way</b></a></td>
   </tr>
@@ -357,10 +358,10 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] Five Nights at Freddy's 3
 
 - [x] Five Nights at Freddy's 4
+- [x] Clash Royale, against bots
 
 </details>
 
-- [x] Clash Royale, against bots
 - [x] Cat Ninja
 - [x] A tower defense game: Kingdom Rush
 - [x] Deltarune: Chapter 1's start, from Kris's room to Castle Town, Lancer, Ralsei's lessons and the Field's first rooms
@@ -370,6 +371,7 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] A PICO-8 emulator, NumPico: add your own .p8 games on the website
 - [x] Moto X3M
 - [x] Among Us, against bots
+- [x] 2 3 4 Player Games, with teams
 - [ ] Full Minecraft 1.18.2 as a standalone app
 - [ ] Into the Breach
 - [ ] A racing game: F1 or GT3
@@ -408,7 +410,6 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Kingdom Rush: the heroes
 - [ ] Cult of the Lamb
 - [ ] Zombie Tsunami
-- [ ] 2 3 4 Player Games, with teams
 - [ ] Bread & Fred, for two players
 - [ ] The big games in French and Chinese too
 
@@ -473,6 +474,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 - **Moto X3M** by Madpuffers inspired NumPlay's Moto X3M, which plays the game's 50 levels with its own pictures and its **Impact** and **CF Crack and Bold** fonts, read from its web release, and follows its rules and numbers. Its physics is **[Nape](https://github.com/deltaluca/nape)** by Luca Deltodesco (BSD license, [license](LICENSES/BSD-2-Clause-Nape.txt)), the engine the game runs on, ported to C. Not affiliated with Madpuffers.
 - **Among Us** by Innersloth inspired NumPlay's Among Us, which plays the Skeld with the game's own pictures, read from its Android release, and follows its rules and numbers. Its bots are NumPlay's own. Its text is in **Liberation Sans** (SIL Open Font License, [license](LICENSES/OFL-1.1-LiberationSans.txt)). Not affiliated with Innersloth.
 - The party game **Imposter** inspired NumPlay's Imposter, written in C for NumPlay with its own words and pictures and NumPlay's Nunito font.
+- The party app **2 3 4 Player Games** by JindoBlu inspired NumPlay's 2 3 4 Players, written in C for NumPlay with its own minigames, players and pictures and NumPlay's Nunito font. Not affiliated with them.
 - **PICO-8** by Lexaloffle inspired NumPlay's NumPico, which runs PICO-8 carts with **[femto8](https://github.com/benbaker76/femto8)** by Ben Baker (MIT license, [license](LICENSES/MIT-femto8.txt)) and its Lua, z8lua by Sam Hocevar (WTFPL) on Lua 5.2 (MIT license), and unpacks .p8.png carts with Lexaloffle's own algorithms (MIT and zlib licenses). Its pictures show [Combo Pool](https://www.lexaloffle.com/bbs/?pid=combopool-0) by NuSan (CC4-BY-NC-SA), which isn't in NumPlay. Not affiliated with Lexaloffle.
 - **Pong** by Atari (1972) inspired NumPlay's 2 Players, with air hockey, tanks in a maze in the spirit of Tank Trouble and the light cycles of Tron. All four are written in C for NumPlay and drawn from shapes, with no code or art from them.
 - **[Cookie Clicker](https://orteil.dashnet.org/cookieclicker/)** by Orteil and Opti (DashNet) inspired NumPlay's Cookie Clicker, which uses the game's own pictures, texts and numbers (version 2.058, from its public mirror [ozh/cookieclicker](https://github.com/ozh/cookieclicker)) and the **Merriweather**, **Kavoon** and **Noto Sans** fonts (SIL Open Font License: [Merriweather](LICENSES/OFL-1.1-Merriweather.txt), [Kavoon](LICENSES/OFL-1.1-Kavoon.txt), [Noto Sans](LICENSES/OFL-1.1-NotoSans.txt)). Not affiliated with Orteil or DashNet.
@@ -510,7 +512,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 
 NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyright (c) 2026 Mason Chen. Code and fonts from others keep their own licenses: the `UNLICENSE` files in the games' folders and the [LICENSES](LICENSES) folder. The names, artwork and music of the games NumPlay is inspired by belong to their makers and are not covered by it.
 
-<sub>Unofficial fan games, not affiliated with NumWorks, Texas Instruments, Casio, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale, Deltarune), jcw87 (Bad Time Simulator), Imangi Studios (Temple Run), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's, Five Nights at Freddy's 2, Five Nights at Freddy's 3, Five Nights at Freddy's 4, FNAF World), SEGA (Sonic the Hedgehog, Master System, Game Gear, SG-1000), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), the makers of Snow Rider 3D, Ketchapp (Rider), TFDSoft (Famidash), Brodie Lockard or Activision (Shanghai), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Oakever Games (Meowdoku), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go), Coleco (ColecoVision), Supercell (Clash Royale), Richman Stewart or TrackMill (Cat Ninja), Ironhide Game Studio or Armor Games (Kingdom Rush), Lion Studios (Mr Bullet), Lexaloffle (PICO-8), Madpuffers (Moto X3M), Innersloth (Among Us). TI-84 Plus CE, TI-83 Premium CE and TI-Nspire are trademarks of Texas Instruments, fx-CG50, Graph 90+E and Graph 35+E II of Casio, Raspberry Pi of Raspberry Pi Ltd. Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System, Game Gear and SG-1000 of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, Clash Royale of Supercell, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
+<sub>Unofficial fan games, not affiliated with NumWorks, Texas Instruments, Casio, RobTop Games (Geometry Dash), Hipster Whale (Crossy Road), the makers of Drive Mad, LocalThunk or Playstack (Balatro), Mike Klubnika or Critical Reflex (Buckshot Roulette), Hungry Studio (Block Blast!), Aladdin X (Suika Game), Voodoo (Flappy Dunk), Lima Sky (Doodle Jump), Mojang or Microsoft (Minecraft), Maddy Makes Games (Celeste), Team Cherry (Hollow Knight), Toby Fox (Undertale, Deltarune), jcw87 (Bad Time Simulator), Imangi Studios (Temple Run), id Software (Doom), Edmund McMillen, Florian Himsl or Nicalis (The Binding of Isaac), PopCap Games or Electronic Arts (Plants vs. Zombies), Scott Cawthon (Five Nights at Freddy's, Five Nights at Freddy's 2, Five Nights at Freddy's 3, Five Nights at Freddy's 4, FNAF World), SEGA (Sonic the Hedgehog, Master System, Game Gear, SG-1000), SYBO or Kiloo (Subway Surfers), Fingersoft (Hill Climb Racing), Unept (Level Devil), Halfbrick (Jetpack Joyride), Madbox (Stickman Hook), Nintendo (Donkey Kong, Game Boy, NES), Team Lava (Dune!), Inlogic Software (Dune Rider), TinyDobbins (Monkey Mart), Playgendary (Tomb of the Mask), Mattel (UNO), the Funkin' Crew (Friday Night Funkin'), Rovio Entertainment (Angry Birds), Kodub (PolyTrack), Frank Lantz or Everybody House Games (Universal Paperclips), the makers of Snow Rider 3D, Ketchapp (Rider), TFDSoft (Famidash), Brodie Lockard or Activision (Shanghai), Atari (Pong), Disney (Tron), Orteil or DashNet (Cookie Clicker), Taito or Midway (Space Invaders), Thinking Rabbit or Falcon (Sokoban), Oakever Games (Meowdoku), Florian van Strien (The Final Earth 2), The Powder Toy's developers (The Powder Toy), MateoConLechuga (Portal Returns), Valve (Portal), .GEARS (Flappy Bird), Bandai Namco (Pac-Man), Hasbro (Connect Four), Google (Snake, Solitaire, Block Breaker, Chrome Dino, Doodle Champion Island Games), STUDIO4°C or Microsoft (Minesweeper), ducalex (Retro-Go), Coleco (ColecoVision), Supercell (Clash Royale), Richman Stewart or TrackMill (Cat Ninja), Ironhide Game Studio or Armor Games (Kingdom Rush), Lion Studios (Mr Bullet), Lexaloffle (PICO-8), Madpuffers (Moto X3M), Innersloth (Among Us), JindoBlu (2 3 4 Player Games). TI-84 Plus CE, TI-83 Premium CE and TI-Nspire are trademarks of Texas Instruments, fx-CG50, Graph 90+E and Graph 35+E II of Casio, Raspberry Pi of Raspberry Pi Ltd. Tetris is a trademark of The Tetris Company, Chrome of Google LLC, Minecraft of Mojang Synergies AB, Pac-Man of Bandai Namco, Connect Four of Hasbro, DOOM of ZeniMax Media, Sonic the Hedgehog, Master System, Game Gear and SG-1000 of SEGA, Space Invaders of Taito, UNO of Mattel, Angry Birds of Rovio Entertainment, Clash Royale of Supercell, and Donkey Kong, Game Boy, Game Boy Color and NES of Nintendo.</sub>
 
 ## Gallery
 
@@ -639,5 +641,8 @@ NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyri
     <td align="center"><img src="docs/media/gallery/motox3m.gif" alt="Moto X3M: level 2 on the beach, a back flip over the pit and its half second off the clock"><br><a href="games/motox3m/README.md"><b>Moto X3M</b></a></td>
     <td align="center"><img src="docs/media/gallery/amongus.gif" alt="Among Us: a walk through the Cafeteria, Fix Wiring, a kill, the vote and Green ejected as the Impostor"><br><a href="games/amongus/README.md"><b>Among Us</b></a></td>
     <td align="center"><img src="docs/media/gallery/imposter.gif" alt="Imposter: five players pass the calculator, four see Organ, Chris is the Imposter, Dana starts, then the reveal"><br><a href="games/imposter/README.md"><b>Imposter</b></a></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/media/gallery/fourplayer.gif" alt="2 3 4 Players: four players get ready, then Sumo, Racing, Soccer, Tanks, Snakes, Paint and Jump Rope"><br><a href="games/fourplayer/README.md"><b>2 3 4 Players</b></a></td>
   </tr>
 </table>
