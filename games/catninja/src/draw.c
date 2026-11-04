@@ -278,8 +278,24 @@ static void glyph(const np_font_t *f, const np_glyph_t *g, int px, int py, int r
   else if (r == 1) top = py + g->x, bottom = top + g->w;
   else bottom = py - g->x, top = bottom - g->w;
   if (bottom <= gfx_y0 || top >= gfx_y1) return;
+#if NP_SOFT_FLOAT
+  /* (calculators without a divider: only the rows or columns on this strip, and the 15 opacities worked out once) */
+  int j0 = 0, j1 = g->h, i0 = 0, i1 = g->w, av[16];
+  if (r == 0) j0 = gfx_y0 - py - g->y, j1 = gfx_y1 - py - g->y;
+  else if (r == 2) j0 = py - g->y - gfx_y1, j1 = py - g->y - gfx_y0;
+  else if (r == 1) i0 = gfx_y0 - py - g->x, i1 = gfx_y1 - py - g->x;
+  else i0 = py - g->x - gfx_y1, i1 = py - g->x - gfx_y0;
+  if (j0 < 0) j0 = 0;
+  if (j1 > g->h) j1 = g->h;
+  if (i0 < 0) i0 = 0;
+  if (i1 > g->w) i1 = g->w;
+  for (int v = 1; v < 16; v++) av[v] = v * 2 * a32 / 30;
+  for (int j = j0; j < j1; j++)
+    for (int i = i0; i < i1; i++) {
+#else
   for (int j = 0; j < g->h; j++)
     for (int i = 0; i < g->w; i++) {
+#endif
       int k = j * g->w + i, v = (d[k >> 1] >> ((k & 1) * 4)) & 15;
       if (!v) continue;
       int lx = g->x + i, ly = g->y + j, X, Y;
@@ -291,7 +307,11 @@ static void glyph(const np_font_t *f, const np_glyph_t *g, int px, int py, int r
       }
       if (X < 0 || X >= SCREEN_W || Y < gfx_y0 || Y >= gfx_y1) continue;
       color_t *o = gfx_buf + (Y - gfx_y0) * SCREEN_W + X;
+#if NP_SOFT_FLOAT
+      int a = av[v];
+#else
       int a = v * 2 * a32 / 30;
+#endif
       *o = a >= 32 ? c : gfx_mix(*o, c, a);
     }
 }
