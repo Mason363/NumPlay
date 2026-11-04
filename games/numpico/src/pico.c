@@ -570,7 +570,7 @@ int pico_panic(lua_State *l) {
   end_run(PICO_MEMORY);
 }
 
-#if !defined(HOST)
+#if !defined(HOST) && !defined(NP_PORT)
 /* (Lua's last resort, after a panic that returned: never here, but not the C library's, which needs
    the calculator to have a process to kill) */
 void abort(void) { end_run(PICO_MEMORY); }

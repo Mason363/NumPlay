@@ -88,4 +88,6 @@ PORT_ID = numdrive
 PORT_NAME = NumDrive
 PORT_SRC = src/main.c src/world.c src/vm.c src/physics.c src/render.c src/inflate.c src/gfx.c src/ui.c src/save.c src/font.c src/platform_eadk.c
 PORT_ASM = src/pack_data.S
+# (pack.bin found next to pack_data.S; a computer's 64-bit pointers: the host tests' arena)
+PORT_FLAGS = -Wa,-Isrc $(if $(filter sdl,$(TARGET)),-DARENA_SIZE=600000)
 include ../../platform/port.mk

@@ -120,7 +120,9 @@ clean:
 # the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
 PORT_ID = mrbullet
 PORT_NAME = Mr Bullet
-PORT_SRC = src/main.c src/ui.c src/game.c src/res.c src/save.c src/inflate.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+PORT_SRC = src/draw.c src/plat_eadk.c src/main.c src/ui.c src/game.c src/res.c src/save.c src/inflate.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
 PORT_ASM = src/data.S
+PORT_CXX = $(PHYS)
+PORT_CXXFLAGS = -DNDEBUG -Isrc/box2d -fno-strict-aliasing
 PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc -DDATA_BIN='"src/data.bin"'
 include ../../platform/port.mk

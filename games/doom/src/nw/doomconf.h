@@ -110,13 +110,13 @@
 #define NO_USE_SOUND 1
 #define NO_USE_MUSIC 1
 #define NO_USE_MOUSE 1
-#if !defined(HOST)
+#if !defined(HOST) && !defined(NP_PORT) /* (another target, a computer's 64-bit pointers: as the tests') */
 #define NW_SHORTPTR 1 /* pointers into RAM in 16 bits, as on the RP2040 (doomtype.h) */
 #endif
 
 #ifndef __ASSEMBLER__
 #include <stdint.h>
-#if !defined(HOST)
+#if !defined(HOST) && !defined(NP_PORT)
 /* the calculator has no console and no files but Epsilon's: what the engine prints goes nowhere */
 #include <stdio.h>
 #define printf(...) ((void)0)
@@ -130,6 +130,10 @@
 typedef unsigned int uint;
 #define __fast_mul(a, b) ((a) * (b))
 #define panic_unsupported() I_Error("unsupported")
+#endif
+#if defined(NP_PORT) && defined(__EMSCRIPTEN__) /* (the web's C library has no sys/cdefs.h) */
+#define __CONCAT(x, y) x##y
+#define __STRING(x) #x
 #endif
 
 #endif

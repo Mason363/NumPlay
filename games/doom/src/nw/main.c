@@ -34,6 +34,8 @@ int main(void) {
         if (nw_home) nw_resume_save();
     }
     nw_settings_save();
+#ifndef NP_PORT
     while (plat_keys()) plat_sleep(10); /* (the key that quit is not given to the calculator) */
+#endif
     return plat_end();
 }
