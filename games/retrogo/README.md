@@ -39,6 +39,14 @@ You pick the games on NumPlay's customizer website: it puts them inside your Num
     <td align="center"><img src="docs/coltab.png" width="320" alt="Retro-Go's ColecoVision tab with two games"><br><sub>The ColecoVision tab</sub></td>
     <td align="center"><img src="docs/col.png" width="320" alt="Bankruptcy Builder, a ColecoVision homebrew game"><br><sub>Bankruptcy Builder on the ColecoVision</sub></td>
   </tr>
+  <tr>
+    <td align="center"><img src="docs/gwtab.png" width="320" alt="Retro-Go's Game & Watch tab: a gold background with the console"><br><sub>The Game & Watch tab</sub></td>
+    <td align="center"><img src="docs/mdtab.png" width="320" alt="Retro-Go's Mega Drive tab: a dark grey background with the console"><br><sub>The Mega Drive tab</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/md.png" width="320" alt="Cave Story MD, a Mega Drive homebrew game, in its first cave"><br><sub>Cave Story MD on the Mega Drive</sub></td>
+    <td></td>
+  </tr>
 </table>
 
 ## Controls

@@ -166,7 +166,7 @@
 extern unsigned int md_rom_mask;
 #define FETCH8ROM(A) ((ROM_DATA[((A) ^ 1) & md_rom_mask]))
 #define FETCH16ROM(A) ((*(unsigned short *)&ROM_DATA[(A) & md_rom_mask]))
-#define FETCH32ROM(A) ( (*(unsigned int *)&ROM_DATA[(A) & md_rom_mask] << 16) | (*(unsigned int *)&ROM_DATA[(A) & md_rom_mask] >> 16) )
+#define FETCH32ROM(A) (((unsigned int)FETCH16ROM(A) << 16) | FETCH16ROM((A) + 2)) /* (each word inside the ROM) */
 
 #if GNW_TARGET_MARIO !=0 || GNW_TARGET_ZELDA!=0
 
