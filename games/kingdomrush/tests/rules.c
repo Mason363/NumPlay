@@ -281,6 +281,7 @@ static void test_heroes(void) {
     battle_call_wave();
     int deaths = 0, maxlvl = 0;
     bool was_dead = false;
+    uint32_t seen = 0;   /* what the skills left on the field, a bit each */
     for (int t = 0; t < 30 * 60 * 60 && B.state != LS_WIN && B.state != LS_OVER; t++) {
       battle_step();
       if (t % 15 == 0) general();
@@ -291,7 +292,25 @@ static void test_heroes(void) {
       if (h && h->dead && !was_dead) deaths++;
       was_dead = h && h->dead;
       if (hero_level() > maxlvl) maxlvl = hero_level();
+      for (int i = 0; i < MAX_SOLDIERS; i++) {
+        Soldier *o = &B.so[i];
+        if (!o->alive) continue;
+        if (o->kind == SK_WILDCAT && o->active) seen |= 1;
+        if (o->kind == SK_ILLUSION && o->active) seen |= 2;
+        if (o->courage_t) seen |= 4;
+      }
+      for (int i = 0; i < MAX_ENEMIES; i++)
+        if (B.en[i].alive && B.en[i].stun_t) seen |= 8;
+      for (int i = 0; i < B.nspots; i++)
+        if (B.spot[i].buff_t) seen |= 16;
+      for (int i = 0; i < MAX_BULLETS; i++) {
+        Bullet *b = &B.bu[i];
+        if (b->alive && b->kind == BU_BOMB && b->bombs == 11) seen |= 32;
+        if (b->alive && b->kind >= BU_HERO) seen |= 64u << (b->kind - BU_HERO);   /* throws, bolts, mines and tar */
+      }
     }
+    static const uint32_t want[8] = {0, 4, 8, 1, 256, 2 | 128, 0, 16 | 32 | 64};
+    CHECK((seen & want[id]) == want[id], "%s's skills at work (%#x of %#x)", nm[id], seen, want[id]);
     CHECK(hero_soldier() != 0, "%s fought", nm[id]);
     CHECK(maxlvl >= 4, "%s reached level 4 or more (%d)", nm[id], maxlvl);
     CHECK(hero_skill(1) >= 1 && (maxlvl < 4 || hero_skill(2) >= 1), "%s has both skills", nm[id]);
@@ -579,6 +598,7 @@ int main(int argc, char **argv) {
           game_draw();
           snprintf(p, sizeof p, "%s/hero%d_%d.ppm", argv[2], id, shot++);
           host_shot(p);
+          printf("%s %d %d %d\n", p, 40 + (int)(h->x * 0.4f), (int)(h->y * 0.4f), h->anim);
           if (shot == 2) press(K_BACK);
         }
       }
