@@ -42,7 +42,8 @@ void np_push(int x, int y, int w, int h, const color_t *px) {
 
 /* The blocks, as five rows of five cells (the first one leftmost), and how often each comes
    (in the top 7 bits): every way a block faces is a block of its own. */
-#define B(w, a, b, c, d, e) ((uint32_t)(w) << 25 | (a) << 20 | (b) << 15 | (c) << 10 | (d) << 5 | (e))
+#define B(w, a, b, c, d, e) \
+  ((uint32_t)(w) << 25 | (uint32_t)(a) << 20 | (uint32_t)(b) << 15 | (uint32_t)(c) << 10 | (uint32_t)(d) << 5 | (uint32_t)(e))
 #define I 0x10
 static const uint32_t pieces[] = {
   B(9, I, 0, 0, 0, 0),                                           /* one */
@@ -119,7 +120,7 @@ static uint32_t ago(uint32_t t) { return now - t; }
 /* ------------------------------------------------------------ the rules */
 static void measure(int p) { /* w and h: the columns any of its rows reach, the rows down to its last cell */
   uint32_t m = pieces[p] << 7, cols = (m | m << 5 | m << 10 | m << 15 | m << 20) >> 27;
-  w = 5 - __builtin_ctz(cols), h = (31 - __builtin_ctz(m)) / 5 + 1;
+  w = 5 - __builtin_ctzl(cols), h = (31 - __builtin_ctzl(m)) / 5 + 1;
 }
 static bool fits(int p, int x, int y) {
   EACH(p) if (x + c >= N || y + r >= N || sv.board[(y + r) * N + x + c]) return false;
@@ -323,7 +324,7 @@ static void scene(void *ctx) {
     else gfx_fill(x, y, P - 1, P - 1, HEX(0x242C53));
     if (fx[k]) { /* bursting: flashes, then shrinks away, from where the block went outwards */
       int ax = 2 * (k % N) + 1 - fx_x, ay = 2 * (k / N) + 1 - fx_y;
-      int t = (int)ago(fx_t) - ((ax < 0 ? -ax : ax) + (ay < 0 ? -ay : ay)) * 14;
+      int32_t t = (int32_t)ago(fx_t) - ((ax < 0 ? -ax : ax) + (ay < 0 ? -ay : ay)) * 14;
       if (t < 0) t = 0;
       if (t < 240) {
         int z = (P - 1) * (240 - t) / 240, o = (P - 1 - z) / 2;

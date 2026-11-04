@@ -41,7 +41,7 @@ void np_push(int x, int y, int w, int h, const color_t *px) {
 #endif
 
 /* the keys used, in 32 bits: 4, 5, 6, 2 and EXE come down from the high word */
-#define KEY(k) (1u << ((k) - ((k) >= 32) * 24))
+#define KEY(k) ((uint32_t)1 << ((k) - ((k) >= 32) * 24))
 #define X0 48   /* the arcade's 224 columns, in the middle of the screen */
 #define OFF 7   /* and its rows from row 7 on */
 #define TOPY 32 /* the cannon's shots burst here, at the top of the red film */
@@ -191,7 +191,7 @@ static void hud(void) {
   }
 }
 static void screen(void) { /* a clean picture: the scores and the credits */
-  for (uint8_t *p = vram[0]; p < vram[240]; p++) *p = 0;
+  for (uint8_t *p = vram[0]; p < vram[0] + sizeof vram; p++) *p = 0;
   text(8, 8, "SCORE<1> HI-SCORE SCORE<2>", 26), text(168, 24, "0000", 4), text(136, LY, "CREDIT 00", 9);
   dirty = ALL;
   hud();
