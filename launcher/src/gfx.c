@@ -8,6 +8,7 @@ int gfx_clip_x0 = 0, gfx_clip_x1 = SCREEN_W;
 
 void gfx_init(void) { gfx_buf = np_alloc(SCREEN_W * STRIP_H * sizeof(color_t)); }
 
+#ifndef __TICE__
 void gfx_render(gfx_scene_t scene, void *ctx, int y0, int y1) {
   for (int y = y0; y < y1; y += STRIP_H) {
     gfx_y0 = y;
@@ -25,6 +26,8 @@ color_t gfx_mix(color_t a, color_t b, int t) {
   return (color_t)(M | M >> 16);
 }
 
+#endif
+
 color_t gfx_rgb(uint32_t c) { return RGB((c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF); }
 
 uint32_t gfx_lerp888(uint32_t a, uint32_t b, int t) {
@@ -36,6 +39,9 @@ uint32_t gfx_lerp888(uint32_t a, uint32_t b, int t) {
   return out;
 }
 
+#ifdef __TICE__
+#include "../../platform/ti84ce/gfx_ce.c" /* the TI-84 Plus CE's own */
+#else
 static bool clip(int *x, int *y, int *w, int *h) {
   int x0 = NP_MAX(*x, 0), y0 = NP_MAX(*y, gfx_y0);
   int x1 = NP_MIN(*x + *w, SCREEN_W), y1 = NP_MIN(*y + *h, gfx_y1);
@@ -271,6 +277,8 @@ void gfx_corners(int x, int y, int w, int h, int r, color_t c) {
   }
 }
 
+#endif
+
 void gfx_icon(const np_icon_t *icon, int x, int y, color_t c, int a) { gfx_mask(icon->data, icon->w, icon->h, x, y, c, a); }
 
 static const np_glyph_t *glyph(const np_font_t *f, char ch) {
@@ -306,6 +314,12 @@ static void xplot(int x, int y, void *ctx) {
 int gfx_text(const np_font_t *f, int x, int baseline, const char *s, color_t c, int a) {
   int top = baseline - f->ascent, bottom = baseline + f->descent;
   bool visible = bottom > gfx_y0 && top < gfx_y1;
+#ifdef __TICE__
+  if (gfx_listing) { /* in the strips' lists, then only its width */
+    gfx_ce_text(L_TEXT, f, x, baseline, s, c, a);
+    return x + gfx_text_width(f, s);
+  }
+#endif
   while (*s) {
     uint32_t cp;
     const np_glyph_t *g = glyph_at(f, &s, &cp);
@@ -334,10 +348,22 @@ int gfx_text_width(const np_font_t *f, const char *s) {
 }
 
 void gfx_text_center(const np_font_t *f, int cx, int baseline, const char *s, color_t c, int a) {
+#ifdef __TICE__
+  if (gfx_listing) {
+    gfx_ce_text(L_TEXTC, f, cx, baseline, s, c, a);
+    return;
+  }
+#endif
   gfx_text(f, cx - gfx_text_width(f, s) / 2, baseline, s, c, a);
 }
 
 void gfx_text_right(const np_font_t *f, int rx, int baseline, const char *s, color_t c, int a) {
+#ifdef __TICE__
+  if (gfx_listing) {
+    gfx_ce_text(L_TEXTR, f, rx, baseline, s, c, a);
+    return;
+  }
+#endif
   gfx_text(f, rx - gfx_text_width(f, s), baseline, s, c, a);
 }
 

@@ -16,6 +16,10 @@
 #include "../../common/epsilon_app.h"
 #include "../../common/epsilon_files.h"
 #include "../../common/np_text.h"
+#ifdef __TICE__
+#include <string.h>
+#include <wchar.h>
+#endif
 
 #ifdef __ELF__ /* app name and API level, for the calculator's installer */
 #ifndef NP_PORT /* (another target: platform/port.mk names the app) */
@@ -69,12 +73,24 @@ static void (*scene)(void);                /* draws everything in the clip */
 static void fill(int x, int y, int w, int h, color c) {
   int x0 = x > cx0 ? x : cx0, x1 = x + w < cx1 ? x + w : cx1;
   int y0 = y > cy0 ? y : cy0, y1 = y + h < cy1 ? y + h : cy1;
+#ifdef __TICE__ /* (the TI-84 Plus CE: the C library's fill, a row at a time) */
+  if (x1 > x0)
+    for (color *p = buf + (y0 - by) * bw + x0 - bx; y0 < y1; y0++, p += bw) wmemset((wchar_t *)p, (wchar_t)c, (size_t)(x1 - x0));
+  return;
+#endif
   for (; y0 < y1; y0++)
     for (color *p = buf + (y0 - by) * bw + x0 - bx, *e = p + (x1 - x0); p < e; p++) *p = c;
 }
+#ifdef __TICE__ /* (the TI-84 Plus CE: each row of the buffer where refresh() set it, no multiply a pixel) */
+static color *rowp[240];
+static void pset(int x, int y, color c) {
+  if (x >= cx0 && x < cx1 && y >= cy0 && y < cy1) rowp[y][x] = c;
+}
+#else
 static void pset(int x, int y, color c) {
   if (x >= cx0 && x < cx1 && y >= cy0 && y < cy1) buf[(y - by) * bw + x - bx] = c;
 }
+#endif
 static bool hits(int x, int y, int w, int h) { return x < cx1 && y < cy1 && x + w > cx0 && y + h > cy0; }
 
 /* redraws a rectangle of the screen, in bands that fit the buffer */
@@ -87,6 +103,9 @@ static void refresh(int x, int y, int w, int h) {
   for (int band = BUFPX / w, j = y; j < y + h; j += band) {
     int n = y + h - j < band ? y + h - j : band;
     bx = cx0 = x, by = cy0 = j, bw = w, cx1 = x + w, cy1 = j + n;
+#ifdef __TICE__
+    for (int k = 0; k < n; k++) rowp[j + k] = buf + k * w - x;
+#endif
     scene();
     eadk_display_push_rect((eadk_rect_t){(uint16_t)x, (uint16_t)j, (uint16_t)w, (uint16_t)n}, buf);
   }
@@ -204,6 +223,29 @@ static void mini(uint32_t v, int cx, int y, color c) {
    mouth opening from the top until nothing is left (die up to 32) */
 static void pac_r(int x, int y, int d, int open, int die, int r) {
   if (!hits(x - r, y - r, 2 * r + 1, 2 * r + 1)) return;
+#ifdef __TICE__ /* (the TI-84 Plus CE: his shapes in the maze worked out once, rows of bits) */
+  static uint16_t shape[4][5][13];
+  static uint32_t made;
+  if (!die && r == 6 && open >= 0 && open <= 4 && d >= 0 && d < 4) {
+    uint16_t *m = shape[d][open];
+    uint32_t bitm = (uint32_t)1 << (d * 5 + open);
+    if (!(made & bitm)) {
+      made |= bitm;
+      for (int j = -6; j <= 6; j++) {
+        unsigned row = 0;
+        for (int i = -6; i <= 6; i++) {
+          int a = i * DX[d] + j * DY[d], p = i * DY[d] - j * DX[d];
+          if (i * i + j * j <= 42 && !(a > 0 && 4 * (p < 0 ? -p : p) < open * a)) row |= 1u << (i + 6);
+        }
+        m[j + 6] = (uint16_t)row;
+      }
+    }
+    for (int j = 0; j < 13; j++)
+      for (unsigned b = m[j], i = 0; b; i++, b >>= 1)
+        if (b & 1) pset(x - 6 + (int)i, y - 6 + j, YELLOW);
+    return;
+  }
+#endif
   for (int j = -r; j <= r; j++)
     for (int i = -r; i <= r; i++) {
       if (i * i + j * j > r * r + r) continue;
@@ -294,13 +336,82 @@ static bool solid(int tx, int ty) {
 }
 static int tile(int v) { return (v + 21) / 7 - 3; } /* floor(v / 7), for v >= -21 */
 
+#ifndef __TICE__
 static uint64_t wpix[31][28]; /* the wall pixels of each tile */
+#endif
 static float hyp(float a, float b) { return __builtin_sqrtf(a * a + b * b); }
 
 /* The walls run half a tile inside the wall tiles: a pixel is on a line when
    its distance to the nearest corridor is 3 to 4 pixels (and 5 to 6 for the
    second line of the outer wall and the ghost house). Concave corners come
    round by themselves; convex ones are rounded around a point inside. */
+#ifdef __TICE__
+/* the TI-84 Plus CE: the same walls in whole numbers (half pixels, squared: no float, no square root), and each
+   tile's rows of wall pixels as bytes for drawing */
+static uint8_t wrow[31][28][7];
+/* a wall tile's rows of pixels, from the corridors around it (o: a bit each, 3 x 3) and the second line: tiles
+   alike are worked out once */
+static void wall_tile(uint8_t *rows, int o, bool dbl) {
+  static struct {
+    uint16_t key;
+    uint8_t rows[7];
+  } memo[64];
+  static int nmemo;
+  uint16_t key = (uint16_t)(o | dbl << 9);
+  for (int i = 0; i < nmemo; i++)
+    if (memo[i].key == key) {
+      memcpy(rows, memo[i].rows, 7);
+      return;
+    }
+  for (int py = 0; py < 7; py++) {
+    int r = 0;
+    for (int px = 0, b = 1; px < 7; px++, b += b) {
+      int u = 2 * px + 1, v = 2 * py + 1, U = 14 - u, V = 14 - v, d = 1 << 20; /* d: the distance squared */
+      int uu = u * u, vv = v * v, UU = U * U, VV = V * V;
+      if (o & 8 && uu < d) d = uu;
+      if (o & 32 && UU < d) d = UU;
+      if (o & 2 && vv < d) d = vv;
+      if (o & 128 && VV < d) d = VV;
+      if (o & 1 && uu + vv < d) d = uu + vv;
+      if (o & 4 && UU + vv < d) d = UU + vv;
+      if (o & 64 && uu + VV < d) d = uu + VV;
+      if (o & 256 && UU + VV < d) d = UU + VV;
+      int a = o & 8 ? u : o & 32 ? U : 14, c = o & 2 ? v : o & 128 ? V : 14;
+      bool on;
+      if (a < 14 && c < 14) { /* round, around a point inside: R minus the distance to it */
+        int q = (14 - a) * (14 - a) + (14 - c) * (14 - c);
+        on = (q > 36 && q <= 64) || (dbl && q > 4 && q <= 16);
+      } else {
+        on = (d >= 36 && d < 64) || (dbl && d >= 100 && d < 144);
+      }
+      if (on) r |= b;
+    }
+    rows[py] = (uint8_t)r;
+  }
+  if (nmemo < 64) memo[nmemo].key = key, memcpy(memo[nmemo++].rows, rows, 7);
+}
+static void build_walls(void) {
+  for (int ty = 0; ty < 31; ty++)
+    for (int tx = 0; tx < 28; tx++) {
+      int c = tx < 14 ? tx : 27 - tx;
+      bool out = ((ty >= 10 && ty <= 12) || (ty >= 16 && ty <= 18)) && c < 5;
+      bool house = ty >= 12 && ty <= 16 && c >= 10, inside = house && ty != 12 && ty != 16 && c > 10;
+      bool dbl = !c || !ty || ty == 30 || (ty >= 9 && ty <= 19 && c <= 5) || (ty >= 24 && ty <= 25 && c <= 2) ||
+                 (c == 13 && ty <= 4) || house;
+      memset(wrow[ty][tx], 0, 7);
+      if (solid(tx, ty) && !out && !inside && !(ty == 12 && c == 13)) {
+        static const int8_t kx[9] = {-1, 0, 1, -1, 0, 1, -1, 0, 1}, ky[9] = {-1, -1, -1, 0, 0, 0, 1, 1, 1};
+        int o = 0;
+        for (int k = 0, b = 1; k < 9; k++, b += b) o |= solid(tx + kx[k], ty + ky[k]) ? 0 : b;
+        wall_tile(wrow[ty][tx], o, dbl);
+      }
+    }
+  /* the pink door, and the ends of the walls beside it */
+  memset(wrow[12][13], 0, 7), memset(wrow[12][14], 0, 7);
+  wrow[12][13][4] = wrow[12][13][5] = wrow[12][14][4] = wrow[12][14][5] = 127;
+  for (int py = 3; py <= 5; py++) wrow[12][12][py] |= 64, wrow[12][15][py] |= 1;
+}
+#else
 static void build_walls(void) {
   const float R = 7;
   for (int ty = 0; ty < 31; ty++)
@@ -337,6 +448,7 @@ static void build_walls(void) {
   wpix[12][12] |= 0x4081ull << 27;
   wpix[12][15] |= 0x4081ull << 21;
 }
+#endif
 
 /* ------------------------------------------------------------------ the game's state */
 enum { PH_START, PH_READY, PH_PLAY, PH_EAT, PH_DIE, PH_CLEAR, PH_OVER, PH_CUT };
@@ -681,6 +793,28 @@ static bool energizers_on;
 static void maze_draw(void) {
   int x0 = cx0 > MX ? cx0 : MX, x1 = cx1 < MX + MW ? cx1 : MX + MW;
   int y0 = cy0 > MY ? cy0 : MY, y1 = cy1 < MY + MH ? cy1 : MY + MH;
+#ifdef __TICE__ /* (the TI-84 Plus CE: the tiles' rows of wall pixels, no 64-bit shift) */
+  static const uint8_t bit[7] = {1, 2, 4, 8, 16, 32, 64};
+  static const uint8_t big[7] = {0x1C, 0x3E, 0x7F, 0x7F, 0x7F, 0x3E, 0x1C}; /* an energizer: a * a + b * b <= 10 */
+  for (int y = y0; y < y1; y++) {
+    int my = y - MY, ty = my / 7, py = my - ty * 7, mx = x0 - MX, tx = mx / 7, px = mx - tx * 7;
+    const uint8_t *w = &wrow[ty][tx][py], *k = &cell[ty][tx];
+    bool dots = py == 3 || py == 4;
+    color *p = buf + (y - by) * bw + x0 - bx;
+    for (int x = x0; x < x1; x++, p++) {
+      color c = BLACK;
+      if (*w & bit[px]) {
+        c = ty == 12 && (tx == 13 || tx == 14) ? PINK : wallc;
+      } else if (*k == 1) {
+        if (dots && (px == 3 || px == (tx < 14 ? 4 : 2))) c = PEACH;
+      } else if (*k == 2 && energizers_on) {
+        if (big[py] & bit[px]) c = PEACH;
+      }
+      *p = c;
+      if (++px == 7) px = 0, tx++, w += 7, k++;
+    }
+  }
+#else
   for (int y = y0; y < y1; y++) {
     int my = y - MY, ty = my / 7, py = my - ty * 7, mx = x0 - MX, tx = mx / 7, px = mx - tx * 7;
     color *p = buf + (y - by) * bw + x0 - bx;
@@ -699,6 +833,7 @@ static void maze_draw(void) {
       if (++px == 7) px = 0, tx++;
     }
   }
+#endif
 }
 
 /* The intermissions, as in the arcade. 0: Blinky chases Pac-Man away, and a
@@ -1147,6 +1282,83 @@ static bool logo_in(int x, int y) {
   }
   return false;
 }
+#ifdef __TICE__
+/* The TI-84 Plus CE: the same logo from bits worked out once for each opening of the mouth: its yellow (the
+   letters' blocks with their rounded corners, then the C), and the orange ring, the yellow spread by the ring's
+   offsets. Rows of pixels -2..237 (a bit each), -2..36. */
+#define LW 30
+static uint8_t logo_l[39][LW], logo_y[3][39][LW], logo_r[3][39][LW];
+static uint8_t logo_have;
+static void logo_set(uint8_t (*m)[LW], int x, int y) {
+  static const uint8_t bit[8] = {1, 2, 4, 8, 16, 32, 64, 128};
+  if (x >= -2 && x < 238 && y >= -2 && y < 37) m[y + 2][(x + 2) >> 3] |= bit[(x + 2) & 7];
+}
+static void logo_make(int o) {
+  static const uint8_t at[6] = {0, 35, 110, 130, 165, 200}, opens[3] = {0, 2, 4};
+  static const int8_t ring[12][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {2, 0}, {-2, 0},
+                                     {0, 2}, {0, -2}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}};
+  if (!logo_have) /* the letters: each block, less the rounded corners where two sides are open */
+    for (int i = 0; i < 6; i++) {
+      int w = i == 2 ? 3 : 6;
+      const uint8_t *g = font["PA-MAN"[i] - 32];
+      for (int by = 0; by < 7; by++)
+        for (int bx = 0; bx < w; bx++) {
+          if (!logo_blk(g, w, bx, by)) continue;
+          int round = 0;
+          for (int q = 0; q < 4; q++)
+            if (!logo_blk(g, w, bx + (q & 1 ? 1 : -1), by) && !logo_blk(g, w, bx, by + (q & 2 ? 1 : -1))) round |= 1 << q;
+          for (int py = -2; py <= 2; py++)
+            for (int px = -2; px <= 2; px++) {
+              bool in = true;
+              for (int q = 0; q < 4; q++) {
+                int qx = q & 1 ? 1 : -1, qy = q & 2 ? 1 : -1, ax = 2 * px + 5 * qx, ay = 2 * py + 5 * qy;
+                if (round >> q & 1 && px * qx >= 0 && py * qy >= 0 && ax * ax + ay * ay > 100) in = false;
+              }
+              int x = at[i] + bx * 5 + px + 2, y = by * 5 + py + 2;
+              if (in && !((x - 87) * (x - 87) + (y - 17) * (y - 17) <= 17 * 18)) logo_set(logo_l, x, y);
+            }
+        }
+    }
+  uint8_t (*Y)[LW] = logo_y[o], (*R)[LW] = logo_r[o];
+  memcpy(Y, logo_l, sizeof logo_l);
+  for (int dy = -18; dy <= 18; dy++) /* Pac-Man, as the C */
+    for (int dx = -18; dx <= 18; dx++)
+      if (dx * dx + dy * dy <= 17 * 18 && !(dx > 0 && 4 * (dy < 0 ? -dy : dy) < opens[o] * dx)) logo_set(Y, 87 + dx, 17 + dy);
+  memset(R, 0, sizeof logo_l);
+  for (int k = 0; k < 12; k++) { /* R |= Y moved by -ring[k] */
+    int dx = ring[k][0], dy = ring[k][1];
+    for (int y = 0; y < 39; y++) {
+      if (y + dy < 0 || y + dy >= 39) continue;
+      const uint8_t *s = Y[y + dy];
+      uint8_t *d = R[y];
+      for (int i = 0; i < LW; i++) {
+        unsigned prev = i ? s[i - 1] : 0, next = i + 1 < LW ? s[i + 1] : 0;
+        d[i] |= (uint8_t)(dx >= 0 ? (s[i] | next << 8) >> dx : (prev | (unsigned)s[i] << 8) >> (8 + dx));
+      }
+    }
+  }
+  for (int y = 0; y < 39; y++)
+    for (int i = 0; i < LW; i++) R[y][i] &= (uint8_t)~Y[y][i];
+  logo_have |= (uint8_t)(1 << o);
+}
+static void logo_draw(void) {
+  static const uint8_t bit[8] = {1, 2, 4, 8, 16, 32, 64, 128};
+  if (!hits(LOGO_X - 2, LOGO_Y - 2, 236, 39)) return;
+  int f = tt >> 3 & 3, o = f == 3 ? 1 : f;
+  if (!(logo_have >> o & 1)) logo_make(o);
+  int x0 = cx0 > LOGO_X - 2 ? cx0 : LOGO_X - 2, x1 = cx1 < LOGO_X + 234 ? cx1 : LOGO_X + 234;
+  int y0 = cy0 > LOGO_Y - 2 ? cy0 : LOGO_Y - 2, y1 = cy1 < LOGO_Y + 37 ? cy1 : LOGO_Y + 37;
+  for (int y = y0; y < y1; y++) {
+    const uint8_t *yr = logo_y[o][y - LOGO_Y + 2], *rr = logo_r[o][y - LOGO_Y + 2];
+    color *p = buf + (y - by) * bw + x0 - bx;
+    for (int x = x0, j = x0 - LOGO_X + 2; x < x1; x++, j++, p++) {
+      uint8_t b = bit[j & 7];
+      if (yr[j >> 3] & b) *p = YELLOW;
+      else if (rr[j >> 3] & b) *p = RGB(0xDE5A00);
+    }
+  }
+}
+#else
 static void logo_draw(void) {
   static const int8_t ring[12][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {2, 0}, {-2, 0},
                                      {0, 2}, {0, -2}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}};
@@ -1164,6 +1376,7 @@ static void logo_draw(void) {
       buf[(y - by) * bw + x - bx] = c;
     }
 }
+#endif
 
 static void title_scene(void) {
   static const char *const names[4] = {T("-SHADOW    \"BLINKY\""), T("-SPEEDY    \"PINKY\""), T("-BASHFUL   \"INKY\""),

@@ -68,19 +68,47 @@ static void clip(int x, int y, int w, int h) {
 }
 static void unclip(void) { clip(0, 0, 320, 240); }
 
+#ifdef __TICE__ /* the TI-84 Plus CE: its own mixing (the same colours), rows filled by the C library */
+#include <wchar.h>
+#include "../../../platform/ti84ce/ce_draw.h"
+__attribute__((naked)) static color ce_mix(color a, color b, unsigned t) { __asm__(CE_MIX_ASM); }
+__attribute__((naked)) static void ce_blend(color *p, unsigned n, const uint8_t *t) { __asm__(CE_BLEND_ASM); }
+static uint8_t tab_mem[CE_TABLES + 255];
+static void blend_rows(int x0, int x1, int y0, int y1, color c, int a) { /* the pixels there a of the way to c */
+  if (x1 <= x0 || y1 <= y0) return;
+  uint8_t *m = (uint8_t *)(((unsigned)tab_mem + 255) & ~255u);
+  ce_tables(m, c, (unsigned)a);
+  for (int j = y0; j < y1; j++)
+    for (int x = x0; x < x1; x += 256) ce_blend(buf + (j - ry) * rw + x - rx, (unsigned)imin(x1 - x, 256) & 255, m);
+}
+#endif
+
 /* f over b; a from 0 (all b) to 32 (all f) */
 static color mix(color f, color b, int a) {
+#ifdef __TICE__
+  return ce_mix(b, f, (unsigned)a);
+#endif
   uint32_t x = (f | (uint32_t)f << 16) & 0x07E0F81F, y = (b | (uint32_t)b << 16) & 0x07E0F81F;
   y = (y + ((x - y) * (uint32_t)a >> 5)) & 0x07E0F81F;
   return (color)(y | y >> 16);
 }
 
 static void fill(int x, int y, int w, int h, color c) {
+#ifdef __TICE__
+  int i0 = imax(x, kx0), i1 = imin(x + w, kx1);
+  if (i1 > i0)
+    for (int j = imax(y, ky0), j1 = imin(y + h, ky1); j < j1; j++) wmemset((wchar_t *)buf + (j - ry) * rw + i0 - rx, (wchar_t)c, (size_t)(i1 - i0));
+  return;
+#endif
   for (int j = imax(y, ky0), j1 = imin(y + h, ky1); j < j1; j++)
     for (int i = imax(x, kx0), i1 = imin(x + w, kx1); i < i1; i++) buf[(j - ry) * rw + i - rx] = c;
 }
 /* the pixels of a rectangle, a of the way to c */
 static void wash(int x, int y, int w, int h, color c, int a) {
+#ifdef __TICE__
+  blend_rows(imax(x, kx0), imin(x + w, kx1), imax(y, ky0), imin(y + h, ky1), c, a);
+  return;
+#endif
   for (int j = imax(y, ky0), j1 = imin(y + h, ky1); j < j1; j++)
     for (int i = imax(x, kx0), i1 = imin(x + w, kx1); i < i1; i++) {
       color *p = buf + (j - ry) * rw + i - rx;
@@ -88,9 +116,104 @@ static void wash(int x, int y, int w, int h, color c, int a) {
     }
 }
 
+#ifdef __TICE__
+/* The TI-84 Plus CE: a capsule along a row or a column (most of them: the snake, discs) in 16ths of a pixel,
+   no float per pixel: each row's inside is worked out once, a run filled, then its anti-aliased ends. */
+static int isqrt(int v) { /* (rounded down) */
+  int r = 0, b = 1 << 22;
+  while (b > v) b >>= 2;
+  for (; b; b >>= 2)
+    if (v >= r + b) v -= r + b, r = (r >> 1) + b;
+    else r >>= 1;
+  return r;
+}
+static int fx16(float v) { return (int)((v + 512) * 16 + 0.5f) - 8192; }
+/* a pixel d2 (256ths) from the middle, under a half-width e (16ths, with the half pixel): blob()'s colour */
+static void dot(color *p, int d2, int e, color c) {
+  int e2 = e * e;
+  if (d2 >= e2) return;
+  if (shade) {
+    *p = *p == c_light ? c_slight : *p == c_dark ? c_sdark : *p;
+    return;
+  }
+  if (e >= 16 && d2 <= (e - 16) * (e - 16)) {
+    *p = c;
+    return;
+  }
+  int a = (e2 - d2) / e; /* 32 (e - sqrt(d2)), to the second order */
+  a += a * a / (4 * e);
+  *p = mix(c, *p, a > 31 ? 31 : a);
+}
+static void run(color *p, int n, color c) {
+  for (; n > 0; n--, p++) *p = shade ? (*p == c_light ? c_slight : *p == c_dark ? c_sdark : *p) : c;
+}
+/* the row's pixels [x0, x1) whose middles are v = 16 x + 8 - k across the shape, along at the distance a2
+   (256ths): solid where v^2 + a2 <= (e - 16)^2 */
+static void across(color *p, int x0, int x1, int k, int a2, int e, color c) {
+  int ws = e >= 16 && a2 <= (e - 16) * (e - 16) ? isqrt((e - 16) * (e - 16) - a2) : -1;
+  int s0 = ws < 0 ? x1 : imax(x0, (k - 8 - ws + 15) >> 4), s1 = ws < 0 ? x1 : imin(x1, ((k - 8 + ws) >> 4) + 1);
+  if (s1 < s0) s1 = s0;
+  for (int x = x0; x < s0; x++) dot(p + x, (16 * x + 8 - k) * (16 * x + 8 - k) + a2, e, c);
+  run(p + s0, s1 - s0, c);
+  for (int x = s1; x < x1; x++) dot(p + x, (16 * x + 8 - k) * (16 * x + 8 - k) + a2, e, c);
+}
+static void blob_ce(float ax, float ay, float bx, float by, float ra, float rb, color c) {
+  bool col = ax == bx && ay != by; /* along a column */
+  int s0 = fx16(col ? ay : ax), s1 = fx16(col ? by : bx), k = fx16(col ? ax : ay);
+  int e0 = fx16(ra) + 8, e1 = fx16(rb) + 8;
+  if (s0 > s1) {
+    int t = s0;
+    s0 = s1, s1 = t, t = e0, e0 = e1, e1 = t;
+  }
+  int L = s1 - s0, r = imax(e0, e1) + 24;
+  int lo = (s0 - r) >> 4, hi = ((s1 + r) >> 4) + 1, klo = (k - r) >> 4, khi = ((k + r) >> 4) + 1;
+  int x0 = imax(kx0, col ? klo : lo), x1 = imin(kx1, col ? khi : hi);
+  int y0 = imax(ky0, col ? lo : klo), y1 = imin(ky1, col ? hi : khi);
+  if (x0 >= x1) return;
+  for (int y = y0; y < y1; y++) {
+    color *p = buf + (y - ry) * rw - rx;
+    int py = 16 * y + 8;
+    if (col) { /* the row crosses the shape: at u along it */
+      int u = py - s0, a = u < 0 ? -u : u > L ? u - L : 0, e = u <= 0 ? e0 : u >= L ? e1 : e0 + (e1 - e0) * u / L;
+      if (a * a >= e * e) continue;
+      int w = isqrt(e * e - a * a);
+      across(p, imax(x0, (k - 8 - w + 15) >> 4), imin(x1, ((k - 8 + w) >> 4) + 1), k, a * a, e, c);
+    } else if (e0 == e1) { /* the row runs along it, v from its middle line */
+      int v = py - k, v2 = v * v, e = e0;
+      if (v2 >= e * e) continue;
+      int w = isqrt(e * e - v2), ws = e >= 16 && v2 <= (e - 16) * (e - 16) ? isqrt((e - 16) * (e - 16) - v2) : -1;
+      int i0 = imax(x0, (s0 - 8 - w + 15) >> 4), i1 = imin(x1, ((s1 - 8 + w) >> 4) + 1);
+      int f0 = ws < 0 ? i1 : imax(i0, (s0 - 8 - ws + 15) >> 4), f1 = ws < 0 ? i1 : imin(i1, ((s1 - 8 + ws) >> 4) + 1);
+      if (f1 < f0) f1 = f0;
+      for (int x = i0; x < i1; x++) {
+        if (x == f0 && f1 > f0) {
+          run(p + f0, f1 - f0, c);
+          x = f1 - 1;
+          continue;
+        }
+        int u = 16 * x + 8 - s0, a = u < 0 ? -u : u > L ? u - L : 0;
+        dot(p + x, a * a + v2, e, c);
+      }
+    } else { /* (narrowing along a row: each pixel) */
+      int v = py - k, v2 = v * v;
+      for (int x = x0; x < x1; x++) {
+        int u = 16 * x + 8 - s0, a = u < 0 ? -u : u > L ? u - L : 0;
+        dot(p + x, a * a + v2, u <= 0 ? e0 : u >= L ? e1 : e0 + (e1 - e0) * u / L, c);
+      }
+    }
+  }
+}
+#endif
+
 /* A capsule from a to b, its radius going from ra to rb, with soft edges.
    Everything round is one: discs, the snake, fruit, icons. */
 static void blob(float ax, float ay, float bx, float by, float ra, float rb, color c) {
+#ifdef __TICE__
+  if (ax == bx || ay == by) {
+    blob_ce(ax, ay, bx, by, ra, rb, c);
+    return;
+  }
+#endif
   float dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy, inv = l > 0 ? 1 / l : 0, r = (ra > rb ? ra : rb) + 2;
   int x0 = imax(kx0, (int)((ax < bx ? ax : bx) - r)), x1 = imin(kx1, (int)((ax > bx ? ax : bx) + r));
   int y0 = imax(ky0, (int)((ay < by ? ay : by) - r)), y1 = imin(ky1, (int)((ay > by ? ay : by) + r));
@@ -129,6 +252,11 @@ static void tri(int x, int y, int dx, int dy, int a, int s, color c) {
 /* darkens everything under the band on top, behind a card */
 static void dim(void) {
   clip(0, HDR, 320, 240);
+#ifdef __TICE__
+  blend_rows(kx0, kx1, ky0, ky1, 0, 18);
+  unclip();
+  return;
+#endif
   for (int j = ky0; j < ky1; j++)
     for (color *p = buf + (j - ry) * rw, *e = p + rw; p < e; p++) *p = mix(*p, 0, 14);
   unclip();
@@ -443,6 +571,22 @@ static void fieldclip(void) { clip(fx, fy, bw * cs, bh * cs); }
 static color checker(int p) { return ((p & 255) + (p >> 8)) & 1 ? c_dark : c_light; }
 
 static void ground(void) {
+#ifdef __TICE__ /* (a run a cell) */
+  for (int j = 0; j < rh; j++) {
+    int y = ry + j, cy = fl(y - fy), cx = fl(rx - fx), e = fx + cx * cs + cs;
+    wchar_t *p = (wchar_t *)buf + j * rw;
+    if (y < HDR || cy < 0 || cy >= bh) {
+      wmemset(p, (wchar_t)(y < HDR ? c_bar : c_edge), (size_t)rw);
+      continue;
+    }
+    for (int x = rx, end = rx + rw; x < end; cx++, e += cs) {
+      int n = imin(e, end) - x;
+      wmemset(p + x - rx, (wchar_t)(cx >= 0 && cx < bw ? ((cx + cy) & 1 ? c_dark : c_light) : c_edge), (size_t)n);
+      x += n;
+    }
+  }
+  return;
+#endif
   for (int j = 0; j < rh; j++) {
     int y = ry + j, cy = fl(y - fy), cx = fl(rx - fx), e = fx + cx * cs + cs;
     bool in = y >= HDR && cy >= 0 && cy < bh;
@@ -1077,10 +1221,28 @@ static void cells(void) {
   }
   int n = ncur;
   for (int i = 0; i < nprev; i++) mark(dprev[i]);
+#ifdef __TICE__ /* (the TI-84 Plus CE: cells next to each other in one go, most of a drawing's work being its own) */
+  static uint16_t left[MAXN];
+  for (int i = 0; i < ncur; i++) left[i] = dcur[i];
+  for (int i = 0; i < ncur; i++) {
+    if (left[i] == 0xFFFF) continue;
+    int x0 = left[i] & 255, y0 = left[i] >> 8, x1 = x0, y1 = y0;
+    for (bool more = true; more;) {
+      more = false;
+      for (int j = i + 1; j < ncur; j++) {
+        int q = left[j], qx = q & 255, qy = q >> 8;
+        if (q == 0xFFFF || qx < x0 - 1 || qx > x1 + 1 || qy < y0 - 1 || qy > y1 + 1) continue;
+        x0 = imin(x0, qx), x1 = imax(x1, qx), y0 = imin(y0, qy), y1 = imax(y1, qy), left[j] = 0xFFFF, more = true;
+      }
+    }
+    area(fx + x0 * cs, fy + y0 * cs, (x1 - x0 + 1) * cs, (y1 - y0 + 1) * cs);
+  }
+#else
   for (int i = 0; i < ncur; i++) {
     int p = dcur[i];
     area(fx + (p & 255) * cs, fy + (p >> 8) * cs, cs, cs);
   }
+#endif
   for (nprev = 0; nprev < n; nprev++) dprev[nprev] = dcur[nprev]; /* only this frame's own */
 }
 

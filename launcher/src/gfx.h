@@ -13,6 +13,16 @@ extern int gfx_y0, gfx_y1;   /* rows of the strip being drawn */
 typedef void (*gfx_scene_t)(void *ctx);
 void gfx_init(void);         /* takes the strip buffer from the arena */
 void gfx_render(gfx_scene_t scene, void *ctx, int y0, int y1);
+#ifdef __TICE__
+/* The TI-84 Plus CE draws a strip only when its list of gfx_* calls changed: the scene runs with gfx_listing
+ * set to list them, once for each strip, or once for all when gfx_pure says it draws only with gfx_*. Drawing of
+ * a scene's own adds what it depends on, or makes its strips drawn every time (platform/ti84ce/gfx_ce.c). */
+extern bool gfx_listing, gfx_pure;
+void gfx_list(const void *p, unsigned bytes);
+void gfx_list_always(void);
+/* fn(a) draws (with gfx_*) in the box x, y, w, h what a[0..n) say (8 at most): one call in the strips' lists */
+void gfx_call(void (*fn)(const int *a), const int *a, int n, int x, int y, int w, int h);
+#endif
 
 color_t gfx_mix(color_t a, color_t b, int t32);   /* t32 = 0..32 */
 color_t gfx_rgb(uint32_t rgb888);

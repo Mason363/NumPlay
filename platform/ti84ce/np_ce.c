@@ -16,6 +16,7 @@
 #include <sys/timers.h>
 #include <ti/screen.h>
 #include <time.h>
+#include <wchar.h>
 #include "np_port.h"
 
 #ifndef NP_APP_ID
@@ -23,6 +24,10 @@
 #endif
 
 static uint16_t *const lcd = (uint16_t *)lcd_Ram;
+
+/* for each row of the screen, the strip of launcher/src/gfx.c's cache it shows (gfx_ce.c), 0 once anything else
+ * drew there */
+uint8_t np_ce_rows[LCD_HEIGHT];
 
 /* the part of r on the screen: its width and height (0: none) */
 static unsigned clip(eadk_rect_t r, unsigned *h) {
@@ -33,6 +38,7 @@ static unsigned clip(eadk_rect_t r, unsigned *h) {
 
 void eadk_display_push_rect(eadk_rect_t r, const eadk_color_t *px) {
   unsigned h, w = clip(r, &h);
+  if (w) memset(np_ce_rows + r.y, 0, h);
   uint16_t *row = lcd + r.y * LCD_WIDTH + r.x;
   if (w == LCD_WIDTH && r.width == LCD_WIDTH) w *= h, h = 1; /* rows of the screen's width: one copy */
   for (; w && h; h--, row += LCD_WIDTH, px += r.width) memcpy(row, px, w * 2);
@@ -41,11 +47,12 @@ void eadk_display_push_rect_uniform(eadk_rect_t r, eadk_color_t c) {
   unsigned h, w = clip(r, &h);
   uint16_t *row = lcd + r.y * LCD_WIDTH + r.x;
   if (!w || !h) return;
+  memset(np_ce_rows + r.y, 0, h);
   if ((c >> 8) == (c & 0xFF)) { /* black, white...: both bytes alike */
     for (; h; h--, row += LCD_WIDTH) memset(row, c & 0xFF, w * 2);
     return;
   }
-  for (unsigned i = 0; i < w; i++) row[i] = c; /* the first row, then copies of it */
+  wmemset((wchar_t *)row, (wchar_t)c, w); /* the first row, then copies of it */
   for (uint16_t *p = row + LCD_WIDTH; --h; p += LCD_WIDTH) memcpy(p, row, w * 2);
 }
 void eadk_display_pull_rect(eadk_rect_t r, eadk_color_t *px) {
@@ -60,7 +67,10 @@ void eadk_display_pull_rect(eadk_rect_t r, eadk_color_t *px) {
     }
 }
 /* the LCD shows its memory as it is drawn (as the NumWorks's does): no wait, every frame counts on the CE */
-__attribute__((noinline)) bool eadk_display_wait_for_vblank(void) { return true; } /* (kept: tools/ce_emu counts frames by it) */
+__attribute__((noinline)) bool eadk_display_wait_for_vblank(void) { /* (kept, a call: tools/ce_emu counts frames by it) */
+  __asm__ volatile("");
+  return true;
+}
 
 /* the NumWorks keys on the CE keypad: (group, bit) for each. 2nd is OK, next to the arrows like the NumWorks's,
  * and enter is EXE, at the bottom right like it */
