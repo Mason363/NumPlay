@@ -252,6 +252,15 @@ int main(void) {
     LAP("world");
     render_sky_palette();
     LAP("sky");
+#if NB_BENCH == 11
+    /* the window's blocks and light (to check world.c's loops in assembly against the C, -DNB_WORLD_C) */
+    plat_save("NBWB", wblk, WS * WS * WH / 2, 0, 0);
+    plat_save("NBWB2", wblk + WS * WS * WH / 2, WS * WS * WH / 2, 0, 0);
+    plat_save("NBWL", wlight, WS * WS * WH / 2, 0, 0);
+    plat_save("NBWL2", wlight + WS * WS * WH / 2, WS * WS * WH / 2, 0, 0);
+    plat_save("NBBENCH", out, (unsigned)n, 0, 0);
+    plat_exit();
+#endif
 #if NB_BENCH == 8
     {
       /* a screen opened over the world: the creative inventory */

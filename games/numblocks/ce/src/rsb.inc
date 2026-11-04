@@ -2583,3 +2583,463 @@ b_fc_corner:
 	push	hl
 	pop	iy
 	ret
+
+; ------------------------------------------------------------------------------------------------- the window's columns
+; (world.c's fill: a column's levels a slot at a time, 1024 apart round the 32 slots; the light's queue (w_lq, w_lq_h,
+; w_lq_t: LQ_N entries) as world.c keeps it)
+	.equ	LQ_N, 5000
+
+; hl += a x 1024 (a 0..31)
+b_w_slot:
+	add	a, a
+	add	a, a
+	ld	de, 0
+	ld	d, a
+	add	hl, de
+	ret
+
+; hl (a pointer at slot c) to the next slot's, c on
+b_w_next:
+	ld	a, c
+	inc	a
+	and	a, 31
+	ld	c, a
+	ld	de, 1024
+	jr	nz, .Lwn_add
+	ld	de, -31 * 1024
+.Lwn_add:
+	add	hl, de
+	ret
+
+; the cell index de (0..32767) onto the light's queue (as lq_push)
+b_w_push:
+	push	hl
+	push	bc
+	ld	hl, (_w_lq_t)
+	inc	hl
+	ld	bc, LQ_N
+	or	a, a
+	sbc	hl, bc
+	jr	z, .Lwp_wrap
+	add	hl, bc
+	jr	.Lwp_t
+.Lwp_wrap:
+	or	a, a
+	sbc	hl, hl
+.Lwp_t:
+	ld	bc, (_w_lq_h)
+	or	a, a
+	sbc	hl, bc
+	jr	z, .Lwp_full
+	add	hl, bc
+	push	hl			; the new tail
+	ld	hl, (_w_lq_t)
+	add	hl, hl
+	ld	bc, (_w_lq)
+	add	hl, bc
+	ld	(hl), e
+	inc	hl
+	ld	(hl), d
+	pop	hl
+	ld	(_w_lq_t), hl
+.Lwp_full:
+	pop	bc
+	pop	hl
+	ret
+
+; void w_col_copy(uint8_t *p, uint8_t ys, const uint8_t *cells, uint8_t n): n cells from slot ys of the column
+; at p (wblk + its index) on
+b__w_col_copy:
+	push	ix
+	ld	ix, 0
+	add	ix, sp
+	ld	hl, (ix+6)
+	ld	a, (ix+9)
+	ld	c, a
+	call	t_w_slot
+	ld	iy, (ix+12)
+	ld	b, (ix+15)
+.Lwcc:
+	ld	a, (iy+0)
+	ld	(hl), a
+	inc	iy
+	call	t_w_next
+	djnz	.Lwcc
+	pop	ix
+	ret
+
+; void w_col_light(uint16_t c, uint8_t ys, uint8_t y, uint8_t y1, uint8_t top): levels y..y1 - 1 of column c from
+; slot ys: the sky's light 15 from top up, the block light of what shines (queued)
+b__w_col_light:
+	push	ix
+	ld	ix, 0
+	add	ix, sp
+	ld	hl, (ix+6)
+	ex	de, hl
+	ld	hl, 0
+	ld	l, e
+	ld	h, d			; c (16 bits)
+	ld	a, (ix+9)
+	ld	c, a
+	call	t_w_slot
+	ld	(wc_i), hl		; the cell index
+	ld	a, (ix+12)
+	ld	(wc_y), a
+.Lwcl:
+	ld	a, (wc_y)
+	cp	a, (ix+15)
+	jr	nc, .Lwcl_done
+	ld	hl, (wc_i)
+	ld	de, (_wblk)
+	add	hl, de
+	ld	a, (hl)
+	ld	hl, _blk_light
+	ld	de, 0
+	ld	e, a
+	add	hl, de
+	ld	b, (hl)			; the block light
+	ld	a, (wc_y)
+	cp	a, (ix+18)
+	ld	a, 0
+	jr	c, .Lwcl_dark
+	ld	a, 15
+.Lwcl_dark:
+	inc	b
+	dec	b
+	jr	z, .Lwcl_set
+	ld	e, a
+	ld	a, b
+	add	a, a
+	add	a, a
+	add	a, a
+	add	a, a
+	or	a, e
+	ld	de, (wc_i)
+	call	t_w_push
+.Lwcl_set:
+	ld	hl, (wc_i)
+	ld	de, (_wlight)
+	add	hl, de
+	ld	(hl), a
+	ld	hl, (wc_i)
+	call	t_w_next
+	ld	(wc_i), hl
+	ld	hl, wc_y
+	inc	(hl)
+	jr	.Lwcl
+.Lwcl_done:
+	pop	ix
+	ret
+
+; void w_col_seed_border(uint16_t c, uint16_t cn, uint8_t ys, uint8_t y, uint8_t y1): column c next to the region's
+; column cn: its cells brighter than cn's next to them by more than a step, queued
+b__w_col_seed_border:
+	push	ix
+	ld	ix, 0
+	add	ix, sp
+	ld	hl, 0
+	ld	l, (ix+6)
+	ld	h, (ix+7)
+	ld	a, (ix+12)
+	ld	c, a
+	call	t_w_slot
+	ld	(wc_i), hl
+	ld	hl, 0
+	ld	l, (ix+9)
+	ld	h, (ix+10)
+	or	a, a
+	ld	de, 0
+	ld	e, (ix+6)
+	ld	d, (ix+7)
+	sbc	hl, de
+	ld	(wc_d), hl		; cn - c
+	ld	a, (ix+15)
+	ld	(wc_y), a
+b_Lwsb:
+.Lwsb:
+	ld	a, (wc_y)
+	cp	a, (ix+18)
+	jr	nc, .Lwsb_done
+	ld	hl, (wc_i)
+	ld	de, (_wlight)
+	add	hl, de
+	ld	a, (hl)
+	or	a, a
+	jr	z, .Lwsb_next
+	ld	b, a			; l
+	ld	de, (wc_d)
+	add	hl, de
+	ld	c, (hl)			; nl
+	; sky: l > nl + 1
+	ld	a, c
+	and	a, 15
+	inc	a
+	ld	e, a
+	ld	a, b
+	and	a, 15
+	cp	a, e
+	jr	z, .Lwsb_blk
+	jr	nc, .Lwsb_lit
+.Lwsb_blk:
+	; block: nl's < 0xE0 and l's > nl's + 0x10
+	ld	a, c
+	and	a, 0xF0
+	cp	a, 0xE0
+	jr	nc, .Lwsb_next
+	add	a, 0x10
+	ld	e, a
+	ld	a, b
+	and	a, 0xF0
+	cp	a, e
+	jr	z, .Lwsb_next
+	jr	c, .Lwsb_next
+.Lwsb_lit:
+	; (and light can go into it)
+	ld	hl, (wc_i)
+	ld	de, (wc_d)
+	add	hl, de
+	ld	de, (_wblk)
+	add	hl, de
+	ld	a, (hl)
+	ld	hl, _blk_opacity
+	ld	de, 0
+	ld	e, a
+	add	hl, de
+	ld	a, (hl)
+	cp	a, 15
+	jr	nc, .Lwsb_next
+	ld	de, (wc_i)
+	call	t_w_push
+.Lwsb_next:
+	ld	a, (wc_y)
+	inc	a
+	ld	(wc_y), a
+	ld	hl, (wc_i)
+	ld	c, (ix+12)
+	call	t_w_next
+	ld	(ix+12), c
+	ld	(wc_i), hl
+	jp	t_Lwsb
+.Lwsb_done:
+	pop	ix
+	ret
+
+; void w_col_seed(uint16_t c, uint8_t ys, uint8_t y, uint8_t y1, uint8_t top, uint8_t nt, uint8_t inside): the
+; lit cells to spread from (a sky-lit one of the region only next to a column whose sky stops higher, or above
+; what lets light through), queued
+b__w_col_seed:
+	push	ix
+	ld	ix, 0
+	add	ix, sp
+	ld	hl, 0
+	ld	l, (ix+6)
+	ld	h, (ix+7)
+	ld	a, (ix+9)
+	ld	c, a
+	call	t_w_slot
+	ld	(wc_i), hl
+	ld	a, (ix+12)
+	ld	(wc_y), a
+b_Lws:
+.Lws:
+	ld	a, (wc_y)
+	cp	a, (ix+15)
+	jp	nc, t_Lws_done
+	ld	hl, (wc_i)
+	ld	de, (_wlight)
+	add	hl, de
+	ld	a, (hl)
+	or	a, a
+	jr	z, .Lws_next
+	cp	a, 15
+	jr	nz, .Lws_push
+	ld	a, (ix+24)		; inside
+	or	a, a
+	jr	z, .Lws_push
+	ld	a, (ix+21)		; nt <= y: none around higher
+	ld	b, a
+	ld	a, (wc_y)
+	cp	a, b
+	jr	c, .Lws_push		; (y < nt)
+	; y == top and y > the window's bottom and what is under it lets light through: an edge
+	cp	a, (ix+18)
+	jr	nz, .Lws_next
+	ld	hl, _win_y
+	cp	a, (hl)
+	jr	z, .Lws_next
+	jr	c, .Lws_next
+	ld	a, (ix+9)		; the slot below
+	dec	a
+	and	a, 31
+	ld	hl, 0
+	ld	l, (ix+6)
+	ld	h, (ix+7)
+	call	t_w_slot
+	ld	de, (_wblk)
+	add	hl, de
+	ld	a, (hl)
+	ld	hl, _blk_opacity
+	ld	de, 0
+	ld	e, a
+	add	hl, de
+	ld	a, (hl)
+	cp	a, 15
+	jr	nc, .Lws_next
+.Lws_push:
+	ld	de, (wc_i)
+	call	t_w_push
+.Lws_next:
+	ld	a, (wc_y)
+	inc	a
+	ld	(wc_y), a
+	ld	hl, (wc_i)
+	ld	c, (ix+9)
+	call	t_w_next
+	ld	(ix+9), c
+	ld	(wc_i), hl
+	jp	t_Lws
+b_Lws_done:
+.Lws_done:
+	pop	ix
+	ret
+
+; void w_light_spread(void): both lights spread from the queued cells (w_edges() first: w_neighbours' edges)
+b__w_light_spread:
+	push	ix
+.Lls:
+	ld	hl, (_w_lq_h)
+	ld	de, (_w_lq_t)
+	or	a, a
+	sbc	hl, de
+	jp	z, t_Lls_done
+	add	hl, de
+	push	hl
+	add	hl, hl
+	ld	de, (_w_lq)
+	add	hl, de
+	ld	de, 0
+	ld	e, (hl)
+	inc	hl
+	ld	d, (hl)
+	ld	(ls_i), de
+	pop	hl
+	inc	hl
+	ld	de, LQ_N
+	or	a, a
+	sbc	hl, de
+	jr	z, .Lls_h
+	add	hl, de
+.Lls_h:
+	ld	(_w_lq_h), hl
+	; l: s its sky, b its block light (high nibble)
+	ld	hl, (ls_i)
+	ld	de, (_wlight)
+	add	hl, de
+	ld	a, (hl)
+	ld	b, a
+	and	a, 15
+	ld	(ls_s), a
+	ld	a, b
+	and	a, 0xF0
+	ld	(ls_b), a
+	cp	a, 0x11
+	jr	nc, .Lls_go
+	ld	a, (ls_s)
+	cp	a, 2
+	jr	c, .Lls
+.Lls_go:
+	ld	hl, (ls_i)
+	push	hl
+	call	t__w_neighbours
+	pop	hl
+	ld	ix, _w_nbr
+	ld	a, (_w_nbr_n)
+	ld	(ls_k), a
+b_Lls_n:
+.Lls_n:
+	ld	a, (ls_k)
+	or	a, a
+	jr	z, .Lls
+	dec	a
+	ld	(ls_k), a
+	ld	de, 0
+	ld	e, (ix+0)
+	ld	d, (ix+1)
+	lea	ix, ix+2
+	ld	(ls_n), de
+	; op: what it takes, 1 at least; 15: none in
+	ld	hl, (_wblk)
+	add	hl, de
+	ld	a, (hl)
+	ld	hl, _blk_opacity
+	ld	de, 0
+	ld	e, a
+	add	hl, de
+	ld	a, (hl)
+	cp	a, 15
+	jr	nc, .Lls_n
+	or	a, a
+	jr	nz, .Lls_op
+	inc	a
+.Lls_op:
+	ld	c, a			; op
+	ld	hl, (ls_n)
+	ld	de, (_wlight)
+	add	hl, de
+	ld	a, (hl)
+	ld	b, a			; nl
+	ld	(ls_ch), hl		; (where it is)
+	xor	a, a
+	ld	(ls_d), a		; changed
+	; sky: s - op > ns
+	ld	a, (ls_s)
+	sub	a, c
+	jr	c, .Lls_sky
+	jr	z, .Lls_sky
+	ld	e, a
+	ld	a, b
+	and	a, 15
+	cp	a, e
+	jr	nc, .Lls_sky
+	ld	a, b
+	and	a, 0xF0
+	or	a, e
+	ld	b, a
+	ld	a, 1
+	ld	(ls_d), a
+.Lls_sky:
+	; block: b - op x 16 > nb
+	ld	a, c
+	add	a, a
+	add	a, a
+	add	a, a
+	add	a, a
+	ld	e, a
+	ld	a, (ls_b)
+	sub	a, e
+	jr	c, .Lls_blk
+	jr	z, .Lls_blk
+	ld	e, a
+	ld	a, b
+	and	a, 0xF0
+	cp	a, e
+	jr	nc, .Lls_blk
+	ld	a, b
+	and	a, 15
+	or	a, e
+	ld	b, a
+	ld	a, 1
+	ld	(ls_d), a
+.Lls_blk:
+	ld	a, (ls_d)
+	or	a, a
+	jp	z, t_Lls_n
+	ld	hl, (ls_ch)
+	ld	(hl), b
+	ld	de, (ls_n)
+	call	t_w_push
+	jp	t_Lls_n
+b_Lls_done:
+.Lls_done:
+	pop	ix
+	ret

@@ -63,4 +63,17 @@
 	\m	code_iy
 	\m	_rs_face
 	\m	fc_corner
+	\m	w_slot
+	\m	w_next
+	\m	w_push
+	\m	_w_col_copy
+	\m	_w_col_light
+	\m	_w_col_seed_border
+	\m	_w_col_seed
+	\m	_w_light_spread
+	\m	Lls_done
+	\m	Lls_n
+	\m	Lws
+	\m	Lws_done
+	\m	Lwsb
 	.endm

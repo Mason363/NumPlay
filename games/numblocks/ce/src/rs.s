@@ -64,6 +64,16 @@ _rs_build:	.d24	RSF_BUILD
 	.set	_rs_clip2, t__rs_clip2
 	.global	_rs_face
 	.set	_rs_face, t__rs_face
+	.global	_w_col_copy
+	.set	_w_col_copy, t__w_col_copy
+	.global	_w_col_light
+	.set	_w_col_light, t__w_col_light
+	.global	_w_col_seed_border
+	.set	_w_col_seed_border, t__w_col_seed_border
+	.global	_w_col_seed
+	.set	_w_col_seed, t__w_col_seed
+	.global	_w_light_spread
+	.set	_w_light_spread, t__w_light_spread
 
 	.section	.data._rs_vars
 	.global	r_tex
@@ -163,6 +173,26 @@ r_kv:	.ds	48
 kt_base:	.d24	0
 	.global	_rs_ck
 _rs_ck:	.ds	72
+	.global	wc_i
+wc_i:	.d24	0
+	.global	wc_d
+wc_d:	.d24	0
+	.global	wc_y
+wc_y:	.db	0
+	.global	ls_i
+ls_i:	.d24	0
+	.global	ls_n
+ls_n:	.d24	0
+	.global	ls_ch
+ls_ch:	.d24	0
+	.global	ls_s
+ls_s:	.db	0
+	.global	ls_b
+ls_b:	.db	0
+	.global	ls_k
+ls_k:	.db	0
+	.global	ls_d
+ls_d:	.db	0
 	.global	_rs_fs
 _rs_fs:	.d24	0, 0, 0, 0, 0, 0, 65535, 0, 0, 0, 65535, 65535, 0, 0, 0, 65535
 	.global	_rs_fclip
@@ -420,6 +450,14 @@ r_rtab:
 	.extern	_rs_cell
 	.extern	_plat_poll
 	.extern	_wexp
+	.extern	_wblk
+	.extern	_wlight
+	.extern	_blk_light
+	.extern	_blk_opacity
+	.extern	_win_y
+	.extern	_w_lq
+	.extern	_w_lq_h
+	.extern	_w_lq_t
 	.extern	_w_nbr
 	.extern	_blk_model
 	.extern	_blk_flags
