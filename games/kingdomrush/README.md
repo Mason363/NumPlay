@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="../../docs/media/gallery/kingdomrush.gif" width="640" alt="Kingdom Rush: towers built at Southport and the first goblins">
+  <img src="../../docs/media/gallery/kingdomrush.gif" width="640" alt="Kingdom Rush: the Hero Room, then Alleria and the first towers at the Citadel">
 </p>
 
 ## Highlights
