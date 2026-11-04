@@ -683,7 +683,7 @@ static void icon(int o, int v, float x, float y, color bg) {
 }
 
 static float ease(uint32_t born, int ms) { /* 0 to 1 with a little overshoot */
-  int a = (int)(now - born);
+  int32_t a = (int32_t)(now - born);
   if (a >= ms) return 1;
   float t = (float)a / ms - 1;
   return 1 + t * t * (2.70158f * t + 1.70158f);
@@ -813,7 +813,7 @@ static void snake(int n) {
 
 /* Light: dark all over but around the heads, wider for a while after fruit */
 static float light_r(void) {
-  int a = (int)(now - lit_t);
+  int32_t a = (int32_t)(now - lit_t);
   return cs * (2.4f + (a < 3000 ? 2.6f * (3000 - a) / 3000 : 0));
 }
 static void darkness(void) {
