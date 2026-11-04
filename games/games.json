@@ -44,7 +44,13 @@
     "shots": [
       "screenshots/title.png"
     ],
-    "repo": "https://github.com/Mason363/CrossyWorks"
+    "repo": "https://github.com/Mason363/CrossyWorks",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "numblocks",
@@ -125,7 +131,10 @@
     ],
     "repo": "https://github.com/Mason363/NumDrive",
     "ports": [
-      "web"
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
     ]
   },
   {
@@ -217,7 +226,13 @@
       "docs/shot.png"
     ],
     "app": "SuikaGame.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/suika"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/suika",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "portal",
@@ -794,6 +809,10 @@
       5,
       6,
       7
+    ],
+    "ports": [
+      "sdl",
+      "nspire"
     ]
   },
   {
@@ -1106,7 +1125,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/doom",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "isaac",
@@ -1156,7 +1181,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/hillclimb",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "pvz",
@@ -1207,6 +1238,8 @@
     "default": false,
     "xl": true,
     "ports": [
+      "sdl",
+      "web",
       "nspire",
       "casio-cg"
     ]
@@ -1502,7 +1535,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/angrybirds",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "numvisuals",
@@ -1550,7 +1589,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/polytrack",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "paperclips",
@@ -1571,7 +1616,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/paperclips",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "badtime",
@@ -1646,7 +1697,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/rider",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "snowrider",
@@ -1943,7 +2000,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/mrbullet",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "numpico",
@@ -1971,7 +2034,7 @@
     "xl": true,
     "carts": true,
     "ports": [
-      "web"
+      "sdl"
     ]
   },
   {
