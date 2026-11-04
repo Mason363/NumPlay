@@ -589,12 +589,17 @@ static bool options_ok(const Options *o) {
          o->vote <= 60 && o->confirm <= 1 && o->anon <= 1 && o->visual <= 1 && o->taskbar <= 2;
 }
 
+/* is a round on (How to Play from its pause menu included) */
+bool round_live(void) {
+  if (g.screen == S_HOWTO) return g.back_screen == S_PLAY;
+  return g.screen != S_TITLE && g.screen != S_LOBBY && g.screen != S_END;
+}
+
 void settings_save(void) {
   set_file.h = (SaveHead){MAGIC_S, VERSION, 0, sizeof(SetFile)};
   set_file.opt = g.opt;
   plat_save(SAVE_SET, &set_file, sizeof set_file);
-  bool live = g.screen != S_TITLE && g.screen != S_LOBBY && g.screen != S_END && g.screen != S_HOWTO;
-  write_copy(live ? pack_game() : 0, &set_file);
+  write_copy(round_live() ? pack_game() : 0, &set_file);
 }
 
 static void settings_load(void) {
@@ -683,6 +688,6 @@ void game_init(void) {
   if (game_load()) {
     /* back where the game was left, paused */
     ship_init();
-    if (g.screen == S_PLAY || g.screen == S_KILLED) g.back_screen = S_PLAY, g.screen = S_PAUSE, g.sel = 0;
+    if (g.screen == S_PLAY || g.screen == S_KILLED || g.screen == S_HOWTO) g.back_screen = S_PLAY, g.screen = S_PAUSE, g.sel = 0;
   }
 }

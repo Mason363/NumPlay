@@ -200,7 +200,8 @@ static void howto_tick(uint32_t pressed) {
   if ((pressed & K_LEFT) && g.sel) g.sel--;
   if (pressed & K_BACK) out = true;
   if (out) {
-    g.screen = g.back_screen, g.sel = 0;
+    /* back to the title, the settings, or the pause menu it came from */
+    g.screen = g.back_screen == S_PLAY ? S_PAUSE : g.back_screen, g.sel = g.back_screen == S_PLAY ? 1 : 0;
     if (g.screen == S_LOBBY) g.sel = N_OPT, lobby_top = N_OPT - 8;
   }
 }
@@ -345,8 +346,8 @@ void game_tick(uint32_t keys) {
   last_keys = keys;
   if (pressed & K_HOME) {
     /* save and quit, from anywhere */
-    if (g.screen == S_TITLE || g.screen == S_LOBBY || g.screen == S_END || g.screen == S_HOWTO) settings_save();
-    else game_save();
+    if (round_live()) game_save();
+    else settings_save();
     game_running = false;
     return;
   }

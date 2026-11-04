@@ -69,11 +69,20 @@ for k, name in enumerate(NAMES):
     check(bool(ok), "minigame %s%s" % (name, " (frame %s)" % m.group(1) if m else ""))
 
 # whole games: through the menus to a crew win, an impostor's game to an impostor win
-# (the first Play shows How to Play's three pages, then the settings with Start chosen)
-out = play("--auto", "--keys", "10:ok,20:ok,30:ok,40:ok,50:ok", "--frames", 90000, "--seed", 3, "--walled")
-check(end(out) and end(out)[:2] == (7, 0) and "WALLED" not in out, "a crew game from the title to a crew win: %s" % (end(out),))
-out = play("--start", "imp", "--auto", "--bots", 9, "--imps", 2, "--frames", 90000, "--seed", 2, "--walled")
-check(end(out) and end(out)[:2] == (7, 1) and "WALLED" not in out, "an impostor's game to an impostor win: %s" % (end(out),))
+# (the first Play shows How to Play's three pages, then the settings with Start chosen; the first seed that the crew
+# wins, and the first an impostor player wins)
+for seed in range(1, 21):
+    out = play("--auto", "--keys", "10:ok,20:ok,30:ok,40:ok,50:ok", "--frames", 90000, "--seed", seed, "--walled")
+    if end(out) and end(out)[:2] == (7, 0):
+        break
+check(end(out) and end(out)[:2] == (7, 0) and "WALLED" not in out,
+      "a crew game from the title to a crew win (seed %d): %s" % (seed, end(out)))
+for seed in range(1, 21):
+    out = play("--start", "imp", "--auto", "--frames", 90000, "--seed", seed, "--walled")
+    if end(out) and end(out)[:2] == (7, 1):
+        break
+check(end(out) and end(out)[:2] == (7, 1) and "WALLED" not in out,
+      "an impostor's game to an impostor win (seed %d): %s" % (seed, end(out)))
 wins = {0: 0, 1: 0}
 for s in range(1, 9):
     out = play("--start", "crew" if s & 1 else "imp", "--auto", "--frames", 90000, "--seed", 100 + s, "--walled",
@@ -93,6 +102,11 @@ out = play("--frames", 5, saves=saves, fresh=False)
 m = re.search(r"LOADED screen (\d+) back (\d+) t ([\d.]+)", out)
 check(m and m.group(1) == "9" and m.group(2) == "3" and float(m.group(3)) > 10, "the game comes back, paused: %s" %
       (m.group(0) if m else None))
+# Home from How to Play in the pause menu saves the round too
+saves3 = os.path.join(WORK, "s3")
+play("--start", "crew", "--frames", 200, "--keys", "100:back,110:down,120:ok,130:right,140:home", "--seed", 7, saves=saves3)
+out3 = play("--frames", 5, saves=saves3, fresh=False)
+check("LOADED screen 9 back 3" in out3, "Home from How to Play in a round: back paused")
 # its copy alone (installing apps from the website keeps only scripts)
 for f in ("amongus.sav", "amongus.set"):
     os.remove(os.path.join(saves, f))

@@ -151,6 +151,7 @@ void spawn_at_table(int i);
 bool game_save(void);
 bool game_load(void);
 void settings_save(void);
+bool round_live(void);
 
 /* rules (game.c) */
 float player_speed(int i);
