@@ -7,7 +7,7 @@ Every NumPlay game talks to its calculator through one interface: [EADK](include
 | NumWorks | (the calculator's own EADK) | `.nwa` | all games |
 | A computer, a Raspberry Pi | [sdl](sdl/) | a program | first games |
 | TI-84 Plus CE, TI-83 Premium CE | [ti84ce](ti84ce/) | `.8xp`, `.8xv` | first games build; to run in CEmu |
-| TI-Nspire CX, CX II | nspire | `.tns` | next |
+| TI-Nspire CX, CX II | [nspire](nspire/) | `.tns` | first games build; to run in Firebird |
 | Casio fx-CG50, Graph 90+E | casio-cg | `.g3a` | next |
 | Casio Graph 35+E II | casio-fx | `.g1a` | later |
 | A web browser | [sdl](sdl/) with Emscripten | WebAssembly | first games |

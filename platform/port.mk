@@ -39,6 +39,23 @@ $(CE_DIR)/bin/$(CE_NAME).8xp: $(PORT_SRC) $(wildcard $(NP_PLATFORM)/include/*.h)
 	  > $(CE_DIR)/makefile
 	$(Q) PATH="$(CEDEV)/bin:$$PATH" $(MAKE) -C $(CE_DIR) --no-print-directory TARGET=$(CE_NAME).8xp
 	@echo "CE      $@"
+else ifeq ($(TARGET),nspire)
+# Ndless's SDK (NDLESS_SDK: its ndless-sdk folder, with its toolchain built in toolchain/install)
+NDLESS_SDK ?= $(HOME)/Documents/Assets/toolchains/ndless-src/ndless-sdk
+NS_PATH = $(NDLESS_SDK)/bin:$(NDLESS_SDK)/toolchain/install/bin
+NS_DIR = $(PORT_OUT)/$(PORT_ID)
+NS_SRC = $(PORT_SRC) $(NP_PLATFORM)/nspire/np_nspire.c $(PORT_COMMON)
+port: $(PORT_OUT)/$(PORT_ID).tns
+$(PORT_OUT)/$(PORT_ID).tns: $(NS_SRC) $(PORT_ASM) $(wildcard $(NP_PLATFORM)/include/*.h)
+	@rm -rf $(NS_DIR) && mkdir -p $(NS_DIR)
+	$(Q) n=0; for f in $(NS_SRC) $(PORT_ASM); do n=$$((n+1)); \
+	  PATH="$(NS_PATH):$$PATH" nspire-gcc $(PORT_CFLAGS) -Os -marm -ffunction-sections -fdata-sections \
+	    -c $$f -o $(NS_DIR)/f$$n.o || exit 1; done
+	$(Q) PATH="$(NS_PATH):$$PATH" nspire-ld $(NS_DIR)/*.o -Wl,--gc-sections -lm -o $(NS_DIR)/$(PORT_ID).elf
+	$(Q) PATH="$(NS_PATH):$$PATH" genzehn --input $(NS_DIR)/$(PORT_ID).elf --output $(NS_DIR)/$(PORT_ID).zehn \
+	  --name "$(PORT_NAME)" --240x320-support true --uses-lcd-blit true
+	$(Q) PATH="$(NS_PATH):$$PATH" make-prg $(NS_DIR)/$(PORT_ID).zehn $@
+	@echo "NSPIRE  $@"
 else ifeq ($(TARGET),web)
 # Emscripten: the computer build (sdl/np_sdl.c) in a page; Asyncify lets the game's endless loop pause for the page.
 # A game's data in a .S file (.incbin) comes in through #embed instead: PORT_DATA = symbol:file
