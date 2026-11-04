@@ -10,6 +10,8 @@ int g_nrooms;
 static const uint8_t *rooms;
 const uint8_t *g_bg;
 int g_bg_camx, g_bg_camy;
+int g_chapter_berries;
+const uint8_t *g_remap, *g_remap_red, *g_remap_half;
 static uint16_t pal[256];
 static uint8_t tint[3];
 
@@ -45,7 +47,9 @@ bool chapter_open(int n) {
   memcpy(pal + COMMON, h + 6, (256 - COMMON) * 2);
   const uint8_t *p = h + 6 + (256 - COMMON) * 2;
   memcpy(tint, p, 3);
-  p += 3;
+  g_chapter_berries = p[3];
+  g_remap_red = p + 4, g_remap_half = p + 4 + 256;
+  p += 4 + 512;
   ntiles = (int)R16(p);
   tile_chunks = p + 3;
   p += 3 + 3 * p[2];

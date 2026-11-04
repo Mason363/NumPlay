@@ -506,6 +506,10 @@
 #define BANK_ORIGINS {{1, 16, 32}, {2, 128, 128}, {2, 128, 128}, {2, 128, 128}, {2, 128, 128}}
 #define NBANKS 5
 #define COMMON 96
+#define HAIR 1
+#define HAIR_DARK 2
+#define WHITE 3
+#define BLACK 4
 #define ET_player 0
 #define ET_spikesUp 1
 #define ET_spikesDown 2

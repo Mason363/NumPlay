@@ -489,6 +489,7 @@ class Common:
         h.raw(pal.rgb1555(0, COMMON))
         h.ref(table).ref(anims).ref(meta).ref(hair)
         H.append(f"#define COMMON {COMMON}")
+        H.append(f"#define HAIR {HAIR}\n#define HAIR_DARK {HAIR_DARK}\n#define WHITE {WHITE}\n#define BLACK {BLACK}")
         return self.blob.write()
 
 
@@ -594,6 +595,7 @@ class Chapter:
         self.head = self.blob.item("chapter header")
         self.imgs = {}
         self.rnd = random.Random(number)
+        self.nberries = 0
 
     # -------------------------------------------------------------- pictures
     def image(self, path):
@@ -766,7 +768,15 @@ class Chapter:
         h = self.head
         h.raw(b"CELC").u8(FORMAT).u8(self.number)
         h.raw(pal.rgb1555(COMMON, 256))
-        h.u8(self.tint[0]).u8(self.tint[1]).u8(self.tint[2])
+        h.u8(self.tint[0]).u8(self.tint[1]).u8(self.tint[2]).u8(self.nberries)
+        # remaps: each colour tinted red (Color.Red: Madeline tired), and halved (Color.Gray)
+        for f in (lambda c: c * np.array([1, 0, 0]), lambda c: c * 0.5):
+            for i in range(256):
+                if i == 0 or i >= pal.n:
+                    h.u8(i)
+                    continue
+                c = np.clip(f(rgb_of(pal.colors[i])), 0, 255).astype(int)
+                h.u8(pal.index(int((c[0] >> 3) << 10 | (c[1] >> 3) << 5 | (c[2] >> 3))))
         h.u16(len(self.tiles.list)).u8(len(chunks))
         for c in chunks:
             h.ref(c)
@@ -973,7 +983,10 @@ class Chapter:
         elif n in ("strawberry", "goldenBerry"):
             flags |= 1 if a("winged", False) else 0
             flags |= 2 if a("moon", False) else 0
-            vals += [int(a("checkpointID", -1)) & 0xFFFF, int(a("order", -1)) & 0xFFFF]
+            if n == "strawberry":
+                self.nberries += 1
+            vals += [int(a("checkpointID", -1)) & 0xFFFF, int(a("order", -1)) & 0xFFFF,
+                     self.nberries - 1 if n == "strawberry" else 0xFFFF]
         elif n == "refill":
             flags |= 1 if a("twoDash", False) else 0
             flags |= 2 if a("oneUse", False) else 0

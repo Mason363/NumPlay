@@ -120,7 +120,7 @@ void level_dir_shake(int dx, int dy, int frames) {
   g_level.shake_timer = imax(g_level.shake_timer, frames);
   g_level.shake_dirx = dx, g_level.shake_diry = dy;
 }
-void level_freeze(int frames) { g_level.freeze = imax(g_level.freeze, frames); }
+void level_freeze(int t) { g_level.freeze = imax(g_level.freeze, t); }
 
 /* ---------------------------------------------------------------- loading */
 static int spawn_near(int x, int y) {   /* the room's spawn nearest (x, y), as an index into its records */
@@ -148,7 +148,7 @@ static void load_into_current(int index, int intro) {
   ents_spawn_room(0);
   player_spawn(g_level.respawn_x, g_level.respawn_y, intro);
   g_level.cam_offx = rm->camx * 48, g_level.cam_offy = rm->camy * 32;
-  g_level.camx = player_cam_targetx() << 8, g_level.camy = player_cam_targety() << 8;
+  g_level.camx = player_cam_targetx() * 256, g_level.camy = player_cam_targety() * 256;
   g_level.transitioning = false;
   g_level.wipe = -24;
 }
@@ -193,7 +193,7 @@ static void transition_to(int index, int dx, int dy) {
   int wx = pe->x, wy = pe->y;
   pe->x = tx, pe->y = ty;
   g_level.cam_offx = rm->camx * 48, g_level.cam_offy = rm->camy * 32;
-  g_level.tr_tox = player_cam_targetx() << 8, g_level.tr_toy = player_cam_targety() << 8;
+  g_level.tr_tox = player_cam_targetx() * 256, g_level.tr_toy = player_cam_targety() * 256;
   pe->x = wx, pe->y = wy;
 }
 
@@ -272,8 +272,8 @@ static void enforce_bounds(void) {
 
 /* ---------------------------------------------------------------- the frame */
 void level_update(void) {
-  if (g_level.freeze > 0) {
-    g_level.freeze--;
+  if (g_level.freeze > 0) {   /* Engine.FreezeTimer */
+    g_level.freeze -= DTU;
     return;
   }
   g_level.frame++;
@@ -298,7 +298,8 @@ void level_update(void) {
     transition_update();
   } else {
     ents_update();
-    if (!g_player.dead && g_player.state != ST_INTRORESPAWN && !g_level.transitioning) enforce_bounds();
+    extern bool player_in_control(void);
+    if (!g_player.dead && player_in_control() && !g_level.transitioning) enforce_bounds();
   }
   if (pending_room >= 0) {
     int r = pending_room;

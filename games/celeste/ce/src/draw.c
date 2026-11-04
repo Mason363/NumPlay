@@ -34,6 +34,8 @@ static void blit_sprite(const uint8_t *s, int x, int y, uint8_t flags) {
         if (dx + b > VIEW_W) b = VIEW_W - dx;
         if (a < b) {
           if (solid) memset(row + dx + a, col, b - a);
+          else if (g_remap)
+            for (int i = a; i < b; i++) row[dx + i] = g_remap[px[i]];
           else memcpy(row + dx + a, px + a, b - a);
         }
       } else {
@@ -41,7 +43,7 @@ static void blit_sprite(const uint8_t *s, int x, int y, uint8_t flags) {
         int base = x + fw - 1 - x0 - at;
         for (int i = 0; i < len; i++) {
           int dx = base - i;
-          if ((unsigned)dx < VIEW_W) row[dx] = solid ? col : px[i];
+          if ((unsigned)dx < VIEW_W) row[dx] = solid ? col : g_remap ? g_remap[px[i]] : px[i];
         }
       }
       at += len;
@@ -59,7 +61,7 @@ void draw_sprite_scaled(const uint8_t *s, int x, int y, int sx, int sy, int ox, 
   }
   /* decode into a buffer, then sample it */
   static uint8_t buf[64 * 64];
-  int fw = s[0], fh = s[1], x0 = s[2], y0 = s[3], w = s[4], h = s[5];
+  int fw = s[0], fh = s[1], x0 = s[2], y0 = s[3], h = s[5];
   if (fw > 64 || fh > 64) return;
   memset(buf, 0, (size_t)fw * fh);
   const uint8_t *p = s + 6;
@@ -90,7 +92,7 @@ void draw_sprite_scaled(const uint8_t *s, int x, int y, int sx, int sy, int ox, 
       int u = ox + fdiv(rel * 256 + 128, sx);
       if (u < 0 || u >= fw) continue;
       uint8_t c = buf[v * fw + u];
-      if (c) row[vx] = (flags & DF_SOLID) ? g_draw_color : c;
+      if (c) row[vx] = (flags & DF_SOLID) ? g_draw_color : g_remap ? g_remap[c] : c;
     }
   }
 }
@@ -251,7 +253,7 @@ void draw_decals(int fg) {
   for (int k = 0; k < 2; k++) {
     Room *rm = &g_level.rooms[k];
     if (rm->index < 0) continue;
-    const uint8_t *d = HPTR(rm->rec + rm->rec[0] + 1 + 3 + 3 + 2 + 2 + 3 + 4 + 1 + 2 * (rm->ntiles + 1) + 2 + 3);
+    const uint8_t *d = rm->decals;
     int n = d[fg], skip = fg ? d[0] : 0;
     const uint8_t *p = d + 2 + 8 * skip;
     for (int i = 0; i < n; i++, p += 8) {

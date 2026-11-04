@@ -36,6 +36,7 @@ extern uint8_t *g_fb;                 /* the buffer drawn this frame: 320 x 240 
 void plat_init(void);
 void plat_exit(void);
 void plat_frame(void);                /* shows g_fb, and g_fb becomes the other buffer */
+void plat_begin_draw(void);           /* waits until the buffer to draw is no longer shown */
 void plat_palette(const uint16_t *pal, int first, int n);   /* 1555 colours */
 unsigned plat_keys(void);
 unsigned plat_ticks(void);            /* a 32768 Hz clock (wraps at 16 bits) */
@@ -80,6 +81,8 @@ const uint8_t *player_meta(int sprite_id);   /* s8 hair x, s8 hair y, u8 bangs |
 const uint16_t *hair_mask(int which);        /* 0 hair, 1-3 bangs: 10 rows (mask), then 10 (dark) */
 extern const uint8_t *g_bg;           /* the chapter's background (320 x 180), NULL if none */
 extern int g_bg_camx, g_bg_camy;
+extern int g_chapter_berries;      /* the chapter's strawberries */
+extern const uint8_t *g_remap, *g_remap_red, *g_remap_half;   /* sprites drawn through g_remap if set */
 
 /* ---------------------------------------------------------------- drawing (draw.c) */
 enum { DF_FLIPX = 1, DF_FLIPY = 2, DF_SOLID = 4 };   /* DF_SOLID: every pixel in one colour (draw_color) */
@@ -100,6 +103,18 @@ void draw_layer_fg(void);             /* fg tiles */
 void draw_decals(int fg);
 void draw_clear_screen(uint8_t c);
 
+/* ---------------------------------------------------------------- floats (sf.c): IEEE single precision in whole numbers */
+typedef uint32_t f32;
+f32 f_add(f32 a, f32 b), f_sub(f32 a, f32 b), f_mul(f32 a, f32 b), f_div(f32 a, f32 b);
+bool f_lt(f32 a, f32 b), f_le(f32 a, f32 b);
+f32 f_int(int v);
+int f_trunc(f32 a), f_floor(f32 a), f_round(f32 a), f_sign(f32 a);
+f32 f_approach(f32 v, f32 t, f32 d), f_min(f32 a, f32 b), f_max(f32 a, f32 b), f_abs(f32 a), f_lerp(f32 a, f32 b, f32 t);
+#define f_neg(a) ((f32)(a) ^ 0x80000000ul)
+#define f_pos(a) (!((a) & 0x80000000ul) && ((a) & 0x7FFFFFFFul))   /* > 0 */
+#define f_negative(a) (((a) & 0x80000000ul) && ((a) & 0x7FFFFFFFul))   /* < 0 */
+#define f_zero(a) (!((a) & 0x7FFFFFFFul))
+
 /* ---------------------------------------------------------------- math */
 static inline int imin(int a, int b) { return a < b ? a : b; }
 static inline int imax(int a, int b) { return a > b ? a : b; }
@@ -108,17 +123,19 @@ static inline int isign(int a) { return (a > 0) - (a < 0); }
 static inline int iclamp(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
 static inline int approach(int v, int t, int d) { return v <= t ? imin(v + d, t) : imax(v - d, t); }
 int fdiv(int a, int b);               /* floor(a / b), b > 0 */
-int round_mu(int c, int dir);         /* c / MU rounded as Celeste's floats round it (see level.c) */
+int round_mu(int c, int dir);         /* c / MU rounded as Celeste's floats round it (util.c) */
+int bias_add(int b, int amount);      /* the bias round_mu needs, kept within 24 bits */
 int isqrt(int32_t v);
-int sin256(int a);                    /* a: 1024 a turn, result * 256 */
-static inline int cos256(int a) { return sin256(a + 256); }
+int sin15(int a);                     /* a: 1024 a turn, result * 32768 */
+static inline int sin256(int a) { return sin15(a) >> 7; }
+static inline int cos256(int a) { return sin15(a + 256) >> 7; }
 uint32_t rnd(void);
 static inline int rndn(int n) { return (int)((rnd() >> 8) % (uint32_t)n); }
 
 /* ---------------------------------------------------------------- input */
 typedef struct {
-  bool check, pressed;      /* held; went down this frame (or buffered) */
-  int8_t buffer;            /* frames the press is kept (Celeste's 0.08 s) */
+  bool check, edge, consumed;   /* held; went down this frame; ConsumePress */
+  int8_t buffer;            /* time units the press is kept (Celeste's 0.08 s) */
 } Button;
 typedef struct {
   Button jump, dash, grab, pause, ok, back, talk;
@@ -127,8 +144,9 @@ typedef struct {
 } Input;
 extern Input g_in;
 void input_update(unsigned keys);
-static inline bool btn_pressed(const Button *b) { return b->buffer > 0; }
-static inline void btn_consume(Button *b) { b->buffer = 0; }
+static inline bool btn_pressed(const Button *b) { return !b->consumed && (b->buffer > 0 || b->edge); }
+static inline void btn_consume(Button *b) { b->buffer = 0, b->consumed = true; }   /* ConsumePress */
+static inline void btn_consume_buffer(Button *b) { b->buffer = 0; }
 
 /* ---------------------------------------------------------------- entities (ents.c) */
 enum {   /* Ent.flags */
@@ -142,13 +160,14 @@ struct Ent {
   uint8_t sub;              /* type's own little state */
   int16_t depth;
   int x, y;
-  int remx, remy;           /* MU */
+  f32 remx, remy;           /* movementCounter (px) */
   int16_t hx, hy, hw, hh;   /* collider: left, top (from x, y), width, height */
-  int liftx, lifty;         /* speed units: a platform's LiftSpeed this frame */
+  f32 liftx, lifty;         /* a platform's LiftSpeed this frame (px/s) */
   const uint8_t *rec;       /* its map record */
   int t0, t1, t2, t3;       /* the type's own numbers */
   int16_t a0, a1, a2, a3;
   void *ptr;
+  f32 ptr2;
 };
 #define MAX_ENTS 96
 extern Ent g_ents[MAX_ENTS];
@@ -176,6 +195,7 @@ typedef struct {
   uint8_t *grid;            /* fg[tw * th], bg[tw * th], solid bits (rb a row) */
   int rb;
   const uint8_t *tiles[256];
+  const uint8_t *decals, *ents, *trigs;
   uint8_t ntiles;
   uint8_t flags;
   int8_t camx, camy;
@@ -223,48 +243,53 @@ enum { INTRO_TRANSITION, INTRO_RESPAWN, INTRO_WALKINRIGHT, INTRO_WALKINLEFT, INT
 #define HAIR_NODES 5
 typedef struct {
   Ent *e;
-  int sx, sy;               /* speed */
+  f32 sx, sy;               /* Speed (px/s) */
   int facing;
   int state, prev_state;
-  bool on_ground, was_on_ground, on_safe_ground, ducking, dead;
+  bool on_ground, was_on_ground, on_safe_ground, dead;
   int dashes, max_dashes, last_dashes;
-  int stamina;              /* 1/36000 */
-  int move_x;
-  int jump_grace, var_jump, var_jump_speed, auto_jump_timer;
+  f32 stamina;
+  int move_x, aim_x, aim_y;
+  f32 jump_grace, var_jump, var_jump_speed, auto_jump_timer;
   bool auto_jump;
-  int force_move_x, force_move_x_timer;
-  int dash_cooldown, dash_refill_cooldown, dash_attack;
-  int dash_dx, dash_dy;     /* 1/256 */
-  int last_aim_x, last_aim_y;   /* aim: -1, 0, 1 */
-  int wall_slide_timer, wall_slide_dir;
-  int climb_no_move;
-  int wall_speed_retention, wall_speed_retained;
-  int wall_boost_dir, wall_boost_timer;
-  int max_fall;
-  int hop_wait_x, hop_wait_x_speed;
+  int force_move_x;
+  f32 force_move_x_timer;
+  f32 dash_cooldown, dash_refill_cooldown, dash_attack;
+  f32 dash_dx, dash_dy;
+  f32 wall_slide_timer;
+  int wall_slide_dir;
+  f32 climb_no_move;
+  f32 wall_speed_retention, wall_speed_retained;
+  int wall_boost_dir;
+  f32 wall_boost_timer;
+  f32 max_fall;
+  int hop_wait_x;
+  f32 hop_wait_x_speed;
+  Ent *climb_hop_solid;
+  int climb_hop_x, climb_hop_y;
   int last_climb_move;
   bool dash_started_on_ground, fast_jump, was_dash_b, called_dash_events;
-  int before_dash_sx, before_dash_sy;
-  int co_step, co_wait;     /* the state's coroutine */
+  f32 before_dash_sx, before_dash_sy;
+  int co_step;
+  f32 co_wait;              /* the state's coroutine */
   bool co_active;
-  int dash_trail_timer;
-  int lift_timer, last_liftx, last_lifty;
+  f32 lift_timer, last_liftx, last_lifty;
+  f32 intro_fy;
   /* the sprite */
   int anim, frame, anim_timer;
-  int scale_x, scale_y;     /* 1/256 */
+  int scale_x, scale_y;     /* 1/1024 */
   int idle_timer;
   bool flash;
   int hair_flash;
   uint32_t hair_rgb;
   int hairx[HAIR_NODES], hairy[HAIR_NODES];   /* 1/256 px */
-  int hair_count, hair_wave;
+  int hair_count;
   /* intro, respawn, death */
   int intro_t, respawn_fromx, respawn_fromy;
   int body_step, body_t, body_dx, body_dy, death_t;
   int bodyx, bodyy;
-  int death_color;
-  int strawb_index, strawb_reset;
-  int walk_target;
+  int strawb_index;
+  f32 strawb_reset;
 } Player;
 extern Player g_player;
 void player_spawn(int x, int y, int intro);
