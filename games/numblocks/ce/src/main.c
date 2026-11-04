@@ -326,6 +326,9 @@ int main(void) {
     {
       /* one picture, as the computer build makes it (to compare) */
       in_game = true, gui = GUI_NONE;
+#ifdef NB_V7YAW
+      pl.yaw = NB_V7YAW, pl.pitch = NB_V7PITCH;
+#endif
       render_frame();
       hud_draw();
       compose(true, true);
@@ -333,10 +336,10 @@ int main(void) {
       plat_exit();
     }
 #endif
-#if NB_BENCH >= 5 && NB_BENCH <= 6
+#if NB_BENCH >= 5 && NB_BENCH <= 6 || NB_BENCH == 16
     {
-      /* rows of the window made (5: 16 of them, 6: none) */
-      for (int f = 0; f < (NB_BENCH == 5 ? 16 : 0); f++) {
+      /* rows of the window made (5: 16 of them, 16: 64, 6: none) */
+      for (int f = 0; f < (NB_BENCH == 5 ? 16 : NB_BENCH == 16 ? 64 : 0); f++) {
         pl.x += FX1;
         world_center(FXI(pl.x), FXI(pl.y) + 1, FXI(pl.z), false);
         while (world_busy()) world_step();

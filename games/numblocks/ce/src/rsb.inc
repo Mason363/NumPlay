@@ -114,10 +114,11 @@ b_span_alpha:
 ; ------------------------------------------------------------------------------------------------- arithmetic
 ; hl = hl x de >> 24: hl signed, de 0..2^24 (the low partial products left out)
 b_mulhi:
-	ld	(m_a), hl
+	push	bc
 	ld	(m_r), de
 	xor	a, a
 	ld	(m_neg), a
+	ld	(m_a), hl
 	ld	a, (m_a+2)
 	bit	7, a
 	jr	z, .Lmh_pos
@@ -128,60 +129,54 @@ b_mulhi:
 	ld	(m_a), hl
 	ld	a, 1
 	ld	(m_neg), a
-.Lmh_pos:
-	; t = a2 r0 + a1 r1 + a0 r2
 	ld	a, (m_a+2)
-	ld	h, a
-	ld	a, (m_r)
-	ld	l, a
-	mlt	hl
-	ld	a, (m_a+1)
-	ld	d, a
-	ld	a, (m_r+1)
-	ld	e, a
-	mlt	de
-	add	hl, de
-	ld	a, (m_a)
-	ld	d, a
+	ld	de, (m_r)
+.Lmh_pos:
+	; |a| in m_a: l a0, h a1, a a2; r: e r0, d r1, r2 at m_r+2. t = a2 r0 + a1 r1 + a0 r2
+	ld	c, a			; a2
 	ld	a, (m_r+2)
-	ld	e, a
-	mlt	de
+	ld	b, a			; r2
+	push	de
+	ld	a, l			; a0
+	ld	l, d
+	mlt	hl			; a1 r1
+	ld	d, c
+	mlt	de			; a2 r0
+	add	hl, de
+	ld	d, a
+	ld	e, b
+	mlt	de			; a0 r2
 	add	hl, de
 	ld	(m_t), hl
 	ld	hl, (m_t+1)		; t >> 8 (m_t+3 is 0)
+	pop	de
 	; + a2 r1 + a1 r2
-	ld	a, (m_a+2)
-	ld	d, a
-	ld	a, (m_r+1)
-	ld	e, a
-	mlt	de
+	ld	e, c
+	mlt	de			; a2 r1
 	add	hl, de
 	ld	a, (m_a+1)
 	ld	d, a
-	ld	a, (m_r+2)
-	ld	e, a
-	mlt	de
+	ld	e, b
+	mlt	de			; a1 r2
 	add	hl, de
 	; + a2 r2 << 8
-	ld	a, (m_a+2)
-	ld	d, a
-	ld	a, (m_r+2)
-	ld	e, a
+	ld	d, c
+	ld	e, b
 	mlt	de
+	ld	(m_t+1), de		; (de's top byte is 0 after mlt: m_t+3 stays 0)
 	xor	a, a
 	ld	(m_t), a
-	ld	(m_t+1), de		; (de's top byte is 0 after mlt: m_t+3 stays 0)
 	ld	de, (m_t)
 	add	hl, de
+	pop	bc
 	jr	b_neg_if
 
-; hl = hl x a >> 8: hl signed, a 0..255
+; hl = hl x a >> 8: hl signed, a 0..255 (b kept)
 b_mul8:
-	ld	(m_f), a
+	ld	c, a			; f
 	ld	(m_a), hl
-	xor	a, a
-	ld	(m_neg), a
 	ld	a, (m_a+2)
+	ld	(m_f), a		; (its top bit: negative)
 	bit	7, a
 	jr	z, .Lm8_pos
 	ex	de, hl
@@ -189,35 +184,31 @@ b_mul8:
 	sbc	hl, hl
 	sbc	hl, de
 	ld	(m_a), hl
-	ld	a, 1
-	ld	(m_neg), a
-.Lm8_pos:
-	; (s0 f >> 8) + s1 f + (s2 f << 8)
-	ld	a, (m_f)
-	ld	e, a
-	ld	a, (m_a)
-	ld	d, a
-	mlt	de			; s0 f
-	ld	c, d			; s0 f >> 8
-	ld	a, (m_f)
-	ld	e, a
 	ld	a, (m_a+2)
+.Lm8_pos:
+	; (s2 f << 8) + (s0 f >> 8) + s1 f
 	ld	d, a
-	mlt	de			; s2 f
-	xor	a, a
-	ld	(m_t), a
-	ld	(m_t+1), de
-	ld	hl, (m_t)		; s2 f << 8
-	ld	a, (m_f)
-	ld	e, a
-	ld	a, (m_a+1)
-	ld	d, a
-	mlt	de			; s1 f
-	add	hl, de
-	ld	de, 0
 	ld	e, c
+	mlt	de			; s2 f
+	ld	(m_t+1), de		; (m_t+3 stays 0)
+	ld	e, h			; s1
+	ld	h, c
+	mlt	hl			; s0 f
+	ld	a, h
+	ld	(m_t), a
+	ld	d, c
+	mlt	de			; s1 f
+	ld	hl, (m_t)
 	add	hl, de
-	; (fall through)
+	ld	a, (m_f)
+	bit	7, a
+	ret	z
+	ex	de, hl
+	or	a, a
+	sbc	hl, hl
+	sbc	hl, de
+	ret
+
 b_neg_if:
 	ld	a, (m_neg)
 	or	a, a
