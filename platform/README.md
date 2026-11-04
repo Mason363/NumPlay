@@ -43,4 +43,5 @@ Implement the functions of `include/eadk.h` and `include/np_port.h` in `platform
 ## Writing for every target
 
 - **An `int` is 24 bits on the TI-84 Plus CE.** Use `uint32_t` for bit masks and anything past 8 million: `(uint32_t)1 << 31`, not `1u << 31`. The CE build stops on a shift past an int's width.
+- **The Nspire, the fx-CG50 and the CE have no floating-point unit.** Their float is done in software, dozens of times slower than the NumWorks's, and so is division. `NP_SOFT_FLOAT` is 1 there: put integer versions of the hot loops under `#if NP_SOFT_FLOAT`, so the NumWorks build stays as it is, with the helpers of [np_fixed.h](include/np_fixed.h) (a float's value as an integer, a reciprocal, a square root). They may also keep what they decode, the Nspire having 64 MB. `make port TARGET=sdl NP_SOFT_FLOAT=1` tries them on a computer.
 - Keep every call to the calculator in one file (`plat_eadk.c`), as the games with a `plat.h` do.
