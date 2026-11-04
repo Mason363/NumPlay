@@ -524,12 +524,14 @@ def main():
     for name in ["noshadow", "playerVoteResults"]:
         k = (0.375 * 0.8) if name == "noshadow" else 0.375
         mixframe(name, k)
+    mix.add("deadbody_big", uiim("beforeVoting_deadBody"), (ui["beforeVoting_deadBody"]["px"], ui["beforeVoting_deadBody"]["py"]))
     mix_table, nmix = mix.pack(pics)
+    D("#define PIC_DEADBODY_BIG %d" % pics.ids["deadbody_big"])
     D("#define PIC_PLATE_PLAYER %d\n#define PIC_VOTE_ICON %d" % (pics.ids["noshadow"], pics.ids["playerVoteResults"]))
     for name in ["useButton", "reportButton", "killButton", "vent", "sabotage", "mapAdmin", "security", "votePlayerBase",
                  "reported", "deadX_border", "i_voted", "voteConfirm", "voteCancel", "button_skipVote_edit",
                  "skippedVotingTally", "sabotage_Doors", "sabotage_O2", "sabotage_comms", "sabotage_electricity",
-                 "sabotage_reactor", "task", "beforeVoting_deadBody", "bannerLogo_AmongUs"]:
+                 "sabotage_reactor", "task", "bannerLogo_AmongUs"]:
         uipic(name)
     for name in ["map", "beforeVoting_deadBodyText", "beforeVoting_EMText", "no_shh"]:
         uipic(name, 4)
