@@ -486,7 +486,15 @@ static int ce_format(char *out, size_t cap, uint32_t fmt, int argi) {
   return (int)o;
 }
 
-/* ---- floats: TI's boot code works on A:UBC and E:UHL ---- */
+/* ---- floats: TI's boot code works on A:UBC and E:UHL. Their cost is an estimate (TI's code isn't public):
+ * --float-scale changes it, and the report says how much of the time went to them ---- */
+double os_float_scale = 1;
+uint64_t os_float_cycles;
+static void float_charge(uint32_t cycles) {
+  uint32_t c = (uint32_t)(cycles * os_float_scale + 0.5);
+  os_float_cycles += c;
+  emu_charge(c);
+}
 static float as_float(uint32_t b) {
   float f;
   memcpy(&f, &b, 4);
@@ -681,14 +689,14 @@ bool os_trap(uint32_t pc) {
     emu_charge(3000 + 400 * n);
     return true;
   }
-  case 0x270: set_abc(bits_of(f_abc() + f_ehl())), emu_charge(350); return true;  /* __fadd */
-  case 0x274: fcmp(f_abc(), f_ehl()), emu_charge(110); return true;             /* __fcmp */
-  case 0x278: set_abc(bits_of(f_abc() / f_ehl())), emu_charge(1100); return true; /* __fdiv */
-  case 0x27C: set_abc((uint32_t)ftol(f_abc())), emu_charge(170); return true;   /* __ftol */
-  case 0x284: set_abc(bits_of(ltof((int32_t)((uint32_t)R.A << 24 | (R.BC & 0xFFFFFF))))), emu_charge(150); return true;
-  case 0x288: set_abc(bits_of(f_abc() * f_ehl())), emu_charge(450); return true;  /* __fmul */
-  case 0x290: set_abc(bits_of(f_abc() - f_ehl())), emu_charge(370); return true;  /* __fsub */
-  case 0x298: ret_float(sqrtf(as_float(arg32(0)))), emu_charge(2500); return true;
+  case 0x270: set_abc(bits_of(f_abc() + f_ehl())), float_charge(350); return true;  /* __fadd */
+  case 0x274: fcmp(f_abc(), f_ehl()), float_charge(110); return true;             /* __fcmp */
+  case 0x278: set_abc(bits_of(f_abc() / f_ehl())), float_charge(1100); return true; /* __fdiv */
+  case 0x27C: set_abc((uint32_t)ftol(f_abc())), float_charge(170); return true;   /* __ftol */
+  case 0x284: set_abc(bits_of(ltof((int32_t)((uint32_t)R.A << 24 | (R.BC & 0xFFFFFF))))), float_charge(150); return true;
+  case 0x288: set_abc(bits_of(f_abc() * f_ehl())), float_charge(450); return true;  /* __fmul */
+  case 0x290: set_abc(bits_of(f_abc() - f_ehl())), float_charge(370); return true;  /* __fsub */
+  case 0x298: ret_float(sqrtf(as_float(arg32(0)))), float_charge(2500); return true;
   case 0x374: vram_fill(0, 240, 0xFFFF), emu_charge(200000); return true;  /* boot.ClearVRAM */
   case 0x378: R.HL = put_string(R.HL, true); return true;                   /* boot.PutS */
   case 0x384: case 0x388: return true;                                      /* Initialize/TurnOffHardware */
@@ -868,8 +876,8 @@ bool os_trap(uint32_t pc) {
     return true;
 
   /* the C library's float functions in the OS */
-  case 0x220D8: { int ex; float m = frexpf(as_float(arg32(0)), &ex); if (arg(2)) wr24(arg(2), (uint32_t)ex); ret_float(m); emu_charge(300); return true; }
-  case 0x220DC: ret_float(ldexpf(as_float(arg32(0)), (int)((arg(2) ^ 0x800000) - 0x800000))), emu_charge(300); return true;
+  case 0x220D8: { int ex; float m = frexpf(as_float(arg32(0)), &ex); if (arg(2)) wr24(arg(2), (uint32_t)ex); ret_float(m); float_charge(300); return true; }
+  case 0x220DC: ret_float(ldexpf(as_float(arg32(0)), (int)((arg(2) ^ 0x800000) - 0x800000))), float_charge(300); return true;
   case 0x220E0: case 0x22110: { /* strtof, atof */
     char s[128];
     int k = 0;
@@ -879,28 +887,28 @@ bool os_trap(uint32_t pc) {
     char *end;
     float v = strtof(s, &end);
     if (pc == 0x220E0 && arg(1)) wr24(arg(1), p + (uint32_t)(end - s));
-    ret_float(v), emu_charge(4000);
+    ret_float(v), float_charge(4000);
     return true;
   }
-  case 0x220E4: ret_float(logf(as_float(arg32(0)))), emu_charge(5000); return true;
-  case 0x220E8: ret_float(log10f(as_float(arg32(0)))), emu_charge(5500); return true;
-  case 0x220EC: { float ip, fr = modff(as_float(arg32(0)), &ip); if (arg(2)) { uint32_t b = bits_of(ip); wr24(arg(2), b & 0xFFFFFF), wr8(arg(2) + 3, b >> 24); } ret_float(fr); emu_charge(300); return true; }
-  case 0x220F0: ret_float(fabsf(as_float(arg32(0)))), emu_charge(60); return true;
-  case 0x220F4: ret_float(floorf(as_float(arg32(0)))), emu_charge(300); return true;
-  case 0x220F8: ret_float(powf(as_float(arg32(0)), as_float(arg32(2)))), emu_charge(12000); return true;
-  case 0x220FC: ret_float(fmodf(as_float(arg32(0)), as_float(arg32(2)))), emu_charge(1500); return true;
-  case 0x22100: ret_float(acosf(as_float(arg32(0)))), emu_charge(6000); return true;
-  case 0x22104: ret_float(asinf(as_float(arg32(0)))), emu_charge(6000); return true;
-  case 0x22108: ret_float(atanf(as_float(arg32(0)))), emu_charge(5000); return true;
-  case 0x2210C: ret_float(atan2f(as_float(arg32(0)), as_float(arg32(2)))), emu_charge(6000); return true;
-  case 0x22114: ret_float(ceilf(as_float(arg32(0)))), emu_charge(300); return true;
-  case 0x22118: ret_float(sinf(as_float(arg32(0)))), emu_charge(5000); return true;
-  case 0x2211C: ret_float(cosf(as_float(arg32(0)))), emu_charge(5000); return true;
-  case 0x22120: ret_float(tanf(as_float(arg32(0)))), emu_charge(9000); return true;
-  case 0x22124: ret_float(expf(as_float(arg32(0)))), emu_charge(5000); return true;
-  case 0x22130: ret_float(sinhf(as_float(arg32(0)))), emu_charge(7000); return true;
-  case 0x22134: ret_float(coshf(as_float(arg32(0)))), emu_charge(7000); return true;
-  case 0x22138: ret_float(tanhf(as_float(arg32(0)))), emu_charge(8000); return true;
+  case 0x220E4: ret_float(logf(as_float(arg32(0)))), float_charge(5000); return true;
+  case 0x220E8: ret_float(log10f(as_float(arg32(0)))), float_charge(5500); return true;
+  case 0x220EC: { float ip, fr = modff(as_float(arg32(0)), &ip); if (arg(2)) { uint32_t b = bits_of(ip); wr24(arg(2), b & 0xFFFFFF), wr8(arg(2) + 3, b >> 24); } ret_float(fr); float_charge(300); return true; }
+  case 0x220F0: ret_float(fabsf(as_float(arg32(0)))), float_charge(60); return true;
+  case 0x220F4: ret_float(floorf(as_float(arg32(0)))), float_charge(300); return true;
+  case 0x220F8: ret_float(powf(as_float(arg32(0)), as_float(arg32(2)))), float_charge(12000); return true;
+  case 0x220FC: ret_float(fmodf(as_float(arg32(0)), as_float(arg32(2)))), float_charge(1500); return true;
+  case 0x22100: ret_float(acosf(as_float(arg32(0)))), float_charge(6000); return true;
+  case 0x22104: ret_float(asinf(as_float(arg32(0)))), float_charge(6000); return true;
+  case 0x22108: ret_float(atanf(as_float(arg32(0)))), float_charge(5000); return true;
+  case 0x2210C: ret_float(atan2f(as_float(arg32(0)), as_float(arg32(2)))), float_charge(6000); return true;
+  case 0x22114: ret_float(ceilf(as_float(arg32(0)))), float_charge(300); return true;
+  case 0x22118: ret_float(sinf(as_float(arg32(0)))), float_charge(5000); return true;
+  case 0x2211C: ret_float(cosf(as_float(arg32(0)))), float_charge(5000); return true;
+  case 0x22120: ret_float(tanf(as_float(arg32(0)))), float_charge(9000); return true;
+  case 0x22124: ret_float(expf(as_float(arg32(0)))), float_charge(5000); return true;
+  case 0x22130: ret_float(sinhf(as_float(arg32(0)))), float_charge(7000); return true;
+  case 0x22134: ret_float(coshf(as_float(arg32(0)))), float_charge(7000); return true;
+  case 0x22138: ret_float(tanhf(as_float(arg32(0)))), float_charge(8000); return true;
   }
   unknown_calls++;
   emu_stop("unimplemented", "the program called %s %s at %06X, which ce_emu's OS doesn't do yet (from %06X)",
@@ -914,8 +922,9 @@ void os_report(FILE *f) {
   for (uint32_t i = 0; i < sizeof calls / sizeof calls[0]; i++)
     if (calls[i] && (i * 4 < HLE_BASE || i * 4 >= HLE_BASE + 4 * HLE_SLOTS))
       fprintf(f, "%s\"%s\": %u", n++ ? ", " : "", os_name(i * 4), calls[i]);
-  fprintf(f, "},\n  \"stack_bytes\": %d,\n  \"free_ram\": %u,\n  \"archive_used\": %u,\n  \"garbage_collects\": %d,\n",
-          os_stack_used(), ram_free(), arc_free - ARC_START, arc_gcs);
+  fprintf(f, "},\n  \"float_ms\": %.0f,\n  \"stack_bytes\": %d,\n  \"free_ram\": %u,\n  \"archive_used\": %u,\n"
+             "  \"garbage_collects\": %d,\n",
+          os_float_cycles / 48000.0, os_stack_used(), ram_free(), arc_free - ARC_START, arc_gcs);
 }
 
 /* the appvars and programs at the end, as .8xv/.8xp files */

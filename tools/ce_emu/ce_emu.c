@@ -75,7 +75,8 @@ static struct {
   int nshots;
   char ram[64][9];
   int nram;
-  uint32_t frame_addr;
+  uint32_t frame_addr, idle_addr;
+  bool frame_drawn;
 } opt = {.ms = 5000, .out = ".", .rev = "m"};
 
 /* ---- the run's state ---- */
@@ -90,9 +91,38 @@ static char console_err[512];
 static char text_log[8192];
 static size_t text_len;
 static bool held[8][8], on_held;
-static uint64_t key_reads, os_calls, frames, screen_changes, upbase_writes;
-static uint64_t frame_cycles[100000];
-static uint64_t last_frame_cycle;
+static uint64_t key_reads, os_calls, screen_changes;
+/* frames: a marker reached (--frame), or the LCD's base set (a double-buffered program's swap) */
+typedef struct {
+  uint64_t n, at[50000];
+} frames_t;
+static frames_t marks, swaps;
+static uint32_t drawn_hash;
+/* time asleep (--idle: a function the program waits in, ticksleep): from its call to its return */
+static struct {
+  uint64_t from, to;
+} idle[200000];
+static int nidle;
+static uint32_t idle_ret;
+static uint64_t idle_from;
+static double idle_total;
+static double idle_between(uint64_t a, uint64_t b) {
+  double t = 0;
+  for (int i = 0; i < nidle; i++) {
+    uint64_t x = idle[i].from > a ? idle[i].from : a, y = idle[i].to < b ? idle[i].to : b;
+    if (y > x) t += y - x;
+  }
+  return t;
+}
+static int cmp_double(const void *a, const void *b) {
+  double x = *(const double *)a, y = *(const double *)b;
+  return x < y ? -1 : x > y;
+}
+static void add_frame(frames_t *f) {
+  if (!started) return;
+  if (f->n < sizeof f->at / sizeof f->at[0]) f->at[f->n] = sched_total_cycles();
+  f->n++;
+}
 static uint32_t last_hash;
 static uint32_t *samples;
 
@@ -130,7 +160,6 @@ void emu_program_started(void) {
   started = true;
   started_cycles = cycles_now();
   start_ms = now_ms;
-  last_frame_cycle = 0;
   debug_watch(0x000000, DBG_MASK_EXEC, true);
 }
 void emu_program_exited(uint32_t code) {
@@ -170,11 +199,27 @@ void gui_debug_open(int reason, uint32_t data) {
   switch (reason) {
   case DBG_BREAKPOINT:
     if (data == opt.frame_addr && opt.frame_addr) {
-      uint64_t c = cycles_now();
-      if (frames < sizeof frame_cycles / sizeof frame_cycles[0]) frame_cycles[frames] = c;
-      frames++;
-      last_frame_cycle = c;
+      if (opt.frame_drawn) { /* only when what the LCD shows changed since the last one */
+        uint32_t n = (lcd.control >> 1 & 7) == 3 ? LCD_SIZE : LCD_SIZE * 2;
+        uint8_t *p = mem_at(lcd.upbase, n);
+        uint32_t h = p ? crc32(0, p, n) : 0;
+        if (h == drawn_hash) return;
+        drawn_hash = h;
+      }
+      add_frame(&marks);
       return;
+    }
+    if (data == opt.idle_addr && opt.idle_addr && !idle_ret) {
+      idle_ret = rd24(sp), idle_from = cycles_now();
+      if (idle_ret != opt.frame_addr) debug_watch(idle_ret, DBG_MASK_EXEC, true);
+      return;
+    }
+    if (data == idle_ret && idle_ret) {
+      if (idle_ret != opt.frame_addr && idle_ret != opt.idle_addr) debug_watch(idle_ret, DBG_MASK_EXEC, false);
+      idle_ret = 0;
+      if (nidle < (int)(sizeof idle / sizeof idle[0])) idle[nidle].from = idle_from, idle[nidle++].to = cycles_now();
+      idle_total += cycles_now() - idle_from;
+      if (data != opt.frame_addr) return;
     }
     if (data == 0x000000) {
       emu_stop("crash", "the reset vector: an invalid instruction or a jump to 0, returning to %06X",
@@ -194,7 +239,7 @@ void gui_debug_open(int reason, uint32_t data) {
     return;
   case DBG_WATCHPOINT_WRITE:
     if (data >= 0xE30010 && data < 0xE30013) {
-      upbase_writes++;
+      if (data == 0xE30010) add_frame(&swaps); /* (graphx's gfx_SwapDraw: one a frame) */
       return;
     }
     if (started) emu_stop("crash", "a write to unmapped memory at %06X (pc %06X)", data, pc);
@@ -348,7 +393,10 @@ int main(int argc, char **argv) {
     else if (!strcmp(a, "--names") && v) opt.names = v, i++;
     else if (!strcmp(a, "--rev") && v) opt.rev = v, i++;
     else if (!strcmp(a, "--frame") && v) opt.frame_addr = (uint32_t)strtoul(v, NULL, 0), i++;
+    else if (!strcmp(a, "--frame-drawn")) opt.frame_drawn = true;
+    else if (!strcmp(a, "--idle") && v) opt.idle_addr = (uint32_t)strtoul(v, NULL, 0), i++;
     else if (!strcmp(a, "--trace")) os_trace = true;
+    else if (!strcmp(a, "--float-scale") && v) os_float_scale = atof(v), i++;
     else if (!strcmp(a, "--screen-memory")) from_memory = true;
     else if (!strcmp(a, "--profile") && v) opt.profile = v, i++;
     else if (!strcmp(a, "--ram") && v) {
@@ -416,6 +464,7 @@ int main(int argc, char **argv) {
     if (rd8(a) == 0xC9) debug_watch(a, DBG_MASK_EXEC, true);
   debug_watch(0x66, DBG_MASK_EXEC, true);
   if (opt.frame_addr) debug_watch(opt.frame_addr, DBG_MASK_EXEC, true);
+  if (opt.idle_addr) debug_watch(opt.idle_addr, DBG_MASK_EXEC, true);
   for (uint32_t a = 0xF50010; a < 0xF50020; a++) debug_watch(a, DBG_MASK_READ, true);
   for (uint32_t a = 0xE30010; a < 0xE30013; a++) debug_watch(a, DBG_MASK_WRITE, true);
   for (uint32_t a = 0xD00000; a < 0xE00000; a++)
@@ -456,7 +505,7 @@ int main(int argc, char **argv) {
     /* hangs */
     if (cpu.halted && !cpu.IEF1) emu_stop("hang", "halt with interrupts off at %06X", cpu.registers.PC);
     uint32_t pc = cpu.registers.PC;
-    uint64_t act = frames + screen_changes + key_reads + os_calls + upbase_writes;
+    uint64_t act = marks.n + swaps.n + screen_changes + key_reads + os_calls;
     if (act != activity) activity = act, last_activity = now_ms;
     if (pc - stuck_pc > 64 && stuck_pc - pc > 64) stuck_pc = pc, stuck_since = now_ms;
     uint64_t quiet = now_ms - (stuck_since > last_activity ? stuck_since : last_activity);
@@ -483,25 +532,23 @@ int main(int argc, char **argv) {
     if (pf) fclose(pf);
   }
 
-  /* frames: the time from each to the next, past the first */
-  uint64_t nf = frames < sizeof frame_cycles / sizeof frame_cycles[0] ? frames : sizeof frame_cycles / sizeof frame_cycles[0];
-  double fps = 0, mean_ms = 0, max_ms = 0, p95 = 0;
+  /* frames: the marker's, else the buffer swaps'; the time from each to the next */
+  frames_t *fr = marks.n >= 2 || swaps.n < 2 ? &marks : &swaps;
+  const char *frame_kind = fr == &swaps ? "lcd-swap" : opt.frame_drawn ? "marker-drawn" : opt.frame_addr ? "marker" : "none";
+  uint64_t nf = fr->n < sizeof fr->at / sizeof fr->at[0] ? fr->n : sizeof fr->at / sizeof fr->at[0];
+  double fps = 0, mean_ms = 0, max_ms = 0, p95 = 0, work_ms = 0;
   uint64_t over33 = 0;
   if (nf >= 2) {
     double *d = malloc((nf - 1) * sizeof *d);
     for (uint64_t i = 1; i < nf; i++) {
-      d[i - 1] = (frame_cycles[i] - frame_cycles[i - 1]) / CPU_HZ * 1000;
-      mean_ms += d[i - 1];
+      d[i - 1] = (fr->at[i] - fr->at[i - 1]) / CPU_HZ * 1000;
       if (d[i - 1] > max_ms) max_ms = d[i - 1];
       if (d[i - 1] > 33.4) over33++;
     }
-    mean_ms /= nf - 1;
+    mean_ms = (fr->at[nf - 1] - fr->at[0]) / CPU_HZ * 1000 / (nf - 1);
     fps = 1000 / mean_ms;
-    for (uint64_t i = 1; i < nf - 1; i++) /* (insertion sort: a few thousand at most) */
-      for (uint64_t j = i; j > 0 && d[j] < d[j - 1]; j--) {
-        double t = d[j];
-        d[j] = d[j - 1], d[j - 1] = t;
-      }
+    work_ms = mean_ms - idle_between(fr->at[0], fr->at[nf - 1]) / CPU_HZ * 1000 / (nf - 1);
+    qsort(d, nf - 1, sizeof *d, cmp_double);
     p95 = d[(uint64_t)((nf - 2) * 0.95)];
     free(d);
   }
@@ -516,12 +563,13 @@ int main(int argc, char **argv) {
     json_str(f, stopping ? detail : "");
     fprintf(f, ",\n  \"ms\": %llu,\n  \"exit_code\": %d,\n  \"wall_s\": %.3f,\n  \"speed\": %.2f,\n",
             (unsigned long long)now_ms, exited ? (int)exit_code : -1, wall, wall > 0 ? emu_s / wall : 0);
-    fprintf(f, "  \"cycles\": %llu,\n  \"frames\": %llu,\n  \"fps\": %.2f,\n  \"frame_ms\": %.2f,\n  \"frame_ms_p95\": %.2f,\n"
-               "  \"frame_ms_max\": %.2f,\n  \"frames_over_33ms\": %llu,\n  \"cycles_per_frame\": %.0f,\n",
-            (unsigned long long)cycles_now(), (unsigned long long)frames, fps, mean_ms, p95, max_ms,
-            (unsigned long long)over33, mean_ms * CPU_HZ / 1000);
-    fprintf(f, "  \"lcd_base_writes\": %llu,\n  \"screen_changes\": %llu,\n  \"key_reads\": %llu,\n",
-            (unsigned long long)upbase_writes, (unsigned long long)screen_changes, (unsigned long long)key_reads);
+    fprintf(f, "  \"cycles\": %llu,\n  \"frames\": %llu,\n  \"frame_kind\": \"%s\",\n  \"fps\": %.2f,\n  \"frame_ms\": %.2f,\n"
+               "  \"frame_ms_p95\": %.2f,\n  \"frame_ms_max\": %.2f,\n  \"frames_over_33ms\": %llu,\n"
+               "  \"cycles_per_frame\": %.0f,\n  \"work_ms_per_frame\": %.2f,\n  \"idle_ms\": %.0f,\n",
+            (unsigned long long)cycles_now(), (unsigned long long)fr->n, frame_kind, fps, mean_ms, p95, max_ms,
+            (unsigned long long)over33, mean_ms * CPU_HZ / 1000, work_ms, idle_total / CPU_HZ * 1000);
+    fprintf(f, "  \"lcd_swaps\": %llu,\n  \"screen_changes\": %llu,\n  \"key_reads\": %llu,\n",
+            (unsigned long long)swaps.n, (unsigned long long)screen_changes, (unsigned long long)key_reads);
     os_report(f);
     fprintf(f, "  \"vars_saved\": %d,\n  \"text\": ", saved);
     json_str(f, text_log);
@@ -533,8 +581,8 @@ int main(int argc, char **argv) {
     printf("ce_emu: %s %s%s%s\n", prog, status, stopping ? ": " : "", stopping ? detail : "");
     printf("ce_emu: %.2f s emulated in %.2f s (%.1fx) at %.0f MHz", emu_s, wall, wall > 0 ? emu_s / wall : 0,
            sched_get_clock_rate(CLOCK_CPU) / 1e6);
-    if (frames) printf(", %llu frames, %.1f fps, %.1f ms a frame (95%%: %.1f, slowest %.1f)", (unsigned long long)frames, fps,
-                       mean_ms, p95, max_ms);
+    if (nf >= 2) printf(", %llu frames (%s), %.1f fps, %.1f ms a frame (95%%: %.1f, slowest %.1f)", (unsigned long long)fr->n,
+                        frame_kind, fps, mean_ms, p95, max_ms);
     printf("\n");
     if (text_len) printf("ce_emu: home screen: %s\n", text_log);
     if (warn_len) printf("ce_emu: warnings: %s\n", warnings);

@@ -22,6 +22,8 @@ Options:
   --profile N                         the N functions the CPU was found in most
   --vars-out DIR                      the appvars and programs at the end, as files
   --rev m|i|pre-a                     the hardware revision (m, every CE since 2019)
+  --float-scale X                     TI's float routines' cost times X (their cycles are estimates: TI's boot
+                                      code isn't public; the report says how much time went to them)
   --trace                             every OS call
   --json                              the full report
 
@@ -44,7 +46,9 @@ EXE = os.path.join(HERE, "build", "ce_emu")
 LIBS_DIR = os.path.expanduser("~/Documents/Assets/toolchains/ce-libs/v15.0")
 LIBS_URL = "https://github.com/CE-Programming/libraries/releases/download/v15.0/clibs.8xg"
 LIBS_SHA = "450bdefb41fe263f8d2d161b7cf431bbf99711f2ef78f02f796d530ed12dfbf0"
-FRAME_SYMBOLS = ("_eadk_display_wait_for_vblank", "_eadk_keyboard_scan")
+# a frame: NumPlay's per-frame call when it's there (exact), else its key scan once the screen changed
+FRAME_SYMBOLS = (("_eadk_display_wait_for_vblank", False), ("_eadk_keyboard_scan", True))
+IDLE_SYMBOLS = ("_ticksleep", "_msleep", "_delay")
 
 
 def build():
@@ -104,19 +108,20 @@ def profile_lines(samples, syms, n):
 
 
 def run(files, keys="", shots="", ms=5000, out=".", ram="", lib=None, frame=None, rev="m", trace=False,
-        vars_out=None, profile=0):
+        vars_out=None, profile=0, float_scale=1.0):
     """One run; its report (a dict)."""
     build()
     prog = next(f for f in files if f.lower().endswith(".8xp"))
     syms = symbols(prog)
-    addr = None
+    addr, drawn = None, False
     if frame:
         addr = int(frame, 0) if re.match(r"0x|\d", frame) else syms.get("_" + frame.lstrip("_"))
         if addr is None:
             raise SystemExit(f"ce_emu: no symbol {frame} in {os.path.splitext(prog)[0]}.obj")
     else:
-        frame = next((s for s in FRAME_SYMBOLS if s in syms), None)
+        frame, drawn = next(((s, d) for s, d in FRAME_SYMBOLS if s in syms), (None, False))
         addr = syms.get(frame) if frame else None
+    idle = next((syms[s] for s in IDLE_SYMBOLS if s in syms), None)
     with tempfile.TemporaryDirectory() as tmp:
         rep = os.path.join(tmp, "report.json")
         cmd = [EXE, "--rom", os.path.join(HERE, "build", "rom.bin"), "--names", os.path.join(HERE, "build", "ti84pceg.inc"),
@@ -124,8 +129,10 @@ def run(files, keys="", shots="", ms=5000, out=".", ram="", lib=None, frame=None
         cmd += ["--keys", keys] if keys else []
         cmd += ["--shots", shots] if shots else []
         cmd += ["--ram", ram] if ram else []
-        cmd += ["--frame", hex(addr)] if addr else []
+        cmd += ["--frame", hex(addr)] + (["--frame-drawn"] if drawn else []) if addr else []
+        cmd += ["--idle", hex(idle)] if idle else []
         cmd += ["--trace"] if trace else []
+        cmd += ["--float-scale", str(float_scale)] if float_scale != 1 else []
         cmd += ["--vars-out", vars_out] if vars_out else []
         cmd += ["--profile", os.path.join(tmp, "profile")] if profile else []
         cmd += files + ([lib] if lib else [])
@@ -134,7 +141,7 @@ def run(files, keys="", shots="", ms=5000, out=".", ram="", lib=None, frame=None
         if not os.path.exists(rep):
             raise SystemExit(f"ce_emu: {r.stderr.strip() or 'no report'}")
         report = json.load(open(rep))
-        report["frame_symbol"] = frame.lstrip("_") if frame and addr else None
+        report["frame_symbol"] = (frame.lstrip("_") + (" once drawn" if drawn else "")) if frame and addr else None
         report["stderr"] = r.stderr
         if profile:
             report["profile"] = profile_lines(os.path.join(tmp, "profile"), syms, profile)
@@ -145,10 +152,12 @@ def summary(rep):
     s = f"{rep['program']}: {rep['status']}" + (f" ({rep['detail']})" if rep["detail"] else "")
     s += f"\n  {rep['ms'] / 1000:.2f} s in {rep['wall_s']:.2f} s ({rep['speed']:.1f}x)"
     if rep["frames"] > 1:
-        s += (f", {rep['fps']:.1f} fps ({rep['frame_symbol']}): {rep['frame_ms']:.1f} ms a frame, 95% under "
-              f"{rep['frame_ms_p95']:.1f}, slowest {rep['frame_ms_max']:.1f}, {rep['cycles_per_frame'] / 1e6:.2f} M cycles")
-    elif rep["lcd_base_writes"] > 2:
-        s += f", {rep['lcd_base_writes']} buffer swaps"
+        how = rep["frame_symbol"] if rep["frame_kind"].startswith("marker") else "LCD buffer swaps"
+        s += (f"\n  {rep['fps']:.1f} fps ({how}): {rep['frame_ms']:.1f} ms a frame, 95% under "
+              f"{rep['frame_ms_p95']:.1f}, slowest {rep['frame_ms_max']:.1f}; {rep['work_ms_per_frame']:.1f} ms of work "
+              f"a frame ({rep['cycles_per_frame'] * rep['work_ms_per_frame'] / max(rep['frame_ms'], 1e-9) / 1e6:.2f} M cycles)")
+    if rep["float_ms"] >= 1:
+        s += f"\n  {rep['float_ms'] / 1000:.2f} s ({100 * rep['float_ms'] / max(rep['ms'], 1):.0f}%) in TI's float routines (estimated)"
     s += f"\n  stack {rep['stack_bytes']} of 4096 bytes, {rep['free_ram']} bytes of RAM free, {rep['screen_changes']} screen changes"
     if rep["text"]:
         s += "\n  home screen: " + rep["text"].replace("\n", " / ")
@@ -220,7 +229,7 @@ def main():
         print(__doc__)
         return 1
     opts = {"keys": "", "shots": "", "ms": "5000", "out": ".", "ram": "", "libs": None, "frame": None, "rev": "m",
-            "vars-out": None, "profile": "0", "j": "6"}
+            "vars-out": None, "profile": "0", "j": "6", "float-scale": "1"}
     flags = {"trace": False, "json": False}
     pos = []
     i = 0
@@ -249,7 +258,7 @@ def main():
         raise SystemExit("ce_emu: no .8xp to run")
     lib = None if opts["libs"] == "none" else opts["libs"] or libs()
     rep = run(files, keys=opts["keys"], shots=opts["shots"], ms=int(opts["ms"]), out=opts["out"], ram=opts["ram"],
-              lib=lib, frame=opts["frame"], rev=opts["rev"], trace=flags["trace"], vars_out=opts["vars-out"],
+              lib=lib, frame=opts["frame"], rev=opts["rev"], trace=flags["trace"], vars_out=opts["vars-out"], float_scale=float(opts["float-scale"]),
               profile=int(opts["profile"]))
     if rep["stderr"]:
         sys.stderr.write(rep["stderr"])

@@ -67,6 +67,8 @@ const char *os_name(uint32_t addr);
 void os_report(FILE *f);
 int os_save_vars(const char *dir);
 extern bool os_trace;
+extern double os_float_scale;
+extern uint64_t os_float_cycles;
 
 /* ce_emu.c, for os.c */
 void emu_stop(const char *status, const char *fmt, ...);
