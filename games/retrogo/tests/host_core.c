@@ -13,6 +13,7 @@
 #include "../src/sms/sms.h"
 #include "../src/gw/gw.h"
 #include "../src/md/md.h"
+#include "../src/pack.h"
 
 static uint8_t heap[RG_HEAP_SIZE] __attribute__((aligned(8)));
 static uint32_t used;
@@ -179,6 +180,13 @@ int main(int argc, char **argv) {
       if (!pass) memcpy(first, frame, sizeof first);
     }
     printf("state %s\n", memcmp(first, frame, sizeof first) ? "differs" : "same");
+    { /* (what it takes in the calculator's storage, packed as main.c saves it) */
+      static uint16_t table[RG_PACK_HASH];
+      uint32_t packed = 0, raw = 0;
+      n = chunks(parts);
+      for (int i = 0; i < n; i++) packed += rg_pack(parts[i].at, parts[i].size, NULL, table) + 8, raw += parts[i].size;
+      printf("state packs to %u bytes (%u raw)\n", packed, raw);
+    }
     for (int k = 0; k < 30; k++) {
       n = chunks(parts);
       for (int i = 0; i < n; i++)

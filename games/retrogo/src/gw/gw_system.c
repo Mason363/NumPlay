@@ -189,7 +189,7 @@ static unsigned char mspeaker_data = 0;
 static int gw_audio_buffer_idx = 0;
 
 /* Audio buffer */
-unsigned char gw_audio_buffer[GW_AUDIO_BUFFER_LENGTH * 2];
+unsigned char gw_audio_buffer[1]; /* (NumPlay: no sound, gw_writeR) */
 bool gw_audio_buffer_copied;
 
 void gw_system_sound_init()
@@ -203,7 +203,7 @@ void gw_system_sound_init()
 	mspeaker_data = 0;
 }
 
-static void gw_system_sound_melody(unsigned char data)
+static __attribute__((unused)) void gw_system_sound_melody(unsigned char data)
 {
 	if (gw_audio_buffer_copied)
 	{
@@ -272,7 +272,8 @@ static void gw_system_sound_melody(unsigned char data)
 	gw_audio_buffer_idx++;
 }
 
-void gw_writeR(unsigned char data) { gw_system_sound_melody(data); };
+/* (NumPlay: no sound, the calculator has no speaker: the buzzer's output goes nowhere) */
+void gw_writeR(unsigned char data) { (void)data; }
 
 /******** Keys functions **********************/
 /*

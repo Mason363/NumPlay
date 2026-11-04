@@ -116,3 +116,11 @@ Keypad	数字键盘
 0 to 9	0 到 9
 * and #	* 和 #
 x and /	x 和 /
+Time	时间
+Game A	游戏 A
+Game B	游戏 B
+Alarm	闹钟
+Z80 emulation	Z80 模拟
+Game A, B, Time, Alarm	游戏 A、B、时间、闹钟
+ColecoVision, Game & Watch, Mega Drive.	ColecoVision、Game & Watch 和 Mega Drive 游戏。
+Mega Drive games play in Retro-Go on its own.	Mega Drive 游戏要在单独的 Retro-Go 里玩。

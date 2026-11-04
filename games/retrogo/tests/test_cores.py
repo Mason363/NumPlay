@@ -167,6 +167,62 @@ for path in broken:
     check(os.path.basename(path), r, allow_load_error=True)
 print(f"ok   {len(broken)} broken ROMs")
 
+# ---- the Game & Watch: a .gw file made by gwrom.py, its picture the one it must show with and without
+# keys held, its states, random keys and broken files (cut short, bytes changed) without a crash
+gwrom = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gwrom.py")
+for keys, pad in ((0, 0), (1 | 128, 64 | 1 << 8), (4 | 64, 128 | 4 << 8)):
+    gw, want = os.path.join(tmp, "t.gw"), os.path.join(tmp, f"want{keys}.ppm")
+    subprocess.run([sys.executable, gwrom, gw, "--expect", str(keys), want], check=True)
+    r = subprocess.run([core, gw, "200", os.path.join(tmp, "gw.ppm"), "0", f"100={pad}"], capture_output=True, text=True)
+    if check(f"Game & Watch, keys {keys}", r) and open(os.path.join(tmp, "gw.ppm"), "rb").read() != open(want, "rb").read():
+        failures.append(f"Game & Watch: the picture with keys {keys}")
+        print("FAIL Game & Watch picture, keys", keys)
+    elif r.returncode == 0:
+        print("ok   Game & Watch picture, keys", keys)
+r = subprocess.run([core, gw, "300", os.path.join(tmp, "gw.ppm"), "5"], capture_output=True, text=True,
+                   env=dict(os.environ, STATE="1", REDRAW="1"))
+if check("Game & Watch states", r) and ("state same" not in r.stdout or "no crash" not in r.stdout
+                                        or "redraw: 0 pixels" not in r.stdout):
+    failures.append("Game & Watch: " + r.stdout.strip())
+    print("FAIL Game & Watch states", r.stdout.strip())
+elif r.returncode == 0:
+    print("ok   Game & Watch states and redraw")
+good = open(gw, "rb").read()
+for k in range(60):
+    d = bytearray(good)
+    if k % 3 == 0:
+        d = d[:rng.randint(0, len(d))]
+    else:
+        for _ in range(rng.randint(1, 40)):
+            at = rng.randrange(len(d)) if k % 3 == 1 else rng.randrange(min(len(d), 200))
+            d[at] = rng.getrandbits(8)
+    path = write(f"broken{k}.gw", bytes(d))
+    r, _ = run(path, rng.randint(20, 200), rng.randint(1, 1 << 30))
+    check(f"broken{k}.gw", r, allow_load_error=True)
+print("ok   60 broken .gw files and random keys")
+
+# ---- the Mega Drive (Cave Story MD, when it is in the folder): to its first cave with the keys, states, redraw
+cave = os.path.join(folder, "md/doukutsu-en.gen") if folder else ""
+if os.path.exists(cave):
+    script = ",".join(f"{i}=2,{i + 10}=0" for i in range(200, 1700, 60)) + ",1800=128,1900=0,1950=2,1960=128"
+    r = subprocess.run([core, cave, "2000", os.path.join(tmp, "md.ppm"), "0", script], capture_output=True,
+                       text=True, env=dict(os.environ, STATE="1", REDRAW="1"), timeout=900)
+    if check("Cave Story MD states", r) and ("state same" not in r.stdout or "no crash" not in r.stdout
+                                             or "redraw: 0 pixels" not in r.stdout):
+        failures.append("Mega Drive: " + r.stdout.strip())
+        print("FAIL Mega Drive states", r.stdout.strip())
+    elif r.returncode == 0:
+        print("ok   Cave Story MD to the first cave, states and redraw")
+    for k in range(20):
+        r, _ = run(cave, rng.randint(60, 400), rng.randint(1, 1 << 30))
+        check(f"Cave Story MD (random keys, run {k})", r)
+    print("ok   20 runs of random keys on Cave Story MD")
+for k in range(20):  # (broken Mega Drive files: random bytes, cut short)
+    path = write(f"broken{k}.md", bytes(rng.getrandbits(8) for _ in range(rng.choice([0, 0x100, 0x200, 0x4000, 0x20001]))))
+    r, _ = run(path, rng.randint(20, 120), rng.randint(1, 1 << 30))
+    check(os.path.basename(path), r, allow_load_error=True)
+print("ok   20 broken Mega Drive files")
+
 if failures:
     print(f"{len(failures)} failures")
     sys.exit(1)

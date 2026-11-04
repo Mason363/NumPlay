@@ -94,11 +94,13 @@ void rg_alloc_reset(void) { heap_used = 0, room_used = 0; }
 #if HAS_MD
 #if PLATFORM_DEVICE
 extern char _heap_start[], _heap_end[];
-#define MD_STACK_PAGES 13 /* (on main's stack: 26 KB of its 32) */
-#else
-#define MD_STACK_PAGES MD_PAGES
-#endif
+#define MD_STACK_PAGES 12 /* (on main's stack: 24 KB of its 32; Retro-Go takes 6 KB of the rest at most) */
 static uint8_t *stack_pages;
+#else /* (the other calculators: RAM enough) */
+#define MD_STACK_PAGES MD_PAGES
+static uint8_t port_pages[MD_PAGES * MD_PAGE] __attribute__((aligned(8)));
+static uint8_t *stack_pages = port_pages;
+#endif
 void *rg_alloc_page(void) {
   void *p = rg_alloc(MD_PAGE);
   if (p) return p;
@@ -118,7 +120,9 @@ void *rg_alloc_page(void) {
 
 /* one strip of the screen: the launcher's drawing functions draw there, and the emulators'
    pictures go through it */
-static color_t strip[SCREEN_W * STRIP_H] __attribute__((aligned(4)));
+#define RG_STRIP_H 13 /* (13 lines, not the launcher's 16: the Mega Drive takes the RAM; the packer's table still fits) */
+_Static_assert(SCREEN_W * RG_STRIP_H * sizeof(color_t) >= RG_PACK_HASH * sizeof(uint16_t), "strip");
+static color_t strip[SCREEN_W * RG_STRIP_H] __attribute__((aligned(4)));
 
 static uint32_t millis(void) { return (uint32_t)eadk_timing_millis(); }
 
@@ -287,9 +291,9 @@ static void render_rect(gfx_scene_t scene, void *ctx, int x0, int y0, int x1, in
   x0 = NP_CLAMP(x0, 0, SCREEN_W), x1 = NP_CLAMP(x1, x0, SCREEN_W);
   y0 = NP_CLAMP(y0, 0, SCREEN_H), y1 = NP_CLAMP(y1, y0, SCREEN_H);
   int w = x1 - x0;
-  for (int y = y0; y < y1 && w > 0; y += STRIP_H) {
+  for (int y = y0; y < y1 && w > 0; y += RG_STRIP_H) {
     gfx_y0 = y;
-    gfx_y1 = NP_MIN(y + STRIP_H, y1);
+    gfx_y1 = NP_MIN(y + RG_STRIP_H, y1);
     scene(ctx);
     int h = gfx_y1 - y;
     if (w < SCREEN_W)
@@ -340,7 +344,7 @@ void rg_line(int y, const uint16_t *px) {
   }
   line_sum[sy] = sum;
   for (int d = d0; d < d1; d++) {
-    if (pend_n && (pend_y + pend_n != view.y + d || pend_n == STRIP_H)) flush();
+    if (pend_n && (pend_y + pend_n != view.y + d || pend_n == RG_STRIP_H)) flush();
     if (!pend_n) pend_y = view.y + d;
     color_t *row = strip + pend_n * view.w;
     if (d > d0 && pend_n) memcpy(row, row - view.w, (size_t)view.w * 2);
@@ -1624,7 +1628,7 @@ static int file_menu(const rg_rom_t *r) {
 static void launcher_menu_redraw(void) { picker_draw(); }
 
 int main(void) {
-#if HAS_MD
+#if HAS_MD && PLATFORM_DEVICE
   uint64_t md_pages[MD_STACK_PAGES * MD_PAGE / 8]; /* (the Mega Drive's last RAM pages, rg_alloc_page) */
   stack_pages = (uint8_t *)md_pages;
 #endif
