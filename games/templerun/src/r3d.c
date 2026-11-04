@@ -827,7 +827,9 @@ __attribute__((noinline)) static void raster_row_fx(const Poly *q, const Planes 
     for (int x = x0; x < x1;) {
       int n = x1 - x < 16 ? x1 - x : 16;
       uint16_t *zp = zb + x, *cp = cb + x, *ze = zp + n;
-      int64_t qz2 = qz + P->za * n, qu2 = qu + P->ua * n, qv2 = qv + P->va * n;
+      int64_t qz2, qu2, qv2;
+      if (n == 16) qz2 = qz + (P->za << 4), qu2 = qu + (P->ua << 4), qv2 = qv + (P->va << 4);
+      else qz2 = qz + P->za * n, qu2 = qu + P->ua * n, qv2 = qv + P->va * n;
       uint32_t zt = z;
       uint16_t *zq = zp;
       while (zq < ze && (uint16_t)(zt >> 16) <= *zq) zq++, zt += (uint32_t)da;
