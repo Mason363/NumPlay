@@ -48,7 +48,7 @@ static inline uint32_t fx_isqrt(uint32_t v) {
 static inline int32_t fx_sat32(int64_t x) { return x > INT32_MAX ? INT32_MAX : x < INT32_MIN ? INT32_MIN : (int32_t)x; }
 
 /* 2^61 / n for n from 2^31 (shift it there with __builtin_clz), to 30 bits: a table's 8 bits, then two Newton steps */
-static const uint32_t fx_rcp_seed[128] = {
+static const uint32_t fx_rcp_seed[128] __attribute__((unused)) = {
   0x3FC03FC0, 0x3F423954, 0x3EC62159, 0x3E4BEC88, 0x3DD38FF0, 0x3D5D00F5, 0x3CE8354B, 0x3C7522F3, 0x3C03C03C,
   0x3B9403B9, 0x3B25E446, 0x3AB95900, 0x3A4E5947, 0x39E4DCB8, 0x397CDB2C, 0x39164CB5, 0x38B129A2, 0x384D6A72,
   0x37EB07DD, 0x3789FACB, 0x372A3C56, 0x36CBC5C7, 0x366E9095, 0x36129663, 0x35B7D0FF, 0x355E3A5F, 0x3505CCA2,
