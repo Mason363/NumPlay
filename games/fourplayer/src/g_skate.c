@@ -61,7 +61,7 @@ static void draw(void) {
     disc(sx - 6, y + 10, 2, HEX(0xEDE7D6)), disc(sx + 6, y + 10, 2, HEX(0xEDE7D6));
     blob(sx, y - 1, 7, p, 0);
     if (behind) disc_a(sx, y - 1, 8, INK, 120);
-    tag_at(p, sx, y - 8);
+    tag_by(p, sx + 8, y, 1);
   }
 }
 

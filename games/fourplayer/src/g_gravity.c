@@ -20,7 +20,7 @@ static struct {
   int32_t dead_t;
 } r[NMAX];
 
-static float rx(int p) { return 64 + p * 17; }
+static float rx(int p) { return 50 + p * 24; }
 static void add_gap(void) {
   float later = (rt < 60000 ? (rt > 0 ? rt : 0) : 60000) / 60000.0f; /* (holes get wider, and come sooner) */
   float w = rr(30, 56) + later * 40;
@@ -39,8 +39,7 @@ static bool solid(float x, int up) {
 static void start(void) {
   world = 0, speed = 105, ngap = 0, next_x = 420;
   for (int p = 0; p < np; p++) r[p].g = 1, r[p].y = FLOOR - R, r[p].vy = 0, r[p].on = true, r[p].dead_t = -1;
-  if (np > 2) /* (half of them start on the ceiling) */
-    for (int p = 1; p < np; p += 2) r[p].g = -1, r[p].y = CEIL + R;
+  for (int p = 1; p < np; p += 2) r[p].g = -1, r[p].y = CEIL + R; /* (half of them start on the ceiling) */
   while (next_x < world + 700) add_gap();
 }
 static void step(void) {

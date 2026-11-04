@@ -19,7 +19,7 @@ static void column(int i, float x) {
   c[i].x = x, c[i].gap = gap, c[i].mid = rr(TOP + 22 + gap / 2, GROUND - 16 - gap / 2);
 }
 static void start(void) {
-  for (int p = 0; p < np; p++) y[p] = 110 + (p & 1) * 16 - p * 3, vy[p] = -120, dead_t[p] = -1, flap_t[p] = -10000;
+  for (int p = 0; p < np; p++) y[p] = 66 + p * (np > 4 ? 24 : 34), vy[p] = -120, dead_t[p] = -1, flap_t[p] = -10000;
   for (int i = 0; i < NCOL; i++) column(i, 360 + i * 150);
   scroll = 0, speed = 80;
 }

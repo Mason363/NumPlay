@@ -127,6 +127,7 @@ static struct {
   uint8_t ready, prev_h[NMAX];
   uint64_t held, stale;
   float tag_x[NMAX], tag_y[NMAX];
+  int8_t tag_side[NMAX];
 } u;
 
 static int nsides(void) { return teams ? 2 : np; }
@@ -148,7 +149,8 @@ static void open(int s) {
 }
 
 /* ---- the round */
-void tag_at(int p, float x, float y) { u.tag_x[p] = x, u.tag_y[p] = y; }
+void tag_by(int p, float x, float y, int side) { u.tag_x[p] = x, u.tag_y[p] = y, u.tag_side[p] = (int8_t)side; }
+void tag_at(int p, float x, float y) { tag_by(p, x, y, 0); }
 void out(int p) { gone[p] = 1; }
 int alive(void) {
   int n = 0;
@@ -343,15 +345,18 @@ static void hud(void) {
   for (int s = 0; s < ns; s++) /* keys on the left of the keypad on the left, the others on the right */
     if (!(s & 1)) chip(3 + (w + 3) * l++, w, s);
     else chip(SCREEN_W - 3 - w - (w + 3) * r++, w, s);
-  gfx_text_center(&np_font_small, 160, 15, "Back  pause", SOFT, 256);
+  gfx_text_center(&np_font_small, (3 + (w + 3) * l + SCREEN_W - 3 - (w + 3) * r) / 2, 15, "Back  pause", SOFT, 256);
 }
-/* the players' keys over them during the countdown */
+/* the players' keys by them during the countdown: over them, or to their left or right */
 static void key_tags(void) {
   for (int p = 0; p < np; p++) {
     if (u.tag_x[p] < -500) continue;
-    int w = keytag_w(p) + 10, x = clampi((int)u.tag_x[p] - w / 2, 2, SCREEN_W - 2 - w), y = clampi((int)u.tag_y[p] - 22, TOP + 2, 220);
+    int w = keytag_w(p) + 10, side = u.tag_side[p], tx = (int)u.tag_x[p], ty = (int)u.tag_y[p];
+    int x = side ? (side < 0 ? tx - 10 - w : tx + 10) : tx - w / 2, y = side ? ty - 8 : ty - 22;
+    x = clampi(x, 2, SCREEN_W - 2 - w), y = clampi(y, TOP + 2, 220);
     box(x, y, w, 17, 6, col[p]);
-    gfx_fill(x + w / 2 - 3, y + 17, 6, 2, col[p]);
+    if (side) gfx_fill(side < 0 ? x + w : x - 2, y + 6, 2, 5, col[p]);
+    else gfx_fill(x + w / 2 - 3, y + 17, 6, 2, col[p]);
     keytag(x + w / 2, y + 13, p, WHITE);
   }
 }
@@ -374,7 +379,8 @@ static void scores(int y0, bool pop) {
   for (int s = 0; s < u.nsides; s++) {
     int y = y0 + s * (u.nsides > 3 ? 22 : 26);
     blob(66, y, 8, s, 0);
-    gfx_text(&np_font_body, 82, y + 5, side_name(s), s == u.winner ? GOLD : WHITE, 256);
+    int e = gfx_text(&np_font_body, 82, y + 5, side_name(s), s == u.winner ? GOLD : WHITE, 256);
+    if (!teams) keytag(e + 8 + keytag_w(s) / 2, y + 5, s, SOFT);
     pips(176, y, s, pop && s == u.winner);
   }
 }
@@ -512,7 +518,7 @@ static void scene(void *ctx) {
       int w = u.winner, h = 100 + u.nsides * (u.nsides > 3 ? 22 : 26);
       card(118 - h / 2, h);
       say(&np_font_title, 160, 118 - h / 2 + 32, side_name(w), lite[w]);
-      gfx_text_center(&np_font_body, 160, 118 - h / 2 + 50, teams ? "wins the match!" : "wins the match!", WHITE, 256);
+      gfx_text_center(&np_font_body, 160, 118 - h / 2 + 50, "wins the match!", WHITE, 256);
       scores(118 - h / 2 + 68, false);
       static const char *const ITEM[2] = {"Rematch", "Other games"};
       for (int i = 0; i < 2; i++) button(48 + i * 116, 118 + h / 2 - 34, 108, ITEM[i], u.sel == i && sc == S_OVER);

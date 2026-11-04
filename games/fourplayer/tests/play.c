@@ -1,13 +1,14 @@
 /* Plays 2 3 4 Players on a computer, with scripted keys and computer players, and saves screenshots.
  *
  *   play [--frames N] [--keys "10:ok,20-30:p1,..."] [--shots "40:name.ppm,..."] [--out DIR] [--saves DIR]
- *        [--trace] [--fuzz SEED] [--seed N] [--bots FRAME] [--raw DIR] [--every K]
+ *        [--trace] [--fuzz SEED] [--seed N] [--bots FRAME] [--raw DIR] [--raw-frames A-B/K] [--every K]
  *
  * A frame is 20 ms. Keys: left right up down ok exe back home onoff, and p1 to p6 the players' (shift,
  * backspace, 0, EXE, 7 and )). "a-b:key" holds the key from frame a to b, "a:key" for one frame.
  * --bots F: from frame F on, the computer plays for every player whenever a round is on (each game's bot).
  * --fuzz presses random keys (Home now and then ends a session, the next one starts from the save).
- * --raw DIR saves every frame drawn as raw RGB565 (tools/record.py --frames); --every K draws every Kth frame
+ * --raw DIR saves every frame drawn as raw RGB565 (tools/record.py --frames), or with --raw-frames those from A to B,
+ * every Kth; --every K draws every Kth frame
  * (the screenshots and --raw draw theirs anyway). --trace prints each screen as it comes (SCREEN ...).
  * At the end: STATE ... */
 #include <stdio.h>
@@ -83,7 +84,7 @@ static void print_state(const char *what) {
 }
 
 int main(int argc, char **argv) {
-  int frames = 600, fuzz = -1, bots = -1, every = 1;
+  int frames = 600, fuzz = -1, bots = -1, every = 1, raw_a = 0, raw_b = 1 << 30, raw_k = 1;
   bool trace = false;
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
@@ -97,6 +98,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[i], "--seed") && i + 1 < argc) host_seed = (uint32_t)atoi(argv[++i]) | 1;
     else if (!strcmp(argv[i], "--bots") && i + 1 < argc) bots = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--every") && i + 1 < argc) every = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--raw-frames") && i + 1 < argc) sscanf(argv[++i], "%d-%d/%d", &raw_a, &raw_b, &raw_k);
     else {
       fprintf(stderr, "play: what is %s?\n", argv[i]);
       return 2;
@@ -141,8 +143,9 @@ int main(int argc, char **argv) {
     last_screen = s.screen;
     bool shot = false;
     for (int i = 0; i < nshots; i++) shot |= shots[i].frame == f;
-    if (app_dirty() && (f % every == 0 || shot || raw_dir[0])) app_draw();
-    if (raw_dir[0]) {
+    bool raw = raw_dir[0] && f >= raw_a && f <= raw_b && (f - raw_a) % raw_k == 0;
+    if (app_dirty() && (f % every == 0 || shot || raw)) app_draw();
+    if (raw) {
       char p[1024];
       snprintf(p, sizeof p, "%s/%06d_%06d.raw", raw_dir, raw_n++, f * 20);
       host_raw(p);

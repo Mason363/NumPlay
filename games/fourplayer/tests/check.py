@@ -253,11 +253,11 @@ if "--docs" in sys.argv:
     shot("players", save_bytes(2, 0, 3, wins), "", 5, bots=False)
     shot("games", save_bytes(2, 0, 3, wins), "ok", 5, bots=False)
     shot("rules", save_bytes(2, 0, 3, wins), "ok ok w10 p1 p3", 5, bots=False)
-    for name, mode, game, frames, seed in [("sumo", 2, 0, 230, 5), ("racing", 2, 1, 520, 7), ("tanks", 2, 2, 320, 2),
+    for name, mode, game, frames, seed in [("sumo", 2, 0, 230, 5), ("racing", 2, 1, 520, 7), ("tanks", 2, 2, 190, 2),
                                            ("snakes", 2, 3, 420, 4), ("soccer", 2, 4, 330, 6), ("fish", 2, 5, 390, 3),
                                            ("skate", 4, 6, 330, 1), ("rope", 2, 7, 300, 9), ("paint", 2, 8, 700, 5),
                                            ("balloons", 2, 9, 520, 8), ("birds", 2, 10, 420, 6), ("gravity", 2, 11, 420, 3),
-                                           ("frogs", 2, 12, 520, 4), ("clock", 2, 13, 700, 2), ("teams", 4, 4, 300, 3)]:
+                                           ("frogs", 2, 12, 520, 4), ("clock", 2, 13, 422, 2), ("teams", 4, 4, 300, 3)]:
         shot(name, save_bytes(mode, game), "ok ok ok", frames, seed)
     shutil.copy(os.path.join(docs, "sumo.png"), os.path.join(docs, "shot.png"))
     print("docs: screenshots saved")

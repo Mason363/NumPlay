@@ -3,7 +3,7 @@
 
 void rules_gravity(void) {
   app_test_round(M2, G_GRAVITY);
-  CHECK(r[0].on && r[1].on, "gravity: the runners start on the ground");
+  CHECK(r[0].on && r[1].on && r[0].g == 1 && r[1].g == -1, "gravity: the runners start on the floor and the ceiling");
   app_test_step(1), app_test_step(0);
   CHECK(r[0].g == -1 && !r[0].on, "gravity: a tap flips it");
   app_test_step(1), app_test_step(0);
@@ -12,9 +12,9 @@ void rules_gravity(void) {
   CHECK(r[0].on && r[0].y == CEIL + R, "gravity: on the ceiling");
 
   app_test_round(M2, G_GRAVITY); /* a hole */
-  ngap = 1, gap[0].x0 = world + rx(1) + 20, gap[0].x1 = gap[0].x0 + 50, gap[0].up = 0, next_x = 1e9f;
+  ngap = 1, gap[0].x0 = world + rx(0) + 20, gap[0].x1 = gap[0].x0 + 50, gap[0].up = 0, next_x = 1e9f;
   run(0, 300);
-  CHECK(gone[1] && WINNER == 0, "gravity: through a hole, out");
+  CHECK(gone[0] && !gone[1] && WINNER == 1, "gravity: through a hole, out");
 
   app_test_round(M3V3, G_GRAVITY); /* the holes never face each other */
   bool fair = true;

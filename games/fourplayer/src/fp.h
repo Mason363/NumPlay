@@ -76,6 +76,7 @@ void keytag(int cx, int base, int p, color_t c);
 int keytag_w(int p);
 /* where p is drawn (the top of them): their key's label shows there during the countdown */
 void tag_at(int p, float x, float y);
+void tag_by(int p, float x, float y, int side); /* (by its side: -1 to its left, 1 to its right) */
 char *num(char *o, uint32_t v);
 
 /* ---- the minigames */
