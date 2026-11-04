@@ -1,5 +1,5 @@
 /* NumPlay Studio: pick games, add Retro-Go games and PICO-8 carts, and link a NumPlay.nwa of your own in the
- * browser. The kit (kit/, made by `make kit` and `make kit-langs`, tools/kit.py) holds the objects
+ * browser, or pick the games for another calculator and download them as one zip. The kit (kit/, made by `make kit` and `make kit-langs`, tools/kit.py) holds the objects
  * the Makefile links NumPlay.nwa from; GNU ld and objcopy, built as WebAssembly (ld/), link them
  * here the same way. */
 'use strict';
@@ -27,6 +27,30 @@
   // launcher/src/settings.c's secrets, in order (NP_SECRET_*)
   const SECRETS = ['x,n,t key', 'var key', 'Toolbox key', 'π key', '√ key', 'Menu: Examples', 'Konami code'];
   const W = 320, H = 222;  // the screen below its status bar, in the calculator's pixels
+  // The calculators the games are made for (platform/): the NumWorks, where they go in as one app linked here, and
+  // the others, where each game is a file of its own (kit/ports: ports.json, then <target>/<file>) and they come as
+  // one zip. How to install them: steps of text and [link, url] ('@zip': the zip's name; that step isn't in its README)
+  const CLIBS = 'https://github.com/CE-Programming/libraries/releases/latest';
+  const TICONNECT = 'https://education.ti.com/en/products/computer-software/ti-connect-ce-sw';
+  const CALCS = {
+    numworks: { name: 'NumWorks' },
+    ti84ce: {
+      name: 'TI-84 Plus CE', models: 'and TI-83 Premium CE', photo: 'ti84ce.png', zip: 'NumPlay-TI84CE.zip',
+      steps: [['Unzip @zip'], ['Send ', ['clibs.8xg', CLIBS], ' and the games with ', ['TI Connect CE', TICONNECT]],
+        ['Press prgm, pick a game, press enter']],
+      warn: ['On OS 5.5 or newer, the games need ', ['arTIfiCE', 'https://yvantt.github.io/arTIfiCE/'], ' first.'],
+    },
+    nspire: {
+      name: 'TI-Nspire CX', models: 'CX and CX II, with Ndless', photo: 'nspire.png', zip: 'NumPlay-Nspire.zip',
+      steps: [['Install ', ['Ndless', 'https://ndless.me'], ' on the calculator'], ['Unzip @zip'],
+        ['Send the games with TI-Nspire Link'], ['Open a game from My Documents']],
+    },
+    'casio-cg': {
+      name: 'Casio fx-CG50', models: 'and Graph 90+E', photo: 'casio_cg50.png', zip: 'NumPlay-CasioCG.zip',
+      steps: [['Unzip @zip'], ['Plug the calculator in and pick USB Flash on it'], ['Copy the games to it, then eject it'],
+        ['Press MENU and pick a game']],
+    },
+  };
 
   const $ = (s) => document.querySelector(s);
   const el = (tag, cls, attrs) => {
@@ -46,11 +70,13 @@
   const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } return null; };
 
   let kit = null, rg = null, pk = null;  // (Retro-Go and NumPico: the games that take your files)
+  let ports = null;        // kit/ports/ports.json: each other calculator's games, their files and sizes
   const kits = {};         // the kit of each language, loaded when picked
   const byId = {};
   const st = {
     picked: new Set(), order: [], roms: [], apps: [], carts: [], cap: 'std', lang: 'en',
     app: { icon: 'NumPlay', name: 'NumPlay', open: 'numplay', secret: 0, hint: true },
+    calc: 'numworks', port: {},  // (the games picked for each other calculator)
   };
   let custom = null;       // an icon of your own: { url, obj }
   let romKey = 0, appKey = 0, cartKey = 0;
@@ -155,6 +181,7 @@
   let shownUsed = 0, previewing = null;
 
   function render() {
+    if (other()) return renderPort();
     const list = items(), cap = capacity();
     const used = list.reduce((s, it) => s + it.bytes, 0);
     const over = used > cap;
@@ -241,10 +268,7 @@
       b.dataset.tip = g.title + '|' + (alone(id) ? size(game(id).alone.size) + ', on its own' : size(flash(id)) +
         (g.xl && st.lang !== 'en' ? ' · in English' : '') + ' · drag to move');
     }
-    for (const box of [$('#small'), $('#big')]) {
-      const want2 = st.order.map((id) => buttons.get(id)).filter((b) => b && b.parentNode === box);
-      if ([...box.children].some((c, i) => c !== want2[i])) for (const b of want2) box.appendChild(b);
-    }
+    arrange();
     $('#space-chip-label').textContent = mb(cap);
     $('#space-chip').dataset.tip = SPACES[space().id] + '|your calculator\'s space for apps';
     $('#dock-used').textContent = (used / MiB).toFixed(2) + ' of ' + mb(cap);
@@ -262,6 +286,12 @@
     $('#lang-chip-label').textContent = LANGS[st.lang][0];
     renderCarts();
     save();
+  }
+  function arrange() {  // (the icons in the order they go in the launcher)
+    for (const box of [$('#small'), $('#big')]) {
+      const want = st.order.map((id) => buttons.get(id)).filter((b) => b && b.parentNode === box);
+      if ([...box.children].some((c, i) => c !== want[i])) for (const b of want) box.appendChild(b);
+    }
   }
 
   function renderCarts() {
@@ -318,7 +348,7 @@
   let previewTimer = 0;
   function showPreview(id) {
     const g = byId[id];
-    if (!g || !g.preview || dragging) return;
+    if (!g || !g.preview || dragging || other()) return;
     clearTimeout(previewTimer);
     previewing = id;
     const p = $('#preview'), img = p.querySelector('img');
@@ -544,7 +574,7 @@
   function sortable(box) {
     box.addEventListener('pointerdown', (e) => {
       const b = e.target.closest('.app');
-      if (!b || e.button) return;
+      if (!b || e.button || other()) return;  // (another calculator's games are files: they have no order)
       if (e.pointerType === 'touch') {
         if (holding === b) { b.classList.remove('held'); holding = null; justDragged = true; return; }
         if (holding && holding !== b) {  // (a phone: the held icon goes where you tap)
@@ -892,13 +922,14 @@
     return { bytes: nwa, file: 'NumPlay.nwa' };
   }
 
-  function download(bytes, file) {
-    const a = el('a', '', { download: file, href: URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' })) });
+  function download(bytes, file, type = 'application/octet-stream') {
+    const a = el('a', '', { download: file, href: URL.createObjectURL(new Blob([bytes], { type })) });
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
   }
   async function go(btn, sheet) {
+    if (other()) return portGo(btn);
     if (btn.classList.contains('busy')) return;
     btn.classList.add('busy');
     const key = btn.closest('.key3d, .fkey');
@@ -916,6 +947,7 @@
     }
   }
   function prefetch() {
+    if (other()) return;
     if (solo()) { fetchBytes(KIT + 'apps/' + solo() + '.nwa.gz').catch(() => {}); return; }
     loadTools().catch(() => {});
     loadKit(st.lang).then(() => {
@@ -1035,6 +1067,208 @@
     if (over > 0) { st.cap = was; st.picked = picked; before = had; toast('Take ' + size(over) + ' of games out first'); return false; }
     render();
     return true;
+  }
+
+  // ------------------------------------------------------------------ your calculator
+  // The NumWorks, or another calculator the games are made for: there, only its games show, picked as on the
+  // NumWorks, and Download makes a zip of their files with how to install them. Without kit/ports/ports.json (an
+  // older kit) the others are coming soon.
+  const other = () => st.calc !== 'numworks';
+  const known = (t) => Object.prototype.hasOwnProperty.call(CALCS, t);
+  const portList = (t = st.calc) => (ports && known(t) && ports.targets[t]) || null;
+  const calcReady = (t) => t === 'numworks' || (!!portList(t) && Object.keys(portList(t)).some((id) => buttons.has(id)));
+  const onCalc = (id) => !other() || !!portList()[id];
+  const portPicks = () => st.order.filter((id) => st.port[st.calc].has(id) && buttons.has(id) && onCalc(id));
+  const portFiles = (e) => e.files || [e.file];
+  let lede = '';
+  function setCalc(id) {
+    st.calc = known(id) && calcReady(id) ? id : 'numworks';
+    const c = CALCS[st.calc], o = other();
+    if (o && !st.port[st.calc]) {  // (as last time, or the games NumPlay starts with)
+      const list = portList(), saved = store('numplay-port-' + st.calc);
+      st.port[st.calc] = new Set(saved !== null ? saved.split(',').filter((x) => list[x])
+        : kit.games.filter((g) => g.default && list[g.id]).map((g) => g.id));
+    }
+    document.documentElement.classList.toggle('other', o);
+    for (const [gid, b] of buttons) b.classList.toggle('away', !onCalc(gid));
+    const words = $('#lede');
+    words.textContent = o ? 'Real games, rebuilt for the ' : lede;
+    if (o) {  // (its name in one piece: "fx-CG50" doesn't break at its hyphen)
+      words.appendChild(el('span', 'name')).textContent = c.name;
+      words.append('. Choose yours and download them.');
+    }
+    $('#small-head').textContent = o ? 'Games' : 'Games in NumPlay';
+    document.querySelector('.side > .row-head').hidden = o && ![...$('#big').children].some((b) => !b.classList.contains('away'));
+    $('#calc-chip-img').src = 'calcs/' + st.calc + '.png';
+    $('#calc-chip-label').textContent = c.name;
+    $('#calc-chip').dataset.tip = c.name + '|your calculator';
+    if (o) Object.assign($('#port-img'), { src: MEDIA + 'calcs/' + c.photo, alt: 'A ' + c.name });
+    const dl = $('#dock-install');
+    dl.textContent = o ? 'Download' : 'Install';
+    dl.disabled = false;
+    if (o) for (const b of [$('#port-dl'), dl]) b.setAttribute('aria-label', 'Download ' + c.zip);
+    else dl.removeAttribute('aria-label');
+    if (o) $('#replay').removeAttribute('data-tip'); else $('#replay').dataset.tip = 'Play the intro again';
+    hidePreview();
+    searchApply();
+    fitGrid();
+    watchDock();
+    render();
+  }
+  function renderPort() {
+    const c = CALCS[st.calc], list = portList(), picks = st.port[st.calc];
+    for (const [id, b] of buttons) {
+      if (!list[id]) continue;
+      const on = picks.has(id);
+      b.classList.toggle('on', on);
+      b.classList.toggle('off', !on);
+      b.classList.remove('nofit');
+      b.setAttribute('aria-pressed', on);
+      b.dataset.tip = byId[id].title + '|' + size(list[id].size);
+    }
+    arrange();
+    const ids = portPicks(), n = ids.length;
+    const text = n ? n + (n === 1 ? ' game · ' : ' games · ') + size(ids.reduce((a, id) => a + list[id].size, 0)) : 'No games picked';
+    $('#port-used').textContent = $('#dock-used').textContent = text;
+    $('#dock').classList.remove('over');
+    $('#port-dl').disabled = $('#dock-install').disabled = !n;
+    $('#port-dl').dataset.tip = 'Download ' + c.zip;
+    store('numplay-port-' + st.calc, ids.join(','));
+    save();
+  }
+  function togglePort(id) {
+    const picks = st.port[st.calc], on = !picks.has(id);
+    if (on) picks.add(id); else picks.delete(id);
+    bump(buttons.get(id), on ? 'pop-on' : 'pop-off');
+    render();
+  }
+  function renderCalcs() {
+    const box = $('#calcs');
+    box.textContent = '';
+    for (const [id, c] of Object.entries(CALCS)) {
+      const ok = calcReady(id);
+      const b = el('button', '', { type: 'button', role: 'radio', 'aria-checked': st.calc === id });
+      b.disabled = !ok;
+      b.appendChild(el('img', '', { src: 'calcs/' + id + '.png', alt: '' }));
+      const t = b.appendChild(el('span'));
+      t.appendChild(el('b')).textContent = c.name;
+      if (c.models || !ok) t.appendChild(el('small')).textContent = ok ? c.models : 'Coming soon';
+      b.addEventListener('click', () => {
+        closePops();
+        if (id === st.calc) return;
+        setCalc(id);
+        store('numplay-calc', id);
+        try {  // (the address names it, so it can be shared)
+          const u = new URL(location.href);
+          if (other()) u.searchParams.set('calc', id); else u.searchParams.delete('calc');
+          history.replaceState(null, '', u.pathname + u.search + u.hash);
+        } catch (e) { /* (a file:// page) */ }
+      });
+      box.appendChild(b);
+    }
+  }
+
+  // The zip: each file stored as it is, with its CRC-32, then the central directory
+  const CRC = new Uint32Array(256).map((_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    return c;
+  });
+  function crc32(d) {
+    let c = -1;
+    for (let i = 0; i < d.length; i++) c = CRC[(c ^ d[i]) & 255] ^ (c >>> 8);
+    return (c ^ -1) >>> 0;
+  }
+  function zip(files) {
+    const enc = new TextEncoder(), d = new Date();
+    const time = d.getHours() << 11 | d.getMinutes() << 5 | d.getSeconds() >> 1;
+    const day = (d.getFullYear() - 1980) << 9 | (d.getMonth() + 1) << 5 | d.getDate();
+    const out = [], dir = [];
+    let at = 0;
+    for (const f of files) {
+      const name = enc.encode(f.name), n = f.data.length, crc = crc32(f.data);
+      const loc = new Uint8Array(30 + name.length), cen = new Uint8Array(46 + name.length);
+      const lv = new DataView(loc.buffer), cv = new DataView(cen.buffer);
+      lv.setUint32(0, 0x04034b50, true);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);  // (made by version 2.0)
+      for (const [v, o] of [[lv, 4], [cv, 6]]) {  // (the fields both have, from "version needed")
+        v.setUint16(o, 10, true);  // (1.0: stored)
+        v.setUint16(o + 2, 0x800, true);  // (names in UTF-8)
+        v.setUint16(o + 6, time, true);
+        v.setUint16(o + 8, day, true);
+        v.setUint32(o + 10, crc, true);
+        v.setUint32(o + 14, n, true);
+        v.setUint32(o + 18, n, true);
+        v.setUint16(o + 22, name.length, true);
+      }
+      cv.setUint32(42, at, true);
+      loc.set(name, 30);
+      cen.set(name, 46);
+      out.push(loc, f.data);
+      dir.push(cen);
+      at += loc.length + n;
+    }
+    const end = new Uint8Array(22), ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, files.length, true);
+    ev.setUint16(10, files.length, true);
+    ev.setUint32(12, dir.reduce((a, c) => a + c.length, 0), true);
+    ev.setUint32(16, at, true);
+    return new Blob(out.concat(dir, [end]), { type: 'application/zip' });
+  }
+  // its README.txt: how to install them (but unzipping), and which file is which game
+  function readme(t, ids) {
+    const c = CALCS[t], list = portList(t);
+    const line = (segs) => segs.map((s) => (typeof s === 'string' ? s : s[0] + ' (' + s[1] + ')')).join('');
+    const steps = c.steps.filter((s) => !s.some((x) => typeof x === 'string' && x.includes('@zip')));
+    const files = ids.map((id) => [portFiles(list[id]).join(' '), byId[id].title]);
+    const w = Math.max(...files.map(([f]) => f.length)) + 3;
+    return ['NumPlay for the ' + c.name, '', 'How to install them']
+      .concat(steps.map((s, i) => (i + 1) + '. ' + line(s)), c.warn ? ['', line(c.warn)] : [], ['', 'The games'],
+        files.map(([f, title]) => f.padEnd(w) + title), ['', 'Made by Mason Chen as part of NumPlay', 'https://github.com/Mason363/NumPlay', ''])
+      .join('\r\n');
+  }
+  async function portGo(btn) {
+    const t = st.calc, c = CALCS[t], list = portList(t), ids = portPicks();
+    const keys = [$('#port-dl'), $('#dock-install')];
+    if (!ids.length || btn.classList.contains('busy')) return;
+    for (const b of keys) b.classList.add('busy');
+    openPortSheet(c);
+    try {
+      const names = [...new Set(ids.flatMap((id) => portFiles(list[id])))];
+      const data = await Promise.all(names.map((n) => fetchBytes(KIT + 'ports/' + t + '/' + encodeURIComponent(n))));
+      const files = names.map((name, i) => ({ name, data: data[i] }));
+      files.push({ name: 'README.txt', data: new TextEncoder().encode(readme(t, ids)) });
+      download(zip(files), c.zip, 'application/zip');
+    } catch (e) {
+      console.error(e);
+      closeSheet();
+      toast("Couldn't make " + c.zip + ', try again');
+    } finally {
+      for (const b of keys) b.classList.remove('busy');
+    }
+  }
+  function openPortSheet(c) {
+    const fill = (node, segs) => {
+      for (const x of segs) {
+        if (typeof x === 'string') node.append(x.replace('@zip', c.zip));
+        else node.appendChild(el('a', '', { href: x[1], target: '_blank', rel: 'noopener' })).textContent = x[0];
+      }
+    };
+    $('#port-file').textContent = c.zip;
+    const ol = $('#port-steps'), warn = $('#port-warn');
+    ol.textContent = '';
+    c.steps.forEach((segs, i) => {
+      const li = ol.appendChild(el('li'));
+      li.appendChild(el('span', 'step-icon n')).textContent = i + 1;
+      fill(li.appendChild(el('span')), segs);
+    });
+    warn.textContent = '';
+    warn.hidden = !c.warn;
+    if (c.warn) fill(warn, c.warn);
+    $('#port-sheet').hidden = false;
+    $('#port-sheet .sheet-close').focus();
   }
 
   // ------------------------------------------------------------------ the calculator in 3D, and its sticker
@@ -1594,14 +1828,22 @@
 
   // ------------------------------------------------------------------ on a phone: install from under your thumb
   // Once the calculator's keys are scrolled away, a bar at the bottom has them, with the space used.
+  // (on another calculator, once its Download is)
+  let docking = null;
   function dock() {
-    const d = $('#dock'), keys = $('.legend.ok');
+    const d = $('#dock');
     if (!window.IntersectionObserver) return;
-    new IntersectionObserver(([e]) => {
+    docking = new IntersectionObserver(([e]) => {
       const below = !e.isIntersecting && e.boundingClientRect.top < 0;
       d.classList.toggle('show', below);
       document.body.classList.toggle('docked', below);
-    }).observe(keys);
+    });
+    watchDock();
+  }
+  function watchDock() {
+    if (!docking) return;
+    docking.disconnect();
+    docking.observe(other() ? $('#port-dl') : $('.legend.ok'));
   }
 
   // ------------------------------------------------------------------ the sheet, tips and toasts
@@ -1612,7 +1854,7 @@
     s.hidden = false;
     s.querySelector('.sheet-card a.install').focus();
   }
-  function closeSheet() { $('#sheet').hidden = true; }
+  function closeSheet() { $('#sheet').hidden = true; $('#port-sheet').hidden = true; }
   let toastTimer = 0;
   function toast(msg) {
     const t = $('#toast');
@@ -1651,7 +1893,7 @@
   let introRun = null;
   function intro(force) {
     const ready = () => document.documentElement.classList.remove('intro-wait');
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches || innerWidth < 900) return ready();
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || innerWidth < 900 || other()) return ready();
     if (!force && store('numplay-intro3')) return ready();
     store('numplay-intro3', '1');
     if (introRun) introRun();
@@ -1762,7 +2004,7 @@
   // the games in NumPlay fill their column down to the bottom of the window: as many to a row, and as big, as fits
   // (in the narrower layouts, where more comes under them, five to a row)
   function fitGrid() {
-    const box = $('#small'), n = box.children.length;
+    const box = $('#small'), n = [...box.children].filter((b) => !b.classList.contains('away')).length;
     if (!n || innerWidth <= 1180) { box.classList.remove('fit'); return; }
     const W = box.clientWidth, H = innerHeight - (box.getBoundingClientRect().top + scrollY) - 34;
     let best = null;
@@ -1780,6 +2022,7 @@
   // A game shows when what's typed is in its name, its id or its initials ("fnaf", "hk", "pvz"), accents and
   // punctuation aside. The grids keep their sizes; the others are only hidden
   const plain = (t) => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  let searchApply = () => {};
   function search() {
     const box = $('#search'), keys = new Map();
     for (const [id, b] of buttons) {
@@ -1789,16 +2032,18 @@
     const apply = () => {
       const q = plain(box.value).replace(/ /g, '');
       let n = 0;
-      for (const [b, k] of keys) { b.hidden = !!q && !k.includes(q); if (!b.hidden) n++; }
-      $('.games .row-head').hidden = ![...$('#small').children].some((b) => !b.hidden);
+      const shown = (b) => !b.hidden && !b.classList.contains('away');
+      for (const [b, k] of keys) { b.hidden = !!q && !k.includes(q); if (shown(b)) n++; }
+      $('.games .row-head').hidden = ![...$('#small').children].some(shown);
       const none = $('#no-match');
-      none.hidden = !!n;
-      if (n) return;
-      none.textContent = 'No game called "' + box.value.trim() + '" yet. The ';
+      none.hidden = !!n || !q;
+      if (none.hidden) return;
+      none.textContent = 'No game called "' + box.value.trim() + '"' + (other() ? ' for the ' + CALCS[st.calc].name : '') + ' yet. The ';
       const a = none.appendChild(el('a', '', { href: 'https://github.com/Mason363/NumPlay#roadmap', target: '_blank', rel: 'noopener' }));
       a.textContent = 'roadmap';
       none.append(" has what's coming.");
     };
+    searchApply = apply;
     box.addEventListener('input', apply);
     box.addEventListener('keydown', (e) => { if (e.key === 'Escape' && box.value) { e.stopPropagation(); box.value = ''; apply(); } });
     document.addEventListener('keydown', (e) => {
@@ -1809,6 +2054,7 @@
 
   // ------------------------------------------------------------------ start
   async function start() {
+    const portsJson = fetch(KIT + 'ports/ports.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
     try {
       kit = await fetch(KIT + 'kit.json').then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
     } catch (e) {
@@ -1822,6 +2068,8 @@
     kits.en = kit;
     rg = kit.games.find((g) => g.roms) || null;
     pk = kit.games.find((g) => g.carts) || null;
+    ports = await portsJson;
+    if (!ports || !ports.targets || typeof ports.targets !== 'object') ports = null;
     try {
       const c = store('numplay-icon');
       if (c) { const j = JSON.parse(c); custom = { url: j.url, obj: Uint8Array.from(atob(j.obj), (x) => x.charCodeAt(0)) }; }
@@ -1838,6 +2086,7 @@
       b.insertAdjacentHTML('beforeend', badge);
       b.addEventListener('click', () => {
         if (justDragged) { justDragged = false; return; }
+        if (other()) { togglePort(g.id); return; }
         toggle(g.id);
         if (matchMedia('(hover: none)').matches) { showPreview(g.id); hidePreview(1600); }
       });
@@ -1876,6 +2125,7 @@
         renderApp(); render();
       } catch (err) { toast("That picture didn't work, try a PNG or JPEG"); }
     });
+    $('#calc-chip').addEventListener('click', (e) => { renderCalcs(); openPop($('#calc-pop'), e.currentTarget); });
     $('#app-chip').addEventListener('click', (e) => { renderApp(); openPop($('#app-pop'), e.currentTarget); });
     $('#lang-chip').addEventListener('click', (e) => { renderApp(); openPop($('#lang-pop'), e.currentTarget); });
     document.addEventListener('pointerdown', (e) => {
@@ -1887,12 +2137,14 @@
     $('#download').addEventListener('click', (e) => go(e.currentTarget, false));
     $('#dock-install').addEventListener('click', (e) => go(e.currentTarget, true));
     $('#dock-download').addEventListener('click', (e) => go(e.currentTarget, false));
+    $('#port-dl').addEventListener('click', (e) => portGo(e.currentTarget));
     dock();
     for (const b of [$('#install'), $('#download'), $('#dock-install'), $('#dock-download'), $('#app-chip'), $('#lang-chip')]) {
       b.addEventListener('pointerenter', prefetch, { once: true });
       b.addEventListener('focus', prefetch, { once: true });
     }
-    $('#sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet' || e.target.closest('.sheet-close')) closeSheet(); });
+    for (const s of [$('#sheet'), $('#port-sheet')])
+      s.addEventListener('click', (e) => { if (e.target === s || e.target.closest('.sheet-close')) closeSheet(); });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { closeSheet(); closePops(); if (holding) { holding.classList.remove('held'); holding = null; } }
     });
@@ -1931,13 +2183,19 @@
     else { build3d(); depth(); watchFrames(); }
     addEventListener('resize', () => { if (innerWidth < 900) goLight(); });
     restore();
+    // the calculator: the address's (?calc=ti84ce, from its page), or last time's
+    lede = $('#lede').textContent;
+    const asked = new URLSearchParams(location.search).get('calc'), want = known(asked) ? asked : store('numplay-calc');
+    setCalc(want);
+    if (want && st.calc === want) store('numplay-calc', want);
+    else if (known(asked)) toast('Games for the ' + CALCS[asked].name + ' are coming soon');
     if (st.lang !== 'en') loadKit(st.lang).then(render).catch(() => { st.lang = 'en'; render(); });
     render();
     $('#replay').addEventListener('click', () => intro(true));
     requestAnimationFrame(() => intro(new URLSearchParams(location.search).has('intro')));
     addEventListener('hashchange', () => { restore(); render(); });
     stars();
-    (window.requestIdleCallback || setTimeout)(() => loadTools().catch(() => {}), { timeout: 3000 });
+    if (!other()) (window.requestIdleCallback || setTimeout)(() => loadTools().catch(() => {}), { timeout: 3000 });
   }
   start();
 })();

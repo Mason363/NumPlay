@@ -50,18 +50,25 @@
 <body>
 <main id="studio">
   <div class="head">
-    <h1 class="title"><button id="replay" type="button" data-tip="Play the intro again"><span>NumPlay</span></button></h1>
-    <div class="chips">
-      <button id="app-chip" type="button" class="chip" aria-haspopup="dialog" aria-expanded="false" data-tip="Its icon and name on your calculator, and how it opens">
-        <img id="app-chip-icon" src="kit/variants/NumPlay.png" alt="" width="28" height="28">
-        <svg class="caret" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      </button>
-      <button id="lang-chip" type="button" class="chip lang" aria-haspopup="dialog" aria-expanded="false" data-tip="The language of its menus">
-        <span id="lang-chip-label">EN</span>
-        <svg class="caret" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      </button>
+    <div class="top">
+      <h1 class="title"><button id="replay" type="button" data-tip="Play the intro again"><span>NumPlay</span></button></h1>
+      <div class="chips">
+        <button id="calc-chip" type="button" class="chip" aria-haspopup="dialog" aria-expanded="false">
+          <img id="calc-chip-img" src="calcs/numworks.png" alt="" width="16" height="32">
+          <span id="calc-chip-label">NumWorks</span>
+          <svg class="caret" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <button id="app-chip" type="button" class="chip" aria-haspopup="dialog" aria-expanded="false" data-tip="Its icon and name on your calculator, and how it opens">
+          <img id="app-chip-icon" src="kit/variants/NumPlay.png" alt="" width="28" height="28">
+          <svg class="caret" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <button id="lang-chip" type="button" class="chip lang" aria-haspopup="dialog" aria-expanded="false" data-tip="The language of its menus">
+          <span id="lang-chip-label">EN</span>
+          <svg class="caret" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
     </div>
-    <p class="lede">Real games, rebuilt for the NumWorks. Choose yours and they go on your calculator as one app.</p>
+    <p id="lede" class="lede">Real games, rebuilt for the NumWorks. Choose yours and they go on your calculator as one app.</p>
     <label class="search">
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M10.4 10.4l3.6 3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
       <input id="search" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off" spellcheck="false">
@@ -70,7 +77,7 @@
   </div>
 
   <div class="games">
-    <div class="row-head"><h2>Games in NumPlay</h2></div>
+    <div class="row-head"><h2 id="small-head">Games in NumPlay</h2></div>
     <section id="small" class="grid small" aria-label="Games in NumPlay, best first"></section>
   </div>
 
@@ -149,6 +156,11 @@
       <div class="body3d" aria-hidden="true"></div>
       <a id="star" class="sticker" href="https://github.com/Mason363/NumPlay" target="_blank" rel="noopener" aria-label="Star NumPlay on GitHub" data-tip="Star NumPlay on GitHub|it helps other people find it"></a>
     </div>
+    <div id="port" class="port">
+      <img id="port-img" class="port-img" alt="" draggable="false">
+      <p id="port-used" class="port-used"></p>
+      <button id="port-dl" type="button" class="install">Download</button>
+    </div>
   </section>
 </main>
 
@@ -173,6 +185,9 @@
     <select id="secret" class="field"></select>
     <label class="tick"><input id="hint" type="checkbox" checked> hint</label>
   </div>
+</div>
+<div id="calc-pop" class="pop calc-pop" role="dialog" aria-label="Your calculator" hidden>
+  <div id="calcs" class="segctl col calcs" role="radiogroup" aria-label="Your calculator"></div>
 </div>
 <div id="lang-pop" class="pop narrow" role="dialog" aria-label="Language" hidden>
   <div id="langs" class="segctl col" role="radiogroup" aria-label="Language"></div>
@@ -209,6 +224,19 @@
       </span><span>Open NumWorks' installer and drop <span class="sheet-file">NumPlay.nwa</span> into it</span></li>
     </ol>
     <a class="install wide" href="https://my.numworks.com/apps" target="_blank" rel="noopener">Open the installer</a>
+    <a class="star-ask" href="https://github.com/Mason363/NumPlay" target="_blank" rel="noopener">
+      Like it? A star on GitHub helps other people find NumPlay
+    </a>
+  </div>
+</div>
+<div id="port-sheet" class="sheet" hidden>
+  <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="port-title">
+    <button type="button" class="sheet-close" aria-label="Close">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <h2 id="port-title"><span id="port-file"></span> is downloading</h2>
+    <ol id="port-steps" class="steps"></ol>
+    <p id="port-warn" class="xl-warn" hidden></p>
     <a class="star-ask" href="https://github.com/Mason363/NumPlay" target="_blank" rel="noopener">
       Like it? A star on GitHub helps other people find NumPlay
     </a>
