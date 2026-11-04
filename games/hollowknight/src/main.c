@@ -87,7 +87,7 @@ static int run(void) {
   }
   return plat_end();
 }
-#elif defined(PERF_ROOM)
+#elif defined(PERF_ROOM) && !defined(PERF_PLAY)
 /* timing: the camera panning across a room */
 #ifndef PERF_X
 #define PERF_X 30
@@ -110,6 +110,39 @@ static int run(void) {
     perf_frames++, perf_updates++;
     g_cam_x += PERF_DX;
     if (g_cam_x > g_room.h->w - 14.6f) g_cam_x = 14.6f;
+  }
+  return plat_end();
+}
+#elif defined(PERF_PLAY)
+/* timing: the game itself, from a place in a room (PERF_ROOM, PERF_X, PERF_Y), with the keys the emulator holds */
+static int run(void) {
+  plat_begin();
+  hk_bin = hk_data;
+  plat_fill(0, 0, SCREEN_W, SCREEN_H, 0);
+  game_new();
+  game_enter(PERF_ROOM, PERF_X, PERF_Y, true);
+  uint32_t last = plat_millis(), acc = 0, avg8 = 0;
+  for (;;) {
+    uint32_t keys = plat_keys();
+    if (keys & K_HOME) break;
+    uint32_t now = plat_millis();
+    acc += now - last, last = now;
+    int ticks = 0;
+    while (acc >= TICK_MS && ticks < MAX_TICKS) {
+      game_tick(keys);
+      acc -= TICK_MS, ticks++, perf_updates++;
+    }
+    if (ticks == MAX_TICKS) acc = 0;
+    if (!ticks) {
+      plat_sleep(TICK_MS - acc);
+      continue;
+    }
+    game_draw_layers();
+    gfx_frame();
+    perf_frames++;
+    avg8 = avg8 - avg8 / 8 + (plat_millis() - now);
+    if (!g_gfx_fast && avg8 > SLOW_MS * 8) g_gfx_fast = true;
+    else if (g_gfx_fast && avg8 < QUICK_MS * 8) g_gfx_fast = false;
   }
   return plat_end();
 }
