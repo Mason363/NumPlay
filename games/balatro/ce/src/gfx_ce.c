@@ -15,7 +15,7 @@
 
 #define SH 16
 #define NSTRIP (SCR_H / SH)
-#define MAXI 300
+#define MAXI 360
 #define MAXCLIP 16
 #define NDYN 16
 /* the fonts, read in the archive (BALLUT) */
@@ -38,7 +38,7 @@ typedef struct {
 } item_t;
 
 static item_t items[MAXI];
-static char strbuf[4096];
+static char strbuf[2560]; /* (a frame takes under 1 KB: the How to play page) */
 static int strpos, nitems;
 static int16_t clips[MAXCLIP][4];
 static int nclips, cur_clip;
@@ -648,7 +648,16 @@ static unsigned item_hash(const item_t *it) {
   return h;
 }
 
+#ifdef NP_HOST
+/* how full the frame's lists get (tools/host.c prints it) */
+int ce_max_items, ce_max_str;
+#endif
+
 void g_end(void) {
+#ifdef NP_HOST
+  if (nitems > ce_max_items) ce_max_items = nitems;
+  if (strpos > ce_max_str) ce_max_str = strpos;
+#endif
   unsigned hs[NSTRIP];
   unsigned base = mix(mix((unsigned)bg_swirl, (unsigned)bg_cover_x), (unsigned)bg_solid ^ (unsigned)ce_bg_ver << 8);
   for (int s = 0; s < NSTRIP; s++) hs[s] = base + (unsigned)s;

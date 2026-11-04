@@ -37,6 +37,8 @@ def main():
         s = s.replace(a, b)
     head = "/* Made by tools/cekeys.py from src/main.c: do not edit. */\n"
     s = head + s.replace('#include "', '#include "../../src/', s.count('#include "'))
+    # (for tools/host.c's player: which screen shows)
+    s += "\nint ce_main_screen(void) { return screen == SCR_GAME ? 1 + overlay : 0; }\n"
     open(dst, "w", encoding="utf-8").write(s)
 
 

@@ -29,3 +29,29 @@ _ce_archive:
 	pop	iy
 	pop	ix
 	ret
+
+/* void ce_on_stack(void (*f)(void), void *top): f called with the stack from top down (the game needs more than the
+ * OS's 4 KB: a Blueprint copying a Blueprint... goes deep), the OS's stack back after. */
+	.section	.text.boot.ce_on_stack, "ax", @progbits
+	.global	_ce_on_stack
+	.type	_ce_on_stack, @function
+_ce_on_stack:
+	pop	de
+	pop	hl
+	pop	bc
+	push	bc
+	push	hl
+	push	de
+	push	ix
+	ld	(.L.sp), sp
+	ld	sp, bc
+	call	.L.call
+	ld	sp, (.L.sp)
+	pop	ix
+	ret
+.L.call:
+	jp	(hl)
+
+	.section	.bss.ce_on_stack, "aw", @nobits
+.L.sp:
+	.skip	3

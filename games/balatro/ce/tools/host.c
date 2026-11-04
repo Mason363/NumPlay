@@ -209,11 +209,123 @@ static const struct {
               {SDL_SCANCODE_V, eadk_key_var}};
 #endif
 
+/* ---- NP_BOT=1: a player for long tests. It acts through the rules' own calls (what the screens' keys call),
+   when the screens have shown the last move; it starts a run from the title with the OK key. NP_BOT_ANTE: the ante
+   it plays to (then holds Home). */
+#include "ev.h"
+#include "game.h"
+#include "ui.h"
+int bot_ante_reached, bot_wins, bot_runs;
+static int bot_value(const uint8_t *cards, int n, uint8_t *keep) {
+  handinfo_t hi;
+  evaluate_hand(cards, n, &hi);
+  int chips = (int)hand_chips(hi.hand);
+  for (int i = 0; i < hi.nscoring; i++) chips += card_chip_nominal(R.cards[cards[hi.scoring[i]]].rank);
+  if (keep) {
+    memset(keep, 0, 8);
+    for (int i = 0; i < hi.nscoring; i++) keep[hi.scoring[i]] = 1;
+  }
+  return chips * (int)hand_mult(hi.hand) + (11 - hi.hand) * 10000;
+}
+static void bot_round(void) {
+  for (int i = 0; i < R.ncons; i++)
+    if (R.cons[i].id >= C_MERCURY && R.cons[i].id <= C_ERIS && use_cons(i)) return;
+  int n = R.nhand, best = -1, bmask = 0;
+  for (int m = 1; m < 1 << n; m++) {
+    int c = __builtin_popcount((unsigned)m);
+    if (c > 5) continue;
+    uint8_t cards[5];
+    int k = 0;
+    for (int i = 0; i < n; i++)
+      if (m >> i & 1) cards[k++] = R.hand[i];
+    int v = bot_value(cards, k, 0);
+    if (v > best) best = v, bmask = m;
+  }
+  for (int i = 0; i < n; i++) R.sel[i] = 0;
+  if (best < (11 - H_TWO_PAIR) * 10000 && R.discards_left > 0 && R.hands_left > 1) {
+    /* a weak hand: away with the lowest cards outside it */
+    int k = 0;
+    for (int r = 2; r <= 14 && k < 5; r++)
+      for (int i = 0; i < n && k < 5; i++)
+        if (!(bmask >> i & 1) && R.cards[R.hand[i]].rank == r && !(R.cards[R.hand[i]].flags & CF_FORCED)) R.sel[i] = 1, k++;
+    if (k && discard_hand()) return;
+    for (int i = 0; i < n; i++) R.sel[i] = 0;
+  }
+  for (int i = 0; i < n; i++)
+    if (bmask >> i & 1) R.sel[i] = 1;
+  if (!play_hand()) { /* (The Psychic, a forced card...): the first five */
+    for (int i = 0; i < n; i++) R.sel[i] = i < 5;
+    play_hand();
+  }
+}
+static void bot_shop(void) {
+  for (int i = 0; i < R.nshop; i++) {
+    sitem_t *it = &R.shop[i];
+    int cost = item_cost(it);
+    if (cost > R.money) continue;
+    if (it->kind == IT_JOKER && R.njokers < joker_slots() && shop_buy(0, i, 0)) return;
+    if (it->kind == IT_CONS && it->id >= C_MERCURY && it->id <= C_ERIS && shop_buy(0, i, 1)) return;
+  }
+  if (R.nshop_v && R.money >= item_cost(&R.shop_v[0]) + 10 && shop_buy(1, 0, 0)) return;
+  if (R.nshop_p && R.money >= item_cost(&R.shop_p[0]) + 8 && shop_buy(2, 0, 0)) return;
+  if (R.money >= R.reroll_cost + 20 && R.rerolls % 3 == 0 && shop_reroll()) return;
+  shop_leave();
+}
+static eadk_keyboard_state_t bot(uint64_t now) {
+  static uint64_t next;
+  static int quit;
+  const char *top = getenv("NP_BOT_ANTE");
+  if (quit) return (eadk_keyboard_state_t)1 << eadk_key_home;
+  if (now < next) return 0;
+  extern int ce_main_screen(void);
+  if (ce_main_screen() == 0) { /* the title: OK opens the run's panel, OK plays (or continues) */
+    next = now + 400;
+    return (eadk_keyboard_state_t)1 << eadk_key_ok;
+  }
+  if (ce_main_screen() != 1) return 0; /* (a panel open) */
+  static uint64_t idle_since;
+  static int last_round = -1, last_phase = -1;
+  if (R.round != last_round || R.phase != last_phase) idle_since = now, last_round = R.round, last_phase = R.phase;
+  if (now - idle_since > 60000 && getenv("NP_BOT_DEBUG")) {
+    fprintf(stderr, "bot: stuck in phase %d round %d busy %d nhand %d sel %d hands %d events %d..%d (%d)\n", R.phase,
+            R.round, ui_busy(), R.nhand, nselected(), R.hands_left, ev_head, ev_tail, ev_head < ev_tail ? evq[ev_head].type : -1);
+    idle_since = now;
+  }
+  if (ui_busy()) return 0;
+  next = now + 250;
+  if (getenv("NP_BOT_DEBUG") && now < 120000)
+    fprintf(stderr, "bot %llu: phase %d round %d money %ld shop %d/%d/%d pack %d\n", (unsigned long long)now, R.phase,
+            R.round, (long)R.money, R.nshop, R.nshop_v, R.nshop_p, R.npack);
+  if (R.ante > bot_ante_reached) bot_ante_reached = R.ante;
+  if (top && R.ante > atoi(top)) quit = 1;
+  switch (R.phase) {
+    case PH_BLIND_SELECT: blind_select(); break;
+    case PH_ROUND: bot_round(); break;
+    case PH_CASHOUT: cash_out(); break;
+    case PH_SHOP: bot_shop(); break;
+    case PH_PACK:
+      for (int i = 0; i < R.npack; i++)
+        if (pack_choose(i)) return 0;
+      pack_skip();
+      break;
+    case PH_WIN:
+      bot_wins++;
+      continue_endless();
+      break;
+    case PH_GAMEOVER:
+      bot_runs++;
+      quit = 1;
+      break;
+  }
+  return 0;
+}
+
 eadk_keyboard_state_t eadk_keyboard_scan(void) {
   uint64_t now = eadk_timing_millis();
   frames++;
   script_shots(now);
   eadk_keyboard_state_t k = script_keys(now);
+  if (getenv("NP_BOT")) k |= bot(now);
 #ifdef HAVE_SDL
   if (!headless) {
     SDL_Event e;
@@ -273,6 +385,11 @@ int main(void) {
   }
   ce_set_palette(0, CE_NSTATIC, ce_palette);
   balatro_main();
-  fprintf(stderr, "host: %ld frames in %llu ms\n", frames, (unsigned long long)eadk_timing_millis());
+  extern int ce_max_items, ce_max_str;
+  fprintf(stderr, "host: %ld frames in %llu ms (at most %d items, %d bytes of text a frame)\n", frames,
+          (unsigned long long)eadk_timing_millis(), ce_max_items, ce_max_str);
+  if (getenv("NP_BOT"))
+    fprintf(stderr, "bot: ante %d reached, %d wins, round %d, best hand %.0f, money %ld\n", bot_ante_reached, bot_wins,
+            R.round, R.best_hand, (long)R.money);
   return 0;
 }

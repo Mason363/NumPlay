@@ -140,6 +140,9 @@ int np_end(void) { return 0; }
 #define BOOTDATA __attribute__((section(".rodata.boot")))
 extern uint8_t ce_vram_lo[], ce_vram_hi[], ce_pshadow_lo[], ce_pshadow_hi[], ce_bssx_lo[], ce_bssx_hi[];
 void ce_archive(const char *op1);
+void ce_on_stack(void (*f)(void), void *top);
+static uint8_t stack[6144]; /* the game's (see archive.S) */
+static void game(void) { balatro_main(); }
 
 /* the code's appvars (where each goes), then the others */
 #define NCODE 4
@@ -200,7 +203,7 @@ BOOT int main(void) {
   int ok = ce_art_init() && ce_bg_init();
   if (ok) {
     ce_set_palette(0, CE_NSTATIC, ce_palette);
-    balatro_main();
+    ce_on_stack(game, stack + sizeof stack);
   }
   /* the OS's screen, its pixel shadow cleared */
   memset((void *)0xD40000, 255, 320 * 240 * 2);
