@@ -333,6 +333,11 @@ GAMES = {
     # Start, the first "Pass to", the role; Home saves the round. Next time, from the copy, the settings, then On/Off
     "imposter": ("Imposter.nwa", "imposter.sav",
                  presses((1500, "ok"), (2500, "ok"), (3500, "ok")), 6000, presses((1500, "down")), 3500),
+    # 4 players, Sumo, its rules, the round and two dashes; Home saves. Next time, from the copy, the players, then
+    # On/Off
+    "fourplayer": ("FourPlayers.nwa", "fourplayer.sav",
+                   presses((1500, "ok"), (2200, "ok"), (2900, "ok"), (5300, "shift"), (5600, "exe")), 6500,
+                   presses((1500, "down")), 3500),
     # Play, the first level, the gas held a while; Home saves. Next time, from the copy, the map, then On/Off
     "motox3m": ("MotoX3M.nwa", "motox3m.sav",
                 presses((1500, "ok"), (2200, "ok"), (3000, "up", 4000)), 9000,
@@ -436,7 +441,8 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "clashroyale": "clashroyale_saves.py",
           "catninja": "catninja_saves.py",
           "kingdomrush": "kingdomrush_saves.py",
-          "mrbullet": "mrbullet_saves.py", "motox3m": "motox3m_saves.py", "amongus": "amongus_saves.py", "imposter": "imposter_saves.py"}
+          "mrbullet": "mrbullet_saves.py", "motox3m": "motox3m_saves.py", "amongus": "amongus_saves.py", "imposter": "imposter_saves.py",
+          "fourplayer": "fourplayer_saves.py"}
 
 
 def paperclips_ok(v):
@@ -741,6 +747,10 @@ CHECKS = {
     "amongus": (lambda v: v[:4] == b"AUSG" and v[4] == 1,) * 2,
     # "IMPS", version 1: the players and the round; after the reinstall, from the copy, the same
     "imposter": (lambda v: v[:4] == b"IMPS" and v[4] == 1,) * 2,
+    # "FOUR", version 1, its size (188): 4 players (5), Sumo (6), first to 3 (7); after the reinstall, from the copy,
+    # Down chose 2 v 2
+    "fourplayer": (lambda v: len(v) == 188 and v[:4] == b"FOUR" and v[4:8] == bytes([1, 2, 0, 3]),
+                   lambda v: len(v) == 188 and v[:4] == b"FOUR" and v[4:8] == bytes([1, 3, 0, 3])),
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept
