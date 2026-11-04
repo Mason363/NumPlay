@@ -759,8 +759,10 @@ CHECKS = {
     # a game kept (Easy, the guide read) with the two digits the hints wrote (the digits at 109); then three
     "sudoku": (lambda v: len(v) == 352 and v[:4] == b"S\1\3\0" and sum(1 <= b <= 9 for b in v[109:190]) == 2,
                lambda v: v[2] & 1 and sum(1 <= b <= 9 for b in v[109:190]) == 3),
-    # the scaling (third byte): Full, then 1x; the keys (at 21) the first ones
-    "retrogo": (lambda v: len(v) == 29 and v[:2] == b"R\2" and v[2] == 2 and v[21:29] == bytes([1, 2, 0, 3, 4, 5, 12, 52]),
+    # the scaling (third byte): Full, then 1x; the keys (at 21) the first ones; version 3: the cursors of the Game &
+    # Watch and the Mega Drive, the Z80 on (at 33)
+    "retrogo": (lambda v: len(v) == 37 and v[:2] == b"R\3" and v[2] == 2 and v[21:29] == bytes([1, 2, 0, 3, 4, 5, 12, 52])
+                and v[33] == 1,
                 lambda v: v[2] == 0),
 }
 

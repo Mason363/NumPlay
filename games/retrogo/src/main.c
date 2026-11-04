@@ -823,16 +823,16 @@ static uint32_t autosave_at;         /* when the battery save is due, 0 none */
    ColecoVision too) and LCD-Game-Emulator */
 enum { CORE_GB, CORE_NES, CORE_SMS, CORE_GW, CORE_MD };
 #if !HAS_MD /* (stand-ins: never called) */
-#define md_load(d, n) RG_ERR_MEMORY
-#define md_state_chunks(c) 0
-#define md_state_loaded()
-#define md_redraw()
-#define md_reset(h)
-#define md_view(x, y, w, h)
-#define md_frame_us() 16667
-#define md_set_pad(p)
-#define md_set_z80(z)
-#define md_run_frame(d)
+#define md_load(d, n) ((void)(d), (void)(n), RG_ERR_MEMORY)
+#define md_state_chunks(c) ((void)(c), 0)
+#define md_state_loaded() ((void)0)
+#define md_redraw() ((void)0)
+#define md_reset(h) ((void)(h))
+#define md_view(x, y, w, h) (*(x) = *(y) = 0, *(w) = 320, *(h) = 224)
+#define md_frame_us() 16667u
+#define md_set_pad(p) ((void)(p))
+#define md_set_z80(z) ((void)(z))
+#define md_run_frame(d) ((void)(d))
 #endif
 static int core;
 static bool is_gb(void) { return core == CORE_GB; }
