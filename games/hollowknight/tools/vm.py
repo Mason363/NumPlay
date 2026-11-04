@@ -61,6 +61,17 @@ ROOMS = {
     "Crossroads_33": ["_Props/full_wall_left", "Cornifer", "Cornifer Card"],
     "Fungus1_32": ["Breakable Wall", "Inspect Region"],
     "Crossroads_11_alt": ["Inspect Region"],
+    # (Hollow Knight: Fungal Wastes) Quirrel at Queen's Station and over Mantis Village; Cornifer; the Mantis Claw; the
+    # Mantis' levers and gates; the Shrumal Ogres' notch; what the Mantis Lords guard
+    "Fungus2_01": ["Quirrel Station NPC"],
+    "Fungus2_05": ["Battle Scene v2/Uncompleted/Shiny Item", "Battle Scene v2/Completed/Shiny Item"],
+    "Fungus2_18": ["_NPCs/Cornifer", "Card & Mushroom/Cornifer Card", "Mantis Lever", "Mantis Gate", "_Props/Grub Bottle"],
+    "Fungus2_14": ["Shiny Item Stand", "Quirrel Mantis NPC", "Mantis Lever", "Mantis Lever (1)", "Mantis Gate", "Mantis Gate F",
+                   "Mantis Floor Gate", "Inspect Region"],
+    "Fungus2_12": ["Inspect Region"],
+    "Fungus2_15": ["Mantis Lever", "Mantis Lever (1)", "Mantis Lever (2)", "Mantis Lever (3)", "Mantis Lever (4)", "Mantis Gate",
+                   "Mantis Gate (1)", "Mantis Gate (2)", "Mantis Gate (3)", "Mantis Gate (4)", "Breakable Wall", "mantis_cage_up"],
+    "Fungus2_31": ["Mantis Chest/Item/Shiny Item Charm", "Mantis Chest (1)/Item/Shiny Item", "Lords Undefeated Group"],
 }
 def _piece(doc, q, rigid=True):
     """A piece of debris (a sprite with a Rigidbody2D: how it falls, bounces and spins) -> FlingPiece's operands."""
@@ -143,7 +154,30 @@ def _behaviours(rm, o):
                                                        "animationTriggerEvent": None,
                                                        "animationCompleteEvent": ["event", "FINISHED"]})],
              {"FINISHED": "Idle"})])})
+    import ents
+    pdf = ents.pd_flags()
+    for bn, off_if in _conds(o, pdf)[2:]:
+        # (a DeactivateIfPlayerdata past the two its record keeps: a script that turns it off as it starts)
+        out.append({"fsm": _fsm("Deactivate If", "Init", {}, [
+            ("Init", [("PlayerDataBoolTest", {"gameObject": "$GameManager", "boolName": bn,
+                                              "isTrue": ["event", "OFF"] if off_if else None,
+                                              "isFalse": None if off_if else ["event", "OFF"]})], {"OFF": "Off"}),
+            ("Off", [("ActivateGameObject", {"gameObject": "Owner", "activate": False, "recursive": False,
+                                             "resetOnExit": False, "everyFrame": False})], {})])})
     return out
+
+
+# (places past the parts of Hallownest there are: an object's conditions on them last, in a script if need be)
+FAR_CONDS = {"visitedRuins", "visitedDeepnest"}
+
+
+def _conds(o, pdf):
+    """its DeactivateIfPlayerdata conditions this game knows: [(bool, off if true)], those on places further in last"""
+    out = []
+    for bn, off_if in state.conditions(o):
+        if bn in pdf and (bn, off_if) not in out:
+            out.append((bn, off_if))
+    return sorted(out, key=lambda c: c[0] in FAR_CONDS)
 
 
 # FSMs left out (what this port does not have: the dream nail, sounds...)
@@ -204,7 +238,7 @@ O_NONE = 0xFFFF
 PD_INTS = ["MPCharge", "health", "maxHealth", "geo", "fireballLevel", "quakeLevel", "screamLevel", "shaman", "elderbug",
            "permadeathMode", "nailDamage", "hornetGreenpath", "quirrelEggTemple", "charmsOwned", "trinket1", "trinket2",
            "trinket3", "trinket4", "rancidEggs", "ore", "grubsCollected", "grubRewards", "stagPosition", "stationsOpened",
-           "xunFlowerBrokeTimes", "menderState"]
+           "xunFlowerBrokeTimes", "menderState", "charmSlots"]
 # PlayerData bools kept elsewhere (src/vm.c)
 PD_SPECIAL = {"disablePause": 0xFFF0, "hasSpell": 0xFFF1, "canDash": 0xFFF2}
 # PlayerData bools that keep their new game value all through this part of the game
@@ -451,7 +485,7 @@ HERO_METHODS = ["RelinquishControl", "RegainControl", "StopAnimationControl", "S
                 "FindGroundPoint", "SetBenchRespawn", "SetHazardRespawn", "RelinquishControlNotVelocity",
                 "SetCState", "SaveGame", "AffectedByGravity", "ResetHardLandingTimer", "StopPlayingAudio", "CanInspect",
                 "CanInput", "GetState", "CancelHeroJump", "ForceHardLanding", "AddHealth", "TryAddMPChargeSpa", "RecoilLeft",
-                "RecoilRight"]
+                "RecoilRight", "CharmUpdate", "RefreshOvercharm"]
 # (GetState's states, by name: its argument)
 HERO_STATES = ["onGround", "attacking", "upAttacking", "downAttacking", "dashing", "backDashing", "willHardLand",
                "spellQuake"]   # (backDashing, spellQuake: never here)
@@ -473,14 +507,18 @@ NOTICE_PREFABS = {("resources.assets", 4251): "relic", ("sharedassets6.assets", 
 # numbers them (pack.py makes the sprites)
 NOTICE_ICONS = []
 # the charms this part of the game has (their icons and names: msg.c, the inventory)
-CHARMS = [1, 2, 3, 4, 6, 7, 8, 14, 18, 19, 20]
+CHARMS = [1, 2, 3, 4, 6, 7, 8, 13, 14, 18, 19, 20]   # (Mark of Pride: in the second part, worn in both)
 # the game's objects the scripts find by name that are not theirs (enemies): what they are to them
 GAME_OBJECTS = {"Hornet Boss 1": 0xFF0C, "Prompt Blanker": 0xFF11}   # (the HUD's Prompt Blanker: msg.c's)
 O_CHARM_TUTE = 0xFF0E   # (src/vm.c)
 # what a trigger's Trigger2dEvent hears, by collideTag: the Knight (any), a spell
 TRIGGER_TAGS = {None: 0, "": 0, "Player": 0, "Untagged": 0, "Hero Spell": 1, "Nail Attack": 2}
+# objects the game's own code turns on by name (vm_set_active), named apart from the others of their name: an arena's
+# item (Battle Control's Drop Item), and the one there once its fight is over (Activate)
+VM_NAMES = {("Fungus2_05", "Battle Scene v2/Uncompleted/Shiny Item"): "Arena Item",
+            ("Fungus2_05", "Battle Scene v2/Completed/Shiny Item"): "Arena Item Kept"}
 # the items the message shows (text.MSGS's order), by Msg Control's Item
-MSG_ITEMS = {"Fireball": 0, "Dash": 1}
+MSG_ITEMS = {"Fireball": 0, "Dash": 1, "Walljump": 2}
 # camera shake events
 SHAKES = {"EnemyKillShake": 1, "AverageShake": 2, "BigShake": 3, "SmallShake": 4}
 
@@ -1801,8 +1839,7 @@ def room_blob(name, clip_index, sprites, owners=(), persist=None):
                 # (its own size, drawn at its scale: its texture as fine as it is drawn)
                 sprite = sprites.id(o.get("_doc") or rm.d, sr["m_Sprite"], 1.0, max(abs(sx), abs(sy)), world=True)
         # (DeactivateIfPlayerdataTrue, False: two at most)
-        conds = [pdf[bn] | (0x8000 if off_if else 0) for bn, off_if in state.conditions(o) if bn in pdf]
-        conds = sorted(set(conds), key=conds.index)
+        conds = [pdf[bn] | (0x8000 if off_if else 0) for bn, off_if in _conds(o, pdf)][:2]   # (more: _behaviours')
         if o.get("_variant"):
             # (a scene loaded with the room's by a PlayerData bool: there only when it has that value)
             bn, val = o["_variant"]
@@ -1829,7 +1866,8 @@ def room_blob(name, clip_index, sprites, owners=(), persist=None):
         col = (mr or {}).get("m_Color") or {"r": 1, "g": 1, "b": 1, "a": 1}
         rgba = [max(0, min(255, int(round(col[k] * 255)))) for k in "rgba"]
         objs += struct.pack(OBJ, o["pos"][0], o["pos"][1], o["pos"][2], sx, sy, bx, by, bhx, bhy, parent,
-                            STR.id(o["name"]), sprite, first, start, min(count, 255), fl, cond, layer, order, blend,
+                            STR.id(VM_NAMES.get((name, o["path"]), o["name"])), sprite, first, start, min(count, 255), fl,
+                            cond, layer, order, blend,
                             cols[0] if cols else 0, len(cols), *rgba, cond2)
     fsms = bytearray()
     for di, owner, init, fname in rm.fsms:

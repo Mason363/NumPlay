@@ -487,6 +487,7 @@ enum { AR_DETECT, AR_FIGHT, AR_WAVE_PAUSE, AR_WAVE2, AR_END_WAIT, AR_DONE };
 static struct {
   int16_t ent;   /* (-1: none) */
   uint8_t st;
+  bool dropped;  /* (its item: Drop Item) */
   int16_t count;   /* Battle Enemies */
   float t;
 } arena;
@@ -512,10 +513,14 @@ static void arena_enter(void) {
   arena.count = (int16_t)e->p2;
   /* Init: its camera lock off; Activate if its fight is over */
   if (e->p0 >= 0) ent_set_enabled((int)e->p0, false);
+  arena.dropped = false;
   if (persist_get(e->persist)) {
     arena.st = AR_DONE;
     if (e->a & ARF_DESTROY_GATES) gates_event(BG_DESTROY);
     else if (e->a & ARF_QUICK_OPEN) gates_event(BG_QUICK_OPEN);
+#ifdef HK_FW
+    if ((e->a & ARF_WAKE) && e->s0) vm_set_active(VMSTR_ARENA_ITEM_KEPT, true);   /* (Activate: Completed on, its item) */
+#endif
   } else
     arena.st = (e->a & ARF_NO_START) ? AR_FIGHT : AR_DETECT;   /* (no start: counting at once) */
 }
@@ -579,7 +584,12 @@ static void arena_tick(void) {
       if (arena.count <= 0) arena.st = AR_END_WAIT, arena.t = 0;
       break;
     case AR_END_WAIT:
-      if ((arena.t += DT) >= e->p3) {
+      arena.t += DT;
+#ifdef HK_FW
+      if ((e->a & ARF_WAKE) && e->s0 && !arena.dropped && arena.t >= e->p3 - e->s0 * 0.01f)
+        arena.dropped = true, vm_set_active(VMSTR_ARENA_ITEM, true);   /* (Drop Item: its item, then a wait) */
+#endif
+      if (arena.t >= e->p3) {
         /* End: Activated, the gates open, its camera lock off */
         persist_set(e->persist);
         gates_event(BG_OPEN);

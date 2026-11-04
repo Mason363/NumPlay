@@ -79,10 +79,10 @@ static const NameDesc txt_heart[6] = TXT_INV_HEART, txt_vessel[5] = TXT_INV_VESS
                       txt_eq[] = TXT_INV_EQ, txt_trinkets[4] = TXT_INV_TRINKETS;
 static const int16_t txt_quill[4] = TXT_INV_QUILL;
 #define NEQ ((int)(sizeof inv_eq / sizeof inv_eq[0]))
-enum { EQ_DASH, EQ_LANTERN, EQ_MAP, EQ_CITY_KEY, EQ_SIMPLE_KEY, EQ_RANCID_EGG };
+enum { EQ_DASH, EQ_WALLJUMP, EQ_LANTERN, EQ_MAP, EQ_CITY_KEY, EQ_SIMPLE_KEY, EQ_RANCID_EGG };
 
 /* (charmCost_N, as PlayerData starts) */
-static const uint8_t costs[41] = {[1] = 1, [2] = 1, [3] = 1, [4] = 2, [6] = 2, [7] = 3, [8] = 2, [14] = 1, [18] = 2,
+static const uint8_t costs[41] = {[1] = 1, [2] = 1, [3] = 1, [4] = 2, [6] = 2, [7] = 3, [8] = 2, [13] = 3, [14] = 1, [18] = 2,
                                   [19] = 3, [20] = 2};
 int charm_cost(int id) { return id > 0 && id <= 40 ? costs[id] : 0; }
 bool charm_equipped(int id) { return id > 0 && id <= 40 && pd_flag(PDF_EQUIPPED_CHARM_1 + id - 1); }
@@ -93,7 +93,7 @@ enum { P_INV, P_CHARMS, P_JOURNAL, P_MAP, NPANES };
 /* the Charms pane's places for the cursor: the collection, the equipped row, the arrows; its charm's moves */
 enum { CA_COLLECTION, CA_EQUIPPED, CA_ARROW_L, CA_ARROW_R };
 enum { TW_NONE, TW_UP, TW_DOWN, TW_FAIL, TW_FAIL_BACK };
-#define MAX_INV_ITEMS (NFIXED + 6 + 4)
+#define MAX_INV_ITEMS (NFIXED + 7 + 4)
 
 static struct {
   uint8_t st, pane, prev_pane;
@@ -216,7 +216,7 @@ static void build_items(Items *l) {
   }
   int slot = 0;
   for (int k = 0; k < NEQ; k++) {
-    bool has = k == EQ_DASH ? g_pd.has_dash : k == EQ_LANTERN ? pd_flag(PDF_HAS_LANTERN)
+    bool has = k == EQ_DASH ? g_pd.has_dash : k == EQ_WALLJUMP ? pd_flag(PDF_HAS_WALLJUMP) : k == EQ_LANTERN ? pd_flag(PDF_HAS_LANTERN)
              : k == EQ_MAP ? (pd_flag(PDF_HAS_MAP) || pd_flag(PDF_HAS_QUILL)) : k == EQ_CITY_KEY ? pd_flag(PDF_HAS_CITY_KEY)
              : k == EQ_SIMPLE_KEY ? g_pd.simple_keys > 0 : g_pd.rancid_eggs > 0;
     if (!has) continue;

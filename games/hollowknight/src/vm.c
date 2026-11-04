@@ -238,6 +238,7 @@ static int pd_int(int i) {
     case 22: return (int)g_pd.stag_position1 - 1;
     case 23: return g_pd.stations_opened;
     case 25: return g_pd.mender_state;
+    case 26: return g_pd.charm_slots;
     default: return 0;
   }
 }
@@ -260,6 +261,7 @@ static void pd_set_int(int i, int v) {
     case 22: g_pd.stag_position1 = (uint8_t)(v + 1); break;
     case 23: g_pd.stations_opened = (uint8_t)v; break;
     case 25: g_pd.mender_state = (uint8_t)v; break;
+    case 26: g_pd.charm_slots = (uint8_t)v; break;
   }
 }
 
@@ -1475,6 +1477,10 @@ static bool act(Fsm *f, const uint8_t *a, int mode) {
         case 25: hero_add_mp_charge((int)a0); break;   /* (TryAddMPChargeSpa) */
         case 26: hero_recoil_left(); break;
         case 27: hero_recoil_right(); break;
+        case 28: hero_charm_update(); break;   /* (CharmUpdate) */
+        case 29:   /* (RefreshOvercharm: a notch more, no longer overcharmed) */
+          if (pd_flag(PDF_OVERCHARMED) && g_pd.charm_slots_filled <= g_pd.charm_slots) pd_set_flag(PDF_OVERCHARMED, false);
+          break;
         case 21: {
           /* (GetState: tools/vm.py's HERO_STATES) */
           int k = (int)a0;
@@ -1659,6 +1665,12 @@ static float ease(int type, float k) {
       return w == 0 ? 1 - sqrtf(1 - k * k) : w == 1 ? sqrtf(1 - (k - 1) * (k - 1))
            : k < 0.5f ? (1 - sqrtf(1 - 4 * k * k)) / 2 : (1 + sqrtf(1 - (2 * k - 2) * (2 * k - 2))) / 2;
   }
+}
+
+/* the objects the game names on or off (an arena's item: tools/vm.py's VM_NAMES) */
+void vm_set_active(uint16_t name, bool on) {
+  for (int o = 0; o < vm.nobjs; o++)
+    if (vm.rec[o].name == name && !(vm.objs[o].flags & OF_COND_OFF)) obj_set_active(o, on);
 }
 
 /* ActivateAllChildren of an object the game names (Hornet's Hornet Saver) */

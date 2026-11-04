@@ -514,6 +514,8 @@ def main():
         fleurs["SPRITE_MSG_" + name] = SPRITES.id(pmsg, ref or sr["m_Sprite"], max(o["lscale"][:2]), res)
     fleurs["SPRITE_MSG_ICON_FIREBALL"] = SPRITES.id(unity.scene("Crossroads_ShamanTemple"), [4, 44], 1.5607, hud_res)
     fleurs["SPRITE_MSG_ICON_DASH"] = SPRITES.id(unity.scene("Fungus1_04"), [10, 22], 1.5607, hud_res)
+    if PART == 2:
+        fleurs["SPRITE_MSG_ICON_WALLJUMP"] = SPRITES.id(unity.scene("Fungus2_14"), [4, 337], 1.5607, hud_res)
     # (a Moss Knight's grass ball: a Unity sprite)
     pgb = unity.prefab("sharedassets149.assets", 34)
     fleurs["SPRITE_GRASS_BALL"] = SPRITES.id(pgb, next(c["v"] for c in pgb["objects"][0]["c"] if c["type"] == "SpriteRenderer")["m_Sprite"], 1)
@@ -852,7 +854,7 @@ def main():
         for e in vm.NAMED_EVENTS:   # (each room's number for it; 255: its scripts don't know it)
             ids = [vm.BUILT[r].named_events.get(e, 255) if r in vm.BUILT else 255 for r in ROOMS]
             f.write("#define VMEV_%s {%s}\n" % (e.upper().replace(" ", "_"), ", ".join(str(i) for i in ids)))
-        for name in ("NPC Title", "Visited", "Display Right", "Hornet Saver", "Item"):
+        for name in ("NPC Title", "Visited", "Display Right", "Hornet Saver", "Item") + (("Arena Item", "Arena Item Kept") if PART == 2 else ()):
             f.write("#define VMSTR_%s %d\n" % (name.upper().replace(" ", "_"), vm.STR.index[name]))
         for name, i in str_ids.items():
             f.write("#define STR_%s %d\n" % (name.upper().replace(" ", "_"), i))

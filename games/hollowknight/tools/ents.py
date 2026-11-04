@@ -1000,8 +1000,10 @@ def room(d, rooms, strings, persist, name, sprites=None, owners=None, rec_base=0
                         hp_at = _param(a, "integer2") or 0
                     elif a["name"] == "Wait" and ev("finishEvent") == "NEXT":
                         give_up = _param(a, "time") or 0
-                # (Drop Item: its wait before End)
-                wait += next((_param(a, "time") for a in acts("Drop Item") if a["name"] == "Wait"), 0)
+                # (Drop Item: its wait before End, its item shown as it starts (s0, in 100ths)
+                drop = next((_param(a, "time") for a in acts("Drop Item") if a["name"] == "Wait"), 0)
+                wait += drop
+                pause = drop
             if _state(f, "Complete") and not _state(f, "Start"):
                 # (no start: done once its count is down, the gates opening a while after)
                 fl |= ARF_NO_START

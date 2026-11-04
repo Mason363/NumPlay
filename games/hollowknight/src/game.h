@@ -42,7 +42,10 @@ enum {
   PDF_OPENED_CROSSROADS, PDF_OPENED_GREENPATH, PDF_TRAVELLING, PDF_STAG_REMEMBER1, PDF_STAG_CONVO_TISO,
   PDF_QUIRREL_LEFT_EGG_TEMPLE, PDF_MET_CORNIFER, PDF_CORN_CROSSROADS_ENCOUNTERED, PDF_CORNIFER_INTRODUCED, PDF_MENDER_SIGN_BROKEN,
   PDF_FALSE_KNIGHT_WALL_REPAIRED, PDF_FALSE_KNIGHT_WALL_BROKEN, PDF_VISITED_FUNGUS, PDF_VISITED_RUINS,
-  PDF_DEFEATED_MANTIS_LORDS, PDF_MAGE_LORD_DEFEATED, PDF_OPENED_FUNGAL_WASTES, PDF_COUNT
+  PDF_DEFEATED_MANTIS_LORDS, PDF_MAGE_LORD_DEFEATED, PDF_OPENED_FUNGAL_WASTES, PDF_HAS_WALLJUMP,
+  PDF_CAN_WALL_JUMP, PDF_NOTCH_SHROOM_OGRES, PDF_QUIRREL_LEFT_STATION, PDF_QUIRREL_MANTIS_ENCOUNTERED,
+  PDF_ENCOUNTERED_GATEKEEPER, PDF_MAP_FUNGAL_WASTES, PDF_CORN_FUNGAL_WASTES_ENCOUNTERED, PDF_CORN_FUNGAL_WASTES_LEFT,
+  PDF_ENTERED_MANTIS_LORD_AREA, PDF_COUNT
 };
 typedef struct {
   /* (saved: the layout only ever grows into reserved) */
@@ -253,7 +256,7 @@ enum { TS_WAITING_TO_TRANSITION, TS_EXITING_SCENE, TS_WAITING_TO_ENTER_LEVEL, TS
 enum { GATE_TOP, GATE_RIGHT, GATE_LEFT, GATE_BOTTOM, GATE_DOOR, GATE_UNKNOWN };
 enum { SIDE_TOP, SIDE_LEFT, SIDE_RIGHT, SIDE_BOTTOM };
 enum { ATK_NORMAL, ATK_UP, ATK_DOWN };
-enum { SLASH_NORMAL, SLASH_ALT, SLASH_UP, SLASH_DOWN };
+enum { SLASH_NORMAL, SLASH_ALT, SLASH_UP, SLASH_DOWN, SLASH_WALL };
 enum { DAMAGE_FULL, DAMAGE_HAZARD_ONLY, DAMAGE_NONE };
 #define RECOIL_DURATION 0.2f
 #define RECOIL_DURATION_STAL 0.08f   /* (Stalwart Shell) */
@@ -263,7 +266,7 @@ typedef struct {   /* HeroControllerStates */
   bool looking_up, looking_down, looking_up_anim, looking_down_anim, bouncing, recoiling_left, recoiling_right;
   bool recoiling, recoil_frozen, dead, hazard_death, hazard_respawning, will_hard_land, casting, cast_recoiling;
   bool prevent_dash, dash_cooldown, in_walk_zone, touching_wall, touching_non_slider, was_on_ground, transitioning;
-  bool invulnerable, focusing;
+  bool invulnerable, focusing, wall_sliding;
 } CState;
 
 typedef struct {
@@ -281,6 +284,10 @@ typedef struct {
   float transition_vx, transition_vy;
   bool accepting_input, control_relinquished, doing_hazard_respawn, landed_event;
   bool touching_wall_l, touching_wall_r;
+  /* (the Mantis Claw's: sliding down a wall, then the jump off it, its push away held a few steps) */
+  bool wall_sliding_l, wall_sliding_r, wall_locked, wall_jumped_l, wall_jumped_r, wall_slashing;
+  int wall_lock_steps, wall_unstick_steps;
+  float wj_speed, wj_decel;
   bool hidden, hit_buffered, enter_without_input;
   float prevent_cast;   /* (PreventCastByDialogueEnd: casts kept back a moment) */
   float parry_t;        /* (NailParry: unhurt by enemies a moment) */
@@ -397,6 +404,7 @@ void soul_orbs_fling(int n, float x, float y, float smin, float smax, float amin
 void piece_spawn(int sprite, int layer, int order, int flags, float x, float y, float z, float rot, float gravity,
                  float bounce, float spin_factor, float mirror, float vx, float vy, bool resting);   /* (obj.c: debris) */
 void vm_activate_children(uint16_t name, bool on);       /* ActivateAllChildren of a script object, by name */
+void vm_set_active(uint16_t name, bool on);              /* (script objects by name: on, off) */
 /* the message as an item is taken (msg.c: MSG_*), the HUD Blanker (a white screen the scripts fade) */
 void msg_show(int item);
 bool msg_shown(void);

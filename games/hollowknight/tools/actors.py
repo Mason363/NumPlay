@@ -21,6 +21,9 @@ KNIGHT = ("resources.assets", 20600, [
     "Collect Magical 1", "Collect Magical 2", "Collect Magical 3", "Collect Magical Fall", "Collect Magical Land",
     "Collect Heart Piece", "Collect Heart Piece End", "Collect StandToIdle", "GetUpToIdle", "Death Head Cracked",
     "Dreamer Land", "Super Hard Land",
+    # (the Mantis Claw's: sliding down a wall, the jump off it, a slash from it, its puff; Mark of Pride's slashes)
+    "Wall Slide", "Walljump", "Wall Slash", "Walljump Puff", "SlashEffect M", "SlashEffectAlt M", "UpSlashEffect M",
+    "DownSlashEffect M",
 ])
 
 # enemy kinds: name, the FSM (or component) that runs them, their library, the C code for that FSM, and the clips each
@@ -260,6 +263,8 @@ def named_sprites(sprites):
 # clips drawn bigger than their sprites (the object's scale): their frames are kept that much finer
 DRAWN_SCALE = {"Arrow Up": 1.3, "Arrow Down": 1.3, "Stop Up": 1.3, "Stop Down": 1.3, "Dream Up": 1.0745, "Dream Down": 1.0745, "SlashEffect": 1.645, "SlashEffectAlt": 1.422, "UpSlashEffect": 1.4, "DownSlashEffect": 1.28,
                "SlashEffect F": 1.645, "SlashEffectAlt F": 1.422, "UpSlashEffect F": 1.4, "DownSlashEffect F": 1.28,
+               "SlashEffect M": 1.645, "SlashEffectAlt M": 1.422, "UpSlashEffect M": 1.4, "DownSlashEffect M": 1.28,
+               "Walljump Puff": 1.4208,
                "Blast": 1.4, "Ball": 1.45, "Ball End": 1.45, "Fireball Wall Impact": 2.0,
                "Lamp_Bug_idle": 1.5 * 1.4838, "Shop_Menu_Top Up": 1.124, "Shop_Menu_Top Down": 1.124,
                "Shop_Menu_Bottom Up": 1.134, "Shop_Menu_Bottom Down": 1.134, "Small Idle": 1.5, "Small Air": 1.5, "Med Idle": 1.5, "Med Air": 1.5, "Large Idle": 1.5, "Large Air": 1.5,

@@ -125,6 +125,8 @@ FALLBACKS = {"MSG_S": "MSG", "MSG_XS": "MSG"}
 MSGS = {"FIREBALL": ("INV_NAME_SPELL_FIREBALL1", "GET_ITEM_INTRO2", "BUTTON_DESC_TAP", "GET_FIREBALL_1", "GET_FIREBALL_2",
                      "alpha"),
         "DASH": ("INV_NAME_DASH", "GET_ITEM_INTRO1", "BUTTON_DESC_PRESS", "GET_DASH_1", "GET_DASH_2", "shift")}
+if os.environ.get("HK_PART") == "2":   # (the Mantis Claw, in the second part)
+    MSGS["WALLJUMP"] = ("INV_NAME_WALLJUMP", "GET_ITEM_INTRO1", "BUTTON_DESC_PRESS", "GET_WALLJUMP_1", "GET_WALLJUMP_2", "OK")
 
 # the titles the game shows (the Titles sheet's X_MAIN, X_SUB, X_SUPER): the areas', bosses' and characters'
 TITLES = ["KINGSPASS", "DIRTMOUTH", "CROSSROADS", "EGGTEMPLE", "SHAMANTEMPLE", "GREENPATH", "BIGFLY", "FALSE_KNIGHT",
