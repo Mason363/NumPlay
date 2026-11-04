@@ -110,7 +110,7 @@ $(PORT_OUT)/$(PORT_ID).g3a: $(CG_SRC) $(PORT_ASM) $(PORT_CXX_OBJ) $(wildcard $(N
 	  for f in $(CG_CXX); do n=$$((n+1)); objs="$$objs $(CG_DIR)/f$$n.o"; \
 	  $(NP_CXX) $(NP_CXXFLAGS) -c $$f -o $(CG_DIR)/f$$n.o || exit 1; done; \
 	  PATH="$(CG_PATH):$$PATH" sh3eb-elf-gcc -mb -m4a-nofpu -mhitachi -nostdlib -T$(NP_PLATFORM)/casio-cg/addin.ld \
-	  $$objs $(PORT_CXX_OBJ) -Wl,--gc-sections -Wl,-u,initialize -L$(CG_LIBC)/lib -L$(FXCG)/sdk/lib -lc -lm -lgcc -lfxcg -lc -lgcc \
+	  $$objs $(PORT_CXX_OBJ) -Wl,--gc-sections -Wl,-u,initialize -L$(CG_LIBC)/lib -L$(FXCG)/sdk/lib $(if $(PORT_CXX),-lstdc++) -lc -lm -lgcc -lfxcg -lc -lgcc \
 	  -o $(CG_DIR)/$(PORT_ID).elf
 	$(Q) PATH="$(CG_PATH):$$PATH" sh3eb-elf-objcopy -O binary -R .ilram $(CG_DIR)/$(PORT_ID).elf $(CG_DIR)/$(PORT_ID).bin
 	$(Q) python3 $(NP_PLATFORM)/casio-cg/g3a.py $(CG_DIR)/$(PORT_ID).bin $@ --name "$(PORT_NAME)" --icon src/icon.png

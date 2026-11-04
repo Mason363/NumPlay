@@ -273,3 +273,7 @@ void _exit(int c) { (void)c; abort(); }
 int _kill(int p, int s) { (void)p, (void)s; return -1; }
 int _getpid(void) { return 1; }
 int _gettimeofday(void *t, void *z) { (void)t, (void)z; return -1; }
+/* (newlib's small printf asks for this to print wide characters; there's nowhere to print them) */
+#include <stdio.h>
+#include <wchar.h>
+wint_t _fputwc_r(struct _reent *r, wchar_t c, FILE *f) { (void)r, (void)f; return (wint_t)c; }
