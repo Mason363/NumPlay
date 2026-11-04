@@ -44,7 +44,11 @@ _ce_on_stack:
 	push	de
 	push	ix
 	ld	(.L.sp), sp
-	ld	sp, bc
+	ld	(.L.fn), hl
+	push	bc
+	pop	hl
+	ld	sp, hl
+	ld	hl, (.L.fn)
 	call	.L.call
 	ld	sp, (.L.sp)
 	pop	ix
@@ -54,4 +58,6 @@ _ce_on_stack:
 
 	.section	.bss.ce_on_stack, "aw", @nobits
 .L.sp:
+	.skip	3
+.L.fn:
 	.skip	3

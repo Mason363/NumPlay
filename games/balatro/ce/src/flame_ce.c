@@ -70,7 +70,7 @@ void ce_flame_rows(int k, int x, int y, int w, int h, int top, uint8_t *strip, i
   const flame_t *f = &fl[k];
   if (f->real < 0.1f || w != FL_W || h != FL_H) return;
   int lv = level_of(f->real > 10 ? 10 : f->real);
-  const uint8_t *g = ce_fire + (lv * FL_FRAMES + frame_of(k)) * (FL_GR * FL_GC);
+  const uint8_t *g = ce_fire + (lv * FL_FRAMES + frame_of(k)) * (FL_GR * FL_GC / 2);
   const uint8_t *cols = ce_lut + LUT_FCOL + ((k * FL_LEVELS + lv) * FL_ROWS) * 17;
   int r0 = ya - y, r1 = yb - y;
   if (r0 < 0) r0 = 0;
@@ -81,16 +81,18 @@ void ce_flame_rows(int k, int x, int y, int w, int h, int top, uint8_t *strip, i
   for (int r = r0; r < r1; r++) {
     int j = r >> 1;
     if (j + 1 >= FL_GR) break;
-    const uint8_t *ra = g + j * FL_GC, *rb = ra + FL_GC, *lut = cols + r * 17;
+    const uint8_t *ra = g + j * (FL_GC / 2), *rb = ra + FL_GC / 2, *lut = cols + r * 17;
     int wy = r & 1;
     /* the tips thin out in the last 3 pixels under the top limit */
     int fade = y + r - top < 3 ? (3 - (y + r - top)) * 3 : 0;
     uint8_t *d = strip + (y + r - y0) * SCR_W + x;
+#define FV(row, i) (((row)[(i) >> 1] >> (((i) & 1) * 4)) & 15)
     for (int cx = c0; cx < c1; cx++) {
-      int i = cx >> 1, a = ra[i], b = rb[i];
-      if (cx & 1) a = (a + ra[i + 1]) >> 1, b = (b + rb[i + 1]) >> 1;
+      int i = cx >> 1, a = FV(ra, i), b = FV(rb, i);
+      if (cx & 1) a = (a + FV(ra, i + 1)) >> 1, b = (b + FV(rb, i + 1)) >> 1;
       int sm = (wy ? (a + b) >> 1 : a) + fade;
-      if (sm < 16) d[cx] = lut[sm];
+      if (sm < 15) d[cx] = lut[sm];
     }
+#undef FV
   }
 }

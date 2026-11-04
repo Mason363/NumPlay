@@ -8,7 +8,7 @@
 #include "ce.h"
 
 uint8_t ce_bg_ver;
-static const uint8_t *field[3]; /* the run's (right of the sidebar), the title's top and bottom halves */
+static const uint8_t *field[2]; /* the run's (right of the sidebar), the title's: levels, two pixels a byte */
 static int mode;
 static float colours[3][3], target[3][3], contrast = 1, contrast_target = 1, spin, spin_target;
 static int lut_dirty = 1;
@@ -20,8 +20,7 @@ int ce_bg_init(void) {
   size_t n;
   field[0] = ce_appvar("BALBG0", &n);
   field[1] = ce_appvar("BALBG1", &n);
-  field[2] = ce_appvar("BALBG2", &n);
-  return field[0] && field[1] && field[2];
+  return field[0] && field[1];
 }
 
 static float fabsf_(float x) { return x < 0 ? -x : x; }
@@ -139,14 +138,25 @@ void bg_update(float dt, int rows) {
 
 void bg_row(C *dst, int y, int x0, int x1) { (void)dst, (void)y, (void)x0, (void)x1; }
 
-void ce_bg_row(uint8_t *dst, int y, int x0) {
-  if (mode == 0) {
-    const uint8_t *row = field[0] + y * BG_RUN_W;
-    int x = x0;
-    for (; x < BG_RUN_X; x++) dst[x] = row[BG_RUN_X - x < BG_RUN_W ? BG_RUN_X - x : 0]; /* (mirrored: a sidebar covers it) */
-    memcpy(dst + x, row + (x - BG_RUN_X), (size_t)(SCR_W - x));
-  } else {
-    const uint8_t *row = y < SCR_H / 2 ? field[1] + y * SCR_W : field[2] + (y - SCR_H / 2) * SCR_W;
-    memcpy(dst + x0, row + x0, (size_t)(SCR_W - x0));
+/* two pixels a byte into their palette entries, from an even x0 */
+static void unpack(uint8_t *dst, const uint8_t *src, int n) {
+  for (; n > 0; n -= 2, src++) {
+    *dst++ = (uint8_t)(CE_SWIRL0 + (*src & 15));
+    *dst++ = (uint8_t)(CE_SWIRL0 + (*src >> 4));
   }
+}
+
+void ce_bg_row(uint8_t *dst, int y, int x0) {
+  x0 &= ~1; /* (the pixel before is covered) */
+  if (mode == 0) {
+    const uint8_t *row = field[0] + y * (BG_RUN_W / 2);
+    if (x0 < BG_RUN_X) { /* (mirrored: the sidebar covers it) */
+      static uint8_t tmp[BG_RUN_X];
+      unpack(tmp, row, BG_RUN_X);
+      for (int x = x0; x < BG_RUN_X; x++) dst[x] = tmp[BG_RUN_X - 1 - x];
+      x0 = BG_RUN_X;
+    }
+    unpack(dst + x0, row + (x0 - BG_RUN_X) / 2, SCR_W - x0);
+  } else
+    unpack(dst + x0, field[1] + y * (SCR_W / 2) + x0 / 2, SCR_W - x0);
 }

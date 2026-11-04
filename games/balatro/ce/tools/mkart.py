@@ -141,7 +141,7 @@ BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
 def field(mode, x0, w, h, cell):
     """The paint as src/bg.c draws it: worked out on a grid every `cell` pixels (each point the mean of 4 samples a
     pixel around it, as bg.c's passes average them), interpolated between the points for every pixel, then as levels
-    0..15 (ordered dither), as palette indices."""
+    0..15 (ordered dither), two pixels a byte (the left one in the low half)."""
     gw, gh = (w + cell - 1) // cell + 2, (h + cell - 1) // cell + 2
     t = 20.0 if mode else 36.0
     jit = ((-1, -1), (1, 1), (1, -1), (-1, 1))
@@ -154,8 +154,11 @@ def field(mode, x0, w, h, cell):
             gx, fx = x // cell, (x % cell) / cell
             v = (grid[gy][gx] * (1 - fx) + grid[gy][gx + 1] * fx) * (1 - fy) + \
                 (grid[gy + 1][gx] * (1 - fx) + grid[gy + 1][gx + 1] * fx) * fy
-            lv = int((v * (LEVELS - 1) * 16 / 255 + BAYER[y & 3][x & 3]) // 16)
-            out.append(SWIRL0 + max(0, min(LEVELS - 1, lv)))
+            lv = max(0, min(LEVELS - 1, int((v * (LEVELS - 1) * 16 / 255 + BAYER[y & 3][x & 3]) // 16)))
+            if x & 1:
+                out[-1] |= lv << 4
+            else:
+                out.append(lv)
     return bytes(out)
 
 
@@ -366,16 +369,19 @@ COL2 = ((0.36, 0.824, 0.36), (1.0, 0.618, 0.1))
 
 
 def flame_tables():
-    """grids: [level][frame] FL_GR x FL_GC bytes, the smoke in 1/128 units capped at 17 (the flame shows under 16);
-    colours: [k][level][row][17] palette indices"""
+    """grids: [level][frame] FL_GR x FL_GC values two a byte (the left one in the low half), the smoke in 1/128 units
+    capped at 15 (the flame shows under 15); colours: [k][level][row][17] palette indices"""
     grids = bytearray()
     for li, I in enumerate(FL_I):
         for f in range(FL_FRAMES):
             q = flame_params(1, I, f * 0.11)
             for j in range(FL_GR):
                 for i in range(FL_GC):
-                    sm = smoke_at(q, i * 2.0 / FL_W - .5, j * 2.0 / FL_H - .5)
-                    grids.append(min(17, int(sm * 2048) >> 7))
+                    v = min(15, int(smoke_at(q, i * 2.0 / FL_W - .5, j * 2.0 / FL_H - .5) * 2048) >> 7)
+                    if i & 1:
+                        grids[-1] |= v << 4
+                    else:
+                        grids.append(v)
     cols = bytearray()
     for k in range(2):
         for I in FL_I:
@@ -495,14 +501,13 @@ def main():
             lut.append(0)  # (the fonts' tables have 16-bit fields)
         parts[name] = len(lut)
         lut += blob
-    # the background: the run's paint right of the sidebar, the title's at half size
+    # the background: the run's paint right of the sidebar, the title's
     bg_run = field(0, 102, 218, 240, 4)
     bg_title = field(1, 0, 320, 240, 2)
     blobs = dict(vars_)
     blobs["BALLUT"] = lut
     blobs["BALBG0"] = bg_run
-    blobs["BALBG1"] = bg_title[:len(bg_title) // 2]
-    blobs["BALBG2"] = bg_title[len(bg_title) // 2:]
+    blobs["BALBG1"] = bg_title
     blobs["BALFIRE"] = fgrids
     blobs["BALED"] = edp
     if max(len(b) for b in blobs.values()) > MAXVAR:
