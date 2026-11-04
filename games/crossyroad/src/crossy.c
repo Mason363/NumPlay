@@ -2021,7 +2021,7 @@ static void render(void) {
 // firmware slot tells where. Top score, coins, the characters won and the one played go in a
 // tiny record named "crossyroad.sav", written only after the whole file system checks out
 // (one from before the characters, top score and coins, is read and replaced).
-#if (PLATFORM_DEVICE && !defined(HOST)) || defined(SAVE_TEST)
+#if (PLATFORM_DEVICE && !defined(HOST)) || defined(SAVE_TEST) || defined(NP_PORT)
 #define FS_MAGIC 0xEE0BDDBAu
 #define SAVE_LEN 20
 #define SAVE_LEN1 12
@@ -2110,6 +2110,9 @@ static NOINLINE void write_save(void) {
   uint8_t *d = f + 2 + sizeof(save_name);
   for (int i = 0; i < 5; i++)
     for (int j = 0; j < 4; j++) d[4 * i + j] = (uint8_t)(v[i] >> (8 * j));
+#ifdef NP_PORT
+  np_storage_changed();
+#endif
 }
 #elif defined(HOST)
 // (on a computer: coins and characters to start with, for trying the prize machine)

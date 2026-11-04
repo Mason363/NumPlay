@@ -68,3 +68,10 @@ $(BUILD)/sim-module.o: src/crossy.c | $(BUILD)
 	cc -std=c11 -O2 -fno-math-errno -fPIC -DPLATFORM_SIM=1 -I$(EADK_INC) -Dmain=np_crossyroad_main \
 	  -c src/crossy.c -o $(BUILD)/sim.o
 	ld -r $(BUILD)/sim.o -exported_symbol _np_crossyroad_main -o $@
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce. (Not PLATFORM_DEVICE: the
+# calculator's register for the game's state and its own memset stay out.)
+PORT_ID = crossyroad
+PORT_NAME = Crossy Road
+PORT_SRC = src/crossy.c
+include ../../platform/port.mk

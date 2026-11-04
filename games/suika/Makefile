@@ -86,5 +86,5 @@ test: build/play
 # the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
 PORT_ID = suika
 PORT_NAME = Suika Game
-PORT_SRC = src/main.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+PORT_SRC = src/main.c ../../launcher/src/gfx.c ../../launcher/src/icons.c ../../launcher/src/xfont.c
 include ../../platform/port.mk

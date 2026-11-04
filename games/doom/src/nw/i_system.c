@@ -86,7 +86,7 @@ uint64_t time_us_64(void) { return (uint64_t)plat_millis() * 1000; }
 
 /* ------------------------------------------------------------------ the end */
 boolean nw_quit;
-#if defined(HOST) && defined(__APPLE__)
+#if (defined(HOST) && defined(__APPLE__)) || defined(NP_PORT)
 jmp_buf nw_exit;
 #else
 void *nw_exit[5];
