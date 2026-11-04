@@ -17,15 +17,17 @@
 #include "../../common/np_text.h"
 
 #ifdef __ELF__ /* app name and API level, for the calculator's installer */
+#ifndef NP_PORT /* (another target: platform/port.mk names the app) */
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Snake";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
+#endif
 #endif
 
 typedef uint16_t color;
 #define RGB(c) (color)((((c) >> 8) & 0xF800) | (((c) >> 5) & 0x07E0) | (((c) >> 3) & 0x1F))
 #define WHITE 0xFFFF
 /* the keys used, in 32 bits: 4, 6, 2 and EXE come down from the high word */
-#define KEY(k) (1u << ((k) - ((k) >= 32) * 24))
+#define KEY(k) ((uint32_t)1 << ((k) - ((k) >= 32) * 24))
 static uint32_t keys(void) {
   uint64_t s = eadk_keyboard_scan();
   return ((uint32_t)s & 0x800001FFu) | ((uint32_t)(s >> 32) & 0x00100850u) << 8;
@@ -681,7 +683,7 @@ static void icon(int o, int v, float x, float y, color bg) {
 }
 
 static float ease(uint32_t born, int ms) { /* 0 to 1 with a little overshoot */
-  int a = (int)(now - born);
+  int32_t a = (int32_t)(now - born);
   if (a >= ms) return 1;
   float t = (float)a / ms - 1;
   return 1 + t * t * (2.70158f * t + 1.70158f);
@@ -811,7 +813,7 @@ static void snake(int n) {
 
 /* Light: dark all over but around the heads, wider for a while after fruit */
 static float light_r(void) {
-  int a = (int)(now - lit_t);
+  int32_t a = (int32_t)(now - lit_t);
   return cs * (2.4f + (a < 3000 ? 2.6f * (3000 - a) / 3000 : 0));
 }
 static void darkness(void) {

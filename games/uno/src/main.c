@@ -16,7 +16,7 @@ static uint32_t now, bot_at, catch_at, end_at, saved_at;
 static uint8_t catcher = UNO_NONE, open_seen = UNO_NONE;
 static bool dirty;
 /* frames drawn, the slowest (ms) and those over 33 ms: read by tools/emu.py */
-#ifndef HOST
+#if !defined(HOST) && !defined(NP_PORT)
 __attribute__((used, externally_visible))
 #endif
 uint32_t perf_frames, perf_max, perf_slow;

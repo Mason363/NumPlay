@@ -281,7 +281,7 @@ Every sport shows its rules and keys before it starts. Your progress is also cop
 | **Arrows** (or 4, 6, 8, 2) | Walk, move your SOUL, choose |
 | **OK**, **EXE** or 5 | Talk, read, confirm (Z in the game) |
 | **Back** or **⌫** | Cancel, show the whole text at once (X in the game) |
-| **toolbox**, **shift** or **var** | The menu: ITEM, STAT, CELL (C in the game) |
+| **toolbox**, **shift** or **var** | The menu: ITEM, STAT, CELL (C in the game), SETUP (Quit game is there) |
 | **Home** | Keep the moment and quit |
 
 Name the fallen human, then walk and talk your way through the Ruins, Snowdin, Waterfall, Hotland, the MTT Resort, the CORE and New Home. In a battle, FIGHT attacks (press **OK** when the bar crosses the middle), ACT checks a monster or does something to it, ITEM eats, and MERCY spares a monster that no longer wants to fight, or flees. Then move your SOUL to dodge; when it turns blue, it falls, and **Up** jumps; when it turns green, it stays put, and the arrows turn its shield to block. On ice you slide until something stops you. In Snowdin Town, walk into the shop to buy, and into the inn to rest. In Waterfall, walk into a bridge seed to push it into the water, where it blooms into a flower you can walk on; the bell calls the seeds back. A green bullet heals you. Walk up to a star and press **OK** to SAVE. Home keeps the moment you were at, and the next start is back there. Your save is also copied into `undertale_saves.py`, so installing the app again doesn't erase it. The Tem Shop in Temmie Village also buys what you carry. In Hotland, steam vents throw you over the lava, orange lasers hit you if you stand still and blue ones if you move, and in a shooting puzzle the arrows push the dark blocks and Z shoots. On the second floor, press the switches as the top conveyor belt carries you past them, and in Mettaton's news report, touch each bomb and defuse it while it's in the DEFUSE ZONE. When Muffet turns your SOUL purple, it keeps to three strings: **Up** and **Down** hop between them. In the tile puzzle, red tiles are walls, yellow ones shock you back, orange makes you smell of oranges (and blue water's piranhas bite then), and purple soap slides you on and smells of lemons. When your SOUL turns yellow, **OK** shoots. At the MTT Resort, the desk rents you a room and the hotel's doors want room service. On the CORE's laser bridge, walk while the power is off and freeze when it comes back on. Mettaton EX's show is won on its ratings: Boast, Pose, a Heel Turn and his brand's food raise them. In New Home, find both keys to unchain the stairs. Asgore breaks MERCY, so you'll have to fight him. Against Omega Flowey, dodge, and reach the ACT button that comes down among a SOUL's attack; once all six SOULs are on your side, reach FIGHT. The game ends at the neutral ending.
@@ -871,6 +871,57 @@ Enemies walk the roads, and each one that gets through costs lives. Archers and 
 | **Home** | Save and quit |
 
 Shoot every spy in the level. Bullets bounce off walls, so aim at a wall to reach a spy you can't see, or knock a crate onto him. Glass breaks, red boxes explode, and a coloured switch makes its blocks vanish or appear. Use as few bullets as the level needs for three stars; the gold bullet is the last one. Grenades go off after 2.5 seconds. Don't hit the hostages, and in Friendly Fire don't let your own bullet come back at you.
+
+<br clear="right">
+
+## Moto X3M
+
+<img src="../games/motox3m/docs/shot.png" width="320" align="right" alt="Moto X3M">
+
+| Key | What it does |
+| --- | --- |
+| **Up** | Gas |
+| **Down** | Brake |
+| **Left** and **Right** | Lean (flip in the air) |
+| **OK** | Go on after a crash |
+| **Back** | Pause (Resume, Restart, Levels, Quit game) |
+| **Home** | Save and quit |
+
+Ride to the finish as fast as you can. Lean to land on your wheels, and keep leaning in the air to flip: each flip takes half a second off your time. If your head hits the ground, or you touch spikes, a saw or water, you crash and go on from the last checkpoint. Beat a level's times for up to three stars. Stars open new bikes in the bike shop.
+
+<br clear="right">
+
+## Among Us
+
+<img src="../games/amongus/docs/shot.png" width="320" align="right" alt="Among Us">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** | Walk |
+| **OK** | Use, report a body, vent |
+| **EXE** | Kill (as the Impostor) |
+| **Toolbox** | The map (the sabotage map as the Impostor) |
+| **Back** | Pause (Resume, How to play, Quit game) |
+| **Home** | Save and quit |
+
+On the Skeld with up to 9 bots. As a crewmate, do your tasks, report bodies and vote the Impostor out. As the Impostor, kill when nobody's looking, use the vents, sabotage and fake your tasks. Meetings come from a report or the emergency button in the Cafeteria: hear the bots out, then vote or skip.
+
+<br clear="right">
+
+## Imposter
+
+<img src="../games/imposter/docs/shot.png" width="320" align="right" alt="Imposter">
+
+| Key | What it does |
+| --- | --- |
+| **Arrows** | Choose |
+| **OK** | Pick, see your role, hide it |
+| **EXE** | The next player, while adding names |
+| **Letter keys** | Type a name |
+| **Back** | Back, the settings |
+| **Home** | Save and quit |
+
+A party game for 3 to 12 players and one calculator. Add everyone's names and pick the categories. Pass the calculator around: each player sees the secret word alone, then hides it, except the imposter, who only sees the category (or nothing). In turn, everyone says one word about the secret. Then vote out loud. Caught, the imposter loses. Not caught, the imposter wins.
 
 <br clear="right">
 

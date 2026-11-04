@@ -87,3 +87,10 @@ hud:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = templerun
+PORT_NAME = Temple Run
+PORT_SRC = src/app.c src/assets.c src/data.c src/draw.c src/floor.c src/game.c src/hud.c src/main.c src/path.c src/plat_eadk.c src/r3d.c src/save.c src/scene.c
+PORT_FLAGS = -DEPSILON_XL=1
+include ../../platform/port.mk

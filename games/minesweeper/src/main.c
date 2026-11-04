@@ -16,8 +16,10 @@
 #include "../../common/np_text.h"
 
 #ifdef __ELF__ /* app name and API level, for the calculator's installer */
+#ifndef NP_PORT /* (another target: platform/port.mk names the app) */
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Minesweeper";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
+#endif
 #endif
 
 typedef uint16_t color;
@@ -641,7 +643,7 @@ static void game_counters(int f) {
 }
 
 /* ------------------------------------------------------------------ playing */
-static int pressed_until, win_at; /* win_at: when the game that ended takes OK again (a win shows its box) */
+static int32_t pressed_until, win_at; /* win_at: when the game that ended takes OK again (a win shows its box) */
 static uint32_t last; /* the last frame's time */
 static void new_game(void) {
   gs = G_NEW, elapsed = 0, flags = 0, win_at = 0, cur_on = true;
@@ -683,7 +685,7 @@ static int last_time, new_best;
 static void ended(int c) {
   cur_on = false, dirty(cur);
   ripple(c);
-  win_at = (int)now + 700;
+  win_at = (int32_t)now + 700;
   save();
 }
 static void won(void) {
@@ -1044,11 +1046,11 @@ int main(void) {
       }
       if (ok) {
         if (gs < G_WON) grip = state(cur) == OPEN ? cur : -1, play(cur);
-        else if (!win_at) pressed_until = (int)now + 120, start(V.diff); /* like clicking the face */
+        else if (!win_at) pressed_until = (int32_t)now + 120, start(V.diff); /* like clicking the face */
       }
       if ((hit & K_FLAG) && gs < G_WON) mark(cur);
       if (back) open_dialog(D_PAUSE, 0);
-      else if (win_at && (int)(now - win_at) >= 0) {
+      else if (win_at && (int32_t)(now - win_at) >= 0) {
         win_at = 0;
         if (gs == G_WON) open_dialog(D_WIN, 0);
       }
@@ -1103,7 +1105,7 @@ int main(void) {
             draw_cell(i), drawn++;
           }
         }
-        game_counters((int)(now - pressed_until) < 0 ? F_SMILE | 4 : face_now);
+        game_counters((int32_t)(now - pressed_until) < 0 ? F_SMILE | 4 : face_now);
       } else {
         title_counters(face_now);
       }

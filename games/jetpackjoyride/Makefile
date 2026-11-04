@@ -61,3 +61,10 @@ art:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = jetpackjoyride
+PORT_NAME = Jetpack Joyride
+PORT_SRC = src/main.c src/sim.c src/draw.c src/save.c src/plat_eadk.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+PORT_FLAGS = -DEPSILON_XL=1
+include ../../platform/port.mk

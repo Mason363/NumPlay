@@ -1,0 +1,313 @@
+name: Ports
+
+# NumPlay's games on its other targets (platform/README.md): each target builds the games whose "ports" (games.json)
+# list it, with its toolchain from the cache or made by platform/<target>/toolchain.sh (again only when the script
+# changes), and packs them. The computer builds are played for a few seconds each. NumPlay Studio gets each calculator
+# game's file in the kit (ports/ on the branch "kit"), and on a v* tag the calculators' zips go on its release.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ports-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  calculator:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: ti84ce
+            zip: NumPlay-TI84CE.zip
+            toolchain: CEDEV=$HOME/toolchains/ti84ce
+          - target: nspire
+            zip: NumPlay-Nspire.zip
+            toolchain: NDLESS_SDK=$HOME/toolchains/nspire/ndless-sdk
+            apt: >-
+              build-essential git curl libgmp-dev libmpfr-dev libmpc-dev zlib1g-dev libboost-program-options-dev
+              texinfo flex bison
+            # (genzehn runs with Boost's library)
+            runtime: libboost-program-options-dev
+          - target: casio-cg
+            zip: NumPlay-CasioCG.zip
+            toolchain: FXCG=$HOME/toolchains/casio-cg
+            apt: build-essential git curl libgmp-dev libmpfr-dev libmpc-dev zlib1g-dev texinfo
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ~/toolchains/${{ matrix.target }}
+          key: ${{ matrix.target }}-ubuntu-24.04-${{ hashFiles(format('platform/{0}/toolchain.sh', matrix.target)) }}
+
+      - name: Toolchain
+        if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          APT: ${{ matrix.apt }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          # shellcheck disable=SC2086
+          if [ -n "$APT" ]; then sudo apt-get update -q && sudo apt-get install -yq $APT; fi
+          bash "platform/$TARGET/toolchain.sh" "$HOME/toolchains/$TARGET"
+
+      # (saved as soon as it's made, so a game that fails to build doesn't cost the next run the toolchain)
+      - uses: actions/cache/save@v4
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          path: ~/toolchains/${{ matrix.target }}
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
+      - name: Build
+        env:
+          RUNTIME: ${{ matrix.runtime }}
+          TARGET: ${{ matrix.target }}
+          ZIP: ${{ matrix.zip }}
+        run: |
+          # shellcheck disable=SC2086
+          if [ -n "$RUNTIME" ]; then sudo apt-get update -q && sudo apt-get install -yq $RUNTIME; fi
+          pip install -q pillow numpy zopfli
+          export ${{ matrix.toolchain }}
+          python3 tools/ports.py build "$TARGET" -j 4
+          python3 tools/ports.py pack "$TARGET" "build/ports/$ZIP"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.zip }}
+          path: build/ports/${{ matrix.zip }}
+          if-no-files-found: error
+
+  web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      EMSDK_VERSION: 6.0.13
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ~/emsdk
+          key: emsdk-${{ env.EMSDK_VERSION }}-ubuntu-24.04
+
+      - name: Emscripten
+        if: steps.cache.outputs.cache-hit != 'true'
+        # emsdk at the same version, then SDL 3 and the libraries a game links, made once for the cache
+        run: |
+          git clone -q --depth 1 --branch "$EMSDK_VERSION" https://github.com/emscripten-core/emsdk.git ~/emsdk
+          ~/emsdk/emsdk install "$EMSDK_VERSION"
+          ~/emsdk/emsdk activate "$EMSDK_VERSION"
+          # shellcheck source=/dev/null
+          source ~/emsdk/emsdk_env.sh
+          cd "$RUNNER_TEMP"
+          printf '#include <SDL3/SDL.h>\nint f(void);\nint main(void) { return SDL_Init(0) ? f() : 1; }\n' > t.c
+          printf 'struct A { virtual int g() { return 0; } };\nextern "C" int f(void) { A a; return a.g(); }\n' > t.cpp
+          em++ -g0 -O2 -std=gnu++11 -fno-exceptions -fno-rtti -fno-threadsafe-statics -c t.cpp -o t.o
+          emcc -g0 -O2 --use-port=sdl3 -sASYNCIFY -sALLOW_MEMORY_GROWTH -sENVIRONMENT=web t.c t.o -o t.html
+          rm -rf ~/emsdk/downloads
+
+      - uses: actions/cache/save@v4
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          path: ~/emsdk
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
+      - name: Build
+        run: |
+          # shellcheck source=/dev/null
+          source ~/emsdk/emsdk_env.sh
+          pip install -q pillow numpy zopfli
+          python3 tools/ports.py build web -j 4
+          python3 tools/ports.py pack web build/ports/NumPlay-Web.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NumPlay-Web.zip
+          path: build/ports/NumPlay-Web.zip
+          if-no-files-found: error
+
+  sdl:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      SDL_VERSION: 3.4.16
+      SDL_SHA256: 7322236cd12090c3eb40b9728be4d49c76f66ad17d04369584d4ecad5cf77c68
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ~/sdl3
+          key: sdl3-${{ env.SDL_VERSION }}-ubuntu-24.04
+
+      - name: SDL 3
+        if: steps.cache.outputs.cache-hit != 'true'
+        # (Ubuntu 24.04 has no SDL 3: its release, built with the offscreen video and the software renderer the tests
+        # use, without X11 or Wayland)
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSL -o sdl.tar.gz "https://github.com/libsdl-org/SDL/releases/download/release-$SDL_VERSION/SDL3-$SDL_VERSION.tar.gz"
+          echo "$SDL_SHA256  sdl.tar.gz" | sha256sum -c -
+          tar -xzf sdl.tar.gz
+          cmake -S "SDL3-$SDL_VERSION" -B sdl-build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$HOME/sdl3" \
+            -DCMAKE_INSTALL_LIBDIR=lib -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF -DSDL_UNIX_CONSOLE_BUILD=ON -DSDL_X11=OFF \
+            -DSDL_WAYLAND=OFF -DSDL_OFFSCREEN=ON -DSDL_RENDER_SW=ON
+          cmake --build sdl-build --parallel 4
+          cmake --install sdl-build
+
+      - uses: actions/cache/save@v4
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          path: ~/sdl3
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
+      - name: Build
+        run: |
+          echo "PKG_CONFIG_PATH=$HOME/sdl3/lib/pkgconfig" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$HOME/sdl3/lib" >> "$GITHUB_ENV"
+          export PKG_CONFIG_PATH="$HOME/sdl3/lib/pkgconfig"
+          pkg-config --modversion sdl3
+          pip install -q pillow numpy zopfli
+          python3 tools/ports.py build sdl -j 4
+
+      - name: Run
+        # each game headless for 7 seconds: it must draw, and save and quit when Home is held
+        run: python3 tools/ports.py run -j 4
+
+      - name: Run in a window
+        # one game in a window again, on SDL's offscreen video with the software renderer
+        run: |
+          g=$(python3 tools/ports.py list sdl | sed -n 1p)
+          cd "games/$g"
+          SDL_VIDEO_DRIVER=offscreen SDL_RENDER_DRIVER=software NP_SAVES="$RUNNER_TEMP" NP_QUIT_MS=4000 \
+            NP_SHOTS="3000:$RUNNER_TEMP/window.ppm" timeout 30 "build/sdl/$g"
+          test -s "$RUNNER_TEMP/window.ppm"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shots
+          path: build/ports/shots.png
+          if-no-files-found: ignore
+
+  release:
+    needs: calculator
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: NumPlay-*
+          merge-multiple: true
+          path: zips
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        # Build makes the release once its tests pass: this waits for it, 30 minutes at most
+        run: |
+          tag="$GITHUB_REF_NAME"
+          for i in $(seq 60); do
+            [ "$(gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null)" = false ] && break
+            if [ "$i" = 60 ]; then echo "no release $tag after 30 minutes"; exit 1; fi
+            sleep 30
+          done
+          n() { unzip -Z1 "zips/$1" | grep -vc '^README.txt$'; }
+          for _ in 1 2 3; do
+            gh release upload "$tag" --clobber \
+              "zips/NumPlay-Nspire.zip#NumPlay-Nspire.zip · $(n NumPlay-Nspire.zip) games for the TI-Nspire CX and CX II, with Ndless" \
+              "zips/NumPlay-CasioCG.zip#NumPlay-CasioCG.zip · $(n NumPlay-CasioCG.zip) games for the Casio fx-CG50 and Graph 90+E" \
+              && exit 0
+            sleep 30
+          done
+          exit 1
+
+  kit:
+    needs: calculator
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: NumPlay-*
+          merge-multiple: true
+          path: build/zips
+
+      - name: The ports in the kit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        # NumPlay Studio's files: ports/<target>/<file> and ports/ports.json on the branch "kit". Build replaces the kit
+        # (one commit) for each newer commit of main, so this waits for the kit of this commit (an hour at most) and
+        # adds ports/ on top. Its message ends with the kit's commit, the one Build reads.
+        run: |
+          mkdir -p build/kit
+          unzip -q build/zips/NumPlay-TI84CE.zip -x README.txt -d build/kit/ti84ce
+          unzip -q build/zips/NumPlay-Nspire.zip -x README.txt -d build/kit/nspire
+          unzip -q build/zips/NumPlay-CasioCG.zip -x README.txt -d build/kit/casio-cg
+          python3 tools/ports.py kit build/kit
+          for _ in $(seq 60); do
+            kit=$(gh api "repos/$GH_REPO/commits/kit" --jq .commit.message 2>/dev/null | grep -o '[0-9a-f]\{40\}' | tail -1 || true)
+            how=none
+            if [ -n "$kit" ]; then how=$(gh api "repos/$GH_REPO/compare/$kit...$GITHUB_SHA" --jq .status 2>/dev/null || echo unknown); fi
+            if [ "$how" = identical ]; then break; fi
+            if [ "$how" = behind ]; then echo "(the kit is from $kit, newer: its own run adds its ports)"; exit 0; fi
+            left=$(gh run list --workflow build.yml --commit "$GITHUB_SHA" --json status --jq 'map(select(.status != "completed")) | length' || echo 1)
+            if [ "$left" = 0 ]; then echo "(Build made no kit of this commit: the kit is from $kit)"; break; fi
+            sleep 60
+          done
+          url="https://x-access-token:$GH_TOKEN@github.com/$GH_REPO.git"
+          if ! git ls-remote --exit-code --heads "$url" kit > /dev/null; then echo "(no kit yet)"; exit 0; fi
+          version=$(tr -d '[:space:]' < VERSION)
+          for _ in 1 2 3 4 5; do
+            rm -rf build/site-kit
+            git clone -q --depth 1 --branch kit "$url" build/site-kit
+            base=$(git -C build/site-kit log -1 --format=%B | grep -o '[0-9a-f]\{40\}' | tail -1 || true)
+            rm -rf build/site-kit/ports
+            cp -R build/kit build/site-kit/ports
+            git -C build/site-kit add -A ports
+            if git -C build/site-kit diff --cached --quiet; then echo "(the kit has these ports)"; exit 0; fi
+            git -C build/site-kit -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Ports of NumPlay $version, from $GITHUB_SHA, on the kit from $base"
+            if git -C build/site-kit push -q origin HEAD:kit; then
+              gh workflow run pages.yml --ref main || echo "(the site was not deployed again)"
+              exit 0
+            fi
+            sleep 20
+          done
+          exit 1

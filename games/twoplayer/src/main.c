@@ -11,6 +11,7 @@
  * along. Positions are in 256ths of a pixel and time in milliseconds, but for the round things
  * of Air Hockey and the party games, in pixels and seconds. */
 #include <eadk.h>
+#include <limits.h>
 #include "../../../launcher/src/gfx.h"
 #include "../../common/np_text.h"
 
@@ -22,8 +23,10 @@
 #include "../../common/epsilon_files.h"
 #define np_file_read ef_read
 #define np_file_write ef_write
+#ifndef NP_PORT /* (another target: platform/port.mk names the app) */
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "2 Players";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
+#endif
 void np_push(int x, int y, int w, int h, const color_t *px) {
   eadk_display_push_rect((eadk_rect_t){(uint16_t)x, (uint16_t)y, (uint16_t)w, (uint16_t)h}, px);
 }
@@ -462,7 +465,7 @@ static void tanks_cpu(int *v, int *turn) {
       if (me != you && open_way(me, d) && dist[me + STEP[d]] < dist[me]) next = me + STEP[d];
     int gx = ((TX0 + next % TCOLS * TCS + TCS / 2) << 8) - tx_[1], gy = ((TY0 + next / TCOLS * TCS + TCS / 2) << 8) - ty_[1];
     if (next == you) gx = tx_[0] - tx_[1], gy = ty_[0] - ty_[1];
-    for (int a = 0, best = -(1 << 30); a < 64; a++) { /* the way of the 64 nearest to it */
+    for (int a = 0, best = INT_MIN / 2; a < 64; a++) { /* the way of the 64 nearest to it */
       int d = (gx >> 8) * cos64(a) + (gy >> 8) * sin64(a);
       if (d > best) best = d, want = a;
     }
@@ -534,7 +537,8 @@ static void tanks_paint(void) {
   for (int i = 0; i < SHELLS; i++)
     if (sh[i].own >= 0) disc(sh[i].x >> 8, sh[i].y >> 8, 2, HEX(0x1E1F24));
   for (int p = 0; p < 2; p++) {
-    int x = tx_[p] >> 8, y = ty_[p] >> 8, t = (int)ago(dead_t[p]);
+    int x = tx_[p] >> 8, y = ty_[p] >> 8;
+    int32_t t = (int32_t)ago(dead_t[p]);
     if (!dead[p]) {
       tank(x, y, ta[p] >> 8, p);
       continue;
@@ -584,12 +588,12 @@ static int room(int x, int y, int cap) {
 static int cycles_cpu(void) {
   static const int16_t CAP[4] = {0, 12, 70, 220};
   if (!bot_due()) return hd[1];
-  int best = hd[1], bv = -(1 << 30);
+  int best = hd[1], bv = INT_MIN / 2;
   for (int t = 0; t < 3; t++) {
     int d = (hd[1] + t + (t == 2)) & 3, x = hx[1] + DX[d], y = hy[1] + DY[d], r = room(x, y, CAP[cpu]), a = 0;
     while (a < 7 && free_at(x + a * DX[d], y + a * DY[d])) a++;
     int v = r * 8 + a * 48 + (t ? 0 : 6) + rn(cpu == 1 ? 120 : 6);
-    if (!r) v = -(1 << 29);
+    if (!r) v = INT_MIN / 4;
     if (v > bv) bv = v, best = d;
   }
   return best;
@@ -628,7 +632,8 @@ static void cycles_paint(void) {
       gfx_fill(c * 4 + 1 - 2 * l, CY0 + r * 4 + 1 - 2 * u, 2 + 2 * l, 2 + 2 * u, light[v - 1]);
     }
   for (int p = 0; p < 2; p++) {
-    int x = hx[p] * 4 + 2, y = CY0 + hy[p] * 4 + 2, t = (int)ago(phase_t);
+    int x = hx[p] * 4 + 2, y = CY0 + hy[p] * 4 + 2;
+    int32_t t = (int32_t)ago(phase_t);
     gfx_circle(x, y, 6, light[p], 90);
     gfx_fill(x - 2, y - 2, 4, 4, WHITE);
     if (crashed[p] && phase) { /* a flash where it hit */
@@ -876,7 +881,8 @@ static void scene(void *ctx) {
     }
     if (game) gfx_text_center(&np_font_small, 160, 15, T("Back  pause"), HEX(0xD6DCF5), 256);
     if (phase == 1 && screen == S_PLAY) {
-      int t = (int)ago(phase_t), y = 120 - (t < 200 ? (200 - t) / 10 : 0);
+      int32_t t = (int32_t)ago(phase_t);
+      int y = 120 - (t < 200 ? (200 - t) / 10 : 0);
       gfx_rrect(70, y - 26, 180, 62, 14, INK, 200);
       if (winner < 2) say(&np_font_title, 160, y, who(winner), light[winner]);
       say(&np_font_title, 160, y + 26, winner < 2 ? "+1" : T("Draw!"), WHITE);

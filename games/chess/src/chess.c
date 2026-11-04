@@ -2,6 +2,16 @@
 #include <eadk.h>
 #include <string.h>
 
+#ifdef __TICE__ /* the TI-84 CE: a 4 KB stack and 60 KB for static data */
+#define LIST static /* the move lists of the search's callers (none calls itself) */
+#define PLYS 20     /* how deep the search goes at most: its frames are on the stack */
+#define TTN 1024
+#else
+#define LIST
+#define PLYS MAXPLY
+#define TTN 2048
+#endif
+
 Pos P;
 Undo H[MAXGAME + MAXPLY];
 int hp;
@@ -338,7 +348,6 @@ int eval(void) {
 
 /* -------------------------------------------------------------- Search */
 
-#define TTN 2048
 typedef struct {
   uint16_t key;
   Move m;
@@ -394,7 +403,7 @@ static Move pick(Move *ml, int16_t *sc, int n, int i) {
 static int qs(int alpha, int beta, int ply) {
   if (tick()) return 0;
   int best = eval();
-  if (best >= beta || ply >= MAXPLY - 1 || msp > MSN - 256) return best;
+  if (best >= beta || ply >= PLYS - 1 || msp > MSN - 256) return best;
   if (best > alpha) alpha = best;
   Move *ml = mstack + msp;
   int16_t *sc = mscore + msp;
@@ -428,7 +437,7 @@ int search(int depth, int alpha, int beta, int ply) {
   if (check) depth++;
   if (depth <= 0) return qs(alpha, beta, ply);
   if (tick()) return 0;
-  if (ply >= MAXPLY - 1 || msp > MSN - 256) return eval();
+  if (ply >= PLYS - 1 || msp > MSN - 256) return eval();
   if (alpha < -MATE + ply) alpha = -MATE + ply;
   if (beta > MATE - ply - 1) beta = MATE - ply - 1;
   if (alpha >= beta) return alpha;
@@ -516,7 +525,7 @@ static void limit(int ms) {
 }
 
 Move think(int maxd, int ms, int *score) {
-  Move root[256];
+  LIST Move root[256];
   int n = legal(root), bs = 0;
   if (!n) return 0;
   limit(ms);
@@ -567,7 +576,7 @@ int score_move(Move m, int depth, int alpha, int beta) {
 static int noise(int n) { return n ? (int)(eadk_random() % (n + 1) + eadk_random() % (n + 1)) - n : 0; }
 
 Move bot_move(int depth, int nz, int blunder, int ms) {
-  Move ml[256];
+  LIST Move ml[256];
   int n = legal(ml), bs;
   if (n <= 1) return n ? ml[0] : 0;
   if ((int)(eadk_random() % 100) < blunder) return ml[eadk_random() % n];
@@ -643,7 +652,7 @@ Move mate_move(int n) {
 
 /* Defender to move: the reply that postpones mate the longest. */
 Move defend(int n) {
-  Move ml[256];
+  LIST Move ml[256];
   int k = legal(ml), best = -1;
   Move bm = ml[0];
   for (int i = 0; i < k; i++) {
@@ -665,7 +674,7 @@ static int is_quiet(Move m) { return !P.b[MTO(m)] && !gives_check(m); }
 
 /* Is m the only good move here (every other move scores at least PMARGIN less)? */
 static int unique(Move b, int s) {
-  Move ml[256];
+  LIST Move ml[256];
   int n = legal(ml), d = think_depth;
   for (int i = 0; i < n; i++)
     if (ml[i] != b && score_move(ml[i], d, s - PMARGIN - 1, s - PMARGIN) > s - PMARGIN) return 0;
@@ -674,7 +683,8 @@ static int unique(Move b, int s) {
 
 static int tactic(void) {
   int s, r, k = 0, made = 0;
-  Move ml[256], b = think(5, 60000, &s);
+  LIST Move ml[256];
+  Move b = think(5, 60000, &s);
   if (s < 200 || s > MATE - 200 || !unique(b, s)) return 0;
   int df = 1;
   while (df < 5 && think(df, 60000, &r) != b) df++;
@@ -701,7 +711,7 @@ void puzzle_gen(int kind, int target) {
     ch_reset();
     int solver = eadk_random() & 1, prev = 0, s;
     for (int ply = 0; ply < 100; ply++) {
-      Move ml[256];
+      LIST Move ml[256];
       if (!legal(ml) || P.fifty > 30) break;
       if (P.side == solver) {
         if (ply >= 8) {

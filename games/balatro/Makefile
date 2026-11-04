@@ -72,3 +72,10 @@ $(BUILD_DIR)/sim-module.o: $(SRC) $(HDR) | $(BUILD_DIR)
 	$(Q) for f in $(basename $(notdir $(filter-out src/libc.c,$(SRC)))); do cc -std=c99 -O2 -fPIC \
 	  $(shell $(NWLINK) eadk-cflags-simulator) -Dmain=np_balatro_main -c src/$$f.c -o $(BUILD_DIR)/sim/$$f.o || exit 1; done
 	$(Q) ld -r $(BUILD_DIR)/sim/*.o -exported_symbol _np_balatro_main -o $@
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = balatro
+PORT_NAME = Balatro
+PORT_SRC = src/art.c src/assets.c src/bg.c src/cons.c src/data.c src/draw.c src/ev.c src/flame.c src/fx.c src/game.c src/gfx.c src/jokers.c src/main.c src/save.c src/score.c src/ui.c src/util.c
+PORT_FLAGS = -Isrc
+include ../../platform/port.mk

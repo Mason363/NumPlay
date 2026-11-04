@@ -94,3 +94,10 @@ build/bot: tests/bot.c src/main.c src/game.c src/ppu.c src/data.c $(HEADERS)
 	$(Q) mkdir -p build
 	$(Q) cc -std=gnu11 -O2 -DHOST -DFD_BOT -I$(L) -Isrc tests/bot.c src/game.c src/ppu.c src/data.c $(L)/gfx.c $(L)/font_data.c $(L)/xfont.c -lm -o $@
 	@echo "HOST    $@"
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = famidash
+PORT_NAME = Famidash
+PORT_SRC = src/main.c src/game.c src/ppu.c src/data.c src/plat_eadk.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc
+include ../../platform/port.mk

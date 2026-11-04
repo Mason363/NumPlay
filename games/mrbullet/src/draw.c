@@ -161,8 +161,8 @@ static void style_of(const Obj *o, Style *st) {
   } else if (f & F_BR) {
     st->fill = HEX(0x4DBDAE), st->alt = HEX(0x8FDDD1), st->edge = st->edge2 = HEX(0x2A7C73);
     st->pattern = PAT_GLASS;
-  } else if (f & F_BO) {
-    st->fill = HEX(0xE9B872), st->edge = st->edge2 = HEX(0x9A6A2E);
+  } else if (f & F_BO) {   /* a TNT crate */
+    st->fill = HEX(0xE8392F), st->edge = st->edge2 = HEX(0x9C1F17);
   } else if (f & F_HV) {
     st->fill = HEX(0x8D99A6), st->edge = st->edge2 = HEX(0x3F4952);
   } else if (f & F_F) {
@@ -208,7 +208,7 @@ static void draw_obj(int i) {
   ncont = 0;
   cstart[0] = 0;
   int total = o->nout;
-  const uint8_t *hq = o->outline + 4 * o->nout;
+  const uint8_t *hq = o->outline + 4 * o->nout + 1;   /* (the holes, past their number) */
   for (int part = 0; part <= o->nholes && ncont < 16; part++) {
     if (part) {
       total = *hq++;
@@ -223,6 +223,18 @@ static void draw_obj(int i) {
     cstart[++ncont] = (uint16_t)n;
   }
   fill(&st, bb_y0[i], bb_y1[i]);
+  /* a TNT crate's word, while it stands (it goes off before it can tumble far) */
+  if ((o->flags & F_BO) && !o->sw && fabsf(s) < 0.34f && c > 0 && n) {
+    float mx = 0, my = 0, w0 = 1e9f, w1 = -1e9f;
+    for (int k = 0; k < cstart[1]; k++) {
+      mx += px_[k], my += py_[k];
+      if (px_[k] < w0) w0 = px_[k];
+      if (px_[k] > w1) w1 = px_[k];
+    }
+    mx /= cstart[1], my /= cstart[1];
+    if (w1 - w0 >= 18 && bb_y1[i] - bb_y0[i] >= 10 && my - 6 < gfx_y1 && my + 6 > gfx_y0)
+      gfx_text_center(&np_font_small, (int)mx, (int)my + 4, "TNT", HEX(0xFFFFFF), 256);
+  }
 }
 
 /* ------------------------------------------------------------------ characters */

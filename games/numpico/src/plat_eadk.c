@@ -5,8 +5,10 @@
 #include "gfx.h"
 #include "plat.h"
 
+#ifndef NP_PORT /* (another target: platform/port.mk names the app) */
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "NumPico";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
+#endif
 
 #define KEY(k) ((uint64_t)1 << (k))
 
@@ -37,10 +39,12 @@ void plat_heap(uint8_t **start, uint8_t **end) {
   extern char _heap_start[], _heap_end[];
   *start = (uint8_t *)_heap_start, *end = (uint8_t *)_heap_end;
 }
+#ifndef NP_PORT /* (another target's malloc is its own) */
 /* nothing takes memory with malloc (Lua has the RAM after the app's: heap.c), but newlib's printf names it */
 void *_sbrk(ptrdiff_t incr) {
   (void)incr;
   return (void *)-1;
 }
+#endif
 void plat_begin(void) { np_app_begin(); }
 int plat_end(void) { return np_app_end(); }

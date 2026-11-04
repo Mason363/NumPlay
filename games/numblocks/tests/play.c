@@ -3,6 +3,7 @@
  *   play [--frames N] [--ms-per-frame M] [--keys "10-40:fwd,50:use,..."] [--shots 30,60] [--out DIR]
  *        [--showcase]   (the hotbar of the README's GIF: TNT, flint and steel, water and lava, blocks)
  *        [--animals]    (a sheep, a cow, a pig and a chicken ahead, on the ground where they stand)
+ *        [--bow]        (a bow in the hand, arrows next to it)
  *
  * Keys: left right up down fwd back sleft sright jump use attack inv sneak sprint pause 1..9. */
 #include <math.h>
@@ -36,7 +37,7 @@ static uint32_t key_bit(const char *s) {
 
 int main(int argc, char **argv) {
   const char *out = "build/play", *shots = "";
-  int give = 0, showcase = 0, title_screen = 0, mobs = 0, animals = 0, start_time = -1, torches = 0, water = 0, creative = 0, build = 0, rain = 0;
+  int give = 0, bow = 0, showcase = 0, title_screen = 0, mobs = 0, animals = 0, start_time = -1, torches = 0, water = 0, creative = 0, build = 0, rain = 0;
   float hurt = 0;
   int frames = 60, mspf = 50, go_dim = 0, portal = 0, at = 0, fortress = 0, hold = -1, credits = 0;
   float at_v[5] = {0};
@@ -47,6 +48,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[i], "--shots") && i + 1 < argc) shots = argv[++i];
     else if (!strcmp(argv[i], "--give")) give = 1;
     else if (!strcmp(argv[i], "--showcase")) showcase = 1;
+    else if (!strcmp(argv[i], "--bow")) bow = 1;
     else if (!strcmp(argv[i], "--title")) title_screen = 1;
     else if (!strcmp(argv[i], "--mobs")) mobs = 1;
     else if (!strcmp(argv[i], "--animals")) animals = 1;
@@ -102,6 +104,10 @@ int main(int argc, char **argv) {
                                  {I_BUCKET, 1}, {B_SAND, 20}, {I_APPLE, 2}};
     for (unsigned i = 0; i < sizeof kit / sizeof kit[0]; i++) inv_add(pl.inv, 36, kit[i][0], kit[i][1], 0);
     pl.inv[0].aux = 100;   /* a worn pickaxe */
+  }
+  if (bow) {
+    pl.inv[0] = (Stack){I_BOW, 0}, pl.slot = 0;
+    inv_add(pl.inv, 36, I_ARROW, 64, 0);
   }
   if (showcase) {
     /* the README's GIF: the hotbar first, then a full inventory to look at */

@@ -58,14 +58,28 @@ static void title_open(void) {
 }
 
 /* ---------------------------------------------------------------- settings (the title's, and the C menu's) */
-static int set_sel, set_back;   /* EXIT or WALK; the screen to go back to */
-static void settings_open(int back) { set_sel = 1, set_back = back; }
+static int set_sel, set_back;   /* EXIT, WALK or (in a game) QUIT GAME; the screen to go back to */
+static bool set_game, set_ask;  /* opened in a game: QUIT GAME too; asked: YES (set_yes) or NO */
+static int set_yes;
+static void settings_open(int back) { set_sel = 1, set_back = back, set_game = false, set_ask = false; }
 /* true when it closes */
 static bool settings_input(uint32_t pressed) {
-  if (pressed & (K_UP | K_DOWN)) set_sel ^= 1;
+  if (set_ask) {
+    if (pressed & (K_LEFT | K_RIGHT)) set_yes ^= 1;
+    if (pressed & K_X || (pressed & K_Z && !set_yes)) set_ask = false;
+    else if (pressed & K_Z) game_quit_save(), g_running = false;
+    return false;
+  }
+  int n = set_game ? 3 : 2;
+  if (pressed & K_UP) set_sel = (set_sel + n - 1) % n;
+  if (pressed & K_DOWN) set_sel = (set_sel + 1) % n;
   if (set_sel == 1 && (pressed & (K_Z | K_LEFT | K_RIGHT))) {
     g_walk_fast ^= 1;
     config_save();
+    return false;
+  }
+  if (set_sel == 2 && (pressed & K_Z)) {
+    set_ask = true, set_yes = 0;
     return false;
   }
   return (pressed & K_X) || (set_sel == 0 && (pressed & K_Z));
@@ -76,7 +90,15 @@ static void settings_draw(int x, int y) {
   gfx_text(FONT_MENU, x + 14, y + 46, "WALK", set_sel == 1 ? C_YELLOW : C_WHITE, 255);
   gfx_text(FONT_MENU, x + 74, y + 46, g_walk_fast ? "FAST" : "NORMAL", set_sel == 1 ? C_YELLOW : C_WHITE, 255);
   gfx_text(FONT_SMALL, x + 14, y + 66, g_walk_fast ? "Twice as fast." : "As in the game.", rgb565(0x808080), 255);
-  gfx_sprite(SPR_HEART, 0, x + 4, y + 32 + 20 * set_sel, 0, 255);
+  if (set_game && set_ask) {
+    gfx_text(FONT_MENU, x + 14, y + 86, "QUIT?", C_YELLOW, 255);
+    gfx_text(FONT_MENU, x + 84, y + 86, "YES", set_yes ? C_YELLOW : C_WHITE, 255);
+    gfx_text(FONT_MENU, x + 124, y + 86, "NO", set_yes ? C_WHITE : C_YELLOW, 255);
+    gfx_sprite(SPR_HEART, 0, set_yes ? x + 74 : x + 114, y + 92, 0, 255);
+    return;
+  }
+  if (set_game) gfx_text(FONT_MENU, x + 14, y + 86, "QUIT GAME", set_sel == 2 ? C_YELLOW : C_WHITE, 255);
+  gfx_sprite(SPR_HEART, 0, x + 4, set_sel == 2 ? y + 92 : y + 32 + 20 * set_sel, 0, 255);
 }
 
 /* ---------------------------------------------------------------- naming */
@@ -215,7 +237,7 @@ static void c_menu_input(uint32_t pressed) {
       if (pressed & K_Z) {
         if (sel == 0 && item_count()) st = M_ITEMS, item_sel = 0;
         else if (sel == 1) st = M_STAT;
-        else if (sel == n - 1) st = M_SETTINGS, settings_open(M_MAIN);
+        else if (sel == n - 1) st = M_SETTINGS, settings_open(M_MAIN), set_game = true;
         else if (sel == 2) st = M_CELL, sub = 0;
       }
       break;
@@ -347,7 +369,7 @@ static void draw_c_menu(void) {
     }
   }
   if (st == M_SETTINGS) {
-    panel(94, 26, 173, 104);
+    panel(94, 26, 173, 124);
     settings_draw(108, 38);
   }
   if (st == M_CELL) {

@@ -42,7 +42,8 @@ main {
   grid-template-rows: auto 1fr; grid-template-areas: "head device side" "games device side";
   min-height: 100vh;
 }
-.head { grid-area: head; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 18px; padding: 40px 20px 0 48px; container-type: inline-size; }
+.head { grid-area: head; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px 18px; padding: 40px 20px 0 48px; container-type: inline-size; }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }  /* (the chips go under the name when they don't fit beside it) */
 .games { grid-area: games; display: flex; flex-direction: column; gap: 14px; padding: 28px 20px 28px 48px; }
 .side { grid-area: side; display: flex; flex-direction: column; gap: 14px; padding: 46px 40px 28px 8px; }
 .title { margin: 0; font-size: clamp(40px, 15cqw, 66px); font-weight: 800; letter-spacing: -0.045em; line-height: 1; }
@@ -59,6 +60,9 @@ main {
 .search input::placeholder { color: var(--mute); }
 .no-match { grid-column: 1 / -1; margin: 8px 0 0; font-size: 14px; color: var(--text); }
 .lede { grid-column: 1 / -1; margin: 10px 0 0; max-width: 34em; font-size: 18px; line-height: 1.4; font-weight: 550; color: var(--ink); }
+.lede .name { white-space: nowrap; }
+.lede .beta { color: #0060c0; font-weight: 650; text-decoration: none; white-space: nowrap; }
+.lede .beta:hover { text-decoration: underline; }
 .row-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
 .row-head:first-child { margin-top: 0; }
 .row-head h2 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -0.1px; }
@@ -230,6 +234,8 @@ body.dragging .drop-hint { display: flex; }
 .chip.lang { padding: 0 12px 0 14px; font-size: 13px; font-weight: 750; }
 .chip .caret { color: var(--mute); flex-shrink: 0; }
 .chip:hover { background: #fafafa; }
+#calc-chip { padding: 0 12px; }
+#calc-chip img { width: auto; height: 32px; border-radius: 0; }
 .chip:disabled { opacity: 0.35; cursor: default; box-shadow: none; }  /* (a game on its own: its own icon and language) */
 .install {
   position: relative; border: 0; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
@@ -259,6 +265,27 @@ body.dragging .drop-hint { display: flex; }
 .segctl.col button { text-align: left; padding: 10px 12px; font-size: 14px; color: var(--ink); }
 .segctl.col button[aria-checked="true"] { background: #eceef1; box-shadow: none; }
 .tick { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--mute); white-space: nowrap; }
+
+/* ---- your calculator: NumWorks, or another one the games are made for, each with its photo and models */
+.calc-pop { width: 280px; padding: 8px; }
+.calcs button { display: flex; align-items: center; gap: 12px; padding: 8px 12px; }
+.calcs img { width: 26px; height: 48px; object-fit: contain; flex-shrink: 0; }
+.calcs b { display: block; font-size: 14px; font-weight: 650; }
+.calcs small { display: block; margin-top: 2px; font-size: 12px; font-weight: 550; color: var(--mute); }
+.calcs button:disabled { cursor: default; }
+.calcs button:disabled img, .calcs button:disabled b { opacity: 0.4; }
+/* on another calculator: its games only, as files of their own, so NumPlay's app, its language, the space for
+   apps and your own games and apps step aside; its photo, and a zip of the games */
+.port { display: none; }
+.other .port { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px 16px 40px; }
+.port-img { display: block; height: min(480px, calc(100vh - 190px)); width: auto; margin-bottom: 14px; user-select: none; }
+.port-used { margin: 0; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.install:disabled { background: var(--track); color: var(--mute); cursor: default; }
+.install.busy { cursor: progress; opacity: 0.6; }
+.other .calc, .other .meter, .other #app-chip, .other #lang-chip, .other #space-chip, .other .retro, .other #dock-download { display: none !important; }
+.other .title button { cursor: default; }
+.app.away { display: none; }
+.step-icon.n { font-size: 17px; font-weight: 750; }
 
 /* ---- your calculator's space for apps: it depends on its software, and on Nwagra */
 .space-chip {
@@ -425,6 +452,9 @@ html.intro-wait main { opacity: 0; }
     -webkit-mask: linear-gradient(#000 calc(100% - 18px), transparent); mask: linear-gradient(#000 calc(100% - 18px), transparent);
   }
   .meter { display: none; }
+  .other .device { height: auto; -webkit-mask: none; mask: none; }
+  .other .port { position: static; padding: 8px 0 0; }
+  .port-img { height: 300px; margin-bottom: 4px; }
   .foot { justify-content: center; }
   .dock {
     position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 30; max-width: 520px; margin: 0 auto;
@@ -443,7 +473,6 @@ html.intro-wait main { opacity: 0; }
   .space-chip { height: 40px; padding: 0 14px 0 16px; border-radius: 20px; font-size: 14px; }
 }
 @media (max-width: 520px) {
-  .head { grid-template-columns: 1fr; }
   .title { font-size: 48px; }
   .grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .pop { width: calc(100vw - 32px); }

@@ -12,8 +12,10 @@
 #include "../../common/np_text.h"
 
 #ifdef __ELF__ /* app name and API level, for the calculator's installer */
+#ifndef NP_PORT /* (another target: platform/port.mk names the app) */
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "NumVisuals";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
+#endif
 #endif
 
 #define W 320
@@ -251,12 +253,12 @@ static void synth(void) {
 
 static int plasma_k, plasma_speed;
 static void plasma_frame(int dt) {
-  int t = (int)now * plasma_speed / 16, k = plasma_k;
+  int t = (int)((int32_t)now * plasma_speed / 16), k = plasma_k;
   for (int x = 0; x < W; x++) ca[x] = (int16_t)(S(x * k / 8 + t / 7) + S(x * k / 13 - t / 11));
   for (int y = 0; y < H; y++) cb[y] = (int16_t)(S(y * k / 8 - t / 9) + S(y * k / 17 + t / 13));
 }
 static void plasma(void) {
-  int t = (int)now * plasma_speed / 16, k = plasma_k;
+  int t = (int)((int32_t)now * plasma_speed / 16), k = plasma_k;
   for (int j = 0; j < SH; j++) {
     int y = top + j, r = cb[y];
     color *p = buf + j * W;
@@ -656,8 +658,8 @@ static const char *hint(void) {
 }
 
 static void ui_draw(void) {
-  int fade = mode == M_SHOW ? clamp(32 - ((int)(now - hint_t) - 2500) / 16, 0, 32) : 32;
-  int toast = mode == M_SHOW ? clamp(32 - ((int)(now - toast_t) - 1500) / 16, 0, 32) : 0;
+  int fade = mode == M_SHOW ? clamp((int)(32 - ((int32_t)(now - hint_t) - 2500) / 16), 0, 32) : 32;
+  int toast = mode == M_SHOW ? clamp((int)(32 - ((int32_t)(now - toast_t) - 1500) / 16), 0, 32) : 0;
   if (mode == M_BG || mode == M_ADDON) {
     bool b = mode == M_BG;
     rect(0, 0, W, 28, 0, 10);

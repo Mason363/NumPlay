@@ -356,6 +356,24 @@ static color_t DIM(void) { return HEX(0x9AA7AC); }
 static color_t ACC(void) { return HEX(0xFFE14D); }
 
 static void text_c(const np_font_t *f, int cx, int base, const char *s, color_t c) { gfx_text_center(f, cx, base, s, c, 256); }
+/* centred, on two lines when it is wider than w (split at the last space that lets the first line fit); its lines */
+static int text_c_fit(const np_font_t *f, int cx, int base, const char *s, color_t c, int w) {
+  if (gfx_text_width(f, s) <= w) return text_c(f, cx, base, s, c), 1;
+  char a[96];
+  snprintf(a, sizeof a, "%s", s);
+  int cut = -1;
+  for (int i = 0; a[i]; i++)
+    if (a[i] == ' ') {
+      a[i] = 0;
+      if (gfx_text_width(f, a) <= w) cut = i;
+      a[i] = ' ';
+    }
+  if (cut < 0) return text_c(f, cx, base, s, c), 1;
+  a[cut] = 0;
+  text_c(f, cx, base, a, c);
+  text_c(f, cx, base + 11, a + cut + 1, c);
+  return 2;
+}
 static void panel(int x, int y, int w, int h) {
   gfx_rrect(x, y, w, h, 8, HEX(0x000000), 190);
   gfx_rrect_outline(x, y, w, h, 8, 1, HEX(0x58666B), 256);
@@ -474,14 +492,15 @@ static void hud_ride(void) {
     text_c(&np_font_title, 160, 96, buf, W());
     snprintf(buf, sizeof buf, "best %d     gems +%d", sv.best, r->gems);
     text_c(&np_font_small, 160, 114, buf, DIM());
-    if (reward_text) text_c(&np_font_body, 160, 134, reward_text, ACC());
+    int lines = 1;
+    if (reward_text) lines = text_c_fit(&np_font_body, 160, 134, reward_text, ACC(), 204);
     else if (sv.ch_tpl < 26) {
       snprintf(buf, sizeof buf, "%s (%d/%d)", challenge_text(), (int)sv.ch_progress, ch_goal());
-      text_c(&np_font_small, 160, 134, buf, DIM());
+      lines = text_c_fit(&np_font_small, 160, 134, buf, DIM(), 204);
     }
     if (new_bike >= 0) {
       snprintf(buf, sizeof buf, "%s %s", new_bike_msg, rd_bikes[new_bike].name);
-      text_c(&np_font_small, 160, 150, buf, ACC());
+      text_c(&np_font_small, 160, lines > 1 ? 158 : 150, buf, ACC());
     }
     button(66, 166, 90, 26, "Ride again", sel == 0);
     button(164, 166, 90, 26, "Menu", sel == 1);
@@ -536,6 +555,8 @@ static void hud_menu(void) {
   if (reward_text) text_c(&np_font_small, 160, 204, reward_text, W());
   if (sv.ch_tpl < 26) snprintf(buf, sizeof buf, "Challenge %d: %s (%d/%d)", sv.challenges + 1, challenge_text(), (int)sv.ch_progress, ch_goal());
   else snprintf(buf, sizeof buf, "All challenges done");
+  if (sv.ch_tpl < 26 && gfx_text_width(&np_font_small, buf) > 312)   /* (too wide: without its number) */
+    snprintf(buf, sizeof buf, "%s (%d/%d)", challenge_text(), (int)sv.ch_progress, ch_goal());
   text_c(&np_font_small, 160, 217, buf, ACC());
   keyline("Up Down choose   OK go   Back quit");
 }

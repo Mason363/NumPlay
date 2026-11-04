@@ -111,3 +111,10 @@ $(BUILD_DIR)/sim-module.o: $(GAME) src/plat_eadk.c $(HEADERS) | $(BUILD_DIR)
 	  $(shell $(NWLINK) eadk-cflags-simulator) -fno-math-errno -Dmain=np_numblocks_main -c src/$$f.c \
 	  -o $(BUILD_DIR)/sim/$$f.o || exit 1; done
 	$(Q) ld -r $(BUILD_DIR)/sim/*.o -exported_symbol _np_numblocks_main -o $@
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = numblocks
+PORT_NAME = NumBlocks
+PORT_SRC = src/main.c src/world.c src/edits.c src/render.c src/player.c src/phys.c src/inv.c src/entity.c src/mob.c src/tick.c src/gui.c src/hand.c src/save.c src/names.c src/command.c src/gen.c src/data_dims.c src/dims.c src/end.c src/plat_eadk.c
+PORT_FLAGS = -DNB_DIMS=1
+include ../../platform/port.mk

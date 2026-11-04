@@ -283,27 +283,31 @@ extern const uint16_t blk_icon[B_N];   /* sprite of its icon */
 #define SP_MOON_5 26
 #define SP_MOON_6 27
 #define SP_MOON_7 28
-#define SP_FLAME 409
-#define SP_ARROW 410
-#define SP_ARMOR_FULL 411
-#define SP_ARMOR_HALF 412
-#define SP_BUBBLE_POP 413
-#define SP_HEART_HIT 414
-#define SP_TAB_TOP 415
-#define SP_TAB_TOP_SEL 416
-#define SP_TAB_BOTTOM 417
-#define SP_TAB_BOTTOM_SEL 418
-#define SP_SCROLLER 419
-#define SP_BUTTON 420
-#define SP_BUTTON_HOVER 421
-#define SP_BUTTON_OFF 422
-#define SP_SLOT_HELMET 423
-#define SP_SLOT_CHESTPLATE 424
-#define SP_SLOT_LEGGINGS 425
-#define SP_SLOT_BOOTS 426
-#define SP_STEVE 427
-#define SP_ARM 428
-#define SP_DIRT_BG 429
+#define SP_BOW_PULLING_0 29
+#define SP_BOW_PULLING_1 30
+#define SP_BOW_PULLING_2 31
+#define SP_ARROW_ENTITY 32
+#define SP_FLAME 413
+#define SP_ARROW 414
+#define SP_ARMOR_FULL 415
+#define SP_ARMOR_HALF 416
+#define SP_BUBBLE_POP 417
+#define SP_HEART_HIT 418
+#define SP_TAB_TOP 419
+#define SP_TAB_TOP_SEL 420
+#define SP_TAB_BOTTOM 421
+#define SP_TAB_BOTTOM_SEL 422
+#define SP_SCROLLER 423
+#define SP_BUTTON 424
+#define SP_BUTTON_HOVER 425
+#define SP_BUTTON_OFF 426
+#define SP_SLOT_HELMET 427
+#define SP_SLOT_CHESTPLATE 428
+#define SP_SLOT_LEGGINGS 429
+#define SP_SLOT_BOOTS 430
+#define SP_STEVE 431
+#define SP_ARM 432
+#define SP_DIRT_BG 433
 
 #include "items.h"
 extern const uint16_t blk_item[B_N];   /* the item a block state counts as (0xFFFF: none) */
@@ -384,8 +388,8 @@ extern const uint16_t img_row0[], img_pal[][16];
 #define TX_PORTAL_24 246
 #define TX_PORTAL_28 247
 #define TX_END_SKY 248
-#define SP_BOSS_BG 498
-#define SP_BOSS 499
+#define SP_BOSS_BG 502
+#define SP_BOSS 503
 enum { SKIN_ZOMBIE_PIGMAN = 9, SKIN_GHAST = 10, SKIN_GHAST_SHOOTING = 11, SKIN_BLAZE = 12, SKIN_MAGMACUBE = 13, SKIN_ENDERMAN = 14, SKIN_WITHER_SKELETON = 15 };
 extern const char end_text[];   /* the End poem, then the credits */
 extern const uint8_t skin_crystal_px[];   /* endercrystal/endercrystal.png, 4 bits a texel */

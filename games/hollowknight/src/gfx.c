@@ -1441,7 +1441,7 @@ static uint32_t bgline[BG_W + 2];   /* a row of the background (0xRRGGBB), its e
 
 
 /* light (x 128) to 5 or 6 bits (dithering added before): one instruction on the calculator */
-#if defined(__arm__)
+#if defined(__arm__) && defined(__ARM_FEATURE_SIMD32) /* (ARMv6 and later: not the Nspire's ARM926) */
 static inline uint32_t to5(uint32_t v) {
   uint32_t r;
   __asm__("usat %0, #5, %1, asr #10" : "=r"(r) : "r"(v));

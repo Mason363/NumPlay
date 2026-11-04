@@ -23,8 +23,10 @@
 #define np_file_read ef_read
 #define np_file_write ef_write
 #ifndef HOST /* (a computer build of the tests has no app header) */
+#ifndef NP_PORT /* (another target: platform/port.mk names the app) */
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Tower Blocks";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
+#endif
 #endif
 void np_push(int x, int y, int w, int h, const color_t *px) {
   eadk_display_push_rect((eadk_rect_t){(uint16_t)x, (uint16_t)y, (uint16_t)w, (uint16_t)h}, px);
@@ -54,7 +56,7 @@ typedef struct {
 } slab_t;
 
 /* towerblocks.sav: the best, and the tower in progress */
-static struct {
+static struct __attribute__((aligned(4))) { /* whole words, as the sum reads them (a TI-84 CE packs structs) */
   uint8_t magic, version, flags, pad; /* flags: 1 a tower to go on with, 2 the guide was read */
   uint32_t sum;                       /* of the words after it: a damaged file starts afresh */
   uint32_t best, score, offset;       /* offset: the colours' start, the original's colorOffset */

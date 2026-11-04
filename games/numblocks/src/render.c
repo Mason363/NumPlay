@@ -1155,7 +1155,7 @@ static void quad(uint16_t (*cb)[RW], float (*zb)[RW], float (*rb)[3], int r, int
  * Mobs are their models' boxes, each ray tested in the box's own frame and
  * textured from the skin as Minecraft maps a box (ModelBox, TexturedQuad);
  * dropped blocks are small spinning cubes, dropped items flat pictures facing
- * the camera, as Fast graphics draws them. A pixel shows the nearest hit that
+ * the camera, as Fast graphics draws them, arrows their crossed strips. A pixel shows the nearest hit that
  * is closer than the world behind it. */
 #include "mob.h"
 
@@ -1281,7 +1281,7 @@ static void ents_frame(void) {
 #else
     if (dist > MAX_T + 1) continue;
 #endif
-    float w, h;
+    float w, h, y0 = 0;   /* (the box: w wide, h high from y0) */
 #if NB_DIMS
     if (e->type == E_FIREBALL || e->type == E_EYE) w = h = 1.2f, ey -= 0.4f;
     else if (e->type == E_DRAGON) w = 24, h = 14, ey -= 4;
@@ -1289,12 +1289,13 @@ static void ents_frame(void) {
 #endif
     if (e->type == E_ITEM) w = 0.5f, h = 0.6f;
     else if (e->type == E_TNT) w = 1.2f, h = 1.1f;
+    else if (e->type == E_ARROW && e->item.id == I_ARROW) w = h = 1.4f, y0 = -0.7f;   /* (about where it is) */
     else if (e->type == E_ARROW || e->type == E_BOBBER) w = 0.6f, h = 0.6f, ey -= 0.3f;
     else w = mob_width(e->type) * 2.2f, h = mob_height(e->type) * 1.2f;
     if (IS_MOB(e->type) && e->state == 255) w = h = 2.4f;   /* dying: lying down */
     float c[8][3];
     for (int k = 0; k < 8; k++)
-      c[k][0] = ex + ((k & 1) ? w : -w) / 2, c[k][1] = ey + ((k & 2) ? h : 0), c[k][2] = ez + ((k & 4) ? w : -w) / 2;
+      c[k][0] = ex + ((k & 1) ? w : -w) / 2, c[k][1] = ey + y0 + ((k & 2) ? h : 0), c[k][2] = ez + ((k & 4) ? w : -w) / 2;
     Draw *d = &draws[ndraws];
     int r[4];
     if (!rect_of(c, r)) continue;
@@ -1508,6 +1509,16 @@ static bool boxes_hit(const Box *bx, int n, const float *d, float *best_t, uint1
   return any;
 }
 
+/* texel (x, y) of sprite ic met at t along d: the nearest yet, unless see-through */
+static bool spr_hit(const Draw *dr, int ic, int x, int y, const float *d, float t, float *best_t, uint16_t *col) {
+  const uint8_t *px = spr_px + spr_off[ic] + y * ((spr_w[ic] + 1) / 2);
+  int i = (x & 1) ? px[x >> 1] >> 4 : px[x >> 1] & 15;
+  if (!i || t >= *best_t) return false;
+  *best_t = t;
+  *col = lit565(SPR_PAL(ic)[i], 1, dr->light, t * sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]));
+  return true;
+}
+
 /* a dropped item: a small cube of its block, or its picture */
 static bool item_hit(const Draw *dr, const float *d, float *best_t, uint16_t *col) {
   const Entity *e = dr->e;
@@ -1580,13 +1591,35 @@ static bool item_hit(const Draw *dr, const float *d, float *best_t, uint16_t *co
   float hx = d[0] * t - rel[0], hy = d[1] * t - rel[1], hz = d[2] * t - rel[2];
   float u = (hx * rgx + hz * rgz) / (2 * half) + 0.5f, v = 0.5f - (hx * upx + hy * upy + hz * upz) / (2 * half);
   if (u < 0 || u >= 1 || v < 0 || v >= 1) return false;
-  int w = spr_w[ic], hh = spr_h[ic], pxu = (int)(u * w), pyv = (int)(v * hh);
-  const uint8_t *px = spr_px + spr_off[ic] + pyv * ((w + 1) / 2);
-  int i = (pxu & 1) ? px[pxu >> 1] >> 4 : px[pxu >> 1] & 15;
-  if (!i) return false;
-  *best_t = t;
-  *col = lit565(SPR_PAL(ic)[i], 1, dr->light, t * sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]));
-  return true;
+  return spr_hit(dr, ic, (int)(u * spr_w[ic]), (int)(v * spr_h[ic]), d, t, best_t, col);
+}
+
+/* an arrow (RenderArrow): two strips of entity/arrow.png's shaft, 16 x 4 texels of 0.05625 blocks, along its way
+ * and crossed, turned 45 degrees about it, from 12 texels behind where it is to 4 ahead, and the fletching's 4 x 4
+ * square across them 1 from their tail. f: its way and the two across, a texel long, then the eye in them */
+static void arrow_frame(const Draw *dr, float *f) {
+  const Entity *e = dr->e;
+  float vx = e->vx, vy = e->vy, vz = e->vz, h = sqrtf(vx * vx + vz * vz) + 1e-9f, n = sqrtf(h * h + vy * vy);
+  float s = 1 / 0.05625f / n, c = vy / n, k = 0.70710678f / 0.05625f / h;
+  /* the way it goes; the side (-vz, 0, vx) / h and the up (-vx c, h, -vz c) / h, turned 45 degrees */
+  f[0] = vx * s, f[1] = vy * s, f[2] = vz * s;
+  f[3] = (-vz - vx * c) * k, f[4] = f[7] = h * h / n * k, f[5] = (vx - vz * c) * k;
+  f[6] = (vz - vx * c) * k, f[8] = (-vx - vz * c) * k;
+  for (int i = 0; i < 3; i++) f[9 + i] = (ox - dr->ex) * f[i * 3] + (oy - dr->ey) * f[i * 3 + 1] + (oz - dr->ez) * f[i * 3 + 2];
+}
+static bool arrow_hit(const Draw *dr, const float *f, const float *d, float *best_t, uint16_t *col) {
+  float l[3];
+  for (int i = 0; i < 3; i++) l[i] = d[0] * f[i * 3] + d[1] * f[i * 3 + 1] + d[2] * f[i * 3 + 2];
+  bool any = false;
+  /* k 0: the fletching (texels 0-4 of rows 5-9); 1 and 2: the strips (rows 0-4), across them */
+  for (int k = 0; k < 3; k++) {
+    if (l[k] == 0) continue;
+    float t = ((k ? 0 : -11) - f[9 + k]) / l[k], a = f[10] + l[1] * t, b = f[11] + l[2] * t;
+    float u = k ? f[9] + l[0] * t + 12 : (a + 2) * 1.25f, v = ((k == 2 ? a : b) + 2) * 1.25f;
+    if (t > 0 && u >= 0 && u < (k ? 16 : 5) && v >= 0 && v < 5)
+      any |= spr_hit(dr, SP_ARROW_ENTITY, (int)u, (int)v + (k ? 0 : 5), d, t, best_t, col);
+  }
+  return any;
 }
 
 /* the particles: little squares, a tenth of a block, lit where they are */
@@ -1993,7 +2026,9 @@ static void ents_strip(int py0, int rows, uint16_t (*cb)[RW], float (*zb)[RW]) {
     const Draw *dr = &draws[k];
     if (dr->y1 <= py0 || dr->y0 >= py0 + rows) continue;
     const Entity *e = dr->e;
-    bool mob = IS_MOB(e->type);
+    bool mob = IS_MOB(e->type), arrow = e->type == E_ARROW && e->item.id == I_ARROW;
+    float af[12];
+    if (arrow) arrow_frame(dr, af);
 #if NB_DIMS
     /* the dragon's many parts: in the room the rain has (none falls in the End) */
     Box *bx = bxs;
@@ -2021,7 +2056,7 @@ static void ents_strip(int py0, int rows, uint16_t (*cb)[RW], float (*zb)[RW]) {
           ray_dir(px, py, d);
           float t = zb[py - py0][px];
           uint16_t c;
-          bool hit = mob ? boxes_hit(&bx[p], 1, d, &t, &c) : item_hit(dr, d, &t, &c);
+          bool hit = mob ? boxes_hit(&bx[p], 1, d, &t, &c) : arrow ? arrow_hit(dr, af, d, &t, &c) : item_hit(dr, d, &t, &c);
           if (!hit) continue;
           if (mob) {
             if (red) c = mix565(c, 0xF800, red);

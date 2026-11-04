@@ -79,3 +79,11 @@ data:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = fnaf3
+PORT_NAME = Five Nights at Freddys 3
+PORT_SRC = src/game.c src/main.c src/mini.c src/night.c src/save.c src/view.c src/pic.c src/gfx.c src/plat_eadk.c
+PORT_ASM = src/data.S
+PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
+include ../../platform/port.mk

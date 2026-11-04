@@ -8,14 +8,18 @@
 
 /* (gfx.c's own strips and arena are not used: it draws into the renderer's bands) */
 void np_push(int x, int y, int w, int h, const color_t *px) { plat_push(x, y, w, h, px); }
+#ifndef NP_PORT
 void *np_alloc(uint32_t size) { (void)size; return 0; }
+#endif
 
 #ifndef HOST
 #ifdef SR_BENCH
 #include "../tests/auto.h"
 #endif
+#ifndef NP_PORT /* (another target: platform/port.mk names the app) */
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Snow Rider 3D";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
+#endif
 
 uint32_t perf_frames __attribute__((used));   /* read by tools/emu.py */
 uint32_t perf_max __attribute__((used));

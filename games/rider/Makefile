@@ -116,3 +116,12 @@ test: build/play
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = rider
+PORT_NAME = Rider
+PORT_SRC = src/main.c src/game.c src/draw.c src/plat_eadk.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+PORT_CXX = $(PHYS)
+# (a computer's 64-bit pointers: the host's arena, Box2D's blocks counted as the calculator's)
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc $(B2) $(if $(filter sdl,$(TARGET)),$(HOST_ARENA),$(DEVICE_ARENA))
+include ../../platform/port.mk

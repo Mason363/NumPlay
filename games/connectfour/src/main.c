@@ -15,8 +15,10 @@
 #include "../../common/np_text.h"
 
 #ifdef __ELF__ /* app name and API level, for the calculator's installer */
+#ifndef NP_PORT /* (another target: platform/port.mk names the app) */
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Connect 4";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
+#endif
 #endif
 
 typedef uint16_t color;
@@ -757,6 +759,9 @@ static int think(void) {
     }
   /* deeper paranoid searches only get gloomier with three players */
   int lv = V.level, maxd = lv == 0 ? 1 : lv == 1 ? 9 - np * 2 : np == 2 ? 42 - nh : 4, best = root;
+#ifdef __TICE__
+  if (maxd > 8) maxd = 8; /* the TI-84 CE's 4 KB stack holds 8 moves of the search */
+#endif
   noise = lv == 0 ? 50 : lv == 1 ? 6 : 1;
   for (int d = lv == 2 ? 1 : maxd; d <= maxd; d++) { /* deeper while there is time */
     int v = search(me, d, -INF, INF, t);

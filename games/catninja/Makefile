@@ -26,6 +26,7 @@ CFLAGS += -Os -Wall -Wextra -Wno-unused-parameter -fno-math-errno
 CFLAGS += -fno-tree-loop-distribute-patterns -flto -fno-fat-lto-objects -fwhole-program -fvisibility=internal
 CFLAGS += -ffunction-sections -fdata-sections
 CFLAGS += $(if $(PERF_LEVEL),-DPERF_LEVEL=$(PERF_LEVEL)) # (make perf PERF_LEVEL=n: that level straight away)
+CFLAGS += $(if $(PERF_TP),-DPERF_TP=$(PERF_TP)) # (PERF_TP=k: the cat on its teleporter k)
 LDFLAGS = -Wl,--relocatable -nostartfiles --specs=nano.specs
 LDFLAGS += -Wl,-e,main -Wl,-u,eadk_app_name -Wl,-u,eadk_app_icon -Wl,-u,eadk_api_level
 LDFLAGS += -Wl,--gc-sections -flinker-output=nolto-rel
@@ -90,3 +91,10 @@ test: build/play
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = catninja
+PORT_NAME = Cat Ninja
+PORT_SRC = src/main.c src/game.c src/env.c src/draw.c src/data.c src/plat_eadk.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c ../../launcher/src/inflate.c
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc
+include ../../platform/port.mk

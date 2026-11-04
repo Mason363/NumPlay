@@ -14,8 +14,10 @@
 #ifdef TR_BENCH
 #include "../tests/bot.h"
 #endif
+#ifndef NP_PORT /* (another target: platform/port.mk names the app) */
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Temple Run";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
+#endif
 
 uint32_t perf_frames __attribute__((used));   /* read by tools/emu.py */
 uint32_t perf_max __attribute__((used));

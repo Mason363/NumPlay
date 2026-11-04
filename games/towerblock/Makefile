@@ -81,3 +81,9 @@ build/play: $(SRC) tests/play.c $(HEADERS)
 	@echo "HOST    $@"
 test: build/play
 	build/play test
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = towerblock
+PORT_NAME = Tower Blocks
+PORT_SRC = src/main.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+include ../../platform/port.mk

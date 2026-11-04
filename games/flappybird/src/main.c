@@ -15,8 +15,10 @@
 #include "../../common/np_text.h"
 
 #ifdef __ELF__ /* app name and API level, for the calculator's installer */
+#ifndef NP_PORT /* (another target: platform/port.mk names the app) */
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Flappy Bird";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
+#endif
 #endif
 
 #define W 320
@@ -838,7 +840,7 @@ static void play_step(void) {
   int target = spd0 * (w == EV_TAIL ? 422 : w == EV_HEAD ? 154 : 256) >> 8;
   spd += (target - spd) / 12 + (target > spd) - (target < spd);
   gx += spd, gph = (int)(gx >> 8) % 14;
-  int32_t right = -(1 << 30);
+  int32_t right = -((int32_t)1 << 30);
   int gt = gap_target();
   for (int i = 0; i < NP; i++) {
     pipe_t *p = &P[i];
@@ -865,7 +867,7 @@ static void play_step(void) {
     int sp = dense_now() ? space * 174 >> 8 : space;
     for (int i = 0; i < NP; i++)
       if (!P[i].on) {
-        spawn(&P[i], right < -(1 << 29) ? W << 8 : right + (sp << 8));
+        spawn(&P[i], right < -((int32_t)1 << 29) ? W << 8 : right + (sp << 8));
         break;
       }
   }

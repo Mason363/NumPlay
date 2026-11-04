@@ -34,8 +34,10 @@ __attribute__((used, externally_visible)) void *memcpy(void *d, const void *s, s
 #endif
 
 #ifdef __ELF__ /* app name and API level, for the calculator's installer */
+#ifndef NP_PORT /* (another target: platform/port.mk names the app) */
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Crossy Road";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
+#endif
 #endif
 
 #define SW 320
@@ -2019,7 +2021,7 @@ static void render(void) {
 // firmware slot tells where. Top score, coins, the characters won and the one played go in a
 // tiny record named "crossyroad.sav", written only after the whole file system checks out
 // (one from before the characters, top score and coins, is read and replaced).
-#if (PLATFORM_DEVICE && !defined(HOST)) || defined(SAVE_TEST)
+#if (PLATFORM_DEVICE && !defined(HOST)) || defined(SAVE_TEST) || defined(NP_PORT)
 #define FS_MAGIC 0xEE0BDDBAu
 #define SAVE_LEN 20
 #define SAVE_LEN1 12
@@ -2072,7 +2074,8 @@ static void load_save(void) {
   const uint8_t *d = f + 2 + sizeof(save_name);
   uint32_t v[5];
   for (int i = 0; i < 5; i++) v[i] = d[4 * i] | d[4 * i + 1] << 8 | d[4 * i + 2] << 16 | (uint32_t)d[4 * i + 3] << 24;
-  if (v[0] > 999999999 || v[1] > 999999999) return;
+  /* (coins below zero: what the prize machine left from the characters' screen before 1.24.12; they come back as 0) */
+  if (v[0] > 999999999 || (v[1] > 999999999 && v[1] < 0x80000000u)) return;
   if (rd16(f) == 2 + sizeof(save_name) + SAVE_LEN1) {
     if (save_sum(v[0], v[1]) != v[2]) return;
   } else if (save_sum(save_sum(v[0], v[1]), v[2] * 31u + v[3]) != v[4] || v[3] >= NCHARS || !(v[2] >> v[3] & 1)) {
@@ -2082,7 +2085,7 @@ static void load_save(void) {
     chr = (int)v[3];
   }
   top_score = (int)v[0];
-  coins = (int)v[1];
+  coins = v[1] > 999999999 ? 0 : (int)v[1];
 }
 
 static NOINLINE void write_save(void) {
@@ -2107,6 +2110,9 @@ static NOINLINE void write_save(void) {
   uint8_t *d = f + 2 + sizeof(save_name);
   for (int i = 0; i < 5; i++)
     for (int j = 0; j < 4; j++) d[4 * i + j] = (uint8_t)(v[i] >> (8 * j));
+#ifdef NP_PORT
+  np_storage_changed();
+#endif
 }
 #elif defined(HOST)
 // (on a computer: coins and characters to start with, for trying the prize machine)
@@ -2271,7 +2277,7 @@ int main(int argc, char *argv[]) {
         chr = browse;
         write_save();
         restarting = 1, restart_t = 0;
-      } else if (ok && prize == 0) {  // 100 coins: one not won yet, at random, played from now on
+      } else if (state == ST_PRIZE && ok && prize == 0 && coins >= 100) {  // 100 coins: one not won yet, at random, played from now on
         int left = 0, k = 0;
         for (int c = 0; c < NCHARS; c++) left += !(owned >> c & 1);
         int r = irand(left);
@@ -2281,10 +2287,10 @@ int main(int argc, char *argv[]) {
         coins -= 100;
         write_save();
         prize = 1, st_time = 0;
-      } else if (ok && prize == 2) {
+      } else if (state == ST_PRIZE && ok && prize == 2) {
         build_char(won);
         prize = 3, st_time = 0;
-      } else if (ok && prize == 3 && st_time > 0.5f) {
+      } else if (state == ST_PRIZE && ok && prize == 3 && st_time > 0.5f) {
         restarting = 1, restart_t = 0;
       }
       dir = -1;

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NumPlay</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #9a9a9a; font: 14px/1.4 system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+  canvas { display: block; image-rendering: pixelated; outline: none; max-width: 100vw; max-height: calc(100vh - 60px);
+           aspect-ratio: 4 / 3; width: min(100vw, calc((100vh - 60px) * 4 / 3)); height: auto; }
+  p { margin: 0; text-align: center; padding: 0 16px; }
+  kbd { color: #ddd; font: inherit; }
+</style>
+</head>
+<body>
+<canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+<p><kbd>Arrows</kbd> move · <kbd>Enter</kbd> OK · <kbd>Space</kbd> EXE · <kbd>Esc</kbd> Back · <kbd>Home</kbd> save and quit</p>
+<script>
+  var Module = { canvas: document.getElementById('canvas') };
+  Module.canvas.focus();
+  addEventListener('keydown', function (e) {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Tab', 'Backspace'].indexOf(e.key) >= 0) e.preventDefault();
+  });
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

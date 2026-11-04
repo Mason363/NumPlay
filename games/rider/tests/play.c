@@ -362,6 +362,27 @@ static uint32_t rnd_keys(void) {
   keys_now = ks[lcg() % (sizeof ks / sizeof *ks)];
   return keys_now;
 }
+/* every challenge's line, with big numbers: two lines at most in the game over panel, one line in the menu */
+static void test_challenge_text(void) {
+  save_t keep = sv;
+  for (int t = 0; t < 26; t++) {
+    sv.ch_tpl = (uint8_t)t, sv.ch_x = 9999, sv.ch_y = 9999, sv.ch_z = 99, sv.ch_progress = 99, sv.challenges = 99;
+    snprintf(buf, sizeof buf, "%s (%d/%d)", challenge_text(), (int)sv.ch_progress, ch_goal());
+    char a[96];
+    snprintf(a, sizeof a, "%s", buf);
+    int cut = -1;
+    for (int i = 0; a[i]; i++)
+      if (a[i] == ' ') {
+        a[i] = 0;
+        if (gfx_text_width(&np_font_small, a) <= 204) cut = i;
+        a[i] = ' ';
+      }
+    CHECK(gfx_text_width(&np_font_small, buf) <= 204 || (cut >= 0 && gfx_text_width(&np_font_small, a + cut + 1) <= 204),
+          "challenge %d: too long for the game over panel", t);
+    CHECK(gfx_text_width(&np_font_small, buf) <= 312, "challenge %d: too long for the menu", t);
+  }
+  sv = keep;
+}
 static void test_app(void) {
   /* a fresh start: how to play, then the menu; random keys for a while; everything saved on Home */
   for (int s = 0; s < 150; s++) {
@@ -453,6 +474,7 @@ int main(int argc, char **argv) {
     test_physics();
     test_levels();
     test_app();
+    test_challenge_text();
     printf(fails ? "%d FAILED\n" : "all good\n", fails);
     return fails != 0;
   }

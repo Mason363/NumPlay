@@ -142,10 +142,10 @@ static int block_named(const char *s) {
   const char *n = strip_ns(s);
   if (is_num(n, false)) {
     int v = to_int(n);
-    return v >= 0 && v < 198 && mc_block_name[v][0] ? v : -1;
+    return v >= 0 && v < 198 && mc_block_name(v)[0] ? v : -1;
   }
   for (int i = 0; i < 198; i++)
-    if (mc_block_name[i][0] && !strcmp(mc_block_name[i], n)) return i;
+    if (mc_block_name(i)[0] && !strcmp(mc_block_name(i), n)) return i;
   return -1;
 }
 /* an item's id by name or number (Item.getByNameOrId): items' names first, then blocks that are items */
@@ -153,13 +153,13 @@ static int item_named(const char *s) {
   const char *n = strip_ns(s);
   if (is_num(n, false)) {
     int v = to_int(n);
-    if (v >= 256 && v < 432 && mc_item_name[v - 256][0]) return v;
+    if (v >= 256 && v < 432 && mc_item_name(v - 256)[0]) return v;
     return v >= 0 && v < 198 && (mc_block_item[v >> 3] >> (v & 7) & 1) ? v : -1;
   }
   for (int i = 0; i < 176; i++)
-    if (mc_item_name[i][0] && !strcmp(mc_item_name[i], n)) return 256 + i;
+    if (mc_item_name(i)[0] && !strcmp(mc_item_name(i), n)) return 256 + i;
   for (int i = 0; i < 198; i++)
-    if ((mc_block_item[i >> 3] >> (i & 7) & 1) && !strcmp(mc_block_name[i], n)) return i;
+    if ((mc_block_item[i >> 3] >> (i & 7) & 1) && !strcmp(mc_block_name(i), n)) return i;
   return -1;
 }
 /* NumBlocks' item for Minecraft's id and data; -1: none */
@@ -695,9 +695,9 @@ bool command_complete(const char *line, int k, int *at, char *o, int max) {
       if (arg == 0) return offer_list(word, players, 1, k, o, max);
       if (arg == 1) {
         for (int i = 0; i < 198; i++)
-          if ((mc_block_item[i >> 3] >> (i & 7) & 1) && offer(word, mc_block_name[i], "minecraft:", k, o, max)) return true;
+          if ((mc_block_item[i >> 3] >> (i & 7) & 1) && offer(word, mc_block_name(i), "minecraft:", k, o, max)) return true;
         for (int i = 0; i < 176; i++)
-          if (mc_item_name[i][0] && offer(word, mc_item_name[i], "minecraft:", k, o, max)) return true;
+          if (mc_item_name(i)[0] && offer(word, mc_item_name(i), "minecraft:", k, o, max)) return true;
       }
       return false;
     case C_SETBLOCK:
@@ -711,7 +711,7 @@ bool command_complete(const char *line, int k, int *at, char *o, int max) {
       }
       if (arg == 3) {
         for (int i = 0; i < 198; i++)
-          if (mc_block_name[i][0] && offer(word, mc_block_name[i], "minecraft:", k, o, max)) return true;
+          if (mc_block_name(i)[0] && offer(word, mc_block_name(i), "minecraft:", k, o, max)) return true;
         return false;
       }
       return arg == 5 && offer_list(word, handling, 3, k, o, max);

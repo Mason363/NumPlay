@@ -87,3 +87,11 @@ live:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = championisland
+PORT_NAME = Champion Island
+PORT_SRC = src/store.c src/menus.c src/dialog.c src/hud.c src/film.c src/names.c src/sport_archery.c src/sport_climbing.c src/sport_marathon.c src/sport_pingpong.c src/sport_rugby.c src/sport_skate.c src/sport_swim.c src/res.c src/spr.c src/gfx.c src/font.c src/font_data.c src/node.c src/ent.c src/phys.c src/game.c src/world.c src/lzma/LzmaDec.c src/plat_eadk.c src/main.c
+PORT_ASM = src/data.S
+PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
+include ../../platform/port.mk

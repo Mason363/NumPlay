@@ -438,6 +438,33 @@ static void test_levels(void) {
     }
 }
 
+/* every teleporter: the cat walks onto it and comes out at its end, the world drawn all the while */
+static void test_teleports(void) {
+  extern int game_debug_teleports(int out[16][4]);
+  int n_all = 0;
+  for (int lv = -1; lv < 30; lv++) {
+    game_new();
+    game_debug_goto(lv);
+    steps(30);
+    int t[16][4], n = game_debug_teleports(t);
+    for (int k = 0; k < n; k++) {
+      game_new();
+      game_debug_goto(lv);
+      steps(30);
+      P.x = t[k][0] * 20 + 10, P.y = t[k][1] * 20 + 10, P.speedx = 0, P.gravity = 0;
+      for (int f = 0; f < 240; f++) {
+        game_step();
+        draw_frame();
+        gfx_render(scene, NULL, 0, 240);
+        CHECK(level >= -1 && level < 30 && P.x == P.x && P.y == P.y, "level %d: teleporter %d: lost", lv + 1, k);
+      }
+      n_all++;
+    }
+  }
+  CHECK(n_all > 0, "no teleporters");
+  printf("  %d teleporters\n", n_all);
+}
+
 /* the whole app on random keys: pauses, menus, the How to play page, quitting and coming back */
 static uint32_t fuzz_keys(void) {
   static uint32_t k;
@@ -539,6 +566,8 @@ int main(int argc, char **argv) {
     test_run();
     printf("every level, random keys\n");
     test_levels();
+    printf("teleporters\n");
+    test_teleports();
     printf("saves\n");
     test_saves();
     printf("the app, random keys\n");

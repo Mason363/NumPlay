@@ -890,7 +890,7 @@ static bool found(int id) {
   for (int g = 0; g < n_give; g++)
     if (give_id[g] == id) {
       int k = give_key[g] >> 4;
-      return has(k < 256 ? mc_block_name[k] : mc_item_name[k - 256]);
+      return has(k < 256 ? mc_block_name(k) : mc_item_name(k - 256));
     }
   return false;
 }

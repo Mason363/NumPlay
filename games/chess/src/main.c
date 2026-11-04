@@ -8,8 +8,10 @@
 #include "sprites.h"
 
 #ifdef __ELF__ /* app name and API level, for the calculator's installer */
+#ifndef NP_PORT /* (another target: platform/port.mk names the app) */
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Chess";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
+#endif
 #endif
 
 typedef uint16_t C;
@@ -192,6 +194,9 @@ static void sprite(int pc, int X, int Y, int small) {
  * out of that piece and drawn by the calculator right after: its text routine
  * paints its own background, so every pixel changes once and nothing flickers. */
 #define WPIX (200 * 56)
+#ifdef __TICE__ /* past the TI-84 CE's 60 KB for static data: it comes with the program */
+__attribute__((section(".data")))
+#endif
 static C wbuf[WPIX];
 static struct {
   int x, y, w, h, nt;

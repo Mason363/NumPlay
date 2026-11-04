@@ -62,3 +62,10 @@ data:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = tombofthemask
+PORT_NAME = Tomb of the Mask
+PORT_SRC = src/main.c src/game.c src/world.c src/player.c src/things.c src/progress.c src/draw.c src/save.c src/data.c src/art.c src/plat_eadk.c
+PORT_FLAGS = -DEPSILON_XL=1
+include ../../platform/port.mk

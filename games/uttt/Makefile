@@ -81,3 +81,9 @@ build/check: tests/check.c src/rules.h
 	@echo "HOST    $@"
 test: build/check
 	build/check
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = uttt
+PORT_NAME = Ultimate Tic-Tac-Toe
+PORT_SRC = src/main.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+include ../../platform/port.mk

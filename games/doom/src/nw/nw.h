@@ -13,7 +13,7 @@ extern int nw_warp;
 /* i_system.c: Home, On/Off and Quit end the main loop; I_Error and I_Quit jump back to main
  * (__builtin_setjmp and __builtin_longjmp on nw_exit) */
 extern boolean nw_quit;
-#if defined(HOST) && defined(__APPLE__) /* (a Mac's compiler has no __builtin_setjmp on arm64) */
+#if (defined(HOST) && defined(__APPLE__)) || defined(NP_PORT) /* (no __builtin_setjmp on arm64) */
 #include <setjmp.h>
 extern jmp_buf nw_exit;
 #define __builtin_setjmp setjmp

@@ -89,3 +89,10 @@ test: build/play
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = mahjong
+PORT_NAME = Mahjong
+PORT_SRC = src/main.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src
+include ../../platform/port.mk

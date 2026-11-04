@@ -77,3 +77,11 @@ data:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = undertale
+PORT_NAME = Undertale
+PORT_SRC = src/battle.c src/blk.c src/core.c src/coremon.c src/event.c src/events.c src/flowey.c src/game.c src/ht1.c src/ht2.c src/ht3.c src/htmon.c src/htshows.c src/items.c src/main.c src/menu.c src/monsters.c src/newhome.c src/nhmon.c src/papyrus.c src/res.c src/resort.c src/rooms.c src/ruins1.c src/ruins2.c src/ruins3.c src/save.c src/shoot.c src/shop.c src/snowdin1.c src/snowdin2.c src/snowmon.c src/snowtown.c src/text.c src/toriel.c src/wf1.c src/wf2.c src/wf3.c src/wfmon.c src/world.c src/lzma/LzmaDec.c src/gfx.c src/bullets.c src/plat_eadk.c
+PORT_ASM = src/data.S
+PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
+include ../../platform/port.mk

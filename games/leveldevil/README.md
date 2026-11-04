@@ -37,7 +37,7 @@ Run to the door. The level has other plans. Unept's troll platformer on the NumW
 
 Not affiliated with Unept. On the keypad, the game's mouse and desktop buttons (mute, settings, speedrun, ads, costumes) and its 2 Player mode are left out; the map shows the world you pick, where the game shows the one to play next, and scrolls, as the calculator's screen is narrower than the game's. The rooms are drawn at 3/4 of their size to fit the screen whole; the jaws, the title, the map and the writing are drawn as the game has them.
 
-`make test` plays the rooms through on a computer with the keys in [tests/solutions.txt](tests/solutions.txt) (found by a search, `build/play search`, or written by hand): 75 of the 80 are cleared that way. For the other five (Scale 4, Gravity 4, Movement 3 and Wraparound 4 and 5), no keys have been found yet, so it plays a walk that sets their traps off without the runner dying. `build/play screens DIR` and `build/play rooms DIR` draw the screens and the rooms.
+`make test` plays the rooms through on a computer with the keys in [tests/solutions.txt](tests/solutions.txt) (found by a search, `build/play search`, or written by hand): 76 of the 80 are cleared that way. For the other four (Gravity 4, Movement 3 and Wraparound 4 and 5), no keys have been found yet, so it plays a walk that sets their traps off without the runner dying. `build/play screens DIR` and `build/play rooms DIR` draw the screens and the rooms.
 
 It comes as its own app, `LevelDevil.nwa`, from the [latest release](https://github.com/Mason363/NumPlay/releases/latest).
 

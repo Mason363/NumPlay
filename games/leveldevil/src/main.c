@@ -22,8 +22,10 @@
 #include "../../common/epsilon_files.h"
 
 #ifndef HOST /* (a computer build of the tests has no app header) */
+#ifndef NP_PORT /* (another target: platform/port.mk names the app) */
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Level Devil";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
+#endif
 #endif
 void np_push(int x, int y, int w, int h, const color_t *px) {
   eadk_display_push_rect((eadk_rect_t){(uint16_t)x, (uint16_t)y, (uint16_t)w, (uint16_t)h}, px);
@@ -122,9 +124,9 @@ static color_t strip[SCREEN_W * STRIP_H];
 static int level, rnum, ri, scr, ov, sel, modes, frame, shake, shake_n;
 static uint8_t cnt[EVENTS];
 static uint16_t at_[EVENTS];
-/* the runner: its box's corner and its speed (256ths of a pixel, a step), its size (pixels) */
+/* the runner: its box's corner and its speed (256ths of a pixel, a step), its size (pixels), its outline */
 static int32_t hx, hy, vx, vy;
-static int hw, hh, hsx, hsy, tsx, tsy, hgl;
+static int hw, hh, hsx, hsy, tsx, tsy, hgl, shape;
 static int run, jumpv, maxup, maxdown, back, downjump, dir, slide, pushx, gx, gy, keyev;
 static int face, ground, coyote, jumping, anim, dead, won, frozen, born, started, flapped, held_in, waiting;
 static uint32_t seed, now;
@@ -225,24 +227,90 @@ static int hit(const int *b, int x0, int y0, int x1, int y1) { return x0 < b[2] 
 static int there(const obj_t *o) { return !(o->f & F_OFF); }
 static int solid(const obj_t *o) { return (o->kind & 15) == K_BLOCK && !(o->f & (F_GHOST | F_OFF)) && o->w >= 8 && o->h >= 8; }
 
-/* what the runner's box would hit at (x, y): the ground, a block, the top of a one-way tile it is
-   above (feet: where its feet were, or -1); 0 for nothing, 1 for the ground, else 2 + the object */
+/* The runner's outline, the game's (its body's shape in each of its pictures): x 4 to 11 and y 3 to 16
+   of its 16 x 16 picture, a box of 7 x 13, its feet narrower. Standing, its sides are straight and its
+   lower corners cut 3 and 2 pixels across its last pixel; running or in the air, its sides go in a
+   pixel over 12 and its corners are cut 2 and 1 (its points from the box's top left corner, going
+   round). Flying in Flappy it is a plain box of 8 x 13, 8 x 11 while it moves. It grows as the game's
+   body does, all of it, about its middle (3.5 and 6 pixels in): 28 times as wide, it is 196 pixels
+   across at the top, its corners cut 56 and 28; its weight stays the small one's, so it jumps as high. */
+enum { S_STAND, S_RUN, S_FLY, S_FLAP };
+static const int8_t outlines[4][6][2] = {{{0, 0}, {7, 0}, {7, 12}, {5, 13}, {3, 13}, {0, 12}},
+                                          {{0, 0}, {7, 0}, {6, 12}, {5, 13}, {3, 13}, {1, 12}},
+                                          {{0, 0}, {8, 0}, {8, 13}, {8, 13}, {0, 13}, {0, 13}},
+                                          {{0, 0}, {8, 0}, {8, 11}, {8, 11}, {0, 11}, {0, 11}}};
+static int base_w(void) { return modes & R_FLAPPY ? 8 : 7; }
+static int feet_skip; /* (16ths of a pixel at its feet left out of the outline: see step_axis) */
+/* does the runner's outline, its box's corner at (x, y), overlap the box [x0, x1) x [y0, y1)? (no
+   straight line between them: the box's sides, or one of the outline's) */
+static int touches(int x, int y, int x0, int y0, int x1, int y1) {
+  static int key = -1, v[6][2]; /* (the outline as it is now, 16ths of a pixel) */
+  int k = shape | hw << 2 | hh << 12 | (gy < 0) << 24;
+  if (k != key) {
+    for (int i = 0; i < 6; i++) {
+      v[i][0] = outlines[shape][i][0] * hw * 16 / (shape >= S_FLY ? 8 : 7), v[i][1] = outlines[shape][i][1] * hh * 16 / 13;
+      if (gy < 0) v[i][1] = hh * 16 - v[i][1]; /* (upside down) */
+    }
+    key = k;
+  }
+  /* the box, within the runner's (16ths of a pixel, from its corner) */
+  int c[4] = {imax(x0 - x, 0) * 16, imax(y0 - y, 0) * 16, imin(x1 - x, hw) * 16, imin(y1 - y, hh) * 16};
+  if (gy < 0) c[1] = imax(c[1], feet_skip);
+  else c[3] = imin(c[3], hh * 16 - feet_skip);
+  if (c[0] >= c[2] || c[1] >= c[3]) return 0;
+  for (int i = 0; i < 6; i++) {
+    const int *a = v[i], *b = v[(i + 1) % 6];
+    int dx = b[0] - a[0], dy = b[1] - a[1], in = 0;
+    if (!dx && !dy) continue;
+    int s = dx * (hh * 8 - a[1]) - dy * (hw * 8 - a[0]) > 0 ? 1 : -1; /* (the middle's side) */
+    for (int j = 0; j < 4 && !in; j++) in = (dx * (c[1 + (j & 2)] - a[1]) - dy * (c[j & 1 ? 2 : 0] - a[0])) * s > 0;
+    if (!in) return 0;
+  }
+  return 1;
+}
+
+/* what the runner would hit at (x, y): the ground, a block, the top of a one-way tile it is above
+   (feet: where its feet were, or -1); 0 for nothing, 1 for the ground, else 2 + the object */
 static int blocked(int x, int y, int feet) {
   int b[4];
-  if (ground_in(x, y, x + hw, y + hh)) return 1;
+  for (int tx = x >> 4; tx <= (x + hw - 1) >> 4; tx++)
+    for (int ty = y >> 4; ty <= (y + hh - 1) >> 4; ty++)
+      if (cell(tx, ty) && touches(x, y, tx * 16, ty * 16, tx * 16 + 16, ty * 16 + 16)) return 1;
   for (int k = 0; k < no; k++) {
     obj_t *o = &ob[k];
     box(o, b);
     if (solid(o) || ((o->kind & 15) == K_THRU && there(o) && feet >= 0 && feet <= b[1]))
-      if (hit(b, x, y, x + hw, y + hh)) return 2 + k;
+      if (touches(x, y, b[0], b[1], b[2], b[3])) return 2 + k;
   }
   return 0;
 }
-/* moves the runner d along an axis, a pixel at a time; what stopped it, or 0 */
+/* how high its outline's side (s: 1 right, -1 left) slopes no steeper than a pixel up for a pixel
+   across, from its feet (16ths of a pixel): a corner met there slides it up, as the game's body would */
+static int slope_up(int s) {
+  static const int8_t edges[2][3] = {{4, 5, 0}, {3, 2, 1}}; /* (the side's corners, from the feet up) */
+  const int8_t *e = edges[s > 0], (*o)[2] = outlines[shape];
+  int up = 0;
+  for (int i = 0; i < 2; i++) {
+    int dx = iabs(o[e[i + 1]][0] - o[e[i]][0]) * hw * 16 / 7, dy = iabs(o[e[i + 1]][1] - o[e[i]][1]) * hh * 16 / 13;
+    if (dy > dx) break;
+    up += dy;
+  }
+  return up;
+}
+/* moves the runner d along an axis, a pixel at a time; what stopped it, or 0. Across, a corner met
+   by a slope of its outline (and nothing else) lifts it a pixel when there is room above */
 static int step_axis(int32_t *p, int32_t d, int axis) {
-  int a = *p >> 8, e = (*p + d) >> 8, s = e > a ? 1 : -1, w;
+  int a = *p >> 8, e = (*p + d) >> 8, s = e > a ? 1 : -1, up = gy < 0 ? 1 : -1, w;
   for (; a != e; a += s)
     if ((w = axis ? blocked(hx >> 8, a + s, s > 0 ? a + hh : -1) : blocked(a + s, hy >> 8, -1))) {
+      if (!axis && shape < S_FLY && (feet_skip = slope_up(s))) {
+        int lift = !blocked(a + s, hy >> 8, -1);
+        feet_skip = 0;
+        if (lift && !blocked(a + s, (hy >> 8) + up, -1)) {
+          hy += up * 256;
+          continue;
+        }
+      }
       *p = a * 256 + (s > 0 ? 255 : 0);
       return w;
     }
@@ -270,9 +338,9 @@ static void fire(int e) {
     if (st[i].ev == e) st[i].done = 0;
 }
 
-static void size_hero(void) { /* its box from its scale, about its centre */
-  int w = imax(1, 5 * hsx / 100), h = imax(1, 13 * hsy / 100);
-  hx -= (w - hw) * 128, hy -= (h - hh) * 128, hw = w, hh = h;
+static void size_hero(void) { /* its box from its scale, about its middle (6 of 13 pixels down, its feet's way) */
+  int w = imax(1, base_w() * hsx / 100), h = imax(1, 13 * hsy / 100);
+  hx -= (w - hw) * 128, hy -= (h - hh) * (gy < 0 ? 7 : 6) * 256 / 13, hw = w, hh = h;
 }
 
 static void reset(void) { /* the room as it starts */
@@ -280,8 +348,8 @@ static void reset(void) { /* the room as it starts */
   for (int i = 0; i < ri; i++) s0 += data[D_NSPAN + i], r0 += data[D_NSTEP + i];
   const uint8_t *h = data + ri * 5;
   modes = h[0];
-  hsx = hsy = tsx = tsy = 100, hgl = 0, hw = 5, hh = 13;
-  hx = (rd16(ri * 5 + 1) + 5) * 256, hy = (rd16(ri * 5 + 3) + 3) * 256, vx = vy = 0;
+  hsx = hsy = tsx = tsy = 100, hgl = 0, hw = base_w(), hh = 13, shape = modes & R_FLAPPY ? S_FLY : S_STAND;
+  hx = (rd16(ri * 5 + 1) + 4) * 256, hy = (rd16(ri * 5 + 3) + 3) * 256, vx = vy = 0;
   for (int i = 0; i < 33; i++) gcol[i] = (uint16_t)rd16(D_GROUND + ri * 66 + 2 * i);
   no = nr = 0;
   for (int s = s0; s < s0 + data[D_NSPAN + ri]; s++) {
@@ -375,7 +443,7 @@ static void exec(const step_t *p) {
         bits[i].x = hx + hw * 128 + ((int)(rnd() % 5) - 2) * 256, bits[i].y = hy + hh * 128 + ((int)(rnd() % 11) - 5) * 256;
         bits[i].vx = (int16_t)(PS(250) * sine_of(d + 16) / 256), bits[i].vy = (int16_t)(-PS(250) * sine_of(d) / 256);
       }
-      hx = (a + 5) * 256, hy = (b + 3) * 256, vx = vy = 0, frozen = 45;
+      hx = (a + 4) * 256, hy = (b + 3) * 256, vx = vy = 0, frozen = 45;
       break;
     case O_HERO:
       if (a == H_RUN) run = PS(b);
@@ -424,13 +492,13 @@ static void script(void) {
 static void shove(obj_t *o, int dx, int dy) {
   int b[4];
   box(o, b);
-  if (!hit(b, hx >> 8, hy >> 8, (hx >> 8) + hw, (hy >> 8) + hh)) return;
+  if (!touches(hx >> 8, hy >> 8, b[0], b[1], b[2], b[3])) return;
   int32_t px = hx, py = hy;
   o->f |= F_GHOST; /* (the block left out while the runner moves out of it) */
   if (dy) step_axis(&hy, (dy < 0 ? b[1] - hh - (hy >> 8) : b[3] - (hy >> 8)) * 256, 1);
   else if (dx) step_axis(&hx, (dx < 0 ? b[0] - hw - (hx >> 8) : b[2] - (hx >> 8)) * 256, 0);
   o->f &= ~F_GHOST;
-  if (hit(b, hx >> 8, hy >> 8, (hx >> 8) + hw, (hy >> 8) + hh) || (px == hx && py == hy && !unstick())) die();
+  if (touches(hx >> 8, hy >> 8, b[0], b[1], b[2], b[3]) || (px == hx && py == hy && !unstick())) die();
 }
 
 static void objects(void) {
@@ -495,7 +563,7 @@ static void contacts(void) {
     if (kind == K_COIN || kind == K_BAD || kind == K_DEATH) b[0] += w / 3, b[1] += h / 3, b[2] -= w / 3, b[3] -= h / 3;
     if (kind == K_SPRING) b[1] = b[3] - h * 3 / 8;
     if (kind == K_DOOR) b[0] += w / 4, b[2] -= w / 4, b[1] += h / 4;
-    if (!hit(b, x, y, x + hw, y + hh)) continue;
+    if (!touches(x, y, b[0], b[1], b[2], b[3])) continue;
     if (kind == K_SAW) { /* round: the nearest point of the box to its middle */
       int cx = o->x >> 8, cy = o->y >> 8, dx = cx - clampi(cx, x, x + hw - 1), dy = cy - clampi(cy, y, y + hh - 1);
       if (dx * dx + dy * dy < (w - 1) * (w - 1)) die();
@@ -527,9 +595,13 @@ static void hero(int in) {
     size_hero();
     if (blocked(hx >> 8, hy >> 8, -1) && !unstick()) die();
   }
-  int m = !!(in & I_RIGHT) - !!(in & I_LEFT), jump = (downjump ? I_DOWN : I_UP) & in & ~held_in;
+  int m = !!(in & I_RIGHT) - !!(in & I_LEFT), jump = (downjump ? I_DOWN : I_UP) & in & ~held_in, was = shape;
   if (back) m = -m;
   if (m) face = m;
+  /* its outline: the picture it is in (standing only on the ground with no key held), out of what that
+     puts it in, as the game's body is pushed (or as it was, when nothing near is free) */
+  shape = modes & R_FLAPPY ? (vx ? S_FLAP : S_FLY) : ground && !m && !jump ? S_STAND : S_RUN;
+  if (shape != was && blocked(hx >> 8, hy >> 8, -1) && !unstick()) shape = was;
   if (modes & R_FLAPPY) {
     if (!started && in & ~held_in && frame > 30) started = 1;
     if (started) vx = clampi(vx + dir * PS(52), -run, run);
@@ -559,13 +631,13 @@ static void hero(int in) {
   if (step_axis(&hx, vx, 0)) vx = 0;
   if (step_axis(&hy, vy, 1)) vy = 0;
   /* where its picture is on the screen (the game's camera: x 50 to 477) */
-  int ax = (hx >> 8) - 55, ay = (hy >> 8) - 3;
+  int ax = (hx >> 8) - 54, ay = (hy >> 8) - 3;
   if (modes & R_WRAP) { /* off one side of the screen, back in at the other */
     if (ax < -6) hx += 424 * 256;
     if (ax > 419) hx -= 424 * 256;
     if (ay > 234) hy -= 242 * 256;
     if (modes & R_WRAPY && ay < -9) hy += 239 * 256;
-    ax = (hx >> 8) - 55, ay = (hy >> 8) - 3;
+    ax = (hx >> 8) - 54, ay = (hy >> 8) - 3;
   }
   if (ay < -16 || ay > 240 || ax < -8 || ax > 421) die();
   ground = blocked(hx >> 8, (hy >> 8) + down, down > 0 ? (hy >> 8) + hh - 1 : -1) != 0;
@@ -775,11 +847,11 @@ static void ground_draw(void) {
   }
 }
 
-/* the runner: its 16 x 16 picture about its 5 x 13 box (the box at 5, 3), standing, running (60 ms a
-   picture), jumping, or flapping; in the swap room it looks like the door */
+/* the runner: its 16 x 16 picture about its 7 x 13 box (the box at 4, 3; 8 x 13 flying), standing,
+   running (60 ms a picture), jumping, or flapping; in the swap room it looks like the door */
 static void draw_hero(void) {
-  int flip = gy < 0, id;
-  int32_t px = hx - hw * 256, py = hy - hh * 3 * 256 / 13, pw = hw * 16 * 256 / 5, ph = hh * 16 * 256 / 13;
+  int flip = gy < 0, id, bw = base_w();
+  int32_t px = hx - hw * 4 * 256 / bw, py = hy - hh * 3 * 256 / 13, pw = hw * 16 * 256 / bw, ph = hh * 16 * 256 / 13;
   if (flip) py = hy + hh * 256 - ph + hh * 3 * 256 / 13; /* (upside down: the box at the picture's top) */
   if (modes & R_SWAP) id = P_DOOR_DUMMY;
   else if (modes & R_FLAPPY) id = vx > 0 ? P_FLAP_R : vx < 0 ? P_FLAP_L : P_FLAP_STAND;

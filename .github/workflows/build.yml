@@ -1,7 +1,8 @@
 name: Build
 
-# Builds NumPlay.nwa, its discreet versions and every game on its own, and publishes them as a GitHub
-# release when main reaches a version (VERSION) not released yet. Pushing a tag like v1.2.0 does too.
+# Builds NumPlay.nwa, its discreet versions and every game on its own, tests them in eight parts side by side,
+# then gives NumPlay Studio the new kit and publishes a GitHub release when main reaches a version (VERSION) not
+# released yet. Pushing a tag like v1.2.0 does too.
 
 on:
   push:
@@ -14,36 +15,22 @@ permissions:
   contents: write
   actions: write
 
+# One run of main at a time: a push waits for the run before it, and a newer push replaces one still waiting
+# (tags and pull requests each have their own)
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-
-      - name: ARM toolchain
-        run: |
-          v=15.2.1-1.1
-          curl -sSL "https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/download/v$v/xpack-arm-none-eabi-gcc-$v-linux-x64.tar.gz" | tar -xz -C "$RUNNER_TEMP"
-          echo "$RUNNER_TEMP/xpack-arm-none-eabi-gcc-$v/bin" >> "$GITHUB_PATH"
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Tools
-        run: |
-          sudo apt-get update -q && sudo apt-get install -yq pngquant
-          pip install pillow numpy zopfli pyelftools unicorn==2.1.4
-          npm install -g nwlink@1.0.0
-          rustup target add thumbv7em-none-eabihf
+      - uses: ./.github/actions/setup
 
       - name: Build
         run: python3 tools/build.py -j 4 && make kit-langs NWLINK=nwlink
-        
+
       - uses: actions/upload-artifact@v4
         with:
           name: nwa
@@ -51,71 +38,61 @@ jobs:
             build/compiled/NumPlay*.nwa
             build/compiled/games/*.nwa
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: |
+            build/compiled
+            build/data/site-kit
+
+  # Each part builds again (faster than handing over the whole build) and runs its share: tests/ci.py
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Build
+        run: python3 tools/build.py -j 4
+
       - name: Test
-        run: |
-          python3 tests/test_games.py build/compiled/games
-          python3 tests/test_uninstall.py build/compiled/NumPlay.nwa --game numdrive
-          python3 tests/test_progress.py build/compiled/NumPlay.nwa
-          python3 tests/test_numblocks_progress.py build/compiled/games/NumBlocks.nwa
-          python3 tests/test_upsilon.py build/compiled/NumPlay-Upsilon.nwa
-          python3 tests/test_small_ram.py build/compiled/NumPlay.nwa
-          python3 tests/test_apps.py build/data
-          make -C games/numblocks host test
-          make -C games/numdrive host test
-          make -C games/championisland host test
-          make -C games/undertale host test
-          make -C games/doom host test
-          make -C games/isaac host test
-          make -C games/pvz host test
-          make -C games/fnaf host test
-          make -C games/sonic host test
-          make -C games/subway host test
-          make -C games/hillclimb host test
-          make -C games/leveldevil host test
-          make -C games/cookieclicker host test
-          make -C games/jetpackjoyride host test
-          make -C games/donkeykong host test
-          make -C games/dune host test
-          make -C games/monkeymart host test
-          make -C games/tombofthemask host test
-          make -C games/invaders host test
-          make -C games/sudoku host test
-          make -C games/uttt host test
-          make -C games/sokoban host test
-          make -C games/twoplayer host test
-          make -C games/flappydunk host test
-          make -C games/towerblock host test
-          make -C games/suika host test
-          make -C games/doodlejump host test
-          make -C games/stickmanhook host test
-          make -C games/coreball host test
-          make -C games/uno host test
-          make -C games/fnf host test BUILD_DIR=../../build/data/games/fnf
-          make -C games/angrybirds host test
-          make -C games/polytrack host test
-          make -C games/paperclips host test
-          make -C games/badtime host test
-          make -C games/mahjong host test
-          make -C games/rider host test
-          make -C games/snowrider host test
-          make -C games/templerun host test
-          make -C games/fnaf2 host test
-          make -C games/famidash host test
-          make -C games/catninja host test
+        run: python3 tests/ci.py --shard ${{ matrix.shard }} --of 8
 
+  publish:
+    needs: [build, test]
+    if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: build
 
       - name: Kit for the website
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         # NumPlay Studio (customize/) links a NumPlay of your own from the kit (make kit): it goes on the
-        # branch "kit", one commit, and the site is deployed again with it. Only from main's newest commit: a run
-        # for an older one can end last and would put an older kit back
+        # branch "kit", one commit, and the site is deployed again with it. Any run of a commit newer than the
+        # kit's makes it, so the Studio has every game as soon as one build of it ends; a run of an older commit
+        # that ends last leaves the newer kit alone
         run: |
-          if [ "$(git ls-remote origin refs/heads/main | cut -f1)" != "$GITHUB_SHA" ]; then
-            echo "(main has moved on: its newest commit's run makes the kit)"
-            exit 0
+          kit=$(gh api "repos/$GITHUB_REPOSITORY/commits/kit" --jq .commit.message 2>/dev/null | grep -o '[0-9a-f]\{40\}' | tail -1)
+          if [ -n "$kit" ]; then
+            how=$(gh api "repos/$GITHUB_REPOSITORY/compare/$kit...$GITHUB_SHA" --jq .status 2>/dev/null || echo unknown)
+            if [ "$how" != ahead ]; then
+              echo "(the kit is from $kit, which this commit isn't newer than: $how)"
+              exit 0
+            fi
           fi
           cd build/data/site-kit
           git init -q -b kit
@@ -126,7 +103,6 @@ jobs:
           gh workflow run pages.yml --ref main --repo "$GITHUB_REPOSITORY" || echo "(the site was not deployed again)"
 
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && github.event_name != 'pull_request')
         env:
           GH_TOKEN: ${{ github.token }}
         # The tag pushed, or on main v + VERSION (made here if it isn't released yet). GitHub lists the

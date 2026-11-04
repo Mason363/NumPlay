@@ -103,3 +103,16 @@ $(BUILD_DIR)/perf.nwa: $(OBJ) $(BUILD_DIR)/icon.o $(BUILD_DIR)/perf-carts.o src/
 	$(Q) $(CC) $(CFLAGS) $(APP_OPT) $(LDFLAGS) -Wl,-T,src/carts.ld $(OBJ) $(BUILD_DIR)/icon.o $(BUILD_DIR)/perf-carts.o -lm -o $@
 perf: $(OBJ)
 	$(Q) NWLINK="$(NWLINK)" $(PYTHON) tests/perf.py $(TEST_CARTS)
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = numpico
+PORT_NAME = NumPico
+PORT_SRC = $(CORE_SRC) src/main.c src/carts.c src/plat_eadk.c $(L)/gfx.c $(L)/xfont.c $(PORT_OUT)/carts.c
+# (Lua's headers for quoted includes only, and its functions renamed there: the TI-Nspire has a Lua of its own)
+PORT_FLAGS = -DEPSILON_XL=1 -DNDEBUG -I$(L) -Isrc -Isrc/femto8 -iquote src/femto8/lua \
+  $(if $(filter nspire,$(TARGET)),-include src/nspire_lua.h)
+include ../../platform/port.mk
+# the carts, built in as on the calculator (CARTS, CARTS_LIST)
+$(PORT_OUT)/carts.c: FORCE
+	@mkdir -p $(@D)
+	$(Q) $(PYTHON) -I tools/p8cart.py --c $@ $(CARTS) $(if $(CARTS_LIST),--list $(CARTS_LIST))

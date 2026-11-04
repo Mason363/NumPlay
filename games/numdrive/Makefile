@@ -14,7 +14,7 @@ CFLAGS = -std=gnu11 -Wall -Wno-unused-function -fsingle-precision-constant
 
 ifeq ($(PLATFORM),device)
 CC = arm-none-eabi-gcc
-TARGET = $(BUILD_DIR)/numdrive.nwa
+APP_FILE = $(BUILD_DIR)/numdrive.nwa
 CFLAGS += $(shell $(NWLINK) eadk-cflags-device) -Os
 CFLAGS += -flto -flto-partition=one -fno-fat-lto-objects -fwhole-program -fvisibility=internal -fno-math-errno -fno-ident
 LDFLAGS = $(shell $(NWLINK) eadk-ldflags-device) --specs=nano.specs
@@ -23,16 +23,16 @@ LDFLAGS += -flinker-output=nolto-rel
 EXTRA = $(BUILD_DIR)/icon.o
 else
 CC = gcc
-TARGET = $(BUILD_DIR)/numdrive.nwb
+APP_FILE = $(BUILD_DIR)/numdrive.nwb
 CFLAGS += $(shell $(NWLINK) eadk-cflags-simulator) -O2 -DNO_STORAGE
 LDFLAGS = $(shell $(NWLINK) eadk-ldflags-simulator)
 EXTRA =
 endif
 
 .PHONY: build clean
-build: $(TARGET)
+build: $(APP_FILE)
 
-$(TARGET): $(OBJECTS) $(EXTRA)
+$(APP_FILE): $(OBJECTS) $(EXTRA)
 	@echo "LD      $@"
 	$(Q) $(CC) $(CFLAGS) $^ $(LDFLAGS) -lm -o $@
 ifeq ($(PLATFORM),device)
@@ -82,3 +82,12 @@ output/sim-module.o: $(addprefix src/,$(SOURCES)) src/pack.bin src/*.h
 	  -c src/$$f -o output/npsim/$${f%.c}.o || exit 1; done
 	$(Q) cc -fPIC -c output/npsim/pack_bin.c -o output/npsim/pack_bin.o
 	$(Q) ld -r output/npsim/*.o -exported_symbol _np_numdrive_main -o $@
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = numdrive
+PORT_NAME = NumDrive
+PORT_SRC = src/main.c src/world.c src/vm.c src/physics.c src/render.c src/inflate.c src/gfx.c src/ui.c src/save.c src/font.c src/platform_eadk.c
+PORT_ASM = src/pack_data.S
+# (pack.bin found next to pack_data.S; a computer's 64-bit pointers: the host tests' arena)
+PORT_FLAGS = -Wa,-Isrc $(if $(filter sdl,$(TARGET)),-DARENA_SIZE=600000)
+include ../../platform/port.mk

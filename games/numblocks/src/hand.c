@@ -207,6 +207,8 @@ void hand_frame(void) {
     } else {
       kind = H_ITEM, nbox = 1;
       icon = id == I_FISHING_ROD && bobber() ? SP_FISHING_ROD_CAST : item_icon(id);   /* (the line out) */
+      /* a bow drawn: an arrow on it, pulled further at 14 and 18 ticks (RenderItem.renderItemModelForEntity) */
+      if (k == IK_BOW && pl.using_ticks > 0) icon = SP_BOW_PULLING_0 + (pl.using_ticks > 13) + (pl.using_ticks >= 18);
       if (icon < 0) {
         kind = H_NONE;
         return;

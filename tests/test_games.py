@@ -329,6 +329,18 @@ GAMES = {
                  presses((1500, "ok"), (2200, "ok"), (3000, "ok"), (4000, "ok"), (8000, "back"))
                  + [(5000, 7000, K["ok"])], 9000,
                  presses((1500, "ok"), (2500, "ok")) + [(3500, 5500, K["ok"])], 6500),
+    # Play, How to Play's three pages, the settings' Start, the intro, a walk; Home saves the round. Next time, from
+    # the copy, the title, then On/Off
+    "amongus": ("AmongUs.nwa", "amongus.sav",
+                presses((1500, "ok"), (2500, "ok"), (3500, "ok"), (4500, "ok"), (5500, "ok"), (7000, "right", 2000)),
+                10000, presses((1500, "down")), 3500),
+    # Start, the first "Pass to", the role; Home saves the round. Next time, from the copy, the settings, then On/Off
+    "imposter": ("Imposter.nwa", "imposter.sav",
+                 presses((1500, "ok"), (2500, "ok"), (3500, "ok")), 6000, presses((1500, "down")), 3500),
+    # Play, the first level, the gas held a while; Home saves. Next time, from the copy, the map, then On/Off
+    "motox3m": ("MotoX3M.nwa", "motox3m.sav",
+                presses((1500, "ok"), (2200, "ok"), (3000, "up", 4000)), 9000,
+                presses((1500, "ok")), 3500),
     # a level, its message, then play; then back to the level select
     "portal": ("PortalReturns.nwa", "portal.sav",
                presses((1500, "ok"), (2500, "ok"), (3500, "ok")) + every(4000, 7000, 400, "right", 300), 8000,
@@ -432,7 +444,7 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "clashroyale": "clashroyale_saves.py",
           "catninja": "catninja_saves.py",
           "kingdomrush": "kingdomrush_saves.py",
-          "mrbullet": "mrbullet_saves.py"}
+          "mrbullet": "mrbullet_saves.py", "motox3m": "motox3m_saves.py", "amongus": "amongus_saves.py", "imposter": "imposter_saves.py"}
 
 
 def paperclips_ok(v):
@@ -734,6 +746,12 @@ CHECKS = {
     # "MRB1", version 1, its size (1216): the first level's three stars (8), cleared (604), how to play read (1208);
     # after the reinstall, from the copy, the same
     "mrbullet": (lambda v: len(v) == 1216 and v[:4] == b"MRB1" and v[8] == 3 and v[604] == 1 and v[1208] == 1,) * 2,
+    # "MX3S", version 1, its size (264): the first level open (8), the second locked, the first bike (260)
+    "motox3m": (lambda v: len(v) == 264 and v[:4] == b"MX3S" and v[8] <= 3 and v[9] == 0xFF and v[260] == 1,) * 2,
+    # "AUSG", version 1: the round, kept; after the reinstall, from the copy, the same
+    "amongus": (lambda v: v[:4] == b"AUSG" and v[4] == 1,) * 2,
+    # "IMPS", version 1: the players and the round; after the reinstall, from the copy, the same
+    "imposter": (lambda v: v[:4] == b"IMPS" and v[4] == 1,) * 2,
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept
@@ -878,13 +896,17 @@ def main():
     ap.add_argument("--game")
     ap.add_argument("--out", default="build/test_games")
     ap.add_argument("--numplay", help="play the games inside this NumPlay.nwa instead")
+    ap.add_argument("--shard", default="1/1", help="K/N: only every Nth app, from the Kth (CI's parts, tests/ci.py)")
     a = ap.parse_args()
+    k, n = map(int, a.shard.split("/"))
     order = [g["id"] for g in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "games",
                                                           "games.json"))) if g.get("default", True)]
     os.makedirs(a.out, exist_ok=True)
     failed = False
-    for name in GAMES:
+    for i, name in enumerate(GAMES):
         if a.game and a.game != name or a.numplay and name not in order:  # (a big game: on its own only)
+            continue
+        if i % n != k - 1:
             continue
         if a.numplay:  # (NumPlay keeps its own copy, packed: tests/test_progress.py)
             problems, stack, recs = play(name, a.numplay, a.out, order.index(name))
