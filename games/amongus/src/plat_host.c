@@ -41,12 +41,6 @@ const uint8_t *plat_load(const char *name, uint32_t *len) {
   fclose(f);
   return b;
 }
-static uint8_t reserved[1 << 16];
-uint8_t *plat_reserve(const char *name, uint32_t len) {
-  (void)name;
-  return len <= sizeof reserved ? reserved : NULL;
-}
-void plat_reserved(const char *name, uint32_t len) { plat_save(name, reserved, len); }
 bool plat_remove(const char *name) {
   char p[512];
   snprintf(p, sizeof p, "%s/%s", save_dir, name);
@@ -54,7 +48,6 @@ bool plat_remove(const char *name) {
 }
 void plat_begin(void) {}
 int plat_end(void) { return 0; }
-bool plat_slow(void) { return false; }
 
 /* writes the screen as a PPM image */
 void host_shot(const char *path) {
