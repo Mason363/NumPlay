@@ -394,9 +394,9 @@ static uint16_t has_cat[3]; /* the rows, columns and colours with a cat */
    (colours) get X's. Units of type a picked, their candidates spanning units of type b. */
 static int set_k, set_a, set_b;
 static bool sets(int from, int k, uint32_t pick, uint32_t span) {
-  if (__builtin_popcount(span) > set_k) return false;
+  if (__builtin_popcountl(span) > set_k) return false;
   if (k == set_k) {
-    if (__builtin_popcount(span) != k) return false;
+    if (__builtin_popcountl(span) != k) return false;
     bool any = false;
     for (int i = 0; i < n * n; i++) {
       int in_b = span >> (unit_of(set_b, i) - set_b * n) & 1, in_a = pick >> (unit_of(set_a, i) - set_a * n) & 1;

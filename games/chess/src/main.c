@@ -194,6 +194,9 @@ static void sprite(int pc, int X, int Y, int small) {
  * out of that piece and drawn by the calculator right after: its text routine
  * paints its own background, so every pixel changes once and nothing flickers. */
 #define WPIX (200 * 56)
+#ifdef __TICE__ /* past the TI-84 CE's 60 KB for static data: it comes with the program */
+__attribute__((section(".data")))
+#endif
 static C wbuf[WPIX];
 static struct {
   int x, y, w, h, nt;

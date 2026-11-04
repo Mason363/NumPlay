@@ -71,7 +71,7 @@ typedef struct {
 } mon_t;
 
 /* doodlejump.sav: the best, and the climb in progress (kept when you leave) */
-static struct {
+static struct __attribute__((aligned(4))) { /* whole words, as the sum reads them (a TI-84 CE packs structs) */
   uint8_t magic, version, flags, face; /* flags: 1 a climb to go on with, 2 the guide was read, 4 dead */
   uint32_t sum;                        /* of the words after it: a damaged file starts afresh */
   uint32_t best, score, rng;

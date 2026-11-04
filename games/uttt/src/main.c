@@ -34,7 +34,7 @@ static uint32_t keys(void) {
   uint64_t s = eadk_keyboard_scan();
   return ((uint32_t)s & 0xC000017Fu) | ((uint32_t)(s >> 32) & 0x00101C71u) << 9;
 }
-#define KEY(k) (1u << ((k) < 32 ? (k) : (k) - 23))
+#define KEY(k) ((uint32_t)1 << ((k) < 32 ? (k) : (k) - 23))
 /* the number pad as a small board, 7 at the top left: where each key's bit is in keys() */
 static const uint8_t DIGIT[9] = {30, 31, 9, 13, 14, 15, 19, 20, 21};
 #define QUIT (KEY(eadk_key_home) | KEY(eadk_key_on_off))

@@ -37,7 +37,7 @@ void np_push(int x, int y, int w, int h, const color_t *px) {
 #endif
 
 /* the keys used, in 32 bits: the number pad's 9, 4 to 6, 1 to 3, 0 and EXE come down from the high word */
-#define KEY(k) (1u << ((k) < 32 ? (k) : (k) - 23))
+#define KEY(k) ((uint32_t)1 << ((k) < 32 ? (k) : (k) - 23))
 static uint32_t keys(void) {
   uint64_t s = eadk_keyboard_scan();
   return ((uint32_t)s & 0xC00211FFu) | ((uint32_t)(s >> 32) & 0x00111C71u) << 9;

@@ -45,6 +45,11 @@ CEDEV ?= $(HOME)/Documents/Assets/toolchains/CEdev
 CE_NAME = $(shell echo '$(PORT_ID)' | tr a-z A-Z | tr -cd 'A-Z0-9' | cut -c1-8)
 CE_DIR = $(PORT_OUT)/$(PORT_ID)
 CE_ALL = $(abspath $(PORT_SRC) $(NP_PLATFORM)/ti84ce/np_ce.c $(PORT_COMMON))
+# the game's flags with their folders made absolute (the build runs in CE_DIR); PORT_DEPS: files the sources include
+# that the game's Makefile makes (levels...)
+CE_FLAGS = $(foreach f,$(PORT_FLAGS),$(if $(filter -I%,$(f)),-I$(abspath $(patsubst -I%,%,$(f))),$(f))) $(PORT_CE_FLAGS)
+# a shift past an int's 24 bits stops the build; a frame that big on the 4 KB stack is worth a look
+CE_WARN = -Wall -Werror=shift-count-overflow -Werror=shift-overflow -Wshift-sign-overflow -Wframe-larger-than=1024
 ifneq ($(PORT_CE),)
 # a game with a CE version of its own (PORT_CE: its folder, a CE toolchain project): its program and appvars
 port: $(PORT_DEPS)
@@ -55,13 +60,15 @@ port: $(PORT_DEPS)
 else
 port: $(CE_DIR)/bin/$(CE_NAME).8xp
 endif
-$(CE_DIR)/bin/$(CE_NAME).8xp: $(PORT_DEPS) $(PORT_SRC) $(wildcard $(NP_PLATFORM)/include/*.h) $(NP_PLATFORM)/ti84ce/np_ce.c
+$(CE_DIR)/bin/$(CE_NAME).8xp: $(PORT_SRC) $(PORT_DEPS) $(wildcard $(NP_PLATFORM)/include/*.h) $(NP_PLATFORM)/ti84ce/np_ce.c \
+  $(NP_PLATFORM)/ti84ce/check.py
 	@rm -rf $(CE_DIR)/src && mkdir -p $(CE_DIR)/src
 	@n=0; for f in $(CE_ALL); do n=$$((n+1)); echo "#include \"$$f\"" > $(CE_DIR)/src/f$$n.c; done
-	@printf 'NAME = %s\nDESCRIPTION = "%s"\nCOMPRESSED = YES\nARCHIVED = YES\nCFLAGS = -Wall -Oz -Werror=shift-count-overflow -Wno-unused-command-line-argument %s\ninclude $$(shell cedev-config --makefile)\n' \
-	  '$(CE_NAME)' '$(PORT_NAME)' '-DNP_PORT=1 -DNP_APP_ID="\"$(PORT_ID)\"" -DNP_APP_NAME="\"$(PORT_NAME)\"" -I$(abspath $(NP_PLATFORM)/include) $(PORT_CE_FLAGS)' \
+	@printf 'NAME = %s\nDESCRIPTION = "%s"\nCOMPRESSED = YES\nARCHIVED = YES\nCFLAGS = %s -Oz -Wno-unused-command-line-argument %s\ninclude $$(shell cedev-config --makefile)\n' \
+	  '$(CE_NAME)' '$(PORT_NAME)' '$(CE_WARN)' '-DNP_PORT=1 -DNP_APP_ID="\"$(PORT_ID)\"" -DNP_APP_NAME="\"$(PORT_NAME)\"" -I$(abspath $(NP_PLATFORM)/include) $(CE_FLAGS)' \
 	  > $(CE_DIR)/makefile
 	$(Q) PATH="$(CEDEV)/bin:$$PATH" $(MAKE) -C $(CE_DIR) --no-print-directory TARGET=$(CE_NAME).8xp
+	$(Q) python3 $(NP_PLATFORM)/ti84ce/check.py $(CE_DIR) || { rm -f $@; exit 1; }
 	@echo "CE      $@"
 else ifeq ($(TARGET),nspire)
 # Ndless's SDK (NDLESS_SDK: its ndless-sdk folder, with its toolchain built in toolchain/install)

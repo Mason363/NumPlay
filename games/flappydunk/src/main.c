@@ -66,7 +66,7 @@ typedef struct {
 } hoop_t;
 
 /* flappydunk.sav: the records, the ball chosen, and the run in progress (kept when you leave) */
-static struct {
+static struct __attribute__((aligned(4))) { /* whole words, as the sum reads them (a TI-84 CE packs structs) */
   uint8_t magic, version, flags, skin; /* flags: 1 a run to continue, 2 the guide was read */
   uint32_t sum; /* of the words after it: a damaged file starts afresh */
   uint32_t best, swishes, games, best_streak;

@@ -76,7 +76,7 @@ static bool copy_read(uno_file *f) {
       int v0 = b64v(l[k]), v1 = b64v(l[k + 1]), v2 = l[k + 2] == '=' ? 0 : b64v(l[k + 2]),
           v3 = l[k + 3] == '=' ? 0 : b64v(l[k + 3]);
       if (v0 < 0 || v1 < 0 || v2 < 0 || v3 < 0) return false;
-      uint32_t w = (uint32_t)(v0 << 18 | v1 << 12 | v2 << 6 | v3);
+      uint32_t w = (uint32_t)v0 << 18 | (uint32_t)v1 << 12 | (uint32_t)v2 << 6 | (uint32_t)v3;
       if (o < sizeof *f) bytes[o++] = (uint8_t)(w >> 16);
       if (o < sizeof *f) bytes[o++] = (uint8_t)(w >> 8);
       if (o < sizeof *f) bytes[o++] = (uint8_t)w;

@@ -38,7 +38,7 @@ void np_push(int x, int y, int w, int h, const color_t *px) {
 #include "levels.inc" /* levels_z, LEVELS (inside NumPlay, fewer: see the Makefile), ALL_LEVELS, TEXT_BYTES, MAXW, MAXH */
 
 /* the keys used, in 32 bits: those past the 32nd (4 5 6 2 EXE) come down by 22 */
-#define KEY(k) (1u << ((k) - ((k) >= 32) * 22))
+#define KEY(k) ((uint32_t)1 << ((k) - ((k) >= 32) * 22))
 static uint32_t keys(void) {
   uint64_t s = eadk_keyboard_scan();
   return ((uint32_t)s & 0x800201FFu) | ((uint32_t)(s >> 32) & 0x00100870u) << 10;
@@ -116,6 +116,9 @@ static void mark_cell(int i) { mark(oy + (i / MAXW - 1) * size, oy + (i / MAXW +
 
 /* ------------------------------------------------------------ the level */
 static void open_level(int n) {
+#ifdef __TICE__
+  static /* (not on the TI-84 CE's 4 KB stack) */
+#endif
   uint32_t tables[816]; /* np_inflate's two Huffman tables, 2 x 1632 bytes */
   const uint8_t *t = (const uint8_t *)strip;
   np_inflate((uint8_t *)strip, TEXT_BYTES, levels_z, sizeof levels_z, (np_inflate_tables_t *)(void *)tables);
