@@ -76,6 +76,7 @@ static struct {
   char ram[64][9];
   int nram;
   uint32_t frame_addr, idle_addr;
+  uint64_t frames_from;
   bool frame_drawn;
 } opt = {.ms = 5000, .out = ".", .rev = "m"};
 
@@ -120,7 +121,7 @@ static int cmp_double(const void *a, const void *b) {
   return x < y ? -1 : x > y;
 }
 static void add_frame(frames_t *f) {
-  if (!started) return;
+  if (!started || now_ms < opt.frames_from) return;
   if (f->n < sizeof f->at / sizeof f->at[0]) f->at[f->n] = sched_total_cycles();
   f->n++;
 }
@@ -476,6 +477,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(a, "--frame") && v) opt.frame_addr = (uint32_t)strtoul(v, NULL, 0), i++;
     else if (!strcmp(a, "--frame-drawn")) opt.frame_drawn = true;
     else if (!strcmp(a, "--idle") && v) opt.idle_addr = (uint32_t)strtoul(v, NULL, 0), i++;
+    else if (!strcmp(a, "--frames-from") && v) opt.frames_from = strtoull(v, NULL, 10), i++;
     else if (!strcmp(a, "--trace")) os_trace = true;
     else if (!strcmp(a, "--float-scale") && v) os_float_scale = atof(v), i++;
     else if (!strcmp(a, "--script") && v) load_script(v), i++;

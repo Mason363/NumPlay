@@ -19,6 +19,7 @@ Options:
                                       ~/Documents/Assets/toolchains/ce-libs)
   --frame SYMBOL|ADDR                 a frame each time the CPU gets there (default: eadk_display_wait_for_vblank
                                       or eadk_keyboard_scan when the program has them, from its .obj next to it)
+  --frames-from MS                    count frames from then on (past a slow title)
   --profile N                         the N functions the CPU was found in most
   --vars-out DIR                      the appvars and programs at the end, as files
   --rev m|i|pre-a                     the hardware revision (m, every CE since 2019)
@@ -83,6 +84,12 @@ def symbols(prog):
         for s in tab.iter_symbols() if tab else []:
             if s.name and s["st_value"] >= 0xD00000 and not s.name.startswith(".L"):
                 out[s.name] = s["st_value"]
+    # the static functions, which only the map names (one section each: .text._name)
+    mp = os.path.splitext(prog)[0] + ".map"
+    if os.path.exists(mp):
+        text = open(mp).read()
+        for m in re.finditer(r"^ \.text\.(_[\w.$]+)\s+0x([0-9a-f]+)\s+0x[0-9a-f]+", text, re.M):
+            out.setdefault(m.group(1), int(m.group(2), 16))
     return out
 
 
@@ -108,7 +115,7 @@ def profile_lines(samples, syms, n):
 
 
 def run(files, keys="", shots="", ms=5000, out=".", ram="", lib=None, frame=None, rev="m", trace=False,
-        vars_out=None, profile=0, float_scale=1.0, script=None):
+        vars_out=None, profile=0, float_scale=1.0, script=None, frames_from=0):
     """One run; its report (a dict)."""
     build()
     prog = next(f for f in files if f.lower().endswith(".8xp"))
@@ -131,6 +138,7 @@ def run(files, keys="", shots="", ms=5000, out=".", ram="", lib=None, frame=None
         cmd += ["--ram", ram] if ram else []
         cmd += ["--frame", hex(addr)] + (["--frame-drawn"] if drawn else []) if addr else []
         cmd += ["--idle", hex(idle)] if idle else []
+        cmd += ["--frames-from", str(frames_from)] if frames_from else []
         cmd += ["--trace"] if trace else []
         cmd += ["--float-scale", str(float_scale)] if float_scale != 1 else []
         cmd += ["--vars-out", vars_out] if vars_out else []
@@ -239,18 +247,19 @@ def game_files(g):
 
 
 def sheet(todo, ms, out, jobs):
-    """Every game for ms: its title (before OK), OK twice, the arrows; three screens each, side by side."""
+    """Every game for ms: its title (before OK), OK twice, then each arrow held 1.5 s; three screens each, side by
+    side, and the frame rate from the second OK on."""
     from PIL import Image, ImageDraw
     t1, t2 = ms * 2 // 5, ms * 3 // 5
-    keys = f"{t1}-{t1 + 100}:2nd,{t2}-{t2 + 100}:2nd,{t2 + 400}-{t2 + 700}:right,{t2 + 900}-{t2 + 1200}:up," \
-           f"{t2 + 1400}-{t2 + 1700}:left,{t2 + 1900}-{t2 + 2200}:down"
-    times = [t1 - 50, t2 + 300, ms - 50]
+    keys = f"{t1}-{t1 + 100}:2nd,{t2}-{t2 + 100}:2nd," + ",".join(
+        f"{t2 + 1000 + 2000 * i}-{t2 + 2500 + 2000 * i}:{k}" for i, k in enumerate(("right", "up", "left", "down")))
+    times = [t1 - 50, t2 + 900, ms - 50]
 
     def one(g):
         d = os.path.join(out, g)
         try:
             return g, run(game_files(g), keys=keys, shots=",".join(f"{t}:{i}.png" for i, t in enumerate(times)), ms=ms,
-                          out=d, lib=libs())
+                          out=d, lib=libs(), frames_from=t2)
         except SystemExit as e:
             return g, {"program": g, "status": "error", "detail": str(e)}
 
@@ -290,7 +299,7 @@ def main():
         print(__doc__)
         return 1
     opts = {"keys": "", "shots": "", "ms": "5000", "out": ".", "ram": "", "libs": None, "frame": None, "rev": "m",
-            "vars-out": None, "profile": "0", "j": "6", "float-scale": "1"}
+            "vars-out": None, "profile": "0", "j": "6", "float-scale": "1", "frames-from": "0"}
     flags = {"trace": False, "json": False}
     pos = []
     i = 0
@@ -322,7 +331,7 @@ def main():
         import ports
         todo = pos[1:] or ports.games([], "ti84ce")
         out = opts["out"] if opts["out"] != "." else os.path.join(ROOT, "build", "ce_emu")
-        return sheet(todo, int(opts["ms"]) if opts["ms"] != "5000" else 10000, out, int(opts["j"]))
+        return sheet(todo, int(opts["ms"]) if opts["ms"] != "5000" else 40000, out, int(opts["j"]))
     if pos and pos[0] == "game":
         files = game_files(pos[1]) + pos[2:]
     else:
@@ -332,6 +341,7 @@ def main():
     lib = None if opts["libs"] == "none" else opts["libs"] or libs()
     rep = run(files, keys=opts["keys"], shots=opts["shots"], ms=int(opts["ms"]), out=opts["out"], ram=opts["ram"],
               lib=lib, frame=opts["frame"], rev=opts["rev"], trace=flags["trace"], vars_out=opts["vars-out"], float_scale=float(opts["float-scale"]),
+              frames_from=int(opts["frames-from"]),
               profile=int(opts["profile"]))
     if rep["stderr"]:
         sys.stderr.write(rep["stderr"])
