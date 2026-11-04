@@ -457,6 +457,18 @@ void dk_draw(const dk_state *s, const dk_view *v) {
     gfx_y1 = gfx_y0 + STRIP_H;
     scene(0);
     int first = -1, last = -1;
+#ifdef __TICE__ /* (the TI-84 Plus CE: what changed, against the screen itself, no 32-bit hash a pixel) */
+    for (int seg = 0; seg < 10; seg++) {
+      bool same = hashes_ok;
+      for (int y = 0; y < STRIP_H && same; y++)
+        same = !memcmp(gfx_buf + y * SCREEN_W + seg * 32, (const color_t *)0xD40000 + (gfx_y0 + y) * SCREEN_W + seg * 32, 64);
+      if (!same) {
+        if (first < 0) first = seg;
+        last = seg;
+      }
+    }
+    if (0)
+#endif
     for (int seg = 0; seg < 10; seg++) {
       uint32_t h = 2166136261u;
       for (int y = 0; y < STRIP_H; y++) {
