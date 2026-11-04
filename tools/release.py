@@ -73,6 +73,7 @@ ALONE = {
     "amongus": ("Among Us", "Innersloth's game on the Skeld against up to 9 bots: every task, sabotages, vents, kills, meetings and votes"),
     "imposter": ("Imposter", "the party game: pass the calculator, everyone sees the secret word but the imposter, 30 categories"),
     "fourplayer": ("2 3 4 Players", "one-key party games for 2, 3 or 4 players on one calculator, and teams: 14 minigames"),
+    "circloo": ("circloO", "Florian van Strien's physics game: its 14 levels and 6 hard mode levels, read from the game's own files"),
     "numpico": ("NumPico", "PICO-8 carts on the calculator: add your own .p8 and .p8.png carts in NumPlay Studio"),
 }
 VARIANTS = [
