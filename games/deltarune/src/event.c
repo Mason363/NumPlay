@@ -7,7 +7,7 @@ static Ev cur;
 static bool running;
 
 /* the face changes a list asks for: "\\F0\\Ex\\Fw%" (made once each, they last) */
-static const char *face_msg(int code) {
+const char *face_msg(int code) {
   static char made[48][12];
   static int codes[48], n;
   for (int i = 0; i < n; i++)
@@ -23,6 +23,17 @@ static const char *face_msg(int code) {
 }
 void say_add(const int *ids) {
   for (int i = 0; ids[i] >= 0; i++) text_add(ids[i] & 0x40000 ? face_msg(ids[i]) : str((uint16_t)ids[i]));
+}
+/* a text the player can't hurry (the original's skippable = 0) */
+void say_unskippable(int id) {
+  static char buf[256];
+  const char *s = str((uint16_t)id);
+  buf[0] = '\\', buf[1] = 's', buf[2] = '0';
+  strncpy(buf + 3, s, sizeof buf - 4);
+  buf[sizeof buf - 1] = 0;
+  text_clear();
+  text_add(buf);
+  text_open();
 }
 void say_list(int fc, int fe, const int *ids) {
   text_clear();

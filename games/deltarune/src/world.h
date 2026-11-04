@@ -43,6 +43,7 @@ typedef struct Obj {
   bool walking;
   uint8_t name;              /* an ACT_* (scripts find it by it) */
   int16_t scale;             /* drawn at this scale (1/256), 0: as its room's */
+  int16_t mt;                /* frames left of a move to (tx, ty) (scr_move_to_point_over_time) */
 } Obj;
 extern Obj objs[MAX_OBJS];
 
@@ -104,6 +105,8 @@ void follow_reset(void);       /* all at Kris */
 void follow_show(bool on);
 bool follow_shown(void);
 Obj *follower(int c);          /* CH_SUSIE or CH_RALSEI's, NULL none */
+bool follower_xy(int c, int *x, int *y);   /* where follower c (CH_*) is (global.cinstance's), units */
+void follow_place(int c, int x, int y, int dir);   /* (after a cutscene: a follower put where its marker was) */
 
 /* Kris walked by a cutscene */
 void pl_walk_to(int x, int y, int sp);

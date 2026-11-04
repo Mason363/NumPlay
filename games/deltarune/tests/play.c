@@ -187,7 +187,11 @@ int main(int argc, char **argv) {
     } else if (!strcmp(a, "--out")) out = v, i++;
     else if (!strcmp(a, "--saves")) host_save_dir(v), i++;
     else if (!strcmp(a, "--room")) room = atoi(v), i++;
-    else if (!strcmp(a, "--at")) sscanf(v, "%d,%d", &ax, &ay), i++;
+    else if (!strcmp(a, "--at")) {
+      if (!strcmp(v, "start")) ax = ay = -1;   /* (where the room's door A puts Kris) */
+      else sscanf(v, "%d,%d", &ax, &ay);
+      i++;
+    }
     else if (!strcmp(a, "--plot")) plotv = atoi(v), i++;
     else if (!strcmp(a, "--party")) sscanf(v, "%d,%d,%d", &party[0], &party[1], &party[2]), i++;
     else if (!strcmp(a, "--flag") && nflags < 64) sscanf(v, "%d=%d", &flags[nflags][0], &flags[nflags][1]), nflags++, i++;
@@ -209,7 +213,8 @@ int main(int argc, char **argv) {
     if (plotv >= 0) sv.plot = (int16_t)plotv;
     if (party[0]) for (int k = 0; k < 3; k++) sv.chr[k] = (uint8_t)party[k];
     for (int k = 0; k < nflags; k++) set_flag(flags[k][0], flags[k][1]);
-    if (room >= 0) world_enter(room, ax, ay, DIR_DOWN);
+    if (room >= 0 && ax == -1 && ay == -1) world_enter_marker(room, 1);
+    else if (room >= 0) world_enter(room, ax, ay, DIR_DOWN);
     if (battle >= 0) battle_start(battle);
   }
   uint32_t seed = fuzz * 2654435761u + 1;

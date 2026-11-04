@@ -889,7 +889,7 @@ L18756:;
   MSG(1, obj_readable_room1_slash_Other_10_gml_1275_0);
   MSG(2, obj_readable_room1_slash_Other_10_gml_1276_0);
   /* gml: with (obj_town_event) {   // to L18972 */
-  /* gml: con = 50 */
+  gm_signal(obj_town_event, 50);
   /* gml: } // end with */
   goto L19016;
 L18980:;
@@ -2523,7 +2523,7 @@ L1104:;
   c->gone = 1;
 L1264:;
   if (!(g_room == room_field_boxpuzzle)) goto L1524;
-  /* gml: type = 0 */
+  c->type = 0;
   if (!(c->x < (world_room_info()->w / 2))) goto L1424;
   c->spr = spr_ralseid;
   c->tspr[0] = spr_ralseid;
@@ -2533,7 +2533,7 @@ L1264:;
   c->y = (c->y + (spr_h(c->spr) * world_scale()));
   goto L1524;
 L1424:;
-  /* gml: type = 1 */
+  c->type = 1;
   c->spr = spr_susied;
   c->tspr[0] = spr_susied_dark;
   c->tspr[2] = spr_susieu_dark;
@@ -2857,18 +2857,18 @@ L3936:;
 L3984:;
   if (!(g_room == room_field_boxpuzzle)) goto L4592;
   MSG(0, obj_npc_facing_slash_Other_10_gml_257_0);
-  goto L4456; /* gml: if !(type == 0) goto L4456 */
+  if (!(c->type == 0)) goto L4456;
   /* gml: global.typer = 31 */
   c->fc = 2;
   c->fe = 0;
   if (!(sv.flag[212] == 1)) goto L4452;
   /* gml: input_name = scr_get_input_name(4) */
   MSG(0, obj_npc_facing_slash_Other_10_gml_269_0);
-  MSG(1, obj_npc_facing_slash_Other_10_gml_270_0); /* gml: global.msg[1] = scr_84_get_subst_string(scr_84_get_lang_string("obj_npc_facing_slash_Other_10_gml_270_0"), input_name) */
+  txt_msg_subst(c, 1, str(obj_npc_facing_slash_Other_10_gml_270_0), "OK");
   FACE(2, 'S', 9);
-  MSG(3, obj_npc_facing_slash_Other_10_gml_272_0); /* gml: global.msg[3] = scr_84_get_subst_string(scr_84_get_lang_string("obj_npc_facing_slash_Other_10_gml_272_0"), input_name) */
+  txt_msg_subst(c, 3, str(obj_npc_facing_slash_Other_10_gml_272_0), "OK");
   if (!(c->talked >= 1)) goto L4452;
-  MSG(0, obj_npc_facing_slash_Other_10_gml_276_0); /* gml: global.msg[0] = scr_84_get_subst_string(scr_84_get_lang_string("obj_npc_facing_slash_Other_10_gml_276_0"), input_name) */
+  txt_msg_subst(c, 0, str(obj_npc_facing_slash_Other_10_gml_276_0), "OK");
   FACE(1, 'S', 2);
   MSG(2, obj_npc_facing_slash_Other_10_gml_278_0);
 L4452:;
@@ -2900,7 +2900,7 @@ L4900:;
   /* gml: moss = 1 */
 L4940:;
   /* gml: with (obj_prisonevent) {   // to L4960 */
-  /* gml: con = 15 */
+  gm_signal(obj_prisonevent, 15);
   /* gml: } // end with */
   c->fe = 0;
   MSG(0, obj_npc_facing_slash_Other_10_gml_323_0);
@@ -3273,7 +3273,7 @@ L13996:;
 L14128:;
   c->arg = c->msc; gm_scr_text(c);
   /* gml: with (obj_town_event) {   // to L14168 */
-  /* gml: con = 70 */
+  gm_signal(obj_town_event, 70);
   /* gml: } // end with */
 L14172:;
   if (!(g_room == room_town_north)) goto L14280;
@@ -3391,7 +3391,7 @@ L960:;
   MSG(3, obj_npc_room_animated_slash_Other_10_gml_59_0);
   MSG(4, obj_npc_room_animated_slash_Other_10_gml_60_0);
   /* gml: with (obj_town_event) {   // to L1180 */
-  /* gml: con = 20 */
+  gm_signal(obj_town_event, 20);
   /* gml: } // end with */
 L1184:;
   if (!(g_room == room_diner)) goto L1368;
@@ -3457,150 +3457,150 @@ L2508:;
 
 void gm_scr_text(TxtCtx *c) {
   int afford = 0, tempvar = 0;
-  if ((c->arg == 0)) goto L2320;
-  if ((c->arg == 10)) goto L2324;
-  if ((c->arg == 11)) goto L2556;
-  if ((c->arg == 100)) goto L2916;
-  if ((c->arg == 101)) goto L3160;
-  if ((c->arg == 102)) goto L3336;
-  if ((c->arg == 103)) goto L3400;
-  if ((c->arg == 104)) goto L3576;
-  if ((c->arg == 105)) goto L3748;
-  if ((c->arg == 110)) goto L3776;
-  if ((c->arg == 111)) goto L4076;
-  if ((c->arg == 120)) goto L4260;
-  if ((c->arg == 121)) goto L4660;
-  if ((c->arg == 122)) goto L5048;
-  if ((c->arg == 125)) goto L5864;
-  if ((c->arg == 126)) goto L6192;
-  if ((c->arg == 130)) goto L6500;
-  if ((c->arg == 131)) goto L6760;
-  if ((c->arg == 132)) goto L7068;
-  if ((c->arg == 133)) goto L7368;
-  if ((c->arg == 135)) goto L7636;
-  if ((c->arg == 136)) goto L7928;
-  if ((c->arg == 140)) goto L8296;
-  if ((c->arg == 141)) goto L9020;
-  if ((c->arg == 145)) goto L9260;
-  if ((c->arg == 146)) goto L9720;
-  if ((c->arg == 147)) goto L9936;
-  if ((c->arg == 148)) goto L10396;
-  if ((c->arg == 149)) goto L10612;
-  if ((c->arg == 150)) goto L10912;
-  if ((c->arg == 175)) goto L11112;
-  if ((c->arg == 176)) goto L11416;
-  if ((c->arg == 180)) goto L13864;
-  if ((c->arg == 181)) goto L14156;
-  if ((c->arg == 182)) goto L14960;
-  if ((c->arg == 185)) goto L16136;
-  if ((c->arg == 186)) goto L16356;
-  if ((c->arg == 190)) goto L16776;
-  if ((c->arg == 191)) goto L17068;
-  if ((c->arg == 192)) goto L17184;
-  if ((c->arg == 193)) goto L17504;
-  if ((c->arg == 195)) goto L17676;
-  if ((c->arg == 196)) goto L18076;
-  if ((c->arg == 197)) goto L18472;
-  if ((c->arg == 198)) goto L19076;
-  if ((c->arg == 210)) goto L19968;
-  if ((c->arg == 211)) goto L20372;
-  if ((c->arg == 215)) goto L21272;
-  if ((c->arg == 216)) goto L21792;
-  if ((c->arg == 220)) goto L22776;
-  if ((c->arg == 221)) goto L23032;
-  if ((c->arg == 225)) goto L24016;
-  if ((c->arg == 226)) goto L24284;
-  if ((c->arg == 227)) goto L24960;
-  if ((c->arg == 228)) goto L25636;
-  if ((c->arg == 230)) goto L26384;
-  if ((c->arg == 231)) goto L26604;
-  if ((c->arg == 235)) goto L27444;
-  if ((c->arg == 236)) goto L27664;
-  if ((c->arg == 240)) goto L28288;
-  if ((c->arg == 241)) goto L28508;
-  if ((c->arg == 245)) goto L29828;
-  if ((c->arg == 246)) goto L30048;
-  if ((c->arg == 250)) goto L30856;
-  if ((c->arg == 251)) goto L31152;
-  if ((c->arg == 255)) goto L31508;
-  if ((c->arg == 256)) goto L32328;
-  if ((c->arg == 270)) goto L33616;
-  if ((c->arg == 285)) goto L34192;
-  if ((c->arg == 286)) goto L34448;
-  if ((c->arg == 290)) goto L36044;
-  if ((c->arg == 291)) goto L36240;
-  if ((c->arg == 295)) goto L36424;
-  if ((c->arg == 296)) goto L36744;
-  if ((c->arg == 300)) goto L36968;
-  if ((c->arg == 301)) goto L37288;
-  if ((c->arg == 305)) goto L37528;
-  if ((c->arg == 306)) goto L37856;
-  if ((c->arg == 310)) goto L37968;
-  if ((c->arg == 311)) goto L38248;
-  if ((c->arg == 315)) goto L38324;
-  if ((c->arg == 316)) goto L38568;
-  if ((c->arg == 325)) goto L39508;
-  if ((c->arg == 326)) goto L39860;
-  if ((c->arg == 327)) goto L40124;
-  if ((c->arg == 328)) goto L40344;
-  if ((c->arg == 330)) goto L40608;
-  if ((c->arg == 331)) goto L41028;
-  if ((c->arg == 335)) goto L42304;
-  if ((c->arg == 336)) goto L42896;
-  if ((c->arg == 340)) goto L43556;
-  if ((c->arg == 341)) goto L43956;
-  if ((c->arg == 345)) goto L45084;
-  if ((c->arg == 346)) goto L45352;
-  if ((c->arg == 350)) goto L45632;
-  if ((c->arg == 351)) goto L45828;
-  if ((c->arg == 355)) goto L45928;
-  if ((c->arg == 356)) goto L46204;
-  if ((c->arg == 360)) goto L46316;
-  if ((c->arg == 361)) goto L46584;
-  if ((c->arg == 365)) goto L46728;
-  if ((c->arg == 370)) goto L47428;
-  if ((c->arg == 371)) goto L47660;
-  if ((c->arg == 372)) goto L48320;
-  if ((c->arg == 373)) goto L48888;
-  if ((c->arg == 375)) goto L50124;
-  if ((c->arg == 376)) goto L50548;
-  if ((c->arg == 380)) goto L51112;
-  if ((c->arg == 381)) goto L51452;
-  if ((c->arg == 385)) goto L52436;
-  if ((c->arg == 386)) goto L53200;
-  if ((c->arg == 387)) goto L54404;
-  if ((c->arg == 400)) goto L55856;
-  if ((c->arg == 401)) goto L56088;
-  if ((c->arg == 402)) goto L56228;
-  if ((c->arg == 403)) goto L56496;
-  if ((c->arg == 405)) goto L56756;
-  if ((c->arg == 406)) goto L57836;
-  if ((c->arg == 410)) goto L58240;
-  if ((c->arg == 411)) goto L58532;
-  if ((c->arg == 415)) goto L58844;
-  if ((c->arg == 420)) goto L58884;
-  if ((c->arg == 425)) goto L59080;
-  if ((c->arg == 426)) goto L59312;
-  if ((c->arg == 430)) goto L60168;
-  if ((c->arg == 431)) goto L60364;
-  if ((c->arg == 435)) goto L60520;
-  if ((c->arg == 436)) goto L60728;
-  if ((c->arg == 440)) goto L61232;
-  if ((c->arg == 441)) goto L61428;
-  if ((c->arg == 445)) goto L61592;
-  if ((c->arg == 446)) goto L62040;
-  if ((c->arg == 450)) goto L62212;
-  if ((c->arg == 451)) goto L62644;
-  if ((c->arg == 455)) goto L62756;
-  if ((c->arg == 456)) goto L63036;
-  if ((c->arg == 460)) goto L64264;
-  if ((c->arg == 461)) goto L64680;
-  if ((c->arg == 465)) goto L65020;
-  if ((c->arg == 466)) goto L65252;
-  if ((c->arg == 470)) goto L65592;
-  if ((c->arg == 471)) goto L65852;
-  if ((c->arg == 600)) goto L66100;
-  if ((c->arg == 601)) goto L66332;
+  if (c->arg == 0) goto L2320;
+  if (c->arg == 10) goto L2324;
+  if (c->arg == 11) goto L2556;
+  if (c->arg == 100) goto L2916;
+  if (c->arg == 101) goto L3160;
+  if (c->arg == 102) goto L3336;
+  if (c->arg == 103) goto L3400;
+  if (c->arg == 104) goto L3576;
+  if (c->arg == 105) goto L3748;
+  if (c->arg == 110) goto L3776;
+  if (c->arg == 111) goto L4076;
+  if (c->arg == 120) goto L4260;
+  if (c->arg == 121) goto L4660;
+  if (c->arg == 122) goto L5048;
+  if (c->arg == 125) goto L5864;
+  if (c->arg == 126) goto L6192;
+  if (c->arg == 130) goto L6500;
+  if (c->arg == 131) goto L6760;
+  if (c->arg == 132) goto L7068;
+  if (c->arg == 133) goto L7368;
+  if (c->arg == 135) goto L7636;
+  if (c->arg == 136) goto L7928;
+  if (c->arg == 140) goto L8296;
+  if (c->arg == 141) goto L9020;
+  if (c->arg == 145) goto L9260;
+  if (c->arg == 146) goto L9720;
+  if (c->arg == 147) goto L9936;
+  if (c->arg == 148) goto L10396;
+  if (c->arg == 149) goto L10612;
+  if (c->arg == 150) goto L10912;
+  if (c->arg == 175) goto L11112;
+  if (c->arg == 176) goto L11416;
+  if (c->arg == 180) goto L13864;
+  if (c->arg == 181) goto L14156;
+  if (c->arg == 182) goto L14960;
+  if (c->arg == 185) goto L16136;
+  if (c->arg == 186) goto L16356;
+  if (c->arg == 190) goto L16776;
+  if (c->arg == 191) goto L17068;
+  if (c->arg == 192) goto L17184;
+  if (c->arg == 193) goto L17504;
+  if (c->arg == 195) goto L17676;
+  if (c->arg == 196) goto L18076;
+  if (c->arg == 197) goto L18472;
+  if (c->arg == 198) goto L19076;
+  if (c->arg == 210) goto L19968;
+  if (c->arg == 211) goto L20372;
+  if (c->arg == 215) goto L21272;
+  if (c->arg == 216) goto L21792;
+  if (c->arg == 220) goto L22776;
+  if (c->arg == 221) goto L23032;
+  if (c->arg == 225) goto L24016;
+  if (c->arg == 226) goto L24284;
+  if (c->arg == 227) goto L24960;
+  if (c->arg == 228) goto L25636;
+  if (c->arg == 230) goto L26384;
+  if (c->arg == 231) goto L26604;
+  if (c->arg == 235) goto L27444;
+  if (c->arg == 236) goto L27664;
+  if (c->arg == 240) goto L28288;
+  if (c->arg == 241) goto L28508;
+  if (c->arg == 245) goto L29828;
+  if (c->arg == 246) goto L30048;
+  if (c->arg == 250) goto L30856;
+  if (c->arg == 251) goto L31152;
+  if (c->arg == 255) goto L31508;
+  if (c->arg == 256) goto L32328;
+  if (c->arg == 270) goto L33616;
+  if (c->arg == 285) goto L34192;
+  if (c->arg == 286) goto L34448;
+  if (c->arg == 290) goto L36044;
+  if (c->arg == 291) goto L36240;
+  if (c->arg == 295) goto L36424;
+  if (c->arg == 296) goto L36744;
+  if (c->arg == 300) goto L36968;
+  if (c->arg == 301) goto L37288;
+  if (c->arg == 305) goto L37528;
+  if (c->arg == 306) goto L37856;
+  if (c->arg == 310) goto L37968;
+  if (c->arg == 311) goto L38248;
+  if (c->arg == 315) goto L38324;
+  if (c->arg == 316) goto L38568;
+  if (c->arg == 325) goto L39508;
+  if (c->arg == 326) goto L39860;
+  if (c->arg == 327) goto L40124;
+  if (c->arg == 328) goto L40344;
+  if (c->arg == 330) goto L40608;
+  if (c->arg == 331) goto L41028;
+  if (c->arg == 335) goto L42304;
+  if (c->arg == 336) goto L42896;
+  if (c->arg == 340) goto L43556;
+  if (c->arg == 341) goto L43956;
+  if (c->arg == 345) goto L45084;
+  if (c->arg == 346) goto L45352;
+  if (c->arg == 350) goto L45632;
+  if (c->arg == 351) goto L45828;
+  if (c->arg == 355) goto L45928;
+  if (c->arg == 356) goto L46204;
+  if (c->arg == 360) goto L46316;
+  if (c->arg == 361) goto L46584;
+  if (c->arg == 365) goto L46728;
+  if (c->arg == 370) goto L47428;
+  if (c->arg == 371) goto L47660;
+  if (c->arg == 372) goto L48320;
+  if (c->arg == 373) goto L48888;
+  if (c->arg == 375) goto L50124;
+  if (c->arg == 376) goto L50548;
+  if (c->arg == 380) goto L51112;
+  if (c->arg == 381) goto L51452;
+  if (c->arg == 385) goto L52436;
+  if (c->arg == 386) goto L53200;
+  if (c->arg == 387) goto L54404;
+  if (c->arg == 400) goto L55856;
+  if (c->arg == 401) goto L56088;
+  if (c->arg == 402) goto L56228;
+  if (c->arg == 403) goto L56496;
+  if (c->arg == 405) goto L56756;
+  if (c->arg == 406) goto L57836;
+  if (c->arg == 410) goto L58240;
+  if (c->arg == 411) goto L58532;
+  if (c->arg == 415) goto L58844;
+  if (c->arg == 420) goto L58884;
+  if (c->arg == 425) goto L59080;
+  if (c->arg == 426) goto L59312;
+  if (c->arg == 430) goto L60168;
+  if (c->arg == 431) goto L60364;
+  if (c->arg == 435) goto L60520;
+  if (c->arg == 436) goto L60728;
+  if (c->arg == 440) goto L61232;
+  if (c->arg == 441) goto L61428;
+  if (c->arg == 445) goto L61592;
+  if (c->arg == 446) goto L62040;
+  if (c->arg == 450) goto L62212;
+  if (c->arg == 451) goto L62644;
+  if (c->arg == 455) goto L62756;
+  if (c->arg == 456) goto L63036;
+  if (c->arg == 460) goto L64264;
+  if (c->arg == 461) goto L64680;
+  if (c->arg == 465) goto L65020;
+  if (c->arg == 466) goto L65252;
+  if (c->arg == 470) goto L65592;
+  if (c->arg == 471) goto L65852;
+  if (c->arg == 600) goto L66100;
+  if (c->arg == 601) goto L66332;
   goto L66492;
   goto L66496;
 L2320:;
@@ -3647,7 +3647,7 @@ L3160:;
   MSG(0, scr_text_slash_scr_text_gml_50_0);
   MSG(1, scr_text_slash_scr_text_gml_51_0);
   /* gml: with (obj_classscene) {   // to L3272 */
-  /* gml: con = 20 */
+  gm_signal(obj_classscene, 20);
   /* gml: } // end with */
 L3276:;
   if (!(c->choice == 0)) goto L3332;
@@ -3663,7 +3663,7 @@ L3400:;
   MSG(0, scr_text_slash_scr_text_gml_68_0);
   MSG(1, scr_text_slash_scr_text_gml_69_0);
   /* gml: with (obj_classscene) {   // to L3512 */
-  /* gml: con = 20 */
+  gm_signal(obj_classscene, 20);
   /* gml: } // end with */
 L3516:;
   if (!(c->choice == 0)) goto L3572;
@@ -3747,7 +3747,7 @@ L5048:;
 L5108:;
   sv.flag[203] = 1;
   /* gml: with (obj_darkcastle_event) {   // to L5148 */
-  /* gml: con = 30 */
+  gm_signal(obj_darkcastle_event, 30);
   /* gml: } // end with */
   MSG(0, scr_text_slash_scr_text_gml_168_0);
   MSG(1, scr_text_slash_scr_text_gml_169_0);
@@ -3806,7 +3806,7 @@ L6500:;
   c->choicemsg[2] = " ";
   c->choicemsg[3] = " ";
   /* gml: input_name = scr_get_input_name(5) */
-  MSG(0, scr_text_slash_scr_text_gml_231_0); /* gml: global.msg[0] = scr_84_get_subst_string(scr_84_get_lang_string("scr_text_slash_scr_text_gml_231_0"), input_name) */
+  txt_msg_subst(c, 0, str(scr_text_slash_scr_text_gml_231_0), "Back");
   MSG(1, scr_text_slash_scr_text_gml_232_0);
   txt_msg(c, 2, " ");
   goto L66496;
@@ -3820,7 +3820,7 @@ L6760:;
 L6904:;
   c->fe = 0;
   /* gml: input_name = scr_get_input_name(5) */
-  MSG(0, scr_text_slash_scr_text_gml_249_0); /* gml: global.msg[0] = scr_84_get_subst_string(scr_84_get_lang_string("scr_text_slash_scr_text_gml_249_0"), input_name) */
+  txt_msg_subst(c, 0, str(scr_text_slash_scr_text_gml_249_0), "Back");
   MSG(1, scr_text_slash_scr_text_gml_250_0);
   MSG(2, scr_text_slash_scr_text_gml_251_0);
 L7064:;
@@ -3864,7 +3864,7 @@ L7928:;
   if (!(c->choice == 0)) goto L8012;
   MSG(0, scr_text_slash_scr_text_gml_302_0);
   /* gml: with (obj_tutorialbattleevent) {   // to L8004 */
-  /* gml: con = 20 */
+  gm_signal(obj_tutorialbattleevent, 20);
   /* gml: } // end with */
   goto L8292;
 L8012:;
@@ -4534,7 +4534,7 @@ L24592:;
   MSG(6, scr_text_slash_scr_text_gml_1102_0);
 L24844:;
   /* gml: with (obj_npc_puzzlemaster1) {   // to L24864 */
-  /* gml: con = 5 */
+  gm_signal(obj_npc_puzzlemaster1, 5);
   /* gml: } // end with */
   goto L24956;
 L24872:;
@@ -4570,7 +4570,7 @@ L25268:;
   MSG(6, scr_text_slash_scr_text_gml_1142_0);
 L25520:;
   /* gml: with (obj_npc_puzzlemaster1) {   // to L25540 */
-  /* gml: con = 5 */
+  gm_signal(obj_npc_puzzlemaster1, 5);
   /* gml: } // end with */
   goto L25632;
 L25548:;
@@ -4602,7 +4602,7 @@ L25824:;
   MSG(6, scr_text_slash_scr_text_gml_1178_0);
 L26076:;
   /* gml: with (obj_npc_puzzlemaster1) {   // to L26096 */
-  /* gml: con = 5 */
+  gm_signal(obj_npc_puzzlemaster1, 5);
   /* gml: } // end with */
   goto L26380;
 L26104:;
@@ -4615,7 +4615,7 @@ L26104:;
   NOFACE(6);
   MSG(7, scr_text_slash_scr_text_gml_1193_0);
   /* gml: with (obj_npc_puzzlemaster1) {   // to L26364 */
-  /* gml: con = 5 */
+  gm_signal(obj_npc_puzzlemaster1, 5);
   /* gml: } // end with */
   afford = 0;
 L26380:;
@@ -4734,7 +4734,7 @@ L29324:;
   if (!(sv.plot >= 150)) goto L29456;
   /* gml: input_name = scr_get_input_name(4) */
   MSG(0, scr_text_slash_scr_text_gml_1341_0);
-  MSG(1, scr_text_slash_scr_text_gml_1342_0); /* gml: global.msg[1] = scr_84_get_subst_string(scr_84_get_lang_string("scr_text_slash_scr_text_gml_1342_0"), input_name) */
+  txt_msg_subst(c, 1, str(scr_text_slash_scr_text_gml_1342_0), "OK");
 L29456:;
   if (!(c->choice == 2)) goto L29824;
   MSG(0, scr_text_slash_scr_text_gml_1348_0);
@@ -5127,7 +5127,7 @@ L39008:;
   MSG(0, scr_text_slash_scr_text_gml_1820_0);
   MSG(1, scr_text_slash_scr_text_gml_1821_0);
   /* gml: with (obj_npc_hammerguy) {   // to L39120 */
-  /* gml: con = 30 */
+  gm_signal(obj_npc_hammerguy, 30);
   /* gml: } // end with */
 L39124:;
   goto L39216; /* gml: if !(which == 2) goto L39216 */
@@ -5138,7 +5138,7 @@ L39216:;
   MSG(0, scr_text_slash_scr_text_gml_1833_0);
   MSG(1, scr_text_slash_scr_text_gml_1834_0);
   /* gml: with (obj_npc_hammerguy) {   // to L39328 */
-  /* gml: con = 50 */
+  gm_signal(obj_npc_hammerguy, 50);
   /* gml: } // end with */
 L39332:;
   if (!(c->choice == 1)) goto L39388;
@@ -5148,7 +5148,7 @@ L39388:;
   MSG(0, scr_text_slash_scr_text_gml_1845_0);
   MSG(1, scr_text_slash_scr_text_gml_1846_0);
   /* gml: with (obj_npc_hammerguy) {   // to L39500 */
-  /* gml: con = 10 */
+  gm_signal(obj_npc_hammerguy, 10);
   /* gml: } // end with */
 L39504:;
   goto L66496;
@@ -5249,7 +5249,7 @@ L41028:;
   FACE(5, 'L', 1);
   MSG(6, scr_text_slash_scr_text_gml_1974_0);
   /* gml: with (obj_lancerbakesale_event) {   // to L41408 */
-  /* gml: con = 10 */
+  gm_signal(obj_lancerbakesale_event, 10);
   /* gml: } // end with */
   goto L41892;
 L41416:;
@@ -5270,7 +5270,7 @@ L41416:;
   FACE(10, 'L', 2);
   MSG(11, scr_text_slash_scr_text_gml_1995_0);
   /* gml: with (obj_lancerbakesale_event) {   // to L41888 */
-  /* gml: con = 10 */
+  gm_signal(obj_lancerbakesale_event, 10);
   /* gml: } // end with */
 L41892:;
   goto L42096;
@@ -5454,7 +5454,7 @@ L46204:;
   if (!(c->choice == 0)) goto L46276;
   txt_msg(c, 0, "%%");
   /* gml: with (obj_town_event) {   // to L46268 */
-  /* gml: con = 60 */
+  gm_signal(obj_town_event, 60);
   /* gml: } // end with */
   goto L46312;
 L46276:;
@@ -5830,7 +5830,7 @@ L55856:;
 L56088:;
   if (!(c->choice == 0)) goto L56168;
   /* gml: with (obj_krisroom) {   // to L56128 */
-  /* gml: con = 50 */
+  gm_signal(obj_krisroom, 50);
   /* gml: } // end with */
   MSG(0, scr_text_slash_scr_text_gml_2648_0);
 L56168:;
@@ -5855,7 +5855,7 @@ L56496:;
   c->choicemsg[2] = " ";
   c->choicemsg[3] = " ";
   /* gml: with (obj_krisroom) {   // to L56656 */
-  /* gml: con = 100 */
+  gm_signal(obj_krisroom, 100);
   /* gml: } // end with */
   MSG(0, scr_text_slash_scr_text_gml_2676_0);
 L56696:;
@@ -5911,14 +5911,14 @@ L58004:;
   MSG(0, scr_text_slash_scr_text_gml_2731_0);
   MSG(1, scr_text_slash_scr_text_gml_2732_0);
   /* gml: with (obj_event_room) {   // to L58116 */
-  /* gml: con = 20 */
+  gm_signal(obj_event_room, 20);
   /* gml: } // end with */
 L58120:;
   if (!(c->choice == 1)) goto L58236;
   MSG(0, scr_text_slash_scr_text_gml_2737_0);
   MSG(1, scr_text_slash_scr_text_gml_2738_0);
   /* gml: with (obj_event_room) {   // to L58232 */
-  /* gml: con = 20 */
+  gm_signal(obj_event_room, 20);
   /* gml: } // end with */
 L58236:;
   goto L66496;
@@ -5945,13 +5945,13 @@ L58580:;
   NOFACE(0);
   MSG(1, scr_text_slash_scr_text_gml_2765_0);
   /* gml: with (obj_event_room) {   // to L58756 */
-  /* gml: con = 5 */
+  gm_signal(obj_event_room, 5);
   /* gml: } // end with */
 L58760:;
   if (!(c->choice == 1)) goto L58840;
   MSG(0, scr_text_slash_scr_text_gml_2770_0);
   /* gml: with (obj_event_room) {   // to L58836 */
-  /* gml: con = 5 */
+  gm_signal(obj_event_room, 5);
   /* gml: } // end with */
 L58840:;
   goto L66496;
@@ -6045,12 +6045,12 @@ L60728:;
   if (!(sv.flag[239] == 1)) goto L60876;
   /* gml: dir = -1 */
   /* gml: newcno = 0 */
-  /* gml: con = 100 */
+  gm_signal(obj_elevatorcontroller, 100);
   goto L60912;
 L60876:;
   /* gml: dir = 1 */
   /* gml: newcno = 0 */
-  /* gml: con = 100 */
+  gm_signal(obj_elevatorcontroller, 100);
 L60912:;
   /* gml: } // end with */
   goto L60956;
@@ -6062,7 +6062,7 @@ L60956:;
   /* gml: with (obj_elevatorcontroller) {   // to L61048 */
   /* gml: dir = 1 */
   /* gml: newcno = 1 */
-  /* gml: con = 100 */
+  gm_signal(obj_elevatorcontroller, 100);
   /* gml: } // end with */
   goto L61092;
 L61056:;
@@ -6073,7 +6073,7 @@ L61092:;
   /* gml: with (obj_elevatorcontroller) {   // to L61184 */
   /* gml: dir = -1 */
   /* gml: newcno = 3 */
-  /* gml: con = 100 */
+  gm_signal(obj_elevatorcontroller, 100);
   /* gml: } // end with */
   goto L61228;
 L61192:;
@@ -6095,12 +6095,12 @@ L61428:;
   if (!(sv.flag[239] == 1)) goto L61548;
   /* gml: dir = 1 */
   /* gml: newcno = 2 */
-  /* gml: con = 100 */
+  gm_signal(obj_elevatorcontroller, 100);
   goto L61584;
 L61548:;
   /* gml: dir = -1 */
   /* gml: newcno = 1 */
-  /* gml: con = 100 */
+  gm_signal(obj_elevatorcontroller, 100);
 L61584:;
   /* gml: } // end with */
 L61588:;
@@ -6251,7 +6251,7 @@ L64892:;
   goto L65012;
 L64964:;
   MSG(0, scr_text_slash_scr_text_gml_3128_0);
-  /* gml: con = 50 */
+  gm_signal(obj_shortcut_door, 50);
 L65012:;
   /* gml: } // end with */
   goto L66496;

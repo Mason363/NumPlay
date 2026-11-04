@@ -133,4 +133,11 @@ bool battle_text_on(void);                       /* the box's text is showing */
 void battle_hide_hero(int c, bool hide);
 void battle_hero_pos(int c, int *x, int *y);     /* its place, units */
 int battle_hp_lost(int c);                       /* HP member c lost in this battle */
+/* a cutscene's guest (the Hathy fight's Lancer): at a moment (BC_*) it slides in from the right, its words go in
+ * the box (ids: texts and F_ face changes, -1 after), then it slides out and the battle goes on */
+enum { BC_CLEAN_TURN,                            /* the first enemies' turn, if Kris and the next lost no HP */
+       BC_VICTORY };                             /* won: after the victory text */
+void battle_cameo(int when, uint16_t spr, int y, int fc, int fe, const int *ids);
+void battle_victory_text(uint16_t id, int fc, int fe);   /* the victory's text instead (~1 EXP, ~2 D$) */
+void battle_say_ids(int fc, int fe, const int *ids);     /* the box's text: texts and F_ face changes */
 #endif

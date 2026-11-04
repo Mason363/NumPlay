@@ -9,6 +9,7 @@
 #include "game.h"
 #include "gmtexts.h"
 #include "menu.h"
+#include "puzzles.h"
 #include "rooms.h"
 #include "text.h"
 #include "world.h"
@@ -69,6 +70,7 @@ static int door_dest(int obj, int *entrance) {
     case obj_doorE: *entrance = 6; return room_next(g_room, 3);
     case obj_doorF: *entrance = 7; return room_next(g_room, -3);
     case obj_doorX: case obj_doorX_musfade:
+      /* (the original's tables, obj_doorX's and obj_doorX_musfade's alarm 2) */
       *entrance = 24;
       switch (g_room) {
         case room_castle_town: return room_castle_tutorial;
@@ -85,17 +87,48 @@ static int door_dest(int obj, int *entrance) {
         case room_flowershop_1f: return room_town_north;
         case room_torhouse: return room_town_krisyard;
         case room_town_krisyard: return room_torhouse;
+        case room_field_shop1: return room_shop1;
+        case room_man: return room_forest_savepoint2;
+        case room_forest_area5: return rnd_n(50) == 49 && flag(910) == 0 ? room_man : room_forest_starwalker;
+        case room_cc_1f: return pl.x >= 1300 ? room_cc_prisonelevator : g_room;
+        case room_cc_5f: return room_shop2;
+        case room_cc_prisonelevator:
+          return flag(239) == 1 ? room_cc_1f : flag(239) == 2 ? room_cc_5f : flag(239) == 3 ? room_cc_prison_prejoker
+                                                                                             : room_cc_prison_to_elevator;
+        case room_cc_prison_to_elevator: set_flag(239, 0); return room_cc_prisonelevator;
+        case room_cc_prison_prejoker: set_flag(239, 3); return room_cc_prisonelevator;
+        case room_cc_entrance: return room_forest_castlefront;
+        case room_cc_prisonlancer: return room_cc_prison_cells;
+        case room_cc_prison_cells: return room_cc_prisonlancer;
+        case room_forest_secret1: return room_forest_dancers1;
+        case room_forest_dancers1: return room_forest_secret1;
+        case room_forest_savepoint3: return room_forest_savepoint_relax;
+        case room_forest_savepoint_relax: return plot() < 120 ? room_forest_maze1 : room_forest_savepoint3;
+        case room_forest_maze_susie:
+          if (pl.y >= world_room_info()->h / 2) {
+            set_flag(292, 0), set_flag(291, 0);
+            return room_forest_savepoint_relax;
+          }
+          return room_forest_maze2;
+        case room_forest_castlefront: return plot() < 150 ? room_next(g_room, -1) : room_forest_fightsusie;
+        case room_forest_fightsusie: return plot() < 150 ? room_next(g_room, 1) : room_forest_castlefront;
+        case room_forest_maze1: case room_forest_maze2: return forest_maze_door(entrance);
         default: return g_room;
       }
     case obj_doorW: case obj_doorw_musfade:
       *entrance = 23;
       switch (g_room) {
-        case room_town_mid: return room_hospital_lobby;
-        case room_hospital_lobby: return room_town_mid;
-        case room_town_south: return room_alphysalley;
-        case room_alphysalley: return room_town_south;
+        case room_town_south: return room_hospital_lobby;
+        case room_hospital_lobby: return room_town_south;
+        case room_town_mid: return room_alphysalley;
+        case room_alphysalley: return room_town_mid;
         case room_town_north: return room_beach;
         case room_beach: return room_town_north;
+        case room_cc_1f: set_flag(239, 1); return room_cc_elevator;
+        case room_cc_5f: set_flag(239, 2); return room_cc_elevator;
+        case room_cc_elevator: return flag(239) == 2 ? room_cc_5f : room_cc_1f;
+        case room_forest_castlefront: return room_cc_entrance;
+        case room_cc_entrance: return room_forest_castlefront;
         default: return g_room;
       }
     default: *entrance = 1; return g_room;
@@ -175,6 +208,10 @@ void room_step(void) {
   else lw_step();
 }
 
+void room_draw_under(void) {
+  if (world_dark()) puzzles_draw_under();
+}
+
 void room_draw_over(void) {
   if (world_dark()) dw_draw();
   else lw_draw();
@@ -207,6 +244,23 @@ void txt_msg(TxtCtx *c, int i, const char *s) {
   c->msg[i] = s;
   if (i + 1 > c->nmsg) c->nmsg = i + 1;
 }
+void txt_msg_subst(TxtCtx *c, int i, const char *s, const char *a) {
+  static char bufs[4][160];
+  static int k;
+  char *o = bufs[k++ & 3];
+  int n = 0;
+  for (int j = 0; s[j] && n < 150; j++) {
+    if (s[j] == '~' && s[j + 1] == '1') {
+      for (const char *q = a; *q && n < 150; q++) o[n++] = *q;
+      j++;
+    } else {
+      o[n++] = s[j];
+    }
+  }
+  o[n] = 0;
+  txt_msg(c, i, o);
+}
+
 /* scr_susface and the others: a message that only changes the face (who 0: none) */
 void txt_face(TxtCtx *c, int i, char who, int fe) {
   if (i < 0 || i >= MAX_MSG) return;
@@ -221,6 +275,8 @@ void txt_face(TxtCtx *c, int i, char who, int fe) {
   txt_msg(c, i, m);
 }
 int g_noroom;
+int g_signal_obj = -1, g_signal_con;
+void gm_signal(int obj, int con) { g_signal_obj = obj, g_signal_con = con; }
 void gm_itemget(int id) {
   g_noroom = 1;
   for (int i = 0; i < NITEMS; i++)
@@ -302,6 +358,7 @@ static void tc_begin(const Obj *o) {
     }
   }
   tc.spr = o->spr;
+  tc.type = o->arg;
   tc.read = reads[o->inst & 255];
   tc.talked = tc.read;
   tc.facing = pl.dir;
@@ -332,6 +389,18 @@ static void tc_choice(int choice) {
   if (tc.choicemsg[0]) text_set_choices(tc.choicemsg[0], tc.choicemsg[1], tc.choicemsg[2], tc.choicemsg[3]);
   /* (a choice in the new messages: it goes on again) */
   if (tc.msc != msc || tc.choicemsg[0]) text_on_choice(tc_choice);
+}
+
+/* an npc's own talk: scr_text(msc), its choices going on as they do (side: 0 the box on top, -1 by Kris) */
+bool talk_msc(int msc, int side) {
+  memset(&tc, 0, sizeof tc);
+  tc.msc = tc.arg = msc;
+  tc.facing = pl.dir;
+  gm_scr_text(&tc);
+  text_side(side);
+  if (!tc_say()) return false;
+  if (tc.msc) text_on_choice(tc_choice);
+  return true;
 }
 
 /* obj_readable_room1, obj_npc_room...: what it says, by the room, where it is, how often it was read */
@@ -370,6 +439,7 @@ static void npc_setup(const Inst *in) {
   o->obj = in->obj, o->inst = (int16_t)in->n;
   o->event = EV_READ;
   o->ispd = tc.ispd >= 0 ? tc.ispd : in->obj == obj_npc_room_animated ? FX / 5 : 0;
+  o->arg = (int16_t)tc.type;
   /* its box: its sprite's (the original's interactablesolid) */
   int s = world_scale();
   int w = tc.spr != 0xFFFF ? spr_w(tc.spr) * s : 20, h = tc.spr != 0xFFFF ? spr_h(tc.spr) * s : 20;

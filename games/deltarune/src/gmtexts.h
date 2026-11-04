@@ -16,6 +16,7 @@ typedef struct TxtCtx {
   uint16_t tspr[4];          /* facing Kris while talking: down, right, up, left (DIR_*) */
   int fc, fe;                /* the face the box starts with */
   int choice, facing, msc, arg, arg1;
+  int type;                  /* its own (an npc's create sets it: which one it is) */
   int tempflag[16];
   int gone, hidden;          /* instance_destroy(), visible = 0 (its create) */
   int ispd;                  /* image_speed, 1/16 (-1: as made) */
@@ -26,6 +27,7 @@ typedef struct TxtCtx {
 
 void txt_msg(TxtCtx *c, int i, const char *s);
 void txt_face(TxtCtx *c, int i, char who, int fe);
+void txt_msg_subst(TxtCtx *c, int i, const char *s, const char *a);   /* ~1 in s filled with a */
 #define MSG(i, id) txt_msg(c, i, str(id))
 #define CHOICE(i, id) (c->choicemsg[i] = str(id))
 #define FACE(i, who, fe) txt_face(c, i, who, fe)
@@ -53,5 +55,8 @@ void gm_npc_facing_talk(TxtCtx *c);
 void gm_npc_room_animated_create(TxtCtx *c);
 void gm_npc_room_animated_talk(TxtCtx *c);
 void gm_scr_text(TxtCtx *c);
-extern int g_noroom;   /* the last scr_itemget found no room (noroom) */
+extern int g_noroom;
+/* "with (obj_x) con = n" in the texts' code: the cutscene object obj_x is told to go on to n (g_signal_*) */
+void gm_signal(int obj, int con);
+extern int g_signal_obj, g_signal_con;   /* the last scr_itemget found no room (noroom) */
 #endif

@@ -7,7 +7,9 @@
 #include <stdio.h>
 #include <string.h>
 #include "battle.h"
+#include "cut.h"
 #include "event.h"
+#include "puzzles.h"
 #include "game.h"
 #include "gfx.h"
 #include "rooms.h"
@@ -35,6 +37,8 @@ static void walker(Obj *o, int c) {
 static uint8_t eye[3];
 
 void dw_setup(int room) {
+  puzzles_reset();
+  cut_reset();
   Inst in;
   switch (room) {
     case room_dark7:
@@ -93,6 +97,10 @@ void dw_setup(int room) {
     s->event = EV_DARKSLIDE;
   }
   chasers_setup();
+  chests_setup();
+  field_setup(room);
+  forest_setup(room);
+  castle_setup(room);
 }
 
 /* the eyes, drawn over the room */
@@ -118,11 +126,20 @@ void dw_step(void) {
     if (l) obj_walk_to(l, pl.x + 40, pl.y - 120, 3);
   }
   chasers_step();
+  cut_step();
+  puzzles_step();
+  field_step();
+  forest_step();
+  castle_step();
 }
 
 void dw_draw(void) {
   eyes_draw();
   chasers_draw();
+  cut_draw();
+  field_draw();
+  forest_draw();
+  castle_draw();
 }
 
 /* ---------------------------------------------------------------- events */
@@ -421,6 +438,9 @@ static int ev_darkslide(Ev *c) {
 }
 
 int dw_event(Ev *c) {
+  if (c->id >= EV_CASTLE_FIRST) return castle_event(c);
+  if (c->id >= EV_FOREST_FIRST) return forest_event(c);
+  if (c->id >= EV_FIELD_FIRST) return field_event(c);
   switch (c->id) {
     case EV_SUSIE_DUST: return ev_susie_dust(c);
     case EV_EYE_SWITCH: return ev_eye_switch(c);
@@ -431,6 +451,11 @@ int dw_event(Ev *c) {
     case EV_TUTORIAL: return ev_tutorial(c);
     case EV_BIGDOOR: return ev_bigdoor(c);
     case EV_CHASE_BATTLE: return chase_battle_event(c);
+    case EV_CHEST: return chest_event(c);
+    case EV_GLOW_SWITCH: return glow_switch_event(c);
+    case EV_GLOW_HINT: return glow_hint_event(c);
+    case EV_GLOW_SHAKE: return glow_shake_event(c);
+    case EV_SUITS_BUTTON: return suits_button_event(c);
     case EV_DARKSLIDE: return ev_darkslide(c);
     default: return 1;
   }

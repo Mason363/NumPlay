@@ -29,6 +29,8 @@ ENTRIES = [
     ("gml_Object_obj_npc_room_animated_Other_10", "gm_npc_room_animated_talk"),
     ("gml_Script_scr_text", "gm_scr_text"),
 ]
+# scr_get_input_name's keys (input_k: 4 Z, 5 X, 6 C), as the calculator names them
+KEYS = {"4": "OK", "5": "Back", "6": "toolbox"}
 LOCALS = {"tempvar", "afford", "itemflag", "itemtype", "t_itemid"}
 FACES = {"scr_susface": "S", "scr_ralface": "R", "scr_noeface": "N", "scr_torface": "T", "scr_lanface": "L",
          "scr_rudface": "r", "scr_asgface": "A", "scr_kingface": "K", "scr_rurusface": "u"}
@@ -40,7 +42,7 @@ VARS = [
     (r"\bglobal\.larmor\b", "sv.larmor"), (r"\bglobal\.charweapon\[", "sv.weapon["),
     (r"\bglobal\.chararmor1\[", "sv.armor1["), (r"\bglobal\.chararmor2\[", "sv.armor2["), (r"\bglobal\.facing\b", "c->facing"), (r"\bglobal\.item\[", "sv.item["),
     (r"\bglobal\.keyitem\[", "sv.keyitem["), (r"\bglobal\.lv\b", "sv.lv"), (r"\bglobal\.litem\[", "sv.litem["),
-    (r"\bnoroom\b", "g_noroom"), (r"\bargument0\b", "c->arg"), (r"\bargument1\b", "c->arg1"), (r"\bglobal\.msc\b", "c->msc"),
+    (r"\bnoroom\b", "g_noroom"), (r"\btype\b", "c->type"), (r"\bargument0\b", "c->arg"), (r"\bargument1\b", "c->arg1"), (r"\bglobal\.msc\b", "c->msc"),
     (r"\bscr_havechar\(", "have_char("), (r"\bscr_itemcheck\(", "gm_itemcheck("),
     (r"\bscr_keyitemcheck\(", "gm_keyitemcheck("), (r"\bscr_litemcheck\(", "gm_litemcheck("),
     (r"\bscr_weaponcheck_inventory\(", "gm_weaponcheck("), (r"\broom_width\b", "world_room_info()->w"),
@@ -59,6 +61,7 @@ class Tr:
         self.spr, self.rooms, self.objs = load_names(g)
         self.unknown = 0
         self.locals = set()
+        self.input_name = "OK"
 
     def expr(self, e):
         """an expression in C, or None when it uses what the game hasn't got"""
@@ -72,7 +75,7 @@ class Tr:
         rest = re.sub(r'"[^"]*"', "", e)
         rest = re.sub(r"\bc->\w+|->\w+|sv\.\w+", "", rest)
         for w in re.findall(r"\b[A-Za-z_][A-Za-z0-9_.]*\b", rest):
-            if w in ("g_room", "g_noroom", "have_char", "spr_h", "spr_w", "world_scale", "gm_itemcheck", "gm_keyitemcheck", "gm_litemcheck", "gm_weaponcheck",
+            if w in ("g_room", "g_noroom", "txt_msg_subst", "have_char", "spr_h", "spr_w", "world_scale", "gm_itemcheck", "gm_keyitemcheck", "gm_litemcheck", "gm_weaponcheck",
                      "world_room_info") or (w.startswith("room_") and w in self.rooms):
                 continue
             if w in self.locals or w.startswith("spr_"):
@@ -92,7 +95,7 @@ class Tr:
         m = re.match(r"if (.+) goto (L\d+)$", ln)
         if m:
             c = self.expr(m.group(1))
-            return "if (%s) goto %s;" % (c, m.group(2)) if c is not None else "/* gml: %s */" % ln
+            return "if (%s) goto %s;" % (c[1:-1] if re.fullmatch(r"\([^()]*\)", c or "") else c, m.group(2)) if c is not None else "/* gml: %s */" % ln
         m = re.match(r"goto (L\d+)$", ln)
         if m:
             return "goto %s;" % m.group(1)
@@ -102,6 +105,13 @@ class Tr:
         m = re.match(r'global\.msg\[(\d+)\] = scr_84_get_lang_string\("([^"]+)"\)$', ln)
         if m:
             return "MSG(%s, %s);" % (m.group(1), m.group(2))
+        m = re.match(r'input_name = scr_get_input_name\((\d)\)$', ln)
+        if m:
+            self.input_name = KEYS.get(m.group(1), "OK")
+            return "/* gml: %s */" % ln
+        m = re.match(r'global\.msg\[(\d+)\] = scr_84_get_subst_string\(scr_84_get_lang_string\("([^"]+)"\), input_name\)$', ln)
+        if m:
+            return 'txt_msg_subst(c, %s, str(%s), "%s");' % (m.group(1), m.group(2), self.input_name)
         m = re.match(r'global\.msg\[(\d+)\] = scr_84_get_subst_string\(scr_84_get_lang_string\("([^"]+)"\), (.+)\)$', ln)
         if m:
             return "MSG(%s, %s); /* gml: %s */" % (m.group(1), m.group(2), ln)
@@ -147,7 +157,7 @@ class Tr:
         m = re.match(r"visible = ([01])$", ln)
         if m:
             return "c->hidden = %d;" % (1 - int(m.group(1)))
-        m = re.match(r"(global\.flag\[.+\]|global\.plot|global\.gold|global\.lgold|read|talked|x|y|c->\w+|image_index) = (.+)$", ln)
+        m = re.match(r"(global\.flag\[.+\]|global\.plot|global\.gold|global\.lgold|read|talked|x|y|type|c->\w+|image_index) = (.+)$", ln)
         if m:
             lhs, rhs = self.expr(m.group(1)), self.expr(m.group(2))
             if lhs and rhs:
@@ -179,11 +189,19 @@ class Tr:
             if m:
                 used.add(m.group(1))
         body = []
+        within = None
         for ln in lines:
             if not ln.strip() or ln.startswith("    // stack") or ln.startswith("// stack"):
                 continue
             if ln.startswith("with (") or ln.startswith("} // end with"):
+                m = re.match(r"with \((obj_\w+)\)", ln)
+                within = m.group(1) if m and m.group(1) in self.objs else None
                 body.append("  /* gml: %s */" % ln.replace("*/", "* /"))
+                continue
+            # (a cutscene told what to do next: "with (obj_x) con = 5" becomes gm_signal(obj_x, 5))
+            m = re.match(r"con = (\d+)$", ln)
+            if within and m:
+                body.append("  gm_signal(%s, %s);" % (within, m.group(1)))
                 continue
             s = self.stmt(ln, used)
             if s is not None:

@@ -27,6 +27,7 @@ int room_next(int room, int n);    /* n rooms after it in the original's order (
 void room_step(void);              /* each frame in the overworld: the room's own (its cutscenes start) */
 const char *room_title(int room);
 Obj *room_add_npc(int obj, int x, int y);   /* (an npc a cutscene makes) */
+bool talk_msc(int msc, int side);  /* an npc's scr_text(msc) in the box, its choices going on (side 0 top, -1 by Kris) */
 void room_queue_event(int id);     /* the room's cutscene, started once nothing else runs */  /* the name the SAVE menu shows */
 
 /* each part's own (lw.c the Light World, dw.c the Dark World...) */
@@ -34,6 +35,7 @@ void lw_setup(int room);
 int lw_event(Ev *c);
 void lw_step(void);
 void lw_draw(void);
+void room_draw_under(void);        /* what a room draws on its floor, under everyone (glowing tiles...) */
 void dw_setup(int room);
 int dw_event(Ev *c);
 void dw_step(void);
@@ -45,4 +47,18 @@ void chasers_draw(void);
 void chaser_add(int x, int y, int radius);
 bool chasers_any(void);
 int chase_battle_event(Ev *c);
+/* the areas past Castle Town: the Field (field.c), the Forest (forest.c), Card Castle (castle.c) */
+void field_setup(int room);
+void field_step(void);
+void field_draw(void);
+int field_event(Ev *c);
+void forest_setup(int room);
+void forest_step(void);
+void forest_draw(void);
+int forest_event(Ev *c);
+int forest_maze_door(int *entrance);
+void castle_setup(int room);
+void castle_step(void);
+void castle_draw(void);
+int castle_event(Ev *c);
 #endif
