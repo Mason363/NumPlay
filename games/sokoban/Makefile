@@ -104,4 +104,5 @@ PORT_ID = sokoban
 PORT_NAME = Sokoban
 PORT_SRC = src/main.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c ../../launcher/src/inflate.c
 PORT_FLAGS = -I$(BUILD_DIR)
+PORT_DEPS = $(LEVELS)
 include ../../platform/port.mk

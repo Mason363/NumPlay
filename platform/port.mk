@@ -4,6 +4,7 @@
 #   PORT_SRC    its C files (with its plat_eadk.c: EADK is what every target implements)
 #   PORT_ASM    its .S files (data.S...)
 #   PORT_FLAGS  its own compiler flags (-D..., -I...)
+#   PORT_DEPS   files its build makes first (generated tables its sources include)
 #   PORT_FONT   its own copy of the launcher's font_data.c, if it has one (not in PORT_SRC then)
 #   PORT_CXX    its C++ files (a physics engine...), and PORT_CXXFLAGS their own flags: no exceptions, no RTTI
 # then `make port TARGET=sdl` builds build/sdl/<id>. TARGET: sdl (a computer, a Raspberry Pi).
@@ -32,7 +33,7 @@ SDL_LIBS = $(shell pkg-config --libs sdl3 2>/dev/null)
 NP_CXX = c++
 NP_CXXLIB = $(if $(PORT_CXX),$(if $(filter Darwin,$(shell uname -s)),-lc++,-lstdc++))
 port: $(PORT_OUT)/$(PORT_ID)
-$(PORT_OUT)/$(PORT_ID): $(PORT_SRC) $(PORT_ASM) $(PORT_CXX_OBJ) $(wildcard $(NP_PLATFORM)/include/*.h) $(NP_PLATFORM)/sdl/np_sdl.c
+$(PORT_OUT)/$(PORT_ID): $(PORT_DEPS) $(PORT_SRC) $(PORT_ASM) $(PORT_CXX_OBJ) $(wildcard $(NP_PLATFORM)/include/*.h) $(NP_PLATFORM)/sdl/np_sdl.c
 	@mkdir -p $(@D)
 	$(Q) cc $(PORT_CFLAGS) $(SDL_CFLAGS) $(PORT_SRC) $(PORT_ASM) $(NP_PLATFORM)/sdl/np_sdl.c $(PORT_COMMON) \
 	  $(PORT_CXX_OBJ) $(SDL_LIBS) $(NP_CXXLIB) -lm -o $@
@@ -45,7 +46,7 @@ CE_NAME = $(shell echo '$(PORT_ID)' | tr a-z A-Z | tr -cd 'A-Z0-9' | cut -c1-8)
 CE_DIR = $(PORT_OUT)/$(PORT_ID)
 CE_ALL = $(abspath $(PORT_SRC) $(NP_PLATFORM)/ti84ce/np_ce.c $(PORT_COMMON))
 port: $(CE_DIR)/bin/$(CE_NAME).8xp
-$(CE_DIR)/bin/$(CE_NAME).8xp: $(PORT_SRC) $(wildcard $(NP_PLATFORM)/include/*.h) $(NP_PLATFORM)/ti84ce/np_ce.c
+$(CE_DIR)/bin/$(CE_NAME).8xp: $(PORT_DEPS) $(PORT_SRC) $(wildcard $(NP_PLATFORM)/include/*.h) $(NP_PLATFORM)/ti84ce/np_ce.c
 	@rm -rf $(CE_DIR)/src && mkdir -p $(CE_DIR)/src
 	@n=0; for f in $(CE_ALL); do n=$$((n+1)); echo "#include \"$$f\"" > $(CE_DIR)/src/f$$n.c; done
 	@printf 'NAME = %s\nDESCRIPTION = "%s"\nCOMPRESSED = YES\nARCHIVED = YES\nCFLAGS = -Wall -Oz -Werror=shift-count-overflow -Wno-unused-command-line-argument %s\ninclude $$(shell cedev-config --makefile)\n' \
@@ -61,7 +62,7 @@ NS_DIR = $(PORT_OUT)/$(PORT_ID)
 NS_SRC = $(PORT_SRC) $(NP_PLATFORM)/nspire/np_nspire.c $(PORT_COMMON)
 NP_CXX = PATH="$(NS_PATH):$$PATH" nspire-g++ -Os -marm -ffunction-sections -fdata-sections
 port: $(PORT_OUT)/$(PORT_ID).tns
-$(PORT_OUT)/$(PORT_ID).tns: $(NS_SRC) $(PORT_ASM) $(PORT_CXX_OBJ) $(wildcard $(NP_PLATFORM)/include/*.h)
+$(PORT_OUT)/$(PORT_ID).tns: $(PORT_DEPS) $(NS_SRC) $(PORT_ASM) $(PORT_CXX_OBJ) $(wildcard $(NP_PLATFORM)/include/*.h)
 	@rm -rf $(NS_DIR) && mkdir -p $(NS_DIR)
 	$(Q) n=0; for f in $(NS_SRC) $(PORT_ASM); do n=$$((n+1)); \
 	  PATH="$(NS_PATH):$$PATH" nspire-gcc $(PORT_CFLAGS) -Os -marm -ffunction-sections -fdata-sections \
@@ -80,7 +81,7 @@ port: $(PORT_OUT)/$(PORT_ID).html
 $(PORT_OUT)/data_embed.c: $(PORT_ASM) $(NP_PLATFORM)/embed.py
 	@mkdir -p $(@D)
 	$(Q) python3 $(NP_PLATFORM)/embed.py $@ $(filter -D% -I%,$(PORT_FLAGS)) $(PORT_ASM)
-$(PORT_OUT)/$(PORT_ID).html: $(PORT_SRC) $(WEB_DATA) $(PORT_CXX_OBJ) $(wildcard $(NP_PLATFORM)/include/*.h) \
+$(PORT_OUT)/$(PORT_ID).html: $(PORT_DEPS) $(PORT_SRC) $(WEB_DATA) $(PORT_CXX_OBJ) $(wildcard $(NP_PLATFORM)/include/*.h) \
   $(NP_PLATFORM)/sdl/np_sdl.c $(NP_PLATFORM)/sdl/shell.html
 	@mkdir -p $(@D)
 	$(Q) emcc $(PORT_CFLAGS) -g0 -O2 --use-port=sdl3 -sASYNCIFY -sALLOW_MEMORY_GROWTH -sENVIRONMENT=web \
@@ -101,7 +102,7 @@ NP_CXX = PATH="$(CG_PATH):$$PATH" sh3eb-elf-g++ -Os -mb -m4a-nofpu -mhitachi -no
   -fdata-sections -isystem $(CG_LIBC)/include -idirafter $(FXCG)/libfxcg/include
 CG_CXX = $(if $(PORT_CXX),$(NP_PLATFORM)/casio-cg/np_cxx.cpp)
 port: $(PORT_OUT)/$(PORT_ID).g3a
-$(PORT_OUT)/$(PORT_ID).g3a: $(CG_SRC) $(PORT_ASM) $(PORT_CXX_OBJ) $(wildcard $(NP_PLATFORM)/include/*.h) \
+$(PORT_OUT)/$(PORT_ID).g3a: $(PORT_DEPS) $(CG_SRC) $(PORT_ASM) $(PORT_CXX_OBJ) $(wildcard $(NP_PLATFORM)/include/*.h) \
   $(NP_PLATFORM)/casio-cg/addin.ld $(NP_PLATFORM)/casio-cg/g3a.py
 	@mkdir -p $(CG_DIR)
 	$(Q) n=0; objs=; for f in $(CG_SRC) $(PORT_ASM); do n=$$((n+1)); objs="$$objs $(CG_DIR)/f$$n.o"; \

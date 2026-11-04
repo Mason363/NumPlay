@@ -79,4 +79,5 @@ PORT_ID = leveldevil
 PORT_NAME = Level Devil
 PORT_SRC = src/main.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
 PORT_FLAGS = -DEPSILON_XL=1 -I$(BUILD_DIR)
+PORT_DEPS = $(ROOMS)
 include ../../platform/port.mk

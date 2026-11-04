@@ -962,8 +962,7 @@
     "ports": [
       "sdl",
       "web",
-      "nspire",
-      "casio-cg"
+      "nspire"
     ]
   },
   {

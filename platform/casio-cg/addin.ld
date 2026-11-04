@@ -4,7 +4,7 @@
 OUTPUT_ARCH(sh3)
 ENTRY(initialize)
 MEMORY {
-  rom (rx) : o = 0x00300000, l = 2048k
+  rom (rx) : o = 0x00300000, l = 0x1F8FFC /* 2 MiB for the whole .g3a: its 0x7000-byte header and checksum too */
   ram (rwx) : o = 0x08100004, l = 384k
   ilram (rwx) : o = 0xE5200000, l = 4k
 }
