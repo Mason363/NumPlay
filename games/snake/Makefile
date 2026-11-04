@@ -54,3 +54,9 @@ $(BUILD_DIR)/sim-module.o: $(SRC) $(HEADERS) | $(BUILD_DIR)
 	$(Q) mkdir -p $(BUILD_DIR)/sim
 	$(Q) cc -std=c11 -O2 -fPIC $(shell $(NWLINK) eadk-cflags-simulator) -Dmain=np_snake_main -c $(SRC) -o $(BUILD_DIR)/sim/main.o
 	$(Q) ld -r $(BUILD_DIR)/sim/main.o -exported_symbol _np_snake_main -o $@
+
+# the other targets (platform/port.mk): make port TARGET=sdl, TARGET=ti84ce
+PORT_ID = snake
+PORT_NAME = Snake
+PORT_SRC = src/main.c
+include ../../platform/port.mk

@@ -23,6 +23,22 @@ $(PORT_OUT)/$(PORT_ID): $(PORT_SRC) $(PORT_ASM) $(wildcard $(NP_PLATFORM)/includ
 	$(Q) cc $(PORT_CFLAGS) $(SDL_CFLAGS) $(PORT_SRC) $(PORT_ASM) $(NP_PLATFORM)/sdl/np_sdl.c $(PORT_COMMON) \
 	  $(SDL_LIBS) -lm -o $@
 	@echo "SDL     $@"
+else ifeq ($(TARGET),ti84ce)
+# the CE C toolchain (CEDEV: its folder) builds a folder of its own: one small file per source, each including the
+# game's (by its full path, so the game's own relative #includes still work), and its makefile
+CEDEV ?= $(HOME)/Documents/Assets/toolchains/CEdev
+CE_NAME := $(shell echo '$(PORT_ID)' | tr a-z A-Z | tr -cd 'A-Z0-9' | cut -c1-8)
+CE_DIR = $(PORT_OUT)/$(PORT_ID)
+CE_ALL = $(abspath $(PORT_SRC) $(NP_PLATFORM)/ti84ce/np_ce.c $(PORT_COMMON))
+port: $(CE_DIR)/bin/$(CE_NAME).8xp
+$(CE_DIR)/bin/$(CE_NAME).8xp: $(PORT_SRC) $(wildcard $(NP_PLATFORM)/include/*.h) $(NP_PLATFORM)/ti84ce/np_ce.c
+	@rm -rf $(CE_DIR)/src && mkdir -p $(CE_DIR)/src
+	@n=0; for f in $(CE_ALL); do n=$$((n+1)); echo "#include \"$$f\"" > $(CE_DIR)/src/f$$n.c; done
+	@printf 'NAME = %s\nDESCRIPTION = "%s"\nCOMPRESSED = YES\nARCHIVED = YES\nCFLAGS = -Wall -Oz -Werror=shift-count-overflow -Wno-unused-command-line-argument %s\ninclude $$(shell cedev-config --makefile)\n' \
+	  '$(CE_NAME)' '$(PORT_NAME)' '-DNP_PORT=1 -DNP_APP_ID="\"$(PORT_ID)\"" -DNP_APP_NAME="\"$(PORT_NAME)\"" -I$(abspath $(NP_PLATFORM)/include) $(PORT_CE_FLAGS)' \
+	  > $(CE_DIR)/makefile
+	$(Q) PATH="$(CEDEV)/bin:$$PATH" $(MAKE) -C $(CE_DIR) --no-print-directory TARGET=$(CE_NAME).8xp
+	@echo "CE      $@"
 else
 port:
 	@echo "TARGET=$(TARGET): not a target yet (platform/README.md lists them)"; exit 1

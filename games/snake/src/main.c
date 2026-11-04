@@ -25,7 +25,7 @@ typedef uint16_t color;
 #define RGB(c) (color)((((c) >> 8) & 0xF800) | (((c) >> 5) & 0x07E0) | (((c) >> 3) & 0x1F))
 #define WHITE 0xFFFF
 /* the keys used, in 32 bits: 4, 6, 2 and EXE come down from the high word */
-#define KEY(k) (1u << ((k) - ((k) >= 32) * 24))
+#define KEY(k) ((uint32_t)1 << ((k) - ((k) >= 32) * 24))
 static uint32_t keys(void) {
   uint64_t s = eadk_keyboard_scan();
   return ((uint32_t)s & 0x800001FFu) | ((uint32_t)(s >> 32) & 0x00100850u) << 8;

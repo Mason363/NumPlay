@@ -6,7 +6,7 @@ Every NumPlay game talks to its calculator through one interface: [EADK](include
 | --- | --- | --- | --- |
 | NumWorks | (the calculator's own EADK) | `.nwa` | all games |
 | A computer, a Raspberry Pi | [sdl](sdl/) | a program | first games |
-| TI-84 Plus CE, TI-83 Premium CE | ti84ce | `.8xp`, `.8xv` | next |
+| TI-84 Plus CE, TI-83 Premium CE | [ti84ce](ti84ce/) | `.8xp`, `.8xv` | first games build; to run in CEmu |
 | TI-Nspire CX, CX II | nspire | `.tns` | next |
 | Casio fx-CG50, Graph 90+E | casio-cg | `.g3a` | next |
 | Casio Graph 35+E II | casio-fx | `.g1a` | later |
@@ -36,3 +36,8 @@ Implement the functions of `include/eadk.h` and `include/np_port.h` in `platform
 - **Time:** milliseconds since the start; sleep.
 - **Files:** one buffer of records, kept when `np_storage_changed()` is called.
 - **Heap:** `_heap_start` and `_heap_end` around the RAM a game may use beyond its own.
+
+## Writing for every target
+
+- **An `int` is 24 bits on the TI-84 Plus CE.** Use `uint32_t` for bit masks and anything past 8 million: `(uint32_t)1 << 31`, not `1u << 31`. The CE build stops on a shift past an int's width.
+- Keep every call to the calculator in one file (`plat_eadk.c`), as the games with a `plat.h` do.
