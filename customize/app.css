@@ -127,7 +127,7 @@ body.dragging-icon, body.dragging-icon * { cursor: grabbing !important; user-sel
 /* ---- the calculator, up close: its screen is the space, OK installs, Back downloads, a star sticker on it */
 .device { grid-area: device; position: sticky; top: 0; height: 100vh; overflow: hidden; align-self: start; perspective: 2400px; perspective-origin: 50% 32%; }
 /* beside the calculator: the space used, a block for each game, stacked from the bottom in the launcher's order */
-.meter { position: absolute; z-index: 1; left: calc(50% - var(--cw) / 2 - 66px); width: 52px; top: calc(30px + var(--cw) * 0.105); bottom: 34px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.meter { position: absolute; z-index: 1; left: calc(50% - var(--pw, var(--cw)) / 2 - 66px); width: 52px; top: calc(30px + var(--cw) * var(--mt, 0.105)); bottom: 34px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .used { font-size: 18px; font-weight: 750; letter-spacing: -0.4px; font-variant-numeric: tabular-nums; line-height: 1; }
 .cap-of { font-size: 12px; font-weight: 600; color: var(--mute); white-space: nowrap; font-variant-numeric: tabular-nums; line-height: 1; }
 .bar {
@@ -275,14 +275,23 @@ body.dragging .drop-hint { display: flex; }
 .calcs button:disabled { cursor: default; }
 .calcs button:disabled img, .calcs button:disabled b { opacity: 0.4; }
 /* on another calculator: its games only, as files of their own, so NumPlay's app, its language, the space for
-   apps and your own games and apps step aside; its photo, and a zip of the games */
+   apps and your own games and apps step aside. Its picture is where the NumWorks's is, as tall (2000 of its pixels to
+   the NumWorks's 2000: --pw its width, --pa its shape, app.js), with Studio's screen under its LCD, cut out of it; the
+   bar beside it from the top of its screen (--mt). It fades out at the bottom, over the Download */
 .port { display: none; }
-.other .port { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px 16px 40px; }
-.port-img { display: block; height: min(480px, calc(100vh - 190px)); width: auto; margin-bottom: 14px; user-select: none; }
-.port-used { margin: 0; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.other .port { display: block; position: absolute; inset: 0; }
+.port-calc {
+  position: absolute; top: 30px; left: calc(50% - var(--pw) / 2); width: var(--pw); aspect-ratio: var(--pa);
+  -webkit-mask: linear-gradient(#000 calc(100vh - 250px), transparent calc(100vh - 150px)); mask: linear-gradient(#000 calc(100vh - 250px), transparent calc(100vh - 150px));
+}
+.port-calc.loading { visibility: hidden; }
+.port-img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; user-select: none; }
+.port-dl { position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%); }
+.wide .preview img { width: 83.333%; margin: 0 auto; object-fit: fill; }  /* (the Casio's: 320 of its 384, rows squeezed, as its port draws them) */
+.other .cap-of { white-space: pre-line; text-align: center; line-height: 1.3; }
 .install:disabled { background: var(--track); color: var(--mute); cursor: default; }
 .install.busy { cursor: progress; opacity: 0.6; }
-.other .calc, .other .meter, .other #app-chip, .other #lang-chip, .other #space-chip, .other .retro, .other #dock-download { display: none !important; }
+.other .calc, .other #app-chip, .other #lang-chip, .other #space-chip, .other .retro, .other #dock-download { display: none !important; }
 .other .title button { cursor: default; }
 .app.away { display: none; }
 .step-icon.n { font-size: 17px; font-weight: 750; }
@@ -452,9 +461,13 @@ html.intro-wait main { opacity: 0; }
     -webkit-mask: linear-gradient(#000 calc(100% - 18px), transparent); mask: linear-gradient(#000 calc(100% - 18px), transparent);
   }
   .meter { display: none; }
-  .other .device { height: auto; -webkit-mask: none; mask: none; }
-  .other .port { position: static; padding: 8px 0 0; }
-  .port-img { height: 300px; margin-bottom: 4px; }
+  /* (another calculator: down to the same place, fading there, then its Download) */
+  .other .device { height: calc(var(--cw) * 1.066 + 30px + 78px); -webkit-mask: none; mask: none; }
+  .port-calc {
+    -webkit-mask: linear-gradient(#000 calc(var(--cw) * 1.066 - 18px), transparent calc(var(--cw) * 1.066));
+    mask: linear-gradient(#000 calc(var(--cw) * 1.066 - 18px), transparent calc(var(--cw) * 1.066));
+  }
+  .port-dl { bottom: 16px; }
   .foot { justify-content: center; }
   .dock {
     position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 30; max-width: 520px; margin: 0 auto;

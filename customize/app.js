@@ -26,27 +26,33 @@
   const LANGS = { en: ['EN', 'English'], fr: ['FR', 'Français'], zh: ['中文', '中文'] };
   // launcher/src/settings.c's secrets, in order (NP_SECRET_*)
   const SECRETS = ['x,n,t key', 'var key', 'Toolbox key', 'π key', '√ key', 'Menu: Examples', 'Konami code'];
-  const W = 320, H = 222;  // the screen below its status bar, in the calculator's pixels
+  let W = 320, H = 222;  // the screen below its status bar, in the calculator's pixels (CALCS: each one's)
   // The calculators the games are made for (platform/): the NumWorks, where they go in as one app linked here, and
   // the others, where each game is a file of its own (kit/ports: ports.json, then <target>/<file>) and they come as
-  // one zip. How to install them: steps of text and [link, url] ('@zip': the zip's name; that step isn't in its README)
+  // one zip. Each one's picture (calcs/<id>-full.webp, 2000 pixels tall as calculator.webp is, its LCD cut out: pic, its
+  // width and the LCD's left, top, right and bottom in it), its screen (in its pixels: where a game's picture goes) and
+  // its space for games (in MB, about: what's free on one). How to install them: steps of text and [link, url] ('@zip':
+  // the zip's name; that step isn't in its README)
   const CLIBS = 'https://github.com/CE-Programming/libraries/releases/latest';
   const TICONNECT = 'https://education.ti.com/en/products/computer-software/ti-connect-ce-sw';
   const CALCS = {
     numworks: { name: 'NumWorks' },
     ti84ce: {
-      name: 'TI-84 Plus CE', models: 'and TI-83 Premium CE', photo: 'ti84ce.png', zip: 'NumPlay-TI84CE.zip',
+      name: 'TI-84 Plus CE', models: 'and TI-83 Premium CE', zip: 'NumPlay-TI84CE.zip',
+      pic: [859, 116.7, 148.2, 743, 622.2], screen: [320, 240], space: 3,  // (its archive: games run from there)
       steps: [['Unzip @zip'], ['Send ', ['clibs.8xg', CLIBS], ' and the games with ', ['TI Connect CE', TICONNECT]],
         ['Press prgm, pick a game, press enter']],
       warn: ['On OS 5.5 or newer, the games need ', ['arTIfiCE', 'https://yvantt.github.io/arTIfiCE/'], ' first.'],
     },
     nspire: {
-      name: 'TI-Nspire CX', models: 'CX and CX II, with Ndless', photo: 'nspire.png', zip: 'NumPlay-Nspire.zip',
+      name: 'TI-Nspire CX', models: 'CX and CX II, with Ndless', zip: 'NumPlay-Nspire.zip',
+      pic: [950, 130.6, 173.8, 813.5, 689.5], screen: [320, 240], space: 90,
       steps: [['Install ', ['Ndless', 'https://ndless.me'], ' on the calculator'], ['Unzip @zip'],
         ['Send the games with TI-Nspire Link'], ['Open a game from My Documents']],
     },
     'casio-cg': {
-      name: 'Casio fx-CG50', models: 'and Graph 90+E', photo: 'casio_cg50.png', zip: 'NumPlay-CasioCG.zip',
+      name: 'Casio fx-CG50', models: 'and Graph 90+E', zip: 'NumPlay-CasioCG.zip',
+      pic: [944, 94.5, 257.5, 848.5, 682.2], screen: [384, 216], space: 16,  // (its storage memory)
       steps: [['Unzip @zip'], ['Plug the calculator in and pick USB Flash on it'], ['Copy the games to it, then eject it'],
         ['Press MENU and pick a game']],
     },
@@ -85,7 +91,8 @@
   const spaces = () => kit.spaces && kit.spaces.length ? kit.spaces :
     [{ id: 'std', size: kit.appSpace }, { id: 'xl', size: kit.xlAppSpace || XL_SPACE }];
   const space = () => spaces().find((s) => s.id === st.cap) || spaces()[0];
-  const capacity = () => space().size;
+  const nwCap = () => space().size;
+  const capacity = () => (other() ? CALCS[st.calc].space * MiB : nwCap());  // (the calculator's, as you picked it)
   const nwagra = () => st.cap.startsWith('xl');
   const mb = (b) => +(b / MiB).toFixed(2) + ' MB';
   const langKit = () => kits[st.lang] || kit;
@@ -112,12 +119,15 @@
   }
   // a big game too big to go beside the launcher in this space (kit.json "alone") goes on its own there,
   // as its own app: as if you installed just that game
-  const alone = (id) => !!game(id).alone && own([id], []) + flash(id) > capacity();
+  const alone = (id) => !!game(id).alone && own([id], []) + flash(id) > nwCap();
   // (one too big for this space even on its own, as FNAF World is but for Nwagra's 6 MB)
-  const bigger = (id) => alone(id) && game(id).alone.size > capacity();
+  const bigger = (id) => alone(id) && game(id).alone.size > nwCap();
   const solo = () => ordered().find(alone) || null;
   let before = null;  // your games while one of those is picked, back when it's taken out
-  function items() {
+  // what's on the calculator, each a block: on another one, the games picked for it, each its file's size
+  const items = () => (other() ? portPicks().map((id) => ({ key: id, id, name: byId[id].title, bytes: portList()[id].size,
+    color: hex(byId[id].top), icon: byId[id].icon ? KIT + 'icons/' + id + '.png' : null })) : nwItems());
+  function nwItems() {
     const s = solo();
     if (s) {
       const g = byId[s];
@@ -181,7 +191,6 @@
   let shownUsed = 0, previewing = null;
 
   function render() {
-    if (other()) return renderPort();
     const list = items(), cap = capacity();
     const used = list.reduce((s, it) => s + it.bytes, 0);
     const over = used > cap;
@@ -246,7 +255,7 @@
     if ([...bar.children].filter((c) => want.includes(c)).some((c, i) => c !== want[i])) for (const c of want) bar.appendChild(c);
     bar.classList.toggle('over', over);
     $('#used').textContent = (used / MiB).toFixed(2);
-    $('#cap-of').textContent = 'of ' + +(cap / MiB).toFixed(2) + ' MB';
+    $('#cap-of').textContent = 'of ' + (other() ? 'about\n' : '') + +(cap / MiB).toFixed(2) + ' MB';
 
     $('#screen').classList.toggle('over', over);
     $('#screen').setAttribute('aria-label', 'Space on the calculator: ' + size(used) + ' of ' + size(cap) + ', each game a block its size');
@@ -255,6 +264,9 @@
     shownUsed = used;
     if (!previewing) $('#status-line').textContent = (used / MiB).toFixed(2) + ' OF ' + +(cap / MiB).toFixed(2) + ' MB';
     $('#battery').style.width = 'calc(' + Math.min(100, 100 * used / cap) + '% - 2px)';
+    $('#dock-used').textContent = (used / MiB).toFixed(2) + ' of ' + mb(cap);
+    $('#dock').classList.toggle('over', over);
+    if (other()) return renderPort(used, cap);
 
     // the icons, in the order they go in the launcher
     const s0 = solo(), picks = ordered();
@@ -271,8 +283,6 @@
     arrange();
     $('#space-chip-label').textContent = mb(cap);
     $('#space-chip').dataset.tip = SPACES[space().id] + '|your calculator\'s space for apps';
-    $('#dock-used').textContent = (used / MiB).toFixed(2) + ' of ' + mb(cap);
-    $('#dock').classList.toggle('over', over);
     // (a game on its own has its own icon, name and language)
     const s = solo(), file = s ? game(s).alone.file : 'NumPlay.nwa';
     for (const c of [$('#app-chip'), $('#lang-chip')]) c.disabled = !!s;
@@ -348,7 +358,7 @@
   let previewTimer = 0;
   function showPreview(id) {
     const g = byId[id];
-    if (!g || !g.preview || dragging || other()) return;
+    if (!g || !g.preview || dragging) return;
     clearTimeout(previewTimer);
     previewing = id;
     const p = $('#preview'), img = p.querySelector('img');
@@ -377,11 +387,12 @@
     b.addEventListener('animationend', () => b.classList.remove(cls), { once: true });
   }
   function overflow(bytes) {
-    toast("That doesn't fit: " + size(bytes) + ' too much' + (st.cap === 'std' ? '. Epsilon 26 and Nwagra give more space' : '. Take games out first'));
+    toast("That doesn't fit: " + size(bytes) + ' too much' + (!other() && st.cap === 'std' ? '. Epsilon 26 and Nwagra give more space' : '. Take games out first'));
     $('#screen').classList.add('over');
     setTimeout(() => render(), 500);
   }
   function toggle(id, quiet) {
+    if (other()) return togglePort(id);
     const s = solo(), b = quiet ? null : buttons.get(id);
     if (st.picked.has(id)) {
       st.picked.delete(id);
@@ -412,6 +423,18 @@
     render();
   }
 
+  // A ROM without the padding its file has to reach a power of two (16 KB banks at its end, all 0xFF or all 0x00):
+  // the cores repeat the banks a game has for those it lacks, as a flash cart does (tools/romtable.py's trim)
+  function trimRom(bytes, sys) {
+    const B = 16384;
+    if (![1, 2, 4, 5, 6].includes(sys) || bytes.length % B) return bytes;
+    const keep = sys <= 2 ? 0x8000 : bytes.length <= 0x8000 ? bytes.length : 0xC000, pad = bytes[bytes.length - 1];
+    if (pad !== 0x00 && pad !== 0xFF) return bytes;
+    let n = bytes.length;
+    while (n - B >= keep && bytes.subarray(n - B, n).every((v) => v === pad)) n -= B;
+    return n < bytes.length ? bytes.slice(0, n) : bytes;
+  }
+
   async function addRoms(files) {
     if (solo()) { bump($('#drop'), 'shake'); toast(byId[solo()].title + " takes the whole calculator, so there's no room for Retro-Go"); return; }
     const ok = new Set(rg && rg.systems ? rg.systems : [1, 2, 3]);
@@ -421,7 +444,7 @@
         toast('Retro-Go plays ' + [...ok].map((s) => SYS[s].name).join(', ').replace(/, ([^,]*)$/, ' and $1') + ' games');
         continue;
       }
-      const bytes = new Uint8Array(await f.arrayBuffer());
+      const bytes = trimRom(new Uint8Array(await f.arrayBuffer()), sys);
       const r = { key: ++romKey, sys, bytes, name: romName(f.name) };
       const over = total(ordered(), st.roms.concat([r])) - capacity();
       if (over > 0) { bump($('#drop'), 'shake'); tooBig(r) || overflow(over); continue; }
@@ -676,7 +699,7 @@
     if (solo()) st.picked = new Set([solo()]);
     // a pick that no longer fits the calculator (the kit grew): drop the biggest games until it does
     const big = ordered().sort((a, b) => flash(a) - flash(b));
-    while (usedBytes() > capacity() && big.length) st.picked.delete(big.pop());
+    while (nwItems().reduce((a, it) => a + it.bytes, 0) > nwCap() && big.length) st.picked.delete(big.pop());
   }
 
   // ------------------------------------------------------------------ the kit
@@ -1086,10 +1109,16 @@
   function setCalc(id) {
     st.calc = known(id) && calcReady(id) ? id : 'numworks';
     const c = CALCS[st.calc], o = other();
-    if (o && !st.port[st.calc]) {  // (as last time, or the games NumPlay starts with)
+    if (o && !st.port[st.calc]) {  // (as last time, or the games NumPlay starts with; as many as fit, the biggest out first)
       const list = portList(), saved = store('numplay-port-' + st.calc);
-      st.port[st.calc] = new Set(saved !== null ? saved.split(',').filter((x) => list[x])
-        : kit.games.filter((g) => g.default && list[g.id]).map((g) => g.id));
+      const picks = st.port[st.calc] = new Set((saved !== null ? saved.split(',') : kit.games.filter((g) => g.default).map((g) => g.id))
+        .filter((x) => list[x] && buttons.has(x)));
+      let n = [...picks].reduce((a, x) => a + list[x].size, 0);
+      for (const x of [...picks].sort((a, b) => list[b].size - list[a].size)) {
+        if (n <= c.space * MiB) break;
+        picks.delete(x);
+        n -= list[x].size;
+      }
     }
     document.documentElement.classList.toggle('other', o);
     for (const [gid, b] of buttons) b.classList.toggle('away', !onCalc(gid));
@@ -1107,7 +1136,31 @@
     $('#calc-chip-img').src = 'calcs/' + st.calc + '.png';
     $('#calc-chip-label').textContent = c.name;
     $('#calc-chip').dataset.tip = c.name + '|your calculator';
-    if (o) Object.assign($('#port-img'), { src: MEDIA + 'calcs/' + c.photo, alt: 'A ' + c.name });
+    // its picture, as big as the NumWorks's (2000 of its pixels as tall), with Studio's screen under its cut-out LCD (a
+    // hair under the bezel all round), and the bar beside it from the top of its screen; the NumWorks's back in its well
+    const scr = $('#screen'), dev = document.querySelector('.device');
+    if (o) {
+      const [w, l, t, r, b] = c.pic, m = 1.5, pc = (v, of) => (100 * v / of).toFixed(3) + '%';
+      const img = $('#port-img'), src = 'calcs/' + st.calc + '-full.webp', box = $('#port-calc');
+      if (img.getAttribute('src') !== src) {  // (its screen shows with it, not before)
+        box.classList.add('loading');
+        Object.assign(img, { src, alt: 'A ' + c.name });
+        img.decode().catch(() => {}).then(() => { if (img.getAttribute('src') === src) box.classList.remove('loading'); });
+      }
+      Object.assign(scr.style, { left: pc(l - m, w), top: pc(t - m, 2000), width: pc(r - l + 2 * m, w), height: pc(b - t + 2 * m, 2000) });
+      $('#port-calc').prepend(scr);
+      dev.style.setProperty('--pw', 'calc(var(--cw) * ' + (w / 1018).toFixed(4) + ')');
+      dev.style.setProperty('--pa', w + ' / 2000');
+      dev.style.setProperty('--mt', ((t - 47) / 1018).toFixed(4));
+      [W, H] = [c.screen[0], Math.round(c.screen[1] * 0.925)];
+    } else if (scr.parentNode.id === 'port-calc') {
+      scr.removeAttribute('style');
+      document.querySelector('.well').appendChild(scr);
+      for (const v of ['--pw', '--pa', '--mt']) dev.style.removeProperty(v);
+      [W, H] = [320, 222];
+    }
+    // (the Casio's screen is wider: a game's 320 by 240 picture goes in the middle of it, squeezed to its height)
+    scr.classList.toggle('wide', o && c.screen[0] / c.screen[1] > 1.5);
     const dl = $('#dock-install');
     dl.textContent = o ? 'Download' : 'Install';
     dl.disabled = false;
@@ -1120,31 +1173,36 @@
     watchDock();
     render();
   }
-  function renderPort() {
+  // (render's part for another calculator: the icons, as on the NumWorks, and its Download)
+  function renderPort(used, cap) {
     const c = CALCS[st.calc], list = portList(), picks = st.port[st.calc];
     for (const [id, b] of buttons) {
       if (!list[id]) continue;
-      const on = picks.has(id);
+      const on = picks.has(id), fits = on || used + list[id].size <= cap;
       b.classList.toggle('on', on);
-      b.classList.toggle('off', !on);
-      b.classList.remove('nofit');
+      b.classList.toggle('off', !on && fits);
+      b.classList.toggle('nofit', !fits);
       b.setAttribute('aria-pressed', on);
       b.dataset.tip = byId[id].title + '|' + size(list[id].size);
     }
     arrange();
     const ids = portPicks(), n = ids.length;
-    const text = n ? n + (n === 1 ? ' game · ' : ' games · ') + size(ids.reduce((a, id) => a + list[id].size, 0)) : 'No games picked';
-    $('#port-used').textContent = $('#dock-used').textContent = text;
-    $('#dock').classList.remove('over');
     $('#port-dl').disabled = $('#dock-install').disabled = !n;
-    $('#port-dl').dataset.tip = 'Download ' + c.zip;
+    $('#port-dl').dataset.tip = 'Download ' + c.zip + '|' + n + (n === 1 ? ' game' : ' games');
     store('numplay-port-' + st.calc, ids.join(','));
     save();
   }
   function togglePort(id) {
-    const picks = st.port[st.calc], on = !picks.has(id);
-    if (on) picks.add(id); else picks.delete(id);
-    bump(buttons.get(id), on ? 'pop-on' : 'pop-off');
+    const picks = st.port[st.calc], b = buttons.get(id);
+    if (picks.has(id)) {
+      picks.delete(id);
+      bump(b, 'pop-off');
+    } else {
+      const over = usedBytes() + portList()[id].size - capacity();
+      if (over > 0) { bump(b, 'shake'); overflow(over); return; }
+      picks.add(id);
+      bump(b, 'pop-on');
+    }
     render();
   }
   function renderCalcs() {
@@ -2091,7 +2149,6 @@
       b.insertAdjacentHTML('beforeend', badge);
       b.addEventListener('click', () => {
         if (justDragged) { justDragged = false; return; }
-        if (other()) { togglePort(g.id); return; }
         toggle(g.id);
         if (matchMedia('(hover: none)').matches) { showPreview(g.id); hidePreview(1600); }
       });
@@ -2169,7 +2226,7 @@
     // files dropped anywhere: apps (.nwa) to your apps, PICO-8 carts to NumPico, the rest to Retro-Go
     let fileDrag = 0;
     const files = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
-    addEventListener('dragenter', (e) => { if (files(e)) { fileDrag++; document.body.classList.add('dragging'); e.preventDefault(); } });
+    addEventListener('dragenter', (e) => { if (files(e) && !other()) { fileDrag++; document.body.classList.add('dragging'); e.preventDefault(); } });
     addEventListener('dragover', (e) => { if (files(e)) e.preventDefault(); });
     addEventListener('dragleave', () => { if (--fileDrag <= 0) { fileDrag = 0; document.body.classList.remove('dragging'); } });
     addEventListener('drop', async (e) => {
@@ -2177,6 +2234,7 @@
       e.preventDefault();
       fileDrag = 0;
       document.body.classList.remove('dragging');
+      if (other()) return;
       const all = [...e.dataTransfer.files], nwa = all.filter((f) => /\.nwa$/i.test(f.name));
       const p8 = all.filter((f) => /\.p8(\.png)?$/i.test(f.name)), rest = all.filter((f) => !nwa.includes(f) && !p8.includes(f));
       if (nwa.length) await addApps(nwa);

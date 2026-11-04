@@ -2,6 +2,14 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.15: Imposter, and NumPlay on other calculators
+
+- **Imposter:** Imposter.nwa, the party game. Pass the calculator around: everyone sees the secret word but the imposter. 30 categories, 1,695 words.
+- **TI-Nspire CX and Casio fx-CG50:** NumPlay-Nspire.zip (75 games, with Ndless) and NumPlay-CasioCG.zip (71 games, also for the Graph 90+E), in beta. NumPlay Studio picks them too. The TI-84 Plus CE comes next.
+- **NumBlocks:** a drawn bow shows its arrow, and arrows fly where you look and hurt mobs.
+- **Level Devil:** 9-4 can be finished. The runner's shape and growing work like the original.
+- **Mr Bullet:** every level has its ground, ropes are their real length, and grenades move crates.
+
 ## 1.24.14: Among Us
 
 - **Among Us:** AmongUs.nwa, the Skeld against up to 9 bots, as a crewmate or the Impostor: every task, sabotages, vents, kills, meetings and votes, with the game's own pictures.
