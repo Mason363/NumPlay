@@ -52,10 +52,17 @@ static void to_title(void) {
   gui_open(GUI_TITLE);
 }
 
-static bool seen_controls(void) {
+/* the options (NBCEOPT): the controls seen once, the render distance */
+static bool controls_seen;
+static void options_load(void) {
   unsigned len;
   const uint8_t *p = plat_load("NBCEOPT", &len);
-  return p && len >= 1 && p[0] == 1;
+  controls_seen = p && len >= 1 && p[0] == 1;
+  if (p && len >= 2 && (p[1] == 8 || p[1] == 10 || p[1] == 13)) view_dist = p[1];
+}
+void options_save(void) {
+  uint8_t o[2] = {controls_seen, (uint8_t)view_dist};
+  plat_save("NBCEOPT", o, 2, 0, 0);
 }
 
 static void start_game(void) {
@@ -63,9 +70,9 @@ static void start_game(void) {
   gui = GUI_NONE;
   render_sky_palette();
   last_ms = plat_ms(), tick_acc = 0, ticks_since_save = 0;
-  if (!seen_controls()) {
-    static const uint8_t one = 1;
-    plat_save("NBCEOPT", &one, 1, 0, 0);
+  if (!controls_seen) {
+    controls_seen = true;
+    options_save();
     render_frame();
     compose(false, false);
     gui_open(GUI_CONTROLS);
@@ -177,6 +184,7 @@ int main(void) {
   wlight = wblk + WS * WS * WH;
   hud_layer = wblk + 2 * WS * WS * WH;
   render_init();
+  options_load();
   canvas_screen();
 #ifdef NB_BENCH
 #include <stdio.h>

@@ -110,6 +110,11 @@ void plat_frame(void) {
       fprintf(stderr, "polys %lu edges %lu rows %lu visited %lu drawn %lu\n", rs_polys, rs_edges, rs_rows, rs_visited, rs_drawn);
       rs_visited = rs_drawn = rs_rows = rs_edges = rs_polys = 0;
       extern unsigned long st_cols, st_list, st_frus, st_cov, st_culled;
+      extern unsigned long st_rl, st_ru, st_h[8], st_c2, st_c3;
+      fprintf(stderr, "clip2 %lu clip3 %lu\n", st_c2, st_c3);
+      st_c2 = st_c3 = 0;
+      fprintf(stderr, "rows locked %lu unlocked %lu; polys by rows %lu %lu %lu %lu %lu %lu %lu+\n", st_rl, st_ru, st_h[1], st_h[2], st_h[3], st_h[4], st_h[5], st_h[6], st_h[7]);
+      st_rl = st_ru = 0; memset(st_h, 0, sizeof st_h);
       fprintf(stderr, "cols %lu listed %lu in view %lu tested %lu culled %lu\n", st_cols, st_list, st_frus, st_cov, st_culled);
       fprintf(stderr, "frame %d: %u cells, %u faces, %u spans, %u pixels; at %.2f %.2f %.2f yaw %d pitch %d, win %d %d %d\n",
               frame_no, stat_cells, stat_faces, stat_spans, stat_px, pl.x / 4096.0, pl.y / 4096.0, pl.z / 4096.0, pl.yaw,

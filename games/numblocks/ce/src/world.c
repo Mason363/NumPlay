@@ -96,8 +96,20 @@ static void edit_log(int x, int y, int z, int b) {
 }
 
 /* ---------------------------------------------------------------- light */
-/* the window's edges: a step from a cell on one leaves the window */
-static inline int wy_of(int slot) { return win_y + ((slot - win_y) & 31); }
+/* Cell indices taken apart a byte at a time (on the eZ80 a mask or a shift of an int is a call): lo = (z & 7) << 5
+ * | x, hi = y << 2 | z >> 3; and a column's cells a level at a time, 1024 apart, round the 32 slots. */
+typedef union { uint16_t w; uint8_t b[2]; } U16;
+static const uint16_t YOFF[32] = {0,     1024,  2048,  3072,  4096,  5120,  6144,  7168,  8192,  9216,  10240,
+                                  11264, 12288, 13312, 14336, 15360, 16384, 17408, 18432, 19456, 20480, 21504,
+                                  22528, 23552, 24576, 25600, 26624, 27648, 28672, 29696, 30720, 31744};
+static uint8_t e_sx, e_ex, e_sz, e_ez, e_sy, e_ey;   /* the window's first and last slots */
+static void edges(void) {
+  e_sx = (uint8_t)win_x & 31, e_ex = (uint8_t)(e_sx + 31) & 31;
+  e_sz = (uint8_t)win_z & 31, e_ez = (uint8_t)(e_sz + 31) & 31;
+  e_sy = (uint8_t)win_y & 31, e_ey = (uint8_t)(e_sy + 31) & 31;
+}
+/* the y slot's level */
+static inline int wy_of(uint8_t slot) { return win_y + (uint8_t)((uint8_t)(slot - (uint8_t)win_y) & 31); }
 
 /* the queues: in the 3D view's picture (light is never spread while it is drawn) */
 static uint16_t *lq;      /* cells to spread light from */
@@ -108,117 +120,154 @@ static uint8_t *dql;
 static unsigned dq_n;
 #define DQ_N 3000
 
-static void lq_push(unsigned i) {
+static void lq_push(uint16_t i) {
   unsigned t = lq_t + 1 == LQ_N ? 0 : lq_t + 1;
   if (t == lq_h) return;   /* full: (never, at the window's size; it would only leave some light out) */
-  lq[lq_t] = (uint16_t)i;
+  lq[lq_t] = i;
   lq_t = t;
 }
 
-/* the six neighbours of cell i inside the window: their indices, -1 outside */
-static int nbr[6];
-static void neighbours(unsigned i) {
-  int x = i & 31, z = (i >> 5) & 31, y = i >> 10;
-  int ex = (win_x + 31) & 31, sx = win_x & 31, ez = (win_z + 31) & 31, sz = win_z & 31, ey = (win_y + 31) & 31,
-      sy = win_y & 31;
-  nbr[0] = y == sy ? -1 : (int)((i & 0x3FF) | ((unsigned)((y - 1) & 31) << 10));
-  nbr[1] = y == ey ? -1 : (int)((i & 0x3FF) | ((unsigned)((y + 1) & 31) << 10));
-  nbr[2] = z == sz ? -1 : (int)((i & ~0x3E0u) | ((unsigned)((z - 1) & 31) << 5));
-  nbr[3] = z == ez ? -1 : (int)((i & ~0x3E0u) | ((unsigned)((z + 1) & 31) << 5));
-  nbr[4] = x == sx ? -1 : (int)((i & ~31u) | ((unsigned)(x - 1) & 31));
-  nbr[5] = x == ex ? -1 : (int)((i & ~31u) | ((unsigned)(x + 1) & 31));
+/* the neighbours of cell i inside the window (edges() first): nbr[0..nbr_n) */
+static uint16_t nbr[6];
+static uint8_t nbr_n;
+static void neighbours(uint16_t i) {
+  static U16 u;
+  u.w = i;
+  uint8_t lo = u.b[0], hi = u.b[1], n = 0;
+  uint8_t x = lo & 31, z = (uint8_t)((hi & 3) << 3 | lo >> 5), y = hi >> 2;
+  if (y != e_sy) u.b[0] = lo, u.b[1] = (uint8_t)(((uint8_t)(hi - 4) & 0x7C) | (hi & 3)), nbr[n++] = u.w;
+  if (y != e_ey) u.b[0] = lo, u.b[1] = (uint8_t)(((uint8_t)(hi + 4) & 0x7C) | (hi & 3)), nbr[n++] = u.w;
+  if (z != e_sz) {
+    uint8_t z2 = (uint8_t)(z - 1) & 31;
+    u.b[0] = (uint8_t)((z2 & 7) << 5 | x), u.b[1] = (uint8_t)((hi & 0x7C) | z2 >> 3), nbr[n++] = u.w;
+  }
+  if (z != e_ez) {
+    uint8_t z2 = (uint8_t)(z + 1) & 31;
+    u.b[0] = (uint8_t)((z2 & 7) << 5 | x), u.b[1] = (uint8_t)((hi & 0x7C) | z2 >> 3), nbr[n++] = u.w;
+  }
+  if (x != e_sx) u.b[0] = (uint8_t)((lo & 0xE0) | ((uint8_t)(x - 1) & 31)), u.b[1] = hi, nbr[n++] = u.w;
+  if (x != e_ex) u.b[0] = (uint8_t)((lo & 0xE0) | ((uint8_t)(x + 1) & 31)), u.b[1] = hi, nbr[n++] = u.w;
+  nbr_n = n;
 }
 
 /* spreads both lights from the queued cells */
 static void light_spread(void) {
+  edges();
   while (lq_h != lq_t) {
-    unsigned i = lq[lq_h];
+    uint16_t i = lq[lq_h];
     lq_h = lq_h + 1 == LQ_N ? 0 : lq_h + 1;
-    int l = wlight[i], s = l & 15, b = l >> 4;
+    uint8_t l = wlight[i], s = l & 15, b = l >> 4;
     if (s <= 1 && b <= 1) continue;
     neighbours(i);
-    for (int k = 0; k < 6; k++) {
-      int n = nbr[k];
-      if (n < 0) continue;
-      int op = blk_opacity[wblk[n]];
+    for (uint8_t k = 0; k < nbr_n; k++) {
+      uint16_t n = nbr[k];
+      uint8_t op = blk_opacity[wblk[n]];
       if (op >= 15) continue;
       if (!op) op = 1;
-      int nl = wlight[n], ns = nl & 15, nb = nl >> 4, ch = 0;
-      if (s - op > ns) ns = s - op, ch = 1;
-      if (b - op > nb) nb = b - op, ch = 1;
+      uint8_t nl = wlight[n], ns = nl & 15, nb = nl >> 4, ch = 0;
+      if (s > op && (uint8_t)(s - op) > ns) ns = (uint8_t)(s - op), ch = 1;
+      if (b > op && (uint8_t)(b - op) > nb) nb = (uint8_t)(b - op), ch = 1;
       if (ch) {
         wlight[n] = (uint8_t)(ns | nb << 4);
-        lq_push((unsigned)n);
+        lq_push(n);
       }
     }
   }
 }
 
-/* takes away the light that came through cell i (of channel shift sh: 0 sky, 4 block), from level lv; the cells
+/* takes away the light that came through the queued cells (dql: the level they had, 16: block light); the cells
  * at its edge that keep their own light are queued to spread it back */
 static void light_darken(void) {
+  edges();
   unsigned h = 0;
   while (h < dq_n) {
-    unsigned i = dq[h];
-    int lv = dql[h], sh = lv >> 4 ? 4 : 0;
+    uint16_t i = dq[h];
+    uint8_t lv = dql[h], blk = lv & 16;
     lv &= 15;
     h++;
     neighbours(i);
-    for (int k = 0; k < 6; k++) {
-      int n = nbr[k];
-      if (n < 0) continue;
-      int nl = (wlight[n] >> sh) & 15;
+    for (uint8_t k = 0; k < nbr_n; k++) {
+      uint16_t n = nbr[k];
+      uint8_t w = wlight[n], nl = blk ? w >> 4 : w & 15;
       if (!nl) continue;
-      if (nl < lv && !(sh && blk_light[wblk[n]] >= nl) && !(!sh && wtop[n & 0x3FF] <= wy_of(n >> 10))) {
-        wlight[n] &= (uint8_t)~(15 << sh);
-        if (dq_n < DQ_N) dq[dq_n] = (uint16_t)n, dql[dq_n] = (uint8_t)(nl | (sh ? 16 : 0)), dq_n++;
-      } else lq_push((unsigned)n);
+      bool keeps;
+      if (blk) keeps = blk_light[wblk[n]] >= nl;
+      else {
+        /* (sky light straight down: kept) */
+        static U16 u;
+        u.w = n;
+        uint8_t slot = u.b[1] >> 2;
+        u.b[1] &= 3;
+        keeps = wtop[u.w] <= wy_of(slot);
+      }
+      if (nl < lv && !keeps) {
+        wlight[n] = blk ? w & 15 : w & 0xF0;
+        if (dq_n < DQ_N) dq[dq_n] = n, dql[dq_n] = (uint8_t)(nl | blk), dq_n++;
+      } else lq_push(n);
     }
   }
   dq_n = 0;
 }
-static void dark_push(unsigned i, int sh) {
-  int lv = (wlight[i] >> sh) & 15;
+static void dark_push(uint16_t i, bool blk) {
+  uint8_t w = wlight[i], lv = blk ? w >> 4 : w & 15;
   if (!lv) return;
-  wlight[i] &= (uint8_t)~(15 << sh);
-  if (dq_n < DQ_N) dq[dq_n] = (uint16_t)i, dql[dq_n] = (uint8_t)(lv | (sh ? 16 : 0)), dq_n++;
+  wlight[i] = blk ? w & 15 : w & 0xF0;
+  if (dq_n < DQ_N) dq[dq_n] = i, dql[dq_n] = (uint8_t)(lv | (blk ? 16 : 0)), dq_n++;
 }
 
 /* the sky's straight-down light of a column: wtop is the first level under everything that stops it */
 static int column_top(int x, int z) {
   int c = CI(x, z);
   if (wcol[c].h >= win_y + WH) return win_y + WH;
-  for (int y = win_y + WH - 1; y >= win_y; y--)
-    if (blk_opacity[wblk[WI(x, y, z)]]) return y + 1;
+  uint8_t ys = (uint8_t)(win_y + WH - 1) & 31;
+  for (int y = win_y + WH - 1; y >= win_y; y--) {
+    if (blk_opacity[wblk[YOFF[ys] + c]]) return y + 1;
+    ys = (uint8_t)(ys - 1) & 31;
+  }
   return win_y;
 }
 
 /* ---------------------------------------------------------------- faces to draw */
-static inline bool hides(int b, int nb) {
+static inline bool hides(uint8_t b, uint8_t nb) {
   if (blk_flags[nb] & BF_OPAQUE) return true;
   if (nb == b && blk_model[b] != M_CROSS && blk_model[b] != M_TORCH) return true;
   if ((blk_flags[b] & BF_LIQUID) && (blk_flags[nb] & BF_LIQUID)) return true;
   return false;
 }
-static bool exposed(int x, int y, int z) {
-  int b = wblk[WI(x, y, z)];
-  if (b == B_AIR) return false;
-  int m = blk_model[b];
-  if (m == M_CROSS || m == M_TORCH) return true;
-  /* (past the window: below it, as if solid; above, air) */
-  if (y + 1 >= win_y + WH ? true : !hides(b, wblk[WI(x, y + 1, z)])) return true;
-  if (y > win_y && !hides(b, wblk[WI(x, y - 1, z)])) return true;
-  if (z > win_z && !hides(b, wblk[WI(x, y, z - 1)])) return true;
-  if (z < win_z + WS - 1 && !hides(b, wblk[WI(x, y, z + 1)])) return true;
-  if (x > win_x && !hides(b, wblk[WI(x - 1, y, z)])) return true;
-  if (x < win_x + WS - 1 && !hides(b, wblk[WI(x + 1, y, z)])) return true;
-  return false;
+static const uint8_t BIT8[8] = {1, 2, 4, 8, 16, 32, 64, 128};
+/* a column's cells with a face to draw (past the window: below it, as if solid; above, air) */
+static void expose_col(int x, int z) {
+  if ((unsigned)(x - win_x) >= WS || (unsigned)(z - win_z) >= WS) return;
+  int c = CI(x, z);
+  uint8_t sx = (uint8_t)x & 31, sz = (uint8_t)z & 31;
+  bool hx0 = x > win_x, hx1 = x < win_x + WS - 1, hz0 = z > win_z, hz1 = z < win_z + WS - 1;
+  int ox0 = sx ? -1 : 31, ox1 = sx != 31 ? 1 : -31, oz0 = sz ? -32 : 31 * 32, oz1 = sz != 31 ? 32 : -31 * 32;
+  static uint8_t m[4];
+  m[0] = m[1] = m[2] = m[3] = 0;
+  uint8_t ys = (uint8_t)win_y & 31;
+  const uint8_t *p = wblk + YOFF[ys] + c;
+  for (uint8_t k = 0; k < 32; k++) {
+    uint8_t b = *p;
+    const uint8_t *up = ys == 31 ? p - 31 * 1024 : p + 1024;
+    if (b != B_AIR) {
+      uint8_t md = blk_model[b];
+      if (md == M_CROSS || md == M_TORCH || k == 31 || !hides(b, *up) ||
+          (k && !hides(b, ys ? p[-1024] : p[31 * 1024])) || (hz0 && !hides(b, p[oz0])) ||
+          (hz1 && !hides(b, p[oz1])) || (hx0 && !hides(b, p[ox0])) || (hx1 && !hides(b, p[ox1])))
+        m[ys >> 3] |= BIT8[ys & 7];
+    }
+    p = up;
+    ys = (uint8_t)(ys + 1) & 31;
+  }
+  memcpy(&wexp[c], m, 4);
 }
-static void expose(int x, int y, int z) {
-  if (!in_win(x, y, z)) return;
-  uint32_t bit = (uint32_t)1 << (y & 31);
-  if (exposed(x, y, z)) wexp[CI(x, z)] |= bit;
-  else wexp[CI(x, z)] &= ~bit;
+/* the columns around a cell that changed */
+static void expose_around(int x, int z) {
+  expose_col(x, z);
+  expose_col(x - 1, z);
+  expose_col(x + 1, z);
+  expose_col(x, z - 1);
+  expose_col(x, z + 1);
 }
 
 /* ---------------------------------------------------------------- filling the window */
@@ -232,6 +281,7 @@ static void put_cb(int x, int y, int z, int b) {
 /* makes the columns [x0, x1) x [z0, z1) at levels [y0, y1) (cols: their column data too), then their light and
  * faces */
 static void fill(int x0, int z0, int x1, int z1, int y0, int y1, bool cols) {
+  uint8_t ys0 = (uint8_t)y0 & 31;
   for (int z = z0; z < z1; z++)
     for (int x = x0; x < x1; x++) {
       int c = CI(x, z);
@@ -240,11 +290,15 @@ static void fill(int x0, int z0, int x1, int z1, int y0, int y1, bool cols) {
         gen_column(x, z, col);
         col_pack(&wcol[c], col);
       } else col_unpack(&wcol[c], col);
-      for (int y = y0; y < y1; y++) wblk[WI(x, y, z)] = (uint8_t)gen_cell(x, y, z, col);
+      uint8_t *p = wblk + c, ys = ys0;
+      for (int y = y0; y < y1; y++) {
+        p[YOFF[ys]] = (uint8_t)gen_cell(x, y, z, col);
+        ys = (uint8_t)(ys + 1) & 31;
+      }
       int py = col->h + 1;
-      if (py >= y0 && py < y1 && wblk[WI(x, py, z)] == B_AIR && wblk[WI(x, py - 1, z)] == col->top) {
-        int p = gen_plant(x, z, col);
-        if (p) wblk[WI(x, py, z)] = (uint8_t)p;
+      if (py >= y0 && py < y1 && p[YOFF[(uint8_t)py & 31]] == B_AIR && p[YOFF[(uint8_t)(py - 1) & 31]] == col->top) {
+        int pl = gen_plant(x, z, col);
+        if (pl) p[YOFF[(uint8_t)py & 31]] = (uint8_t)pl;
       }
     }
   gen_decorate(x0, z0, x1, z1, y0, y1, put_cb);
@@ -261,13 +315,15 @@ static void fill(int x0, int z0, int x1, int z1, int y0, int y1, bool cols) {
       int c = CI(x, z), top = column_top(x, z);
       if (!cols && top > wtop[c])
         for (int y = wtop[c]; y < top && y < y0; y++)
-          if (y >= win_y) dark_push(WI(x, y, z), 0);
+          if (y >= win_y) dark_push((uint16_t)(YOFF[(uint8_t)y & 31] + c), false);
       wtop[c] = (uint8_t)top;
+      uint8_t ys = ys0;
       for (int y = y0; y < y1; y++) {
-        unsigned i = WI(x, y, z);
-        int bl = blk_light[wblk[i]];
+        uint16_t i = (uint16_t)(YOFF[ys] + c);
+        uint8_t bl = blk_light[wblk[i]];
         wlight[i] = (uint8_t)((y >= top ? 15 : 0) | bl << 4);
         if (bl) lq_push(i);
+        ys = (uint8_t)(ys + 1) & 31;
       }
     }
   if (dq_n) light_darken();
@@ -277,20 +333,23 @@ static void fill(int x0, int z0, int x1, int z1, int y0, int y1, bool cols) {
       if ((unsigned)(x - win_x) >= WS || (unsigned)(z - win_z) >= WS) continue;
       int c = CI(x, z), top = wtop[c];
       bool inside = x >= x0 && x < x1 && z >= z0 && z < z1;
+      /* (the highest top of the columns around: a sky-lit cell under it lights them sideways) */
+      int nt = 0;
+      if (x > win_x && wtop[CI(x - 1, z)] > nt) nt = wtop[CI(x - 1, z)];
+      if (x < win_x + WS - 1 && wtop[CI(x + 1, z)] > nt) nt = wtop[CI(x + 1, z)];
+      if (z > win_z && wtop[CI(x, z - 1)] > nt) nt = wtop[CI(x, z - 1)];
+      if (z < win_z + WS - 1 && wtop[CI(x, z + 1)] > nt) nt = wtop[CI(x, z + 1)];
       int ya = inside ? y0 - 1 : y0, yb = inside ? y1 + 1 : y1;
       if (ya < win_y) ya = win_y;
       if (yb > win_y + WH) yb = win_y + WH;
-      for (int y = ya; y < yb; y++) {
-        unsigned i = WI(x, y, z);
-        if (!(wlight[i] & 15) && !(wlight[i] >> 4)) continue;
+      uint8_t ys = (uint8_t)ya & 31;
+      for (int y = ya; y < yb; y++, ys = (uint8_t)(ys + 1) & 31) {
+        uint16_t i = (uint16_t)(YOFF[ys] + c);
+        uint8_t l = wlight[i];
+        if (!l) continue;
         /* a sky-lit cell matters only next to a column whose sky stops higher, or above leaves or water */
-        if (inside && (wlight[i] & 15) == 15 && !(wlight[i] >> 4)) {
-          bool edge = y == top && y > win_y && blk_opacity[wblk[WI(x, y - 1, z)]] < 15;
-          if (!edge) {
-            int n;
-            edge = (x > win_x && (n = wtop[CI(x - 1, z)]) > y) || (x < win_x + WS - 1 && (n = wtop[CI(x + 1, z)]) > y) ||
-                   (z > win_z && (n = wtop[CI(x, z - 1)]) > y) || (z < win_z + WS - 1 && (n = wtop[CI(x, z + 1)]) > y);
-          }
+        if (inside && l == 15) {
+          bool edge = nt > y || (y == top && y > win_y && blk_opacity[wblk[YOFF[(uint8_t)(ys - 1) & 31] + c]] < 15);
           if (!edge) continue;
         }
         lq_push(i);
@@ -299,16 +358,13 @@ static void fill(int x0, int z0, int x1, int z1, int y0, int y1, bool cols) {
     }
   light_spread();
   for (int z = z0 - 1; z <= z1; z++)
-    for (int x = x0 - 1; x <= x1; x++) {
-      if ((unsigned)(x - win_x) >= WS || (unsigned)(z - win_z) >= WS) continue;
-      for (int y = y0 - 1; y <= y1; y++) expose(x, y, z);
-    }
+    for (int x = x0 - 1; x <= x1; x++) expose_col(x, z);
 }
 
 /* ---------------------------------------------------------------- changes */
 void world_set(int x, int y, int z, int b) {
   if (!in_win(x, y, z)) return;
-  unsigned i = WI(x, y, z);
+  uint16_t i = (uint16_t)WI(x, y, z);
   int old = wblk[i];
   if (old == b) return;
   edit_log(x, y, z, b);
@@ -320,14 +376,14 @@ void world_set(int x, int y, int z, int b) {
   wtop[c] = (uint8_t)ntop;
   dq_n = 0;
   lq_h = lq_t = 0;
-  dark_push(i, 0);
-  dark_push(i, 4);
+  dark_push(i, false);
+  dark_push(i, true);
   if (ntop > top)   /* the sky is stopped higher: the column below loses its straight-down light */
-    for (int k = ntop - 1; k >= top && k >= win_y; k--) dark_push(WI(x, k, z), 0);
+    for (int k = ntop - 1; k >= top && k >= win_y; k--) dark_push((uint16_t)WI(x, k, z), false);
   light_darken();
   if (ntop < top)
     for (int k = ntop; k < top; k++) {
-      unsigned j = WI(x, k, z);
+      uint16_t j = (uint16_t)WI(x, k, z);
       wlight[j] |= 15;
       lq_push(j);
     }
@@ -337,17 +393,12 @@ void world_set(int x, int y, int z, int b) {
   }
   if (y >= ntop) wlight[i] |= 15;
   /* the neighbours bring their light back in */
+  edges();
   neighbours(i);
-  for (int k = 0; k < 6; k++)
-    if (nbr[k] >= 0 && wlight[nbr[k]]) lq_push((unsigned)nbr[k]);
+  for (uint8_t k = 0; k < nbr_n; k++)
+    if (wlight[nbr[k]]) lq_push(nbr[k]);
   light_spread();
-  expose(x, y, z);
-  expose(x, y - 1, z);
-  expose(x, y + 1, z);
-  expose(x - 1, y, z);
-  expose(x + 1, y, z);
-  expose(x, y, z - 1);
-  expose(x, y, z + 1);
+  expose_around(x, z);
 }
 
 /* ---------------------------------------------------------------- the window */
@@ -407,18 +458,10 @@ void world_step(void) {
     /* up a level: the new top level, then the sky stops where it may now stop higher */
     win_y++;
     int y = win_y + WH - 1;
-    for (int z = win_z; z < win_z + WS; z++)
-      for (int x = win_x; x < win_x + WS; x++) wexp[CI(x, z)] &= ~((uint32_t)1 << (y & 31));
     fill(win_x, win_z, win_x + WS, win_z + WS, y, y + 1, false);
-    for (int z = win_z; z < win_z + WS; z++)
-      for (int x = win_x; x < win_x + WS; x++) expose(x, y - 1, z);
   } else if (win_y - want_y > 2) {
     win_y--;
     int y = win_y;
-    for (int z = win_z; z < win_z + WS; z++)
-      for (int x = win_x; x < win_x + WS; x++) wexp[CI(x, z)] &= ~((uint32_t)1 << (y & 31));
     fill(win_x, win_z, win_x + WS, win_z + WS, y, y + 1, false);
-    for (int z = win_z; z < win_z + WS; z++)
-      for (int x = win_x; x < win_x + WS; x++) expose(x, y + 1, z);
   }
 }

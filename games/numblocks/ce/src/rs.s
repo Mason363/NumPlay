@@ -587,41 +587,31 @@ _rs_poly:
 	add	hl, de
 	ld	(r_row), hl
 .Lpo_loop:
-	; px0 = (xl + 127) >> 8 (0 if xl < 0), px1 = (xr + 127) >> 8, at most 160
-	ld	ix, (w_l)
-	ld	hl, (ix+W_X)
+	; px1 = (xr + 127) >> 8, at most 160; px0 = (xl + 127) >> 8 (x >= 0 on the screen: the high byte)
 	ld	de, 127
-	add	hl, de
-	ld	(m_t), hl
-	ld	a, (m_t+2)
-	bit	7, a
-	ld	a, (m_t+1)
-	jr	z, .Lpo_x0
-	xor	a, a
-.Lpo_x0:
-	ld	(r_px0), a
 	ld	ix, (w_r)
 	ld	hl, (ix+W_X)
 	add	hl, de
-	ld	(m_t), hl
-	ld	a, (m_t+2)
-	or	a, a
-	ld	a, (m_t+1)
-	jr	z, .Lpo_x1
-	ld	a, RW			; (past the right: never, on screen)
-.Lpo_x1:
+	ld	a, h
 	cp	a, RW + 1
 	jr	c, .Lpo_x1ok
 	ld	a, RW
 .Lpo_x1ok:
-	ld	hl, r_px0
-	sub	a, (hl)
+	ld	c, a
+	ld	ix, (w_l)
+	ld	hl, (ix+W_X)
+	add	hl, de
+	ld	a, c
+	sub	a, h
 	jp	z, .Lpo_step
 	jp	c, .Lpo_step
 	ld	(r_n), a
+	ld	a, h
+	ld	(r_px0), a
 	ld	a, (r_lock)
 	or	a, a
 	jp	nz, .Lpo_locked
+	ld	ix, (w_r)
 	; w = (xr - xl) >> 4: du, dv across it (0 under a pixel)
 	ld	hl, (ix+W_X)
 	ld	ix, (w_l)
@@ -732,8 +722,8 @@ _rs_poly:
 	ld	(r_dv), hl		; dv >> 4
 	jr	.Lpo_span
 .Lpo_locked:
-	; from the edge to the first pixel's middle: the table's step for (128 - xl) >> 4
-	ld	ix, (w_l)
+	; (ix: the left walker) from the edge to the first pixel's middle: the table's step for (128 - xl) >> 4;
+	; u >> 8 (8.8) and v >> 4 (4.12) for the span, kept to the texture
 	ld	a, 128
 	sub	a, (ix+W_X)
 	rrca
@@ -750,9 +740,12 @@ _rs_poly:
 	ld	de, (hl)
 	ld	hl, (ix+W_U)
 	add	hl, de
-	call	clamp20
 	ld	(m_t), hl
+	ld	a, (m_t+2)
+	cp	a, 16
+	jr	nc, .Lpo_uc
 	ld	hl, (m_t+1)
+.Lpo_us:
 	ld	(r_u), hl
 	pop	hl
 	ld	de, r_kv
@@ -760,11 +753,31 @@ _rs_poly:
 	ld	de, (hl)
 	ld	hl, (ix+W_V)
 	add	hl, de
-	call	clamp20
-	call	x16
+	ld	(m_t), hl
+	ld	a, (m_t+2)
+	cp	a, 16
+	jr	nc, .Lpo_vc
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
 	ld	(m_t), hl
 	ld	hl, (m_t+1)
+.Lpo_vs:
 	ld	(r_v), hl
+	jr	.Lpo_span
+.Lpo_uc:
+	rla				; (past the texture: below its start, or past its end)
+	ld	hl, 0x0FFF
+	jr	nc, .Lpo_us
+	ld	hl, 0
+	jr	.Lpo_us
+.Lpo_vc:
+	rla
+	ld	hl, 0xFFFF
+	jr	nc, .Lpo_vs
+	ld	hl, 0
+	jr	.Lpo_vs
 .Lpo_span:
 	ld	a, (r_px0)
 	ld	de, 0
@@ -787,8 +800,14 @@ _rs_poly:
 	ld	ix, (w_l)
 	call	wstep
 	ld	ix, (w_r)
+	ld	a, (r_lock)
+	or	a, a
+	jr	z, .Lpo_rboth
+	call	wstep_x			; (locked: the right edge's u and v no longer needed)
+	jp	.Lpo_loop
+.Lpo_rboth:
 	call	wstep
-	jp	nz, .Lpo_loop
+	jp	.Lpo_loop
 .Lpo_done:
 	pop	ix
 	ret
@@ -813,6 +832,19 @@ wstep:
 	call	edge
 	ret	nz
 	pop	hl			; (none left: the polygon is done)
+	jp	.Lpo_done
+
+; the same, x alone
+wstep_x:
+	ld	hl, (ix+W_X)
+	ld	de, (ix+W_SX)
+	add	hl, de
+	ld	(ix+W_X), hl
+	dec	(ix+W_ROWS)
+	ret	nz
+	call	edge
+	ret	nz
+	pop	hl
 	jp	.Lpo_done
 
 ; hl into 0..0xFFFFF
@@ -1695,6 +1727,135 @@ _rs_quad:
 	pop	ix
 	ret
 
+; ------------------------------------------------------------------------------------------------- rs_code
+; int rs_code(int x, int y, int z)
+; bits 0-4: the planes a polygon through (x, y, z) is cut by (z < NEAR, x > 4z, -x > 4z, y > 4z, -y > 4z); bits
+; 8-12: the view's sides it is past, a little wider than the screen's (z < NEAR, 16x > 15z, -16x > 15z, 4y > 3z,
+; -4y > 3z)
+	.section	.text._rs_code
+	.global	_rs_code
+	.type	_rs_code, @function
+	.equ	NEAR, 819
+_rs_code:
+	ld	iy, 0
+	add	iy, sp
+	ld	bc, 0
+	ld	hl, (iy+9)
+	ld	de, NEAR
+	or	a, a
+	sbc	hl, de
+	jp	p, .Lrc_front
+	ld	bc, 0x0101
+.Lrc_front:
+	ld	hl, (iy+9)
+	add	hl, hl
+	add	hl, hl
+	ld	(rc_t), hl		; 4z
+	ld	de, (iy+3)
+	or	a, a
+	sbc	hl, de
+	jp	p, .Lrc1
+	set	1, c
+.Lrc1:
+	ld	hl, (rc_t)
+	or	a, a
+	adc	hl, de
+	jp	p, .Lrc2
+	set	2, c
+.Lrc2:
+	ld	hl, (rc_t)
+	ld	de, (iy+6)
+	or	a, a
+	sbc	hl, de
+	jp	p, .Lrc3
+	set	3, c
+.Lrc3:
+	ld	hl, (rc_t)
+	or	a, a
+	adc	hl, de
+	jp	p, .Lrc4
+	set	4, c
+.Lrc4:
+	ld	hl, (iy+9)
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	ld	de, (iy+9)
+	or	a, a
+	sbc	hl, de
+	ld	(rc_t), hl		; 15z
+	ld	hl, (iy+3)
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	add	hl, hl
+	ex	de, hl			; 16x
+	ld	hl, (rc_t)
+	or	a, a
+	sbc	hl, de
+	jp	p, .Lrc5
+	set	1, b
+.Lrc5:
+	ld	hl, (rc_t)
+	or	a, a
+	adc	hl, de
+	jp	p, .Lrc6
+	set	2, b
+.Lrc6:
+	ld	hl, (iy+9)
+	push	hl
+	pop	de
+	add	hl, hl
+	add	hl, de
+	ld	(rc_t), hl		; 3z
+	ld	hl, (iy+6)
+	add	hl, hl
+	add	hl, hl
+	ex	de, hl			; 4y
+	ld	hl, (rc_t)
+	or	a, a
+	sbc	hl, de
+	jp	p, .Lrc7
+	set	3, b
+.Lrc7:
+	ld	hl, (rc_t)
+	or	a, a
+	adc	hl, de
+	jp	p, .Lrc8
+	set	4, b
+.Lrc8:
+	or	a, a
+	sbc	hl, hl
+	ld	h, b
+	ld	l, c
+	ret
+
+; ------------------------------------------------------------------------------------------------- rs_compose
+; void rs_compose(uint8_t *dst, const uint8_t *a, const uint8_t *f): dst[i] = f[a[i]], all three 256-byte aligned
+	.section	.text._rs_compose
+	.global	_rs_compose
+	.type	_rs_compose, @function
+_rs_compose:
+	ld	iy, 0
+	add	iy, sp
+	ld	de, (iy+3)
+	ld	hl, (iy+6)
+	ld	bc, (iy+9)
+.Lcm_loop:
+	ld	c, (hl)
+	ld	a, (bc)
+	ld	(de), a
+	inc	l
+	inc	e
+	ld	c, (hl)
+	ld	a, (bc)
+	ld	(de), a
+	inc	l
+	inc	e
+	jr	nz, .Lcm_loop
+	ret
+
 ; ------------------------------------------------------------------------------------------------- data
 	.section	.data._rs_vars
 r_tex:	.d24	0
@@ -1750,6 +1911,7 @@ h_c:	.d24	0
 h_y0:	.db	0
 h_rows:	.db	0
 h_w:	.db	0
+rc_t:	.d24	0
 c_h2:	.d24	0
 c_Y0:	.d24	0
 c_Z0:	.d24	0

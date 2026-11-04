@@ -414,11 +414,11 @@ typedef struct { int16_t x, y, w; uint8_t on, act; const char *label; } Btn;
 static Btn btns[8];
 static int n_btns;
 enum { BA_PLAY, BA_NEW, BA_QUIT, BA_SELECT, BA_CREATE, BA_CANCEL, BA_MODE, BA_DO_CREATE, BA_DELETE, BA_DO_DELETE,
-       BA_RESUME, BA_SAVE_QUIT, BA_RESPAWN, BA_TITLE, BA_DONE };
+       BA_RESUME, BA_SAVE_QUIT, BA_RESPAWN, BA_TITLE, BA_DONE, BA_DIST };
 static WorldInfo winfo[MAX_WORLDS];
 static int wslot[MAX_WORLDS], n_worlds, wsel;
 static int create_mode;
-static char mode_label[24];
+static char mode_label[24], dist_label[28];
 
 static void add_btn(int x, int y, int w, int on, int act, const char *label) {
   btns[n_btns++] = (Btn){(int16_t)x, (int16_t)y, (int16_t)w, (uint8_t)on, (uint8_t)act, label};
@@ -468,6 +468,9 @@ static void menu_layout(void) {
       break;
     case GUI_PAUSE:
       add_btn(w / 2 - 100, h / 4 + 8, 200, 1, BA_RESUME, "Back to Game");
+      strcpy(dist_label, view_dist == 8 ? "Render Distance: 8 blocks"
+                         : view_dist == 10 ? "Render Distance: 10 blocks" : "Render Distance: 13 blocks");
+      add_btn(w / 2 - 100, h / 4 + 56, 200, 1, BA_DIST, dist_label);
       add_btn(w / 2 - 100, h / 4 + 104, 200, 1, BA_SAVE_QUIT, "Save and Quit to Title");
       break;
     case GUI_DEATH:
@@ -712,6 +715,13 @@ void gui_input(uint32_t keys, uint32_t pressed) {
     case BA_RESPAWN: menu_action = ACT_RESPAWN; break;
     case BA_TITLE: menu_action = ACT_TITLE; break;
     case BA_DONE: gui_close(); break;
+    case BA_DIST:
+      /* (fewer blocks seen: more pictures a second) */
+      view_dist = view_dist == 8 ? 10 : view_dist == 10 ? 13 : 8;
+      options_save();
+      menu_layout();
+      shown = false;
+      break;
   }
 }
 

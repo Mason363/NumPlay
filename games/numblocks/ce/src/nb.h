@@ -178,6 +178,7 @@ enum {
 uint32_t keys_now(void);
 int rnd(int n);
 void game_save_quit(void);
+void options_save(void);
 
 /* fixed-point helpers */
 int16_t fsin(uint16_t a);   /* 2.14 */

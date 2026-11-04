@@ -18,7 +18,27 @@ void RS(rs_setup)(const uint8_t *tex, const uint8_t *cm, uint8_t alpha);
 void RS(rs_poly)(const SV *p, uint8_t n);
 void RS(rs_proj)(int x, int y, int z, int *out);
 uint8_t RS(rs_hidden)(int x, int y, int z, int r);
+int RS(rs_code)(int x, int y, int z);
+void RS(rs_compose)(uint8_t *dst, const uint8_t *a, const uint8_t *f);
 void RS(rs_expand)(const uint8_t *src, uint8_t *dst, const uint8_t *sky, const uint8_t *hud);
+void RS(rs_compose)(uint8_t *dst, const uint8_t *a, const uint8_t *f) {
+  for (int i = 0; i < 256; i++) dst[i] = f[a[i]];
+}
+
+int RS(rs_code)(int x, int y, int z) {
+  int c = 0, v = 0;
+  if (z < 819) c |= 1, v |= 1;
+  if (x > 4 * z) c |= 2;
+  if (-x > 4 * z) c |= 4;
+  if (y > 4 * z) c |= 8;
+  if (-y > 4 * z) c |= 16;
+  if (16 * x > 15 * z) v |= 2;
+  if (-16 * x > 15 * z) v |= 4;
+  if (4 * y > 3 * z) v |= 8;
+  if (-4 * y > 3 * z) v |= 16;
+  return c | v << 8;
+}
+
 /* (a range of pixels around c, r each way: its first, how many; 0: none on the screen) */
 static int h_range(int c, int r, int last, int *first) {
   int lo = c - r, hi = c + r;
@@ -136,6 +156,9 @@ void RS(rs_poly)(const SV *p, uint8_t n) {
   }
   int y = (ymin + 7) >> 4, yend = (ymax + 7) >> 4;
   if (y >= yend) return;
+#ifndef __ez80__
+  { extern unsigned long st_h[8]; int hh = yend - y; st_h[hh > 7 ? 7 : hh]++; }
+#endif
   Walker a = {0}, b = {0}, *l, *r;
   a.idx = b.idx = top;
   if (!edge(&a, p, n, 1) || !edge(&b, p, n, n - 1)) return;
@@ -166,6 +189,9 @@ void RS(rs_poly)(const SV *p, uint8_t n) {
           }
         }
       }
+#ifndef __ez80__
+      { extern unsigned long st_rl, st_ru; if (lock) st_rl++; else st_ru++; }
+#endif
       if (lock) {
         int k = (int)((unsigned)(128 - l->x) & 255) >> 4;
         u0 = W24(l->u + ku[k]), v0 = W24(l->v + kv[k]);
@@ -226,7 +252,7 @@ uint16_t rs_jS[128];
 uint8_t rs_fog[257];
 int rs_vlim, rs_cy0, rs_cz0, rs_vzk, rs_R, rs_KX;
 uint8_t rs_eys, rs_up, rs_down, rs_jbase;
-unsigned long st_list, st_frus, st_cov, st_culled, st_cols;
+unsigned long st_list, st_frus, st_cov, st_culled, st_cols, st_rl, st_ru, st_h[8], st_c2, st_c3;
 int rs_qXi, rs_qYi, rs_qZi, rs_qVi, rs_qsXx, rs_qsYx, rs_qsZx, rs_qsVx, rs_qsXz, rs_qsYz, rs_qsZz, rs_qsVz;
 int rs_qx0, rs_qz0, rs_qsxi, rs_qszi, rs_czm, rs_cx0, rs_wx0, rs_wx1, rs_wz0, rs_wz1;
 const uint16_t *rs_qsqi, *rs_qsqk;

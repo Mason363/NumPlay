@@ -17,6 +17,12 @@ void rs_proj(int x, int y, int z, int *out);
 /* 1 when the pixels around (x, y, z)'s projection (z > 2r), as far as r's projection and a pixel more each way, are
  * all drawn already (or off the screen) */
 uint8_t rs_hidden(int x, int y, int z, int r);
+/* bits 0-4: the planes a polygon through camera space (x, y, z) is to be cut by (z < 819, x > 4z, -x > 4z, y > 4z,
+ * -y > 4z); bits 8-12: the view's sides it is past, a little wider than the screen's (z < 819, 16x > 15z,
+ * -16x > 15z, 4y > 3z, -4y > 3z) */
+int rs_code(int x, int y, int z);
+/* dst[i] = f[a[i]] for the 256 bytes, all three 256-byte aligned */
+void rs_compose(uint8_t *dst, const uint8_t *a, const uint8_t *f);
 /* the 160 x 120 picture to the screen at 2x, 0s as the row's sky colour (sky[y]); from screen row 180 on, the HUD's
  * layer (187 wide at x 67, 0 see-through) over it (hud 0: none) */
 void rs_expand(const uint8_t *src, uint8_t *dst, const uint8_t *sky, const uint8_t *hud);

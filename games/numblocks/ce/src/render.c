@@ -24,7 +24,7 @@ uint32_t stat_faces, stat_spans, stat_px, stat_cells;
 #ifdef HOST
 extern unsigned long st_cols, st_list, st_frus, st_cov, st_culled;
 #endif
-int view_dist = 13;
+int view_dist = 10;
 uint32_t world_time;
 int crack_stage = -1;
 const uint8_t *rs_recip, *rs_ratio;
@@ -39,11 +39,12 @@ static int bx0, by0, bz0;               /* the camera-space position of the eye 
 #define F16 1371L    /* 60 / tan(35 degrees), in 1/16 pixels: Minecraft's 70 degree view */
 #define NEAR (Q1 / 20)
 
-static uint8_t lvl_sky[16], lvl_blk[16];   /* shade level of each light level */
+static uint8_t lvl_sky[16], lvl_blk[16], lvl_of[256];   /* (lvl_of: a light byte's, the brighter of its two) */   /* shade level of each light level */
 static const uint8_t face_off[6] = {6, 0, 2, 2, 4, 4};   /* -Y +Y -Z +Z -X +X: 0.5 1.0 0.8 0.8 0.6 0.6 */
-static uint8_t fog_cm[8][256];          /* fog rows: 1/9 to 8/9 of the way to the fog's colour */
-#define FC_N 8
-static uint16_t fc_key[FC_N];           /* the shade and fog rows made into one (shade_of) */
+static uint8_t fog_cm[8][256] __attribute__((aligned(256)));   /* fog rows: 1/9 to 8/9 of the way to the fog */
+#define FC_N 16
+static uint8_t fc_key[FC_N];            /* the shade and fog rows made into one (shade_of): level x 8 + fog - 1 */
+static uint8_t fc_slot[256];            /* and where each is (255: not made) */
 static uint8_t fog_rgb[3], sky_rgb[3];
 static int fog_q;                       /* the fog's colour as last made into fog_cm */
 static int crack_x, crack_y, crack_z;
@@ -135,6 +136,10 @@ void render_sky_palette(void) {
     lvl_blk[l] = (uint8_t)level_of(blk);
     lvl_sky[l] = (uint8_t)level_of(sky);
   }
+  for (int i = 0; i < 256; i++) {
+    uint8_t a = lvl_sky[i & 15], b = lvl_blk[i >> 4];
+    lvl_of[i] = a > b ? a : b;
+  }
   /* the sky (Minecraft's plains sky: HSB 0.6, 0.54, 1) and the fog (0.75, 0.85, 1), darker at night */
   int dk = day_k;
   sky_rgb[0] = (uint8_t)(120 * dk / 256), sky_rgb[1] = (uint8_t)(167 * dk / 256), sky_rgb[2] = (uint8_t)(255 * dk / 256);
@@ -157,7 +162,7 @@ void render_sky_palette(void) {
       uint8_t w = (uint8_t)((f + 1) * 256 / 9);
       for (int i = 1; i < 256; i++) fog_cm[f][i] = i < FIRST_STATIC ? (uint8_t)i : lerp_pal(i, fog_rgb, w);
     }
-    memset(fc_key, 255, sizeof fc_key);
+    memset(fc_key, 255, sizeof fc_key), memset(fc_slot, 255, sizeof fc_slot);
   }
 }
 
@@ -174,37 +179,55 @@ static uint8_t fc_next;
 static void caches_reset(void) {
   memset(tc_slot, 255, sizeof tc_slot);
   memset(tc_tex, 255, sizeof tc_tex);
-  memset(fc_key, 255, sizeof fc_key);
+  memset(fc_key, 255, sizeof fc_key), memset(fc_slot, 255, sizeof fc_slot);
 }
 
 /* texture t, in RAM */
-static const uint8_t *tex_of(int t) {
+/* page k of a 256-byte aligned table (on the eZ80 a shift is a call: the address's middle byte instead) */
+static const uint8_t *page(const void *base, uint8_t k) {
+#ifdef __ez80__
+  static union { const void *p; uint8_t b[3]; } u;
+  u.p = base;
+  uint8_t m = (uint8_t)(u.b[1] + k);
+  if (m < k) u.b[2]++;
+  u.b[1] = m;
+  return u.p;
+#else
+  return (const uint8_t *)base + k * 256;
+#endif
+}
+
+static const uint8_t *tex_of(uint8_t t) {
   uint8_t s = tc_slot[t];
   if (s == 255) {
     /* a slot not used in this frame (round and round) */
-    for (int n = 0; n < TC_N; n++) {
+    for (uint8_t n = 0; n < TC_N; n++) {
       s = (uint8_t)(tc_next++ & (TC_N - 1));
       if (tc_used[s] != frame_no) break;
     }
     if (tc_tex[s] != 255) tc_slot[tc_tex[s]] = 255;
-    tc_tex[s] = (uint8_t)t, tc_slot[t] = s;
-    memcpy(tcache[s], tex_px[t], 256);
+    tc_tex[s] = t, tc_slot[t] = s;
+    memcpy((void *)page(tcache, s), tex_px[t], 256);
   }
   tc_used[s] = frame_no;
-  return tcache[s];
+  return page(tcache, s);
 }
 
 /* the shade row of a level (0..31), through fog (1..8 eighths of the way, 0 none) */
-static const uint8_t *shade_of(int level, int fog) {
-  if (!fog) return shade_ram[level];
-  uint16_t key = (uint16_t)(level << 4 | fog);
-  for (int i = 0; i < FC_N; i++)
-    if (fc_key[i] == key) return fogc[i];
-  uint8_t s = (uint8_t)(fc_next++ & (FC_N - 1));
-  fc_key[s] = key;
-  const uint8_t *a = shade_ram[level], *f = fog_cm[fog - 1];
-  uint8_t *o = fogc[s];
-  for (int i = 0; i < 256; i++) o[i] = f[a[i]];
+static const uint8_t KEY8[32] = {0,   8,   16,  24,  32,  40,  48,  56,  64,  72,  80,  88,  96,  104, 112, 120,
+                                  128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248};
+static const uint8_t *shade_of(uint8_t level, uint8_t fog) {
+  if (!fog) return page(shade_ram, level);
+  /* (through fog, light levels two by two: half as many rows to make) */
+  level &= 0x1E;
+  uint8_t key = (uint8_t)(KEY8[level] | (uint8_t)(fog - 1)), s = fc_slot[key];
+  if (s != 255) return page(fogc, s);
+  s = (uint8_t)(fc_next++ & (FC_N - 1));
+  if (fc_slot[fc_key[s]] == s) fc_slot[fc_key[s]] = 255;
+  fc_key[s] = key, fc_slot[key] = s;
+  const uint8_t *a = page(shade_ram, level), *f = page(fog_cm, (uint8_t)(fog - 1));
+  uint8_t *o = (uint8_t *)page(fogc, s);
+  rs_compose(o, a, f);
   return o;
 }
 
@@ -230,14 +253,14 @@ static int clip2(SV *in, int n, SV *out, int k) {
     }
     if (da >= 0) out[m++] = *a;
     if ((da >= 0) != (db >= 0)) {
+#ifdef HOST
+      { extern unsigned long st_c2; st_c2++; }
+#endif
       int t = (int)(((int32_t)da << 12) / (da - db));   /* 0..4096 */
       SV *o = &out[m++];
-      o->x = lerp12(a->x, b->x, t), o->y = lerp12(a->y, b->y, t);
       o->u = lerp12(a->u, b->u, t), o->v = lerp12(a->v, b->v, t);
-      if (k == 0) o->x = 0;
-      else if (k == 1) o->x = RW * 16;
-      else if (k == 2) o->y = 0;
-      else o->y = RH * 16;
+      if (k < 2) o->x = k ? RW * 16 : 0, o->y = lerp12(a->y, b->y, t);
+      else o->y = k == 2 ? 0 : RH * 16, o->x = lerp12(a->x, b->x, t);
     }
   }
   return m;
@@ -281,6 +304,9 @@ static int clip3(CV *in, int n, CV *out, int k) {
     }
     if (da >= 0) out[m++] = *a;
     if ((da >= 0) != (db >= 0)) {
+#ifdef HOST
+      { extern unsigned long st_c3; st_c3++; }
+#endif
       int32_t dd = (int32_t)da - db, aa = da;
       while (dd > 262143 || dd < -262143) dd >>= 1, aa >>= 1;
       int t = (int)((aa << 12) / dd);
@@ -294,13 +320,15 @@ static int clip3(CV *in, int n, CV *out, int k) {
 }
 
 /* (the general way: clipped to the near plane and the guard band, then projected; near faces, edges of the view) */
-static void draw_quad(CV *q, int n) {
+static const uint8_t BIT[8] = {1, 2, 4, 8, 16, 32, 64, 128};
+static void draw_quad(CV *q, int n, uint8_t planes) {
   static CV ca[16], cb[16];
   CV *a = q, *b = ca;
-  for (int k = 0; k < 5 && n >= 3; k++) {
-    n = clip3(a, n, b, k);
-    a = b, b = a == ca ? cb : ca;
-  }
+  for (uint8_t k = 0; k < 5 && n >= 3; k++)
+    if (planes & BIT[k]) {
+      n = clip3(a, n, b, k);
+      a = b, b = a == ca ? cb : ca;
+    }
   if (n < 3) return;
   static SV s[16];
   int o[2];
@@ -316,12 +344,12 @@ static void draw_quad(CV *q, int n) {
 static int fq[12];
 static SV fs[4] = {{0, 0, 0, 0}, {0, 0, 65535, 0}, {0, 0, 65535, 65535}, {0, 0, 0, 65535}};
 
-static bool fq_far(int x, int y, int z) {
-  /* in front, and well inside the guard band (|x|, |y| < 4z) */
-  if (z < NEAR + NEAR) return false;
-  int z4 = z + z;
-  z4 += z4;
-  return x < z4 && x + z4 > 0 && y < z4 && y + z4 > 0;
+/* rs_code's two halves for a point: the planes to cut by, the view's sides it is past */
+static uint8_t code_clip, code_side;
+static void code(int x, int y, int z) {
+  static union { int i; uint8_t b[3]; } u;
+  u.i = rs_code(x, y, z);
+  code_clip = u.b[0], code_side = u.b[1];
 }
 
 /* four projected corners: drawn, cut to the screen when they are not all on it */
@@ -335,20 +363,29 @@ static void poly4(SV *v) {
     raster(v, 4);
 }
 
-/* a near face's grid of (split + 1) x (split + 1) points: camera space, projected when far enough */
+/* a near face's grid of (split + 1) x (split + 1) points: camera space, projected when no plane cuts them */
 static CV gp[25];
 static SV gq[25];
-static uint8_t gfar[25];
+static uint8_t gclip[25], gside[25];
 static const uint16_t GUV2[3] = {0, 32768, 65535}, GUV4[5] = {0, 16384, 32768, 49152, 65535};
 
 /* the face in fq, split in split x split parts (1: whole; near faces 2 or 4, as the texture is not drawn in
- * perspective) */
+ * perspective); passed by when all its corners are past one side of the view */
 static void quad(uint8_t split) {
   stat_faces++;
-  rs_setup(s_tex, s_cm, s_alpha);
   if (split == 1) {
-    if (fq_far(fq[0], fq[1], fq[2]) && fq_far(fq[3], fq[4], fq[5]) && fq_far(fq[6], fq[7], fq[8]) &&
-        fq_far(fq[9], fq[10], fq[11])) {
+    uint8_t cl, sd;
+    code(fq[0], fq[1], fq[2]);
+    cl = code_clip, sd = code_side;
+    code(fq[3], fq[4], fq[5]);
+    cl |= code_clip, sd &= code_side;
+    code(fq[6], fq[7], fq[8]);
+    cl |= code_clip, sd &= code_side;
+    code(fq[9], fq[10], fq[11]);
+    cl |= code_clip, sd &= code_side;
+    if (sd) return;
+    rs_setup(s_tex, s_cm, s_alpha);
+    if (!cl) {
       rs_proj(fq[0], fq[1], fq[2], &fs[0].x);
       rs_proj(fq[3], fq[4], fq[5], &fs[1].x);
       rs_proj(fq[6], fq[7], fq[8], &fs[2].x);
@@ -359,9 +396,10 @@ static void quad(uint8_t split) {
     static CV q[4] = {{0, 0, 0, 0, 0}, {0, 0, 0, 65535, 0}, {0, 0, 0, 65535, 65535}, {0, 0, 0, 0, 65535}};
     q[0].x = fq[0], q[0].y = fq[1], q[0].z = fq[2], q[1].x = fq[3], q[1].y = fq[4], q[1].z = fq[5];
     q[2].x = fq[6], q[2].y = fq[7], q[2].z = fq[8], q[3].x = fq[9], q[3].y = fq[10], q[3].z = fq[11];
-    draw_quad(q, 4);
+    draw_quad(q, 4, cl);
     return;
   }
+  rs_setup(s_tex, s_cm, s_alpha);
   /* the grid: rows from c0 + t e3 to c1 + t e3, the last from c3 to c2 (the face's edges exact: no cracks) */
   int e1x = fq[3] - fq[0], e1y = fq[4] - fq[1], e1z = fq[5] - fq[2];
   int e3x = fq[9] - fq[0], e3y = fq[10] - fq[1], e3z = fq[11] - fq[2];
@@ -370,7 +408,7 @@ static void quad(uint8_t split) {
   const uint16_t *uvt = split == 2 ? GUV2 : GUV4;
   CV *p = gp;
   SV *q = gq;
-  uint8_t *fa = gfar;
+  uint8_t *gc = gclip, *gs = gside;
   int rx = fq[0], ry = fq[1], rz = fq[2], ex = fq[3], ey = fq[4], ez = fq[5];
   for (uint8_t t = 0; t <= split; t++) {
     if (t == split) rx = fq[9], ry = fq[10], rz = fq[11], ex = fq[6], ey = fq[7], ez = fq[8];
@@ -379,11 +417,13 @@ static void quad(uint8_t split) {
     for (uint8_t s = 0; s <= split; s++) {
       if (s == split) x = ex, y = ey, z = ez;
       p->x = x, p->y = y, p->z = z, p->u = uvt[s], p->v = v;
-      if ((*fa = fq_far(x, y, z))) {
+      code(x, y, z);
+      *gc = code_clip, *gs = code_side;
+      if (!code_clip) {
         rs_proj(x, y, z, &q->x);
         q->u = p->u, q->v = v;
       }
-      p++, q++, fa++;
+      p++, q++, gc++, gs++;
       x += e1x, y += e1y, z += e1z;
     }
     rx += e3x, ry += e3y, rz += e3z, ex += e3x, ey += e3y, ez += e3z;
@@ -392,21 +432,24 @@ static void quad(uint8_t split) {
   uint8_t w = (uint8_t)(split + 1);
   CV *a = gp, *b = gp + w;
   SV *qa = gq, *qb = gq + w;
-  uint8_t *f0 = gfar, *f1 = gfar + w;
+  uint8_t *c0 = gclip, *c1 = gclip + w, *s0 = gside, *s1 = gside + w;
   for (uint8_t t = 0; t < split; t++) {
     for (uint8_t s = 0; s < split; s++) {
-      if (f0[0] && f0[1] && f1[0] && f1[1]) {
-        static SV v4[4];
-        v4[0] = qa[0], v4[1] = qa[1], v4[2] = qb[1], v4[3] = qb[0];
-        poly4(v4);
-      } else if (a[0].z >= NEAR || a[1].z >= NEAR || b[0].z >= NEAR || b[1].z >= NEAR) {
-        static CV c4[4];
-        c4[0] = a[0], c4[1] = a[1], c4[2] = b[1], c4[3] = b[0];
-        draw_quad(c4, 4);
+      if (!(s0[0] & s0[1] & s1[0] & s1[1])) {
+        uint8_t cl = c0[0] | c0[1] | c1[0] | c1[1];
+        if (!cl) {
+          static SV v4[4];
+          v4[0] = qa[0], v4[1] = qa[1], v4[2] = qb[1], v4[3] = qb[0];
+          poly4(v4);
+        } else {
+          static CV c4[4];
+          c4[0] = a[0], c4[1] = a[1], c4[2] = b[1], c4[3] = b[0];
+          draw_quad(c4, 4, cl);
+        }
       }
-      a++, b++, qa++, qb++, f0++, f1++;
+      a++, b++, qa++, qb++, c0++, c1++, s0++, s1++;
     }
-    a++, b++, qa++, qb++, f0++, f1++;
+    a++, b++, qa++, qb++, c0++, c1++, s0++, s1++;
   }
 }
 
@@ -440,10 +483,8 @@ static void face_corners(int f) {
 static const uint8_t FACE_C[6][4] = {{4, 5, 1, 0}, {2, 3, 7, 6}, {3, 2, 0, 1}, {6, 7, 5, 4}, {2, 6, 4, 0}, {7, 3, 1, 5}};
 static const uint8_t CROSS_C[2][4] = {{2, 7, 5, 0}, {6, 3, 1, 4}};
 
-static int light_level(uint8_t lb, uint8_t side) {
-  uint8_t l = lvl_sky[lb & 15], b = lvl_blk[lb >> 4];
-  if (b > l) l = b;
-  b = face_off[side];
+static uint8_t light_level(uint8_t lb, uint8_t side) {
+  uint8_t l = lvl_of[lb], b = face_off[side];
   return l < b ? 0 : l - b;
 }
 
@@ -478,7 +519,6 @@ static int nb_index(int f) {
   }
 }
 
-static const uint8_t BIT[8] = {1, 2, 4, 8, 16, 32, 64, 128};
 static uint16_t blk_tex_off[B_N];   /* b x 6 */
 
 __attribute__((noinline)) static void cell(uint8_t b, int X, int Y, int Z, int fog) {
@@ -540,13 +580,11 @@ __attribute__((noinline)) static void cell(uint8_t b, int X, int Y, int Z, int f
 static uint8_t sky_row[RH];
 static void sky_rows(void) {
   /* the height in the sky of the ray through a row's middle (at the screen's middle column): 0 the horizon,
-   * the sky's top colour from 0.4 up */
-  int32_t t0 = (int32_t)(RH / 2 * 16 - 8) * Q1 / F16, dt = 16 * Q1 / F16;   /* Q14 */
-  for (int y = 0; y < RH; y++) {
-    int32_t ry = fxy + ((t0 - dt * y) * uxy >> Q);
-    int e = (int)(ry * 75 / 2 >> Q);
-    sky_row[y] = (uint8_t)(e <= 0 ? 1 : e >= 14 ? 15 : e + 1);
-  }
+   * the sky's top colour from 0.4 up; x 75/2, Q14: linear in the row */
+  int32_t t0 = (int32_t)(RH / 2 * 16 - 8) * Q1 / F16, dt = 16 * Q1 / F16;
+  int32_t e = (fxy + (t0 * uxy >> Q)) * 75 / 2, de = (dt * uxy >> Q) * 75 / 2;
+  for (int y = 0; y < RH; y++, e -= de)
+    sky_row[y] = e < Q1 ? 1 : e >= 14 * Q1 ? 15 : (uint8_t)((e >> Q) + 1);
 }
 
 /* ---------------------------------------------------------------- a frame */
