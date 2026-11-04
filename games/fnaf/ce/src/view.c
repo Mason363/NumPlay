@@ -484,6 +484,21 @@ static int hallucination(int grp) {
   return pic_group_of(pic);
 }
 
+/* a frame of the monitor coming up or down (half the screen's size, independent): straight onto the screen, twice
+ * across into every other row, then each row twice */
+static int monitor(int pic) {
+  const uint8_t *p = asset(PIC_FIRST + pic);
+  if (pic_base(p) >= 0 || pic_keeps(p)) {
+    extra_want(pic, 160);
+    d_blit2(extra, 160, 0, UI_BLACK);
+  } else {
+    pic_into_wide(pic, scr, 2 * SCR_W);
+    for (uint8_t *r = scr; r < scr + SCR_W * SCR_H; r += 2 * SCR_W) memcpy(r + SCR_W, r, SCR_W);
+    d_touch = BOX_ALL;
+  }
+  return pic_group_of(pic);
+}
+
 /* the night: paused, the picture only, darker */
 static void night_draw(bool paused);
 static void office_frame(void) { night_draw(false); }
@@ -495,18 +510,18 @@ static void night_frame(bool paused) {
 
 static void night_draw(bool paused) {
   bool cams = N.flip >= 1 && !N.dark;
-  int grp;
+  int grp, k = (int)(N.flip * FLIP_N);   /* (the monitor's frame coming up or down) */
+  k = k < FLIP_N ? k : FLIP_N - 1;
   if (cams) {
     grp = cameras(paused);
+  } else if (N.flip > 0 && !N.dark) {   /* the monitor over the whole screen: the office only made ready behind */
+    office_pictures();
+    scene_want(PIC_OFFICE);
+    grp = monitor(PIC_FLIP0 + k);
+    pal_set(grp, paused ? 9 : 32, 0);
   } else {
     grp = office();
-    if (N.flip > 0) {   /* the monitor coming up, or down */
-      int k = (int)(N.flip * FLIP_N);
-      k = k < FLIP_N ? k : FLIP_N - 1;
-      extra_want(PIC_FLIP0 + k, 160);
-      d_blit2(extra, 160, 0, UI_BLACK);
-      grp = pic_group_of(PIC_FLIP0 + k);
-    }
+    if (N.flip > 0) grp = monitor(PIC_FLIP0 + k);
     pal_set(grp, paused ? 9 : 32, 0);
   }
   if (paused) return;

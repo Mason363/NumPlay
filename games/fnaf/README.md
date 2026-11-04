@@ -76,6 +76,25 @@ Back pauses: from there you can go on, read how to play again, or quit the night
 
 The left keys work the left door and light, the right keys the right ones. If you press one while looking the other way, you turn to that side first. On the title and the Custom Night, the arrows choose and OK starts.
 
+## TI-84 Plus CE
+
+Five Nights at Freddy's also runs on the TI-84 Plus CE, CE Python and TI-83 Premium CE: the same nights, the same AI and the game's pictures, in 8-bit colour.
+
+1. Send `FNAF.8xp` and `FNAFD0.8xv` to `FNAFD9.8xv` (11 files, about 630 KB of archive) with TI Connect CE, and the [CE C libraries](https://github.com/CE-Programming/libraries/releases/latest) if they aren't on the calculator yet.
+2. Run `prgmFNAF` (on OS 5.5 or later through [arTIfiCE](https://yvantt.github.io/arTIfiCE/)). It needs nearly all the RAM: archive your programs and lists first.
+
+| CE key | What it does |
+| --- | --- |
+| ← → or 4 6 | Look left and right |
+| 7 and 1 | The left door and light |
+| 9 and 3 | The right door and light |
+| 2nd, enter or 8 | The monitor up and down |
+| 1 to 7 | On the monitor: that camera |
+| Arrows | On the monitor: the camera next to it on the map |
+| 0 or del | Mute the call |
+| clear | Pause |
+| mode | Keep the night and quit |
+
 ## Good to know
 
 * **One app at a time:** Five Nights at Freddy's takes about half of the room the calculator has for apps, so it can't share it with NumPlay. Install it on its own; your saves in each one are kept.
@@ -97,4 +116,4 @@ Made by Mason Chen as part of NumPlay.
 
 The game's code is licensed under the GNU General Public License v3.0: see the `LICENSE` file at the root of the repository. The game's pictures and words keep their own terms (see Credits).
 
-Build: `make` (needs `arm-none-eabi-gcc` and Node.js for nwlink), `make test` on a computer.
+Build: `make` (needs `arm-none-eabi-gcc` and Node.js for nwlink), `make test` on a computer. The TI-84 Plus CE version: `make port TARGET=ti84ce` (the CE C toolchain), `make -C ce -f host.mk test` on a computer.
