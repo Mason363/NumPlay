@@ -1,8 +1,16 @@
 /* Mr Bullet on a computer: the tests (make test) and pictures.
  *
- *   build/play test DIR       physics checks, a bot through the first levels of every mode, every level played
- *                             with random keys, saves; pictures of a few levels into DIR
- *   build/play shot LEVEL OUT a picture of a level (PPM), after FRAMES steps with the aim at ANGLE (env) */
+ *   build/play test DIR       physics checks, a bot through the first levels of every mode, every level left
+ *                             alone, plays that win, every level played with random keys, saves; pictures into DIR
+ *   build/play shot LEVEL OUT a picture of a level (PPM), after FRAMES steps with the aim at ANGLE and POWER (env;
+ *                             a shot fired first, unless NOFIRE)
+ *   build/play settle [A B]   every level (or A to B) left alone 4 seconds: nothing falls out, no one falls or dies
+ *   build/play plan LEVEL 'P' a level played with shots, each once the last is done: "-171 69" (degrees), "40/2"
+ *                             (a grenade, power 0.2 + 0.1 x 2), "16@60" (after 60 steps); PLAN_OBJS=1 lists where
+ *                             things end up, a third argument saves a picture
+ *   build/play win A B        levels A to B played through by a bot (shot by shot, the best few kept), up to the
+ *                             level's three-star shots and two more; FINE=1 tries finer angles and powers
+ *   build/play fine LEVEL S   one shot at every S degrees (and power) until one wins */
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -153,6 +161,162 @@ static int solve(int level, int *stars_out) {
   return best;
 }
 
+/* ---- a level played through with several shots: each fired once the last one is done and things have settled
+   (or after a wait, for what moves on its own), as a player would */
+typedef struct {
+  int16_t aim;     /* degrees x 20 */
+  uint8_t power;   /* grenades: 0 to 8 (0.2 to 1) */
+  uint8_t wait;    /* steps / 15 before it */
+} Plan;
+#define MAX_PLAN 8
+static bool shots_flying(void) {
+  for (int i = 0; i < MAX_SHOT; i++)
+    if (g.shot[i].body >= 0) return true;
+  return false;
+}
+/* plays the plan; its state (ST_WON, ST_LOST, or ST_PLAY: not over yet) and the enemies still standing */
+static int play_plan(int level, const Plan *p, int n, bool finish, int *left) {
+  if (!game_load(level, (uint8_t *)level_mem)) return -1;
+  for (int k = 0; k < n && g.state == ST_PLAY; k++) {
+    for (int s = 0; s < p[k].wait * 15 && g.state == ST_PLAY; s++) game_step();
+    g.aim = p[k].aim * 0.05f * 3.14159265f / 180;
+    g.ch[g.hero].left = cosf(g.aim) < 0;
+    g.power = 0.2f + 0.1f * p[k].power;
+    game_fire();
+    /* until the shot is done and nothing has moved for a while (at most 6 seconds) */
+    for (int s = 0; s < 360 && g.state == ST_PLAY; s++) {
+      game_step();
+      if (s >= 60 && !shots_flying() && !g.end_wait) break;
+    }
+  }
+  if (finish)
+    for (int s = 0; s < 900 && g.state == ST_PLAY; s++) game_step();
+  *left = g.enemies_left;
+  return g.state;
+}
+static void plan_text(char *o, const Plan *p, int n) {
+  for (int k = 0; k < n; k++) {
+    o += sprintf(o, p[k].aim % 10 ? "%s%.2f" : "%s%.1f", k ? " " : "", p[k].aim * 0.05f);
+    if (g.grenades) o += sprintf(o, "/%d", p[k].power);
+    if (p[k].wait) o += sprintf(o, "@%d", p[k].wait * 15);
+  }
+}
+/* a plan from its text ("-171 69", grenades "40/2", a wait "16@60"); its length */
+static int plan_parse(const char *t, Plan *p) {
+  int n = 0;
+  while (*t && n < MAX_PLAN) {
+    char *e;
+    float a = strtof(t, &e);
+    if (e == t) break;
+    p[n] = (Plan){(int16_t)lroundf(a * 20), 0, 0};
+    t = e;
+    if (*t == '/') p[n].power = (uint8_t)strtol(t + 1, &e, 10), t = e;
+    if (*t == '@') p[n].wait = (uint8_t)(strtol(t + 1, &e, 10) / 15), t = e;
+    while (*t == ' ') t++;
+    n++;
+  }
+  return n;
+}
+
+/* plays that win (level numbers from 1, across the modes; found by `play win`): see main */
+static const struct {
+  int level;
+  const char *plan;
+} known_wins[] = {
+  {13, "-109"},                 /* Classic 13: a cave in the ground (a static shape with a hole) */
+  {16, "-73"},                  /* Classic 16: the tower stands (no piece made a 2 m box) */
+  {18, "-171 69"},              /* Classic 18: the ball's rope as long as the game makes it */
+  {66, "-84"},                  /* Classic 66: TNT on a switch goes off */
+  {80, "63 -71"},               /* Classic 80: switches in front of the wall */
+  {98, "-80"},                  /* Classic 98: a motor turning clockwise */
+  {123, "-82"},                 /* Classic 123: a rope with slack */
+  {124, "-107"},
+  {170, "-177 -131 145@60 -71"},
+  {208, "45 19 44"},            /* Classic 208: Mr Bullet stands where he is */
+  {224, "22 -8"},               /* Classic 224: a ball on a rope */
+  {255, "30"},
+  {335, "-39/0 -87/0"},         /* Grenades 15: the plank under the wall */
+  {377, "-126/8"},              /* Grenades 57: the crate in its notch */
+  {569, "-130"},                /* Friendly Fire 81: the ball stays on the peak */
+};
+
+/* a beam search, shot by shot, for a plan that wins with the level's bullets: the best few after each shot (by
+   enemies down) kept; 1 if found (in out) */
+static int win(int level, Plan *out, int *nout) {
+  enum { BEAM = 8, CANDS = 8192 };
+  static Plan beam[BEAM][MAX_PLAN], nbeam[BEAM][MAX_PLAN];
+  static struct { int score, from; Plan s; } cand[CANDS];
+  int left;
+  if (!game_load(level, (uint8_t *)level_mem)) return 0;
+  bool gren = g.grenades, moving = false, fine = getenv("FINE") != 0;   /* (FINE: a half degree, power by tenths) */
+  for (int i = 0; i < g.nobj; i++) moving |= g.obj[i].kin != 0;
+  for (int i = 0; i < g.npin; i++) moving |= g.pin[i].motor != 0;
+  int shots = g.tr + 2 < 6 ? g.tr + 2 : 6, nb = 1, enemies = g.enemies_left;   /* (the gold bullet left over) */
+  for (int depth = 0; depth < shots; depth++) {
+    int nc = 0;
+    for (int b = 0; b < nb; b++)
+      for (int w = 0; w < (moving ? 6 : 1); w++)
+        for (int pw = 0; pw < (gren ? 9 : 1); pw += fine ? 1 : 2)
+          for (int a = 0; a < 720; a += fine ? 1 : gren ? 6 : 2) {
+            Plan *p = beam[b];
+            p[depth] = (Plan){(int16_t)((a - 360) * 10), (uint8_t)pw, (uint8_t)(w * 2)};
+            int st = play_plan(level, p, depth + 1, depth + 1 == shots, &left);
+            if (st == ST_PLAY && depth + 1 < shots) { /* (not over: is it won once things finish?) */
+              int l2, s2 = ST_PLAY;
+              for (int s = 0; s < 240 && g.state == ST_PLAY; s++) game_step();
+              s2 = g.state, l2 = g.enemies_left;
+              if (s2 == ST_WON) st = ST_WON, left = l2;
+            }
+            if (st == ST_WON) {
+              memcpy(out, p, sizeof(Plan) * (depth + 1));
+              *nout = depth + 1;
+              return 1;
+            }
+            if (st == ST_LOST || nc >= CANDS) continue;
+            /* (and what changed on the way: glass broken, crates gone off, switches, ropes cut, things moved) */
+            int changed = 0;
+            for (int i = 0; i < g.nobj; i++) {
+              Obj *o = &g.obj[i];
+              if (o->gone != (o->sw && (o->flags & F_SI))) changed += 3;
+              else if (o->body >= 0 && world_dynamic(o->body)) {
+                float x, y, sn, cs;
+                world_xf(o->body, &x, &y, &sn, &cs);
+                float x0 = o->cx + (o->kind == K_SEG ? o->bx : 0), y0 = o->cy + (o->kind == K_SEG ? o->by : 0);
+                if (fabsf(x - x0) + fabsf(y - y0) > 20) changed++;
+              }
+            }
+            for (int i = 0; i < g.nsw; i++) changed += 3 * g.sw[i].on;
+            for (int i = 0; i < g.npin; i++) changed += 3 * (g.pin[i].t == 3 && g.pin[i].joint < 0);
+            cand[nc].score = (enemies - left) * 1000 + (changed < 30 ? changed : 30) * 16 +
+                             (int)((uint32_t)(a * 7 + w * 131 + pw * 17) * 2654435761u >> 28);
+            cand[nc].from = b, cand[nc].s = p[depth];
+            nc++;
+          }
+    if (!nc) return 0;
+    /* the best, a few degrees apart */
+    int nn = 0;
+    for (int pick = 0; pick < BEAM; pick++) {
+      int best = -1;
+      for (int c = 0; c < nc; c++) {
+        if (cand[c].score < 0) continue;
+        bool near = false;
+        for (int k = 0; k < nn && !near; k++)
+          near = nbeam[k][depth].power == cand[c].s.power && nbeam[k][depth].wait == cand[c].s.wait &&
+                 abs(nbeam[k][depth].aim - cand[c].s.aim) < 100;
+        if (!near && (best < 0 || cand[c].score > cand[best].score)) best = c;
+      }
+      if (best < 0) break;
+      memcpy(nbeam[nn], beam[cand[best].from], sizeof(Plan) * depth);
+      nbeam[nn][depth] = cand[best].s;
+      cand[best].score = -1;
+      nn++;
+    }
+    memcpy(beam, nbeam, sizeof beam);
+    nb = nn;
+  }
+  return 0;
+}
+
 static uint32_t rng = 12345;
 static uint32_t rnd(void) { rng ^= rng << 13, rng ^= rng >> 17, rng ^= rng << 5; return rng; }
 
@@ -186,6 +350,54 @@ static void fuzz_level(int level) {
     gfx_render(scene, NULL, 0, SCREEN_H);
   }
   game_end();
+}
+
+/* a level left alone for 4 seconds: nothing falls out of the world (the ground holds what stands on it), no one
+   falls far (a man on a seesaw may go down with it) or dies; the problems found, printed */
+static int settle_level(int level) {
+  static const char *const mode_names[] = {"Classic", "Grenades", "Hostages", "Friendly Fire"};
+  int bad = 0;
+  if (!game_load(level, (uint8_t *)level_mem)) {
+    printf("FAIL level %d: it doesn't load\n", level + 1);
+    return 1;
+  }
+  int mode = g.mode, n = level - res_mode_first(mode) + 1, alive = 0;
+  float y0[MAX_CHAR];
+  for (int i = 0; i < g.nchar; i++) {
+    float x, s, c;
+    y0[i] = 0;
+    game_part(&g.ch[i], P_TORSO, &x, &y0[i], &s, &c);
+    alive += g.ch[i].alive;
+  }
+  for (int s = 0; s < 240 && g.state == ST_PLAY; s++) game_step();
+  for (int i = 0; i < g.nobj; i++) {
+    Obj *o = &g.obj[i];
+    float x, y, s, c;
+    if (o->gone || o->body < 0 || !world_dynamic(o->body)) continue;
+    world_xf(o->body, &x, &y, &s, &c);
+    if (!(y < 300 && y > -600 && x > -400 && x < 400)) {   /* (the field: 440 x 568 about its middle) */
+      printf("FAIL %s %d (level %d): object %d fell out of the world, at %.0f %.0f\n", mode_names[mode], n, level + 1,
+             o->idx, x, y);
+      bad++;
+    }
+  }
+  for (int i = 0; i < g.nchar; i++) {
+    float x, y, s, c;
+    if (!g.ch[i].alive) continue;
+    if (game_part(&g.ch[i], P_TORSO, &x, &y, &s, &c) && !(y - y0[i] < 150 && y < 300)) {
+      printf("FAIL %s %d (level %d): character %d fell %.0f\n", mode_names[mode], n, level + 1, i, y - y0[i]);
+      bad++;
+    }
+  }
+  int now = 0;
+  for (int i = 0; i < g.nchar; i++) now += g.ch[i].alive;
+  if (now < alive) {
+    printf("FAIL %s %d (level %d): %d of its characters died on their own\n", mode_names[mode], n, level + 1,
+           alive - now);
+    bad++;
+  }
+  game_end();
+  return bad;
 }
 
 static void ui_fuzz(void) {
@@ -227,7 +439,8 @@ int main(int argc, char **argv) {
       g.ch[g.hero].left = cosf(g.aim) < 0;
     }
     int frames = fr ? atoi(fr) : 0;
-    if (frames > 0) game_fire();
+    if (getenv("POWER")) g.power = (float)atof(getenv("POWER"));
+    if (frames > 0 && !getenv("NOFIRE")) game_fire();
     for (int i = 0; i < frames; i++) game_step();
     char name[32];
     snprintf(name, sizeof name, "level%d", level + 1);
@@ -301,6 +514,64 @@ int main(int argc, char **argv) {
     }
     return 0;
   }
+  if (argc >= 4 && !strcmp(argv[1], "fine")) {
+    /* one shot at every STEP degrees (grenades: and every tenth of power) until it wins: "fine LEVEL STEP" */
+    int l = atoi(argv[2]) - 1, stars;
+    float step = (float)atof(argv[3]);
+    game_load(l, (uint8_t *)level_mem);
+    int powers = g.grenades ? 9 : 1;
+    for (int pw = 0; pw < powers; pw++)
+      for (float a = -180; a < 180; a += step)
+        if (try_shot(l, a * 3.14159265f / 180, 0.2f + 0.1f * pw, &stars) == ST_WON) {
+          printf("level %d: won with 1 shot: %.2f", l + 1, a);
+          if (g.grenades) printf("/%d", pw);
+          printf("\n");
+          return 0;
+        }
+    printf("level %d: no one shot wins\n", l + 1);
+    return 1;
+  }
+  if (argc >= 4 && !strcmp(argv[1], "plan")) {
+    /* a level played with a plan: "plan LEVEL '-171 69'" */
+    Plan p[MAX_PLAN];
+    int left, n = plan_parse(argv[3], p), st = play_plan(atoi(argv[2]) - 1, p, n, true, &left);
+    printf("level %s: %s, %d enemies left, %d shots\n", argv[2], st == ST_WON ? "won" : st == ST_LOST ? "lost" : "not over",
+           left, g.shots);
+    if (getenv("PLAN_OBJS"))
+      for (int i = 0; i < g.nobj; i++)
+        if (g.obj[i].body >= 0 && world_dynamic(g.obj[i].body)) {
+          float x, y, sn, cs;
+          world_xf(g.obj[i].body, &x, &y, &sn, &cs);
+          printf("  object %d (i %d) at %.0f %.0f\n", i, g.obj[i].idx, x, y);
+        }
+    if (argc >= 5) picture(argv[4]);
+    return st != ST_WON;
+  }
+  if (argc >= 4 && !strcmp(argv[1], "win")) {
+    /* levels A to B played through with several shots if need be */
+    int bad = 0;
+    for (int l = atoi(argv[2]) - 1; l < atoi(argv[3]); l++) {
+      Plan p[MAX_PLAN];
+      int n = 0;
+      char text[256];
+      if (win(l, p, &n)) {
+        plan_text(text, p, n);
+        printf("level %d: won with %d shot%s: %s\n", l + 1, n, n > 1 ? "s" : "", text);
+      } else {
+        printf("level %d: no win found\n", l + 1);
+        bad++;
+      }
+      fflush(stdout);
+    }
+    return bad != 0;
+  }
+  if (argc >= 2 && !strcmp(argv[1], "settle")) {
+    /* every level (or FROM to TO) left alone */
+    int a = argc >= 4 ? atoi(argv[2]) - 1 : 0, b = argc >= 4 ? atoi(argv[3]) : LEVEL_COUNT, bad = 0;
+    for (int l = a; l < b; l++) bad += settle_level(l) != 0;
+    printf("settle: %d of %d levels with a problem\n", bad, b - a);
+    return bad != 0;
+  }
   if (argc >= 2 && !strcmp(argv[1], "mem")) {
     /* Box2D's memory: loaded, then the most while played with random keys */
     for (int l = 0; l < LEVEL_COUNT; l++) {
@@ -336,6 +607,22 @@ int main(int argc, char **argv) {
   }
   printf("bot: %d of %d levels cleared with one shot\n", solved, tried);
   CHECK(solved * 10 >= tried * 7, "the bot clears most of the first levels with one shot");
+  /* every level left alone: the ground holds, nothing falls out of the world, no one dies on his own */
+  int unsettled = 0;
+  for (int l = 0; l < LEVEL_COUNT; l++) unsettled += settle_level(l) != 0;
+  CHECK(!unsettled, "%d levels lose something when left alone", unsettled);
+  printf("settle: %d levels left alone\n", LEVEL_COUNT);
+  /* plays that win (found by `play win`): the levels of issue #365 (no ground, the ball's rope, the crate) and
+     others whose shapes, ropes or men were wrong */
+  int won = 0, nwins = (int)(sizeof known_wins / sizeof *known_wins);
+  for (int k = 0; k < nwins; k++) {
+    Plan p[MAX_PLAN];
+    int left, n = plan_parse(known_wins[k].plan, p), st = play_plan(known_wins[k].level - 1, p, n, true, &left);
+    CHECK(st == ST_WON, "level %d: '%s' wins (state %d, %d enemies left)", known_wins[k].level, known_wins[k].plan, st,
+          left);
+    won += st == ST_WON;
+  }
+  printf("wins: %d of %d known plays win\n", won, nwins);
   /* every level, random keys; Box2D's memory held as on the calculator (its blocks are bigger here: 64 bits) */
   b2_heap_limit = 120000;
   long peak = 0;

@@ -61,6 +61,8 @@ main {
 .no-match { grid-column: 1 / -1; margin: 8px 0 0; font-size: 14px; color: var(--text); }
 .lede { grid-column: 1 / -1; margin: 10px 0 0; max-width: 34em; font-size: 18px; line-height: 1.4; font-weight: 550; color: var(--ink); }
 .lede .name { white-space: nowrap; }
+.lede .beta { color: #0060c0; font-weight: 650; text-decoration: none; white-space: nowrap; }
+.lede .beta:hover { text-decoration: underline; }
 .row-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
 .row-head:first-child { margin-top: 0; }
 .row-head h2 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -0.1px; }

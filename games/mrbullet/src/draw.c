@@ -208,7 +208,7 @@ static void draw_obj(int i) {
   ncont = 0;
   cstart[0] = 0;
   int total = o->nout;
-  const uint8_t *hq = o->outline + 4 * o->nout;
+  const uint8_t *hq = o->outline + 4 * o->nout + 1;   /* (the holes, past their number) */
   for (int part = 0; part <= o->nholes && ncont < 16; part++) {
     if (part) {
       total = *hq++;
