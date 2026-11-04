@@ -39,7 +39,7 @@ size_t ph_free(void);
 size_t ph_tail(void); /* the end of the arena never used yet */
 /* where to go if the arena runs out (NULL: nowhere); the world is then lost. (GCC's own setjmp on the calculator:
  * the C library's would bring in the C++ unwinder) */
-#ifdef HOST
+#if defined(HOST) || defined(NP_PORT)
 typedef jmp_buf ph_jmp;
 #define PH_SETJMP(b) setjmp(b)
 #define PH_LONGJMP(b) longjmp(b, 1)

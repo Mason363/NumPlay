@@ -121,5 +121,7 @@ clean:
 PORT_ID = rider
 PORT_NAME = Rider
 PORT_SRC = src/main.c src/game.c src/draw.c src/plat_eadk.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
-PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc -DB2_TREE_NODES=320 -DB2_STACK_SIZE=16384 -DB2_CHUNK_SIZE=1024 -DB2_CHUNK_ARRAY_INCREMENT=64 -DPH_ARENA=102400
+PORT_CXX = $(PHYS)
+# (a computer's 64-bit pointers: the host's arena, Box2D's blocks counted as the calculator's)
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc $(B2) $(if $(filter sdl,$(TARGET)),$(HOST_ARENA),$(DEVICE_ARENA))
 include ../../platform/port.mk

@@ -111,7 +111,8 @@ clean:
 # the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
 PORT_ID = polytrack
 PORT_NAME = PolyTrack
-PORT_SRC = src/main.c src/draw.c src/save.c src/ghost.c src/data.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+PORT_SRC = $(HOT) src/plat_eadk.c src/main.c src/draw.c src/save.c src/ghost.c src/data.c ../../launcher/src/gfx.c \
+  ../../launcher/src/xfont.c
 PORT_ASM = src/data.S
-PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc -DDATA_BIN='"src/data.bin"'
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc -DDATA_BIN='"src/data.bin"' -ffp-contract=off
 include ../../platform/port.mk

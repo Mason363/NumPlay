@@ -108,5 +108,7 @@ PORT_ID = hillclimb
 PORT_NAME = Hill Climb Racing
 PORT_SRC = src/game.c src/main.c src/menu.c src/res.c src/run.c src/save.c src/vehicle.c src/gfx.c src/stage.c src/plat_eadk.c
 PORT_ASM = src/data.S
+PORT_CXX = $(PHYS)
+PORT_CXXFLAGS = -DNDEBUG -Isrc/box2d
 PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
 include ../../platform/port.mk
