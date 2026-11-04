@@ -228,12 +228,26 @@ static void grow(void) {
   boundary();
 }
 
+#ifdef HOST
+void level_debug_grow(void) { grow(); }   /* (tests: the next ring now) */
+#endif
+
 static void take(Coll *c) {
   c->taken = 1;
   L.taken++;
   if (L.R < RMAX) L.grow = 10;
   else L.complete = true;
 }
+
+#ifdef HOST
+void level_debug_take(void) {   /* (tests: the next circle taken) */
+  for (int k = 0; k < L.ncoll; k++)
+    if (!L.coll[k].taken && !L.complete) {
+      take(&L.coll[k]);
+      return;
+    }
+}
+#endif
 
 void level_tick(uint32_t keys) {
   Body *ball = L.ball >= 0 ? &W.b[L.ball] : NULL;

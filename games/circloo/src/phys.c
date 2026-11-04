@@ -764,8 +764,8 @@ static bool joints_positions(void) {
   return ok;
 }
 
-/* a fast circle may not jump through a wall: it stops where its sweep first meets one (Box2D sweeps every
- * moving body against the static ones) */
+/* a fast circle may not jump through a wall: where its step would take it through one (or deep into it), it stops
+ * where it first meets it, its speed into the wall gone (Box2D sweeps every moving body against the static ones) */
 static float sweep_circle(float x0, float y0, float dx, float dy, float cx, float cy, float R) {
   float fx = x0 - cx, fy = y0 - cy;
   float a = dx * dx + dy * dy, b = fx * dx + fy * dy, c = fx * fx + fy * fy - R * R;
@@ -779,9 +779,9 @@ static float sweep_circle(float x0, float y0, float dx, float dy, float cx, floa
 static void sweep(Body *b) {
   float dx = b->x - b->sx, dy = b->y - b->sy;
   if (dx * dx + dy * dy < 0.25f * b->r * b->r) return;
-  float R = b->r - SLOP, best = 1;
-  float x0 = fminf(b->sx, b->x) - b->r, x1 = fmaxf(b->sx, b->x) + b->r;
-  float y0 = fminf(b->sy, b->y) - b->r, y1 = fmaxf(b->sy, b->y) + b->r;
+  float r = b->r, best = 1, bnx = 0, bny = 0;
+  float x0 = fminf(b->sx, b->x) - r, x1 = fmaxf(b->sx, b->x) + r;
+  float y0 = fminf(b->sy, b->y) - r, y1 = fmaxf(b->sy, b->y) + r;
   if (++W.stamp_now == 0) memset(W.stamp, 0, sizeof W.stamp), W.stamp_now = 1;
   for (int cy = cell_of(y0); cy <= cell_of(y1); cy++)
     for (int cx = cell_of(x0); cx <= cell_of(x1); cx++) {
@@ -790,31 +790,37 @@ static void sweep(Body *b) {
         int s = W.cell_items[t];
         if (W.stamp[s] == W.stamp_now) continue;
         W.stamp[s] = W.stamp_now;
-        float hit = 1;
-        if (s < MAX_SCIRCLES) hit = sweep_circle(b->sx, b->sy, dx, dy, W.sc[s].x, W.sc[s].y, W.sc[s].r + R);
-        else if (s < MAX_SCIRCLES + MAX_SEDGES) {
+        if (s < MAX_SCIRCLES) {
+          const SCircle *o = &W.sc[s];
+          float ex = b->x - o->x, ey = b->y - o->y;
+          if (ex * ex + ey * ey > (o->r + 0.5f * r) * (o->r + 0.5f * r)) continue;   /* (not through, nor deep) */
+          float h = sweep_circle(b->sx, b->sy, dx, dy, o->x, o->y, o->r + r);
+          if (h < best) {
+            best = h;
+            float px = b->sx + dx * h - o->x, py = b->sy + dy * h - o->y, l = sqrtf(px * px + py * py);
+            bnx = px / l, bny = py / l;
+          }
+        } else if (s < MAX_SCIRCLES + MAX_SEDGES) {
           const SEdge *e = &W.se[s - MAX_SCIRCLES];
           float ex = e->x2 - e->x1, ey = e->y2 - e->y1, el = sqrtf(ex * ex + ey * ey);
           if (el < 1e-9f) continue;
           float nx = ey / el, ny = -ex / el;
-          float d0 = (b->sx - e->x1) * nx + (b->sy - e->y1) * ny, dd = dx * nx + dy * ny;
-          if (d0 < 0) d0 = -d0, dd = -dd;
-          if (d0 > R && dd < 0) {
-            float t = (d0 - R) / -dd;
-            if (t < 1) {
-              float px = b->sx + dx * t, py = b->sy + dy * t;
-              float u = ((px - e->x1) * ex + (py - e->y1) * ey) / (el * el);
-              if (u >= 0 && u <= 1) hit = t;
-            }
-          }
-          float h1 = sweep_circle(b->sx, b->sy, dx, dy, e->x1, e->y1, R), h2 = sweep_circle(b->sx, b->sy, dx, dy, e->x2, e->y2, R);
-          if (h1 < hit) hit = h1;
-          if (h2 < hit) hit = h2;
+          float d0 = (b->sx - e->x1) * nx + (b->sy - e->y1) * ny, d1 = (b->x - e->x1) * nx + (b->y - e->y1) * ny;
+          if (d0 < 0) d0 = -d0, d1 = -d1, nx = -nx, ny = -ny;
+          if (d0 < r || d1 > 0.5f * r) continue;   /* touching already, or not through it nor deep in it */
+          float t = (d0 - r) / (d0 - d1);
+          float px = b->sx + dx * t, py = b->sy + dy * t;
+          float u = ((px - e->x1) * ex + (py - e->y1) * ey) / (el * el);
+          if (u < 0 || u > 1 || t >= best) continue;
+          best = t, bnx = nx, bny = ny;
         }
-        if (hit < best) best = hit;
       }
     }
-  if (best < 1) b->x = b->sx + dx * best, b->y = b->sy + dy * best;
+  if (best < 1) {
+    b->x = b->sx + dx * best, b->y = b->sy + dy * best;
+    float vn = b->vx * bnx + b->vy * bny;
+    if (vn < 0) b->vx -= vn * bnx, b->vy -= vn * bny;
+  }
 }
 
 void ph_step(void) {

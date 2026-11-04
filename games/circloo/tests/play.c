@@ -19,6 +19,8 @@
 extern uint32_t host_keys, host_time;
 void host_shot(const char *path);
 void host_save_dir(const char *d);
+void level_debug_grow(void);
+void level_debug_take(void);
 
 typedef struct { int a, b; uint32_t k; } Hold;
 static Hold holds[4096];
@@ -55,24 +57,29 @@ static uint32_t rnd(void) {
 static uint32_t autoplay(void) {
   if (g.state != S_PLAY || L.ball < 0) return 0;
   const Body *b = &W.b[L.ball];
-  float best = 1e30f, tx = 0;
+  float best = 1e30f, tx = 0, ty = 0;
   for (int k = 0; k < L.ncoll; k++) {
     const Coll *c = &L.coll[k];
     if (c->taken || c->io) continue;
     float d = sqrtf((c->x - 1500) * (c->x - 1500) + (c->y - 1500) * (c->y - 1500));
     if (d > L.R) continue;
     float dx = c->x * PX_M - b->x, dy = c->y * PX_M - b->y, dd = dx * dx + dy * dy;
-    if (dd < best) best = dd, tx = dx;
+    if (dd < best) best = dd, tx = dx, ty = dy;
   }
   if (best > 1e29f) return 0;
-  float want = tx * 2.0f;   /* a speed towards it, m/s */
-  if (want > 6) want = 6;
-  if (want < -6) want = -6;
+  /* higher up than the ball: rock to and fro, pushing the way it rolls, until it gets there */
+  if (ty < -1.0f) {
+    if (fabsf(b->vx) < 0.3f) return b->x > 30 ? K_LEFT : K_RIGHT;   /* (at the top of a swing: downhill) */
+    return b->vx > 0 ? K_RIGHT : K_LEFT;
+  }
+  float want = tx * 4.0f;   /* a speed towards it, m/s */
+  if (want > 20) want = 20;
+  if (want < -20) want = -20;
   return b->vx < want - 0.3f ? K_RIGHT : b->vx > want + 0.3f ? K_LEFT : 0;
 }
 
 int main(int argc, char **argv) {
-  int level = 0, frames = 600, fuzz = -1, draw = 0, trace = 0, hard = 0, autop = 0;
+  int takeevery = 0, rings = 0, level = 0, frames = 600, fuzz = -1, draw = 0, trace = 0, hard = 0, autop = 0;
   const char *out = "build/shots";
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--level") && i + 1 < argc) level = atoi(argv[++i]);
@@ -90,6 +97,8 @@ int main(int argc, char **argv) {
     } else if (!strcmp(argv[i], "--out") && i + 1 < argc) out = argv[++i];
     else if (!strcmp(argv[i], "--saves") && i + 1 < argc) host_save_dir(argv[++i]);
     else if (!strcmp(argv[i], "--auto")) autop = 1;
+    else if (!strcmp(argv[i], "--take") && i + 1 < argc) takeevery = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--rings") && i + 1 < argc) rings = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--fuzz") && i + 1 < argc) fuzz = atoi(argv[++i]), rng = (uint32_t)fuzz * 2654435761u + 1;
     else if (!strcmp(argv[i], "--draw")) draw = 1;
     else if (!strcmp(argv[i], "--trace") && i + 1 < argc) trace = atoi(argv[++i]);
@@ -102,9 +111,11 @@ int main(int argc, char **argv) {
     level_load(level, hard);
     g.state = S_PLAY;
     save.hard = (uint8_t)hard;
+    for (int r = 0; r < rings; r++) level_debug_grow();
   }
   uint32_t fk = 0;
-  int ended = 0;
+  int ended = 0, stuck = 0;
+  float lx = 0, ly = 0;
   for (int f = 0; f < frames && g.running; f++) {
     uint32_t k = 0;
     for (int i = 0; i < nholds; i++)
@@ -121,6 +132,12 @@ int main(int argc, char **argv) {
       break;
     }
     game_tick(k);
+    if (takeevery && g.state == S_PLAY && L.grow == 0 && f % takeevery == takeevery - 1) level_debug_take();
+    if (g.state == S_PLAY && L.ball >= 0) {   /* (a ball fast but not moving: something holds it wrongly) */
+      const Body *b = &W.b[L.ball];
+      if (b->vx * b->vx + b->vy * b->vy > 9 && b->x == lx && b->y == ly) stuck++;
+      lx = b->x, ly = b->y;
+    }
     int want = every ? f % every == 0 : 0;
     for (int i = 0; i < nshots; i++) want |= shots[i] == f;
     if (want || (draw && f % 2 == 0)) game_draw();
@@ -135,7 +152,7 @@ int main(int argc, char **argv) {
   }
   (void)ended;
   save_write();
-  printf("END state %d level %d hard %d taken %d complete %d frames %d R %.0f\n", g.state, L.level, L.hard, L.taken,
-         L.complete, L.frames, L.R);
+  printf("END state %d level %d hard %d taken %d complete %d frames %d R %.0f stuck %d\n", g.state, L.level, L.hard,
+         L.taken, L.complete, L.frames, L.R, stuck);
   return 0;
 }

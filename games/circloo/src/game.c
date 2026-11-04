@@ -185,6 +185,9 @@ void game_init(void) {
   g.running = true;
   g.pick[0] = first_pick(0), g.pick[1] = first_pick(1);
   main_menu();
+#ifdef CO_START /* (speed tests: make EXTRA=-DCO_START=9, or 106 for hard level 6) */
+  start(CO_START % 100, CO_START > 100);
+#endif
 }
 
 static void act(int item) {
