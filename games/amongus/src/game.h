@@ -113,7 +113,7 @@ typedef struct {
   V2 cam;
   uint8_t killer, kill_anim, task_open, mg_cons;
   float kill_t;
-  uint8_t room_shown, pad1[3];
+  uint8_t room_shown, meet_pending, pad1[2];   /* meet_pending: a meeting called during the player's kill */
   float room_t;
   float task_bar;   /* shown (it updates only in meetings when set so) */
   uint8_t mg[512];  /* the open minigame's own state */

@@ -83,9 +83,11 @@ void gfx_spr(const Pic *p, int x, int y, bool flip, const uint16_t *pal, int alp
   gfx_spr_clip(p, x, y, flip, pal, alpha, 0, 0, SCREEN_W, SCREEN_H);
 }
 
-void gfx_spr_tint(const Pic *p, int x, int y, uint16_t col, int alpha) {
+void gfx_spr_tint(const Pic *p, int x, int y, uint16_t col, int alpha) { gfx_spr_tint_flip(p, x, y, false, col, alpha); }
+
+void gfx_spr_tint_flip(const Pic *p, int x, int y, bool flip, uint16_t col, int alpha) {
   if (!p) return;
-  int x0 = x - p->ox, y0 = y - p->oy;
+  int x0 = x - (flip ? p->w - p->ox : p->ox), y0 = y - p->oy;
   if (!gfx_rows(y0, y0 + p->h)) return;
   const uint8_t *al = p->flags & P_MIX ? gfx_mix_alpha : pic_alpha(p);
   int astep = (p->flags & P_MIX) ? 4 : 1;
@@ -97,7 +99,7 @@ void gfx_spr_tint(const Pic *p, int x, int y, uint16_t col, int alpha) {
     for (int c = 0; c < p->w; c++) {
       int xx = x0 + c;
       if ((unsigned)xx >= SCREEN_W) continue;
-      unsigned a = al[px_at(p, px, c, r) * astep];
+      unsigned a = al[px_at(p, px, flip ? p->w - 1 - c : c, r) * astep];
       if (a > 128) row[xx] = blend(row[xx], col, alpha);
     }
   }

@@ -9,6 +9,7 @@ typedef struct {
   int cx, cy;          /* the ship's pixel at the screen's top-left */
   float radius;
   bool dark;
+  int target;          /* the player the impostor would kill, outlined */
   int npts;
   float pts[2 * VIEW_MAXPTS];   /* the light's polygon, on the screen */
 } View;

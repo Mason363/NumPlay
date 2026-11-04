@@ -105,6 +105,15 @@ int rules(void) {
   /* the ghost: faster, no light, tasks still count */
   CHECK(near(player_speed(victim), 3.0f), "ghosts at 3.0");
 
+  /* a body reported while the player's kill plays: the meeting after it */
+  round_of(7, 1, 1);
+  imp = first(true, -1);
+  kill_player(imp, 0);
+  start_meeting(1, 0);
+  CHECK(g.screen == S_KILLED && g.meet_pending, "the kill plays on");
+  for (int k = 0; k < 90 && g.screen == S_KILLED; k++) game_tick(0);
+  CHECK(g.screen == S_REPORT && g.caller == 1 && g.reported == 0, "then the report");
+
   /* reports: within 3 units, not through a wall */
   round_of(7, 1, 1);
   victim = 1;

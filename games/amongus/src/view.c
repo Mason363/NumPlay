@@ -8,6 +8,7 @@
 #include "world.h"
 
 View view;
+int kill_target(int i);
 
 /* ---- the camera: the ship's pixels at the screen's top-left ---- */
 
@@ -137,6 +138,8 @@ void view_prepare(void) {
     }
   }
   nitems = 0;
+  view.target = -1;
+  if (M->imp && M->alive && M->kill_cd <= 0 && g.screen == S_PLAY) view.target = kill_target(g.me);
   /* doors */
   for (int d = 0; d < N_DOORS; d++) {
     const DoorRec *D = &DOORS[d];
@@ -179,7 +182,12 @@ void view_prepare(void) {
 static void draw_items(void) {
   for (int k = 0; k < nitems; k++) {
     const Item *it = &items[k];
-    if (!gfx_rows(it->y0, it->y1)) continue;
+    if (!gfx_rows(it->y0 - 1, it->y1 + 1)) continue;
+    if (it->kind == D_PLAYER && it->i == view.target) {
+      /* the impostor's target outlined in red (PlayerControl.SetOutline) */
+      for (int d = 0; d < 4; d++)
+        gfx_spr_tint_flip(it->pic, it->x + (d == 0) - (d == 1), it->y + (d == 2) - (d == 3), it->flip, 0xF800, 256);
+    }
     gfx_spr(it->pic, it->x, it->y, it->flip, it->pal, it->alpha);
     if (it->kind == D_DOOR) continue;
     /* what stands in front of it, drawn again over it */

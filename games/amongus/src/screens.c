@@ -14,6 +14,7 @@ static uint32_t last_keys;
 void play_tick(uint32_t keys, uint32_t pressed);
 void hud_keys(const char *s);
 void game_forget(void);
+bool first_play(void);
 void view_prepare(void);
 void art_title(void);
 void art_kill(float t);
@@ -159,7 +160,8 @@ static void title_tick(uint32_t pressed) {
   if (pressed & K_UP) g.sel = (uint8_t)((g.sel + 1) % 2);
   if (pressed & K_DOWN) g.sel = (uint8_t)((g.sel + 1) % 2);
   if (pressed & (K_OK | K_EXE)) {
-    if (g.sel == 0) g.screen = S_LOBBY, g.sel = N_OPT, lobby_top = N_OPT - 8;
+    if (g.sel == 0 && first_play()) g.screen = S_HOWTO, g.back_screen = S_LOBBY, g.sel = 0;
+    else if (g.sel == 0) g.screen = S_LOBBY, g.sel = N_OPT, lobby_top = N_OPT - 8;
     else g.screen = S_HOWTO, g.back_screen = S_TITLE, g.sel = 0;
     g.screen_t = 0;
   }
@@ -190,12 +192,17 @@ static const char *const HOWTO[][6] = {
 };
 
 static void howto_tick(uint32_t pressed) {
+  bool out = false;
   if (pressed & (K_RIGHT | K_OK | K_EXE)) {
     if (g.sel < 2) g.sel++;
-    else g.screen = g.back_screen, g.sel = 0;
+    else out = true;
   }
   if ((pressed & K_LEFT) && g.sel) g.sel--;
-  if (pressed & K_BACK) g.screen = g.back_screen, g.sel = 0;
+  if (pressed & K_BACK) out = true;
+  if (out) {
+    g.screen = g.back_screen, g.sel = 0;
+    if (g.screen == S_LOBBY) g.sel = N_OPT, lobby_top = N_OPT - 8;
+  }
 }
 
 static void howto_draw(void) {
@@ -347,7 +354,10 @@ void game_tick(uint32_t keys) {
   case S_KILLED:
     /* the round goes on meanwhile */
     play_tick(0, 0);
-    if (g.screen == S_KILLED && g.screen_t > 2.6f) g.screen = S_PLAY, g.screen_t = 0;
+    if (g.screen == S_KILLED && g.screen_t > 2.6f) {
+      g.screen = S_PLAY, g.screen_t = 0;
+      if (g.meet_pending) g.meet_pending = 0, start_meeting(g.caller, g.reported);
+    }
     break;
   case S_REPORT:
     if (g.screen_t > 2.5f) {

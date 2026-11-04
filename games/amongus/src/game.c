@@ -297,8 +297,11 @@ int living(bool imp) {
   return n;
 }
 
+void game_counted(bool won, bool imp);
+
 static void end_game(int winner, int reason) {
   if (g.screen == S_END) return;
+  game_counted((winner == 1) == (g.p[g.me].imp != 0), g.p[g.me].imp);
   g.winner = (uint8_t)winner;
   g.end_reason = (uint8_t)reason;
   g.screen = S_END;
@@ -352,6 +355,11 @@ void kill_player(int killer, int victim) {
 
 void start_meeting(int caller, int body) {
   if (g.screen == S_END) return;
+  if (g.screen == S_KILLED) {
+    /* the player's kill plays to its end first */
+    if (!g.meet_pending) g.meet_pending = 1, g.caller = (uint8_t)caller, g.reported = (uint8_t)body;
+    return;
+  }
   g.caller = (uint8_t)caller;
   g.reported = (uint8_t)body;   /* the dead player's number, or NONE for the button */
   if (body == NONE) g.p[caller].emergencies--;
@@ -553,6 +561,15 @@ static void write_copy(uint32_t glen, const SetFile *s) {
 }
 
 SetFile set_file;
+
+/* the first game: How to Play comes first */
+bool first_play(void) { return set_file.games == 0; }
+/* the player's games and wins (Statistics) */
+void game_counted(bool won, bool imp) {
+  if (set_file.games < 0xFFFF) set_file.games++;
+  if (won && imp && set_file.wins_imp < 0xFFFF) set_file.wins_imp++;
+  if (won && !imp && set_file.wins_crew < 0xFFFF) set_file.wins_crew++;
+}
 
 static void settings_defaults(void) {
   Options *o = &g.opt;

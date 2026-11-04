@@ -69,7 +69,8 @@ for k, name in enumerate(NAMES):
     check(bool(ok), "minigame %s%s" % (name, " (frame %s)" % m.group(1) if m else ""))
 
 # whole games: through the menus to a crew win, an impostor's game to an impostor win
-out = play("--auto", "--keys", "10:ok,20:ok", "--frames", 90000, "--seed", 3, "--walled")
+# (the first Play shows How to Play's three pages, then the settings with Start chosen)
+out = play("--auto", "--keys", "10:ok,20:ok,30:ok,40:ok,50:ok", "--frames", 90000, "--seed", 3, "--walled")
 check(end(out) and end(out)[:2] == (7, 0) and "WALLED" not in out, "a crew game from the title to a crew win: %s" % (end(out),))
 out = play("--start", "imp", "--auto", "--bots", 9, "--imps", 2, "--frames", 90000, "--seed", 2, "--walled")
 check(end(out) and end(out)[:2] == (7, 1) and "WALLED" not in out, "an impostor's game to an impostor win: %s" % (end(out),))
@@ -121,7 +122,7 @@ else:
     check(True, "40 broken saves: no crash")
 # the settings kept
 saves = os.path.join(WORK, "s2")
-play("--frames", 60, "--keys", "10:ok,20:down,25:right,30:back", saves=saves)
+play("--frames", 60, "--keys", "10:ok,20:back,30:down,35:right,40:back", saves=saves)
 out = play("--frames", 5, saves=saves, fresh=False)
 check("bots 8" in out, "a setting kept: %s" % re.search(r"bots \d+", out).group(0))
 

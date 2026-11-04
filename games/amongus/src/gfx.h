@@ -42,6 +42,7 @@ void gfx_spr_clip(const Pic *p, int x, int y, bool flip, const uint16_t *pal, in
 void gfx_pic(const Pic *p, float x, float y, float sx, float sy, float angle, const uint16_t *pal, int alpha);
 /* a picture tinted by c (alpha kept): the outlines of usable consoles */
 void gfx_spr_tint(const Pic *p, int x, int y, uint16_t c, int alpha);
+void gfx_spr_tint_flip(const Pic *p, int x, int y, bool flip, uint16_t c, int alpha);
 /* a tiled picture with its pivot at (x, y) */
 void gfx_tiles(const TilePic *s, int x, int y);
 void gfx_fill(int x, int y, int w, int h, uint16_t c, int alpha);
