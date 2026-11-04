@@ -1,6 +1,7 @@
 /* NumBlocks on the TI-84 Plus CE: the title, the worlds, and the game's loop (Minecraft's 20 ticks a second, the
  * picture as often as the CE can draw it). */
 #include "nb.h"
+#include "rs.h"
 #include "draw.h"
 
 extern int new_mode;
@@ -28,6 +29,7 @@ static int look_held;
 #define TITLE_SEED 20151008u   /* the title's world */
 
 static void loading(const char *what) {
+  render_stale = 1;
   canvas_screen();
   dirt_background(0, SCREEN_H);
   text_center(SCREEN_W / 2, SCREEN_H / 2 - 4, what, C_WHITE);
@@ -116,6 +118,9 @@ static void act(void) {
       if (!s) break;
       loading("Building terrain");
       uint32_t seed = plat_ms() * 2654435761u ^ (uint32_t)rnd(0x7FFFFF);
+#ifdef NB_SEED
+      seed = NB_SEED;   /* (tests: a world known in advance) */
+#endif
       new_world(s, cur_name, seed, new_mode);
       save_world();
       start_game();
@@ -184,10 +189,9 @@ static void play(uint32_t keys, uint32_t pressed) {
       gui_open(GUI_PAUSE);
       return;
     }
-    render_frame();
+    bool drawn = render_frame();
     plat_poll();
-    hud_draw();
-    compose(true, true);
+    if (hud_draw() || drawn) compose(true, true);
   }
 }
 
@@ -203,7 +207,7 @@ int main(void) {
 #include <stdio.h>
   {
     /* (timing, built with -DNB_BENCH: each part's ms x 10, as text in the appvar NBBENCH) */
-    static char out[400];
+    static char out[700];
     int n = 0;
     uint32_t t = plat_ms();
 #define LAP(name)                                                                            \
@@ -251,7 +255,20 @@ int main(void) {
     LAP("world");
     render_sky_palette();
     LAP("sky");
-#if NB_BENCH == 8
+    {
+      extern const uint8_t *rs_flash;
+      n += sprintf(out + n, "flash %p\n", (const void *)rs_flash);
+    }
+#if NB_BENCH == 11
+    /* the window's blocks and light (to check world.c's loops in assembly against the C, -DNB_WORLD_C) */
+    plat_save("NBWB", wblk, WS * WS * WH / 2, 0, 0);
+    plat_save("NBWB2", wblk + WS * WS * WH / 2, WS * WS * WH / 2, 0, 0);
+    plat_save("NBWL", wlight, WS * WS * WH / 2, 0, 0);
+    plat_save("NBWL2", wlight + WS * WS * WH / 2, WS * WS * WH / 2, 0, 0);
+    plat_save("NBBENCH", out, (unsigned)n, 0, 0);
+    plat_exit();
+#endif
+#if NB_BENCH == 8 || NB_BENCH == 15
     {
       /* a screen opened over the world: the creative inventory */
       in_game = true, gui = GUI_NONE;
@@ -263,6 +280,47 @@ int main(void) {
       LAP("open");
       gui_draw();
       LAP("draw");
+      for (int k = 0; k < (NB_BENCH == 15 ? 20 : 0); k++) gui_redraw(), gui_draw();
+      LAP("draws");
+      for (uint32_t t = plat_ms(); plat_ms() - t < 2000;) plat_frame();   /* (its picture taken) */
+      plat_save("NBBENCH", out, (unsigned)n, 0, 0);
+      plat_exit();
+    }
+#endif
+#if NB_BENCH == 10
+    {
+      /* rs_clip2 against its C twin */
+      extern uint8_t rsc_rs_clip2(const SV *in, uint8_t n, SV *out, uint8_t k);
+      static SV in[4] = {{-300, 100, 0, 0}, {900, -50, 65535, 0}, {1200, 700, 65535, 65535}, {-40, 900, 0, 65535}};
+      static SV oa[16], ob[16];
+      for (uint8_t k = 0; k < 4; k++) {
+        uint8_t na = rs_clip2(in, 4, oa, k), nb = rsc_rs_clip2(in, 4, ob, k);
+        n += sprintf(out + n, "k%d n %d %d\n", k, na, nb);
+        for (int i = 0; i < na && i < nb; i++)
+          if (memcmp(&oa[i], &ob[i], sizeof(SV)))
+            n += sprintf(out + n, " %d: %d %d %d %d / %d %d %d %d\n", i, oa[i].x, oa[i].y, oa[i].u, oa[i].v, ob[i].x,
+                         ob[i].y, ob[i].u, ob[i].v);
+      }
+      plat_save("NBBENCH", out, (unsigned)n, 0, 0);
+      plat_exit();
+    }
+#endif
+#if NB_BENCH == 9
+    {
+      /* the picture with the archive's loops and without: the same? */
+      in_game = true, gui = GUI_NONE;
+      extern const uint8_t *rs_flash;
+      const uint8_t *fl = rs_flash;
+      uint32_t ha = 0, hb = 0;
+      for (int pass = 0; pass < 2; pass++) {
+        if (pass) rs_flash_init(0, 0);
+        render_stale = 1;
+        render_frame();
+        uint32_t h = 0;
+        for (unsigned i = 0; i < RW * RH; i++) h = h * 31 + rbuf[i];
+        if (pass) hb = h; else ha = h;
+      }
+      n += sprintf(out + n, "flash %p a %lx b %lx\n", (void *)fl, (unsigned long)ha, (unsigned long)hb);
       plat_save("NBBENCH", out, (unsigned)n, 0, 0);
       plat_exit();
     }
@@ -271,17 +329,20 @@ int main(void) {
     {
       /* one picture, as the computer build makes it (to compare) */
       in_game = true, gui = GUI_NONE;
+#ifdef NB_V7YAW
+      pl.yaw = NB_V7YAW, pl.pitch = NB_V7PITCH;
+#endif
       render_frame();
       hud_draw();
       compose(true, true);
-      for (uint32_t t = plat_ms(); plat_ms() - t < 3000;) plat_frame();
+      for (uint32_t t = plat_ms(); plat_ms() - t < 6000;) plat_frame();
       plat_exit();
     }
 #endif
-#if NB_BENCH >= 5 && NB_BENCH <= 6
+#if NB_BENCH >= 5 && NB_BENCH <= 6 || NB_BENCH == 16
     {
-      /* rows of the window made (5: 16 of them, 6: none) */
-      for (int f = 0; f < (NB_BENCH == 5 ? 16 : 0); f++) {
+      /* rows of the window made (5: 16 of them, 16: 64, 6: none) */
+      for (int f = 0; f < (NB_BENCH == 5 ? 16 : NB_BENCH == 16 ? 64 : 0); f++) {
         pl.x += FX1;
         world_center(FXI(pl.x), FXI(pl.y) + 1, FXI(pl.z), false);
         while (world_busy()) world_step();
@@ -317,11 +378,15 @@ int main(void) {
       plat_exit();
     }
 #endif
-    for (int v = 0; v < (NB_BENCH > 1 ? 24 : 4); v++) {
-      pl.yaw = (uint16_t)((v & 3) * 16384);
-      pl.pitch = (v & 3) == 3 ? 6000 : 0;
+    for (int v = 0; v < (NB_BENCH >= 12 ? 96 : NB_BENCH > 1 ? 24 : 4); v++) {
+      /* (13: the fourth view over and over, a little apart) */
+      int w = NB_BENCH == 13 ? 3 : NB_BENCH == 14 ? 0 : v;
+      pl.yaw = (uint16_t)((w & 3) * 16384 + (NB_BENCH >= 13 ? (v & 1) * 64 : 0));
+      pl.pitch = (w & 3) == 3 ? 6000 : 0;
       render_frame();
       LAP("render");
+      extern uint32_t stat_faces, stat_cells;
+      if (v < 4) n += sprintf(out + n, " cells %lu faces %lu\n", (unsigned long)stat_cells, (unsigned long)stat_faces);
       hud_draw();
       LAP("hud");
       compose(true, true);

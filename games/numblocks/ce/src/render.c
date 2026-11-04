@@ -24,7 +24,8 @@ uint32_t stat_faces, stat_spans, stat_px, stat_cells;
 #ifdef HOST
 extern unsigned long st_cols, st_list, st_frus, st_cov, st_culled;
 #endif
-int view_dist = 10;
+int view_dist = 8;
+uint8_t render_stale = 1;   /* rbuf no longer the last picture (its memory used for something else, the world changed) */
 uint32_t world_time;
 int crack_stage = -1;
 const uint8_t *rs_recip, *rs_ratio;
@@ -119,6 +120,7 @@ static uint16_t celestial(void) {
 }
 
 void render_sky_palette(void) {
+  render_stale = 1;
   uint16_t ang = celestial();
   /* World.getSunBrightness and getCelestialLight-ish: the sky's brightness 0.2 at night to 1 by day */
   int c = fcos(ang);   /* 1 at noon, -1 at midnight */
@@ -239,33 +241,6 @@ typedef struct { int x, y, z, u, v; } CV;   /* camera space, Q14; u, v the texel
 
 static int lerp12(int a, int b, int t) { return a + (int)((int32_t)(b - a) * t >> 12); }
 
-/* clipping in 2D against x >= 0 (k 0), x <= W (1), y >= 0 (2), y <= H (3) */
-static int clip2(SV *in, int n, SV *out, int k) {
-  int m = 0;
-  for (int i = 0; i < n; i++) {
-    SV *a = &in[i], *b = &in[i + 1 == n ? 0 : i + 1];
-    int da, db;
-    switch (k) {
-      case 0: da = a->x, db = b->x; break;
-      case 1: da = RW * 16 - a->x, db = RW * 16 - b->x; break;
-      case 2: da = a->y, db = b->y; break;
-      default: da = RH * 16 - a->y, db = RH * 16 - b->y;
-    }
-    if (da >= 0) out[m++] = *a;
-    if ((da >= 0) != (db >= 0)) {
-#ifdef HOST
-      { extern unsigned long st_c2; st_c2++; }
-#endif
-      int t = (int)(((int32_t)da << 12) / (da - db));   /* 0..4096 */
-      SV *o = &out[m++];
-      o->u = lerp12(a->u, b->u, t), o->v = lerp12(a->v, b->v, t);
-      if (k < 2) o->x = k ? RW * 16 : 0, o->y = lerp12(a->y, b->y, t);
-      else o->y = k == 2 ? 0 : RH * 16, o->x = lerp12(a->x, b->x, t);
-    }
-  }
-  return m;
-}
-
 static void raster(SV *p, int n) {
   static SV buf_a[16], buf_b[16];
   int xmin = p[0].x, xmax = p[0].x, ymin = p[0].y, ymax = p[0].y;
@@ -278,10 +253,10 @@ static void raster(SV *p, int n) {
   if (xmax <= 0 || ymax <= 0 || xmin >= RW * 16 || ymin >= RH * 16) return;
   if (xmin < 0 || ymin < 0 || xmax > RW * 16 || ymax > RH * 16) {
     SV *a = p, *b = buf_a;
-    if (xmin < 0) n = clip2(a, n, b, 0), a = b, b = a == buf_a ? buf_b : buf_a;
-    if (xmax > RW * 16 && n) n = clip2(a, n, b, 1), a = b, b = a == buf_a ? buf_b : buf_a;
-    if (ymin < 0 && n) n = clip2(a, n, b, 2), a = b, b = a == buf_a ? buf_b : buf_a;
-    if (ymax > RH * 16 && n) n = clip2(a, n, b, 3), a = b, b = a == buf_a ? buf_b : buf_a;
+    if (xmin < 0) n = rs_clip2(a, (uint8_t)n, b, 0), a = b, b = a == buf_a ? buf_b : buf_a;
+    if (xmax > RW * 16 && n) n = rs_clip2(a, (uint8_t)n, b, 1), a = b, b = a == buf_a ? buf_b : buf_a;
+    if (ymin < 0 && n) n = rs_clip2(a, (uint8_t)n, b, 2), a = b, b = a == buf_a ? buf_b : buf_a;
+    if (ymax > RH * 16 && n) n = rs_clip2(a, (uint8_t)n, b, 3), a = b, b = a == buf_a ? buf_b : buf_a;
     if (n < 3) return;
     p = a;
   }
@@ -451,7 +426,7 @@ static void quad(uint8_t split) {
 }
 
 /* the cell's corners, camera space: corner k (bits x 1, y 2, z 4) at ck[3k..3k+2] */
-static int ck[24];
+#define ck rs_ck   /* (rs.s: rs_face reads them) */
 static void corners(int x, int y, int z) {
   ck[0] = x, ck[1] = y, ck[2] = z;
   ck[3] = x + rxx, ck[4] = y + uxx, ck[5] = z + fxx;
@@ -518,6 +493,41 @@ static int nb_index(int f) {
 
 static uint16_t blk_tex_off[B_N];   /* b x 6 */
 
+/* face f of the cell (its corners in ck): whole by rs_face (assembly) when far enough, else cut in parts (quad) */
+static void face(uint8_t f, uint8_t split) {
+  if (split > 1) {
+    /* (cut only as much as its depth varies: a face seen straight on is not bent by the texture's straight lines) */
+    face_corners(f);
+    int z0 = fq[2], z1 = fq[2];
+    if (fq[5] < z0) z0 = fq[5];
+    if (fq[5] > z1) z1 = fq[5];
+    if (fq[8] < z0) z0 = fq[8];
+    if (fq[8] > z1) z1 = fq[8];
+    if (fq[11] < z0) z0 = fq[11];
+    if (fq[11] > z1) z1 = fq[11];
+    int d = z1 - z0, d4 = d + d;
+    d4 += d4;
+    if (z0 > 0 && d4 < z0) split = 1;
+    else if (split == 4 && z0 > 0 && d < z0) split = 2;
+    if (split > 1) {
+      quad(split);
+      return;
+    }
+  }
+  stat_faces++;
+  rs_setup(s_tex, s_cm, s_alpha);
+  uint8_t r = rs_face(f);
+
+  if (r == 2) raster(rs_fs, 4);
+  else if (r == 1) {
+    face_corners(f);
+    static CV q[4] = {{0, 0, 0, 0, 0}, {0, 0, 0, 65535, 0}, {0, 0, 0, 65535, 65535}, {0, 0, 0, 0, 65535}};
+    q[0].x = fq[0], q[0].y = fq[1], q[0].z = fq[2], q[1].x = fq[3], q[1].y = fq[4], q[1].z = fq[5];
+    q[2].x = fq[6], q[2].y = fq[7], q[2].z = fq[8], q[3].x = fq[9], q[3].y = fq[10], q[3].z = fq[11];
+    draw_quad(q, 4, rs_fclip);
+  }
+}
+
 __attribute__((noinline)) static void cell(uint8_t b, int X, int Y, int Z, int fog) {
   stat_cells++;
   corners(X, Y, Z);
@@ -529,7 +539,11 @@ __attribute__((noinline)) static void cell(uint8_t b, int X, int Y, int Z, int f
   if (ck[17] < zmin) zmin = ck[17];
   if (ck[20] < zmin) zmin = ck[20];
   if (ck[23] < zmin) zmin = ck[23];
-  int split = zmin < (int)(Q1 / 2) ? 4 : zmin < (int)(2 * Q1) ? 2 : 1;
+#ifndef NB_SPLIT4
+#define NB_SPLIT4 4
+#define NB_SPLIT2 2
+#endif
+  int split = zmin < (int)(Q1 / 2) ? NB_SPLIT4 : zmin < (int)(2 * Q1) ? NB_SPLIT2 : 1;
   const uint8_t *bt = &blk_tex[0][0] + blk_tex_off[b];
   uint8_t m = blk_model[b], tint = blk_tint[b];
   if (m == M_CROSS || m == M_TORCH) {
@@ -538,10 +552,8 @@ __attribute__((noinline)) static void cell(uint8_t b, int X, int Y, int Z, int f
     s_tex = tex_of(tex);
     s_cm = shade_of(light_level(wlight[c_idx], 1), fog);
     s_alpha = 1;
-    face_corners(6);
-    quad(split);
-    face_corners(7);
-    quad(split);
+    face(6, split);
+    face(7, split);
     return;
   }
   s_alpha = (blk_flags[b] & BF_ALPHA) != 0;
@@ -568,8 +580,7 @@ __attribute__((noinline)) static void cell(uint8_t b, int X, int Y, int Z, int f
       tex = f == 3 || f == 4 ? bt[3] : bt[2];
     s_tex = mined ? crack_of(tex) : tex_of(tex);
     s_cm = shade_of(light_level(lb, f), fog);
-    face_corners(f);
-    quad(split);
+    face(f, split);
   }
 }
 
@@ -756,14 +767,21 @@ static void hand(void) {
   }
 }
 
-void render_frame(void) {
+bool render_frame(void) {
   fx ey = pl.y + (pl.sneaking ? FX1 * 154 / 100 : FX1 * 162 / 100);
   if (pl.hit_face >= 0) crack_x = pl.hit_x, crack_y = pl.hit_y, crack_z = pl.hit_z;
   crack_stage = pl.break_need > 0 && pl.break_ticks > 0 ? pl.break_ticks * 10 / pl.break_need : -1;
   if (crack_stage > 9) crack_stage = 9;
+  /* the same view as the last picture, nothing changed since: that picture again */
+  static struct { fx x, y, z; int hx, hy, hz; uint16_t yaw; int16_t pitch; int8_t hf, crack; uint8_t swing, held; } v, last;
+  v.x = pl.x, v.y = ey, v.z = pl.z, v.hx = pl.hit_x, v.hy = pl.hit_y, v.hz = pl.hit_z, v.yaw = pl.yaw, v.pitch = pl.pitch;
+  v.hf = (int8_t)pl.hit_face, v.crack = (int8_t)crack_stage, v.swing = (uint8_t)pl.swing, v.held = pl.inv[pl.slot].id;
+  if (!render_stale && !memcmp(&v, &last, sizeof v)) return false;
+  last = v, render_stale = 0;
   frame_from(pl.x, ey, pl.z, pl.yaw, pl.pitch);
   outline();
   hand();
+  return true;
 }
 
 /* shade row level, the sky's colours (1..15) darkened too: a 256-byte aligned row (the screens' veil) */
@@ -781,12 +799,14 @@ const uint8_t *render_veil_row(uint8_t level) {
 
 /* a picture kept (render_title's, rbuf then the sky's rows) shown again; the sky's rows */
 void render_picture(const uint8_t *p) {
+  render_stale = 1;
   memcpy(rbuf, p, RW * RH);
   memcpy(sky_row, p + RW * RH, RH);
 }
 const uint8_t *render_sky(void) { return sky_row; }
 
 void render_title(uint16_t yaw) {
+  render_stale = 1;
   crack_stage = -1;
   frame_from(pl.x, pl.y + FX1 * 162 / 100, pl.z, yaw, 1200);
 }
@@ -805,4 +825,19 @@ void render_init(void) {
 }
 
 /* the picture to the screen: the sky in what is not drawn, the HUD over it */
-void render_show(bool hud) { rs_expand(rbuf, scr, sky_row, hud ? hud_layer : 0); }
+/* the HUD layer's rows as runs, for rs_expand: pairs (see-through, drawn), each row's adding up to HUD_W (none
+ * when they do not fit: rs_expand then goes over each pixel) */
+uint8_t rs_hruns[1600], rs_hruns_ok, hud_changed = 1;
+static void hud_runs(void) {
+  uint8_t *o = rs_hruns;
+  rs_hruns_ok = 0;
+  for (int r = 0; r < HUD_H; r++) {
+    if (o + HUD_W + 1 > rs_hruns + sizeof rs_hruns) return;
+    o = rs_runs_of(hud_layer + r * HUD_W, o, 1);   /* (in assembly) */
+  }
+  rs_hruns_ok = 1;
+}
+void render_show(bool hud) {
+  if (hud && hud_changed) hud_runs(), hud_changed = 0;
+  rs_expand(rbuf, scr, sky_row, hud ? hud_layer : 0);
+}

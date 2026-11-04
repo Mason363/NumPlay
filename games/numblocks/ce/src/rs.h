@@ -23,8 +23,23 @@ uint8_t rs_hidden(int x, int y, int z, int r);
 int rs_code(int x, int y, int z);
 /* dst[i] = f[a[i]] for the 256 bytes, all three 256-byte aligned */
 void rs_compose(uint8_t *dst, const uint8_t *a, const uint8_t *f);
-/* p[i] = row[p[i]] for 256 bytes, row 256-byte aligned */
-void rs_shade(uint8_t *p, const uint8_t *row);
+/* the polygon cut to a side of the screen (k 0: x >= 0, 1: x <= 2560, 2: y >= 0, 3: y <= 1920): into out, how many */
+uint8_t rs_clip2(const SV *in, uint8_t n, SV *out, uint8_t k);
+/* a cell's corners in camera space (corner k: x, y, z at rs_ck[3k..], bits of k x 1, y 2, z 4), and face f of it
+ * (0..5 -Y +Y -Z +Z -X +X, 6 and 7 a plant's quads) with rs_setup's texture: passed by when past a side of the view,
+ * drawn when all on the screen (0); 1 when to be cut by planes (rs_fclip: rs_code's), 2 when projected into rs_fs but
+ * not all on the screen */
+extern int rs_ck[24];
+extern SV rs_fs[4];
+extern uint8_t rs_fclip;
+uint8_t rs_face(uint8_t f);
+/* p[i] = row[p[i]] for n bytes (1..65535), row 256-byte aligned */
+void rs_shade(uint8_t *p, const uint8_t *row, uint16_t n);
+/* a picture's row of runs (tools/pack.py rle) to q (its column 0), sw pixels; 0 see-through */
+void rs_rle(uint8_t *q, const uint8_t *p, int sw);
+/* the HUD layer's rows (h, HUD_W each) as runs into o: pairs (see-through, drawn), each row's adding up to HUD_W
+ * (at most HUD_W + 1 bytes a row); after them */
+uint8_t *rs_runs_of(const uint8_t *h, uint8_t *o, uint8_t rows);
 /* a + floor((b - a) f / 256), a and b 0..255, f 0..256 */
 int rs_lerp(int a, int b, int f);
 /* the 160 x 120 picture to the screen at 2x, 0s as the row's sky colour (sky[y]); from screen row 180 on, the HUD's
@@ -57,6 +72,10 @@ extern const uint16_t *rs_qsqi, *rs_qsqk;
 extern uint8_t rs_qsx, rs_qsz, rs_qxs0, rs_qzs0, rs_vd;
 extern int rs_x, rs_z, rs_ci, rs_X0;
 extern uint8_t rs_xs, rs_zs;
+/* the inner loops' copy in the archive (flash/rsf.s, after NBCETEX's tables), run when of this build: size its
+ * bytes; rs_flash it, 0 when not run (the program's own copy then) */
+extern const uint8_t *rs_flash;
+void rs_flash_init(const uint8_t *blob, unsigned size);
 /* 2^28 / k for k 16..2560 (3 bytes each, from k = 16), and f * 256 / d for d 1..15, f < d ([d * 16 + f]): the
  * tables rs_poly divides with (in NBCETEX) */
 extern const uint8_t *rs_recip, *rs_ratio;

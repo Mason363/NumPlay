@@ -36,5 +36,6 @@ void dirt_background(int y0, int y1);
 #define HUD_Y 180
 #define HUD_H (SCREEN_H - HUD_Y)
 extern uint8_t *hud_layer;   /* HUD_W x HUD_H (in the CE's screen memory, after the world) */
+extern uint8_t hud_changed;  /* set when it is drawn into */
 void compose(bool hud, bool crosshair);   /* the 3D view (rbuf) onto the screen, with the HUD and the crosshair */
 #endif

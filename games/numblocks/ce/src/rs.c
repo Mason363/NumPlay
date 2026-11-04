@@ -21,10 +21,40 @@ uint8_t RS(rs_hidden)(int x, int y, int z, int r);
 int RS(rs_code)(int x, int y, int z);
 void RS(rs_compose)(uint8_t *dst, const uint8_t *a, const uint8_t *f);
 int RS(rs_lerp)(int a, int b, int f);
-void RS(rs_shade)(uint8_t *p, const uint8_t *row);
+uint8_t RS(rs_clip2)(const SV *in, uint8_t n, SV *out, uint8_t k);
+uint8_t RS(rs_face)(uint8_t f);
+void RS(rs_shade)(uint8_t *p, const uint8_t *row, uint16_t n);
+void RS(rs_rle)(uint8_t *q, const uint8_t *p, int sw);
+uint8_t *RS(rs_runs_of)(const uint8_t *h, uint8_t *o, uint8_t rows);
 void RS(rs_expand)(const uint8_t *src, uint8_t *dst, const uint8_t *sky, const uint8_t *hud);
-void RS(rs_shade)(uint8_t *p, const uint8_t *row) {
-  for (int i = 0; i < 256; i++) p[i] = row[p[i]];
+void RS(rs_shade)(uint8_t *p, const uint8_t *row, uint16_t n) {
+  for (unsigned i = 0; i < n; i++) p[i] = row[p[i]];
+}
+
+uint8_t *RS(rs_runs_of)(const uint8_t *h, uint8_t *o, uint8_t rows) {
+  for (; rows; rows--, h += HUD_W)
+    for (int x = 0; x < HUD_W;) {
+      uint8_t t = 0, n = 0;
+      while (x < HUD_W && !h[x]) x++, t++;
+      while (x < HUD_W && h[x]) x++, n++;
+      *o++ = t, *o++ = n;
+    }
+  return o;
+}
+
+void RS(rs_rle)(uint8_t *q, const uint8_t *p, int sw) {
+  while (sw > 0) {
+    uint8_t n = *p++;
+    if (n < 128) {
+      for (int k = 0; k <= n; k++, q++, p++)
+        if (*p) *q = *p;
+      sw -= n + 1;
+    } else {
+      uint8_t c = *p++;
+      if (c) memset(q, c, (size_t)(n - 126));
+      q += n - 126, sw -= n - 126;
+    }
+  }
 }
 
 int RS(rs_lerp)(int a, int b, int f) { return a + (((b - a) * f) >> 8); }
@@ -222,6 +252,38 @@ void RS(rs_poly)(const SV *p, uint8_t n) {
   }
 }
 
+static int32_t c2_d(const SV *v, uint8_t k) {
+  return k == 0 ? v->x : k == 1 ? RW * 16 - v->x : k == 2 ? v->y : RH * 16 - v->y;
+}
+uint8_t RS(rs_clip2)(const SV *in, uint8_t n, SV *out, uint8_t k) {
+  uint8_t m = 0;
+  for (int i = 0; i < n; i++) {
+    const SV *a = &in[i], *b = &in[i + 1 == n ? 0 : i + 1];
+    int32_t da = c2_d(a, k), db = c2_d(b, k);
+    if (da >= 0) out[m++] = *a;
+    if ((da < 0) != (db < 0)) {
+      /* t: the share before the side, 4096ths, bit by bit; the values as mulhi rounds, the side's exact */
+      int32_t kk = da - db, r = da < 0 ? -da : da;
+      if (kk < 0) kk = -kk;
+      uint32_t t = 0;
+      for (int j = 0; j < 12; j++) {
+        r <<= 1, t <<= 1;
+        if (r >= kk) r -= kk, t |= 1;
+      }
+      uint32_t tt = t << 12;
+      SV o;
+      o.x = W24(a->x + mulhi(W24(b->x - a->x), tt)), o.y = W24(a->y + mulhi(W24(b->y - a->y), tt));
+      o.u = W24(a->u + mulhi(W24(b->u - a->u), tt)), o.v = W24(a->v + mulhi(W24(b->v - a->v), tt));
+      if (k == 0) o.x = 0;
+      else if (k == 1) o.x = RW * 16;
+      else if (k == 2) o.y = 0;
+      else o.y = RH * 16;
+      out[m++] = o;
+    }
+  }
+  return m;
+}
+
 /* 1371 << 12 / (256 + i) */
 static uint16_t rtab[256];
 void RS(rs_proj)(int x, int y, int z, int *out) {
@@ -255,6 +317,34 @@ uint8_t RS(rs_cells)(const uint8_t *mask, uint8_t slot, uint8_t up, uint8_t down
 }
 
 #ifndef __ez80__
+int rs_ck[24];
+SV rs_fs[4] = {{0, 0, 0, 0}, {0, 0, 65535, 0}, {0, 0, 65535, 65535}, {0, 0, 0, 65535}};
+uint8_t rs_fclip;
+#endif
+static const uint8_t FACEC[8][4] = {{4, 5, 1, 0}, {2, 3, 7, 6}, {3, 2, 0, 1}, {6, 7, 5, 4},
+                                    {2, 6, 4, 0}, {7, 3, 1, 5}, {2, 7, 5, 0}, {6, 3, 1, 4}};
+uint8_t RS(rs_face)(uint8_t f) {
+  uint8_t clip = 0, side = 255;
+  for (int i = 0; i < 4; i++) {
+    const int *c = rs_ck + 3 * FACEC[f][i];
+    int code = RS(rs_code)(c[0], c[1], c[2]);
+    clip |= (uint8_t)code, side &= (uint8_t)(code >> 8);
+  }
+  if (side) return 0;
+  rs_fclip = clip;
+  if (clip) return 1;
+  for (int i = 0; i < 4; i++) {
+    const int *c = rs_ck + 3 * FACEC[f][i];
+    RS(rs_proj)(c[0], c[1], c[2], &rs_fs[i].x);
+  }
+  for (int i = 0; i < 4; i++)
+    if ((unsigned)rs_fs[i].x > RW * 16 || (unsigned)rs_fs[i].y > RH * 16) return 2;
+  RS(rs_poly)(rs_fs, 4);
+  return 0;
+}
+
+#ifndef __ez80__
+const uint8_t *rs_flash;
 int rs_jY[65], rs_jZ[65], rs_jV[65];
 uint16_t rs_jS[128];
 uint8_t rs_fog[257];
@@ -352,3 +442,26 @@ void RS(rs_expand)(const uint8_t *src, uint8_t *dst, const uint8_t *sky, const u
   }
 }
 #endif
+
+#ifdef __ez80__
+/* (rs.s: the trampolines, jp and an address each; the program's copy's addresses; this build's mark) */
+extern uint8_t rs_tramps[], rs_tramps_ram[], rs_ntramps, rs_build[3];
+void rs_flash_init(const uint8_t *blob, unsigned size) {
+  uint8_t n = rs_ntramps;
+  bool ok = blob && size >= 8 + 3 * (unsigned)n && !memcmp(blob, "NBRS", 4) && !memcmp(blob + 4, rs_build, 3) &&
+            blob[7] == n;
+  uint8_t *t = rs_tramps + 1;
+  const uint8_t *r = rs_tramps_ram, *o = blob + 8;
+  for (uint8_t i = 0; i < n; i++, t += 4, r += 3, o += 3) {
+    if (ok) {
+      const uint8_t *at = blob + (o[0] | o[1] << 8 | (unsigned)o[2] << 16);
+      memcpy(t, &at, 3);
+    } else
+      memcpy(t, r, 3);
+  }
+  rs_flash = ok ? blob : 0;
+}
+#else
+void rs_flash_init(const uint8_t *blob, unsigned size) { (void)blob, (void)size; }
+#endif
+

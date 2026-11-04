@@ -11,7 +11,7 @@
  * --ram NAME,...    these variables in RAM; the others where their file puts them (the archive, mostly)
  * --frame ADDR      a frame each time the CPU reaches ADDR (eadk_display_wait_for_vblank's, say)
  * --frame-drawn     only when what the LCD shows changed since the last one (a key scan as the marker)
- * --frames-from MS  frames counted from then on
+ * --frames-from MS  frames counted from then on (and the profile)
  * --idle ADDR       a function the program waits in (ticksleep): the time inside isn't work
  * --vars-out DIR    the programs and appvars at the end, as files
  * --report FILE     a JSON report (else a summary on stdout)
@@ -139,7 +139,27 @@ static uint64_t cycles_now(void) { return sched_total_cycles(); }
 uint64_t emu_ms(void) { return now_ms; }
 bool emu_key_held(int group, int bit) { return group >= 0 && group < 8 && bit >= 0 && bit < 8 && held[group][bit]; }
 uint32_t emu_key_presses(int group, int bit) { return group >= 0 && group < 8 && bit >= 0 && bit < 8 ? presses[group][bit] : 0; }
-void emu_charge(uint32_t cycles) { debug.cpuCycles += cycles; }
+/* an OS routine's time, passed as a halted CPU passes it (CEmu's cpu_halt): up to the scheduler's next event, that
+ * event run (timers, the LCD, the seconds), and so on, the LCD's memory reads kept up with; charged at once, archiving
+ * a 19 KB appvar left a second's events behind and stopped the core (sched_second's assertion) */
+static bool in_hook;
+void emu_charge(uint32_t cycles) {
+  if (!in_hook) {
+    debug.cpuCycles += cycles;
+    return;
+  }
+  cpu.cycles = debug.cpuCycles;
+  while (cycles) {
+    uint32_t next = sched_event_next_cycle(), step = next > cpu.cycles ? next - cpu.cycles : 0;
+    if (step > cycles) step = cycles;
+    if (step > 4800) step = 4800; /* (0.1 ms) */
+    cpu.cycles += step, cycles -= step;
+    sched_process_pending_dma(0);
+    sched_process_pending_events();
+  }
+  /* (what the debugger puts back after the hook: these, and the events looked at again at once) */
+  debug.cpuCycles = cpu.cycles, debug.cpuBaseCycles = cpu.baseCycles, debug.cpuNext = 0;
+}
 void emu_jump(uint32_t pc) { debug_set_pc(pc); }
 
 void emu_stop(const char *st, const char *fmt, ...) {
@@ -204,7 +224,13 @@ asic_rev_t gui_handle_reset(const boot_ver_t *boot_ver, asic_rev_t loaded_rev, a
   return !strcmp(opt.rev, "pre-a") ? ASIC_REV_PRE_A : !strcmp(opt.rev, "i") ? ASIC_REV_I : ASIC_REV_M;
 }
 void gui_debug_close(void) {}
+static void debug_hook(int reason, uint32_t data);
 void gui_debug_open(int reason, uint32_t data) {
+  in_hook = true;
+  debug_hook(reason, data);
+  in_hook = false;
+}
+static void debug_hook(int reason, uint32_t data) {
   uint32_t pc = cpu.registers.PC, sp = cpu.registers.SPL;
   switch (reason) {
   case DBG_BREAKPOINT:
@@ -585,7 +611,7 @@ int main(int argc, char **argv) {
     if (opt.profile) { /* the PC every 0.1 ms */
       for (int k = 0; k < 10 && !stopping; k++) {
         emu_run(1);
-        if (started) samples[cpu.registers.PC & 0xFFFFFF]++;
+        if (started && now_ms >= opt.frames_from) samples[cpu.registers.PC & 0xFFFFFF]++;
       }
     } else {
       emu_run(1);
@@ -609,7 +635,7 @@ int main(int argc, char **argv) {
     uint32_t sp = cpu.registers.SPL;
     if (cpu.ADL && (sp < STACK_BOT - 0x100 || sp > STACK_TOP)) {
       static bool told;
-      if (!told) emu_warn("the stack pointer left the stack: %06X at %llu ms", sp, (unsigned long long)now_ms);
+      if (!told) emu_warn("the stack pointer left the stack: %06X at %llu ms (PC %06X)", sp, (unsigned long long)now_ms, pc);
       told = true;
     }
   }

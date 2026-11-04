@@ -118,8 +118,11 @@ static void edges(void) {
 static inline int wy_of(uint8_t slot) { return win_y + (uint8_t)((uint8_t)(slot - (uint8_t)win_y) & 31); }
 
 /* the queues: in the 3D view's picture (light is never spread while it is drawn) */
-static uint16_t *lq;      /* cells to spread light from */
-static unsigned lq_h, lq_t;
+uint16_t *w_lq;           /* cells to spread light from (rs.s too) */
+unsigned w_lq_h, w_lq_t;
+#define lq w_lq
+#define lq_h w_lq_h
+#define lq_t w_lq_t
 #define LQ_N 5000
 static uint16_t *dq;      /* cells to darken, and the light they had */
 static uint8_t *dql;
@@ -163,6 +166,13 @@ static void neighbours(uint16_t i) {
 
 /* spreads both lights from the queued cells */
 static const uint8_t OP16[16] = {0, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240};
+#if defined(__ez80__) && !defined(NB_WORLD_C)
+void w_light_spread(void);
+static void light_spread(void) {
+  edges();
+  w_light_spread();
+}
+#else
 static void light_spread(void) {
   edges();
   while (lq_h != lq_t) {
@@ -187,6 +197,7 @@ static void light_spread(void) {
     }
   }
 }
+#endif
 
 /* takes away the light that came through the queued cells (dql: the level they had, 16: block light); the cells
  * at its edge that keep their own light are queued to spread it back */
@@ -321,7 +332,17 @@ static void put_cb(int x, int y, int z, int b) {
   wblk[i] = (uint8_t)b;
 }
 
-/* (fill's loops down a column, each on its own: few values at once, kept in registers) */
+/* (fill's loops down a column, each on its own: few values at once, kept in registers; the CE's in assembly) */
+#if defined(__ez80__) && !defined(NB_WORLD_C)
+void w_col_copy(uint8_t *p, uint8_t ys, const uint8_t *cells, uint8_t n);
+void w_col_light(uint16_t c, uint8_t ys, uint8_t y, uint8_t y1, uint8_t top);
+void w_col_seed_border(uint16_t c, uint16_t cn, uint8_t ys, uint8_t y, uint8_t y1);
+void w_col_seed(uint16_t c, uint8_t ys, uint8_t y, uint8_t y1, uint8_t top, uint8_t nt, uint8_t inside);
+#define col_copy w_col_copy
+#define col_light w_col_light
+#define col_seed_border w_col_seed_border
+#define col_seed(c, ys, y, y1, top, nt, inside) w_col_seed(c, ys, y, y1, top, nt, (uint8_t)(inside))
+#else
 __attribute__((noinline)) static void col_copy(uint8_t *p, uint8_t ys, const uint8_t *cells, uint8_t n) {
   for (; n; n--, cells++) {
     p[YOFF[ys]] = *cells;
@@ -360,9 +381,12 @@ __attribute__((noinline)) static void col_seed(uint16_t c, uint8_t ys, uint8_t y
   }
 }
 
+#endif
+
 /* makes the columns [x0, x1) x [z0, z1) at levels [y0, y1) (cols: their column data too), then their light and
  * faces */
 static void fill(int x0, int z0, int x1, int z1, int y0, int y1, bool cols) {
+  render_stale = 1;   /* (the light's queues are in rbuf) */
   uint8_t ys0 = MOD32[y0];
   for (int z = z0; z < z1; z++)
     for (int x = x0; x < x1; x++) {
@@ -441,6 +465,7 @@ static void fill(int x0, int z0, int x1, int z1, int y0, int y1, bool cols) {
 /* ---------------------------------------------------------------- changes */
 void world_set(int x, int y, int z, int b) {
   if (!in_win(x, y, z)) return;
+  render_stale = 1;
   uint16_t i = (uint16_t)WI(x, y, z);
   int old = wblk[i];
   if (old == b) return;
@@ -517,8 +542,11 @@ bool world_busy(void) {
 }
 
 bool world_behind(void) {
-  /* (more rows to make than the view's edge can wait for: it sees 13 blocks at most, the window holds 16) */
-  return want_x - win_x > 3 || win_x - want_x > 3 || want_z - win_z > 3 || win_z - want_z > 3;
+  /* (more rows to make than the view's edge can wait for: the window holds 15 blocks ahead, the view sees
+   * view_dist + 1, 9 at 8, 11 at 10) */
+  extern int view_dist;
+  int k = 13 - view_dist;
+  return want_x - win_x > k || win_x - want_x > k || want_z - win_z > k || win_z - want_z > k;
 }
 
 /* one row (or level) of the window made: the side the player went towards */

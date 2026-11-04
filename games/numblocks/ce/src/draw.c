@@ -3,6 +3,7 @@
  * HUD over it. */
 #include "nb.h"
 #include "draw.h"
+#include "rs.h"
 
 Canvas cv;
 const uint8_t *gfx, *texdat;
@@ -61,18 +62,36 @@ static void glyphs(const char *s, int x, int y, uint8_t c, int scale) {
     }
     return;
   }
-  for (int r = 0; r < 8; r++) {
-    uint8_t *d = row_at(y + r);
-    if (!d) continue;
-    int gx = x;
-    for (const char *p = s; *p; p++) {
-      int k = *p - 32;
-      if (k < 0 || k >= 96) continue;
-      uint8_t bits = font_bits[k * 8 + r];
-      for (int b = gx; bits; b++, bits >>= 1)
-        if (bits & 1 && b >= x0 && b < x1) d[b] = c;
-      gx += font_w[k];
-    }
+  /* a glyph at a time, only its rows on the canvas; one across all of it a row at a time, each bit by its own test
+   * (a byte's shift is a call on the eZ80) */
+  static const uint8_t BIT8[8] = {1, 2, 4, 8, 16, 32, 64, 128};
+  int top = y - cv.oy;
+  if (top >= cv.h || top + 8 <= 0) return;   /* (above or below the canvas: offscreen's other band) */
+  uint8_t r0 = (uint8_t)(top < 0 ? -top : 0), r1 = (uint8_t)(top + 8 > cv.h ? cv.h - top : 8);
+  uint8_t *row0 = cv.p + (top + r0) * cv.stride - cv.ox;
+  for (; *s; s++) {
+    uint8_t k = (uint8_t)(*s - 32);
+    if (k >= 96) continue;
+    const uint8_t *g = font_bits + k * 8 + r0;
+    uint8_t *q = row0 + x;
+    if (x >= cv.ox && x + 8 <= cv.ox + cv.w)
+      for (uint8_t r = r0; r < r1; r++, q += cv.stride) {
+        uint8_t bits = *g++;
+        if (!bits) continue;
+        if (bits & 1) q[0] = c;
+        if (bits & 2) q[1] = c;
+        if (bits & 4) q[2] = c;
+        if (bits & 8) q[3] = c;
+        if (bits & 16) q[4] = c;
+        if (bits & 32) q[5] = c;
+        if (bits & 64) q[6] = c;
+        if (bits & 128) q[7] = c;
+      }
+    else
+      for (uint8_t r = r0; r < r1; r++, q += cv.stride, g++)
+        for (int i = 0; i < 8; i++)
+          if (*g & BIT8[i] && x + i >= cv.ox && x + i < cv.ox + cv.w) q[i] = c;
+    x += font_w[k];
   }
 }
 
@@ -86,12 +105,23 @@ void text_big(int x, int y, const char *s, uint8_t c, int scale) { glyphs(s, x, 
 
 /* a picture kept as runs (tools/pack.py rle): x, y its top left; sx, sy, w, h a part of it */
 static void runs(const uint8_t *base, int sw, int sh, int x, int y, int sx, int sy, int w, int h) {
-  for (int r = sy; r < sy + h && r < sh; r++) {
-    uint8_t *d = row_at(y + r - sy);
-    if (!d) continue;
-    const uint8_t *p = base + (base[r * 2] | base[r * 2 + 1] << 8) + sh * 2;
-    /* (screen x = col + dx, within [a, b): the part asked for, on the canvas) */
-    int dx = x - sx, a = x > x0 ? x : x0, b = x + w < x1 ? x + w : x1;
+  /* (only the rows on the canvas; screen x = col + dx, within [a, b): the part asked for, on the canvas) */
+  int top = y - sy - cv.oy, r0 = sy, r1 = sy + h < sh ? sy + h : sh;
+  if (r0 + top < 0) r0 = -top;
+  if (r1 + top > cv.h) r1 = cv.h - top;
+  int dx = x - sx, a = x > cv.ox ? x : cv.ox, b = x + w < cv.ox + cv.w ? x + w : cv.ox + cv.w;
+  if (r1 <= r0 || b <= a) return;
+  bool whole = !sx && a == x && b == x + sw;
+  uint8_t *d = cv.p + (r0 + top) * cv.stride - cv.ox;
+  const uint8_t *o = base + r0 * 2;
+  for (int r = r0; r < r1; r++, d += cv.stride, o += 2) {
+    union { unsigned u; uint8_t b[3]; } off = {0};   /* (a row's offset, little-endian: no shift) */
+    off.b[0] = o[0], off.b[1] = o[1];
+    const uint8_t *p = base + off.u + sh * 2;
+    if (whole) {
+      rs_rle(d + x, p, sw);   /* (the whole row: in assembly) */
+      continue;
+    }
     int col = 0;
     while (col < sw) {
       int n = *p++;
