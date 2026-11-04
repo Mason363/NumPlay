@@ -734,10 +734,10 @@ CHECKS = {
     # "CTN1", version 1: how to play read (flags at 5), in level 1 (the level at 9); after the reinstall, from the
     # copy, back in it through the title map and on (level 1 or 2)
     "catninja": (lambda v: catninja_ok(v) and v[5] & 1 and v[9] == 0, lambda v: catninja_ok(v) and v[5] & 1 and v[9] in (0, 1)),
-    # "KRS", version 1, the check byte last: the goblin's notification read (seen_note at 48); after the reinstall,
-    # from the copy, still read
-    "kingdomrush": (lambda v: len(v) == 57 and v[:4] == b"KRS\1" and v[48] & 8,
-                    lambda v: len(v) == 57 and v[:4] == b"KRS\1" and v[48] & 8),
+    # "KRS", version 2 (the Hero Room's 2 bytes at the end), the check byte last: the goblin's notification read
+    # (seen_note at 48); after the reinstall, from the copy, still read
+    "kingdomrush": (lambda v: len(v) == 59 and v[:4] == b"KRS\2" and v[48] & 8,
+                    lambda v: len(v) == 59 and v[:4] == b"KRS\2" and v[48] & 8),
     # "MRB1", version 1, its size (1216): the first level's three stars (8), cleared (604), how to play read (1208);
     # after the reinstall, from the copy, the same
     "mrbullet": (lambda v: len(v) == 1216 and v[:4] == b"MRB1" and v[8] == 3 and v[604] == 1 and v[1208] == 1,) * 2,

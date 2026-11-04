@@ -428,16 +428,16 @@ static int shot_target(const Soldier *so, float w, float min_d, bool first, bool
   return got;
 }
 
-static void arrow(Soldier *so, int target, int dmg, bool multi) {   /* Alleria's arrows (Arrow, ArrowAlleriaMultishoot) */
+static void arrow(Soldier *so, int target, int dmg, bool multi) {   /* Alleria's arrows (§const§, ArrowAlleriaMultishoot) */
   Enemy *e = EN(target);
   Bullet *b = e ? bullet_new(BU_ARROW) : 0;
   if (!b) return;
   b->x0 = b->x = so->x, b->y0 = b->y = so->y - 12;
   b->target = (int8_t)target;
   b->level = 1, b->min_dmg = b->max_dmg = (int16_t)(dmg ? dmg : 1);
-  b->t1 = multi ? (int16_t)rnd_round(12, 20) : 20;
+  b->t1 = multi ? (int16_t)rnd_round(12, 20) : 15;
   float tx = e->x + enemy_stats[e->type].x_adj, ty = e->y + enemy_stats[e->type].y_adj;
-  if (!e->blocked && !multi) tx += 0, ty += 0;
+  if (!e->blocked && !e->held) tx += e->xs * b->t1 + rnd() * 10, ty += e->ys * b->t1 + rnd() * 10 - 10;   /* (where it will be) */
   b->g = 1;
   b->xs = (tx - b->x0) / b->t1, b->ys = (ty - b->y0 - b->g * b->t1 * b->t1 / 2) / b->t1;
 }
@@ -461,7 +461,7 @@ static void bolt(float x, float y, int target, int dmg) {   /* Magnus' (and his 
   Bullet *b = bullet_new(HB_BOLT);
   if (!b) return;
   b->x = x, b->y = y - 19;
-  b->target = (int8_t)target, b->acc = 1, b->acc_max = 10, b->first = 1;
+  b->target = (int8_t)target, b->acc = 1, b->acc_max = 20, b->first = 1;   /* (maxAceleration 20) */
   b->min_dmg = b->max_dmg = (int16_t)dmg;
   Enemy *e = EN(target);
   if (e) b->tx = e->x + enemy_stats[e->type].x_adj, b->ty = e->y + enemy_stats[e->type].y_adj;
