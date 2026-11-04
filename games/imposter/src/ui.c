@@ -633,13 +633,12 @@ static bool role_key(uint32_t hit) {
 static void draw_role(void) {
   char w[WORD_MAX + 1], h[WORD_MAX + 8];
   int c = word_text(sv.word, w);
+  background(BG_TOP, BG_BOT);  /* (the same screen for everyone: only the words tell, so no one sees it from across the room) */
   if (is_imposter(sv.turn)) {
-    background(0xE3343F, 0x7A0D1B);
     gfx_text_center(&np_font_title, 160, 66, "You are the", WHITE, 256);
-    big_text("Imposter", 160, 114, 296, 64, 768, WHITE);
+    big_text("Imposter", 160, 114, 296, 64, 768, RED_TEXT);
     if (sv.hint) cat(cat(h, "Hint: "), categories[c].name), chip(160, 160, h, WHITE, 60);
   } else {
-    background(0x2C6CE3, 0x14388C);
     gfx_text_center(&np_font_body, 160, 46, "The secret word", HEX(0xDCE6FF), 256);
     big_text(w, 160, 108, 296, 96, 720, WHITE);
     chip(160, 166, categories[c].name, WHITE, 60);

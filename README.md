@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <a href="#how-to-install"><b>How to install</b></a> &nbsp;·&nbsp; <a href="#other-calculators"><b>Other calculators</b></a> &nbsp;·&nbsp; <a href="docs/play.md"><b>How to play</b></a> &nbsp;·&nbsp; <a href="https://github.com/Mason363/NumPlay/releases/latest"><b>All downloads</b></a> &nbsp;·&nbsp; <a href="CHANGELOG.md"><b>What's new</b></a> &nbsp;·&nbsp; <a href="#roadmap"><b>Roadmap</b></a> &nbsp;·&nbsp; <a href="docs/make-a-game.md"><b>Make a game</b></a>
+  <a href="#how-to-install"><b>How to install</b></a> &nbsp;·&nbsp; <a href="#pick-your-calculator"><b>Pick your calculator</b></a> &nbsp;·&nbsp; <a href="docs/play.md"><b>How to play</b></a> &nbsp;·&nbsp; <a href="https://github.com/Mason363/NumPlay/releases/latest"><b>All downloads</b></a> &nbsp;·&nbsp; <a href="CHANGELOG.md"><b>What's new</b></a> &nbsp;·&nbsp; <a href="#roadmap"><b>Roadmap</b></a> &nbsp;·&nbsp; <a href="docs/make-a-game.md"><b>Make a game</b></a>
 </p>
 
 <p align="center">
@@ -38,7 +38,7 @@
 ⭐ **Enjoying NumPlay?** Give it a star at the top of this page: it takes a second and helps other people find it.<br>
 💡 **Want a game that isn't here?** Check the [roadmap](#roadmap) first, then [ask for it in an issue](https://github.com/Mason363/NumPlay/issues/new/choose).
 
-## Other calculators
+## Pick your calculator
 
 <p align="center"><img src="docs/media/calcs/lineup.png" width="720" alt="A NumWorks, a TI-84 Plus CE, a TI-Nspire CX II, a Casio fx-CG50 and a Casio Graph 35+E II"></p>
 
@@ -47,10 +47,11 @@
 
 <table>
   <tr>
-    <td align="center" width="25%"><a href="docs/calculators/ti-84-plus-ce.md"><img src="docs/media/calcs/ti84ce.png" height="150" alt="TI-84 Plus CE"><br><b>TI-84 Plus CE</b></a><br><sub>and TI-83 Premium CE<br>15 games</sub></td>
-    <td align="center" width="25%"><a href="docs/calculators/ti-nspire.md"><img src="docs/media/calcs/nspire.png" height="150" alt="TI-Nspire CX II"><br><b>TI-Nspire CX</b></a><br><sub>CX and CX II, with Ndless<br>78 games</sub></td>
-    <td align="center" width="25%"><a href="docs/calculators/casio-fx-cg50.md"><img src="docs/media/calcs/casio_cg50.png" height="150" alt="Casio fx-CG50"><br><b>Casio fx-CG50</b></a><br><sub>and Graph 90+E, fx-CG10, fx-CG20<br>73 games</sub></td>
-    <td align="center" width="25%"><a href="docs/porting.md"><img src="docs/media/calcs/raspberrypi.png" height="110" alt="A Raspberry Pi 5"><br><b>Anything else</b></a><br><sub>a computer, a Raspberry Pi,<br>a board with a screen</sub></td>
+    <td align="center" width="20%"><a href="docs/calculators/numworks.md"><img src="docs/media/calcs/numworks.png" height="150" alt="NumWorks"><br><b>NumWorks</b></a><br><sub>N0110, N0115, N0120<br>29 games, 48 big games</sub></td>
+    <td align="center" width="20%"><a href="docs/calculators/ti-84-plus-ce.md"><img src="docs/media/calcs/ti84ce.png" height="150" alt="TI-84 Plus CE"><br><b>TI-84 Plus CE</b></a><br><sub>and TI-83 Premium CE<br>15 games</sub></td>
+    <td align="center" width="20%"><a href="docs/calculators/ti-nspire.md"><img src="docs/media/calcs/nspire.png" height="150" alt="TI-Nspire CX II"><br><b>TI-Nspire CX</b></a><br><sub>CX and CX II, with Ndless<br>78 games</sub></td>
+    <td align="center" width="20%"><a href="docs/calculators/casio-fx-cg50.md"><img src="docs/media/calcs/casio_cg50.png" height="150" alt="Casio fx-CG50"><br><b>Casio fx-CG50</b></a><br><sub>and Graph 90+E, fx-CG10, fx-CG20<br>73 games</sub></td>
+    <td align="center" width="20%"><a href="docs/porting.md"><img src="docs/media/calcs/raspberrypi.png" height="110" alt="A Raspberry Pi 5"><br><b>Anything else</b></a><br><sub>a computer, a Raspberry Pi,<br>a board with a screen</sub></td>
   </tr>
 </table>
 
@@ -382,13 +383,8 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] Kingdom Rush: the heroes
 - [x] Retro-Go: ROMs trimmed of their padding, so more of them fit
 - [x] More of Retro-Go: Game & Watch and Mega Drive
-- [ ] Full Minecraft 1.18.2 as a standalone app
 - [ ] Into the Breach
 - [ ] A racing game: F1 or GT3
-- [ ] Ori and the Blind Forest
-- [ ] Hades
-- [ ] Super Smash Bros
-- [ ] Rocket League
 - [ ] Deltarune: the rest of Chapter 1 (the Forest, the shops, the Card Castle, Jevil, the King), and each later chapter as an app of its own
 - [ ] Hollow Knight: more of Hallownest past Mantis Village (the rest of the Fungal Wastes, the City of Tears and on)
 - [ ] Hill Climb Racing: the stages and vehicles added after version 1.10.2
@@ -399,9 +395,7 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Hotline Miami
 - [ ] Brawl Stars, against bots
 - [ ] Papers, Please, with the story and Endless
-- [ ] Mario Kart
 - [ ] OMORI
-- [ ] The Legend of Zelda: Ocarina of Time
 - [ ] florr.io
 - [ ] Rider Worlds
 - [ ] Hollow Knight: Godhome, its boss fights in an app of their own
@@ -410,8 +404,6 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Getting Over It
 - [ ] Hill Climb Racing 2
 - [ ] Hill Climb Racing in 3D, with a scooter, a BMX, a skateboard and roller skates
-- [ ] Advance Wars
-- [ ] Half-Life
 - [ ] Dog Hotel
 - [ ] Kingdom Rush: Frontiers, Origins and Vengeance
 - [ ] Cult of the Lamb

@@ -154,11 +154,16 @@ st = state(out)
 check(st and st["names"] == NAMES, "names typed with the letter keys: %s" % (st and st["names"]))
 check(st and st["imposters"] == 2 and st["hint"] == 1, "two imposters, the category as a hint")
 word, imps = check_round(out, NAMES, 2, True, "round 1")
-colours_ok = True
-for i in range(len(NAMES)):
-    r, g, b = pixel(pics["role%d" % i], 4, 120)
-    colours_ok &= (r > 150 and g < 100) if i in imps else (b > 150 and r < 100)
-check(colours_ok, "imposter screens red, the others blue")
+def reds(path, y0, y1):
+    """The red text's pixels in rows y0 to y1: only the Imposter's word is red."""
+    return sum(1 for y in range(y0, y1) for x in range(0, 320, 2)
+               if (lambda c: c[0] > 200 and c[1] < 150 and c[2] < 150)(pixel(path, x, y)))
+
+
+same_bg = len({pixel(pics["role%d" % i], 4, 120) for i in range(len(NAMES))}) == 1
+check(same_bg, "every role screen has the same background, so it can't be seen from across the room")
+check(all((reds(pics["role%d" % i], 85, 145) > 50) == (i in imps) for i in range(len(NAMES))),
+      "only the Imposter's screen has red text")
 r, g, b = pixel(pics["pass0"], 4, 120)
 check(b > r and r < 100, "the pass screen keeps the secret (the game's own colours)")
 
