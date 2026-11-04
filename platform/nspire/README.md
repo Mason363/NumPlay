@@ -21,7 +21,7 @@ make port TARGET=nspire        (in a game's folder): build/nspire/<game>.tns
 | menu | toolbox |
 | var | var |
 | tab | x,n,t |
-| 0 to 9, + − × ÷ . , ( ) ^ x² π sin cos tan EE (−) | the same (−) is Ans |
+| 0 to 9, + − × ÷ . , ( ) ^ x² π tan EE (−) | the same, (−) is Ans |
 
 Saves: `/documents/ndless/numplay_<game>.sav.tns`.
 
