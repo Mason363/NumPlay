@@ -85,7 +85,8 @@ $(PORT_OUT)/$(PORT_ID).html: $(PORT_SRC) $(WEB_DATA) $(PORT_CXX_OBJ) $(wildcard 
 	@mkdir -p $(@D)
 	$(Q) emcc $(PORT_CFLAGS) -g0 -O2 --use-port=sdl3 -sASYNCIFY -sALLOW_MEMORY_GROWTH -sENVIRONMENT=web \
 	  --shell-file $(NP_PLATFORM)/sdl/shell.html \
-	  $(PORT_SRC) $(WEB_DATA) $(PORT_CXX_OBJ) $(NP_PLATFORM)/sdl/np_sdl.c $(PORT_COMMON) -o $@
+	  $(PORT_SRC) $(WEB_DATA) $(PORT_CXX_OBJ) $(NP_PLATFORM)/sdl/np_sdl.c $(PORT_COMMON) \
+	  $(if $(PORT_CXX),$(NP_PLATFORM)/common/np_cxx_rt.c) -o $@
 	@echo "WEB     $@"
 else ifeq ($(TARGET),casio-cg)
 # the fx-CG50 / Graph 90+E: GCC for sh3eb-elf and libfxcg (FXCG: their folder, see platform/casio-cg/README.md)
@@ -96,15 +97,20 @@ CG_SRC = $(PORT_SRC) $(NP_PLATFORM)/casio-cg/np_casio_cg.c $(PORT_COMMON)
 CG_LIBC = $(FXCG)/newlib/sh-elf
 CG_FLAGS = $(PORT_CFLAGS) -Os -mb -m4a-nofpu -mhitachi -nostdlib -ffunction-sections -fdata-sections \
   -isystem $(CG_LIBC)/include -idirafter $(FXCG)/libfxcg/include
+NP_CXX = PATH="$(CG_PATH):$$PATH" sh3eb-elf-g++ -Os -mb -m4a-nofpu -mhitachi -nostdlib -ffunction-sections \
+  -fdata-sections -isystem $(CG_LIBC)/include -idirafter $(FXCG)/libfxcg/include
+CG_CXX = $(if $(PORT_CXX),$(NP_PLATFORM)/casio-cg/np_cxx.cpp)
 port: $(PORT_OUT)/$(PORT_ID).g3a
-$(PORT_OUT)/$(PORT_ID).g3a: $(CG_SRC) $(PORT_ASM) $(wildcard $(NP_PLATFORM)/include/*.h) $(NP_PLATFORM)/casio-cg/addin.ld \
-  $(NP_PLATFORM)/casio-cg/g3a.py
+$(PORT_OUT)/$(PORT_ID).g3a: $(CG_SRC) $(PORT_ASM) $(PORT_CXX_OBJ) $(wildcard $(NP_PLATFORM)/include/*.h) \
+  $(NP_PLATFORM)/casio-cg/addin.ld $(NP_PLATFORM)/casio-cg/g3a.py
 	@mkdir -p $(CG_DIR)
 	$(Q) n=0; objs=; for f in $(CG_SRC) $(PORT_ASM); do n=$$((n+1)); objs="$$objs $(CG_DIR)/f$$n.o"; \
 	  PATH="$(CG_PATH):$$PATH" sh3eb-elf-gcc $(CG_FLAGS) -c $$f -o $(CG_DIR)/f$$n.o || exit 1; \
 	  case $$f in *.S) PATH="$(CG_PATH):$$PATH" sh3eb-elf-objcopy --prefix-symbols=_ $(CG_DIR)/f$$n.o;; esac; done; \
+	  for f in $(CG_CXX); do n=$$((n+1)); objs="$$objs $(CG_DIR)/f$$n.o"; \
+	  $(NP_CXX) $(NP_CXXFLAGS) -c $$f -o $(CG_DIR)/f$$n.o || exit 1; done; \
 	  PATH="$(CG_PATH):$$PATH" sh3eb-elf-gcc -mb -m4a-nofpu -mhitachi -nostdlib -T$(NP_PLATFORM)/casio-cg/addin.ld \
-	  $$objs -Wl,--gc-sections -Wl,-u,initialize -L$(CG_LIBC)/lib -L$(FXCG)/sdk/lib -lc -lm -lgcc -lfxcg -lc -lgcc \
+	  $$objs $(PORT_CXX_OBJ) -Wl,--gc-sections -Wl,-u,initialize -L$(CG_LIBC)/lib -L$(FXCG)/sdk/lib -lc -lm -lgcc -lfxcg -lc -lgcc \
 	  -o $(CG_DIR)/$(PORT_ID).elf
 	$(Q) PATH="$(CG_PATH):$$PATH" sh3eb-elf-objcopy -O binary -R .ilram $(CG_DIR)/$(PORT_ID).elf $(CG_DIR)/$(PORT_ID).bin
 	$(Q) python3 $(NP_PLATFORM)/casio-cg/g3a.py $(CG_DIR)/$(PORT_ID).bin $@ --name "$(PORT_NAME)" --icon src/icon.png
