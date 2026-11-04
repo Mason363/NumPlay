@@ -125,6 +125,7 @@ void plat_begin_draw(void) {}
 uint8_t *plat_ram(unsigned n) { return calloc(1, n); }
 void plat_palette(const uint16_t *p, int first, int n) { memcpy(pal + first, p, (size_t)n * 2); }
 
+void plat_poll(void) {}
 unsigned plat_keys(void) {
   updates++;
   if (getenv("CEL_DEBUG") && updates == 2 && g_level.room) {

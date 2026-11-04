@@ -102,6 +102,7 @@ static bool room_load(int slot, int index) {
   int raw = (int)R16(p);
   if (raw > GRID_BYTES) return false;
   rm->grid = grid_mem[slot];
+  rm->solid = rm->grid + 2 * rm->tw * rm->th;
   plat_unpack(rm->grid, HPTR(p + 2));
   rm->decals = HPTR(p + 5);
   rm->ents = HPTR(p + 8);
@@ -114,30 +115,36 @@ static bool room_load(int slot, int index) {
 }
 
 /* ---------------------------------------------------------------- collisions with the tiles */
-static bool cell_solid(int cx, int cy) {
-  for (int k = 0; k < 2; k++) {
-    const Room *rm = &g_level.rooms[k ? g_level.slot ^ 1 : g_level.slot];
-    if (rm->index < 0) continue;
-    int x = cx - (rm->gx >> 3), y = cy - (rm->gy >> 3);
-    if ((unsigned)x >= (unsigned)rm->tw || (unsigned)y >= (unsigned)rm->th) continue;
-    return rm->grid[2 * rm->tw * rm->th + y * rm->rb + (x >> 3)] >> (x & 7) & 1;
-  }
-  return false;
-}
-/* Grid.Collide: [l, r) x [t, b) in pixels */
+/* Grid.Collide: [l, r) x [t, b) in pixels; a cell is the current room's if it has it, else the other's. A row's
+ * bytes worked out once a row, a cell's bit from a table (no shifts by a number) */
+static const uint8_t BIT[8] = {1, 2, 4, 8, 16, 32, 64, 128};
 bool tiles_solid(int l, int t, int r, int b) {
   if (r <= l || b <= t) return false;
   int cx0 = l >> 3, cy0 = t >> 3, cx1 = (r - 1) >> 3, cy1 = (b - 1) >> 3;
-  for (int cy = cy0; cy <= cy1; cy++)
-    for (int cx = cx0; cx <= cx1; cx++)
-      if (cell_solid(cx, cy)) return true;
+  const Room *cur = &g_level.rooms[g_level.slot], *oth = &g_level.rooms[g_level.slot ^ 1];
+  int cgx = cur->gx >> 3, cgy = cur->gy >> 3, ogx = oth->gx >> 3, ogy = oth->gy >> 3;
+  for (int cy = cy0; cy <= cy1; cy++) {
+    int cyr = cy - cgy, oyr = cy - ogy;
+    const uint8_t *crow = cur->index >= 0 && (unsigned)cyr < (unsigned)cur->th ? cur->solid + cyr * cur->rb : NULL;
+    const uint8_t *orow = oth->index >= 0 && (unsigned)oyr < (unsigned)oth->th ? oth->solid + oyr * oth->rb : NULL;
+    if (!crow && !orow) continue;
+    for (int cx = cx0; cx <= cx1; cx++) {
+      int x = cx - cgx;
+      if (crow && (unsigned)x < (unsigned)cur->tw) {
+        if (crow[x >> 3] & BIT[x & 7]) return true;
+        continue;
+      }
+      x = cx - ogx;
+      if (orow && (unsigned)x < (unsigned)oth->tw && (orow[x >> 3] & BIT[x & 7])) return true;
+    }
+  }
   return false;
 }
 Ent *solid_first(int l, int t, int r, int b, const Ent *self) {
-  for (int i = 0; i < g_nents; i++) {
-    Ent *o = &g_ents[i];
-    if (o != self && (o->flags & (EF_SOLID | EF_COLLIDABLE)) == (EF_SOLID | EF_COLLIDABLE) && o->type != 255 &&
-        rect_hits(l, t, r, b, o))
+  const uint8_t *k = ents_kind(EF_SOLID);   /* (the solid ones, in order) */
+  for (int n = *k++; n; n--) {
+    Ent *o = &g_ents[*k++];
+    if (o != self && (o->flags & (EF_SOLID | EF_COLLIDABLE)) == (EF_SOLID | EF_COLLIDABLE) && rect_hits(l, t, r, b, o))
       return o;
   }
   return NULL;
@@ -151,8 +158,9 @@ Ent *solid_hit(int l, int t, int r, int b, const Ent *self) {
 }
 /* CollideFirstOutside<JumpThru>: one e touches at (x, y) and not where it is */
 Ent *jumpthru_first_outside(const Ent *e, int x, int y) {
-  for (int i = 0; i < g_nents; i++) {
-    Ent *o = &g_ents[i];
+  const uint8_t *k = ents_kind(EF_JUMPTHRU);
+  for (int n = *k++; n; n--) {
+    Ent *o = &g_ents[*k++];
     if ((o->flags & (EF_JUMPTHRU | EF_COLLIDABLE)) == (EF_JUMPTHRU | EF_COLLIDABLE) && o != e &&
         ent_collide_at(e, x, y, o) && !ent_collide_at(e, e->x, e->y, o))
       return o;
@@ -403,12 +411,14 @@ static void render_cells(int ca, int cb, int ra, int rb) {
   g_clip_x0 = imax(ca * 8 - g_offx, 0), g_clip_x1 = imin(cb * 8 + 8 - g_offx, VIEW_W);
   g_clip_y0 = imax(ra * 8 - g_offy, 0), g_clip_y1 = imin(rb * 8 + 8 - g_offy, VIEW_H);
   draw_layers_back(ca, cb, ra, rb);
+  plat_poll();
   BENCH(4);
   draw_decals(0);
   BENCH(10);
   ents_render(32767, -10000);
   BENCH(5);
   draw_layer_fg(ca, cb, ra, rb);
+  plat_poll();
   BENCH(6);
   draw_decals(1);
   BENCH(10);

@@ -44,8 +44,9 @@ void save_add_berry(int ch, int index, bool golden) {
   else if (index >= 0 && index < 64) save.ch[ch].berries[index >> 3] |= (uint8_t)(1 << (index & 7));
 }
 static int berries_of(int ch) {
+  static const uint8_t ONES[16] = {0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4};
   int n = 0;
-  for (int i = 0; i < 64; i++) n += save_has_berry(ch, i);
+  for (int i = 0; i < 8; i++) n += ONES[save.ch[ch].berries[i] & 15] + ONES[save.ch[ch].berries[i] >> 4];
   return n;
 }
 void save_add_death(void) {
@@ -108,7 +109,7 @@ static void hud_reset(void);
 static void play_chapter(int ch) {
   if (!chapter_open(ch)) return;
   chapter = ch;
-  palette_apply(256);
+  palette_tint(true), palette_apply(256);
   g_berries_now = 0;
   hud_reset();
   level_load(ch, -1, INTRO_JUMP);
@@ -163,7 +164,10 @@ static void hud_draw(void) {
 
 /* ---------------------------------------------------------------- the frame */
 static bool ok_pressed(void) { return btn_pressed(&g_in.ok) || btn_pressed(&g_in.jump); }
-static void go(int sc) { screen = sc, sel = 0, screen_t = 0, full_redraw = 2; }
+static void go(int sc) {
+  if (sc != SC_PLAY) palette_tint(false), palette_apply(256);   /* (the menus untinted) */
+  screen = sc, sel = 0, screen_t = 0, full_redraw = 2;
+}
 void game_frame(void) {
   input_update(plat_keys());
   if (g_in.keys & K_QUIT) {
@@ -247,8 +251,17 @@ static void fade_view(void) {
 }
 void game_draw(void) {
   static int paused;   /* (frames drawn paused: the black goes into both buffers) */
-  if (full_redraw) draw_clear_screen(0), full_redraw--, level_render_forget();
+  static int shown[2] = {-1, -1}, buf;   /* the menu each buffer has (what it shows, the button's blink), drawn again
+                                          * only when that changes */
+  buf ^= 1;
+  if (full_redraw) draw_clear_screen(0), full_redraw--, level_render_forget(), shown[0] = shown[1] = -1;
   if (screen != SC_PAUSE) paused = 0;
+  if (screen != SC_PLAY && screen != SC_PAUSE) {
+    int now = screen * 4 + (screen_t % 60 < 45) * 2 + (screen_t > 60);
+    if (shown[buf] == now) return;
+    shown[buf] = now;
+  } else
+    shown[0] = shown[1] = -1;
   switch (screen) {
     case SC_KEYS: {   /* NumPlay's keys on the CE (platform/ti84ce/README.md), as the NumWorks version has them */
       static const char *const keys[][2] = {{"arrows", "Move"}, {"2nd", "Jump"}, {"clear", "Dash"}, {"math", "Grab"},
@@ -335,7 +348,19 @@ void game_draw(void) {
         *q = 0;
         draw_text(buf, 2, 4, WHITE);
         if (q - buf > 52) draw_text(buf + 52, 2, 14, WHITE);
-        draw_text(selftest ? "BAD" : "ok", 290, 14, WHITE);
+        {
+          extern int g_sf_bad;
+          draw_text(selftest || g_sf_bad ? "BAD" : "ok", 290, 14, WHITE);
+          char sb[4] = {(char)('0' + g_sf_bad), 0};
+          draw_text(sb, 280, 14, WHITE);
+        }
+        {
+          extern unsigned long g_float_cost[4];
+          char fb[40], *w = fb;
+          for (int k = 0; k < 4; k++) num(w, (uint32_t)g_float_cost[k]), w += strlen(w), *w++ = ' ';
+          *w = 0;
+          draw_text(fb, 2, 22, WHITE);
+        }
       }
 #endif
       break;
@@ -346,7 +371,7 @@ void game_draw(void) {
 void game_start_room(int ch, const char *room, int x, int y) {
   if (!chapter_open(ch)) return;
   chapter = ch;
-  palette_apply(256);
+  palette_tint(true), palette_apply(256);
   level_load(ch, level_room_find(room), INTRO_NONE);
   g_level.wipe = 0;
   if (x || y) {

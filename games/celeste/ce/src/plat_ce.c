@@ -69,9 +69,17 @@ __attribute__((noinline)) void plat_frame(void) {   /* (not inlined: the emulato
 void plat_begin_draw(void) { gfx_Wait(); }
 void plat_palette(const uint16_t *pal, int first, int n) { memcpy(gfx_palette + first, pal, (size_t)n * 2); }
 
+/* the keys down at any of the looks since the last plat_keys (plat_poll while drawing: a quick press during a long
+ * frame still counts) */
+static uint8_t seen[4];
+void plat_poll(void) {
+  seen[0] |= kb_Data[1], seen[1] |= kb_Data[2], seen[2] |= kb_Data[6], seen[3] |= kb_Data[7];
+}
 unsigned plat_keys(void) {
   unsigned k = 0;
-  uint8_t g1 = kb_Data[1], g2 = kb_Data[2], g6 = kb_Data[6], g7 = kb_Data[7];
+  plat_poll();
+  uint8_t g1 = seen[0], g2 = seen[1], g6 = seen[2], g7 = seen[3];
+  seen[0] = seen[1] = seen[2] = seen[3] = 0;
   if (g7 & kb_Left) k |= K_LEFT;
   if (g7 & kb_Right) k |= K_RIGHT;
   if (g7 & kb_Up) k |= K_UP;

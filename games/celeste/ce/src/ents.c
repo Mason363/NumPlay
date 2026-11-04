@@ -19,6 +19,7 @@ static int rec_flags(const uint8_t *r) { return r[13 + 4 * r[12]]; }
 static int rec_nvals(const uint8_t *r) { return r[14 + 4 * r[12]]; }
 static int rec_val(const uint8_t *r, int i) { return (int)R16(r + 15 + 4 * r[12] + 2 * i); }
 
+static bool kinds_stale = true;
 Ent *ent_new(int type, int x, int y) {
   Ent *e = NULL;
   for (int i = 0; i < g_nents; i++)
@@ -28,13 +29,32 @@ Ent *ent_new(int type, int x, int y) {
     e = &g_ents[g_nents++];
   }
   memset(e, 0, sizeof *e);
+  kinds_stale = true;
   e->type = (uint8_t)type;
   e->flags = EF_ACTIVE | EF_VISIBLE | EF_COLLIDABLE;
   e->room = (uint8_t)g_level.slot;
   e->x = x, e->y = y;
   return e;
 }
+/* the entities of a kind (EF_SOLID, EF_JUMPTHRU...: a flag they are made with), in order: a count, then their
+ * indices; made again after entities come or go */
+static uint8_t kinds[2][1 + MAX_ENTS];
+const uint8_t *ents_kind(int flag) {
+  if (kinds_stale) {
+    kinds[0][0] = kinds[1][0] = 0;
+    for (int i = 0; i < g_nents; i++) {
+      const Ent *e = &g_ents[i];
+      if (e->type == 255) continue;
+      if (e->flags & EF_SOLID) kinds[0][++kinds[0][0]] = (uint8_t)i;
+      if (e->flags & EF_JUMPTHRU) kinds[1][++kinds[1][0]] = (uint8_t)i;
+    }
+    kinds_stale = false;
+  }
+  return kinds[flag == EF_SOLID ? 0 : 1];
+}
+void ents_kinds_stale(void) { kinds_stale = true; }
 void ent_free(Ent *e) {
+  kinds_stale = true;
   for (int k = 0; k < 2; k++)   /* what it drew goes */
     if (e->bb[k][0] < e->bb[k][2]) draw_gone_buf(k, e->bb[k][0], e->bb[k][1], e->bb[k][2], e->bb[k][3]);
   e->type = 255;
@@ -672,9 +692,13 @@ static void zip_render(Ent *e) {
 }
 /* ZipMoverPathRenderer (depth 5000): the two ropes with their teeth moving along them, a cog at each end turning a
  * full turn as it goes; all once more in black a pixel lower first, and a black frame round the block after */
-static void zippath_lines(Ent *z, int fx, int fy, int tx, int ty, int off, bool black) {
-  int dx = tx - fx, dy = ty - fy, len = isqrt24(dx * dx + dy * dy);
-  int ux = len ? dx * 256 / len : 0, uy = len ? dy * 256 / len : 0;   /* (1/256 px) */
+static void zippath_lines(Ent *path, Ent *z, int fx, int fy, int tx, int ty, int off, bool black) {
+  if (!path->t2) {   /* (its length and direction, once) */
+    int dx = tx - fx, dy = ty - fy;
+    path->t2 = isqrt24(dx * dx + dy * dy) + 1;
+    path->t0 = path->t2 > 1 ? dx * 256 / (path->t2 - 1) : 0, path->t1 = path->t2 > 1 ? dy * 256 / (path->t2 - 1) : 0;
+  }
+  int len = path->t2 - 1, ux = path->t0, uy = path->t1;   /* (1/256 px) */
   int px = -uy, py = ux;   /* Perpendicular */
   int ax = fx * 256 + px * 3, ay = (fy + off) * 256 + py * 3, bx = fx * 256 - px * 4, by = (fy + off) * 256 - py * 4;
   int ex = (tx - fx) * 256, ey = (ty - fy) * 256;
@@ -702,8 +726,8 @@ static void zippath_render(Ent *e) {
   int w = z->hw, h = z->hh;
   int fx = rm->x + REC_X(z->rec) + w / 2, fy = rm->y + REC_Y(z->rec) + h / 2;
   int tx = rm->x + S16(n) + w / 2, ty = rm->y + S16(n + 2) + h / 2;
-  zippath_lines(z, fx, fy, tx, ty, 1, true);
-  zippath_lines(z, fx, fy, tx, ty, 0, false);
+  zippath_lines(e, z, fx, fy, tx, ty, 1, true);
+  zippath_lines(e, z, fx, fy, tx, ty, 0, false);
   draw_rect(z->x + z->a2 - 1, z->y + z->a3 - 1, w + 2, h + 2, BLACK);
 }
 

@@ -50,6 +50,7 @@ int main(void) {
       plat_begin_draw();
       BENCH(1);
       game_draw();
+      plat_poll();
       plat_frame();
       BENCH(8);
       g_perf_frames++;

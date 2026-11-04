@@ -453,7 +453,46 @@ void draw_text(const char *s, int x, int y, uint8_t c) {
 
 #ifdef CEL_BENCH
 /* the assembly against the C (tests/bench.sh): 0 when they agree */
+unsigned long g_float_cost[4];   /* cycles: f_add, f_mul, f_lt, tiles_solid */
+static void float_cost(void) {
+  volatile f32 x = 0x3F8CCCCDul, y = 0x40133333ul, z = 0;
+  unsigned long t = plat_cycles();
+  for (int i = 0; i < 100; i++) z = f_add(x, y), x = z ^ 0x80000000ul;
+  g_float_cost[0] = ((plat_cycles() - t) & 0xFFFFFF) / 100, t = plat_cycles();
+  for (int i = 0; i < 100; i++) z = f_mul(x, y);
+  g_float_cost[1] = ((plat_cycles() - t) & 0xFFFFFF) / 100, t = plat_cycles();
+  for (int i = 0; i < 100; i++) z += f_lt(x, y);
+  g_float_cost[2] = ((plat_cycles() - t) & 0xFFFFFF) / 100, t = plat_cycles();
+  for (int i = 0; i < 100; i++) z += solid_at(i, 50, i + 8, 61, NULL);
+  g_float_cost[3] = ((plat_cycles() - t) & 0xFFFFFF) / 100;
+}
+extern f32 ref_add(f32 a, f32 b), ref_mul(f32 a, f32 b);
+extern bool ref_lt(f32 a, f32 b), ref_le(f32 a, f32 b);
+static uint32_t st_seed = 12345;
+static uint32_t st_rand(void) {
+  st_seed ^= st_seed << 13, st_seed ^= st_seed >> 17, st_seed ^= st_seed << 5;
+  return st_seed;
+}
+static f32 st_float(int k) {   /* (zeros, a denormal, near 1, far apart, and any) */
+  uint32_t r = st_rand(), m = st_rand() & 0x7FFFFF, sign = r & 0x80000000ul;
+  switch (k % 8) {
+    case 0: return sign;
+    case 1: return sign | (st_rand() & 0x7FFFFF);
+    case 2: case 3: return sign | (uint32_t)(120 + (r >> 8) % 16) << 23 | m;
+    case 4: return sign | (uint32_t)(1 + (r >> 8) % 253) << 23 | m;
+    default: return sign | (uint32_t)(126 + (r >> 8) % 4) << 23 | (k & 1 ? m : m & 0x7FFF00);
+  }
+}
+int g_sf_bad;
 int draw_selftest(void) {
+  float_cost();
+  for (int i = 0; i < 600; i++) {
+    f32 a = st_float(st_rand() % 8 == 0 ? 0 : (int)(st_rand() % 8)), b = st_float((int)(st_rand() % 8));
+    if (i % 5 == 0) b = (a ^ 0x80000000ul) + (st_rand() % 5) - 2;   /* (cancelling) */
+    if (f_add(a, b) != ref_add(a, b)) g_sf_bad |= 1;
+    if (f_mul(a, b) != ref_mul(a, b)) g_sf_bad |= 2;
+    if (f_lt(a, b) != ref_lt(a, b) || f_le(a, b) != ref_le(a, b)) g_sf_bad |= 4;
+  }
   int bad = 0;
   for (int v = 0; v < (1 << 23); v += 99991)
     if (isqrt24(v) != isqrt(v)) bad |= 1;

@@ -78,9 +78,10 @@ const uint8_t *player_meta(int id) { return meta + 2 + 3 * id; }
 const uint16_t *hair_mask(int which) { return (const uint16_t *)(const void *)(hair + 40 * which); }
 
 /* 1555 colours, plus the chapter's tint (its additive sunset), faded to black by fade (256: none) */
+static bool tinted;   /* (the level's colours: the menus' are not) */
 static uint16_t shade(uint16_t c, int fade) {
   int r = (c >> 10 & 31) << 3, g = (c >> 5 & 31) << 3, b = (c & 31) << 3;
-  r = imin(255, r + tint[0]), g = imin(255, g + tint[1]), b = imin(255, b + tint[2]);
+  if (tinted) r = imin(255, r + tint[0]), g = imin(255, g + tint[1]), b = imin(255, b + tint[2]);
   r = r * fade >> 8, g = g * fade >> 8, b = b * fade >> 8;
   return (uint16_t)((r >> 3) << 10 | (g >> 3) << 5 | (b >> 3));
 }
@@ -99,6 +100,7 @@ uint8_t pal_nearest(uint32_t rgb) {
 static uint32_t cur_hair = 0xAC3232;
 static bool hair_set;
 uint8_t g_palette_gen = 1;   /* (changes with the palette: src/text.c finds its shades again) */
+void palette_tint(bool on) { tinted = on; }
 void palette_apply(int fade) {
   if (++g_palette_gen == 0) g_palette_gen = 1;
   uint16_t out[256];

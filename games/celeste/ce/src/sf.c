@@ -24,6 +24,13 @@ static f32 pack(uint32_t sign, int e, uint32_t m) {
   return sign | (uint32_t)e << 23 | (m & 0x7FFFFFul);
 }
 
+#ifdef __TICE__   /* (src/sf.S has them; the C is the bench build's check of it) */
+#define f_add ref_add
+#define f_mul ref_mul
+#define f_lt ref_lt
+#define f_le ref_le
+#endif
+#if !defined(__TICE__) || defined(CEL_BENCH)
 f32 f_add(f32 a, f32 b) {
   if (!(a & ~SIGN)) return (b & ~SIGN) ? b : (a & b);   /* 0 + b; -0 + -0 = -0 */
   if (!(b & ~SIGN)) return a;
@@ -52,7 +59,6 @@ f32 f_add(f32 a, f32 b) {
   }
   return pack(a & SIGN, ea, ma + mb);
 }
-f32 f_sub(f32 a, f32 b) { return f_add(a, b ^ SIGN); }
 
 f32 f_mul(f32 a, f32 b) {
   uint32_t sign = (a ^ b) & SIGN;
@@ -80,6 +86,7 @@ f32 f_mul(f32 a, f32 b) {
   return pack(sign, e, m);
 }
 
+#endif
 f32 f_div(f32 a, f32 b) {
   uint32_t sign = (a ^ b) & SIGN;
   int ea = fexp(a), eb = fexp(b);
@@ -100,9 +107,18 @@ f32 f_div(f32 a, f32 b) {
 }
 
 /* comparisons: the bits in order (zeros equal) */
+#if !defined(__TICE__) || defined(CEL_BENCH)
 static inline int32_t key(f32 a) { return (a & SIGN) ? -(int32_t)(a & ~SIGN) : (int32_t)a; }
 bool f_lt(f32 a, f32 b) { return key(a) < key(b); }
 bool f_le(f32 a, f32 b) { return key(a) <= key(b); }
+#endif
+#ifdef __TICE__
+#undef f_add
+#undef f_mul
+#undef f_lt
+#undef f_le
+#endif
+f32 f_sub(f32 a, f32 b) { return f_add(a, b ^ SIGN); }
 
 f32 f_int(int v) {   /* exact below 2^24 */
   if (!v) return 0;

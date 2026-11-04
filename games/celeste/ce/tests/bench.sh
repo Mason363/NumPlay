@@ -14,5 +14,5 @@ echo "camera moving (room $ROOM)"
 python3 ../../../tools/ce_emu.py build/bench/bin/CELESTE.8xp bin/CEL*.8xv --frame _plat_frame --ms 12000 \
   --frames-from 2000 --shots 4000 --out build/bench "$@" | tail -n +3
 echo "standing still (room 1)"
-python3 ../../../tools/ce_emu.py bin/CELESTE.8xp bin/CEL*.8xv --frame _plat_frame --keys "1000-1100:2nd,2000-2100:2nd" \
-  --ms 16000 --frames-from 6000 --shots 8000 --out build/bench/still "$@" | tail -n +3
+python3 ../../../tools/ce_emu.py bin/CELESTE.8xp bin/CEL*.8xv --frame _plat_frame --keys "1000-1100:2nd,2000-2100:2nd,3000-3100:2nd" \
+  --ms 17000 --frames-from 7000 --shots 9000 --out build/bench/still "$@" | tail -n +3

@@ -39,6 +39,7 @@ void plat_frame(void);                /* shows g_fb, and g_fb becomes the other 
 void plat_begin_draw(void);           /* waits until the buffer to draw is no longer shown */
 void plat_palette(const uint16_t *pal, int first, int n);   /* 1555 colours */
 unsigned plat_keys(void);
+void plat_poll(void);                 /* (a look at the keys between plat_keys: drawing calls it) */
 unsigned plat_ticks(void);            /* a 32768 Hz clock (wraps at 16 bits) */
 void plat_wait(unsigned ticks);
 const uint8_t *plat_appvar(const char *name);   /* an appvar's data in place, NULL if missing */
@@ -70,6 +71,7 @@ static inline const uint8_t *far_ptr(const uint8_t *const *parts, const uint8_t 
 bool data_open(void);                 /* the common appvars; false if missing */
 bool chapter_open(int n);             /* chapter n's appvars and colours */
 void palette_apply(int fade);         /* the chapter's colours (fade 0..256: to black) */
+void palette_tint(bool on);           /* the chapter's tint on them (playing) or not (menus): then palette_apply */
 void palette_hair(uint32_t rgb);      /* Madeline's hair colour */
 const uint8_t *sprite(int id);        /* a common sprite */
 const uint8_t *csprite(int id);       /* a chapter sprite */
@@ -232,6 +234,8 @@ static inline int e_top(const Ent *e) { return e->y + e->hy; }
 static inline int e_right(const Ent *e) { return e->x + e->hx + e->hw; }
 static inline int e_bottom(const Ent *e) { return e->y + e->hy + e->hh; }
 Ent *ent_new(int type, int x, int y);
+const uint8_t *ents_kind(int flag);   /* EF_SOLID or EF_JUMPTHRU ones: a count, their indices */
+void ents_kinds_stale(void);          /* (their flags changed: made again) */
 void ent_free(Ent *e);
 void ents_spawn_room(int slot);
 void ents_update(void);
@@ -254,6 +258,7 @@ typedef struct {
   int gx, gy, tw, th;       /* its grid: the top left cell's world pixel, cells (with MARGIN) */
   uint8_t *grid;            /* fg[tw * th], bg[tw * th], solid bits (rb a row) */
   int rb;
+  uint8_t *solid;           /* (its solid bits: grid + 2 tw th) */
   TEnt *tab;                /* its tiles, by its own numbers (256) */
   const uint8_t *decals, *ents, *trigs, *bg;
   int bgx, bgy;
