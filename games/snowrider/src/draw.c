@@ -135,6 +135,80 @@ static void draw_mesh(const RMesh *rm, const float W[12]) {
   }
 }
 
+#if NP_SOFT_FLOAT
+#include "np_fixed.h"
+/* (calculators without a floating-point unit) draw_mesh with each corner moved, bent and projected in integers: the
+ * mesh's matrix and the camera's turn read once into fixed point, the corners in 16.16 metres and pixels */
+static SVi vs[MAXVB];
+static int32_t vc[MAXVB][3];   /* a corner in the camera's space */
+static int ka_of(float m) {    /* (the bits after the point that keep m times 2^15 within 2^45) */
+  union {
+    float f;
+    uint32_t u;
+  } v = {m};
+  int e = (int)(v.u >> 23 & 255) - 127;
+  return 29 - e > 40 ? 40 : 29 - e;
+}
+static inline int64_t shr(int64_t v, int k) { return k >= 0 ? v >> k : v << -k; }
+static void draw_mesh_fx(const RMesh *rm, const float W[12]) {
+  float s = rm->s;
+  const float *R = cam_rot;
+  int nv = rm->nv > MAXVB ? MAXVB : rm->nv;
+  float am = 0;
+  for (int k = 0; k < 12; k++)
+    if (k % 4 != 3 && fabsf(W[k] * s) > am) am = fabsf(W[k] * s);
+  int ka = ka_of(am > 0 ? am : 1);
+  int64_t A[12];
+  for (int k = 0; k < 12; k++) A[k] = k % 4 == 3 ? 0 : fx_from_float(W[k] * s, ka);
+  int64_t t0 = fx_from_float(W[3] - cam_pos[0], 16), t1 = fx_from_float(W[7] - cam_pos[1], 16),
+          t2 = fx_from_float(W[11] - cam_pos[2], 16), curv = fx_from_float(CURVATURE, 16);
+  int32_t r[9];
+  for (int k = 0; k < 9; k++) r[k] = (int32_t)fx_from_float(R[k], 30);
+  int64_t f16 = fx_from_float(cam.f, 16), cx = fx_from_float(cam.cx, 16), cy = fx_from_float(cam.cy, 16);
+  for (int i = 0; i < nv; i++) {
+    const int16_t *v = rm->v + i * 3;
+    int64_t wx = shr(A[0] * v[0] + A[1] * v[1] + A[2] * v[2], ka - 16) + t0;
+    int64_t wy = shr(A[4] * v[0] + A[5] * v[1] + A[6] * v[2], ka - 16) + t1;
+    int64_t dz = shr(A[8] * v[0] + A[9] * v[1] + A[10] * v[2], ka - 16) + t2;
+    wy -= (dz * dz >> 16) * curv >> 16;
+    int32_t c0 = fx_sat32((r[0] * wx + r[1] * wy + r[2] * dz) >> 30), c1 = fx_sat32((r[3] * wx + r[4] * wy + r[5] * dz) >> 30);
+    int32_t c2 = fx_sat32((r[6] * wx + r[7] * wy + r[8] * dz) >> 30);
+    vc[i][0] = c0, vc[i][1] = c1, vc[i][2] = c2;
+    vin[i] = c2 >= 6554;   /* (0.1 m) */
+    if (vin[i]) {
+      int sh = __builtin_clz((uint32_t)c2);
+      int64_t rz = fx_rcp((uint32_t)c2 << sh);   /* 2^61 / (z 2^16 2^sh) */
+      int64_t qx = (int64_t)c0 * rz >> (45 - sh), qy = (int64_t)c1 * rz >> (45 - sh);   /* x / z, y / z: 16.16 */
+      vs[i].x = fx_sat32(cx + (qx * f16 >> 16)), vs[i].y = fx_sat32(cy - (qy * f16 >> 16));
+      vs[i].z = (int64_t)R_ZK * rz >> (29 - sh);
+    }
+  }
+  float det = m_det(W);
+  bool flip = det < 0;
+  float inv = 1 / (127 * cbrtf(fabsf(det) > 1e-9f ? fabsf(det) : 1));
+  int32_t l0 = (int32_t)fx_from_float((W[0] * light[0] + W[4] * light[1] + W[8] * light[2]) * inv, 24);
+  int32_t l1 = (int32_t)fx_from_float((W[1] * light[0] + W[5] * light[1] + W[9] * light[2]) * inv, 24);
+  int32_t l2 = (int32_t)fx_from_float((W[2] * light[0] + W[6] * light[1] + W[10] * light[2]) * inv, 24);
+  for (int i = 0; i < rm->nt; i++) {
+    int t0 = corner_of(rm->t, rm->nv, i * 3), t1 = corner_of(rm->t, rm->nv, i * 3 + 1), t2 = corner_of(rm->t, rm->nv, i * 3 + 2);
+    if (t0 >= nv || t1 >= nv || t2 >= nv) continue;
+    int a = t0, b = flip ? t2 : t1, c = flip ? t1 : t2;
+    int in = vin[a] + vin[b] + vin[c];
+    if (!in) continue;
+    const int8_t *n = rm->n + i * 3;
+    int32_t d = n[0] * l0 + n[1] * l1 + n[2] * l2;
+    int sh = d <= 0 ? 0 : d >= 1 << 24 ? SHADES - 1 : (int)(((int64_t)d * (SHADES - 1) + (1 << 23)) >> 24);
+    uint16_t col = shade_lut[rm->c[i]][sh];
+    if (in == 3 && r_tri_screen_fx(&vs[a], &vs[b], &vs[c], col)) continue;
+    V3 p[3];
+    const int k3[3] = {a, b, c};
+    for (int j = 0; j < 3; j++)
+      p[j] = (V3){fx_to_float(vc[k3[j]][0], 16), fx_to_float(vc[k3[j]][1], 16), fx_to_float(vc[k3[j]][2], 16)};
+    r_poly_cam(p, 3, col, 0, 255);
+  }
+}
+#endif
+
 static void draw_prefab(int prefab, const float m[12]) {
   const Prefab *pf = &prefabs[prefab];
   const float *R = cam_rot;
@@ -150,7 +224,11 @@ static void draw_prefab(int prefab, const float m[12]) {
     if (vz + r < 0.1f || vz - r > VIEW) continue;
     if (fabsf(vx) - r * 1.5f > (vz + r) * (SCREEN_W / 2 + 8) / focal) continue;
     if (fabsf(vy) - r * 1.5f > (vz + r) * (SCREEN_H / 2 + 8) / focal) continue;
+#if NP_SOFT_FLOAT
+    draw_mesh_fx(&rmeshes[vz - r > lod ? pt->far : pt->near], W);
+#else
     draw_mesh(&rmeshes[vz - r > lod ? pt->far : pt->near], W);
+#endif
   }
 }
 

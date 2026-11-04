@@ -192,6 +192,54 @@ bool r_tri_screen(const V3 *A, const V3 *B, const V3 *C, uint16_t color) {
   return true;
 }
 
+#if NP_SOFT_FLOAT
+#include "np_fixed.h"
+/* (the same in integers: twice the area and the depth plane from the corners in 16.16, the plane kept as floats) */
+bool r_tri_screen_fx(const SVi *A, const SVi *B, const SVi *C, uint16_t color) {
+  const int32_t g = (int32_t)(GUARD * 65536), cx = (int32_t)(cam.cx * 65536), cy = (int32_t)(cam.cy * 65536);
+  if (A->x - cx > g || A->x - cx < -g || A->y - cy > g || A->y - cy < -g || B->x - cx > g || B->x - cx < -g ||
+      B->y - cy > g || B->y - cy < -g || C->x - cx > g || C->x - cx < -g || C->y - cy > g || C->y - cy < -g)
+    return false;
+  int64_t x1 = B->x - A->x, y1 = B->y - A->y, x2 = C->x - A->x, y2 = C->y - A->y;
+  int64_t det = x1 * y2 - x2 * y1;
+  if (det < 42949673) return true;   /* (0.01 square pixels) */
+  int32_t x0 = A->x < B->x ? A->x : B->x, xm = A->x > B->x ? A->x : B->x;
+  int32_t y0 = A->y < B->y ? A->y : B->y, ym = A->y > B->y ? A->y : B->y;
+  if (C->x < x0) x0 = C->x;
+  if (C->x > xm) xm = C->x;
+  if (C->y < y0) y0 = C->y;
+  if (C->y > ym) ym = C->y;
+  if (xm < 0 || x0 >= SCREEN_W << 16 || ym < 0 || y0 >= SCREEN_H << 16) return true;
+  int iy0 = y0 < 0 ? 0 : (y0 + 32768) >> 16, iy1 = ym >= SCREEN_H << 16 ? SCREEN_H : (ym + 32768) >> 16;
+  if (iy0 >= iy1) return true;
+  if (npolys + nalpha >= MAXP || nverts + 3 > MAXV) return true;
+  int64_t w1 = B->z - A->z, w2 = C->z - A->z;
+  int64_t a = fx_div(w1 * y2 - w2 * y1, det, 16), b = fx_div(x1 * w2 - x2 * w1, det, 16);
+  Poly *q = &polys[npolys];
+  if (a > (int64_t)1 << 34 || a < -((int64_t)1 << 34) || b > (int64_t)1 << 34 || b < -((int64_t)1 << 34)) {
+    /* (seen nearly edge-on: as r_tri_screen) */
+    float fx1 = fx_to_float(x1, 16), fy1 = fx_to_float(y1, 16), fx2 = fx_to_float(x2, 16), fy2 = fx_to_float(y2, 16);
+    float fw1 = fx_to_float(w1, 16), fw2 = fx_to_float(w2, 16), inv = 1 / fx_to_float(det, 32);
+    q->a = (fw1 * fy2 - fw2 * fy1) * inv, q->b = (fx1 * fw2 - fx2 * fw1) * inv;
+    q->c = fx_to_float(A->z, 16) - q->a * fx_to_float(A->x, 16) - q->b * fx_to_float(A->y, 16);
+  } else {
+    q->a = fx_to_float(a, 16), q->b = fx_to_float(b, 16);
+    q->c = fx_to_float(A->z - (a * A->x >> 16) - (b * A->y >> 16), 16);
+  }
+  q->alpha = 255, q->color = color;
+  q->v0 = (uint16_t)nverts, q->n = 3;
+  const SVi *v[3] = {A, B, C};
+  for (int i = 0; i < 3; i++) {
+    int32_t px = v[i]->x * 8 + 32768, py = v[i]->y * 8 + 32768;   /* (as (int16_t)(x * SUB + 0.5f)) */
+    pos[nverts + i] = (Pos){(int16_t)(px < 0 ? -(-px >> 16) : px >> 16), (int16_t)(py < 0 ? -(-py >> 16) : py >> 16)};
+  }
+  q->y0 = (uint8_t)iy0, q->y1 = (uint8_t)iy1;
+  nverts += 3;
+  npolys++;
+  return true;
+}
+#endif
+
 /* ---------------------------------------------------------------- drawing a band */
 /* an opaque run of n pixels: each one nearer than what is there takes the colour (two at a time on the calculator:
  * its DSP compares and picks both halves of a word at once) */
@@ -354,7 +402,6 @@ __attribute__((noinline)) static void raster_tri(const Poly *q) {
 /* ---------------------------------------------------------------- the same in integers
  * (calculators without a floating-point unit: a polygon's depth plane read once a band, its edges stepped exactly from
  * the corners' 1/8 pixels) */
-#include "np_fixed.h"
 
 /* the depth plane at pixel (x, y) (its middle), 16.16 */
 typedef struct {

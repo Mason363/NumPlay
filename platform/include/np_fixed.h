@@ -21,6 +21,19 @@ static inline int64_t fx_from_float(float f, int k) {
   return neg ? -m : m;
 }
 
+/* v / 2^k as a float (rounded toward zero), built from its bits */
+static inline float fx_to_float(int64_t v, int k) {
+  if (!v) return 0;
+  uint64_t m = v < 0 ? -(uint64_t)v : (uint64_t)v;
+  int e = 63 - __builtin_clzll(m);
+  uint32_t mant = (uint32_t)(e >= 23 ? m >> (e - 23) : m << (23 - e));
+  union {
+    uint32_t u;
+    float f;
+  } r = {(v < 0 ? 0x80000000u : 0) | (uint32_t)(e - k + 127) << 23 | (mant & 0x7FFFFF)};
+  return r.f;
+}
+
 /* floor(sqrt(v)), a bit at a time */
 static inline uint32_t fx_isqrt(uint32_t v) {
   uint32_t r = 0, b = 1u << 30;
@@ -59,5 +72,18 @@ static inline int32_t fx_rcp(uint32_t n) {
     r += (int32_t)((int64_t)r * (int32_t)(e >> 29) >> 32);
   }
   return r;
+}
+
+/* num / den * 2^k (den not 0, the result within an int64_t), to 30 bits: both brought to 31 bits, then fx_rcp */
+static inline int64_t fx_div(int64_t num, int64_t den, int k) {
+  if (!num) return 0;
+  bool neg = (num < 0) != (den < 0);
+  uint64_t n = num < 0 ? -(uint64_t)num : (uint64_t)num, d = den < 0 ? -(uint64_t)den : (uint64_t)den;
+  int nn = __builtin_clzll(n), nd = __builtin_clzll(d);
+  uint32_t n31 = (uint32_t)(n << nn >> 33), d32 = (uint32_t)(d << nd >> 32);
+  int64_t q = (int64_t)n31 * fx_rcp(d32);   /* (n is n31 2^(33 - nn), d is d32 2^(32 - nd)) */
+  int sh = nd - nn - 60 + k;
+  q = sh >= 0 ? q << (sh > 62 ? 62 : sh) : sh <= -63 ? 0 : q >> -sh;
+  return neg ? -q : q;
 }
 #endif
