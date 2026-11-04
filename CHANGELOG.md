@@ -2,6 +2,10 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.12: Crossy Road's characters
+
+- **Crossy Road:** OK on a character not won yet does nothing, instead of taking 100 coins.
+
 ## 1.24.11: Fixes
 
 - **Mr Bullet:** TNT crates go off when shot, so level 7 and the others with TNT can be cleared.
