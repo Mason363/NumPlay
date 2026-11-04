@@ -776,7 +776,7 @@ bool os_trap(uint32_t pc) {
     wr8(OP1, 0), wr8(OP1 + 1, 0x72);
     for (int i = 2; i < 9; i++) wr8(OP1 + i, 0);
     return true;
-  case 0x204FC: R.HL = ram_free(), R.DE = rd24(FPS); return true; /* MemChk */
+  case 0x204FC: R.HL = ram_free(); return true; /* MemChk (DE as it was: the loader of big programs keeps its size there) */
   case 0x2051C: /* EnoughMem: carry if HL bytes aren't free */
     R.DE = R.HL;
     flag(F_C, !chk_mem(R.HL & 0xFFFFFF));
