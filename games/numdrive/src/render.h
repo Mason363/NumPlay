@@ -4,7 +4,11 @@
 #include <stdbool.h>
 #include "fmath.h"
 
+#if NP_SOFT_FLOAT
+#define STRIP_H 48
+#else
 #define STRIP_H 16
+#endif
 
 typedef struct {
   vec3 focus;

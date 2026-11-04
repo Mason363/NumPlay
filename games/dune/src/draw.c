@@ -39,6 +39,12 @@ int dn_clipped;
 void dn_redraw(void) { fresh = false; }
 
 /* ---------------------------------------------------------------- pixels */
+#if NP_SOFT_FLOAT
+#include "np_fixed.h"
+/* (calculators without a floating-point unit: a picture's places in 16.16, a step a pixel) */
+static inline int32_t fx16(float f) { return (int32_t)fx_from_float(f, 16); }
+static inline int trunc16(int32_t t) { return t < 0 ? -(-t >> 16) : t >> 16; }   /* (as (int) does) */
+#endif
 
 static inline uint16_t mix(uint16_t a, uint16_t b, unsigned k) {   /* b over a, k of 256 */
   unsigned r = ((a >> 11) * (256 - k) + (b >> 11) * k) >> 8;
@@ -101,6 +107,23 @@ static void focus(int x, int y, int w, int h, int r) {
   round_rect(x - 4, y - 4, w + 8, h + 8, r + 4, 3, FOCUS, 256);
 }
 
+#if NP_SOFT_FLOAT
+static void ring(float cx, float cy, float r0, float r1, uint16_t c, unsigned k) {
+  int y0 = (int)floorf(cy - r1), y1 = (int)ceilf(cy + r1);
+  if (y0 < top) y0 = top;
+  if (y1 > top + BAND) y1 = top + BAND;
+  int32_t x8 = (int32_t)fx_from_float(cx, 8), y8 = (int32_t)fx_from_float(cy, 8);
+  int32_t a8 = (int32_t)fx_from_float(r0, 8), b8 = (int32_t)fx_from_float(r1, 8);
+  for (int j = y0; j < y1; j++)
+    for (int i = (int)floorf(cx - r1); i <= (int)ceilf(cx + r1); i++) {
+      int32_t dx = (i << 8) + 128 - x8, dy = (j << 8) + 128 - y8, d = (int32_t)fx_isqrt((uint32_t)(dx * dx + dy * dy));
+      int32_t a = d - a8 + 128, o = b8 + 128 - d;
+      if (o < a) a = o;
+      if (a > 256) a = 256;
+      if (a > 0) blend(i, j, c, (unsigned)a * k >> 8);
+    }
+}
+#else
 static void ring(float cx, float cy, float r0, float r1, uint16_t c, unsigned k) {
   int y0 = (int)floorf(cy - r1), y1 = (int)ceilf(cy + r1);
   if (y0 < top) y0 = top;
@@ -112,6 +135,7 @@ static void ring(float cx, float cy, float r0, float r1, uint16_t c, unsigned k)
       if (a > 0) blend(i, j, c, (unsigned)(a * k));
     }
 }
+#endif
 
 static void dim(unsigned k) { rect(0, top, W, BAND, BLACK, k); }
 
@@ -131,6 +155,24 @@ static void mask(const dn_mask *m, int x, int y, uint16_t c, unsigned k) {
 }
 
 /* a mask scaled by s (nearest), its top left at (x, y) */
+#if NP_SOFT_FLOAT
+static void mask_scaled(const dn_mask *m, float x, float y, float s, uint16_t c, unsigned k) {
+  int w = (int)(m->w * s + 0.5f), h = (int)(m->h * s + 0.5f);
+  int iy0 = (int)floorf(y), y0 = iy0 < top ? top : iy0, y1 = iy0 + h > top + BAND ? top + BAND : iy0 + h;
+  int32_t step = fx16(1 / s), ix = (int)floorf(x);
+  for (int j = y0; j < y1; j++) {
+    int sy = (int)((j - iy0 + 0.5f) / s);
+    if (sy >= m->h) continue;
+    int32_t t = step >> 1;
+    for (int i = 0; i < w; i++, t += step) {
+      int sx = t >> 16;
+      if (sx >= m->w) continue;
+      unsigned a = nib(m->px, (unsigned)(sy * m->w + sx));
+      if (a) blend(ix + i, j, c, a * k / 15);
+    }
+  }
+}
+#else
 static void mask_scaled(const dn_mask *m, float x, float y, float s, uint16_t c, unsigned k) {
   int w = (int)(m->w * s + 0.5f), h = (int)(m->h * s + 0.5f);
   int iy0 = (int)floorf(y), y0 = iy0 < top ? top : iy0, y1 = iy0 + h > top + BAND ? top + BAND : iy0 + h;
@@ -145,8 +187,30 @@ static void mask_scaled(const dn_mask *m, float x, float y, float s, uint16_t c,
     }
   }
 }
+#endif
 
 /* a 4-bit picture, its centre at (cx, cy), `size` pixels across, turned by `angle` (nearest) */
+#if NP_SOFT_FLOAT
+static void raw_turned(const dn_raw *p, float cx, float cy, float size, float angle, unsigned k) {
+  float r = size * 0.72f;
+  int y0 = (int)floorf(cy - r), y1 = (int)ceilf(cy + r);
+  if (y0 < top) y0 = top;
+  if (y1 > top + BAND) y1 = top + BAND;
+  if (y0 >= y1) return;
+  float co = cosf(angle), si = sinf(angle), k_ = p->w / size;
+  int i0 = (int)floorf(cx - r), i1 = (int)ceilf(cx + r);
+  int32_t du = fx16(co * k_), dv = fx16(-si * k_), uw = p->w << 16, vh = p->h << 16;
+  for (int j = y0; j < y1; j++) {
+    float dx = i0 + 0.5f - cx, dy = j + 0.5f - cy;
+    int32_t u = fx16((dx * co + dy * si) * k_ + p->w / 2.0f), v = fx16((-dx * si + dy * co) * k_ + p->h / 2.0f);
+    for (int i = i0; i <= i1; i++, u += du, v += dv) {
+      if ((unsigned)i >= W || u < 0 || v < 0 || u >= uw || v >= vh) continue;
+      unsigned c = nib(p->px, (unsigned)((v >> 16) * p->w + (u >> 16)));
+      if (c) blend(i, j, p->pal[c], k);
+    }
+  }
+}
+#else
 static void raw_turned(const dn_raw *p, float cx, float cy, float size, float angle, unsigned k) {
   float r = size * 0.72f;
   int y0 = (int)floorf(cy - r), y1 = (int)ceilf(cy + r);
@@ -164,8 +228,27 @@ static void raw_turned(const dn_raw *p, float cx, float cy, float size, float an
       if (c) blend(i, j, p->pal[c], k);
     }
 }
+#endif
 
 /* a 4-bit picture scaled, its top left at (x, y) */
+#if NP_SOFT_FLOAT
+static void raw_scaled(const dn_raw *p, float x, float y, float w, float h, unsigned k) {
+  int ix = (int)floorf(x), iy = (int)floorf(y), iw = (int)(w + 0.5f), ih = (int)(h + 0.5f);
+  int y0 = iy < top ? top : iy, y1 = iy + ih > top + BAND ? top + BAND : iy + ih;
+  int32_t step = fx16(p->w / w);
+  for (int j = y0; j < y1; j++) {
+    int sy = (int)((j - iy + 0.5f) * p->h / h);
+    if (sy >= p->h) continue;
+    int32_t t = step >> 1;
+    for (int i = 0; i < iw; i++, t += step) {
+      int sx = t >> 16;
+      if (sx >= p->w || (unsigned)(ix + i) >= W) continue;
+      unsigned c = nib(p->px, (unsigned)(sy * p->w + sx));
+      if (c) blend(ix + i, j, p->pal[c], k);
+    }
+  }
+}
+#else
 static void raw_scaled(const dn_raw *p, float x, float y, float w, float h, unsigned k) {
   int ix = (int)floorf(x), iy = (int)floorf(y), iw = (int)(w + 0.5f), ih = (int)(h + 0.5f);
   int y0 = iy < top ? top : iy, y1 = iy + ih > top + BAND ? top + BAND : iy + ih;
@@ -180,6 +263,7 @@ static void raw_scaled(const dn_raw *p, float x, float y, float w, float h, unsi
     }
   }
 }
+#endif
 
 /* a row of runs (art.h), source row sy, its left at screen x dx, on screen row y; k: opacity of 256 */
 static void rle_row(const dn_rle *p, int sy, int y, int dx, unsigned k) {
@@ -253,8 +337,14 @@ static void rle_scaled(const dn_rle *p, float x, float y, float s, unsigned k) {
     int i0 = (int)floorf(x), i1 = (int)ceilf(x + w);
     if (i0 < 0) i0 = 0;
     if (i1 > W) i1 = W;
+#if NP_SOFT_FLOAT
+    int32_t step = fx16(1 / s), t = fx16((i0 + 0.5f - x) / s);
+    for (int i = i0; i < i1; i++, t += step) {
+      int sx = trunc16(t);
+#else
     for (int i = i0; i < i1; i++) {
       int sx = (int)((i + 0.5f - x) / s);
+#endif
       if (sx < 0 || sx >= p->w) continue;
       unsigned c = idx[sx];
       if (c) row[i] = k >= 256 ? p->pal[c] : mix(row[i], p->pal[c], k);
@@ -517,6 +607,9 @@ static void layers(int land) {
 /* the dunes: the surface band, then the ground's texture (or Ice Mountains' gradient) */
 static float surf[W], surf_min;
 static int16_t tex_u[W];
+#if NP_SOFT_FLOAT
+static int32_t surf8[W];   /* (calculators without a floating-point unit: surf in 1/256 pixels) */
+#endif
 static void dunes_prepare(void) {
   surf_min = 1e9f;
   int k = 0;
@@ -546,6 +639,9 @@ static void dunes_prepare(void) {
     int tu = (int)(u / 4);
     tex_u[x] = (int16_t)(tu < 0 ? 0 : tu > 319 ? 319 : tu);
   }
+#if NP_SOFT_FLOAT
+  for (int x = 0; x < W; x++) surf8[x] = surf[x] > 1e6f ? 1 << 30 : -(int32_t)fx_from_float(-surf[x], 8);   /* (rounded up) */
+#endif
 }
 
 static void dunes(int land) {
@@ -572,6 +668,15 @@ static void dunes(int land) {
       }
     }
     uint16_t *row = band + (j - top) * W;
+#if NP_SOFT_FLOAT
+    int32_t b8 = (int32_t)fx_from_float(bandh, 8);
+    for (int x = 0; x < W; x++) {
+      int32_t s = surf8[x], cov = ((j + 1) << 8) - s;
+      if (cov <= 0) continue;
+      if ((j << 8) < s + b8) {
+        row[x] = cov >= 256 ? surface : mix(row[x], surface, (unsigned)cov);
+      } else if (ground) {
+#else
     for (int x = 0; x < W; x++) {
       float s = surf[x];
       if (j + 1 <= s) continue;
@@ -579,6 +684,7 @@ static void dunes(int land) {
         float cov = j + 1 - s;
         row[x] = cov >= 1 ? surface : mix(row[x], surface, (unsigned)(cov * 256));
       } else if (ground) {
+#endif
         if (earth) {
           unsigned c = idx[tex_u[x]];
           if (c) row[x] = earth->pal[c];
@@ -643,6 +749,21 @@ static void trail(void) {
   if (y0 < top) y0 = top;
   if (y1 > top + BAND) y1 = top + BAND;
   bool donut = R->ball == 13;   /* the Donut's hollow V */
+#if NP_SOFT_FLOAT
+  int i0 = (int)floorf(cx - ext), i1 = (int)ceilf(cx + ext);
+  int32_t ux = fx16(co / len), vx = fx16(-si / wid), hole = fx16(1 - 16 / d);
+  for (int j = y0; j < y1; j++) {
+    float dx = i0 + 0.5f - cx, dy = j + 0.5f - cy;
+    int32_t u = fx16(1 + (dx * co + dy * si) / len), v = fx16((-dx * si + dy * co) / wid + 0.5f + oy);
+    for (int i = i0; i <= i1; i++, u += ux, v += vx) {
+      if ((unsigned)i >= W || u < 0 || u > 65536 || v < 0 || v > 65536) continue;
+      int32_t off = v > 32768 ? v - 32768 : 32768 - v;
+      if (2 * off > u) continue;
+      if (donut && u > 32768 && off < (int32_t)((int64_t)(u - 32768) * hole >> 16)) continue;
+      plot(i, j, rgb888(trail_color(b, (float)u * (1.0f / 65536), (float)v * (1.0f / 65536))));
+    }
+  }
+#else
   for (int j = y0; j < y1; j++)
     for (int i = (int)floorf(cx - ext); i <= (int)ceilf(cx + ext); i++) {
       if ((unsigned)i >= W) continue;
@@ -653,6 +774,7 @@ static void trail(void) {
       if (donut && u > 0.5f && fabsf(v - 0.5f) < (u - 0.5f) * (1 - 16 / d)) continue;
       plot(i, j, rgb888(trail_color(b, u, v)));
     }
+#endif
 }
 
 static void coins(void) {
@@ -727,6 +849,21 @@ static void slide_popup(void) {
   int y0 = (int)(cy - r), y1 = (int)(cy + r) + 1;
   if (y0 < top) y0 = top;
   if (y1 > top + BAND) y1 = top + BAND;
+#if NP_SOFT_FLOAT
+  unsigned ka[16];
+  for (int a = 0; a < 16; a++) ka[a] = (unsigned)(a * 256 * alpha / 15);
+  int i0 = (int)(cx - r), i1 = (int)(cx + r);
+  int32_t du = fx16(co / scale), dv = fx16(-si / scale), uw = slide_w << 16, vh = slide_h << 16;
+  for (int j = y0; j < y1; j++) {
+    float dx = (i0 + 0.5f - cx) / scale, dy = (j + 0.5f - cy) / scale;
+    int32_t u = fx16(dx * co + dy * si + slide_w / 2.0f), v = fx16(-dx * si + dy * co + slide_h / 2.0f);
+    for (int i = i0; i <= i1; i++, u += du, v += dv) {
+      if ((unsigned)i >= W || u < 0 || v < 0 || u >= uw || v >= vh) continue;
+      unsigned a = slide_buf[(v >> 16) * slide_w + (u >> 16)];
+      if (a) blend(i, j, YELLOW, ka[a]);
+    }
+  }
+#else
   for (int j = y0; j < y1; j++)
     for (int i = (int)(cx - r); i <= (int)(cx + r); i++) {
       if ((unsigned)i >= W) continue;
@@ -736,6 +873,7 @@ static void slide_popup(void) {
       unsigned a = slide_buf[(int)v * slide_w + (int)u];
       if (a) blend(i, j, YELLOW, (unsigned)(a * 256 * alpha / 15));
     }
+#endif
 }
 
 static void world(void) {
@@ -814,14 +952,29 @@ static void title(void) {
     const dn_mask *m = &art_logo;
     float cx = 450 * S + art_logo_dx, cy = (332 - 150) * S + art_logo_dy, co = cosf(a), si = sinf(a);
     float r = m->w * s * 0.55f + 2;
+#if NP_SOFT_FLOAT
+    int i0 = (int)(cx - r), i1 = (int)floorf(cx + r);
+    int32_t du = fx16(co / s), dv = fx16(-si / s), uw = m->w << 16, vh = m->h << 16;
+    for (int j = (int)(cy - r) < top ? top : (int)(cy - r); j < top + BAND && j <= cy + r; j++) {
+      float dx = (i0 + 0.5f - cx) / s, dy = (j + 0.5f - cy) / s;
+      int32_t u = fx16(dx * co + dy * si + m->w / 2.0f) - du, v = fx16(-dx * si + dy * co + m->h / 2.0f) - dv;
+      for (int i = i0; i <= i1; i++) {
+        u += du, v += dv;
+        if (u < 0 || v < 0 || u >= uw || v >= vh) continue;
+        unsigned k = nib(m->px, (unsigned)((v >> 16) * m->w + (u >> 16)));
+#else
     for (int j = (int)(cy - r) < top ? top : (int)(cy - r); j < top + BAND && j <= cy + r; j++)
       for (int i = (int)(cx - r); i <= cx + r; i++) {
         float dx = (i + 0.5f - cx) / s, dy = (j + 0.5f - cy) / s;
         float u = dx * co + dy * si + m->w / 2.0f, v = -dx * si + dy * co + m->h / 2.0f;
         if (u < 0 || v < 0 || u >= m->w || v >= m->h) continue;
         unsigned k = nib(m->px, (unsigned)((int)v * m->w + (int)u));
+#endif
         if (k) blend(i, j, WHITE, k * 256 / 15);
       }
+#if NP_SOFT_FLOAT
+    }
+#endif
   }
   int py = (int)((332 + 50) * S);
   raw_scaled(&art_shop, (450 - 140) * S - 30, py - 30, 60, 60, 256);

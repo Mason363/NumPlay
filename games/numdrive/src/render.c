@@ -257,8 +257,72 @@ __attribute__((noinline, optimize("fp-contract=off"))) static bool quad_rows(flo
   return y0 < y1;
 }
 
+#if NP_SOFT_FLOAT
+#include "np_fixed.h"
+/* (calculators without a floating-point unit) raster_rows' plain case in integers: where s and t leave [0, 1) along a
+ * row is a straight line down the rows, stepped in 16.16, and the depth likewise; false when a place could pass 8192
+ * pixels (raster_rows then) */
+static bool raster_rows_fx(int y0, int y1, float X0, float Y0, const PInv *pi, float z0, float zx, float zy,
+                           uint16_t color) {
+  float dy = y0 + 0.5f - Y0, ks = -pi->dsdy * pi->isx, kt = -pi->dtdy * pi->itx, rows = (float)(y1 - y0);
+  if (fabsf(X0) > 8192 || fabsf(pi->isx) > 8192 || fabsf(pi->itx) > 8192 || fabsf(ks) * (fabsf(dy) + rows) > 8192 ||
+      fabsf(kt) * (fabsf(dy) + rows) > 8192)
+    return false;
+  int32_t as = (int32_t)fx_from_float(ks * dy, 16), dks = (int32_t)fx_from_float(ks, 16);
+  int32_t at = (int32_t)fx_from_float(kt * dy, 16), dkt = (int32_t)fx_from_float(kt, 16);
+  int32_t ws = (int32_t)fx_from_float(pi->isx, 16), wt = (int32_t)fx_from_float(pi->itx, 16);
+  int32_t xo = (int32_t)fx_from_float(X0 - 0.5f, 16);
+  /* the depth (raster_rows' z, before its 8 bits) at x = 0 of each row, and its steps, with 16 more bits */
+  float zbase = (z0 + ZOFF - zx * X0 - zy * Y0) * ZSCALE;
+  int32_t dz = (int32_t)(zx * ZSCALE * 256.0f);
+  int64_t zr = fx_from_float((zbase + (zx * 0.5f + zy * (y0 + 0.5f)) * ZSCALE) * 256.0f, 16);
+  int64_t dzx = fx_from_float(zx * ZSCALE * 256.0f, 16), dzy = fx_from_float(zy * ZSCALE * 256.0f, 16);
+  for (int y = y0; y < y1; y++, as += dks, at += dkt, zr += dzy) {
+    int32_t xl = as, xr = as + ws, a = at, b = at + wt;
+    if (xl > xr) xl = xr, xr = as;
+    if (a > b) a = b, b = at;
+    if (a > xl) xl = a;
+    if (b < xr) xr = b;
+    if (xl >= xr) continue;
+    int x0 = (xo + xl + 0xFFFF) >> 16, x1 = (xo + xr + 0xFFFF) >> 16;
+    if (x0 < clip_x0) x0 = clip_x0;
+    if (x1 > clip_x1) x1 = clip_x1;
+    if (x0 >= x1) continue;
+    int64_t zs = zr + dzx * x0;
+    int32_t z = zs < 0 ? 0 : (int32_t)(zs >> 16);
+    int row = (y - strip_y0) * SCREEN_W;
+    uint16_t *c = cbuf + row + x0, *ce = cbuf + row + x1;
+    uint16_t *zp = zbuf + row + x0;
+    int32_t zend = z + dz * (x1 - x0 - 1);
+    if (z >= 0 && zend >= 0 && z < (65535 << 8) && zend < (65535 << 8)) {
+      for (; c < ce; c++, zp++, z += dz) {
+        uint16_t zz = (uint16_t)(z >> 8);
+        if (zz <= *zp) {
+          *zp = zz;
+          *c = color;
+        }
+      }
+    } else {
+      for (; c < ce; c++, zp++, z += dz) {
+        int32_t zz = z >> 8;
+        if (zz < 0) zz = 0;
+        if (zz > 65535) zz = 65535;
+        if ((uint16_t)zz <= *zp) {
+          *zp = (uint16_t)zz;
+          *c = color;
+        }
+      }
+    }
+  }
+  return true;
+}
+#endif
+
 /* Rasterise the rows y0 <= y < y1 (quad_rows) of the parallelogram with corner (X0, Y0) and a planar depth. */
 static void raster(int y0, int y1, float X0, float Y0, const PInv *pi, float z0, float zx, float zy, uint16_t color) {
+#if NP_SOFT_FLOAT
+  if (pi->isx != 0 && pi->itx != 0 && !fl_on && raster_rows_fx(y0, y1, X0, Y0, pi, z0, zx, zy, color)) return;
+#endif
   if (pi->isx != 0 && pi->itx != 0 && !fl_on) raster_rows(y0, y1, X0, Y0, pi, z0, zx, zy, color, true);
   else raster_rows(y0, y1, X0, Y0, pi, z0, zx, zy, color, false);
 }

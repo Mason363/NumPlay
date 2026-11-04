@@ -74,6 +74,9 @@ void fb_fill(int x, int y, int w, int h, uint8_t c) {
 }
 
 /* ---------------------------------------------------------------- filling a strip */
+#if NP_SOFT_FLOAT
+#include "np_fixed.h"
+#endif
 static color_t *strip;
 static int sy0, sy1;
 static inline void span(int y, int a, int b, color_t c) {
@@ -90,6 +93,35 @@ static void raster(const dcmd *c) {
   case D_CONVEX:
   case D_POLY: {
     int n = c->n;
+#if NP_SOFT_FLOAT
+    /* (calculators without a floating-point unit: each crossing in 16.16 from the corners' 1/8 pixels, its division a
+     * reciprocal) */
+    for (int y = r0; y <= r1; y++) {
+      int32_t yc = 8 * y + 4, xs[48];
+      int m = 0;
+      for (int i = 0; i < n && m < 48; i++) {
+        int j = i + 1 == n ? 0 : i + 1;
+        int32_t ax = p[2 * i], ay = p[2 * i + 1], bx = p[2 * j], by = p[2 * j + 1];
+        if ((ay <= yc) == (by <= yc)) continue;
+        int32_t d = by - ay, sign = d < 0 ? -1 : 1;
+        uint32_t ad = (uint32_t)(d * sign);
+        int sh = __builtin_clz(ad);
+        int64_t q = (int64_t)(yc - ay) * (bx - ax) * sign * fx_rcp(ad << sh) >> (45 - sh);   /* 1/8 pixels, 16.16 */
+        xs[m++] = (int32_t)(((int64_t)ax << 16) + q) >> 3;
+      }
+      if (c->type == D_CONVEX) {
+        if (m < 2) continue;
+        int32_t xl = xs[0], xr = xs[0];
+        for (int i = 1; i < m; i++) xl = xs[i] < xl ? xs[i] : xl, xr = xs[i] > xr ? xs[i] : xr;
+        span(y, (xl - 32768 + 65535) >> 16, (xr - 32768) >> 16, col);
+        continue;
+      }
+      for (int i = 1; i < m; i++)
+        for (int j = i; j > 0 && xs[j - 1] > xs[j]; j--) { int32_t t = xs[j]; xs[j] = xs[j - 1], xs[j - 1] = t; }
+      for (int i = 0; i + 1 < m; i += 2) span(y, (xs[i] - 32768 + 65535) >> 16, (xs[i + 1] - 32768) >> 16, col);
+    }
+    break;
+#endif
     for (int y = r0; y <= r1; y++) {
       float yc = y + 0.5f, xs[48];
       int m = 0;
@@ -113,6 +145,20 @@ static void raster(const dcmd *c) {
     break;
   }
   case D_DISC: {
+#if NP_SOFT_FLOAT
+    if (p[2] - p[0] < 4000) {
+      /* (in 1/16 pixels, the half-width a square root of 32 bits) */
+      int32_t cx = p[0] + p[2], cy = p[1] + p[3], rad = p[2] - p[0];
+      for (int y = r0; y <= r1; y++) {
+        int32_t dy = 16 * y + 8 - cy, w2 = rad * rad - dy * dy;
+        if (w2 < 0) continue;
+        int32_t w = (int32_t)fx_isqrt((uint32_t)w2 << 8);   /* 1/256 pixels */
+        int32_t a = (cx << 4) - w - 128, b = (cx << 4) + w - 128;
+        span(y, (a + 255) >> 8, b >> 8, col);
+      }
+      break;
+    }
+#endif
     float cx = (p[0] + p[2]) * 0.0625f, cy = (p[1] + p[3]) * 0.0625f, rad = (p[2] - p[0]) * 0.0625f;
     for (int y = r0; y <= r1; y++) {
       float dy = y + 0.5f - cy, w2 = rad * rad - dy * dy;

@@ -55,6 +55,15 @@ void r_poly_cam(const V3 *v, int n, uint16_t c565, int flags, int alpha);
 /* a triangle of a mesh, its corners on the screen (r_to_screen), clockwise from the front: left out when it is
  * turned away or off the screen; false when it reaches too far off the screen to be drawn so (r_poly_cam then) */
 bool r_tri_screen(const V3 *a, const V3 *b, const V3 *c, uint16_t c565);
+#if NP_SOFT_FLOAT
+/* (calculators without a floating-point unit) r_tri_screen with the corners in integers: x and y in 16.16 pixels, z
+ * the depth R_ZK / z in 16.16 */
+typedef struct {
+  int32_t x, y;
+  int64_t z;
+} SVi;
+bool r_tri_screen_fx(const SVi *a, const SVi *b, const SVi *c, uint16_t c565);
+#endif
 int r_count(void);   /* polygons this frame */
 bool r_full(void);   /* the list is (nearly) full: what comes next may be left out */
 

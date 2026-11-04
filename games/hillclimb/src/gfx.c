@@ -219,6 +219,29 @@ __attribute__((noinline)) static void paint_fill(const Cmd *k, int y0, int y1) {
   }
 }
 
+#if NP_SOFT_FLOAT
+#include "np_fixed.h"
+/* (calculators without a floating-point unit: the same in integers, in half pixels) */
+__attribute__((noinline)) static void paint_rrect(const Cmd *k, int y0, int y1) {
+  int rx = (int)k->rr.x, ry = (int)k->rr.y, rw = (int)k->rr.w, rh = (int)k->rr.h, r = k->rr.r;
+  int l2 = 2 * (rx + r), r2 = 2 * (rx + rw - r), t2 = 2 * (ry + r), b2 = 2 * (ry + rh - r);
+  int32_t out = (2 * r + 1) * (2 * r + 1), in = 2 * r - 1 >= 0 ? (2 * r - 1) * (2 * r - 1) : -1;
+  for (int y = y0; y < y1; y++) {
+    uint16_t *p = band + (y - by0) * SCREEN_W;
+    int cy = 2 * y + 1, dy = cy < t2 ? t2 - cy : cy > b2 ? cy - b2 : 0;
+    for (int x = k->x0; x < k->x1; x++) {
+      int cx = 2 * x + 1, dx = cx < l2 ? l2 - cx : cx > r2 ? cx - r2 : 0;
+      int a = k->alpha;
+      if (dx > 0 && dy > 0) {
+        int32_t d = dx * dx + dy * dy;
+        if (d >= out) continue;
+        if (d > in) a = a * ((2 * r + 1) * 128 - (int)fx_isqrt((uint32_t)d << 14)) >> 8;
+      }
+      blend(p + x, k->rr.c, (uint32_t)a);
+    }
+  }
+}
+#else
 __attribute__((noinline)) static void paint_rrect(const Cmd *k, int y0, int y1) {
   float rx = k->rr.x, ry = k->rr.y, rw = k->rr.w, rh = k->rr.h, r = k->rr.r;
   for (int y = y0; y < y1; y++) {
@@ -240,6 +263,8 @@ __attribute__((noinline)) static void paint_rrect(const Cmd *k, int y0, int y1) 
     }
   }
 }
+
+#endif
 
 static uint32_t lerp888(uint32_t a, uint32_t b, int t, int n) {
   uint32_t r = ((a >> 16 & 255) * (n - t) + (b >> 16 & 255) * t) / n;
@@ -265,6 +290,28 @@ __attribute__((noinline)) static void paint_rows(const Cmd *k, int y0, int y1) {
 }
 
 /* the pixels [*x0, *x1) of a row where t = t0 + dt x stays in [lo, hi] */
+#if NP_SOFT_FLOAT
+/* (no float: floor and ceiling of the divisions) */
+static inline int32_t div_floor(int32_t a, int32_t b) {
+  int32_t q = a / b;
+  return q - ((a % b != 0) && ((a < 0) != (b < 0)));
+}
+static void span(int32_t t0, int32_t dt, int32_t lo, int32_t hi, int *x0, int *x1) {
+  if (dt == 0) {
+    if (t0 < lo || t0 > hi) *x1 = *x0;
+    return;
+  }
+  int32_t a = lo - t0, b = hi - t0;
+  if (dt < 0) a = -a, b = -b, dt = -dt;
+  if (a > b) {
+    int32_t s = a;
+    a = b, b = s;
+  }
+  int lo_x = -div_floor(-a, dt), hi_x = div_floor(b, dt) + 1;
+  if (lo_x > *x0) *x0 = lo_x;
+  if (hi_x < *x1) *x1 = hi_x;
+}
+#else
 static void span(int32_t t0, int32_t dt, int32_t lo, int32_t hi, int *x0, int *x1) {
   if (dt == 0) {
     if (t0 < lo || t0 > hi) *x1 = *x0;
@@ -280,6 +327,7 @@ static void span(int32_t t0, int32_t dt, int32_t lo, int32_t hi, int *x0, int *x
   if (lo_x > *x0) *x0 = lo_x;
   if (hi_x < *x1) *x1 = hi_x;
 }
+#endif
 
 __attribute__((noinline)) static void paint_image(const Cmd *k, int y0, int y1) {
   const Img *im = k->image.im;
@@ -622,7 +670,46 @@ __attribute__((noinline)) static void paint_text(const Cmd *k, int y0, int y1) {
   }
 }
 
+#if NP_SOFT_FLOAT
+/* (in 1/256 pixels; the float one for a circle too big for 32 bits) */
+static void paint_circle_f(const Cmd *k, int y0, int y1, bool ring);
 __attribute__((noinline)) static void paint_circle(const Cmd *k, int y0, int y1, bool ring) {
+  int32_t cx = (int32_t)fx_from_float(k->circle.x, 8), cy = (int32_t)fx_from_float(k->circle.y, 8);
+  int32_t r = (int32_t)fx_from_float(k->circle.r, 8), t = ring ? (int32_t)fx_from_float(k->circle.t, 8) : 0;
+  if (r >= 160 << 8) {
+    paint_circle_f(k, y0, y1, ring);
+    return;
+  }
+  /* (no square root where both coverages reach 1) */
+  int32_t ri = r - 128, ro = r + 128, rh = r - t + 128;
+  uint32_t out = (uint32_t)(ro * ro), in = ri > 0 ? (uint32_t)(ri * ri) : 0, hole = ring && rh > 0 ? (uint32_t)(rh * rh) : 0;
+  for (int y = y0; y < y1; y++) {
+    uint16_t *p = band + (y - by0) * SCREEN_W;
+    int32_t dy = (y << 8) + 128 - cy;
+    for (int x = k->x0; x < k->x1; x++) {
+      int32_t dx = (x << 8) + 128 - cx;
+      uint32_t d2 = (uint32_t)(dx * dx) + (uint32_t)(dy * dy);
+      if (d2 >= out) continue;
+      int32_t cov = 256;
+      if (ri <= 0 || d2 > in || d2 < hole) {
+        int32_t d = (int32_t)fx_isqrt(d2);
+        cov = r + 128 - d;
+        if (cov <= 0) continue;
+        if (ring) {
+          int32_t inn = d - (r - t) + 128;
+          if (inn <= 0) continue;
+          if (inn < cov) cov = inn;
+        }
+        if (cov > 256) cov = 256;
+      }
+      blend(p + x, k->circle.c, (uint32_t)(k->alpha * cov >> 8));
+    }
+  }
+}
+static void paint_circle_f(const Cmd *k, int y0, int y1, bool ring) {
+#else
+__attribute__((noinline)) static void paint_circle(const Cmd *k, int y0, int y1, bool ring) {
+#endif
   float cx = k->circle.x, cy = k->circle.y, r = k->circle.r, t = k->circle.t;
   for (int y = y0; y < y1; y++) {
     uint16_t *p = band + (y - by0) * SCREEN_W;
@@ -640,6 +727,34 @@ __attribute__((noinline)) static void paint_circle(const Cmd *k, int y0, int y1,
   }
 }
 
+#if NP_SOFT_FLOAT
+/* (in 1/256 pixels: along the tube and across it, its direction in 1/4096ths; the square root only at the rounded ends
+ * and the edge's last pixel) */
+__attribute__((noinline)) static void paint_tube(const Cmd *k, int y0, int y1) {
+  float fdx = k->tube.bx - k->tube.ax, fdy = k->tube.by - k->tube.ay, fl = __builtin_sqrtf(fdx * fdx + fdy * fdy);
+  int32_t ax = (int32_t)fx_from_float(k->tube.ax, 8), ay = (int32_t)fx_from_float(k->tube.ay, 8);
+  int32_t len = (int32_t)fx_from_float(fl, 8), e = (int32_t)fx_from_float(k->tube.r, 8) + 128, e2 = e * e;
+  int32_t ux = 4096, uy = 0;
+  if (fl > 0) ux = (int32_t)fx_from_float(fdx / fl, 12), uy = (int32_t)fx_from_float(fdy / fl, 12);
+  for (int y = y0; y < y1; y++) {
+    uint16_t *p = band + (y - by0) * SCREEN_W;
+    int32_t qy = (y << 8) + 128 - ay;
+    for (int x = k->x0; x < k->x1; x++) {
+      int32_t qx = (x << 8) + 128 - ax, along = (qx * ux + qy * uy) >> 12, across = (qy * ux - qx * uy) >> 12;
+      if (across < 0) across = -across;
+      if (across >= e || along <= -e || along >= len + e) continue;
+      int32_t cov;
+      if (along < 0 || along > len) {
+        int32_t o = along < 0 ? along : along - len, d2 = o * o + across * across;
+        if (d2 >= e2) continue;
+        cov = e - (int32_t)fx_isqrt((uint32_t)d2);
+      } else
+        cov = e - across;
+      blend(p + x, k->tube.c, (uint32_t)(k->alpha * (cov > 256 ? 256 : cov) >> 8));
+    }
+  }
+}
+#else
 __attribute__((noinline)) static void paint_tube(const Cmd *k, int y0, int y1) {
   float ax = k->tube.ax, ay = k->tube.ay, dx = k->tube.bx - ax, dy = k->tube.by - ay, r = k->tube.r;
   float l = dx * dx + dy * dy, inv = l > 0 ? 1 / l : 0;
@@ -656,6 +771,8 @@ __attribute__((noinline)) static void paint_tube(const Cmd *k, int y0, int y1) {
     }
   }
 }
+
+#endif
 
 /* The ground: rock or soil under the surface line (and over the ceiling's), then the surface strip along it. */
 __attribute__((noinline)) static void paint_ground(int y0, int y1) {

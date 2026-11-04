@@ -43,6 +43,9 @@ int main(void) {
     } else
       plat_sleep(1);
   }
+#if NP_SOFT_FLOAT
+  pic_end();
+#endif
   return plat_end();
 }
 #endif

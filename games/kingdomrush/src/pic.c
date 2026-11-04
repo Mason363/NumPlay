@@ -232,6 +232,41 @@ static uint32_t square_at(const Info *i, int k) {
   return rd24(i->base_table + 3 * k);
 }
 
+#if NP_SOFT_FLOAT
+/* (calculators with RAM to spare and a slower CPU: the squares decoded are kept, by their codes' place) */
+#include <stdlib.h>
+#include <string.h>
+typedef struct {
+  const uint8_t *data;
+  int q;
+  uint16_t px[256];
+} Kept;
+static Kept *kept;
+static uint32_t kept_bits;
+static bool kept_tried;
+
+static const uint16_t *kept_square(const uint8_t *data, int q) {
+  if (!kept_tried) {
+    kept_tried = true;
+    for (kept_bits = 11; kept_bits >= 6 && !(kept = malloc(sizeof(Kept) << kept_bits)); kept_bits--) {}
+    if (kept)
+      for (uint32_t i = 0; i < 1u << kept_bits; i++) kept[i].data = NULL;
+  }
+  if (!kept) return NULL;
+  Kept *k = &kept[(uint32_t)(uintptr_t)data * 2654435761u >> (32 - kept_bits)];
+  if (k->data != data || k->q != q) {
+    square(data, q, k->px, 16);
+    k->data = data, k->q = q;
+  }
+  return k->px;
+}
+
+void pic_end(void) {
+  free(kept);
+  kept = NULL, kept_tried = false;
+}
+#endif
+
 int pic_w(int id) { return 16 * section(SEC_PICS)[12 * id]; }
 int pic_h(int id) { return 16 * section(SEC_PICS)[12 * id + 1]; }
 
@@ -250,6 +285,15 @@ void pic_part(int id, int x, int y, int sx, int sy, int w, int h) {
       const uint8_t *data = bank + square_at(&in, my * in.mw + mx);
       int r0 = my * 16 > pr0 ? my * 16 : pr0, r1 = my * 16 + 16 < pr1 ? my * 16 + 16 : pr1;
       int c0 = mx * 16 > pc0 ? mx * 16 : pc0, c1 = mx * 16 + 16 < pc1 ? mx * 16 + 16 : pc1;
+#if NP_SOFT_FLOAT
+      const uint16_t *k = kept_square(data, in.q);
+      if (k) {
+        for (int r = r0; r < r1; r++)
+          memcpy(gfx_band + (r - sy + y - gfx_y0) * SCREEN_W + (c0 - sx + x), k + (r - my * 16) * 16 + (c0 - mx * 16),
+                 (size_t)(c1 - c0) * 2);
+        continue;
+      }
+#endif
       if (r1 - r0 == 16 && c1 - c0 == 16) {   /* all of it shows: straight into the band */
         square(data, in.q, gfx_band + (r0 - sy + y - gfx_y0) * SCREEN_W + (c0 - sx + x), SCREEN_W);
         continue;

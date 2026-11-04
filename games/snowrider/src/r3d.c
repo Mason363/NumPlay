@@ -192,6 +192,54 @@ bool r_tri_screen(const V3 *A, const V3 *B, const V3 *C, uint16_t color) {
   return true;
 }
 
+#if NP_SOFT_FLOAT
+#include "np_fixed.h"
+/* (the same in integers: twice the area and the depth plane from the corners in 16.16, the plane kept as floats) */
+bool r_tri_screen_fx(const SVi *A, const SVi *B, const SVi *C, uint16_t color) {
+  const int32_t g = (int32_t)(GUARD * 65536), cx = (int32_t)(cam.cx * 65536), cy = (int32_t)(cam.cy * 65536);
+  if (A->x - cx > g || A->x - cx < -g || A->y - cy > g || A->y - cy < -g || B->x - cx > g || B->x - cx < -g ||
+      B->y - cy > g || B->y - cy < -g || C->x - cx > g || C->x - cx < -g || C->y - cy > g || C->y - cy < -g)
+    return false;
+  int64_t x1 = B->x - A->x, y1 = B->y - A->y, x2 = C->x - A->x, y2 = C->y - A->y;
+  int64_t det = x1 * y2 - x2 * y1;
+  if (det < 42949673) return true;   /* (0.01 square pixels) */
+  int32_t x0 = A->x < B->x ? A->x : B->x, xm = A->x > B->x ? A->x : B->x;
+  int32_t y0 = A->y < B->y ? A->y : B->y, ym = A->y > B->y ? A->y : B->y;
+  if (C->x < x0) x0 = C->x;
+  if (C->x > xm) xm = C->x;
+  if (C->y < y0) y0 = C->y;
+  if (C->y > ym) ym = C->y;
+  if (xm < 0 || x0 >= SCREEN_W << 16 || ym < 0 || y0 >= SCREEN_H << 16) return true;
+  int iy0 = y0 < 0 ? 0 : (y0 + 32768) >> 16, iy1 = ym >= SCREEN_H << 16 ? SCREEN_H : (ym + 32768) >> 16;
+  if (iy0 >= iy1) return true;
+  if (npolys + nalpha >= MAXP || nverts + 3 > MAXV) return true;
+  int64_t w1 = B->z - A->z, w2 = C->z - A->z;
+  int64_t a = fx_div(w1 * y2 - w2 * y1, det, 16), b = fx_div(x1 * w2 - x2 * w1, det, 16);
+  Poly *q = &polys[npolys];
+  if (a > (int64_t)1 << 34 || a < -((int64_t)1 << 34) || b > (int64_t)1 << 34 || b < -((int64_t)1 << 34)) {
+    /* (seen nearly edge-on: as r_tri_screen) */
+    float fx1 = fx_to_float(x1, 16), fy1 = fx_to_float(y1, 16), fx2 = fx_to_float(x2, 16), fy2 = fx_to_float(y2, 16);
+    float fw1 = fx_to_float(w1, 16), fw2 = fx_to_float(w2, 16), inv = 1 / fx_to_float(det, 32);
+    q->a = (fw1 * fy2 - fw2 * fy1) * inv, q->b = (fx1 * fw2 - fx2 * fw1) * inv;
+    q->c = fx_to_float(A->z, 16) - q->a * fx_to_float(A->x, 16) - q->b * fx_to_float(A->y, 16);
+  } else {
+    q->a = fx_to_float(a, 16), q->b = fx_to_float(b, 16);
+    q->c = fx_to_float(A->z - (a * A->x >> 16) - (b * A->y >> 16), 16);
+  }
+  q->alpha = 255, q->color = color;
+  q->v0 = (uint16_t)nverts, q->n = 3;
+  const SVi *v[3] = {A, B, C};
+  for (int i = 0; i < 3; i++) {
+    int32_t px = v[i]->x * 8 + 32768, py = v[i]->y * 8 + 32768;   /* (as (int16_t)(x * SUB + 0.5f)) */
+    pos[nverts + i] = (Pos){(int16_t)(px < 0 ? -(-px >> 16) : px >> 16), (int16_t)(py < 0 ? -(-py >> 16) : py >> 16)};
+  }
+  q->y0 = (uint8_t)iy0, q->y1 = (uint8_t)iy1;
+  nverts += 3;
+  npolys++;
+  return true;
+}
+#endif
+
 /* ---------------------------------------------------------------- drawing a band */
 /* an opaque run of n pixels: each one nearer than what is there takes the colour (two at a time on the calculator:
  * its DSP compares and picks both halves of a word at once) */
@@ -350,6 +398,131 @@ __attribute__((noinline)) static void raster_tri(const Poly *q) {
   }
 }
 
+#if NP_SOFT_FLOAT
+/* ---------------------------------------------------------------- the same in integers
+ * (calculators without a floating-point unit: a polygon's depth plane read once a band, its edges stepped exactly from
+ * the corners' 1/8 pixels) */
+
+/* the depth plane at pixel (x, y) (its middle), 16.16 */
+typedef struct {
+  int64_t za, zb, zc;
+} Plane;
+static inline void plane(const Poly *q, Plane *P) {
+  P->za = fx_from_float(q->a, 16), P->zb = fx_from_float(q->b, 16);
+  P->zc = fx_from_float(q->c, 16) + ((P->za + P->zb) >> 1);
+}
+static inline uint32_t depth_at_fx(const Plane *P, int x, int y) {
+  int64_t z = P->zc + P->zb * y + P->za * x;
+  return z < 0 ? 0 : z > (int64_t)65535 << 16 ? (uint32_t)65535 << 16 : (uint32_t)z;
+}
+static inline uint32_t depth_step_fx(const Plane *P) {
+  return (uint32_t)(P->za > (int64_t)30000 << 16 ? 30000 << 16 : P->za < -((int64_t)30000 << 16) ? -(30000 << 16) : (int32_t)P->za);
+}
+
+/* an edge from (xa, ya) down to (xb, yb), in 1/8 pixels: its x at a row's middle Y, 1/8 pixels with 12 more bits */
+typedef struct {
+  int32_t ya, yb, xa, dx, r, sh;
+} EdgeI;
+static void edge_i(EdgeI *E, int xa, int ya, int xb, int yb) {
+  uint32_t d = (uint32_t)(yb - ya);
+  int s = __builtin_clz(d);
+  E->ya = ya, E->yb = yb, E->xa = xa, E->dx = xb - xa, E->r = fx_rcp(d << s), E->sh = 49 - s;
+}
+static inline int32_t edge_x(const EdgeI *E, int32_t Y) {
+  return (E->xa << 12) + (int32_t)((int64_t)((Y - E->ya) * E->dx) * E->r >> E->sh);
+}
+/* the pixels [x0, x1) between two edges' places, as raster rounds them; false when none */
+static inline bool span_x(int32_t xl, int32_t xr, int *x0, int *x1) {
+  if (xl > xr) {
+    int32_t t = xl;
+    xl = xr, xr = t;
+  }
+  int a = xl <= -(8 << 12) ? 0 : (xl + (4 << 12)) >> 15, b = xr >= SCREEN_W * 8 << 12 ? SCREEN_W : (xr + (4 << 12)) >> 15;
+  if (a < 0) a = 0;
+  *x0 = a, *x1 = b;
+  return a < b;
+}
+
+static void raster_fx(const Poly *q) {
+  int ya = q->y0 > r_y0 ? q->y0 : r_y0, yb = q->y1 < r_y1 ? q->y1 : r_y1;
+  if (ya >= yb) return;
+  const Pos *pp = pos + q->v0;
+  int n = q->n;
+  int64_t area = 0;
+  for (int i = 0, j = n - 1; i < n; j = i++) area += (int64_t)pp[j].x * pp[i].y - (int64_t)pp[i].x * pp[j].y;
+  EdgeI e[2][MAXN];
+  int ne[2] = {0, 0};
+  for (int i = 0, j = n - 1; i < n; j = i++) {
+    int ay = pp[j].y, by = pp[i].y;
+    if (ay == by) continue;
+    int ka = j, kb = i;
+    bool down = by > ay;
+    if (!down) {
+      int t = ay;
+      ay = by, by = t;
+      ka = i, kb = j;
+    }
+    if (by <= ya * 8 || ay >= yb * 8) continue;
+    int side = (down == (area > 0)) ? 1 : 0;
+    int k = ne[side]++;
+    while (k > 0 && e[side][k - 1].ya > ay) e[side][k] = e[side][k - 1], k--;
+    edge_i(&e[side][k], pp[ka].x, ay, pp[kb].x, by);
+  }
+  if (!ne[0] || !ne[1]) return;
+  Plane P;
+  plane(q, &P);
+  uint16_t col = q->color;
+  int alpha = q->alpha >> 3;
+  uint32_t da = depth_step_fx(&P);
+  int li = 0, ri = 0;
+  for (int y = ya; y < yb; y++) {
+    int32_t Y = y * 8 + 4;
+    while (li < ne[0] - 1 && Y >= e[0][li].yb) li++;
+    while (ri < ne[1] - 1 && Y >= e[1][ri].yb) ri++;
+    const EdgeI *L = &e[0][li], *R = &e[1][ri];
+    if (Y < L->ya || Y >= L->yb || Y < R->ya || Y >= R->yb) continue;
+    int x0, x1;
+    if (!span_x(edge_x(L, Y), edge_x(R, Y), &x0, &x1)) continue;
+    uint32_t z = depth_at_fx(&P, x0, y);
+    uint16_t *zb = zbuf + (y - r_y0) * SCREEN_W, *cb = r_col + (y - r_y0) * SCREEN_W;
+    if (alpha >= 31) span_flat(zb + x0, cb + x0, x1 - x0, z, da, col);
+    else
+      for (int x = x0; x < x1; x++, z += da)
+        if ((uint16_t)(z >> 16) > zb[x]) cb[x] = r_mix565(cb[x], col, alpha);
+  }
+}
+
+__attribute__((noinline)) static void raster_tri_fx(const Poly *q) {
+  int ya = q->y0 > r_y0 ? q->y0 : r_y0, yb = q->y1 < r_y1 ? q->y1 : r_y1;
+  if (ya >= yb) return;
+  const Pos *p0 = pos + q->v0, *p1 = p0 + 1, *p2 = p0 + 2, *t;
+  if (p1->y < p0->y) t = p0, p0 = p1, p1 = t;
+  if (p2->y < p1->y) t = p1, p1 = p2, p2 = t;
+  if (p1->y < p0->y) t = p0, p0 = p1, p1 = t;
+  if (p0->y == p2->y) return;
+  EdgeI e02, e;
+  edge_i(&e02, p0->x, p0->y, p2->x, p2->y);
+  Plane P;
+  plane(q, &P);
+  uint32_t da = depth_step_fx(&P);
+  int r0 = (p0->y + 3) >> 3, r1 = (p1->y + 3) >> 3, r2 = (p2->y + 3) >> 3;
+  if (r0 < ya) r0 = ya;
+  if (r2 > yb) r2 = yb;
+  int m = r1 < r0 ? r0 : r1 > r2 ? r2 : r1, x0, x1;
+  for (int half = 0; half < 2; half++) {
+    int ys = half ? m : r0, ye = half ? r2 : m;
+    if ((half ? p1->y == p2->y : p0->y == p1->y) || ys >= ye) continue;
+    if (half) edge_i(&e, p1->x, p1->y, p2->x, p2->y);
+    else edge_i(&e, p0->x, p0->y, p1->x, p1->y);
+    for (int y = ys; y < ye; y++)
+      if (span_x(edge_x(&e02, y * 8 + 4), edge_x(&e, y * 8 + 4), &x0, &x1)) {
+        int k = (y - r_y0) * SCREEN_W + x0;
+        span_flat(zbuf + k, r_col + k, x1 - x0, depth_at_fx(&P, x0, y), da, q->color);
+      }
+  }
+}
+#endif
+
 void r_render(r_band_fn bg, r_band_fn overlay) {
   for (int band = 0; band < NBANDS; band++) {
     r_y0 = band * BAND_H, r_y1 = r_y0 + BAND_H;
@@ -358,6 +531,17 @@ void r_render(r_band_fn bg, r_band_fn overlay) {
     if (bg) bg();
     else
       for (int i = 0; i < SCREEN_W * BAND_H; i++) r_col[i] = 0;
+#if NP_SOFT_FLOAT
+    for (const Poly *q = polys, *e = polys + npolys; q < e; q++)
+      if (q->y1 > r_y0 && q->y0 < r_y1) {
+        if (q->n == 3) raster_tri_fx(q);
+        else raster_fx(q);
+      }
+    for (int i = 0; i < nalpha; i++) {
+      const Poly *q = &polys[MAXP - 1 - i];
+      if (q->y1 > r_y0 && q->y0 < r_y1) raster_fx(q);
+    }
+#else
     for (const Poly *q = polys, *e = polys + npolys; q < e; q++)
       if (q->y1 > r_y0 && q->y0 < r_y1) {
         if (q->n == 3) raster_tri(q);
@@ -368,6 +552,7 @@ void r_render(r_band_fn bg, r_band_fn overlay) {
       const Poly *q = &polys[MAXP - 1 - i];
       if (q->y1 > r_y0 && q->y0 < r_y1) raster(q);
     }
+#endif
     if (overlay) overlay();
     plat_push(0, r_y0, SCREEN_W, BAND_H, r_col);
   }

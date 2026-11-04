@@ -23,7 +23,9 @@
 
 static uint16_t band[W * BAND];
 static int top;                 /* the strip's first row */
+#if !NP_SOFT_FLOAT
 static uint32_t sums[H / BAND];
+#endif
 static bool fresh;
 static const sh_view *V;
 static const sh_game *G;
@@ -626,10 +628,14 @@ void sh_draw(const sh_view *v, sh_push push) {
     for (int i = trail_at; i < ncmd; i++) paint(&cmds[i], 0);
     over();
     for (int i = 0; i < ncmd; i++) paint(&cmds[i], 1);
+#if NP_SOFT_FLOAT
+    push(0, top, W, BAND, band);   /* (a band is cheap to show there, dearer to compare) */
+#else
     uint32_t h = 2166136261u;
     for (int i = 0; i < W * BAND; i++) h = (h ^ band[i]) * 16777619u;
     if (!fresh || h != sums[top / BAND]) push(0, top, W, BAND, band);
     sums[top / BAND] = h;
+#endif
   }
   fresh = true;
 }

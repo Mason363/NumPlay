@@ -16,8 +16,12 @@ PORT_OUT = build/$(TARGET)
 PORT_FONT ?= $(NP_ROOT)/launcher/src/font_data.c
 PORT_COMMON = $(NP_PLATFORM)/common/eadk_text.c $(PORT_FONT) \
   $(if $(filter %launcher/src/gfx.c,$(PORT_SRC)),$(NP_PLATFORM)/common/np_alloc.c)
+# 1 on the calculators without a floating-point unit, where float is done in software: games take their fixed-point
+# paths there (#if NP_SOFT_FLOAT). `make port TARGET=sdl NP_SOFT_FLOAT=1` tries those paths on a computer.
+NP_SOFT_FLOAT ?= $(if $(filter nspire casio-cg ti84ce,$(TARGET)),1,0)
 PORT_CFLAGS = -std=gnu11 -O2 -g -Wall -Wno-unused-parameter -Wno-unused-function -DNP_PORT=1 \
-  -DNP_APP_ID='"$(PORT_ID)"' -DNP_APP_NAME='"$(PORT_NAME)"' -I$(NP_PLATFORM)/include $(PORT_FLAGS)
+  -DNP_SOFT_FLOAT=$(NP_SOFT_FLOAT) -DNP_APP_ID='"$(PORT_ID)"' -DNP_APP_NAME='"$(PORT_NAME)"' -I$(NP_PLATFORM)/include \
+  $(PORT_FLAGS)
 # C++ files: each built on its own by the target's C++ compiler (NP_CXX), then linked with the rest
 NP_CXXFLAGS = $(filter-out -std=gnu11,$(PORT_CFLAGS)) -std=gnu++11 -fno-exceptions -fno-rtti -fno-threadsafe-statics \
   $(PORT_CXXFLAGS)
@@ -47,7 +51,8 @@ CE_DIR = $(PORT_OUT)/$(PORT_ID)
 CE_ALL = $(abspath $(PORT_SRC) $(NP_PLATFORM)/ti84ce/np_ce.c $(PORT_COMMON))
 # the game's flags with their folders made absolute (the build runs in CE_DIR); PORT_DEPS: files the sources include
 # that the game's Makefile makes (levels...)
-CE_FLAGS = $(foreach f,$(PORT_FLAGS),$(if $(filter -I%,$(f)),-I$(abspath $(patsubst -I%,%,$(f))),$(f))) $(PORT_CE_FLAGS)
+CE_FLAGS = $(foreach f,$(PORT_FLAGS),$(if $(filter -I%,$(f)),-I$(abspath $(patsubst -I%,%,$(f))),$(f))) $(PORT_CE_FLAGS) \
+  -DNP_SOFT_FLOAT=$(NP_SOFT_FLOAT)
 # a shift past an int's 24 bits stops the build; a frame that big on the 4 KB stack is worth a look
 CE_WARN = -Wall -Werror=shift-count-overflow -Werror=shift-overflow -Wshift-sign-overflow -Wframe-larger-than=1024
 ifneq ($(PORT_CE),)
@@ -75,13 +80,15 @@ else ifeq ($(TARGET),nspire)
 NDLESS_SDK ?= $(HOME)/Documents/Assets/toolchains/ndless-src/ndless-sdk
 NS_PATH = $(NDLESS_SDK)/bin:$(NDLESS_SDK)/toolchain/install/bin
 NS_DIR = $(PORT_OUT)/$(PORT_ID)
+# -O2: faster than -Os on the ARM926, and the Nspire has the room
+NS_OPT ?= -O2
 NS_SRC = $(PORT_SRC) $(NP_PLATFORM)/nspire/np_nspire.c $(PORT_COMMON)
-NP_CXX = PATH="$(NS_PATH):$$PATH" nspire-g++ -Os -marm -ffunction-sections -fdata-sections
+NP_CXX = PATH="$(NS_PATH):$$PATH" nspire-g++ $(NS_OPT) -marm -ffunction-sections -fdata-sections
 port: $(PORT_OUT)/$(PORT_ID).tns
 $(PORT_OUT)/$(PORT_ID).tns: $(PORT_DEPS) $(NS_SRC) $(PORT_ASM) $(PORT_CXX_OBJ) $(wildcard $(NP_PLATFORM)/include/*.h)
 	@rm -rf $(NS_DIR) && mkdir -p $(NS_DIR)
 	$(Q) n=0; for f in $(NS_SRC) $(PORT_ASM); do n=$$((n+1)); \
-	  PATH="$(NS_PATH):$$PATH" nspire-gcc $(PORT_CFLAGS) -Os -marm -ffunction-sections -fdata-sections \
+	  PATH="$(NS_PATH):$$PATH" nspire-gcc $(PORT_CFLAGS) $(NS_OPT) -marm -ffunction-sections -fdata-sections \
 	    -c $$f -o $(NS_DIR)/f$$n.o || exit 1; done
 	$(Q) PATH="$(NS_PATH):$$PATH" nspire-ld $(NS_DIR)/*.o $(PORT_CXX_OBJ) -Wl,--gc-sections -lm -o $(NS_DIR)/$(PORT_ID).elf
 	$(Q) PATH="$(NS_PATH):$$PATH" genzehn --input $(NS_DIR)/$(PORT_ID).elf --output $(NS_DIR)/$(PORT_ID).zehn \
