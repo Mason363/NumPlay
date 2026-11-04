@@ -143,9 +143,10 @@ void ce_archive(const char *op1);
 
 /* the code's appvars (where each goes), then the others */
 #define NCODE 4
-static const char BOOTDATA var_names[][9] = {"BALCV0", "BALCV1", "BALCP", "BALCB", "BALLUT", "BALFIRE", "BALBG0",
-                                             "BALBG1", "BALED", "BALART0", "BALART1", "BALART2", "BALART3", "BALART4"};
-#define NVARS (NCODE + 5 + CE_ART_NVARS)
+static const char BOOTDATA var_names[][9] = {"BALCV0",  "BALCV1",  "BALCP",   "BALCB",   "BALLUT",  "BALFIRE",
+                                             "BALBG0",  "BALBG1",  "BALBG2",  "BALED",   "BALART0", "BALART1",
+                                             "BALART2", "BALART3", "BALART4", "BALART5"};
+#define NVARS (NCODE + 6 + CE_ART_NVARS)
 static const char BOOTDATA save_name[9] = "NPbalato";
 static const char BOOTDATA msg_missing[] = "Balatro: a file is missing";
 static const char BOOTDATA msg_send[] = "Send every Balatro file:";

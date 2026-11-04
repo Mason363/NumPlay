@@ -138,15 +138,24 @@ def paint(sx, sy, mode, t_real, t_spin, spin, contrast):
 BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
 
 
-def field(mode, x0, w, h, step):
-    """the paint (0..255) every `step` pixels, then as levels 0..15 (ordered dither), as palette indices"""
+def field(mode, x0, w, h, cell):
+    """The paint as src/bg.c draws it: worked out on a grid every `cell` pixels (each point the mean of 4 samples a
+    pixel around it, as bg.c's passes average them), interpolated between the points for every pixel, then as levels
+    0..15 (ordered dither), as palette indices."""
+    gw, gh = (w + cell - 1) // cell + 2, (h + cell - 1) // cell + 2
+    t = 20.0 if mode else 36.0
+    jit = ((-1, -1), (1, 1), (1, -1), (-1, 1))
+    grid = [[sum(paint(x0 + gx * cell + jx, gy * cell + jy, mode, t, 0.0, 0.0, 1.0) for jx, jy in jit) / 4.0
+             for gx in range(gw)] for gy in range(gh)]
     out = bytearray()
     for y in range(h):
+        gy, fy = y // cell, (y % cell) / cell
         for x in range(w):
-            sx, sy = x0 + x * step + (step - 1) / 2, y * step + (step - 1) / 2
-            v = paint(sx, sy, mode, 20.0 if mode else 36.0, 0.0, 0.0, 1.0)
-            lv = (v * (LEVELS - 1) * 16 // 255 + BAYER[y & 3][x & 3]) // 16
-            out.append(SWIRL0 + min(LEVELS - 1, lv))
+            gx, fx = x // cell, (x % cell) / cell
+            v = (grid[gy][gx] * (1 - fx) + grid[gy][gx + 1] * fx) * (1 - fy) + \
+                (grid[gy + 1][gx] * (1 - fx) + grid[gy + 1][gx + 1] * fx) * fy
+            lv = int((v * (LEVELS - 1) * 16 / 255 + BAYER[y & 3][x & 3]) // 16)
+            out.append(SWIRL0 + max(0, min(LEVELS - 1, lv)))
     return bytes(out)
 
 
@@ -482,15 +491,18 @@ def main():
         fonts += [(name, tab), (name + "_bits", bits)]
     parts = {}
     for name, blob in (("shade", shade), ("grey", grey), ("edlut", edl), ("fcol", fcols), ("text", texts)) + tuple(fonts):
+        if len(lut) & 1:
+            lut.append(0)  # (the fonts' tables have 16-bit fields)
         parts[name] = len(lut)
         lut += blob
     # the background: the run's paint right of the sidebar, the title's at half size
-    bg_run = field(0, 102, 218, 240, 1)
-    bg_title = field(1, 0, 160, 120, 2)
+    bg_run = field(0, 102, 218, 240, 4)
+    bg_title = field(1, 0, 320, 240, 2)
     blobs = dict(vars_)
     blobs["BALLUT"] = lut
     blobs["BALBG0"] = bg_run
-    blobs["BALBG1"] = bg_title
+    blobs["BALBG1"] = bg_title[:len(bg_title) // 2]
+    blobs["BALBG2"] = bg_title[len(bg_title) // 2:]
     blobs["BALFIRE"] = fgrids
     blobs["BALED"] = edp
     if max(len(b) for b in blobs.values()) > MAXVAR:
@@ -522,7 +534,7 @@ def main():
          f"#define FL_W {FL_W}", f"#define FL_H {FL_H}", f"#define FL_FRAMES {FL_FRAMES}", f"#define FL_LEVELS {FL_LEVELS}",
          f"#define FL_GC {FL_GC}", f"#define FL_GR {FL_GR}", f"#define FL_ROWS {FL_ROWS}",
          "#define FL_I {" + ",".join(f"{v}f" for v in FL_I) + "}",
-         "#define BG_RUN_X 102", "#define BG_RUN_W 218", "#define BG_TITLE_W 160", "#define BG_TITLE_H 120",
+         "#define BG_RUN_X 102", "#define BG_RUN_W 218",
          "extern const char ce_art_vars[CE_ART_NVARS][9];", "extern const uint16_t ce_palette[176];", "#endif"]
     open(os.path.join(outdir, "ce_art.h"), "w").write("\n".join(h) + "\n")
     total = sum(len(b) for b in blobs.values())

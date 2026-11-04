@@ -8,7 +8,7 @@
 #include "ce.h"
 
 uint8_t ce_bg_ver;
-static const uint8_t *field[2];
+static const uint8_t *field[3]; /* the run's (right of the sidebar), the title's top and bottom halves */
 static int mode;
 static float colours[3][3], target[3][3], contrast = 1, contrast_target = 1, spin, spin_target;
 static int lut_dirty = 1;
@@ -20,7 +20,8 @@ int ce_bg_init(void) {
   size_t n;
   field[0] = ce_appvar("BALBG0", &n);
   field[1] = ce_appvar("BALBG1", &n);
-  return field[0] && field[1];
+  field[2] = ce_appvar("BALBG2", &n);
+  return field[0] && field[1] && field[2];
 }
 
 static float fabsf_(float x) { return x < 0 ? -x : x; }
@@ -145,7 +146,7 @@ void ce_bg_row(uint8_t *dst, int y, int x0) {
     for (; x < BG_RUN_X; x++) dst[x] = row[BG_RUN_X - x < BG_RUN_W ? BG_RUN_X - x : 0]; /* (mirrored: a sidebar covers it) */
     memcpy(dst + x, row + (x - BG_RUN_X), (size_t)(SCR_W - x));
   } else {
-    const uint8_t *row = field[1] + (y >> 1) * BG_TITLE_W;
-    for (int x = x0 & ~1; x < SCR_W; x += 2) dst[x] = dst[x + 1] = row[x >> 1];
+    const uint8_t *row = y < SCR_H / 2 ? field[1] + y * SCR_W : field[2] + (y - SCR_H / 2) * SCR_W;
+    memcpy(dst + x0, row + x0, (size_t)(SCR_W - x0));
   }
 }

@@ -84,6 +84,6 @@ HOST_SRC = $(wildcard src/*.c) $(EXTRA_C_SOURCES) tools/host.c
 host: $(BINDIR)/host/balatro
 $(BINDIR)/host/balatro: $(HOST_SRC) $(wildcard src/*.h) $(DEPS) $(BINDIR)/art.stamp
 	$(Q)mkdir -p $(@D)
-	$(Q)$(HOSTCC) -std=gnu11 -O1 -g -Wall -DNP_HOST=1 $(filter-out -Xclang -mdouble=64,$(CEFLAGS)) \
+	$(Q)$(HOSTCC) -std=gnu11 -O1 -g -Wall $(HOSTFLAGS) -DNP_HOST=1 $(filter-out -Xclang -mdouble=64,$(CEFLAGS)) \
 	  $(shell pkg-config --cflags sdl3 2>/dev/null) $(HOST_SRC) $(shell pkg-config --libs sdl3 2>/dev/null) -lm -o $@
 	$(Q)echo [host] $@

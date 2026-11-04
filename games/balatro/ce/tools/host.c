@@ -1,5 +1,5 @@
 /* The TI-84 Plus CE version on a computer, for testing: the calculator's 8-bit screen and palette, its keys, its
- * appvars (gen/*.bin, as tools/mkart.py makes them) and the save (a file), with SDL 3 for a window.
+ * appvars (the .bin files in gen/, as tools/mkart.py makes them) and the save (a file), with SDL 3 for a window.
  *
  * In the environment, as platform/sdl/np_sdl.c: NP_HEADLESS=1 for no window (and a clock that only moves when the
  * game sleeps: fast, and the same every run), NP_KEYS "1500-1700:ok,3000:back" holds keys from one time to another

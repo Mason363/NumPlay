@@ -78,4 +78,6 @@ PORT_ID = balatro
 PORT_NAME = Balatro
 PORT_SRC = src/art.c src/assets.c src/bg.c src/cons.c src/data.c src/draw.c src/ev.c src/flame.c src/fx.c src/game.c src/gfx.c src/jokers.c src/main.c src/save.c src/score.c src/ui.c src/util.c
 PORT_FLAGS = -Isrc
+# the TI-84 Plus CE has a version of its own (ce/, a CE toolchain project): make port TARGET=ti84ce builds it
+PORT_CE = ce
 include ../../platform/port.mk
