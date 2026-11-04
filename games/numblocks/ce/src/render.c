@@ -304,9 +304,6 @@ static int clip3(CV *in, int n, CV *out, int k) {
     }
     if (da >= 0) out[m++] = *a;
     if ((da >= 0) != (db >= 0)) {
-#ifdef HOST
-      { extern unsigned long st_c3; st_c3++; }
-#endif
       int32_t dd = (int32_t)da - db, aa = da;
       while (dd > 262143 || dd < -262143) dd >>= 1, aa >>= 1;
       int t = (int)((aa << 12) / dd);
