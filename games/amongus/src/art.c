@@ -36,7 +36,7 @@ void art_title(void) {
   art_stars(g.screen_t, 1);
   float t = g.screen_t;
   for (int k = 0; k < 3; k++) {
-    float x = fmodf(t * (9 + 4 * k) + k * 140, 420) - 50, y = 126 + 6 * sinf(t * 0.5f + k * 2.1f) + (k - 1) * 3;
+    float x = fmodf(t * 12 + k * 140 + 60, 420) - 50, y = 126 + 6 * sinf(t * 0.5f + k * 2.1f) + (k - 1) * 3;
     gfx_pic(pic(PIC_IDLE), x, y, 0.9f - 0.12f * k, 0.9f - 0.12f * k, t * (0.6f + 0.25f * k) + k, color_pal[(k * 5 + 1) % N_COLORS],
             256);
   }

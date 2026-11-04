@@ -261,6 +261,19 @@ int rules(void) {
     Task t = {(uint8_t)d2, 0, {0, 2, 4}, 0, 0};
     for (; t.step < TASK_DEFS[d2].steps; t.step++) CHECK(task_console(0, &t) >= 0, "%s step %d", TASK_DEFS[d2].name, t.step);
   }
+  /* standing where a bot stands to use each console, the player can use it too */
+  round_of(7, 1, 1);
+  for (int d2 = 0; d2 < N_TASK_DEFS; d2++)
+    for (int st = 0; st < TASK_DEFS[d2].steps && st < 4; st++) {
+      Task t = {(uint8_t)d2, (uint8_t)st, {0, 2, 4}, 0, 0};
+      g.p[0].tasks[0] = t;
+      g.p[0].ntasks = 1;
+      for (int c = 0; c < N_CONSOLES; c++) {
+        if (!console_serves(c, &t)) continue;
+        g.p[0].pos = (V2){CONSOLES[c].sx, CONSOLES[c].sy};
+        CHECK(console_use(0, c) == 0, "%s step %d usable from console %d's spot", TASK_DEFS[d2].name, st, c);
+      }
+    }
   bots_frozen = false;
   printf("RULES %d checks, %d failed\n", checks, fails);
   return fails;

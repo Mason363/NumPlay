@@ -312,7 +312,12 @@ int main(int argc, char **argv) {
     game_new();
     g.screen = S_PLAY;
     /* (the round a little under way: the bots spread out) */
-    for (int f = 0; f < walk_frames; f++) game_tick(0), host_time += 33;
+    for (int f = 0; f < walk_frames; f++) {
+      for (int i = 0; i < g.nplayers; i++) g.p[i].kill_cd = 30, g.p[i].emergencies = 0;
+      g.sab_cd = 30;
+      game_tick(0), host_time += 33;
+    }
+    for (int i = 0; i < g.nplayers; i++) g.p[i].emergencies = g.opt.meetings;
     if (at_x < 1e8f) g.p[g.me].pos = (V2){at_x, at_y}, g.cam = (V2){at_x, at_y + FEET_Y};
     if (mgkind >= 0) open_minigame(mgkind);
     if (scene_name) scene(scene_name);

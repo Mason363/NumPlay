@@ -183,14 +183,14 @@ static void title_draw(void) {
 
 /* ---- How to Play ---- */
 
-static const char *const HOWTO[][6] = {
+static const char *const HOWTO[2][5] = {
     {"Crewmates", "Do your tasks around the ship.", "Find the Impostor and vote them out.",
-     "The task bar fills as tasks get done.", "Report a body or press the button to meet.", NULL},
+     "The task bar fills as tasks get done.", "Report a body or press the button to meet."},
     {"Impostors", "Kill the crewmates, one at a time.", "Sabotage the ship and use the vents.",
-     "Fake tasks and don't get caught.", "Win when the crew is as few as you.", NULL},
-    {"Keys", "Arrows: walk", "OK: use, report, vent", "EXE: kill", "Toolbox: map or sabotage", "Back: pause   Home: save and quit"},
+     "Fake tasks and don't get caught.", "Win when the crew is as few as you."},
 };
-
+static const char *const KEYS[][2] = {{"Arrows", "walk"},     {"OK", "use, report, vent"}, {"EXE", "kill"},
+                                      {"Toolbox", "map, sabotage"}, {"Back", "pause"}, {"Home", "save and quit"}};
 static void howto_tick(uint32_t pressed) {
   bool out = false;
   if (pressed & (K_RIGHT | K_OK | K_EXE)) {
@@ -207,15 +207,28 @@ static void howto_tick(uint32_t pressed) {
 
 static void howto_draw(void) {
   art_stars(g.t + g.screen_t, 0.3f);
-  gfx_fill(20, 20, 280, 190, rgb565(0x0E1A2B), 230);
-  gfx_rect(20, 20, 280, 190, 2, rgb565(0x9AB3C9));
-  const char *const *p = HOWTO[g.sel];
-  gfx_text(FONT_HUGE, 160, 56, p[0], g.sel == 1 ? IMP_RED : CREW_BLUE, 0, 0, 1);
-  for (int k = 1; k < 6 && p[k]; k++) gfx_text(FONT_MID, 160, 74 + 22 * k, p[k], WHITE, 0, 0, 1);
+  gfx_fill(20, 14, 280, 202, rgb565(0x0E1A2B), 230);
+  gfx_rect(20, 14, 280, 202, 2, rgb565(0x9AB3C9));
+  if (g.sel < 2) {
+    const char *const *p = HOWTO[g.sel];
+    gfx_text(FONT_HUGE, 160, 46, p[0], g.sel == 1 ? IMP_RED : CREW_BLUE, 0, 0, 1);
+    /* the player, then the buttons that matter */
+    art_player(g.sel ? 0 : 1, 82, 82, 1.2f, false, 256);
+    static const int B[2][3] = {{PIC_UI_USEBUTTON, PIC_UI_REPORTBUTTON, PIC_UI_MAPADMIN},
+                                {PIC_UI_KILLBUTTON, PIC_UI_VENT, PIC_UI_SABOTAGE}};
+    for (int k = 0; k < 3; k++) gfx_spr(pic(B[g.sel][k]), 140 + 44 * k, 82, false, NULL, 256);
+    for (int k = 1; k < 5; k++) gfx_text(FONT_MID, 160, 104 + 21 * k, p[k], WHITE, 0, 0, 1);
+  } else {
+    gfx_text(FONT_HUGE, 160, 46, "Keys", WHITE, 0, 0, 1);
+    for (int k = 0; k < 6; k++) {
+      gfx_text(FONT_MID, 150, 76 + 20 * k, KEYS[k][0], 0xFFE0, 0, 0, 2);
+      gfx_text(FONT_MID, 162, 76 + 20 * k, KEYS[k][1], WHITE, 0, 0, 0);
+    }
+  }
   char b[16];
   snprintf(b, sizeof b, "%d/3", g.sel + 1);
-  gfx_text(FONT_SMALL, 160, 202, b, rgb565(0x9AB3C9), 0, 0, 1);
-  hud_keys("OK next   left back a page   Back close");
+  gfx_text(FONT_SMALL, 160, 208, b, rgb565(0x9AB3C9), 0, 0, 1);
+  hud_keys(g.sel < 2 ? "OK next   left back a page   Back close" : "OK done   left back a page   Back close");
 }
 
 /* ---- pause ---- */
