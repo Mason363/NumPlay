@@ -140,6 +140,46 @@ void gfx_pic(const Pic *p, float x, float y, float sx, float sy, float angle, co
   }
 }
 
+void gfx_tiles(const TilePic *s, int x, int y) {
+  const uint16_t *map = tile_map(s);
+  x -= s->ox, y -= s->oy;
+  int y0 = gfx_y0 - y, y1 = y0 + BAND;   /* the band's rows in the picture */
+  if (y1 <= 0 || y0 >= s->th * 16) return;
+  int ty0 = y0 < 0 ? 0 : y0 >> 4, ty1 = (y1 - 1) >> 4;
+  if (ty1 >= s->th) ty1 = s->th - 1;
+  int tx0 = x < 0 ? (-x) >> 4 : 0, tx1 = (SCREEN_W - 1 - x) >> 4;
+  if (tx1 >= s->tw) tx1 = s->tw - 1;
+  for (int ty = ty0; ty <= ty1; ty++) {
+    int r0 = ty * 16 < y0 ? y0 - ty * 16 : 0, r1 = ty * 16 + 16 > y1 ? y1 - ty * 16 : 16;
+    for (int tx = tx0; tx <= tx1; tx++) {
+      unsigned t = map[ty * s->tw + tx];
+      if (t == T_EMPTY) continue;
+      int sx = x + tx * 16;
+      int c0 = sx < 0 ? -sx : 0, c1 = sx + 16 > SCREEN_W ? SCREEN_W - sx : 16;
+      const uint8_t *d = tile_data(s, t);
+      const uint16_t *pal = (const uint16_t *)(const void *)d;
+      bool clear = t & T_CLEAR;
+      for (int r = r0; r < r1; r++) {
+        uint16_t *row = gfx_band + (y + ty * 16 + r - gfx_y0) * SCREEN_W + sx;
+        const uint8_t *src = d + 32 + r * 8;
+        if (!clear) {
+          int c = c0;
+          if (c & 1) row[c] = pal[src[c >> 1] & 15], c++;
+          for (; c + 1 < c1; c += 2) {
+            uint8_t b = src[c >> 1];
+            row[c] = pal[b >> 4], row[c + 1] = pal[b & 15];
+          }
+          if (c < c1) row[c] = pal[src[c >> 1] >> 4];
+        } else
+          for (int c = c0; c < c1; c++) {
+            unsigned k = c & 1 ? src[c >> 1] & 15 : src[c >> 1] >> 4;
+            if (k != 15) row[c] = pal[k];
+          }
+      }
+    }
+  }
+}
+
 void gfx_fill(int x, int y, int w, int h, uint16_t c, int alpha) {
   int y0 = y > gfx_y0 ? y : gfx_y0, y1 = y + h < gfx_y0 + BAND ? y + h : gfx_y0 + BAND;
   if (x < 0) w += x, x = 0;

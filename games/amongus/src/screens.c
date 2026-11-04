@@ -384,7 +384,7 @@ static void draw_band(void) {
   case S_PLAY:
     view_draw();
     if (g.overlay == O_NONE) hud_draw();
-    else if (g.overlay == O_TASK || g.overlay == O_EMERGENCY || g.overlay == O_CAMS) mg_draw();
+    else if (g.overlay == O_TASK) mg_draw();
     else map_draw(g.overlay);
     break;
   case S_KILLED:

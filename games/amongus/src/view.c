@@ -17,46 +17,43 @@ static inline int sy_of(float y) { return (int)floorf(-y * PX_PER_UNIT + SHIP_OY
 /* ---- the floor ---- */
 
 static void draw_tiles(void) {
-  const ShipTiles *S = (const ShipTiles *)blob(BLOB_SHIP);
-  const uint16_t *map = ship_map(S);
-  int y0 = gfx_y0 + view.cy, y1 = y0 + BAND;
-  int ty0 = y0 >> 4, ty1 = (y1 - 1) >> 4;
-  int tx0 = view.cx >> 4, tx1 = (view.cx + SCREEN_W - 1) >> 4;
-  for (int ty = ty0; ty <= ty1; ty++) {
-    int r0 = ty * 16 < y0 ? y0 - ty * 16 : 0, r1 = ty * 16 + 16 > y1 ? y1 - ty * 16 : 16;
-    for (int tx = tx0; tx <= tx1; tx++) {
-      int sx = tx * 16 - view.cx;
-      int c0 = sx < 0 ? -sx : 0, c1 = sx + 16 > SCREEN_W ? SCREEN_W - sx : 16;
-      unsigned t = (tx >= 0 && ty >= 0 && tx < S->tw && ty < S->th) ? map[ty * S->tw + tx] : 0xFFFF;
-      if (t == 0xFFFF) {
-        /* space, and its stars */
-        for (int r = r0; r < r1; r++) {
-          uint16_t *row = gfx_band + (ty * 16 + r - view.cy - gfx_y0) * SCREEN_W + sx;
-          for (int c = c0; c < c1; c++) row[c] = 0;
-        }
-        uint32_t h = (uint32_t)tx * 73856093u ^ (uint32_t)ty * 19349663u;
-        h ^= h >> 13, h *= 0x5bd1e995u, h ^= h >> 15;
-        if ((h & 3) == 0) {
-          int px = (int)(h >> 8 & 15), py = (int)(h >> 12 & 15);
-          if (py >= r0 && py < r1 && px >= c0 && px < c1)
-            gfx_band[(ty * 16 + py - view.cy - gfx_y0) * SCREEN_W + sx + px] = (h >> 20 & 1) ? 0xFFFF : 0x8C71;
-        }
-        continue;
-      }
-      const uint8_t *tile = ship_tile(S, (int)t);
-      const uint16_t *pal = (const uint16_t *)(const void *)tile;
-      const uint8_t *px = tile + 32;
-      for (int r = r0; r < r1; r++) {
-        uint16_t *row = gfx_band + (ty * 16 + r - view.cy - gfx_y0) * SCREEN_W + sx;
-        const uint8_t *src = px + r * 8;
-        int c = c0;
-        if (c & 1) row[c] = pal[src[c >> 1] & 15], c++;
-        for (; c + 1 < c1; c += 2) {
-          uint8_t b = src[c >> 1];
-          row[c] = pal[b >> 4], row[c + 1] = pal[b & 15];
-        }
-        if (c < c1) row[c] = pal[src[c >> 1] >> 4];
-      }
+  /* space and its stars, then the ship over them */
+  gfx_fill(0, gfx_y0, SCREEN_W, BAND, 0, 256);
+  int y0 = gfx_y0 + view.cy;
+  for (int ty = y0 >> 4; ty <= (y0 + BAND - 1) >> 4; ty++)
+    for (int tx = view.cx >> 4; tx <= (view.cx + SCREEN_W - 1) >> 4; tx++) {
+      uint32_t h = (uint32_t)tx * 73856093u ^ (uint32_t)ty * 19349663u;
+      h ^= h >> 13, h *= 0x5bd1e995u, h ^= h >> 15;
+      if (h & 3) continue;
+      int x = tx * 16 + (int)(h >> 8 & 15) - view.cx, y = ty * 16 + (int)(h >> 12 & 15) - view.cy;
+      if (x >= 0 && x < SCREEN_W && y >= gfx_y0 && y < gfx_y0 + BAND)
+        gfx_band[(y - gfx_y0) * SCREEN_W + x] = (h >> 20 & 1) ? 0xFFFF : 0x8C71;
+    }
+  gfx_tiles(tilepic(BLOB_SHIP), -view.cx, -view.cy);
+}
+
+/* an object in front, drawn again inside the rectangle: the floor's own pixels where it covers it */
+static void restamp(const FrontRec *F, int cx0, int cy0, int cx1, int cy1) {
+  const TilePic *S = tilepic(BLOB_SHIP);
+  const uint8_t *m = (const uint8_t *)blob(BLOB_FRONT_MASKS) + F->off;
+  int stride = (F->w + 7) >> 3;
+  int x0 = F->x - view.cx, y0 = F->y - view.cy;
+  if (cy0 < gfx_y0) cy0 = gfx_y0;
+  if (cy1 > gfx_y0 + BAND) cy1 = gfx_y0 + BAND;
+  if (cy0 < y0) cy0 = y0;
+  if (cy1 > y0 + F->h) cy1 = y0 + F->h;
+  if (cx0 < x0) cx0 = x0;
+  if (cx1 > x0 + F->w) cx1 = x0 + F->w;
+  if (cx0 < 0) cx0 = 0;
+  if (cx1 > SCREEN_W) cx1 = SCREEN_W;
+  for (int y = cy0; y < cy1; y++) {
+    const uint8_t *mr = m + (y - y0) * stride;
+    uint16_t *row = gfx_band + (y - gfx_y0) * SCREEN_W;
+    for (int x = cx0; x < cx1; x++) {
+      int u = x - x0;
+      if (!(mr[u >> 3] >> (u & 7) & 1)) continue;
+      int c = tile_px(S, x + view.cx, y + view.cy);
+      if (c >= 0) row[x] = (uint16_t)c;
     }
   }
 }
@@ -174,9 +171,8 @@ void view_prepare(void) {
   }
   nfronts = 0;
   for (int f = 0; f < N_FRONT; f++) {
-    const Pic *p = pic(FRONT[f].pic);
     int x = FRONT[f].x - view.cx, y = FRONT[f].y - view.cy;
-    if (x < SCREEN_W && y < SCREEN_H && x + p->w > 0 && y + p->h > 0) fronts[nfronts++] = (uint8_t)f;
+    if (x < SCREEN_W && y < SCREEN_H && x + FRONT[f].w > 0 && y + FRONT[f].h > 0) fronts[nfronts++] = (uint8_t)f;
   }
 }
 
@@ -190,10 +186,9 @@ static void draw_items(void) {
     for (int n = 0; n < nfronts; n++) {
       const FrontRec *F = &FRONT[fronts[n]];
       if (F->z >= it->z) continue;
-      const Pic *p = pic(F->pic);
       int x = F->x - view.cx, y = F->y - view.cy;
-      if (x >= it->x1 || y >= it->y1 || x + p->w <= it->x0 || y + p->h <= it->y0) continue;
-      gfx_spr_clip(p, x, y, false, NULL, 256, it->x0, it->y0, it->x1, it->y1);
+      if (x >= it->x1 || y >= it->y1 || x + F->w <= it->x0 || y + F->h <= it->y0) continue;
+      restamp(F, it->x0, it->y0, it->x1, it->y1);
     }
     /* doors in front of it */
     for (int n = k + 1; n < nitems; n++) {
@@ -274,8 +269,7 @@ void view_draw(void) {
 
 /* the ship seen through a camera (scale px a unit, centred on c, in the rectangle) */
 void view_camera(V2 c, float scale, int rx, int ry, int rw, int rh) {
-  const ShipTiles *S = (const ShipTiles *)blob(BLOB_SHIP);
-  const uint16_t *map = ship_map(S);
+  const TilePic *S = tilepic(BLOB_SHIP);
   float k = PX_PER_UNIT / scale;
   int y0 = ry > gfx_y0 ? ry : gfx_y0, y1 = ry + rh < gfx_y0 + BAND ? ry + rh : gfx_y0 + BAND;
   float sx0 = c.x * PX_PER_UNIT + SHIP_OX - (rw / 2) * k, sy0 = -c.y * PX_PER_UNIT + SHIP_OY - (rh / 2) * k;
@@ -283,16 +277,8 @@ void view_camera(V2 c, float scale, int rx, int ry, int rw, int rh) {
     uint16_t *row = gfx_band + (y - gfx_y0) * SCREEN_W;
     int py = (int)(sy0 + (y - ry) * k);
     for (int x = rx; x < rx + rw; x++) {
-      int px = (int)(sx0 + (x - rx) * k);
-      int tx = px >> 4, ty = py >> 4;
-      unsigned t = (px >= 0 && py >= 0 && tx < S->tw && ty < S->th) ? map[ty * S->tw + tx] : 0xFFFF;
-      if (t == 0xFFFF) {
-        row[x] = 0;
-        continue;
-      }
-      const uint8_t *tile = ship_tile(S, (int)t);
-      uint8_t b = tile[32 + (py & 15) * 8 + ((px & 15) >> 1)];
-      row[x] = ((const uint16_t *)(const void *)tile)[px & 1 ? b & 15 : b >> 4];
+      int v = tile_px(S, (int)(sx0 + (x - rx) * k), py);
+      row[x] = v < 0 ? 0 : (uint16_t)v;
     }
   }
   /* who is there */

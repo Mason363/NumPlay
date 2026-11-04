@@ -41,7 +41,7 @@ def quantize(px, n, alpha=True):
         inv = inv.reshape(-1)
         if len(cols) <= k:
             centers = cols.astype(np.float64)
-            lab = inv
+            lab = np.arange(len(cols))
         else:
             w = np.array([1.0, 1.2, 0.8, 1.5])
             pts = cols.astype(np.float64) * w
@@ -157,48 +157,61 @@ def make_font(path, size, first=32, last=126, bold=0):
     return out
 
 
-# ---- the Skeld's floor: 16x16 tiles of 16 colours each, the same tiles stored once ----
+# ---- big pictures (the Skeld's floor, the panels): 16x16 tiles of 16 colours each, the same tiles stored once ----
 
 TILE = 16
+T_CLEAR = 0x8000   # a tile with see-through pixels: colour 15 is clear
 
 
-def make_ship(im):
-    bg = Image.new("RGBA", im.size, (0, 0, 0, 255))
-    bg.alpha_composite(im)
-    alpha = np.asarray(im)[:, :, 3]
-    rgb = np.asarray(bg.convert("RGB"))
+def make_tiles(im, pivot=(0, 0), back=None, name=""):
+    """{u16 tw, th; i16 ox, oy; u32 tiles' offset}, a tile number each (0xFFFF: nothing there), the tiles.
+    back: the colour see-through pixels get (the ship: space); else a tile keeps them clear"""
+    im = im.convert("RGBA")
+    a8 = np.asarray(im)[:, :, 3]
+    if back is not None:
+        bg = Image.new("RGBA", im.size, back + (255,))
+        bg.alpha_composite(im)
+        rgb = np.asarray(bg.convert("RGB"))
+    else:
+        rgb = np.asarray(im)[:, :, :3]
     W, H = im.size
     tw, th = (W + TILE - 1) // TILE, (H + TILE - 1) // TILE
     rgb = np.pad(rgb, ((0, th * TILE - H), (0, tw * TILE - W), (0, 0)))
-    alpha = np.pad(alpha, ((0, th * TILE - H), (0, tw * TILE - W)))
-    tmap = []
-    tiles = []
-    seen = {}
+    alpha = np.pad(a8, ((0, th * TILE - H), (0, tw * TILE - W)))
+    tmap, tiles, seen = [], [], {}
     err = 0.0
     for ty in range(th):
         for tx in range(tw):
-            a = alpha[ty * TILE:(ty + 1) * TILE, tx * TILE:(tx + 1) * TILE]
-            if a.max() < 8:
+            a = alpha[ty * TILE:(ty + 1) * TILE, tx * TILE:(tx + 1) * TILE].reshape(-1)
+            if a.max() < 8 or (back is None and a.max() < 128):
                 tmap.append(0xFFFF)
                 continue
             t = rgb[ty * TILE:(ty + 1) * TILE, tx * TILE:(tx + 1) * TILE].reshape(-1, 3)
+            clear = (a < 128) if back is None else np.zeros(len(a), bool)
             px = np.hstack([t, np.full((len(t), 1), 255, np.uint8)])
-            pal, idx = quantize(px, 16, alpha=False)
-            err += float(((pal[idx][:, :3].astype(float) - t) ** 2).sum())
+            n = 15 if clear.any() else 16
+            pal, idx = quantize(px[~clear] if clear.any() else px, n, alpha=False)
+            full = np.full(len(t), 15, np.uint8)
+            full[~clear] = idx
+            err += float(((pal[idx][:, :3].astype(float) - t[~clear]) ** 2).sum())
             p = [rgb565(*c[:3]) for c in pal] + [0] * (16 - len(pal))
-            idx = idx.reshape(TILE, TILE)
-            data = struct.pack("<16H", *p) + ((idx[:, 0::2] << 4) | idx[:, 1::2]).astype(np.uint8).tobytes()
+            full = full.reshape(TILE, TILE)
+            data = struct.pack("<16H", *p) + ((full[:, 0::2] << 4) | full[:, 1::2]).astype(np.uint8).tobytes()
             if data not in seen:
                 seen[data] = len(tiles)
                 tiles.append(data)
-            tmap.append(seen[data])
-    assert len(tiles) < 0xFFFF
-    head = struct.pack("<HHII", tw, th, len(tiles), 12 + 2 * len(tmap) + (-(2 * len(tmap)) % 4))
-    blob = head + struct.pack("<%dH" % len(tmap), *tmap)
+            tmap.append(seen[data] | (T_CLEAR if clear.any() else 0))
+    assert len(tiles) < 0x7FFF
+    head_len = 12
+    off = head_len + 2 * len(tmap)
+    off += -off % 4
+    blob = struct.pack("<HHhhI", tw, th, int(round(pivot[0])), int(round(pivot[1])), off)
+    blob += struct.pack("<%dH" % len(tmap), *tmap)
     blob += b"\0" * (-len(blob) % 4)
     blob += b"".join(tiles)
-    print("ship: %dx%d tiles, %d stored, %d bytes, rms %.1f" % (tw, th, len(tiles), len(blob),
-                                                                 math.sqrt(err / max(1, len(tiles) * 768))))
+    if name:
+        print("%s: %dx%d tiles, %d stored, %d bytes, rms %.1f" % (name, tw, th, len(tiles), len(blob),
+                                                                  math.sqrt(err / max(1, len(tiles) * 768))))
     return blob
 
 
@@ -431,19 +444,34 @@ def make_world(m, out):
     open(out, "w").write("\n".join(lines) + "\n")
 
 
+def cname(s):
+    return "".join(c if c.isalnum() else "_" for c in s).upper()
+
+
+# the minigames' panels sit with their prefab's root at this screen point (40 px a unit)
+MG_X, MG_Y = 160, 112
+
+
 def main():
     pics = Pics()
-    named = {}
+    tiles = []      # (name, blob)
+    defs = []       # data.h lines
+    D = defs.append
     # the ship
     sm = json.load(open(os.path.join(REF, "ship.json")))
-    ship_blob = make_ship(Image.open(os.path.join(REF, "ship.png")))
+    tiles.append(("SHIP", make_tiles(Image.open(os.path.join(REF, "ship.png")), back=(0, 0, 0), name="ship")))
     ox, oy = sm["origin"]
-    # objects in front of players behind them
+    # objects in front of players behind them: where they cover the floor (the floor's tiles show them)
     front = []
+    masks = b""
     for f in sm["front"]:
-        im = Image.open(os.path.join(REF, "ship", f["img"] + ".png"))
-        pid = pics.add("front_" + f["img"], im, (0, 0), bits=4)
-        front.append((pid, f["x"], f["y"], f["z"], f["name"]))
+        im = Image.open(os.path.join(REF, "ship", f["img"] + ".png")).convert("RGBA")
+        a = np.asarray(im)[:, :, 3] >= 128
+        w = (im.width + 7) // 8 * 8
+        a = np.pad(a, ((0, 0), (0, w - im.width)))
+        front.append((len(masks), f["x"], f["y"], im.width, im.height, f["z"]))
+        masks += np.packbits(a, axis=1, bitorder="little").tobytes()
+    tiles.append(("FRONT_MASKS", masks + b"\0" * (-len(masks) % 4)))
     door_ids = {}
     for kind in ("side", "front"):
         dm = sm["door_" + kind]
@@ -460,12 +488,12 @@ def main():
     spr = json.load(open(os.path.join(REF, "spr.json")))
     mix = Mix()
 
-    def mixframe(name, scale=0.28):
+    def mixframe(name, scale=0.28, as_name=None):
         im = Image.open(os.path.join(REF, "spr", name + ".png")).convert("RGBA")
         piv = spr[name]["pivot"]
         k = scale * 100.0 / spr[name]["ppu"]
         w, h = max(1, round(im.width * k)), max(1, round(im.height * k))
-        mix.add(name, im.resize((w, h), Image.LANCZOS), (piv[0] * w / im.width, piv[1] * h / im.height))
+        mix.add(as_name or name, im.resize((w, h), Image.LANCZOS), (piv[0] * w / im.width, piv[1] * h / im.height))
     mixframe("idle")
     for i in range(1, 13):
         mixframe("walkcolor%04d" % i)
@@ -474,7 +502,34 @@ def main():
     mixframe("Dead0040")
     for i in range(1, 8):
         mixframe("getinVent%04d" % i)
+    mixframe("idle", 0.7, "idle_big")
     mix_table, nmix = mix.pack(pics)
+
+    # the minigames: a tiled background, its moving parts, more frames
+    mg = json.load(open(os.path.join(REF, "mg.json")))
+    for name, m in mg.items():
+        N = cname(name)
+        if m["bg"]:
+            im = Image.open(os.path.join(REF, "mg", name + "_bg.png"))
+            bx, by = m["bg"]["ox"], m["bg"]["oy"]
+            # (only what the screen shows: the panel's root at MG_X, MG_Y, the key line at the bottom)
+            x0, y0 = max(0, int(bx - MG_X)), max(0, int(by - MG_Y))
+            x1, y1 = min(im.width, int(bx + SCREEN_W_PX - MG_X)), min(im.height, int(by + 228 - MG_Y))
+            im = im.crop((x0, y0, x1, y1))
+            tiles.append(("MG_" + N, make_tiles(im, (bx - x0, by - y0), name="mg " + name)))
+        for key, p in m["parts"].items():
+            im = Image.open(os.path.join(REF, "mg", "%s_%s.png" % (name, key)))
+            pid = pics.add("mg_%s_%s" % (name, key), im, (p["px"], p["py"]), bits=8 if im.width * im.height < 6000 else 4)
+            D("#define PIC_MG_%s_%s %d" % (N, cname(key), pid))
+            D("#define MG_%s_%s_X %d\n#define MG_%s_%s_Y %d" % (N, cname(key), round(MG_X + p["x"] * PPU), N,
+                                                                cname(key), round(MG_Y - p["y"] * PPU)))
+            if len(p["all"]) > 1:
+                D("static const int16_t MG_%s_%s_XY[%d][2] = {%s};" % (N, cname(key), len(p["all"]), ", ".join(
+                    "{%d, %d}" % (round(MG_X + x * PPU), round(MG_Y - y * PPU)) for x, y in p["all"])))
+        for nm, e in m["extra"].items():
+            im = Image.open(os.path.join(REF, "mg", "%s_x_%s.png" % (name, nm)))
+            pid = pics.add("x_" + nm, im, (e["px"], e["py"]), bits=8 if im.width * im.height < 6000 else 4)
+            D("#define PIC_X_%s %d" % (cname(nm), pid))
     # fonts
     fdir = os.path.join(REF, "fonts")
     fonts = [make_font(os.path.join(fdir, "LiberationSans-Regular.ttf"), 10),
@@ -482,8 +537,8 @@ def main():
              make_font(os.path.join(fdir, "LiberationSans-Bold.ttf"), 14),
              make_font(os.path.join(fdir, "LiberationSans-Bold.ttf"), 24)]
 
-    # data.bin: "AUSD", counts, offsets: pictures, fonts, the ship's tiles, the mix table
-    blobs = pics.blobs + fonts + [ship_blob, mix_table]
+    # data.bin: "AUSD", counts, offsets: pictures, fonts, tiled pictures, the mix table
+    blobs = pics.blobs + fonts + [b for _, b in tiles] + [mix_table]
     head = struct.pack("<4sIII", b"AUSD", len(pics.blobs), len(fonts), len(blobs))
     pos = len(head) + 4 * len(blobs)
     offs, body = [], b""
@@ -495,25 +550,35 @@ def main():
     open(os.path.join(SRC, "data.bin"), "wb").write(out)
     with open(os.path.join(SRC, "data.h"), "w") as f:
         f.write("/* Among Us: what's in data.bin (made by tools/pack.py) */\n#ifndef AU_DATA_H\n#define AU_DATA_H\n")
+        f.write("#include <stdint.h>\n")
         f.write("#define N_PICS %d\n#define N_FONTS %d\n" % (len(pics.blobs), len(fonts)))
-        f.write("#define BLOB_SHIP %d\n#define BLOB_MIX %d\n#define N_MIX %d\n" % (len(blobs) - 2, len(blobs) - 1, nmix))
+        base = len(pics.blobs) + len(fonts)
+        for k, (nm, _) in enumerate(tiles):
+            f.write("#define BLOB_%s %d\n" % (nm, base + k))
+        f.write("#define BLOB_MIX %d\n#define N_MIX %d\n" % (len(blobs) - 1, nmix))
+        f.write("#define MG_X %d\n#define MG_Y %d\n" % (MG_X, MG_Y))
         f.write("enum { FONT_SMALL, FONT_MID, FONT_BIG, FONT_HUGE };\n")
         f.write("#define SHIP_OX %d\n#define SHIP_OY %d\n" % (round(ox), round(oy)))
         f.write("#define PIC_IDLE %d\n#define PIC_WALK %d\n#define PIC_GHOST %d\n#define N_GHOST 24\n#define PIC_DEAD %d\n"
-                "#define PIC_JUMP %d\n" % (pics.ids["idle"], pics.ids["walkcolor0001"], pics.ids["ghostbob0001"],
-                                         pics.ids["Dead0040"], pics.ids["getinVent0001"]))
+                "#define PIC_JUMP %d\n#define PIC_IDLE_BIG %d\n" % (
+                    pics.ids["idle"], pics.ids["walkcolor0001"], pics.ids["ghostbob0001"], pics.ids["Dead0040"],
+                    pics.ids["getinVent0001"], pics.ids["idle_big"]))
         f.write("#define PIC_DOOR_SIDE %d\n#define PIC_DOOR_FRONT %d\n#define DOOR_CLOSE_FRAMES %d\n"
                 "#define DOOR_OPEN_FRAMES %d\n" % (door_ids["side"][0], door_ids["front"][0],
                                                    sm["door_side"]["close"], sm["door_side"]["open"]))
         f.write("#define PIC_VENT %d\n#define N_VENT_FRAMES %d\n" % (vent_ids[0], len(vent_ids)))
-        f.write("typedef struct { uint16_t pic; int16_t x, y; float z; } FrontRec;\n")
+        f.write("/* where an object in front covers the floor: a bit a pixel, rows of whole bytes, lowest bit first */\n")
+        f.write("typedef struct { uint32_t off; int16_t x, y; uint16_t w, h; float z; } FrontRec;\n")
         f.write("#define N_FRONT %d\nstatic const FrontRec FRONT[%d] = {%s};\n" % (len(front), len(front), ", ".join(
-            "{%d, %d, %d, %s}" % (p, x, y, fl(z)) for p, x, y, z, _ in front)))
+            "{%d, %d, %d, %d, %d, %s}" % (o, x, y, w, h, fl(z)) for o, x, y, w, h, z in front)))
+        f.write("\n".join(defs) + "\n")
         f.write("#endif\n")
     make_world(sm, os.path.join(SRC, "world.h"))
-    print("data.bin: %d bytes (pictures %d, fonts %d, ship %d)" % (
-        len(out), sum(len(b) for b in pics.blobs), sum(len(b) for b in fonts), len(ship_blob)))
+    print("data.bin: %d bytes (pictures %d, fonts %d, tiled %d)" % (
+        len(out), sum(len(b) for b in pics.blobs), sum(len(b) for b in fonts), sum(len(b) for _, b in tiles)))
 
+
+SCREEN_W_PX = 320
 
 if __name__ == "__main__":
     main()

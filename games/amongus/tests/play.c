@@ -15,6 +15,7 @@
 #include "../src/game.h"
 #include "../src/gfx.h"
 #include "../src/plat.h"
+#include "../src/world.h"
 
 extern uint32_t host_keys, host_time;
 extern bool game_running, autopilot;
@@ -47,6 +48,52 @@ static void parse_keys(const char *spec) {
   }
 }
 
+/* opens a minigame straight away (tests and screenshots): its kind as in mg.h */
+static void open_minigame(int kind) {
+  static const int8_t TYPE[] = {T_SWIPE_CARD, T_FIX_WIRING, T_CLEAR_ASTEROIDS, T_ALIGN_ENGINE, T_SUBMIT_SCAN,
+                                T_INSPECT_SAMPLE, T_FUEL_ENGINES, T_START_REACTOR, T_EMPTY_GARBAGE, T_UPLOAD_DATA,
+                                T_CALIBRATE, T_CHART_COURSE, T_CLEAN_O2, T_UNLOCK_MANIFOLDS, T_STABILIZE,
+                                T_PRIME_SHIELDS, T_DIVERT_POWER, T_DIVERT_POWER};
+  g.screen = S_PLAY;
+  Player *P = &g.p[g.me];
+  if (kind < 18) {
+    for (int d = 0; d < N_TASK_DEFS; d++)
+      if (TASK_DEFS[d].type == TYPE[kind]) {
+        memset(&P->tasks[0], 0, sizeof P->tasks[0]);
+        P->tasks[0].def = (uint8_t)d;
+        P->tasks[0].data[0] = 0, P->tasks[0].data[1] = 2, P->tasks[0].data[2] = 4;
+        if (kind == 17) P->tasks[0].step = 1;
+        if (TYPE[kind] == T_INSPECT_SAMPLE) P->tasks[0].timer = -1;
+        break;
+      }
+    int c = task_console(P, &P->tasks[0]);
+    P->pos = (V2){CONSOLES[c].sx, CONSOLES[c].sy};
+    mg_open(c, 0);
+  } else if (kind <= 21) {
+    static const int SAB[] = {SAB_REACTOR, SAB_LIGHTS, SAB_COMMS, SAB_O2};
+    g.sab_cd = 0;
+    sabotage(SAB[kind - 18]);
+    for (int c = 0; c < N_CONSOLES; c++) {
+      const ConsoleRec *C = &CONSOLES[c];
+      int t = SAB[kind - 18] == SAB_REACTOR ? T_RESET_REACTOR : SAB[kind - 18] == SAB_LIGHTS ? T_FIX_LIGHTS
+              : SAB[kind - 18] == SAB_COMMS ? T_FIX_COMMS : T_RESTORE_O2;
+      if (!C->kind && (C->types >> t & 1)) {
+        P->pos = (V2){C->sx, C->sy};
+        mg_open(c, MAX_TASKS);
+        break;
+      }
+    }
+  } else {
+    for (int c = 0; c < N_CONSOLES; c++)
+      if (CONSOLES[c].kind == (kind == 22 ? 3 : 2)) {
+        P->pos = (V2){CONSOLES[c].sx, CONSOLES[c].sy};
+        mg_open(c, MAX_TASKS);
+        break;
+      }
+  }
+  g.cam = (V2){P->pos.x, P->pos.y + FEET_Y};
+}
+
 static uint32_t frng = 1;
 static uint32_t frnd(void) {
   frng ^= frng << 13, frng ^= frng >> 17, frng ^= frng << 5;
@@ -54,7 +101,7 @@ static uint32_t frnd(void) {
 }
 
 int main(int argc, char **argv) {
-  int frames = 300, trace = 0, start = 0, bots = -1;
+  int frames = 300, trace = 0, start = 0, bots = -1, mgkind = -1;
   uint32_t seed = 0;
   bool fuzz = false, draw = false;
   const char *out = "build/shots";
@@ -69,6 +116,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[i], "--trace")) trace = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--seed")) seed = (uint32_t)atoi(argv[++i]);
     else if (!strcmp(argv[i], "--bots")) bots = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--mg")) mgkind = atoi(argv[++i]), start = start ? start : 1;
     else if (!strcmp(argv[i], "--fuzz")) fuzz = true, frng = (uint32_t)atoi(argv[++i]) * 2654435761u + 1;
     else if (!strcmp(argv[i], "--shots")) {
       const char *s = argv[++i];
@@ -92,6 +140,7 @@ int main(int argc, char **argv) {
     g.opt.role = (uint8_t)start;
     g.rng = seed * 2654435761u + 77;
     game_new();
+    if (mgkind >= 0) open_minigame(mgkind);
   }
   uint32_t fk = 0;
   static int hist[16];

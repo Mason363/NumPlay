@@ -228,16 +228,12 @@ static void do_action(void) {
     else enter_vent(g.me, what);
     break;
   case ACT_EMERGENCY:
-    g.overlay = O_EMERGENCY;
-    g.mg_cons = (uint8_t)what;
-    memset(g.mg, 0, sizeof g.mg);
+  case ACT_CAMS:
+    mg_open(what, MAX_TASKS);
     break;
   case ACT_ADMIN:
     g.overlay = O_ADMIN;
-    break;
-  case ACT_CAMS:
-    g.overlay = O_CAMS;
-    memset(g.mg, 0, sizeof g.mg);
+    g.sel = 0;
     break;
   case ACT_USE:
     mg_open(what, console_use(g.me, what));
@@ -280,7 +276,7 @@ void play_tick(uint32_t keys, uint32_t pressed) {
     }
   } else {
     walk(g.me, (V2){0, 0});
-    if (g.overlay == O_TASK || g.overlay == O_EMERGENCY || g.overlay == O_CAMS) mg_tick(keys, pressed);
+    if (g.overlay == O_TASK) mg_tick(keys, pressed);
     else map_tick(pressed, g.overlay);
   }
   int screen = g.screen;
