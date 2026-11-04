@@ -60,8 +60,10 @@ def ce_name(g):
 def outputs(target, g):
     """The files `make port` leaves for the calculator: (the path, its name in a zip)."""
     b = os.path.join(GAMES, g, "build", target)
-    if target == "ti84ce":
-        return [(os.path.join(b, g, "bin", ce_name(g) + ".8xp"), ce_name(g) + ".8xp")]
+    if target == "ti84ce":  # its program, and the appvars of a game with its own CE version (PORT_CE)
+        d = os.path.join(b, g, "bin")
+        fs = sorted(f for f in os.listdir(d) if f.endswith((".8xp", ".8xv"))) if os.path.isdir(d) else []
+        return [(os.path.join(d, f), f) for f in fs] or [(os.path.join(d, ce_name(g) + ".8xp"), ce_name(g) + ".8xp")]
     if target == "nspire":
         return [(os.path.join(b, g + ".tns"), g + ".tns")]
     if target == "casio-cg":
@@ -169,11 +171,13 @@ def kit(d):
         there = set(os.listdir(folder)) - {"README.txt"}
         listed = {}
         for g in games([], t):
-            (_, name), = outputs(t, g)
-            if name not in there:
-                raise SystemExit(f"kit: {t}/{name} ({g}) missing")
-            listed[g] = {"file": name, "size": os.path.getsize(os.path.join(folder, name))}
-        extra = there - {v["file"] for v in listed.values()}
+            names = [name for _, name in outputs(t, g)]
+            for name in names:
+                if name not in there:
+                    raise SystemExit(f"kit: {t}/{name} ({g}) missing")
+            size = sum(os.path.getsize(os.path.join(folder, n)) for n in names)
+            listed[g] = {"file": names[0], "size": size} if len(names) == 1 else {"files": names, "size": size}
+        extra = there - {n for v in listed.values() for n in v.get("files", [v.get("file")])}
         if extra:
             raise SystemExit(f"kit: {t}/ has files of no game: {' '.join(sorted(extra))}")
         targets[t] = listed

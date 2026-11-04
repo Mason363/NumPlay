@@ -45,7 +45,16 @@ CEDEV ?= $(HOME)/Documents/Assets/toolchains/CEdev
 CE_NAME = $(shell echo '$(PORT_ID)' | tr a-z A-Z | tr -cd 'A-Z0-9' | cut -c1-8)
 CE_DIR = $(PORT_OUT)/$(PORT_ID)
 CE_ALL = $(abspath $(PORT_SRC) $(NP_PLATFORM)/ti84ce/np_ce.c $(PORT_COMMON))
+ifneq ($(PORT_CE),)
+# a game with a CE version of its own (PORT_CE: its folder, a CE toolchain project): its program and appvars
+port: $(PORT_DEPS)
+	$(Q) PATH="$(CEDEV)/bin:$$PATH" $(MAKE) -C $(PORT_CE) --no-print-directory
+	@mkdir -p $(CE_DIR)/bin
+	$(Q) for f in $(PORT_CE)/bin/*.8xp $(PORT_CE)/bin/*.8xv; do [ -f "$$f" ] && cp "$$f" $(CE_DIR)/bin/; done; true
+	@echo "CE      $(CE_DIR)/bin"
+else
 port: $(CE_DIR)/bin/$(CE_NAME).8xp
+endif
 $(CE_DIR)/bin/$(CE_NAME).8xp: $(PORT_DEPS) $(PORT_SRC) $(wildcard $(NP_PLATFORM)/include/*.h) $(NP_PLATFORM)/ti84ce/np_ce.c
 	@rm -rf $(CE_DIR)/src && mkdir -p $(CE_DIR)/src
 	@n=0; for f in $(CE_ALL); do n=$$((n+1)); echo "#include \"$$f\"" > $(CE_DIR)/src/f$$n.c; done
