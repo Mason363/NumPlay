@@ -1,6 +1,9 @@
 /* The level: a chapter's rooms (two at once during a transition), collisions with their tiles, the camera, the
  * transitions between rooms, deaths and respawns (Celeste's Level and LevelLoader, after src/level.c). */
 #include "ce.h"
+#ifndef __TICE__
+#include <stdlib.h>
+#endif
 
 Level g_level;
 #define GRID_BYTES GRID_MAX   /* a room's grids in RAM (the biggest of the chapters here) */
@@ -12,7 +15,8 @@ uint8_t g_cells_gen;
 /* the RAM plat_ram gives: the entities, the two rooms' grids and tile tables */
 static uint8_t *g_dirty;   /* the view's cells to draw again: a byte each, a row of COLS at a time */
 bool level_ram(void) {
-  unsigned n = sizeof(Ent) * MAX_ENTS + 2 * (GRID_BYTES + 256 * sizeof(TEnt)) + 1024 + CELL_CACHE + CROWS * COLS;
+  extern uint8_t *g_vdecals;
+  unsigned n = sizeof(Ent) * MAX_ENTS + 2 * (GRID_BYTES + 256 * sizeof(TEnt)) + 1024 + CELL_CACHE + CROWS * COLS + 192 * 8;
   uint8_t *m = plat_ram(n);
   if (!m) return false;
   memset(m, 0, n);
@@ -20,6 +24,7 @@ bool level_ram(void) {
   g_scratch = m, m += 1024;
   g_cell_cache = m, m += CELL_CACHE;
   g_dirty = m, m += CROWS * COLS;
+  g_vdecals = m, m += 192 * 8;
   for (int k = 0; k < 2; k++) {
     g_level.rooms[k].tab = (TEnt *)(void *)m, m += 256 * sizeof(TEnt);
     grid_mem[k] = m, m += GRID_BYTES;
@@ -370,7 +375,7 @@ void level_update(void) {
  * went, the animated decals), every layer in its order, clipped to them. */
 static struct { int camx, camy, frame; uint8_t gen, ok; } was[2];
 static int buf;                     /* the buffer drawn now */
-static bool any_dirty;
+static int dirty_r0 = CROWS, dirty_r1 = -1;   /* the rows marked */
 #define MAX_GONE 8
 static int16_t gone[2][MAX_GONE][4];
 static uint8_t ngone[2];
@@ -387,7 +392,8 @@ static void mark(int x0, int y0, int x1, int y1) {   /* view pixels [x0, x1) x [
   int ca = (x0 + g_offx) >> 3, cb = (x1 - 1 + g_offx) >> 3, ra = (y0 + g_offy) >> 3, rb = (y1 - 1 + g_offy) >> 3;
   uint8_t *d = g_dirty + ra * COLS + ca;
   for (int r = ra; r <= rb; r++, d += COLS) memset(d, 1, (size_t)(cb - ca + 1));
-  any_dirty = true;
+  if (ra < dirty_r0) dirty_r0 = ra;
+  if (rb > dirty_r1) dirty_r1 = rb;
 }
 static void changed(const int16_t *a, const int *b) {
   mark(a[0], a[1], a[2], a[3]);
@@ -423,35 +429,60 @@ void level_render(bool whole) {
 #endif
   draw_cells_update();
   ents_order();
+  decals_prepare();
+#ifndef __TICE__
+  {
+    extern char *getenv(const char *);
+    extern int draw_cells_check(void);
+    extern int printf(const char *, ...);
+    static int on = -1, checked, wrong;
+    if (on < 0) on = getenv("CEL_VERIFY") != NULL;
+    if (on) {
+      int n = draw_cells_check();
+      checked++;
+      if (n) wrong++;
+      if (n && wrong < 5) printf("verify: frame %u: %d cells differ\n", (unsigned)g_level.frame, n);
+      if (checked % 100 == 0) printf("verify: %d frames' cells, %d wrong\n", checked, wrong);
+    }
+  }
+#endif
   BENCH(2);
+#ifndef __TICE__
+  if (getenv("CEL_WHY")) {
+    extern int printf(const char *, ...);
+    printf("frame %u: %s%s%s%s%s%s\n", (unsigned)g_level.frame, whole ? "whole " : "", gone_full[buf] ? "gone " : "", !was[buf].ok ? "notok " : "",
+           was[buf].camx != g_camx ? "camx " : "", was[buf].camy != g_camy ? "camy " : "", was[buf].gen != g_cells_gen ? "gen" : "");
+  }
+#endif
   if (whole || gone_full[buf] || !was[buf].ok || was[buf].camx != g_camx || was[buf].camy != g_camy ||
       was[buf].gen != g_cells_gen) {
+    ents_forget(buf);
+    g_rec_buf = buf;   /* (what each entity draws, recorded as it is) */
     render_cells(0, COLS - 1, 0, CROWS - 1);
-    ents_record(buf);
+    g_rec_buf = -1;
     BENCH(3);
   } else {
-    memset(g_dirty, 0, CROWS * COLS);
-    any_dirty = false;
+    dirty_r0 = CROWS, dirty_r1 = -1;   /* (g_dirty is all 0 between frames) */
     ents_measure(buf, changed);
     for (int i = 0; i < ngone[buf]; i++) mark(gone[buf][i][0], gone[buf][i][1], gone[buf][i][2], gone[buf][i][3]);
     if ((unsigned)g_level.frame / 5 != (unsigned)was[buf].frame / 5) decals_mark(mark);
     BENCH(3);
     g_cull_buf = buf;
-    if (any_dirty) {   /* runs of dirty cells in a row, each grown down over the rows dirty all along it */
-      uint8_t *row = g_dirty;
-      for (int r = 0; r < CROWS; r++, row += COLS)
+    if (dirty_r1 >= 0) {   /* runs of dirty cells in a row, each grown down over the rows dirty all along it */
+      uint8_t *row = g_dirty + dirty_r0 * COLS;
+      for (int r = dirty_r0; r <= dirty_r1; r++, row += COLS)
         for (int c = 0; c < COLS;) {
-          if (!row[c]) { c++; continue; }
+          const uint8_t *at = memchr(row + c, 1, (size_t)(COLS - c));
+          if (!at) break;
+          c = (int)(at - row);
           int e = c;
           while (e + 1 < COLS && row[e + 1]) e++;
           int rb = r;
-          for (uint8_t *nx = row + COLS; rb + 1 < CROWS; nx += COLS) {
-            int k = c;
-            while (k <= e && nx[k]) k++;
-            if (k <= e) break;
+          for (uint8_t *nx = row + COLS; rb < dirty_r1 && !memchr(nx + c, 0, (size_t)(e - c + 1)); nx += COLS) {
             memset(nx + c, 0, (size_t)(e - c + 1));
             rb++;
           }
+          memset(row + c, 0, (size_t)(e - c + 1));
           render_cells(c, e, r, rb);
           c = e + 1;
         }

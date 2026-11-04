@@ -96,14 +96,14 @@ extern int g_camx, g_camy;            /* the view's top left in the world */
 /* drawing happens inside the clip only (view pixels); while g_dry, nothing is drawn: the box of what would be (g_bb,
  * view pixels) and a sum of it (g_bb_sum) grow instead (level.c: what changed since a buffer was drawn) */
 extern int g_clip_x0, g_clip_y0, g_clip_x1, g_clip_y1;
-extern bool g_dry;
+extern bool g_dry, g_rec;
 extern int g_bb[4];
 extern unsigned g_bb_sum;
 void bb_add(int x0, int y0, int x1, int y1, unsigned what);
 static inline bool dry_box(int x0, int y0, int x1, int y1, unsigned what) {   /* true: measured, not to be drawn */
-  if (!g_dry) return false;
+  if (!g_rec) return false;
   bb_add(x0, y0, x1, y1, what);
-  return true;
+  return g_dry;
 }
 extern uint8_t g_draw_color;
 void draw_sprite(const uint8_t *spr, int x, int y, uint8_t flags);   /* (x, y): the frame's top left, world */
@@ -120,6 +120,7 @@ void draw_cells_update(void);          /* the view's cells, for the camera now *
 extern int g_offx, g_offy;            /* the camera in its cell */
 void draw_layers_back(int ca, int cb, int ra, int rb);   /* background, bg tiles: the view's cells [ca, cb] x [ra, rb] */
 void draw_layer_fg(int ca, int cb, int ra, int rb);      /* fg tiles */
+void decals_prepare(void);            /* those on the view, for this frame */
 void draw_decals(int fg);
 void decals_mark(void (*mark)(int x0, int y0, int x1, int y1));   /* the animated ones' boxes (view) */
 void draw_clear_screen(uint8_t c);
@@ -136,7 +137,8 @@ void blit_clip(const Cell *cell, uint8_t *dst, unsigned a, unsigned b, unsigned 
 void blit_copy(uint8_t *dst, const uint8_t *src, unsigned n);
 void blit_rect(uint8_t *dst, const uint8_t *src, unsigned w, unsigned h, unsigned src_step);
 void blit_rle(uint8_t *dst, const uint8_t *rows, unsigned nrows);
-void blit_rle_flip(uint8_t *dst, const uint8_t *rows, unsigned nrows);   /* mirrored: dst the top row's rightmost */
+void blit_rle_flip(uint8_t *dst, const uint8_t *rows, unsigned nrows);
+void blit_rle_clip(uint8_t *dst, const uint8_t *rows, unsigned skip, unsigned nrows, unsigned xa, unsigned xb);   /* mirrored: dst the top row's rightmost */
 void build_cells(const uint8_t *fg, const uint8_t *bg, const TEnt *table, Cell *ofg, Cell *obg, uint8_t *vis, unsigned n);
 /* the view's cells (draw.c), kept while the camera stays in the same ones: 41 x 24 */
 #define COLS 41
@@ -227,8 +229,9 @@ void ents_update(void);
 void ents_order(void);                /* the order they draw in (by depth), for this frame */
 void ents_render(int dmax, int dmin);   /* depths in (dmin, dmax] */
 extern int g_cull_buf;                /* >= 0: ents_render skips those whose box there misses the clip */
+extern int g_rec_buf;                 /* >= 0: ents_render records what each one draws there */
 void ents_measure(int buf, void (*changed)(const int16_t *was, const int *now));   /* each one's box against buf's */
-void ents_record(int buf);            /* what each one draws now, for buf */
+void ents_forget(int buf);            /* none drawn there (before it is drawn whole) */
 void ents_remove_room(int slot);
 void ents_clear(void);
 bool rect_hits(int l, int t, int r, int b, const Ent *o);

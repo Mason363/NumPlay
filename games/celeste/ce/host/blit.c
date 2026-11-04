@@ -1,14 +1,21 @@
 /* src/blit.S's loops in C, for the computer build. */
 #include "../src/ce.h"
 
+/* (CEL_COUNT: what the frame drew, host/plat_host.c prints it) */
+long g_cnt_cells, g_cnt_opq, g_cnt_msk, g_cnt_mskpx, g_cnt_runs, g_cnt_rect;
 static void tile_rows(const Cell *c, uint8_t *d, unsigned a, unsigned b, unsigned rows) {
   const uint8_t *s = c->tile;
+  g_cnt_cells++;
   for (int r = 0; r < 8; r++, s += 8, d += 320) {
     if (!(rows >> r & 1)) continue;
-    if (c->opaque >> r & 1) memcpy(d + a, s + a, b - a);
-    else if (c->drawn >> r & 1)
-      for (unsigned i = a; i < b; i++)
-        if (s[i]) d[i] = s[i];
+    if (c->opaque >> r & 1) memcpy(d + a, s + a, b - a), g_cnt_opq++;
+    else if (c->drawn >> r & 1) {
+      g_cnt_msk++;
+      for (unsigned i = a; i < b; i++) {
+        if (s[i]) d[i] = s[i], g_cnt_mskpx++;
+        if (s[i] && (i == a || !s[i - 1])) g_cnt_runs++;
+      }
+    }
   }
 }
 void blit_row(const Cell *cells, unsigned n, uint8_t *dst, unsigned rows) {
@@ -40,6 +47,7 @@ void build_cells(const uint8_t *fg, const uint8_t *bg, const TEnt *table, Cell *
   }
 }
 void blit_rect(uint8_t *dst, const uint8_t *src, unsigned w, unsigned h, unsigned src_step) {
+  g_cnt_rect += w * h;
   for (unsigned r = 0; r < h; r++, dst += 320, src += src_step) memcpy(dst, src, w);
 }
 void blit_rle_flip(uint8_t *dst, const uint8_t *rows, unsigned nrows) {
@@ -62,4 +70,21 @@ int isqrt24(int v) {
     if (left >= t) left -= t, root++;
   }
   return (int)root;
+}
+void blit_rle_clip(uint8_t *dst, const uint8_t *rows, unsigned skip, unsigned nrows, unsigned xa, unsigned xb) {
+  for (; skip; skip--) {
+    int runs = *rows++;
+    while (runs--) rows += 2 + rows[1];
+  }
+  for (; nrows; nrows--, dst += 320) {
+    int runs = *rows++;
+    unsigned at = 0;
+    while (runs--) {
+      at += rows[0];
+      unsigned n = rows[1], a0 = at > xa ? at : xa, a1 = at + n < xb ? at + n : xb;
+      if (a0 < a1) memcpy(dst + a0, rows + 2 + (a0 - at), a1 - a0);
+      at += n;
+      rows += 2 + n;
+    }
+  }
 }

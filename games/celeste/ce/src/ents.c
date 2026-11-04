@@ -871,57 +871,71 @@ static void ent_draw(Ent *e) {
 int g_cull_buf = -1;
 /* back to front: higher depths first, then the order they came in */
 static uint8_t order[MAX_ENTS], norder;
+/* roughly on the view: what each draws stays within 48 px of its box (Madeline's hair and death go further: she is
+ * always in) */
+static bool ent_near(const Ent *e) {
+  if (e->type == ET_player) return true;
+  int l = e->x + e->hx - g_camx, t = e->y + e->hy - g_camy;
+  return l < VIEW_W + 48 && t < VIEW_H + 48 && l + e->hw > -48 && t + e->hh > -48;
+}
 void ents_order(void) {
   norder = 0;
   for (int i = 0; i < g_nents; i++) {
     Ent *e = &g_ents[i];
-    if (e->type == 255 || !(e->flags & EF_VISIBLE)) continue;
+    if (e->type == 255 || !(e->flags & EF_VISIBLE) || !ent_near(e)) continue;
     int k = norder++, d = e->depth;
     while (k > 0 && g_ents[order[k - 1]].depth < d) order[k] = order[k - 1], k--;
     order[k] = (uint8_t)i;
   }
 }
+int g_rec_buf = -1;
+static void bb_start(void) { g_bb[0] = g_bb[1] = 0x7FFF, g_bb[2] = g_bb[3] = -0x7FFF, g_bb_sum = 0; }
+static void bb_keep(Ent *e, int buf) {
+  for (int k = 0; k < 4; k++) e->bb[buf][k] = (int16_t)iclamp(g_bb[k], -0x7FFF, 0x7FFF);
+  e->sum[buf] = g_bb_sum;
+}
 void ents_render(int dmax, int dmin) {
-  int cb = g_cull_buf;
+  int cb = g_cull_buf, rb = g_rec_buf;
   for (int k = 0; k < norder; k++) {
     Ent *e = &g_ents[order[k]];
     if (e->depth > dmax || e->depth <= dmin) continue;
     if (cb >= 0 && (e->bb[cb][0] >= g_clip_x1 || e->bb[cb][2] <= g_clip_x0 || e->bb[cb][1] >= g_clip_y1 ||
                     e->bb[cb][3] <= g_clip_y0))
       continue;
+    if (rb < 0) {
+      ent_draw(e);
+      continue;
+    }
+    bb_start(), g_rec = true;   /* (drawn and measured) */
     ent_draw(e);
+    g_rec = false, bb_keep(e, rb);
   }
 }
 
 /* what each one would draw (its box and sum), drawing nothing */
-static void measure(Ent *e) {
-  g_bb[0] = g_bb[1] = 0x7FFF, g_bb[2] = g_bb[3] = -0x7FFF, g_bb_sum = 0;
-  if (e->flags & EF_VISIBLE) ent_draw(e);
-  for (int k = 0; k < 4; k++) g_bb[k] = iclamp(g_bb[k], -0x7FFF, 0x7FFF);
+static bool ent_static(const Ent *e) {   /* what never changes how it looks (until it goes) */
+  switch (e->type) {
+    case ET_spikesUp: case ET_spikesDown: case ET_spikesLeft: case ET_spikesRight: return !e->ptr;
+    case ET_jumpThru: case ET_dashBlock: return true;
+  }
+  return false;
 }
 void ents_measure(int buf, void (*changed)(const int16_t *was, const int *now)) {
-  g_dry = true;
+  g_dry = g_rec = true;
   for (int i = 0; i < g_nents; i++) {
     Ent *e = &g_ents[i];
-    if (e->type == 255) continue;
-    measure(e);
+    if (e->type == 255 || ent_static(e)) continue;
+    bb_start();
+    if ((e->flags & EF_VISIBLE) && ent_near(e)) ent_draw(e);
+    for (int k = 0; k < 4; k++) g_bb[k] = iclamp(g_bb[k], -0x7FFF, 0x7FFF);
     int16_t *bb = e->bb[buf];
     if (e->sum[buf] != g_bb_sum || bb[0] != g_bb[0] || bb[1] != g_bb[1] || bb[2] != g_bb[2] || bb[3] != g_bb[3]) {
       changed(bb, g_bb);
-      for (int k = 0; k < 4; k++) bb[k] = (int16_t)g_bb[k];
-      e->sum[buf] = g_bb_sum;
+      bb_keep(e, buf);
     }
   }
-  g_dry = false;
+  g_dry = g_rec = false;
 }
-void ents_record(int buf) {
-  g_dry = true;
-  for (int i = 0; i < g_nents; i++) {
-    Ent *e = &g_ents[i];
-    if (e->type == 255) continue;
-    measure(e);
-    for (int k = 0; k < 4; k++) e->bb[buf][k] = (int16_t)g_bb[k];
-    e->sum[buf] = g_bb_sum;
-  }
-  g_dry = false;
+void ents_forget(int buf) {
+  for (int i = 0; i < g_nents; i++) g_ents[i].bb[buf][0] = 1, g_ents[i].bb[buf][2] = 0;
 }

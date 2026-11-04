@@ -31,9 +31,11 @@ _blit_row:
 	and	a, d
 	ld	e, a			; opaque rows (E')
 	ld	h, 8			; rows left (H')
+	inc	a			; (0: all 8 rows shown, all opaque)
 	exx
 	push	de			; (the cell's dst)
 	ld	hl, (ix + 2)
+	jp	z, .Lw_full
 .Lw_row:
 	exx
 	srl	e
@@ -87,6 +89,53 @@ _blit_row:
 	add	hl, bc
 	ld	bc, 320
 	jr	.Lw_adv
+.Lw_full:				; a whole opaque tile: its rows copied one after another
+	ld	bc, 8
+	ldir
+	ld	bc, 312
+	ex	de, hl
+	add	hl, bc
+	ex	de, hl
+	ld	bc, 8
+	ldir
+	ld	bc, 312
+	ex	de, hl
+	add	hl, bc
+	ex	de, hl
+	ld	bc, 8
+	ldir
+	ld	bc, 312
+	ex	de, hl
+	add	hl, bc
+	ex	de, hl
+	ld	bc, 8
+	ldir
+	ld	bc, 312
+	ex	de, hl
+	add	hl, bc
+	ex	de, hl
+	ld	bc, 8
+	ldir
+	ld	bc, 312
+	ex	de, hl
+	add	hl, bc
+	ex	de, hl
+	ld	bc, 8
+	ldir
+	ld	bc, 312
+	ex	de, hl
+	add	hl, bc
+	ex	de, hl
+	ld	bc, 8
+	ldir
+	ld	bc, 312
+	ex	de, hl
+	add	hl, bc
+	ex	de, hl
+	ld	bc, 8
+	ldir
+	pop	de
+	jp	.Lw_next
 
 /* void blit_clip(const Cell *cell, uint8_t *dst, unsigned a, unsigned b, unsigned rows): a tile's columns [a, b) at
  * dst (its column 0's place), its rows as in blit_row; 0 <= a < b <= 8 */
@@ -401,4 +450,111 @@ _isqrt24:
 	pop	hl
 	djnz	.Ls_loop
 	ex	de, hl
+	ret
+
+/* void blit_rle_clip(uint8_t *dst, const uint8_t *rows, unsigned skip, unsigned nrows, unsigned xa, unsigned xb): as
+ * blit_rle, the first `skip` stored rows left out, then nrows of them drawn, each only in its columns [xa, xb) (from
+ * the stored part's left; dst is where that left is on the first row drawn); 0 <= xa < xb <= 255 */
+	.global	_blit_rle_clip
+	.type	_blit_rle_clip, @function
+_blit_rle_clip:
+	push	ix
+	ld	ix, 0
+	add	ix, sp
+	ld	hl, (ix + 9)		; the rows
+	ld	a, (ix + 12)		; rows to skip
+	or	a, a
+	jr	z, .Lk_draw
+.Lk_skiprow:
+	ld	b, (hl)			; runs
+	inc	hl
+	inc	b
+	jr	.Lk_skipnext
+.Lk_skiprun:
+	inc	hl
+	ld	de, 0
+	ld	e, (hl)
+	inc	hl
+	add	hl, de
+.Lk_skipnext:
+	djnz	.Lk_skiprun
+	dec	a
+	jr	nz, .Lk_skiprow
+.Lk_draw:
+	ld	iy, (ix + 6)		; the row's left
+	ld	a, (ix + 15)		; rows to draw
+	or	a, a
+	jr	z, .Lk_done
+.Lk_row:
+	ex	af, af'			; (rows left)
+	ld	c, (hl)			; runs
+	inc	hl
+	ld	b, 0			; at: the run's first column
+	inc	c
+	jr	.Lk_next
+.Lk_run:
+	ld	a, b
+	add	a, (hl)			; + skip
+	inc	hl
+	ld	b, a			; at
+	ld	e, (hl)			; n
+	inc	hl			; (hl: its pixels)
+	add	a, e
+	ld	d, a			; a1 = at + n ...
+	ld	a, (ix + 21)
+	cp	a, d
+	jr	nc, .Lk_hi
+	ld	d, a			; ... or xb if less
+.Lk_hi:
+	ld	a, (ix + 18)		; a0 = xa ...
+	cp	a, b
+	jr	nc, .Lk_lo
+	ld	a, b			; ... or at if more
+.Lk_lo:
+	cp	a, d
+	jr	nc, .Lk_past		; nothing in [xa, xb)
+	push	hl
+	push	bc
+	push	de
+	ld	c, a			; a0
+	ld	a, d
+	sub	a, c
+	push	af			; a1 - a0 pixels
+	ld	a, c
+	sub	a, b
+	ld	de, 0
+	ld	e, a
+	add	hl, de			; from pixel a0
+	ld	e, c
+	push	hl
+	lea	hl, iy + 0
+	add	hl, de
+	ex	de, hl			; to the row's left + a0
+	pop	hl
+	pop	af
+	ld	bc, 0
+	ld	c, a
+	ldir
+	pop	de
+	pop	bc
+	pop	hl
+.Lk_past:
+	ld	a, b			; past the run
+	add	a, e
+	ld	b, a
+	push	bc
+	ld	bc, 0
+	ld	c, e
+	add	hl, bc
+	pop	bc
+.Lk_next:
+	dec	c
+	jr	nz, .Lk_run
+	ld	de, 320
+	add	iy, de
+	ex	af, af'
+	dec	a
+	jr	nz, .Lk_row
+.Lk_done:
+	pop	ix
 	ret

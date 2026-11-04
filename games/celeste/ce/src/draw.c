@@ -5,7 +5,7 @@
 int g_camx, g_camy;
 uint8_t g_draw_color;
 int g_clip_x0, g_clip_y0, g_clip_x1 = VIEW_W, g_clip_y1 = VIEW_H;
-bool g_dry;
+bool g_dry, g_rec;
 int g_bb[4];
 unsigned g_bb_sum;
 void bb_add(int x0, int y0, int x1, int y1, unsigned what) {
@@ -64,17 +64,24 @@ static void blit_sprite(const uint8_t *s, int x, int y, uint8_t flags) {
 
 void draw_sprite(const uint8_t *s, int x, int y, uint8_t flags) {
   x -= g_camx, y -= g_camy;
-  if (g_dry) {
+  if (g_rec) {
     int l = (flags & DF_FLIPX) ? x + s[0] - s[2] - s[4] : x + s[2], t = (flags & DF_FLIPY) ? y + s[1] - s[3] - s[5] : y + s[3];
     bb_add(l, t, l + s[4], t + s[5], (unsigned)(uintptr_t)s + flags + g_draw_color + (g_remap ? 77u : 0u));
-    return;
+    if (g_dry) return;
   }
-  if (!(flags & ~DF_FLIPX) && !g_remap && s[5]) {   /* all of it in the clip: at once */
-    int l = (flags & DF_FLIPX) ? x + s[0] - s[2] - s[4] : x + s[2], t = y + s[3];
-    if (l >= g_clip_x0 && t >= g_clip_y0 && l + s[4] <= g_clip_x1 && t + s[5] <= g_clip_y1) {
-      uint8_t *d = g_fb + (VIEW_Y + t) * 320 + l;
-      if (flags) blit_rle_flip(d + s[4] - 1, s + 6, s[5]);
-      else blit_rle(d, s + 6, s[5]);
+  if (!(flags & ~DF_FLIPX) && !g_remap) {
+    int l = (flags & DF_FLIPX) ? x + s[0] - s[2] - s[4] : x + s[2], t = y + s[3], w = s[4], h = s[5];
+    if (l >= g_clip_x1 || t >= g_clip_y1 || l + w <= g_clip_x0 || t + h <= g_clip_y0 || !h) return;   /* (none of it) */
+    uint8_t *d = g_fb + (VIEW_Y + t) * 320 + l;
+    if (l >= g_clip_x0 && t >= g_clip_y0 && l + w <= g_clip_x1 && t + h <= g_clip_y1) {   /* all of it: at once */
+      if (flags) blit_rle_flip(d + w - 1, s + 6, (unsigned)h);
+      else blit_rle(d, s + 6, (unsigned)h);
+      return;
+    }
+    if (!flags) {   /* cut by the clip */
+      int skip = t < g_clip_y0 ? g_clip_y0 - t : 0, xa = l < g_clip_x0 ? g_clip_x0 - l : 0;
+      blit_rle_clip(d + skip * 320, s + 6, (unsigned)skip, (unsigned)(imin(t + h, g_clip_y1) - t - skip), (unsigned)xa,
+                    (unsigned)imin(w, g_clip_x1 - l));
       return;
     }
   }
@@ -146,7 +153,6 @@ void draw_sprite_scaled(const uint8_t *s, int x, int y, int sx, int sy, int ox, 
 /* a tile at view (x, y), clipped */
 static void blit_tile(const uint8_t *t, int x, int y, bool opaque) {
   int a = 0, b = 8, r0 = 0, r1 = 8;
-  if (dry_box(x, y, x + 8, y + 8, (unsigned)(uintptr_t)t)) return;
   if (x < g_clip_x0) a = g_clip_x0 - x;
   if (x + 8 > g_clip_x1) b = g_clip_x1 - x;
   if (y < g_clip_y0) r0 = g_clip_y0 - y;
@@ -163,7 +169,16 @@ static void blit_tile(const uint8_t *t, int x, int y, bool opaque) {
 }
 
 void draw_tile(int tile, int x, int y) {
-  if (tile) blit_tile(tile_data(tile), x - g_camx, y - g_camy, g_tile_flags[2 * tile] == 0xFF);
+  if (!tile) return;
+  x -= g_camx, y -= g_camy;
+  if (dry_box(x, y, x + 8, y + 8, (unsigned)tile)) return;
+  if (x >= g_clip_x0 && y >= g_clip_y0 && x + 8 <= g_clip_x1 && y + 8 <= g_clip_y1) {   /* (all of it) */
+    Cell c;
+    c.opaque = g_tile_flags[2 * tile], c.drawn = g_tile_flags[2 * tile + 1], c.tile = tile_data(tile);
+    blit_row(&c, 1, g_fb + (VIEW_Y + y) * 320 + x, 0xFF);
+    return;
+  }
+  blit_tile(tile_data(tile), x, y, g_tile_flags[2 * tile] == 0xFF);
 }
 
 void draw_rect_screen(int x, int y, int w, int h, uint8_t c) {
@@ -209,38 +224,48 @@ void draw_clear_screen(uint8_t c) { memset(g_fb, c, 320 * 240); }
 
 /* ---------------------------------------------------------------- the tile layers */
 /* the view's cells: each one's fg and bg tiles (the current room's grid over the other's), and where the background
- * shows; made again when the camera goes into other cells or the rooms change (g_cells_gen) */
+ * shows. A ring both ways: when the camera goes into other cells only the new ones are made (all of them when the
+ * rooms change: g_cells_gen); view cell (c, r) is kept at (c + coff, r + roff), each modulo the size. */
 extern uint8_t *g_cell_cache;
-static int cache_c0 = 1 << 20, cache_r0;
+static int cache_c0 = 1 << 20, cache_r0, coff, roff;
 static uint8_t cache_gen = 255;
-static CellRow *cells_row(int r) { return (CellRow *)(void *)(g_cell_cache + r * sizeof(CellRow)); }
-static void cells_build(int c0, int r0) {
-  for (int r = 0; r < CROWS; r++) {
-    CellRow *row = cells_row(r);
-    memset(row, 0, sizeof *row);
-    memset(row->vis, 1, COLS);
+static int ph(int c) { return c + coff >= COLS ? c + coff - COLS : c + coff; }
+static CellRow *cells_row(int r) {
+  r += roff;
+  if (r >= CROWS) r -= CROWS;
+  return (CellRow *)(void *)(g_cell_cache + r * sizeof(CellRow));
+}
+static void build_span(int r, int ca, int cb) {   /* view cells [ca, cb) of row r */
+  CellRow *row = cells_row(r);
+  while (ca < cb) {
+    int p = ph(ca), n = imin(cb - ca, COLS - p);   /* (kept side by side) */
+    memset(row->fg + p, 0, (size_t)n * sizeof(Cell)), memset(row->bg + p, 0, (size_t)n * sizeof(Cell));
+    memset(row->vis + p, 1, (size_t)n);
     for (int k = 0; k < 2; k++) {
       Room *rm = &g_level.rooms[k ? g_level.slot : g_level.slot ^ 1];   /* (the current one last: it wins) */
       if (rm->index < 0) continue;
-      int ry = r0 + r - (rm->gy >> 3), gx = rm->gx >> 3;
+      int ry = cache_r0 + r - (rm->gy >> 3), gx = rm->gx >> 3;
       if ((unsigned)ry >= (unsigned)rm->th) continue;
-      int a = imax(c0, gx), b = imin(c0 + COLS, gx + rm->tw);
+      int a = imax(cache_c0 + ca, gx), b = imin(cache_c0 + ca + n, gx + rm->tw);
       if (a >= b) continue;
       const uint8_t *gf = rm->grid + ry * rm->tw + (a - gx);
-      build_cells(gf, gf + rm->tw * rm->th, rm->tab, row->fg + (a - c0), row->bg + (a - c0), row->vis + (a - c0),
-                  (unsigned)(b - a));
+      int at = p + a - cache_c0 - ca;
+      build_cells(gf, gf + rm->tw * rm->th, rm->tab, row->fg + at, row->bg + at, row->vis + at, (unsigned)(b - a));
     }
+    ca += n;
   }
-  cache_c0 = c0, cache_r0 = r0, cache_gen = g_cells_gen;
 }
 
 /* cells [ca, cb] of a row of a layer: those inside the view at once, those at its sides clipped */
 int g_offx, g_offy;
 static void layer_row(const Cell *cells, uint8_t *line, int ca, int cb, unsigned rows) {
-  int a = imax(ca, 1), b = imin(cb, COLS - 2);
-  if (a <= b) blit_row(cells + a, (unsigned)(b - a + 1), line + a * 8 - g_offx, rows);
-  if (ca == 0) blit_clip(cells, line - g_offx, (unsigned)g_offx, 8, rows);
-  if (cb == COLS - 1 && g_offx) blit_clip(cells + COLS - 1, line + 320 - g_offx, 0, (unsigned)g_offx, rows);
+  for (int a = imax(ca, 1), b = imin(cb, COLS - 2); a <= b;) {
+    int p = ph(a), n = imin(b - a + 1, COLS - p);
+    blit_row(cells + p, (unsigned)n, line + a * 8 - g_offx, rows);
+    a += n;
+  }
+  if (ca == 0) blit_clip(cells + ph(0), line - g_offx, (unsigned)g_offx, 8, rows);
+  if (cb == COLS - 1 && g_offx) blit_clip(cells + ph(COLS - 1), line + 320 - g_offx, 0, (unsigned)g_offx, rows);
 }
 
 static unsigned rows_mask(int r, uint8_t **line) {   /* row r of cells: its rows in the view, and its top's place */
@@ -251,10 +276,43 @@ static unsigned rows_mask(int r, uint8_t **line) {   /* row r of cells: its rows
 }
 
 void draw_cells_update(void) {
-  int c0 = g_camx >> 3, r0 = g_camy >> 3;
+  int c0 = g_camx >> 3, r0 = g_camy >> 3, dc = c0 - cache_c0, dr = r0 - cache_r0;
   g_offx = g_camx & 7, g_offy = g_camy & 7;
-  if (c0 != cache_c0 || r0 != cache_r0 || g_cells_gen != cache_gen) cells_build(c0, r0);
+  if (!dc && !dr && g_cells_gen == cache_gen) return;
+  if (g_cells_gen != cache_gen || dc <= -COLS || dc >= COLS || dr <= -CROWS || dr >= CROWS) {   /* all of them */
+    cache_c0 = c0, cache_r0 = r0, cache_gen = g_cells_gen, coff = roff = 0;
+    for (int r = 0; r < CROWS; r++) build_span(r, 0, COLS);
+    return;
+  }
+  coff = (coff + dc + COLS) % COLS, roff = (roff + dr + CROWS) % CROWS;
+  cache_c0 = c0, cache_r0 = r0;
+  for (int r = 0; r < CROWS; r++) {
+    if ((dr > 0 && r >= CROWS - dr) || (dr < 0 && r < -dr)) build_span(r, 0, COLS);   /* a new row */
+    else if (dc > 0) build_span(r, COLS - dc, COLS);   /* new columns */
+    else if (dc < 0) build_span(r, 0, -dc);
+  }
 }
+
+#ifndef __TICE__
+/* CEL_VERIFY: the ring against all the cells made again (the number that differ) */
+int draw_cells_check(void) {
+  static uint8_t keep[CELL_CACHE];
+  uint8_t *cache = g_cell_cache;
+  int c0 = cache_c0, r0 = cache_r0, co = coff, ro = roff, bad = 0;
+  g_cell_cache = keep, coff = roff = 0;
+  for (int r = 0; r < CROWS; r++) build_span(r, 0, COLS);
+  for (int r = 0; r < CROWS; r++)
+    for (int c = 0; c < COLS; c++) {
+      CellRow *a = (CellRow *)(void *)(keep + r * sizeof(CellRow));
+      int pr = (r + ro) % CROWS, pc = (c + co) % COLS;
+      CellRow *b = (CellRow *)(void *)(cache + pr * sizeof(CellRow));
+      if (memcmp(&a->fg[c], &b->fg[pc], sizeof(Cell)) || memcmp(&a->bg[c], &b->bg[pc], sizeof(Cell)) || a->vis[c] != b->vis[pc])
+        bad++;
+    }
+  g_cell_cache = cache, coff = co, roff = ro, cache_c0 = c0, cache_r0 = r0;
+  return bad;
+}
+#endif
 
 void draw_layers_back(int ca, int cb, int ra, int rb) {
   int offx = g_offx;
@@ -269,9 +327,9 @@ void draw_layers_back(int ca, int cb, int ra, int rb) {
     CellRow *row = cells_row(r);
     int vy = r * 8 - g_offy, y0 = imax(vy, 0), y1 = imin(vy + 8, VIEW_H);
     for (int c = ca; c <= cb;) {   /* the background, in runs of cells it shows in */
-      if (!row->vis[c]) { c++; continue; }
+      if (!row->vis[ph(c)]) { c++; continue; }
       int e = c + 1;
-      while (e <= cb && row->vis[e]) e++;
+      while (e <= cb && row->vis[ph(e)]) e++;
       int xa = imax(c * 8 - offx, 0), xb = imin(e * 8 - offx, VIEW_W);
       c = e;
       if (xa >= xb) continue;
@@ -307,40 +365,60 @@ void draw_layer_fg(int ca, int cb, int ra, int rb) {
   }
 }
 
-/* the rooms' decals: u8 bg count, u8 fg count, then u16 sprite, s16 x, s16 y (centre), u8 flags, u8 frames */
-void draw_decals(int fg) {
-  for (int k = 0; k < 2; k++) {
-    Room *rm = &g_level.rooms[k];
-    if (rm->index < 0) continue;
-    const uint8_t *d = rm->decals;
-    int n = d[fg], skip = fg ? d[0] : 0;
-    const uint8_t *p = d + 2 + 8 * skip;
-    for (int i = 0; i < n; i++, p += 8) {
-      int id = (int)R16(p), frames = p[7];
-      if (frames > 1) id += (int)(g_level.frame / 5 % (unsigned)frames);   /* 12 a second */
-      const uint8_t *s = csprite(id);
-      int x = rm->x + S16(p + 2) - s[0] / 2, y = rm->y + S16(p + 4) - s[1] / 2;
-      if (x - g_camx >= g_clip_x1 || y - g_camy >= g_clip_y1 || x + s[0] - g_camx <= g_clip_x0 || y + s[1] - g_camy <= g_clip_y0)
-        continue;
-      draw_sprite(s, x, y, p[6] & 3);
+/* the rooms' decals: u8 bg count, u8 fg count, then u16 sprite, s16 x, s16 y (centre), u8 flags, u8 frames. Those on
+ * the view are listed once a frame (decals_prepare: their picture, view place, animated or not), the bg ones first. */
+typedef struct { const uint8_t *s; int16_t x, y; uint8_t anim; } VDecal;
+#define MAX_VDECALS 192
+uint8_t *g_vdecals;   /* (MAX_VDECALS of them, in the RAM plat_ram gives) */
+static int nvd[2];
+void decals_prepare(void) {   /* (again only when the camera, the rooms or an animated one's frame changed) */
+  static int camx = -99999, camy, tick;
+  static uint8_t gen;
+  static bool anims;
+  int t = (int)(g_level.frame / 5);
+  if (g_camx == camx && g_camy == camy && g_cells_gen == gen && (!anims || t == tick)) return;
+  camx = g_camx, camy = g_camy, gen = g_cells_gen, tick = t, anims = false;
+  VDecal *v = (VDecal *)(void *)g_vdecals;
+  int n = 0;
+  for (int fg = 0; fg < 2; fg++) {
+    for (int k = 0; k < 2; k++) {
+      Room *rm = &g_level.rooms[k];
+      if (rm->index < 0) continue;
+      const uint8_t *d = rm->decals;
+      int cnt = d[fg], skip = fg ? d[0] : 0;
+      const uint8_t *p = d + 2 + 8 * skip;
+      int rx = rm->x - g_camx, ry = rm->y - g_camy;
+      for (int i = 0; i < cnt; i++, p += 8) {
+        int id = (int)R16(p), frames = p[7];
+        if (frames > 1) id += (int)(g_level.frame / 5 % (unsigned)frames);   /* 12 a second */
+        const uint8_t *sp = csprite(id);
+        int x = rx + S16(p + 2) - sp[0] / 2, y = ry + S16(p + 4) - sp[1] / 2;
+        if (x >= VIEW_W || y >= VIEW_H || x + sp[0] <= 0 || y + sp[1] <= 0 || n == MAX_VDECALS) continue;
+        v[n].s = sp, v[n].x = (int16_t)x, v[n].y = (int16_t)y, v[n].anim = frames > 1;
+        anims |= frames > 1;
+        n++;
+      }
     }
+    nvd[fg] = n;
   }
 }
-/* the animated decals' boxes, when their frame has changed since the last time this buffer was drawn (5 updates a
- * frame of theirs) */
-void decals_mark(void (*mark)(int x0, int y0, int x1, int y1)) {
-  for (int k = 0; k < 2; k++) {
-    Room *rm = &g_level.rooms[k];
-    if (rm->index < 0) continue;
-    const uint8_t *d = rm->decals;
-    const uint8_t *p = d + 2;
-    for (int i = d[0] + d[1]; i > 0; i--, p += 8) {
-      if (p[7] <= 1) continue;
-      const uint8_t *s = csprite((int)R16(p));
-      int x = rm->x + S16(p + 2) - s[0] / 2 - g_camx, y = rm->y + S16(p + 4) - s[1] / 2 - g_camy;
-      mark(x, y, x + s[0], y + s[1]);
-    }
+void draw_decals(int fg) {
+  const VDecal *v = (const VDecal *)(const void *)g_vdecals;
+  int camx = g_camx, camy = g_camy;
+  g_camx = g_camy = 0;
+  for (int i = fg ? nvd[0] : 0, e = nvd[fg]; i < e; i++) {
+    const uint8_t *sp = v[i].s;
+    int x = v[i].x, y = v[i].y;
+    if (x >= g_clip_x1 || y >= g_clip_y1 || x + sp[0] <= g_clip_x0 || y + sp[1] <= g_clip_y0) continue;
+    draw_sprite(sp, x, y, 0);
   }
+  g_camx = camx, g_camy = camy;
+}
+/* the animated decals' boxes (their frame changes 12 times a second) */
+void decals_mark(void (*mark)(int x0, int y0, int x1, int y1)) {
+  const VDecal *v = (const VDecal *)(const void *)g_vdecals;
+  for (int i = 0; i < nvd[1]; i++)
+    if (v[i].anim) mark(v[i].x, v[i].y, v[i].x + v[i].s[0], v[i].y + v[i].s[1]);
 }
 
 /* ---------------------------------------------------------------- text: a 5 x 7 font for now */
@@ -388,6 +466,17 @@ int draw_selftest(void) {
     blit_sprite(s, 100, 0, DF_FLIPX);
     for (int y = 0; y < s[1]; y++)
       if (memcmp(g_fb + (VIEW_Y + y) * 320, g_fb + (VIEW_Y + y) * 320 + 100, s[0])) bad |= 2;
+    for (int k = 0; k < 4 && id % 6 == 0; k++) {   /* cut by a clip (some of them: it is slow) */
+      int cx = (id * 7 + k * 5) % (s[0] + 1), cy = (id * 3 + k * 11) % (s[1] + 1);
+      memset(g_fb + VIEW_Y * 320, 0, 320 * s[1]);
+      g_clip_x0 = k & 1 ? cx : 0, g_clip_x1 = k & 1 ? VIEW_W : cx, g_clip_y0 = k & 2 ? cy : 0, g_clip_y1 = k & 2 ? VIEW_H : cy;
+      draw_sprite(s, 0, 0, 0);
+      g_clip_x0 += 100, g_clip_x1 += 100;
+      blit_sprite(s, 100, 0, 0);
+      g_clip_x0 = 0, g_clip_y0 = 0, g_clip_x1 = VIEW_W, g_clip_y1 = VIEW_H;
+      for (int y = 0; y < s[1]; y++)
+        if (memcmp(g_fb + (VIEW_Y + y) * 320, g_fb + (VIEW_Y + y) * 320 + 100, s[0])) bad |= 4;
+    }
   }
   memset(g_fb, 0, 320 * 240);
   return bad;

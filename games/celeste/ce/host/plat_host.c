@@ -95,6 +95,12 @@ void png(const char *path, const uint8_t *fb) {
 }
 
 void plat_frame(void) {
+  if (getenv("CEL_COUNT")) {
+    extern long g_cnt_cells, g_cnt_opq, g_cnt_msk, g_cnt_mskpx, g_cnt_runs, g_cnt_rect;
+    printf("cells %ld opaque rows %ld masked rows %ld (%ld px, %ld runs) background %ld px\n", g_cnt_cells, g_cnt_opq, g_cnt_msk,
+           g_cnt_mskpx, g_cnt_runs, g_cnt_rect);
+    g_cnt_cells = g_cnt_opq = g_cnt_msk = g_cnt_mskpx = g_cnt_runs = g_cnt_rect = 0;
+  }
   g_shown = g_fb;
   cur ^= 1;
   g_fb = fbs[cur ^ 1];
@@ -126,6 +132,8 @@ unsigned plat_keys(void) {
     int nf = 0, nb = 0, nt = 0;
     for (int i = 0; i < rm->tw * rm->th; i++) nf += rm->grid[i] != 0, nb += rm->grid[rm->tw * rm->th + i] != 0;
     for (int i = 0; i < 320 * 180; i++) nt += g_bg8[i] != 0;
+    { int cnt[256] = {0}; for (int i = 0; i < g_nents; i++) if (g_ents[i].type != 255) cnt[g_ents[i].type]++;
+      printf("ents:"); for (int t = 0; t < 256; t++) if (cnt[t]) printf(" %d:%d", t, cnt[t]); printf("\n"); }
     printf("room %s tw %d th %d ntiles %d fg %d bg %d bg4 %d hasbg %d map %d %d %d\n", level_room_name(), rm->tw, rm->th,
            rm->ntiles, nf, nb, nt, g_has_bg, g_bg_map[0], g_bg_map[1], g_bg_map[2]);
   }

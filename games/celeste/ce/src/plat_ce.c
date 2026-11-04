@@ -25,6 +25,7 @@ void plat_init(void) {
   timer_Enable(1, TIMER_CPU, TIMER_NOINT, TIMER_UP);
 #endif
   kb_DisableOnLatch();
+  kb_SetMode(MODE_3_CONTINUOUS);   /* (the keypad scans by itself: reading it is instant) */
 }
 /* The RAM the game takes besides its program and static data: an appvar, CELRAM, made last (the save before it, in
  * RAM and at its full size, is only written in place while playing), so nothing moves it; gone at the end. */
@@ -58,6 +59,7 @@ void plat_exit(void) {
   uint8_t h = ti_Open("CELSAVE", "r");   /* the save goes to the archive (it stays in RAM while playing) */
   if (h) ti_SetArchiveStatus(true, h), ti_Close(h);
   gfx_End();
+  kb_Reset();
   kb_ClearOnLatch();
 }
 __attribute__((noinline)) void plat_frame(void) {   /* (not inlined: the emulator counts frames here) */
@@ -68,7 +70,6 @@ void plat_begin_draw(void) { gfx_Wait(); }
 void plat_palette(const uint16_t *pal, int first, int n) { memcpy(gfx_palette + first, pal, (size_t)n * 2); }
 
 unsigned plat_keys(void) {
-  kb_Scan();
   unsigned k = 0;
   uint8_t g1 = kb_Data[1], g2 = kb_Data[2], g6 = kb_Data[6], g7 = kb_Data[7];
   if (g7 & kb_Left) k |= K_LEFT;
