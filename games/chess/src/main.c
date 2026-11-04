@@ -228,6 +228,22 @@ static void w_grab(int x, int y, int w, int h) {
 
 /* Anti-aliased rounded rectangle over what is drawn so far (screen coordinates). */
 static void w_rrect(int x, int y, int w, int h, int r, C c) {
+#ifdef __TICE__ /* (the TI-84 Plus CE: in half pixels, squared, a square root only on the edge) */
+  int lo = (2 * r - 1) * (2 * r - 1), hi = (2 * r + 1) * (2 * r + 1);
+  int a = W.x - x > 0 ? W.x - x : 0, b = W.x + W.w - x < w ? W.x + W.w - x : w;
+  for (int j = 0; j < h; j++) {
+    int yy = y + j - W.y;
+    if (yy < 0 || yy >= W.h) continue;
+    int dy = j < r ? 2 * (r - j) - 1 : j >= h - r ? 2 * (j - (h - r)) + 1 : 0;
+    C *row = wbuf + yy * W.w + x - W.x;
+    for (int i = a; i < b; i++) {
+      int dx = i < r ? 2 * (r - i) - 1 : i >= w - r ? 2 * (i - (w - r)) + 1 : 0, q = dx * dx + dy * dy;
+      if (!dx || !dy || q <= lo) row[i] = c;
+      else if (q < hi) row[i] = mix(row[i], c, (int)(32 * clampf(0.5f - (__builtin_sqrtf((float)q) * 0.5f - r))));
+    }
+  }
+  return;
+#endif
   for (int j = 0; j < h; j++) {
     int yy = y + j - W.y;
     if (yy < 0 || yy >= W.h) continue;
