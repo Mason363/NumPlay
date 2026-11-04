@@ -2,19 +2,23 @@
  * fixed-point paths need without calling the C library's software float. */
 #ifndef NP_FIXED_H
 #define NP_FIXED_H
+#include <stdbool.h>
 #include <stdint.h>
 
-/* f * 2^k as an integer (toward zero), read from the float's bits; |f| * 2^k past 2^62 gives 2^62 */
+/* f * 2^k as an integer, rounded down, read from the float's bits; |f| * 2^k past 2^62 gives 2^62 */
 static inline int64_t fx_from_float(float f, int k) {
   union {
     float f;
     uint32_t u;
   } v = {f};
   int e = (int)(v.u >> 23 & 255) - 150 + k;
-  if (e < -24) return 0;
+  bool neg = v.u >> 31 && v.u << 1;
+  if (e < -24) return neg ? -1 : 0;
   int64_t m = (int64_t)((v.u & 0x7FFFFF) | 0x800000);
-  m = e >= 0 ? m << (e > 38 ? 38 : e) : m >> -e;
-  return v.u >> 31 ? -m : m;
+  if (e >= 0) m <<= e > 38 ? 38 : e;
+  else if (neg) return -((m + ((int64_t)1 << -e) - 1) >> -e);
+  else m >>= -e;
+  return neg ? -m : m;
 }
 
 /* floor(sqrt(v)), a bit at a time */
