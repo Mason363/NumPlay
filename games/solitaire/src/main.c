@@ -93,6 +93,7 @@ static int max(int a, int b) { return a > b ? a : b; }
 /* f over b; a from 0 (all b) to 32 (all f) */
 #ifdef __TICE__ /* the TI-84 Plus CE: its own mixing (the same colours) */
 #include "../../../platform/ti84ce/ce_draw.h"
+#include <wchar.h>
 __attribute__((naked)) static color ce_mix(color a, color b, unsigned t) { __asm__(CE_MIX_ASM); }
 #endif
 static color mix(color f, color b, int a) {
@@ -107,6 +108,10 @@ static color mix(color f, color b, int a) {
 static void fill(int x, int y, int w, int h, color c) {
   int x0 = max(x, rx), x1 = min(x + w, rx + rw), y0 = max(y, ry), y1 = min(y + h, ry + rh);
   if (x0 >= x1) return;
+#ifdef __TICE__ /* (the TI-84 Plus CE: the C library's fill) */
+  for (int j = y0; j < y1; j++) wmemset((wchar_t *)buf + (j - ry) * rw + (x0 - rx), (wchar_t)c, (size_t)(x1 - x0));
+  return;
+#endif
   for (int j = y0; j < y1; j++)
     for (color *p = buf + (j - ry) * rw + (x0 - rx), *e = p + (x1 - x0); p < e; p++) *p = c;
 }
@@ -237,6 +242,27 @@ static void back(int x, int y, int style) {
   cardshape(x, y, EDGE, WHITE);
   color c0 = RGB(BACKS[style][0]), c1 = RGB(BACKS[style][1]);
   int cx = x + CW / 2, cy = y + CH / 2, x0 = max(x + 3, rx), x1 = min(x + CW - 3, rx + rw), y0 = max(y + 3, ry), y1 = min(y + CH - 3, ry + rh);
+#ifdef __TICE__ /* (the TI-84 Plus CE: the pattern worked out once for the style, then copied) */
+  static color pat[(CH - 6) * (CW - 6)];
+  static int pat_style = -1;
+  if (pat_style != style) {
+    pat_style = style;
+    for (int j = y + 3, n = 0; j < y + CH - 3; j++)
+      for (int i = x + 3; i < x + CW - 3; i++, n++) {
+        int dx = i - cx, dy = j - cy, a = dx < 0 ? -dx : dx, b = dy < 0 ? -dy : dy, m = min(a, b), M = max(a, b), d = dx * dx + dy * dy;
+        int w = a >= b ? m * 1000 >= M * 414 : 2 + (m * 1000 < M * 414);
+        color c = w & 1 ? c0 : c1;
+        if (d <= 30) {
+          static const uint32_t Q[4] = {0xEA4335, 0x4285F4, 0xFBBC05, 0x34A853};
+          c = d >= 12 && d <= 20 ? RGB(Q[(dx < 0) + 2 * (dy >= 0)]) : WHITE;
+        }
+        pat[n] = c;
+      }
+  }
+  if (x0 < x1)
+    for (int j = y0; j < y1; j++) memcpy(buf + (j - ry) * rw + x0 - rx, pat + (j - y - 3) * (CW - 6) + x0 - x - 3, (size_t)(x1 - x0) * 2);
+  return;
+#endif
   for (int j = y0; j < y1; j++)
     for (int i = x0; i < x1; i++) {
       int dx = i - cx, dy = j - cy, a = dx < 0 ? -dx : dx, b = dy < 0 ? -dy : dy, m = min(a, b), M = max(a, b), d = dx * dx + dy * dy;
