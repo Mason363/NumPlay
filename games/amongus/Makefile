@@ -68,9 +68,9 @@ HOST_FLAGS = -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -Isrc -DHOST 
 HOST_SAN = -fsanitize=address,undefined -fno-sanitize-recover=undefined
 HOST_SRC = $(filter-out src/plat_eadk.c src/main.c,$(wildcard src/*.c))
 host: build/play
-build/play: $(HOST_SRC) tests/play.c src/data.S src/data.bin $(HEADERS)
+build/play: $(HOST_SRC) tests/play.c tests/rules.c src/data.S src/data.bin $(HEADERS)
 	$(Q) mkdir -p $(dir $@)
-	$(Q) cc $(HOST_FLAGS) $(HOST_SAN) $(HOST_SRC) tests/play.c src/data.S -lm -o $@
+	$(Q) cc $(HOST_FLAGS) $(HOST_SAN) $(HOST_SRC) tests/play.c tests/rules.c src/data.S -lm -o $@
 	@echo "HOST    $@"
 
 test: build/play

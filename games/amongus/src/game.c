@@ -10,6 +10,7 @@
 
 Game g;
 bool autopilot;   /* (tests: the bots' brain plays the player too) */
+bool bots_frozen; /* (tests: the bots stand still) */
 uint16_t color_pal[N_COLORS][256];
 
 const uint32_t BODY_COLORS[N_COLORS] = {0xC61111, 0x132ED1, 0x117F2D, 0xED54BA, 0xEF7D0D, 0xF5F557,

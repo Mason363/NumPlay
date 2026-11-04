@@ -123,8 +123,27 @@ static void draw_keys(const char *s) {
 
 void hud_keys(const char *s) { draw_keys(s); }
 
+/* in a vent: an arrow toward each vent it leads to (Vent.Buttons) */
+static void vent_arrows(const Player *M) {
+  const VentRec *V = &VENTS[M->vent];
+  float px = M->pos.x * PX_PER_UNIT + SHIP_OX - view.cx, py = -M->pos.y * PX_PER_UNIT + SHIP_OY - view.cy;
+  for (int k = 0; k < 3; k++) {
+    if (V->link[k] < 0) continue;
+    float dx = VENTS[V->link[k]].x - V->x, dy = -(VENTS[V->link[k]].y - V->y), l = sqrtf(dx * dx + dy * dy);
+    dx /= l, dy /= l;
+    float cx = px + dx * 38, cy = py + dy * 38;
+    for (int o = 1; o >= 0; o--) {
+      float tip = 9 + 2.5f * o, back = 5 + 2.5f * o, side = 7 + 2.5f * o;
+      float t[6] = {cx + dx * tip, cy + dy * tip, cx - dx * back - dy * side, cy - dy * back + dx * side,
+                    cx - dx * back + dy * side, cy - dy * back - dx * side};
+      gfx_poly(t, 3, o ? 0x0000 : 0xFFFF, 256);
+    }
+  }
+}
+
 void hud_draw(void) {
   const Player *M = &g.p[g.me];
+  if (M->vent != NONE && !M->vent_anim) vent_arrows(M);
   draw_tasks();
   /* the room's name (RoomTracker), for a while after entering */
   if (g.room_t > 0 && g.room_shown != R_HALLWAY) {

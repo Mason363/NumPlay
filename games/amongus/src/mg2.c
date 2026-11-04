@@ -64,9 +64,10 @@ static void leaves_tick(uint32_t keys, uint32_t pressed) {
       /* sucked out */
       a->x -= 300 * DT, a->a += DT * 8;
       if (a->x < 40) {
+        /* the task is done with the last leaf out */
         a->on = 0;
-        task_step_done(g.me, M->task);
-        if (task_done(&g.p[g.me].tasks[M->task])) M->done = 1, M->done_t = 0;
+        if (M->n) M->n--;
+        if (!M->n) mg_finish();
       }
       continue;
     }
@@ -254,7 +255,7 @@ static void divert_draw(void) {
 }
 
 static void accept_tick(uint32_t pressed) {
-  if (pressed & K_OK) M->phase = 1, M->b = 0;
+  if ((pressed & K_OK) && !M->phase) M->phase = 1, M->b = 0;
   if (M->phase) {
     M->b += DT;
     if (M->b > 0.3f) mg_finish();

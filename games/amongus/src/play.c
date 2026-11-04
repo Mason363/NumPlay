@@ -284,10 +284,10 @@ void play_tick(uint32_t keys, uint32_t pressed) {
     else map_tick(pressed, g.overlay);
   }
   if (g.screen != screen || (screen != S_PLAY && screen != S_KILLED)) return;
-  for (int i = 0; i < g.nplayers && g.screen == screen; i++)
+  for (int i = 0; i < g.nplayers && g.screen == screen && !bots_frozen; i++)
     if (i != g.me) bot_tick(i);
   if (g.screen != screen) return;
-  bots_dispatch();
+  if (!bots_frozen) bots_dispatch();
   world_tick();
   check_win();
 }

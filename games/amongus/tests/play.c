@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include "../src/game.h"
 #include "../src/gfx.h"
+#include "../src/mg.h"
 #include "../src/plat.h"
 #include "../src/world.h"
 
@@ -137,6 +138,113 @@ static void scene(const char *name) {
   (void)P;
 }
 
+/* ---- a player for the minigames: the keys that solve the open one, as a person would press them ---- */
+
+static uint32_t tap(int f, uint32_t k) { return f & 1 ? 0 : k; }   /* a press every other frame */
+static uint32_t toward(float dx, float dy, float slack) {
+  uint32_t k = 0;
+  if (dx > slack) k |= K_RIGHT;
+  if (dx < -slack) k |= K_LEFT;
+  if (dy > slack) k |= K_DOWN;
+  if (dy < -slack) k |= K_UP;
+  return k;
+}
+static uint32_t digit(int d) { return (uint32_t)K_D0 << d; }
+
+static uint32_t solve(int f) {
+  if (g.overlay != O_TASK || M->done) return 0;
+  switch (M->kind) {
+  case MG_CARD: return M->phase == 0 ? tap(f, K_OK) : M->phase == 3 ? 0 : K_RIGHT;
+  case MG_WIRES:
+    if (M->phase == 0) {
+      int want = 0;
+      while (want < 4 && M->state[want] != NONE) want++;
+      return want == M->n ? tap(f, K_OK) : tap(f, K_DOWN);
+    } else {
+      int want = 0;
+      while (want < 4 && M->order[4 + want] != M->order[M->sel]) want++;
+      return want == M->n ? tap(f, K_OK) : tap(f, K_DOWN);
+    }
+  case MG_ASTEROIDS: {
+    int best = -1;
+    float bd = 1e9f;
+    for (int k = 0; k < 10; k++) {
+      const Thing *a = &M->th[k];
+      if (a->on != 1 || a->x > 255 || a->x < 70) continue;
+      float d = (a->x - M->a) * (a->x - M->a) + (a->y - M->b) * (a->y - M->b);
+      if (d < bd) bd = d, best = k;
+    }
+    if (best < 0) return 0;
+    if (bd < 12 * 12) return tap(f, K_OK);
+    return toward(M->th[best].x - M->a, M->th[best].y - M->b, 3);
+  }
+  case MG_ALIGN: return M->a > 0.04f ? K_DOWN : M->a < -0.04f ? K_UP : 0;
+  case MG_SAMPLE:
+    if (M->phase == 0) return tap(f, K_OK);
+    if (M->phase == 3) return M->sel == M->n ? tap(f, K_OK) : tap(f, K_RIGHT);
+    return 0;
+  case MG_FUEL: return K_OK;
+  case MG_SIMON:
+    if (M->phase == 1) {
+      static const int CELL_DIGIT[9] = {7, 8, 9, 4, 5, 6, 1, 2, 3};
+      return tap(f, digit(CELL_DIGIT[M->order[M->n]]));
+    }
+    return 0;
+  case MG_GARBAGE: return K_DOWN;
+  case MG_UPLOAD: return M->phase == 0 ? tap(f, K_OK) : 0;
+  case MG_CALIBRATE: {
+    float a = M->v[M->n < 3 ? M->n : 0];
+    if (a > 3.14159f) a -= 6.2831853f;
+    return fabsf(a) < 0.15f ? tap(f, K_OK) : 0;
+  }
+  case MG_COURSE: return K_RIGHT;
+  case MG_LEAVES: {
+    if (M->sel != NONE) return K_OK | K_LEFT;
+    int best = -1;
+    float bd = 1e9f;
+    for (int k = 0; k < 6; k++) {
+      const Thing *a = &M->th[k];
+      if (a->on != 1) continue;
+      float d = (a->x - M->a) * (a->x - M->a) + (a->y - M->b) * (a->y - M->b);
+      if (d < bd) bd = d, best = k;
+    }
+    if (best < 0) return 0;
+    if (bd < 8 * 8) return tap(f, K_OK);
+    return toward(M->th[best].x - M->a, M->th[best].y - M->b, 2);
+  }
+  case MG_MANIFOLDS: {
+    if (M->c > 0) return 0;
+    int want = 0;
+    while (want < 10 && M->order[want] != M->n) want++;
+    if (want == M->sel) return tap(f, K_OK);
+    if (want / 5 != M->sel / 5) return tap(f, K_DOWN);
+    return tap(f, K_RIGHT);
+  }
+  case MG_STEERING: return toward(-M->a, -M->b, 1.5f);
+  case MG_SHIELDS:
+    for (int k = 0; k < 7; k++)
+      if (!(M->n >> k & 1)) return M->sel == k ? tap(f, K_OK) : tap(f, digit(k + 1));
+    return 0;
+  case MG_DIVERT: return K_UP;
+  case MG_ACCEPT: return tap(f, K_OK);
+  case MG_HANDS: return K_OK;
+  case MG_LIGHTS:
+    for (int k = 0; k < 5; k++)
+      if (!(g.switches >> k & 1)) return tap(f, digit(k + 1));
+    return 0;
+  case MG_COMMS: return M->a < M->c - 0.03f ? K_RIGHT : M->a > M->c + 0.03f ? K_LEFT : 0;
+  case MG_KEYPAD: {
+    if (M->c > 0 || M->phase) return 0;
+    char code[8];
+    snprintf(code, sizeof code, "%05u", (unsigned)g.o2_code);
+    if (M->n < 5) return (f & 1) ? 0 : digit(code[M->n] - '0');
+    return tap(f, K_OK);
+  }
+  case MG_EMERGENCY: return M->b > 0.4f ? tap(f, K_OK) : 0;
+  default: return 0;
+  }
+}
+
 static uint32_t frng = 1;
 static uint32_t frnd(void) {
   frng ^= frng << 13, frng ^= frng >> 17, frng ^= frng << 5;
@@ -148,7 +256,7 @@ int main(int argc, char **argv) {
   const char *scene_name = NULL;
   float at_x = 1e9f, at_y = 0;
   uint32_t seed = 0;
-  bool fuzz = false, draw = false, shot_end = false, walled = false;
+  bool fuzz = false, draw = false, shot_end = false, walled = false, solving = false, do_rules = false;
   const char *out = "build/shots";
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--frames")) frames = atoi(argv[++i]);
@@ -169,6 +277,8 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[i], "--at")) at_x = (float)atof(argv[++i]), at_y = (float)atof(argv[++i]);
     else if (!strcmp(argv[i], "--walk")) walk_frames = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--shot-end")) shot_end = true;
+    else if (!strcmp(argv[i], "--solve")) solving = true;
+    else if (!strcmp(argv[i], "--rules")) do_rules = true;
     else if (!strcmp(argv[i], "--fuzz")) fuzz = true, frng = (uint32_t)atoi(argv[++i]) * 2654435761u + 1;
     else if (!strcmp(argv[i], "--shots")) {
       const char *s = argv[++i];
@@ -187,6 +297,12 @@ int main(int argc, char **argv) {
   gfx_init(band);
   host_time = 1000 + seed * 7919;
   game_init();
+  if (do_rules) {
+    int rules(void);
+    return rules() ? 1 : 0;
+  }
+  printf("LOADED screen %d back %d t %.3f me (%.3f,%.3f) players %d color %d bots %d\n", g.screen, g.back_screen, g.t,
+         g.p[g.me].pos.x, g.p[g.me].pos.y, g.nplayers, g.opt.color, g.opt.bots);
   if (start) {
     if (bots >= 0) g.opt.bots = (uint8_t)bots;
     if (imps >= 0) g.opt.impostors = (uint8_t)imps;
@@ -204,7 +320,15 @@ int main(int argc, char **argv) {
   uint32_t fk = 0;
   int meetings = 0, ejects = 0, wrong = 0, prev_scr = -1;
   static int hist[16];
-  for (int f = 0; f < frames && game_running; f++) {
+  int restarts = 0;
+  for (int f = 0; f < frames; f++) {
+    if (!game_running) {
+      /* quit: the fuzz starts the app again (the saves read back), the others stop */
+      if (!fuzz) break;
+      game_running = true;
+      restarts++;
+      game_init();
+    }
     uint32_t k = 0;
     for (int i = 0; i < nholds; i++)
       if (f >= holds[i].a && f <= holds[i].b) k |= holds[i].k;
@@ -214,10 +338,25 @@ int main(int argc, char **argv) {
         fk = r & (K_LEFT | K_RIGHT | K_UP | K_DOWN | K_OK | K_EXE | K_TOOL);
         if (frnd() % 12 == 0) fk |= K_BACK;
         if (frnd() % 10 == 0) fk |= (uint32_t)K_D0 << (frnd() % 10);
+        if (frnd() % 300 == 0) fk = K_HOME;
       }
       k = fk;
     }
     if (autopilot && (g.screen == S_INTRO || g.screen == S_EJECT) && f % 20 == 0) k |= K_OK;
+    if (solving) {
+      /* (nobody kills, sabotages or calls a meeting meanwhile) */
+      for (int i = 0; i < g.nplayers; i++)
+        if (i != g.me) g.p[i].kill_cd = 99, g.p[i].emergencies = 0, g.p[i].bot.found_body = NONE;
+      if (g.sab == SAB_NONE) g.sab_cd = 99;
+      /* (the reactor's other hand: someone else holds it) */
+      if (g.sab == SAB_REACTOR && g.overlay == O_TASK && M->kind == MG_HANDS)
+        g.reactor_hold[(CONSOLES[M->cons].id & 1) ^ 1] = (uint8_t)(g.me == 1 ? 2 : 1);
+      k |= solve(f);
+      if (mgkind >= 0 && g.overlay == O_NONE) {
+        printf("SOLVED mg %d at frame %d step %d sab %d\n", mgkind, f, g.p[g.me].tasks[0].step, g.sab);
+        break;
+      }
+    }
     host_keys = k;
     hist[g.screen & 15]++;
     if (g.screen == S_REPORT && prev_scr != S_REPORT) meetings++;
@@ -235,7 +374,7 @@ int main(int argc, char **argv) {
     host_time += 33;
     bool shot = every ? f % every == 0 : false;
     for (int i = 0; i < nshots; i++) shot |= shots[i] == f;
-    if (shot || draw) game_draw();
+    if (shot || draw || (fuzz && f % 4 == 0)) game_draw();
     if (shot) {
       char p[512];
       snprintf(p, sizeof p, "%s/shot_%04d.ppm", out, f);
@@ -255,6 +394,7 @@ int main(int argc, char **argv) {
     }
   }
   if (fuzz)
+    printf("RESTARTS %d\n", restarts),
     printf("SCREENS title %d lobby %d intro %d play %d report %d meeting %d eject %d end %d howto %d pause %d killed %d\n",
            hist[0], hist[1], hist[2], hist[3], hist[4], hist[5], hist[6], hist[7], hist[8], hist[9], hist[10]);
   int alive = 0;

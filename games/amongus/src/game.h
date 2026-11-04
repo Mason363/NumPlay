@@ -120,7 +120,7 @@ typedef struct {
 } Game;
 
 extern Game g;
-extern bool autopilot;
+extern bool autopilot, bots_frozen;
 /* is player i played by the bots' brain (the others, and in tests the player too) */
 static inline bool is_bot(int i) { return i != g.me || autopilot; }
 
