@@ -2,7 +2,7 @@
 
 <img src="../media/calcs/nspire.png" height="200" align="right" alt="TI-Nspire CX">
 
-76 free games for the TI-Nspire CX and CX II, CAS or not: NumBlocks, Hollow Knight, NumDrive, Celeste, Balatro, Undertale and more. The same games as on the NumWorks, made for this calculator's screen and keys.
+77 free games for the TI-Nspire CX and CX II, CAS or not: NumBlocks, Hollow Knight, NumDrive, Celeste, Balatro, Undertale and more. The same games as on the NumWorks, made for this calculator's screen and keys.
 
 > [!IMPORTANT]
 > **Beta testers wanted.** These builds haven't run on a real TI-Nspire CX yet. [Sign up](https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml) to try each one first, and tell me what works.
@@ -35,7 +35,7 @@ Or pick just the games you want in [NumPlay Studio](https://mason363.github.io/N
 
 Games save by themselves, and when you leave with Home.
 
-## The 76 games
+## The 77 games
 
 | Game | |
 | --- | --- |
@@ -115,6 +115,7 @@ Games save by themselves, and when you leave with Home.
 | [Among Us](../../games/amongus/README.md) | Find the Impostor, or be one |
 | [Imposter](../../games/imposter/README.md) | One of you doesn't know the word |
 | [2 3 4 Players](../../games/fourplayer/README.md) | One key each, 14 party games |
+| [Hollow Knight: Fungal Wastes](../../games/hkfungal/README.md) | Hallownest past Greenpath |
 
 <br clear="right">
 

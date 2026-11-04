@@ -18,7 +18,9 @@
 enum {
   EF_CRAWLER = 1, EF_BUZZER, EF_SHADE, EF_HUSK, EF_CLIMBER, EF_BOUNCER, EF_SPITTER, EF_ROLLER, EF_BLOCKER, EF_LEAPER, EF_GUARD,
   EF_FK, EF_FKHEAD, EF_GFLY, EF_HATCHER, EF_HATCHLING, EF_SLUG, EF_MOSSWALKER, EF_PIGEON, EF_PLANTTRAP, EF_SHAKER,
-  EF_MOSQUITO, EF_FATFLY, EF_MOSSCHARGER, EF_MOSSKNIGHT, EF_HORNET, EF_MENDER
+  EF_MOSQUITO, EF_FATFLY, EF_MOSSCHARGER, EF_MOSSKNIGHT, EF_HORNET, EF_MENDER,
+  /* (Hollow Knight: Fungal Wastes: HK_FW) */
+  EF_FUNGLING, EF_FUNGOON, EF_AMBLOOM, EF_SHRUMELING, EF_OGRE, EF_SPORG, EF_MANTIS, EF_MANTISFLYER, EF_MANTISLORD
 };
 enum { R_IDLE, R_TURN, R_WALK, R_A1, R_A2, R_A3, R_A4, R_A5, R_A6, R_A7, R_A8, R_DEATH_AIR, R_DEATH_LAND, NUM_ROLES };
 typedef struct {
@@ -411,6 +413,11 @@ static void death_shake(const Enemy *e) {
 static void shade_killed(Enemy *e);
 static void blocker_die(Enemy *e);
 static void gfly_die(Enemy *e);
+#ifdef HK_FW
+static void mlord_die(Enemy *e);
+static void mlord_fixed(Enemy *e);
+static void mlord_corpse_update(Enemy *e);
+#endif
 static void hatchling_reset(Enemy *e);
 static void hatcher_corpse_smash(const Enemy *e);
 static void hornet_corpse_start(Enemy *e);
@@ -436,6 +443,14 @@ static void enemy_die(Enemy *e, float direction, bool has_direction) {
   if (FSM(e) == EF_MENDER) g_pd.mender_state = 2;   /* (Killed) */
   if (FSM(e) == EF_GFLY) gfly_die(e);
   else if (FSM(e) == EF_HORNET) hornet_corpse_start(e);
+#ifdef HK_FW
+  else if (FSM(e) == EF_MANTISLORD) {
+    mlord_die(e);
+    death_shake(e);
+    FREEZE_MOMENT_1();
+    return;
+  }
+#endif
   else if (FSM(e) == EF_HATCHLING) {
     /* (deathReset: back to its cage) */
     death_shake(e);
@@ -6311,9 +6326,18 @@ static void hornet_draw(const Enemy *e, int i, float z) {
   }
 }
 
+#ifdef HK_FW
+#include "enemy_fw.c"   /* (the kinds of Hollow Knight: Fungal Wastes) */
+#endif
+
 /* the collisions a step brought (Collision2dEvent, ObjectBounce): the kinds that want them */
 static BodyEvent body_events[MAX_EVENTS];
-static bool wants_contacts(const Enemy *e) { return FSM(e) == EF_MOSQUITO || FSM(e) == EF_FATFLY || FSM(e) == EF_MOSSCHARGER; }
+static bool wants_contacts(const Enemy *e) {
+#ifdef HK_FW
+  if (xl_wants_contacts(e)) return true;
+#endif
+  return FSM(e) == EF_MOSQUITO || FSM(e) == EF_FATFLY || FSM(e) == EF_MOSSCHARGER;
+}
 
 static void enemy_contacts(Enemy *e, float pvx, float pvy, int had) {
   for (int i = 0; i < e->body.nevents; i++) {
@@ -6324,6 +6348,9 @@ static void enemy_contacts(Enemy *e, float pvx, float pvy, int had) {
       body_bounce(&e->body, pvx, pvy, had, 0.5f);   /* (ObjectBounce, at its speed as last sampled) */
       e->b1 = true;
     }
+#ifdef HK_FW
+    xl_contact(e, v);
+#endif
   }
 }
 
@@ -6367,6 +6394,9 @@ static void enemy_fsm_start(Enemy *e, const Ent *d) {
   else if (FSM(e) == EF_MOSSCHARGER) mosscharger_start(e);
   else if (FSM(e) == EF_MOSSKNIGHT) mossknight_start(e);
   else if (FSM(e) == EF_HORNET) hornet_start(e);
+#ifdef HK_FW
+  else xl_start(e, d);
+#endif
 }
 
 /* ActiveRegion (a 50 by 35 box round the camera) meets its collider: FSMActivator turns its FSMs on */
@@ -6522,6 +6552,9 @@ void enemies_enter(void) {
   memset(&sh, 0, sizeof sh);
   memset(balls, 0, sizeof balls);
   memset(bullets, 0, sizeof bullets);
+#ifdef HK_FW
+  xl_enter();
+#endif
   memset(waves, 0, sizeof waves);
   memset(spurts, 0, sizeof spurts);
   memset(&gm, 0, sizeof gm);
@@ -6552,7 +6585,13 @@ void enemies_fixed(void) {
       continue;
     }
     if (e->mode == EM_ALIVE && (FSM(e) == EF_FKHEAD || (e->flags & 128))) continue;   /* (the head: its body's; off) */
-    if (e->mode == EM_ALIVE && ((FSM(e) == EF_MOSSWALKER && e->b1) || FSM(e) == EF_PIGEON || FSM(e) == EF_PLANTTRAP)) {
+#ifdef HK_FW
+    if (FSM(e) == EF_MANTISLORD) {
+      if (e->mode == EM_ALIVE) mlord_fixed(e);   /* (kinematic; its corpse stays) */
+      continue;
+    }
+#endif
+    if (e->mode == EM_ALIVE && ((FSM(e) == EF_MOSSWALKER && e->b1) || FSM(e) == EF_PIGEON || FSM(e) == EF_PLANTTRAP || FSM(e) == EF_SPORG)) {
       /* (a kinematic body, a trigger, frames' colliders: nothing stops them) */
       recoil_fixed(e);
       if (FSM(e) == EF_MOSSWALKER) mosswalker_fixed(e);
@@ -6584,6 +6623,9 @@ void enemies_fixed(void) {
       else if (FSM(e) == EF_FATFLY) fatfly_fixed(e);
       else if (FSM(e) == EF_MOSSCHARGER) mosscharger_fixed(e);
       else if (FSM(e) == EF_MOSSKNIGHT) mossknight_fixed(e);
+#ifdef HK_FW
+      else xl_fixed(e);
+#endif
       recoil_fixed(e);
       if (wants_contacts(e)) {
         float pvx = e->body.vx, pvy = e->body.vy, box[4] = {0};
@@ -6627,6 +6669,9 @@ void enemies_fixed(void) {
   geo_tick();
   balls_tick();
   bullets_tick();
+#ifdef HK_FW
+  xl_tick();
+#endif
   waves_tick();
   fk_arena_tick();
   fk_head_place();
@@ -6684,6 +6729,9 @@ void enemies_update(void) {
       else if (FSM(e) == EF_MOSSCHARGER) mosscharger_update(e);
       else if (FSM(e) == EF_MOSSKNIGHT) mossknight_update(e);
       else if (FSM(e) == EF_HORNET) hornet_update(e);
+#ifdef HK_FW
+      else xl_update(e);
+#endif
       if (FSM(e) == EF_FK) {
         /* (its Hitter: on till its FSM turns it off) */
         e->sub.events = 0;
@@ -6698,6 +6746,10 @@ void enemies_update(void) {
       shade_update(e);
     else if (FSM(e) == EF_HORNET)
       hornet_corpse_update(e);
+#ifdef HK_FW
+    else if (FSM(e) == EF_MANTISLORD)
+      mlord_corpse_update(e);
+#endif
     else if (FSM(e) == EF_BLOCKER)
       blocker_corpse(e);
     else if (e->st == CS_DEATH_ANIM && !e->anim.playing)
@@ -6746,8 +6798,14 @@ void enemies_draw(void) {
       sprite_inst(sh.slash.sprite, e->body.x - 0.0486f * e->sx, e->body.y - 0.0117f, z - 0.001f, 1.27f * e->sx, 1, 0, &in);
       gfx_actor(&in, SORT_KEY(0, 0));
     }
+#ifdef HK_FW
+    xl_draw_enemy(e, z, flash_tint(e, 2 + i % 5));
+#endif
   }
   bullets_draw();
+#ifdef HK_FW
+  xl_draw();
+#endif
   spurts_draw();
   fk_arena_draw();
   gfly_corpse_draw();
@@ -6838,6 +6896,9 @@ static void grass_balls_hit(float x0, float y0, float x1, float y1) {
 
 int enemies_nail(const float *pts, int npts, float direction, int damage) {
   int out = mossknights_nail(pts, npts);
+#ifdef HK_FW
+  out |= xl_nail(pts, npts, direction);
+#endif
   if (hornet()) out |= hornet_nail(pts, npts, direction);
   float bx0, by0, bx1, by1;
   shape_bounds(pts, npts, &bx0, &by0, &bx1, &by1);
@@ -6901,6 +6962,9 @@ int enemies_touch_hero(float x0, float y0, float x1, float y1, int *side) {
   }
   int dmg = bullets_touch_hero(x0, y0, x1, y1, side);
   if (dmg) return dmg;
+#ifdef HK_FW
+  if ((dmg = xl_touch(x0, y0, x1, y1, side))) return dmg;
+#endif
   dmg = spurts_touch(x0, y0, x1, y1, side);
   if (dmg) return dmg;
   dmg = barrels_touch(x0, y0, x1, y1, side);
@@ -6928,6 +6992,11 @@ void enemies_debug(void) {
   int ng = 0;
   for (int i = 0; i < MAX_GEO; i++) ng += geo[i].on;
   printf("   geo %d pieces, %d in purse, mp %d\n", ng, g_pd.geo, g_pd.mp);
+#ifdef HK_FW
+  int ngas = 0;
+  for (int i = 0; i < MAX_GAS; i++) ngas += gas[i].on;
+  printf("   gas %d\n", ngas);
+#endif
 }
 
 /* (tests: the enemy of the room's record ent out and alive) */

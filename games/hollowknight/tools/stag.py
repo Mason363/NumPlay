@@ -7,8 +7,10 @@ import unity, ents, tk2d, text
 MENU = ("resources.assets", 7203)
 AT = (0.3, 0.3)
 # the stations here: their list item, their map piece, the PlayerData bool that opens them (None: open from the start)
-STATIONS = (("Dirtmouth", None), ("Crossroads", "openedCrossroads"), ("Greenpath", "openedGreenpath"))
-SCENES = ("Room_Town_Stag_Station", "Crossroads_47", "Fungus1_16_alt")   # (their rooms: Stag Control's To Scene)
+# (both apps list them all: a ride to a station of the other one is a way there)
+STATIONS = (("Dirtmouth", None), ("Crossroads", "openedCrossroads"), ("Greenpath", "openedGreenpath"),
+            ("Fungal Wastes", "openedFungalWastes"))
+SCENES = ("Room_Town_Stag_Station", "Crossroads_47", "Fungus1_16_alt", "Fungus2_02")   # (their rooms: Stag Control's To Scene)
 
 
 def build(sprites, texts, res, actor_clip, pd_flags, str_id, rooms):
@@ -55,6 +57,7 @@ def build(sprites, texts, res, actor_clip, pd_flags, str_id, rooms):
         x0 = x - tc["m_pivot"]["x"] * w
         return "{%s, %s, %s}" % (U(x0 + (0, w / 2, w, 0)[al]), U(y + (1 - tc["m_pivot"]["y"]) * h), U(w))
 
+    out["STAG_N"] = str(len(STATIONS))
     out["STAG_AT"] = "{%s, %s}" % (U(AT[0]), U(AT[1]))
     out["STAG_K"] = U(rk)   # (its scale, open)
     out["STAG_BACKING"] = piece("backing")
@@ -94,7 +97,7 @@ def build(sprites, texts, res, actor_clip, pd_flags, str_id, rooms):
     out["STAG_DIVIDER"] = piece("UI List Stag/Divider")
     out["STAG_T_STATIONS"] = tx("UI List Stag/Stations")
     out["TXT_STAG_STATIONS"] = texts.add(text.clean(sh["StagMenu"]["STATIONS"]), "MSG")
-    out["TXT_STAG_NAMES"] = "{%s}" % ", ".join(str(texts.add(text.clean(sh["StagMenu"][n.upper()]), "TUTE"))
+    out["TXT_STAG_NAMES"] = "{%s}" % ", ".join(str(texts.add(text.clean(sh["StagMenu"][n.upper().replace(" ", "_")]), "TUTE"))
                                                for n, _ in STATIONS)
     out["STAG_NAMES_STR"] = "{%s}" % ", ".join(str(str_id(n)) for n, _ in STATIONS)
     # the borders (Border Display: their clips up as it opens)
@@ -112,5 +115,7 @@ def build(sprites, texts, res, actor_clip, pd_flags, str_id, rooms):
         out["TXT_STAG_" + key] = texts.add(text.clean(sh["UI"][key]), "MSG")
     # (the rides: the scripts' scene names, the rooms they are)
     out["STAG_SCENES_STR"] = "{%s}" % ", ".join(str(str_id(s)) for s in SCENES)
-    out["STAG_SCENES_ROOM"] = "{%s}" % ", ".join(str(rooms.index(s)) for s in SCENES)
+    # (a station in another part of the game: 0x8000 and its room's number among them all)
+    out["STAG_SCENES_ROOM"] = "{%s}" % ", ".join(str(rooms.index(s) if s in rooms else 0x8000 | ents.GLOBAL_ROOMS.index(s))
+                                                 for s in SCENES)
     return out

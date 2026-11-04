@@ -20,6 +20,9 @@
 #ifndef NP_APP_ID
 #define NP_APP_ID "numplay"
 #endif
+#ifndef NP_FILES_ID /* (its files' name: the game's own, or that of the game whose saves it shares) */
+#define NP_FILES_ID NP_APP_ID
+#endif
 
 /* the RAM after a game's own: 128 KB (the add-in's 512 KB hold its data, this and the stack) */
 __asm__(".section .bss\n.balign 16\n.global __heap_start\n__heap_start:\n.space 131072\n.global __heap_end\n__heap_end:\n"
@@ -185,7 +188,7 @@ static bool loaded, unsaved;
 static int last_save;
 static void save_path(uint16_t *out) {
   char p[40] = "\\\\fls0\\";
-  strncat(p, NP_APP_ID, 8);
+  strncat(p, NP_FILES_ID, 8);
   strcat(p, ".sav");
   Bfile_StrToName_ncpy(out, p, 40);
 }

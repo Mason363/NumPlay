@@ -7,7 +7,11 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#ifdef HK_FW
+#include "data_fw.h"   /* (the second app: Hollow Knight: Fungal Wastes) */
+#else
 #include "data.h"
+#endif
 
 #define SCREEN_W 320
 #define SCREEN_H 240

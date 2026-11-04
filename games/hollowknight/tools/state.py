@@ -6,12 +6,13 @@ change are left to the room as it loads (ents.py: OK_COND)."""
 CONSTANT = {"crossroadsInfected": False, "troupeInTown": False, "clothInTown": False, "killedTraitorLord": False,
             "clothKilled": False, "clothLeftTown": False, "brettaLeftTown": False, "zoteDefeated": False,
             "brettaRescued": False, "visitedRuins": False, "visitedDeepnest": False, "colosseumSilverOpened": False,
-            "nymmInTown": False, "killedGrimm": False, "divineInTown": False, "fatGrubKing": False}
+            "nymmInTown": False, "killedGrimm": False, "divineInTown": False, "fatGrubKing": False,
+            "quirrelArchiveEncountered": False}
 # (the Grimm Troupe's: none of it comes this early)
 CONSTANT.update({"defeatedNightmareGrimm": False, "equippedCharm_40": False, "gotCharm_40": False})
 CONSTANT_INTS = {"flamesCollected": 0, "flamesRequired": 3, "grimmChildLevel": 1}
 DYNAMIC = {"visitedDirtmouth", "tisoEncounteredTown", "hasDash", "hornet1Defeated", "shamanPillar", "openedTownBuilding",
-           "slyRescued", "openedMapperShop"}
+           "slyRescued", "openedMapperShop", "quirrelMantisEncountered", "enteredMantisLordArea", "defeatedMantisLords"}
 
 
 def conditions(o):

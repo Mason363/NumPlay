@@ -20,6 +20,7 @@
 #define ATTACK_COOLDOWN_TIME 0.41f
 #define BOUNCE_TIME 0.25f
 #define BOUNCE_VELOCITY 12.0f
+#define SHROOM_BOUNCE_VELOCITY 25.0f
 #define RECOIL_HOR_VELOCITY 3.75f
 #define RECOIL_HOR_VELOCITY_LONG 16.0f
 #define RECOIL_HOR_STEPS 8
@@ -38,6 +39,12 @@
 #define LANDING_BUFFER_STEPS 5
 #define LEDGE_BUFFER_STEPS 2
 #define HEAD_BUMP_STEPS 3
+#define WALLSLIDE_SPEED (-8.0f)   /* (the Mantis Claw's) */
+#define WALLSLIDE_DECEL 0.0f
+#define WJ_KICKOFF_SPEED 16.0f
+#define WALL_STICKY_STEPS 3
+#define WJLOCK_STEPS_SHORT 5
+#define WJLOCK_STEPS_LONG 10
 #define DT 0.02f
 
 Hero g_hero;
@@ -134,8 +141,14 @@ static void cancel_dash(void) {
   g_hero.cs.dashing = false, g_hero.dash_timer = 0;
   affected_by_gravity(true);
 }
-static void cancel_bounce(void) { g_hero.cs.bouncing = false, g_hero.bounce_timer = 0; }
+static void cancel_bounce(void) { g_hero.cs.bouncing = g_hero.cs.shroom_bouncing = false, g_hero.bounce_timer = 0; }
 static void cancel_recoil_horizontal(void) { g_hero.cs.recoiling_left = g_hero.cs.recoiling_right = false, g_hero.recoil_steps = 0; }
+static void cancel_wallsliding(void) {
+  Hero *h = &g_hero;
+  h->cs.wall_sliding = false;
+  h->wall_sliding_l = h->wall_sliding_r = false;
+  h->touching_wall_l = h->touching_wall_r = false;
+}
 static void reset_attacks(void) {
   Hero *h = &g_hero;
   h->cs.attacking = h->cs.up_attacking = h->cs.down_attacking = false;
@@ -149,8 +162,9 @@ static void cancel_down_attack(void) {
 }
 static void reset_motion(void) {
   Hero *h = &g_hero;
-  cancel_jump(), cancel_dash(), cancel_bounce(), cancel_recoil_horizontal();
+  cancel_jump(), cancel_dash(), cancel_bounce(), cancel_recoil_horizontal(), cancel_wallsliding();
   h->body.vx = h->body.vy = 0;
+  h->wall_locked = false;
 }
 static void reset_look(void) {
   Hero *h = &g_hero;
@@ -176,7 +190,7 @@ static void back_on_ground(void) {
 
 static void jump_released(void) {
   Hero *h = &g_hero;
-  if (h->body.vy > 0 && h->jumped_steps >= JUMP_STEPS_MIN) {
+  if (h->body.vy > 0 && h->jumped_steps >= JUMP_STEPS_MIN && !h->cs.shroom_bouncing) {
     h->body.vy = 0;
     cancel_jump();
   }
@@ -201,8 +215,8 @@ static void do_hard_landing(void) {
 /* ---------------------------------------------------------------- abilities */
 static bool can_jump(void) {
   Hero *h = &g_hero;
-  if (h->state == HS_NO_INPUT || h->state == HS_HARD_LANDING || h->state == HS_DASH_LANDING || h->cs.dashing ||
-      h->cs.jumping || h->cs.bouncing)
+  if (h->state == HS_NO_INPUT || h->state == HS_HARD_LANDING || h->state == HS_DASH_LANDING || h->cs.wall_sliding ||
+      h->cs.dashing || h->cs.jumping || h->cs.bouncing || h->cs.shroom_bouncing)
     return false;
   if (h->cs.on_ground) return true;
   if (h->ledge_buffer_steps > 0 && !h->cs.dead && !h->control_relinquished && h->head_bump_steps <= 0 && !check_near_roof()) {
@@ -216,7 +230,50 @@ static bool can_dash(void) {
   Hero *h = &g_hero;
   return h->state != HS_NO_INPUT && h->state != HS_HARD_LANDING && h->state != HS_DASH_LANDING && h->dash_cooldown_timer <= 0 &&
          !h->cs.dashing && !(h->cs.attacking && h->attack_time < ATTACK_RECOVERY_TIME) && !h->cs.prevent_dash &&
-         (h->cs.on_ground || !h->air_dashed) && !h->cs.hazard_death && g_pd.can_dash;
+         (h->cs.on_ground || !h->air_dashed || h->cs.wall_sliding) && !h->cs.hazard_death && g_pd.can_dash;
+}
+
+/* the Mantis Claw: CanWallSlide, CanWallJump */
+static bool can_wall_slide(void) {
+  Hero *h = &g_hero;
+  if (h->cs.wall_sliding && g_game.paused) return true;
+  return !h->cs.touching_non_slider && !h->cs.dashing && pd_flag(PDF_HAS_WALLJUMP) && !h->cs.on_ground && !h->cs.recoiling &&
+         !g_game.paused && !h->control_relinquished && !h->cs.transitioning && (h->cs.falling || h->cs.wall_sliding) &&
+         h->accepting_input;
+}
+
+static bool can_wall_jump(void) {
+  Hero *h = &g_hero;
+  if (!pd_flag(PDF_HAS_WALLJUMP) || h->cs.touching_non_slider) return false;
+  return h->cs.wall_sliding || (h->cs.touching_wall && !h->cs.on_ground);
+}
+
+/* the Wall Puff: a child of the Knight's, let go where it shows (at the wall), as he jumps off it */
+static struct {
+  bool on;
+  float x, y, sx;
+  Anim anim;
+} puff;
+
+static void do_wall_jump(void) {
+  Hero *h = &g_hero;
+  if (h->touching_wall_l) face_right(), h->wall_jumped_r = true, h->wall_jumped_l = false;
+  else if (h->touching_wall_r) face_left(), h->wall_jumped_r = false, h->wall_jumped_l = true;
+  cancel_wallsliding();
+  h->cs.touching_wall = false;
+  h->touching_wall_l = h->touching_wall_r = false;
+  h->air_dashed = false;
+  h->wj_speed = WJ_KICKOFF_SPEED;
+  h->wj_decel = (WJ_KICKOFF_SPEED - RUN_SPEED) / WJLOCK_STEPS_LONG;
+  h->cs.jumping = true;
+  h->wall_lock_steps = 0;
+  h->wall_locked = true;
+  h->jump_queue_steps = 0;
+  h->jumped_steps = 0;
+  /* (its FSM: at its place on the Knight as he now faces, then on its own) */
+  float k = h->cs.facing_right ? -1.0f : 1.0f;
+  puff.on = true, puff.x = h->body.x + k * 0.91f, puff.y = h->body.y - 0.32f, puff.sx = k * 1.4208f;
+  anim_play_from_frame(&puff.anim, CLIP_KNIGHT_WALLJUMP_PUFF, 0);
 }
 
 static bool can_attack(void) {
@@ -242,7 +299,8 @@ static void hero_dash(void) {
   cancel_bounce();
   reset_look();
   h->cs.recoiling = false;
-  if (held(K_RIGHT)) face_right();
+  if (h->cs.wall_sliding) flip_sprite();
+  else if (held(K_RIGHT)) face_right();
   else if (held(K_LEFT)) face_left();
   h->cs.dashing = true;
   h->dash_queue_steps = 0;
@@ -256,7 +314,10 @@ static void attack(int dir) {
   h->cs.attacking = true;
   h->attack_duration = ATTACK_DURATION;
   int kind;
-  if (dir == ATK_NORMAL) {
+  h->wall_slashing = h->cs.wall_sliding;
+  if (h->cs.wall_sliding)
+    kind = SLASH_WALL;   /* (away from the wall) */
+  else if (dir == ATK_NORMAL) {
     kind = h->cs.alt_attack ? SLASH_ALT : SLASH_NORMAL;
     h->cs.alt_attack = !h->cs.alt_attack;
   } else if (dir == ATK_UP) {
@@ -308,6 +369,18 @@ void hero_recoil_right(void) {
     h->body.vx = RECOIL_HOR_VELOCITY;
   }
 }
+/* (off a bounce shroom: farther, and Steady Body does not hold the Knight) */
+static void recoil_long(bool left) {
+  Hero *h = &g_hero;
+  if (!h->cs.recoiling_left && !h->cs.recoiling_right && !h->control_relinquished) {
+    cancel_dash();
+    reset_attacks();
+    h->recoil_steps = 0;
+    h->cs.recoiling_left = left, h->cs.recoiling_right = !left;
+    h->recoil_large = true;
+    h->body.vx = left ? -RECOIL_HOR_VELOCITY_LONG : RECOIL_HOR_VELOCITY_LONG;
+  }
+}
 void hero_recoil_down(void) {
   Hero *h = &g_hero;
   cancel_jump();
@@ -315,7 +388,7 @@ void hero_recoil_down(void) {
 }
 void hero_bounce(void) {
   Hero *h = &g_hero;
-  if (!h->cs.bouncing && !h->control_relinquished) {
+  if (!h->cs.bouncing && !h->cs.shroom_bouncing && !h->control_relinquished) {
     cancel_jump();
     cancel_dash();
     h->bounce_timer = 0;
@@ -329,10 +402,11 @@ static void terrain_thunk(void) {
   Hero *h = &g_hero;
   if (h->thunk_timer <= 0) return;
   if (!h->thunk_hit) {
-    float len = (h->thunk_dir == ATK_NORMAL ? 2.0f : 1.5f) * (charm_on(18) ? 1.2f : 1.0f);   /* (Longnail) */
+    /* (Longnail, Mark of Pride) */
+    float len = (h->thunk_dir == ATK_NORMAL ? 2.0f : 1.5f) * (1 + (charm_on(18) ? 0.2f : 0) + (charm_on(13) ? 0.3f : 0));
     float hs = 0.225f;   /* the 0.45 box cast */
     float ox = bcx(), oy = bcy() + 0.25f, dx = 0, dy = 0;
-    if (h->thunk_dir == ATK_NORMAL) dx = h->cs.facing_right ? 1 : -1;
+    if (h->thunk_dir == ATK_NORMAL) dx = h->cs.facing_right != h->cs.wall_sliding ? 1 : -1;
     else if (h->thunk_dir == ATK_UP) oy = bmax_y(), dy = 1;
     else oy = bmin_y(), dy = -1;
     /* (a box cast, as three rays across the box: the nearest ground; not a NonThunker's) */
@@ -357,7 +431,7 @@ static void terrain_thunk(void) {
 static void move(float dir) {
   Hero *h = &g_hero;
   if (h->cs.on_ground) set_state(HS_GROUNDED);
-  if (h->accepting_input) h->body.vx = dir * (h->cs.in_walk_zone ? WALK_SPEED : RUN_SPEED);
+  if (h->accepting_input && !h->cs.wall_sliding) h->body.vx = dir * (h->cs.in_walk_zone ? WALK_SPEED : RUN_SPEED);
 }
 
 static void jump(void) {
@@ -420,7 +494,7 @@ static void fixed_update(void) {
     }
     if (!h->cs.dashing) {
       move(h->move_input);
-      if (!h->cs.attacking || h->attack_time >= ATTACK_RECOVERY_TIME) {
+      if ((!h->cs.attacking || h->attack_time >= ATTACK_RECOVERY_TIME) && !h->cs.wall_sliding && !h->wall_locked) {
         if (h->move_input > 0 && !h->cs.facing_right) flip_sprite(), cancel_attack();
         else if (h->move_input < 0 && h->cs.facing_right) flip_sprite(), cancel_attack();
       }
@@ -441,11 +515,39 @@ static void fixed_update(void) {
       else h->body.vx = h->body.vy = 0;
     }
     if (h->cs.bouncing) h->body.vy = BOUNCE_VELOCITY;
+    if (h->wall_locked) {
+      /* (off a wall: pushed away, less and less, a few steps) */
+      if (h->wall_jumped_r) h->body.vx = h->wj_speed;
+      else if (h->wall_jumped_l) h->body.vx = -h->wj_speed;
+      if (++h->wall_lock_steps > WJLOCK_STEPS_LONG) h->wall_locked = false;
+      h->wj_speed -= h->wj_decel;
+    }
+    if (h->cs.wall_sliding) {
+      /* (held away from the wall a few steps, or off it: no longer sliding) */
+      if ((h->wall_sliding_l && held(K_RIGHT)) || (h->wall_sliding_r && held(K_LEFT))) h->wall_unstick_steps++;
+      else h->wall_unstick_steps = 0;
+      if (h->wall_unstick_steps >= WALL_STICKY_STEPS) cancel_wallsliding();
+      if (h->wall_sliding_l) {
+        if (!check_still_touching_wall(1, false)) flip_sprite(), cancel_wallsliding();
+      } else if (h->wall_sliding_r && !check_still_touching_wall(0, false))
+        flip_sprite(), cancel_wallsliding();
+    }
   }
   if (h->body.vy < -MAX_FALL_VELOCITY && !h->control_relinquished) h->body.vy = -MAX_FALL_VELOCITY;
   if (h->jump_queuing) h->jump_queue_steps++;
   if (h->dash_queuing) h->dash_queue_steps++;
   if (h->attack_queuing) h->attack_queue_steps++;
+  if (h->cs.wall_sliding) {
+    /* (sliding down it no faster than WALLSLIDE_SPEED) */
+    if (h->body.vy > WALLSLIDE_SPEED) {
+      h->body.vy -= WALLSLIDE_DECEL;
+      if (h->body.vy < WALLSLIDE_SPEED) h->body.vy = WALLSLIDE_SPEED;
+    }
+    if (h->body.vy < WALLSLIDE_SPEED) {
+      h->body.vy += WALLSLIDE_DECEL;
+      if (h->body.vy < WALLSLIDE_SPEED) h->body.vy = WALLSLIDE_SPEED;
+    }
+  }
   if (h->landing_buffer_steps > 0) h->landing_buffer_steps--;
   if (h->ledge_buffer_steps > 0) h->ledge_buffer_steps--;
   if (h->head_bump_steps > 0) h->head_bump_steps--;
@@ -461,6 +563,9 @@ static bool should_hard_land(int col) {
 static void on_enter(const BodyEvent *e) {
   Hero *h = &g_hero;
   uint8_t f = phys_col_flags(e->col);
+#ifdef HK_FW
+  shrooms_touched(e->col);   /* (a bounce shroom's Phys Box: its CollisionEnterEvent) */
+#endif
   if ((f & CF_TERRAIN) && hero_touching_ground()) h->landed_event = true;   /* HeroCtrl-Landed */
   if (h->state != HS_NO_INPUT) {
     if (!(f & CF_TERRAIN)) return;
@@ -468,7 +573,7 @@ static void on_enter(const BodyEvent *e) {
     if (side == SIDE_TOP) {
       h->head_bump_steps = HEAD_BUMP_STEPS;
       if (h->cs.jumping) cancel_jump();
-      if (h->cs.bouncing) cancel_bounce(), h->body.vy = 0;
+      if (h->cs.bouncing || h->cs.shroom_bouncing) cancel_bounce(), h->body.vy = 0;
     }
     if (side == SIDE_BOTTOM) {
       if (h->cs.attacking) cancel_down_attack();
@@ -554,6 +659,24 @@ static void look_for_input(void) {
   if (!h->accepting_input || g_game.paused) return;
   h->move_input = held(K_RIGHT) && !held(K_LEFT) ? 1.0f : held(K_LEFT) && !held(K_RIGHT) ? -1.0f : 0.0f;
   h->vertical_input = held(K_UP) && !held(K_DOWN) ? 1.0f : held(K_DOWN) && !held(K_UP) ? -1.0f : 0.0f;
+  if (pd_flag(PDF_HAS_WALLJUMP) && can_wall_slide() && !h->cs.attacking) {
+    /* (falling against a wall, held towards it: sliding down it) */
+    if (h->touching_wall_l && held(K_LEFT) && !h->cs.wall_sliding) {
+      h->air_dashed = false;
+      h->cs.wall_sliding = true, h->cs.will_hard_land = false;
+      h->wall_sliding_l = true, h->wall_sliding_r = false;
+      face_left();
+    }
+    if (h->touching_wall_r && held(K_RIGHT) && !h->cs.wall_sliding) {
+      h->air_dashed = false;
+      h->cs.wall_sliding = true, h->cs.will_hard_land = false;
+      h->wall_sliding_l = false, h->wall_sliding_r = true;
+      face_right();
+    }
+  }
+  if (h->cs.wall_sliding && pressed(K_DOWN)) cancel_wallsliding(), flip_sprite();
+  if (h->wall_locked && h->wall_jumped_l && held(K_RIGHT) && h->wall_lock_steps >= WJLOCK_STEPS_SHORT) h->wall_locked = false;
+  if (h->wall_locked && h->wall_jumped_r && held(K_LEFT) && h->wall_lock_steps >= WJLOCK_STEPS_SHORT) h->wall_locked = false;
   if (!held(K_JUMP)) jump_released();
   if (!held(K_DASH)) {
     if (h->cs.prevent_dash && !h->cs.dash_cooldown) h->cs.prevent_dash = false;
@@ -566,7 +689,8 @@ static void look_for_queue_input(void) {
   Hero *h = &g_hero;
   if (!h->accepting_input || g_game.paused) return;
   if (pressed(K_JUMP)) {
-    if (can_jump()) hero_jump();
+    if (can_wall_jump()) do_wall_jump();
+    else if (can_jump()) hero_jump();
     else h->jump_queue_steps = 0, h->jump_queuing = true;
   }
   if (pressed(K_DASH)) {
@@ -621,6 +745,7 @@ static void update(void) {
       if (h->bounce_timer < BOUNCE_TIME) h->bounce_timer += DT;
       else cancel_bounce(), h->body.vy = 0;
     }
+    if (h->cs.shroom_bouncing && h->body.vy <= 0) h->cs.shroom_bouncing = false;
     if (h->state == HS_IDLE) {
       if (!h->control_relinquished && !g_game.paused) {
         if (held(K_UP)) {
@@ -639,6 +764,13 @@ static void update(void) {
     }
   }
   look_for_queue_input();
+  if (h->cs.wall_sliding) {
+    h->air_dashed = false;
+    if (h->cs.on_ground) flip_sprite(), cancel_wallsliding();
+    if (!h->cs.touching_wall) flip_sprite(), cancel_wallsliding();
+    if (!can_wall_slide()) cancel_wallsliding();
+  }
+  if (h->wall_slashing && !h->cs.wall_sliding) cancel_attack();
   if (h->attack_cooldown > 0) h->attack_cooldown -= DT;
   if (h->dash_cooldown_timer > 0) h->dash_cooldown_timer -= DT;
   terrain_thunk();
@@ -717,11 +849,14 @@ static void animation(void) {
   else if (h->cs.attacking) {
     if (h->cs.up_attacking) play(CLIP_KNIGHT_UPSLASH);
     else if (h->cs.down_attacking) play(CLIP_KNIGHT_DOWNSLASH);
+    else if (h->cs.wall_sliding) play(CLIP_KNIGHT_WALL_SLASH);
     else if (!h->cs.alt_attack) play(CLIP_KNIGHT_SLASH);
     else play(CLIP_KNIGHT_SLASHALT);
   } else if (h->cs.casting) {
     /* (the spell's own animation plays) */
-  } else if (h->anim_state == HS_IDLE) {
+  } else if (h->cs.wall_sliding)
+    play(CLIP_KNIGHT_WALL_SLIDE);
+  else if (h->anim_state == HS_IDLE) {
     if (h->cs.looking_up_anim && !anim_is_playing(a, CLIP_KNIGHT_LOOKUP)) play(CLIP_KNIGHT_LOOKUP);
     else if (h->cs.looking_down_anim) play(CLIP_KNIGHT_LOOKDOWN);
     else if (!h->cs.looking_up_anim && !h->cs.looking_down_anim && can_play_idle()) play_idle();
@@ -735,7 +870,9 @@ static void animation(void) {
         play(CLIP_KNIGHT_RUN);
     }
   } else if (h->anim_state == HS_AIRBORNE) {
-    if (h->cs.jumping) {
+    if (h->wall_locked)
+      play(CLIP_KNIGHT_WALLJUMP);
+    else if (h->cs.jumping) {
       if (!anim_is_playing(a, CLIP_KNIGHT_AIRBORNE)) anim_play_from_frame(a, CLIP_KNIGHT_AIRBORNE, 0);
     } else if (h->cs.falling) {
       if (!anim_is_playing(a, CLIP_KNIGHT_AIRBORNE)) anim_play_from_frame(a, CLIP_KNIGHT_AIRBORNE, 5);
@@ -759,6 +896,7 @@ void hero_init(float x, float y, bool facing_right) {
   Hero *h = &g_hero;
   static BodyEvent events[MAX_EVENTS];
   memset(h, 0, sizeof *h);
+  puff.on = false;
   entering_stop();   /* (a way into a room not finished: over) */
   spell_reset();
   h->entry_gate = -1;
@@ -815,6 +953,11 @@ void hero_update(void) {
   if (!(h->anim.clip == CLIP_KNIGHT_LAND || h->anim.clip == CLIP_KNIGHT_RUN_TO_IDLE || h->anim.clip == CLIP_KNIGHT_DASH_TO_IDLE))
     h->complete_delegate = false;
   slash_tick();
+  if (puff.on) {
+    puff.anim.events = 0;
+    anim_update(&puff.anim, DT);
+    if (puff.anim.events & ANIM_DONE) puff.on = false;
+  }
 }
 
 void hero_draw(void) {
@@ -828,8 +971,12 @@ void hero_draw(void) {
   sprite_inst(SPRITE_HERO_LIGHT, h->body.x, h->body.y - 0.6f, 0.004f + 0.0312f, 1, 1, gfx_dyn_tint(1, c[0], c[1], c[2], c[3]), &li);
   li.flags = (uint8_t)((li.flags & ~F_BLEND) | BL_LINEARLIGHT);
   gfx_actor(&li, SORT_KEY(0, 0));
-  if (h->hidden) return;
   Inst in;
+  if (puff.on && puff.anim.sprite >= 0) {
+    sprite_inst(puff.anim.sprite, puff.x, puff.y, 0.005f, puff.sx, 1.4208f, 0, &in);
+    gfx_actor(&in, SORT_KEY(0, 0));
+  }
+  if (h->hidden) return;
   /* (InvulnerablePulse: the color towards its invulnerable one) */
   uint8_t tint = 0;
   if (h->pulsing) tint = gfx_dyn_tint(0, 255, 255, 255, (uint8_t)(255 - 255 * 0.5f * h->pulse_t / 0.1f));
@@ -864,15 +1011,20 @@ void hero_die(void) {
 
 /* ---------------------------------------------------------------- NailSlash: the slash effect, a child of the Knight */
 static const struct {
-  int clip, fury;          /* (its animation; " F": while the Fury is on) */
+  int clip, fury, mantis;  /* (its animation; " F": while the Fury is on; " M": with Mark of Pride) */
   float x, y, z, sx, sy;   /* its place and scale on the Knight */
-} slashes[4] = {
-    {CLIP_KNIGHT_SLASHEFFECT, CLIP_KNIGHT_SLASHEFFECT_F, -0.01f, -0.41f, -0.001f, 1.6010780f, 1.6452440f},
-    {CLIP_KNIGHT_SLASHEFFECTALT, CLIP_KNIGHT_SLASHEFFECTALT_F, 0.08f, -0.436f, -0.001f, 1.2569700f, 1.4224339f},
-    {CLIP_KNIGHT_UPSLASHEFFECT, CLIP_KNIGHT_UPSLASHEFFECT_F, 0.0f, 0.69f, -0.001f, 1.15f, 1.4f},
-    {CLIP_KNIGHT_DOWNSLASHEFFECT, CLIP_KNIGHT_DOWNSLASHEFFECT_F, 0.16f, -1.59f, 0.0f, 1.125f, 1.28002f},
+} slashes[5] = {
+    {CLIP_KNIGHT_SLASHEFFECT, CLIP_KNIGHT_SLASHEFFECT_F, CLIP_KNIGHT_SLASHEFFECT_M, -0.01f, -0.41f, -0.001f, 1.6010780f, 1.6452440f},
+    {CLIP_KNIGHT_SLASHEFFECTALT, CLIP_KNIGHT_SLASHEFFECTALT_F, CLIP_KNIGHT_SLASHEFFECTALT_M, 0.08f, -0.436f, -0.001f, 1.2569700f,
+     1.4224339f},
+    {CLIP_KNIGHT_UPSLASHEFFECT, CLIP_KNIGHT_UPSLASHEFFECT_F, CLIP_KNIGHT_UPSLASHEFFECT_M, 0.0f, 0.69f, -0.001f, 1.15f, 1.4f},
+    {CLIP_KNIGHT_DOWNSLASHEFFECT, CLIP_KNIGHT_DOWNSLASHEFFECT_F, CLIP_KNIGHT_DOWNSLASHEFFECT_M, 0.16f, -1.59f, 0.0f, 1.125f, 1.28002f},
+    /* (WallSlash: from a wall, the other way) */
+    {CLIP_KNIGHT_SLASHEFFECT, CLIP_KNIGHT_SLASHEFFECT_F, CLIP_KNIGHT_SLASHEFFECT_M, 0.04f, -0.41f, -0.001f, -1.62f, 1.6452f},
 };
-#define LONGNAIL 1.15f   /* (NailSlash.StartSlash: Longnail's scale) */
+#define LONGNAIL 1.15f   /* (NailSlash.StartSlash: Longnail's scale, Mark of Pride's, both's) */
+#define MANTIS 1.25f
+#define MANTIS_LONGNAIL 1.4f
 static struct {
   int kind;
   float k;   /* (its scale: Longnail's) */
@@ -884,8 +1036,9 @@ static struct {
 
 void slash_start(int kind) {
   sl.kind = kind;
-  sl.k = charm_on(18) ? LONGNAIL : 1;
-  int clip = g_hero.fury ? slashes[kind].fury : slashes[kind].clip;
+  bool mantis = charm_on(13), longnail = charm_on(18);
+  sl.k = mantis && longnail ? MANTIS_LONGNAIL : mantis ? MANTIS : longnail ? LONGNAIL : 1;
+  int clip = g_hero.fury ? slashes[kind].fury : mantis ? slashes[kind].mantis : slashes[kind].clip;
   anim_play(&sl.anim, clip);
   anim_play_from_frame(&sl.anim, clip, 0);
   sl.step_counter = sl.poly_counter = 0;
@@ -915,7 +1068,7 @@ static void slash_fixed(void) {
 }
 
 /* the slash's PolygonCollider2D (local, before its scale) */
-static const float slash_poly[4][12] = {
+static const float slash_poly[5][12] = {
     {-1.2709147f, 0.7413744f, -1.9154043f, 0.3402300f, -2.0418284f, -0.1750279f, -1.6737577f, -0.4435550f, -0.0747072f,
      -0.6419125f, 0.0078668f, 0.9683739f},
     {-1.2172120f, 0.9806359f, -2.3899105f, 0.5705993f, -2.6464114f, -0.0792437f, -2.1236799f, -0.5379019f, -0.3672335f,
@@ -924,6 +1077,7 @@ static const float slash_poly[4][12] = {
      -0.8659905f, -1.0722543f, 0.6188976f},
     {1.2783164f, 0.6065824f, 1.1190680f, -0.8765929f, 0.5875434f, -1.6216662f, -0.4472086f, -1.6460726f, -1.0696145f,
      -0.7312644f, -1.3820535f, 0.6370943f},
+    {-1.2709f, 0.7414f, -1.9154f, 0.3402f, -2.0418f, -0.175f, -1.7475f, -0.487f, -0.1562f, -0.7891f, -0.0682f, 1.0156f},
 };
 
 /* the hazards a slash touches that a down slash bounces off (spikes: on the Hero Attack layer), as HB_BOUNCE */
@@ -957,9 +1111,20 @@ static void slash_hits(void) {
     pts[2 * i] = h->body.x + k * (s->x + s->sx * sl.k * slash_poly[sl.kind][2 * i]);
     pts[2 * i + 1] = h->body.y + s->y + s->sy * sl.k * slash_poly[sl.kind][2 * i + 1];
   }
-  float direction = sl.kind == SLASH_UP ? 90 : sl.kind == SLASH_DOWN ? 270 : h->cs.facing_right ? 0 : 180;
+  float direction = sl.kind == SLASH_UP ? 90 : sl.kind == SLASH_DOWN ? 270 : (h->cs.facing_right != (sl.kind == SLASH_WALL)) ? 0 : 180;
   int fl = obj_nail(pts, 6, direction);
   if (direction == 270 && !(fl & HB_BOUNCE)) fl |= hazards_nail(pts, 6);
+  if (fl & HB_SHROOM) {
+    /* (a bounce shroom: far off it to the sides, down off it from below, high off it from above) */
+    if (direction == 0) recoil_long(true);
+    else if (direction == 180) recoil_long(false);
+    else if (direction == 90) hero_recoil_down();
+    else {
+      h->air_dashed = false;
+      h->cs.bouncing = false, h->cs.shroom_bouncing = true;
+      h->body.vy = SHROOM_BOUNCE_VELOCITY;
+    }
+  }
   if (direction == 0 && (fl & HB_RECOIL)) hero_recoil_left();
   else if (direction == 180 && (fl & HB_RECOIL)) hero_recoil_right();
   else if (direction == 90 && (fl & HB_RECOIL)) hero_recoil_down();
@@ -1315,7 +1480,7 @@ void hero_take_damage(int side, int damage, int hazard) {
     inv_damage();
     cancel_attack();
     if (h->cs.recoiling_left || h->cs.recoiling_right) cancel_recoil_horizontal();
-    if (h->cs.bouncing) cancel_bounce(), h->body.vy = 0;
+    if (h->cs.bouncing || h->cs.shroom_bouncing) cancel_bounce(), h->body.vy = 0;
     take_health(pd_flag(PDF_OVERCHARMED) ? damage * 2 : damage);
     take_damage_charm_effects(damage);
     fury_check();
@@ -1508,6 +1673,8 @@ void hero_relinquish_control_not_velocity(void) {
   Hero *h = &g_hero;
   if (h->control_relinquished || h->cs.dead) return;
   reset_input();
+  cancel_wallsliding();   /* (ResetMotionNotVelocity: off the wall) */
+  h->wall_locked = false;
   h->accepting_input = false;
   h->control_relinquished = true;
   reset_look();

@@ -9,7 +9,11 @@
 #define HUD_PX (FOCAL / (-1.342f - CAM_Z))
 
 static const int16_t table[][6] = MSG_TABLE;   /* (name, prefix, Tap or Press, the two lines, the key's name) */
-static const int16_t icons[] = {SPRITE_MSG_ICON_FIREBALL, SPRITE_MSG_ICON_DASH};
+static const int16_t icons[] = {SPRITE_MSG_ICON_FIREBALL, SPRITE_MSG_ICON_DASH
+#ifdef HK_FW
+                                 , SPRITE_MSG_ICON_WALLJUMP
+#endif
+};
 
 enum { MS_OFF, MS_TOP_UP, MS_BOT_UP, MS_STOP_UP, MS_DETECT, MS_DOWN };
 /* (color_fader: what fades together; each its delay going up) */

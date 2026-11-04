@@ -21,7 +21,10 @@ KNIGHT = ("resources.assets", 20600, [
     "Collect Magical 1", "Collect Magical 2", "Collect Magical 3", "Collect Magical Fall", "Collect Magical Land",
     "Collect Heart Piece", "Collect Heart Piece End", "Collect StandToIdle", "GetUpToIdle", "Death Head Cracked",
     "Dreamer Land", "Super Hard Land",
-])
+    # (the Mantis Claw's: sliding down a wall, the jump off it, a slash from it, its puff; Mark of Pride's slashes)
+    "Wall Slide", "Walljump", "Wall Slash", "Walljump Puff", "SlashEffect M", "SlashEffectAlt M", "UpSlashEffect M",
+    "DownSlashEffect M",
+] + (["Challenge Start", "Challenge End"] if os.environ.get("HK_PART") == "2" else []))   # (the Mantis Lords' challenge)
 
 # enemy kinds: name, the FSM (or component) that runs them, their library, the C code for that FSM, and the clips each
 # role plays (src/enemy.c: R_*); the corpse's from its library (by default the enemy's)
@@ -96,6 +99,43 @@ ENEMY_KINDS = [
     # (the Mender Bug: by the Crossroads' sign, now and then)
     ("mender", "Mender Bug Ctrl", ("sharedassets37.assets", 158), "MENDER", {"IDLE": "Idle", "A1": "Startle", "A2": "Fly"}),
 ]
+# the second part's (HK_PART=2, Hollow Knight: Fungal Wastes), after the others: theirs keep their numbers
+FW_KINDS = [
+    # (Fungal Wastes: Fungling, Ambloom)
+    ("fungling", "Fungoon baby", ("sharedassets167.assets", 180), "FUNGLING", {"IDLE": "Idle", "A1": "TurnToIdle",
+                                                                               "DEATH_AIR": "Death"}),
+    ("ambloom", "Walker", ("sharedassets168.assets", 48), "AMBLOOM", {"WALK": "Walk", "TURN": "Turn"}),
+    ("fungoon", "Fungus Flyer", ("sharedassets167.assets", 134), "FUNGOON",
+     {"IDLE": "Float", "A1": "Spit Antic", "A2": "Spit", "A3": "Spit Recover", "A4": "Effect", "DEATH_AIR": "Death"}),
+    # (Shrumeling: its code plays its poses by name, CLIP_SHRUMELING_*)
+    ("shrumeling", "Shroom Mini", ("sharedassets169.assets", 210), "SHRUMELING", {"IDLE": "Idle", "A1": "Startle", "A2": "Run"},
+     ["Mini Rest 1", "Mini Rest 2", "Mini Rest 3", "Mini Rest to Wake 1", "Mini Rest to Wake 2", "Mini Rest to Wake 3"]),
+    # (Fungified Husk: the Volatile Mosskin's FSM)
+    ("fungushusk", "Fungus Zombie Attack", ("sharedassets167.assets", 135), "SHAKER",
+     {"IDLE": "Idle", "WALK": "Walk", "TURN": "Turn", "A1": "Attack"}),
+    # (Shrumal Ogre; its Smash Hits plays Smash Loop: drawn as its own)
+    ("ogre", "Shroom Brawler", ("sharedassets169.assets", 223), "OGRE",
+     {"IDLE": "Run", "TURN": "Turn", "A1": "Wake", "A2": "Spit", "A3": "Antic", "A4": "Smash Loop", "A5": "Smash to Run",
+      "A6": "Bounce", "A7": "Sleep", "DEATH_AIR": "Death Air"}),
+    # (Sporg; its Spore Bombs' clips are its library's: CLIP_SPORG_IDLE_2, CLIP_SPORG_EXPLODE)
+    ("sporg", "Shroom Turret", ("sharedassets167.assets", 154), "SPORG",
+     {"IDLE": "Idle 1", "A1": "Sleep to Idle", "A2": "Attack", "A3": "Sleep", "DEATH_AIR": "Death"}, ["Idle 2", "Explode"]),
+    # (Mantis Village: its warriors and youths; a warrior bows once the Lords are beaten: CLIP_MANTIS_*)
+    ("mantis", "Mantis", ("sharedassets176.assets", 177), "MANTIS",
+     {"IDLE": "Idle", "TURN": "Turn", "WALK": "Walk", "A1": "Attack Antic", "A2": "Attack 1", "A3": "Attack 2",
+      "A4": "Attack Recover", "A5": "Up Attack Antic", "A6": "Up Attack Slash", "A7": "Up Attack Recover", "A8": "Walk B",
+      "DEATH_AIR": "Death Air"}, ["Bow", "Bow End", "Turn To Bow"]),
+    ("mantisflyer", "Mantis Flyer", ("sharedassets176.assets", 203), "MANTISFLYER",
+     {"IDLE": "Fly", "A1": "Rest", "A2": "Startle", "A3": "Turn To Fly", "A4": "Attack Antic", "A5": "Attack",
+      "A6": "Attack Recover"}),
+    # (the Mantis Lords: their code plays their clips by name, CLIP_MANTISLORD_*; their lances, their corpses')
+    ("mantislord", "Mantis Lord", ("sharedassets180.assets", 84), "MANTISLORD", {"IDLE": "Wall Ready"},
+     ["Wall Arrive", "Dash Arrive", "Dash Antic", "Dash Attack", "Dash Recover", "Dash Leave", "Dstab Arrive",
+      "Dstab Attack", "Dstab Land", "Dstab Leave", "Throw Antic", "Throw", "Wall Leave 1", "Wall Leave 2",
+      "Mantis Air Projectile", "Death New 1", "Death New 2"]),
+]
+if os.environ.get("HK_PART") == "2":
+    ENEMY_KINDS += FW_KINDS
 ENEMY_CORPSE_LIBS = {}   # (name -> its corpse's library, if not its own)
 
 
@@ -172,7 +212,8 @@ ACTORS["bgate"] = ("sharedassets9.assets", 197, ["BG Opened", "BG Close 1", "BG 
                                                  "Bone Gate Opened", "Bone Gate Close", "Bone Gate Closed", "Bone Gate Open"])
 # lifeblood cocoons and their scuttlers (HealthCocoon, ScuttlerControl); effects (splats)
 ACTORS["cocoon"] = ("sharedassets6.assets", 1092, ["Cocoon Idle", "Cocoon Sweat", "Scuttler Land", "Scuttler Run"])
-ACTORS["fx"] = ("resources.assets", 21298, ["Splat", "Splat2"])
+ACTORS["fx"] = ("resources.assets", 21298, ["Splat", "Splat2"] +
+                (["Impact Lines", "Enemy Shot", "Slam Fast"] if os.environ.get("HK_PART") == "2" else []))   # (a Spore Bomb's; an Ogre's spit, slam)
 # Vengeful Spirit (Fireball Top's blast, Fireball: its ball, its end, its impact on a wall)
 ACTORS["fireball"] = ("resources.assets", 23262, ["Blast", "Ball", "Ball End", "Fireball Wall Impact"])
 # water drips (WaterDrip)
@@ -205,6 +246,13 @@ ACTORS["hornetcs"] = ("sharedassets19.assets", 91, ["Idle", "Jump Full", "Throw 
 
 # enemies' shots (EnemyBullet)
 ACTORS["bullet"] = ("sharedassets32.assets", 745, ["Idle", "Impact", "Shockwave Spurt"])
+if os.environ.get("HK_PART") == "2":
+    # bounce shrooms (BounceShroom: its idle, bob and bounce clips, both kinds; its hit effect)
+    ACTORS["shroom"] = ("sharedassets174.assets", 29, ["Idle 1", "Bob 1", "Bounce 1", "Idle 2", "Bob 2", "Bounce 2",
+                                                       "Bounce Effect"])
+if os.environ.get("HK_PART") == "2":
+    # (the Shrumal Ogres' spit: Vomit Glob)
+    ACTORS["glob"] = ("sharedassets34.assets", 1067, ["Idle", "Land"])
 
 # sprites of prefab objects the game draws itself: name -> (file, prefab, object, resolution)
 NAMED = {
@@ -233,6 +281,8 @@ def named_sprites(sprites):
 # clips drawn bigger than their sprites (the object's scale): their frames are kept that much finer
 DRAWN_SCALE = {"Arrow Up": 1.3, "Arrow Down": 1.3, "Stop Up": 1.3, "Stop Down": 1.3, "Dream Up": 1.0745, "Dream Down": 1.0745, "SlashEffect": 1.645, "SlashEffectAlt": 1.422, "UpSlashEffect": 1.4, "DownSlashEffect": 1.28,
                "SlashEffect F": 1.645, "SlashEffectAlt F": 1.422, "UpSlashEffect F": 1.4, "DownSlashEffect F": 1.28,
+               "SlashEffect M": 1.645, "SlashEffectAlt M": 1.422, "UpSlashEffect M": 1.4, "DownSlashEffect M": 1.28,
+               "Walljump Puff": 1.4208,
                "Blast": 1.4, "Ball": 1.45, "Ball End": 1.45, "Fireball Wall Impact": 2.0,
                "Lamp_Bug_idle": 1.5 * 1.4838, "Shop_Menu_Top Up": 1.124, "Shop_Menu_Top Down": 1.124,
                "Shop_Menu_Bottom Up": 1.134, "Shop_Menu_Bottom Down": 1.134, "Small Idle": 1.5, "Small Air": 1.5, "Med Idle": 1.5, "Med Air": 1.5, "Large Idle": 1.5, "Large Air": 1.5,
@@ -374,6 +424,15 @@ def unity_sprites(keys):
     object's scale."""
     out = []
     for level, exts, fid, pid, scale, res in keys:
+        if level == "tex":
+            # (a texture, scale units wide: a particle's, drawn as one)
+            img = tk2d.atlas(exts, fid)
+            wu, hu = scale, scale * img.height / img.width
+            w, h = min(img.width, max(1, round(wu * K0 * res))), min(img.height, max(1, round(hu * K0 * res)))
+            arr = np.asarray(img.resize((w, h), Image.BOX)).copy()
+            out.append({"key": (exts, fid), "job": art.ImageJob(arr, "tex/%d" % fid), "lx": -wu / 2, "ty": hu / 2,
+                        "tu": wu / w, "tv": hu / h})
+            continue
         if level == "tk2d":
             path, col, name = exts, fid, pid
             c = tk2d.collection(path, col)

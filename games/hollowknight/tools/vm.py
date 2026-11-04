@@ -16,6 +16,7 @@ ROOMS = {
     "Crossroads_47": ["_NPCs/Tiso Bench NPC", "Stag", "_Scenery/Station Bell", "Stag_Tunnel/Stag_tunnel_Grate",
                       "Stag Blanker"],
     "Fungus1_16_alt": ["Stag", "Station Bell", "Stag_tunnel_Grate", "Stag Blanker"],
+    "Fungus2_02": ["Stag", "Station Bell", "Stag_tunnel_Grate", "Stag Blanker"],
     "Room_Town_Stag_Station": ["Stag", "Station Bell", "Stag_Tunnel/Stag_tunnel_Grate", "Stag Blanker", "Stag Lift",
                                "Station Door", "Gate Switch"],
     "Room_ruinhouse": ["Sly Dazed"],
@@ -60,6 +61,25 @@ ROOMS = {
     "Crossroads_33": ["_Props/full_wall_left", "Cornifer", "Cornifer Card"],
     "Fungus1_32": ["Breakable Wall", "Inspect Region"],
     "Crossroads_11_alt": ["Inspect Region"],
+    # (Hollow Knight: Fungal Wastes) Quirrel at Queen's Station and over Mantis Village; Cornifer; the Mantis Claw; the
+    # Mantis' levers and gates; the Shrumal Ogres' notch; what the Mantis Lords guard
+    "Fungus2_01": ["Quirrel Station NPC"],
+    "Fungus2_05": ["Battle Scene v2/Uncompleted/Shiny Item", "Battle Scene v2/Completed/Shiny Item"],
+    "Fungus2_18": ["_NPCs/Cornifer", "Card & Mushroom/Cornifer Card", "Mantis Lever", "Mantis Gate", "_Props/Grub Bottle"],
+    "Fungus2_14": ["Shiny Item Stand", "Quirrel Mantis NPC", "Mantis Lever", "Mantis Lever (1)", "Mantis Gate", "Mantis Gate F",
+                   "Mantis Floor Gate", "Inspect Region"],
+    "Fungus2_12": ["Inspect Region"],
+    "Fungus2_15": ["_SceneManager", "Mantis Lever", "Mantis Lever (1)", "Mantis Lever (2)", "Mantis Lever (3)", "Mantis Lever (4)", "Mantis Gate",
+                   "Mantis Gate (1)", "Mantis Gate (2)", "Mantis Gate (3)", "Mantis Gate (4)", "Breakable Wall", "mantis_cage_up",
+                   "deepnest_mantis_gate",
+                   # (the Mantis Lords' fight, Fungus2_15_boss: their thrones, the challenge, the cage, the floors; the
+                   # Lords and their two battles are enemy_fw.c's; then Fungus2_15_boss_defeated, their thrones)
+                   "Mantis Battle/Mantis Lord Throne 1", "Mantis Battle/Mantis Lord Throne 2",
+                   "Mantis Battle/Mantis Lord Throne 3", "Mantis Battle/mantis_lord_opening_floors",
+                   "Mantis Battle/mantis_lord_opening_floors (1)", "Mantis Battle/Challenge Prompt",
+                   "Mantis Battle/mantis_cage_down", "Mantis Battle/Bow Range",
+                   "Mantis Lord Throne 1", "Mantis Lord Throne 2", "Mantis Lord Throne 3", "Bow Range"],
+    "Fungus2_31": ["Mantis Chest/Item", "Mantis Chest (1)/Item", "Lords Undefeated Group"],
 }
 def _piece(doc, q, rigid=True):
     """A piece of debris (a sprite with a Rigidbody2D: how it falls, bounces and spins) -> FlingPiece's operands."""
@@ -87,6 +107,7 @@ def _piece(doc, q, rigid=True):
             "spin": spin, "mirror": mirror}
 PIECE_SPRITES = None   # (prepare: the sprites' id maker)
 ROOM_NAMES = []        # (prepare: the rooms, in their order)
+ROOM_BASE = [0]        # (the first's number among every part's rooms: pack.ROOM_BASE)
 
 
 def _fsm(name, start, vars_, states):
@@ -141,12 +162,42 @@ def _behaviours(rm, o):
                                                        "animationTriggerEvent": None,
                                                        "animationCompleteEvent": ["event", "FINISHED"]})],
              {"FINISHED": "Idle"})])})
+    import ents
+    rb = next((c.get("v") or {} for c in o["c"] if c["type"] == "Rigidbody2D"), None)
+    if (rm.name, o["path"]) in VM_NAMES and rb is not None and rb.get("m_BodyType", 0) == 0 and rb.get("m_GravityScale", 1) > 0:
+        # (an item the game turns on in the air: a body, it falls as it comes on)
+        out.append({"fsm": _fsm("Fall", "Init", {}, [
+            ("Init", [("SetGravity2dScale", {"gameObject": "Owner", "gravityScale": rb.get("m_GravityScale", 1)}),
+                      ("FlingObject", {"flungObject": "Owner", "speedMin": 0, "speedMax": 0, "angleMin": 270,
+                                       "angleMax": 270})], {})])})
+    pdf = ents.pd_flags()
+    for bn, off_if in _conds(o, pdf)[2:]:
+        # (a DeactivateIfPlayerdata past the two its record keeps: a script that turns it off as it starts)
+        out.append({"fsm": _fsm("Deactivate If", "Init", {}, [
+            ("Init", [("PlayerDataBoolTest", {"gameObject": "$GameManager", "boolName": bn,
+                                              "isTrue": ["event", "OFF"] if off_if else None,
+                                              "isFalse": None if off_if else ["event", "OFF"]})], {"OFF": "Off"}),
+            ("Off", [("ActivateGameObject", {"gameObject": "Owner", "activate": False, "recursive": False,
+                                             "resetOnExit": False, "everyFrame": False})], {})])})
     return out
+
+
+# (places past the parts of Hallownest there are: an object's conditions on them last, in a script if need be)
+FAR_CONDS = {"visitedRuins", "visitedDeepnest"}
+
+
+def _conds(o, pdf):
+    """its DeactivateIfPlayerdata conditions this game knows: [(bool, off if true)], those on places further in last"""
+    out = []
+    for bn, off_if in state.conditions(o):
+        if bn in pdf and (bn, off_if) not in out:
+            out.append((bn, off_if))
+    return sorted(out, key=lambda c: c[0] in FAR_CONDS)
 
 
 # FSMs left out (what this port does not have: the dream nail, sounds...)
 SKIP_FSMS = {"npc_dream_dialogue", "Dream Dialogue", "Rotate", "Shop Open Voice", "Enviro Region", "tink_effect",
-             "RespawnTriggerFSM"}
+             "RespawnTriggerFSM", "Music Control"}
 
 
 def _spins(f):
@@ -172,9 +223,18 @@ SKIP_PATHS = {("Crossroads_04", "_Transition Gates/Mender Door/Inspect"), ("Cros
 # tollbooth Crossroads_16 drops into; the game's Knight comes up to it first by rooms this port leaves out, so here the
 # tollbooth is the way on to Crossroads_21 and the False Knight
 PULLED = {("Crossroads_03", "_Props/Toll Gate Switch")}
-MAX_OBJS, MAX_FSMS, MAX_VARS, MAX_ANIMS = 48, 29, 232, 20   # (src/vm.c)
+MAX_OBJS, MAX_FSMS, MAX_VARS, MAX_ANIMS = 64, 44, 256, 24   # (src/vm.c)
 # map pieces of their own a script marks visited (AddToScenesVisited), as their room's (src/map.c: after the rooms)
 MAP_SCENES = {"Crossroads_21_b": "Crossroads_21"}
+MAX_ROOM_BITS = 128   # (src/game.h)
+
+
+def room_bits(rooms, base=0):
+    """Each room's bit in the save's lists (scenesVisited...), by its place in the list: the parts' rooms (this part's
+    from base: pack.ROOM_BASE), then the map's own pieces (MAP_SCENES) from the last bit down (None: none here)"""
+    out = [None] * base + list(rooms) + [None] * (MAX_ROOM_BITS - base - len(rooms) - len(MAP_SCENES)) + list(MAP_SCENES)[::-1]
+    assert len(out) == MAX_ROOM_BITS
+    return out
 # the grubs in this part of the game (Crossroads_03, Fungus1_21): the Grubfather's rewards past them never come
 GRUBS = 2
 # the ints ConvertIntToString turns into strings here (the Grubfather's rewards given)
@@ -193,7 +253,7 @@ O_NONE = 0xFFFF
 PD_INTS = ["MPCharge", "health", "maxHealth", "geo", "fireballLevel", "quakeLevel", "screamLevel", "shaman", "elderbug",
            "permadeathMode", "nailDamage", "hornetGreenpath", "quirrelEggTemple", "charmsOwned", "trinket1", "trinket2",
            "trinket3", "trinket4", "rancidEggs", "ore", "grubsCollected", "grubRewards", "stagPosition", "stationsOpened",
-           "xunFlowerBrokeTimes", "menderState"]
+           "xunFlowerBrokeTimes", "menderState", "charmSlots"]
 # PlayerData bools kept elsewhere (src/vm.c)
 PD_SPECIAL = {"disablePause": 0xFFF0, "hasSpell": 0xFFF1, "canDash": 0xFFF2}
 # PlayerData bools that keep their new game value all through this part of the game
@@ -253,7 +313,10 @@ for e in ("FINISHED", "CONVO_FINISH", "CONVO START", "CONVO END", "BIG TITLE STA
 FIXED_EVENTS = len(EVENTS.list)   # (src/data.h: VMEV_*)
 # events the game's code sends that only some rooms' scripts know, numbered as each room numbers its own (src/data.h:
 # VMEV_*, by room): the Elder Baldur's corpse's, a shop's charm lesson's
-NAMED_EVENTS = ("UPDATE SHAMAN", "SHOP REGION INACTIVE", "SHOP REGION ACTIVE")
+NAMED_EVENTS = ("UPDATE SHAMAN", "SHOP REGION INACTIVE", "SHOP REGION ACTIVE",
+                # (the Mantis Lords' fight: between the thrones' scripts and enemy_fw.c)
+                "MLORD START MAIN", "MLORD START SUB", "MANTIS DEFEATED", "MLORD BOW", "MANTIS DEFEAT", "MLORD CAGE UP",
+                "MLORD FLOOR EXTEND", "MLORD GATE OPEN", "RETURN")
 
 # ---------------------------------------------------------------- the actions it runs: name -> (opcode, operands)
 # operand kinds: f i b s o value slots (u16), F I B S O V output variables (u8: 255 none), e event (u8), t event target,
@@ -440,7 +503,7 @@ HERO_METHODS = ["RelinquishControl", "RegainControl", "StopAnimationControl", "S
                 "FindGroundPoint", "SetBenchRespawn", "SetHazardRespawn", "RelinquishControlNotVelocity",
                 "SetCState", "SaveGame", "AffectedByGravity", "ResetHardLandingTimer", "StopPlayingAudio", "CanInspect",
                 "CanInput", "GetState", "CancelHeroJump", "ForceHardLanding", "AddHealth", "TryAddMPChargeSpa", "RecoilLeft",
-                "RecoilRight"]
+                "RecoilRight", "CharmUpdate", "RefreshOvercharm", "FlipSprite"]
 # (GetState's states, by name: its argument)
 HERO_STATES = ["onGround", "attacking", "upAttacking", "downAttacking", "dashing", "backDashing", "willHardLand",
                "spellQuake"]   # (backDashing, spellQuake: never here)
@@ -462,14 +525,18 @@ NOTICE_PREFABS = {("resources.assets", 4251): "relic", ("sharedassets6.assets", 
 # numbers them (pack.py makes the sprites)
 NOTICE_ICONS = []
 # the charms this part of the game has (their icons and names: msg.c, the inventory)
-CHARMS = [1, 2, 3, 4, 6, 7, 8, 14, 18, 19, 20]
+CHARMS = [1, 2, 3, 4, 6, 7, 8, 13, 14, 18, 19, 20]   # (Mark of Pride: in the second part, worn in both)
 # the game's objects the scripts find by name that are not theirs (enemies): what they are to them
 GAME_OBJECTS = {"Hornet Boss 1": 0xFF0C, "Prompt Blanker": 0xFF11}   # (the HUD's Prompt Blanker: msg.c's)
 O_CHARM_TUTE = 0xFF0E   # (src/vm.c)
 # what a trigger's Trigger2dEvent hears, by collideTag: the Knight (any), a spell
 TRIGGER_TAGS = {None: 0, "": 0, "Player": 0, "Untagged": 0, "Hero Spell": 1, "Nail Attack": 2}
+# objects the game's own code turns on by name (vm_set_active), named apart from the others of their name: an arena's
+# item (Battle Control's Drop Item), and the one there once its fight is over (Activate)
+VM_NAMES = {("Fungus2_05", "Battle Scene v2/Uncompleted/Shiny Item"): "Arena Item",
+            ("Fungus2_05", "Battle Scene v2/Completed/Shiny Item"): "Arena Item Kept"}
 # the items the message shows (text.MSGS's order), by Msg Control's Item
-MSG_ITEMS = {"Fireball": 0, "Dash": 1}
+MSG_ITEMS = {"Fireball": 0, "Dash": 1, "Walljump": 2}
 # camera shake events
 SHAKES = {"EnemyKillShake": 1, "AverageShake": 2, "BigShake": 3, "SmallShake": 4}
 
@@ -486,8 +553,6 @@ class Room:
         # (the scenes it loads with it, the first of them: their objects there only as they are, by a PlayerData bool)
         import scene
         for an, flag, val, which in scene.additive(name):
-            if which != 1:
-                continue
             da = unity.scene(an)
             ids = {q["id"] for q in da["objects"]}
             k = lambda i, an=an: ("sc", an, i)
@@ -498,7 +563,7 @@ class Room:
                 c["children"] = [k(x) for x in q.get("children", [])]
                 c["_doc"], c["_key"], c["_scene"], c["_raw"] = da, k, an, q["id"]
                 if c["parent"] is None:
-                    c["_variant"] = (flag, val)
+                    c["_variant"] = (flag, val if which == 1 else not val)   # (the alternative: with the bool the other way)
                 self.by_id[c["id"]] = c
                 self.by_path.setdefault(q["path"], c)
         self.objs, self.obj_index = [], {}
@@ -814,6 +879,15 @@ class Compiler:
             self.consts.append(v)
         return self.nvars + self.consts.index(v)
 
+    def const3(self, v):
+        """a vector's three constants, one after another (read so: src/vm.c)"""
+        vs = [_u32(float(c)) for c in v[:3]]
+        for i in range(len(self.consts) - 2):
+            if self.consts[i:i + 3] == vs:
+                return self.nvars + i
+        self.consts += vs
+        return self.nvars + len(self.consts) - 3
+
     def found_nothing(self, v):
         """a gameObject variable only FindChild sets, from its owner, naming a child it does not have"""
         if not (isinstance(v, str) and v.startswith("$")):
@@ -969,10 +1043,7 @@ class Compiler:
                 return struct.pack("<H", 0xFFFF)
             if isinstance(v, str):
                 return struct.pack("<H", self.value(v, "f"))
-            a = self.const(float(v[0]))
-            self.const(float(v[1]))
-            self.const(float(v[2]))
-            return struct.pack("<H", a)
+            return struct.pack("<H", self.const3(v))
         if kind == "e":
             return bytes([self.event(v)])
         if kind == "es":
@@ -1032,7 +1103,8 @@ class Compiler:
                  "AudioPlayInState", "FadeAudio", "PlayRandomSound", "SetRotation", "RandomFloat",
                  "GetLastEvent", "SetBoxCollider2DSize", "Tk2dSpriteSetColor", "SetTextMeshProColor",
                  "AudioPlayRandom", "SetName", "GameObjectIsNull", "PlayVibrationV2",
-                 "SpawnFromPool", "SpawnRandomObjects", "Rotate", "GetEventSender", "GetMidPoint", "SetAudioClip"):
+                 "SpawnFromPool", "SpawnRandomObjects", "Rotate", "GetEventSender", "GetMidPoint", "SetAudioClip",
+                 "ApplyMusicCue", "GGCheckIfBossScene"):   # (music; Godhome's: never here)
             return None
         if n in ("SetMaterialColor", "GetMaterialColor", "EaseColor") and self.f["name"] != "Blanker Control":
             # (colors: only the stag stations' Stag Blanker's, black as the room comes in, then faded out to show it)
@@ -1330,7 +1402,7 @@ class Compiler:
             if beh == "GameManager" and m == "AddToScenesVisited":
                 names = self.string_values(args[0]["s"] if isinstance(args[0], dict) else args[0])
                 assert len(names) == 1 and names[0] in MAP_SCENES, names
-                return self.emit("SceneVisited", {"room": len(ROOM_NAMES) + list(MAP_SCENES).index(names[0])})
+                return self.emit("SceneVisited", {"room": room_bits(ROOM_NAMES, ROOM_BASE[0]).index(names[0])})
             if beh == "GameMap" and m == "SetupMap":
                 return None   # (the map: drawn as PlayerData has it, src/map.c)
             if beh == "HeroPlatformStick" and m in ("Activate", "Deactivate"):
@@ -1598,7 +1670,7 @@ def prepare(rooms, sprites, texts):
     global PIECE_SPRITES
     PIECE_SPRITES = sprites.id
     ROOM_NAMES[:] = rooms
-    assert len(rooms) + len(MAP_SCENES) <= 40   # (src/game.h: rooms_visited's bits)
+    assert len(rooms) + len(MAP_SCENES) <= MAX_ROOM_BITS   # (src/game.h: rooms_visited's bits)
     for name, prefixes in ROOMS.items():
         if name not in rooms:
             continue
@@ -1618,8 +1690,8 @@ def prepare(rooms, sprites, texts):
             for c in o["c"] + _behaviours(rm, o):
                 f = c.get("fsm")
                 # (a door's own scripts: the game's gates are its doors here)
-                if not f or f["name"] in SKIP_FSMS or _tinks(f) or _spins(f) or \
-                        any(c2.get("class") == "TransitionPoint" for c2 in o["c"]):
+                if not f or f["name"] in SKIP_FSMS or _tinks(f) or _spins(f) or c.get("enabled") is False or \
+                        any(c2.get("class") == "TransitionPoint" for c2 in o["c"]):   # (a component off: never runs)
                     continue
                 cp = Compiler(rm, o, f)
                 body, init = cp.compile()
@@ -1728,7 +1800,9 @@ def room_blob(name, clip_index, sprites, owners=(), persist=None):
         m = np.array(o["m3"]).reshape(3, 3)
         sx = float(np.hypot(m[0, 0], m[1, 0])) * (1 if m[0, 0] >= 0 else -1)
         sy = float(np.hypot(m[0, 1], m[1, 1])) * (1 if m[1, 1] >= 0 else -1)
-        fl = (OF_ACTIVE if o.get("self_active", o["active"]) else 0)
+        # (its own on or off under a script object; a script's root as it is in the scene: off under what is off)
+        fl = (OF_ACTIVE if (o.get("self_active", o["active"]) if parent != 0xFFFF or "self_active" not in o else
+                            o["active"] or o.get("_variant")) else 0)
         box = None
         # (one its scripts hear the nail hit: its collider, a trigger or not, is what the nail's trigger meets)
         nail = any((a["name"] == "Trigger2dEvent" and dict(a["params"]).get("collideTag") == "Nail Attack") or
@@ -1790,8 +1864,7 @@ def room_blob(name, clip_index, sprites, owners=(), persist=None):
                 # (its own size, drawn at its scale: its texture as fine as it is drawn)
                 sprite = sprites.id(o.get("_doc") or rm.d, sr["m_Sprite"], 1.0, max(abs(sx), abs(sy)), world=True)
         # (DeactivateIfPlayerdataTrue, False: two at most)
-        conds = [pdf[bn] | (0x8000 if off_if else 0) for bn, off_if in state.conditions(o) if bn in pdf]
-        conds = sorted(set(conds), key=conds.index)
+        conds = [pdf[bn] | (0x8000 if off_if else 0) for bn, off_if in _conds(o, pdf)][:2]   # (more: _behaviours')
         if o.get("_variant"):
             # (a scene loaded with the room's by a PlayerData bool: there only when it has that value)
             bn, val = o["_variant"]
@@ -1818,7 +1891,8 @@ def room_blob(name, clip_index, sprites, owners=(), persist=None):
         col = (mr or {}).get("m_Color") or {"r": 1, "g": 1, "b": 1, "a": 1}
         rgba = [max(0, min(255, int(round(col[k] * 255)))) for k in "rgba"]
         objs += struct.pack(OBJ, o["pos"][0], o["pos"][1], o["pos"][2], sx, sy, bx, by, bhx, bhy, parent,
-                            STR.id(o["name"]), sprite, first, start, min(count, 255), fl, cond, layer, order, blend,
+                            STR.id(VM_NAMES.get((name, o["path"]), o["name"])), sprite, first, start, min(count, 255), fl,
+                            cond, layer, order, blend,
                             cols[0] if cols else 0, len(cols), *rgba, cond2)
     fsms = bytearray()
     for di, owner, init, fname in rm.fsms:
