@@ -49,6 +49,12 @@ void np_push(int x, int y, int w, int h, const color_t *px) {
 #if PLATFORM_DEVICE
 extern const uint8_t np_roms[], np_retrogo_end[];
 #define TABLE_LIMIT ((uintptr_t)np_retrogo_end > (uintptr_t)np_roms ? (uint32_t)((uintptr_t)np_retrogo_end - (uintptr_t)np_roms) : 0)
+#elif defined(NP_PORT) /* (another target: the games are files in a folder, roms_port.c) */
+const uint8_t *rg_port_roms(void);
+uint32_t rg_port_roms_size(void);
+const char *rg_port_folder_shown(void);
+#define np_roms rg_port_roms()
+#define TABLE_LIMIT rg_port_roms_size()
 #else
 extern const uint8_t np_roms[];
 extern const uint32_t np_roms_size;
@@ -1350,9 +1356,15 @@ static void picker_scene(void *ctx) {
   background(sys, browse ? 4 : 0);
   if (!ntabs) { /* (no games: Retro-Go's welcome, and where they come from) */
     header(0, 0);
+#ifdef NP_PORT
+    const char *const lines[] = {T("Welcome to Retro-Go!"), "", "Add games to this folder:", rg_port_folder_shown(),
+                                 T("Game Boy, Game Boy Color, NES,"), T("Master System, Game Gear, SG-1000,"),
+                                 T("ColecoVision."), T("Home: quit")};
+#else
     static const char *const lines[] = {T("Welcome to Retro-Go!"), "", T("Add games on NumPlay's"),
                                         T("customizer website:"), T("Game Boy, Game Boy Color, NES,"), T("Master System, Game Gear, SG-1000,"),
                                         T("ColecoVision."), T("Home: quit")};
+#endif
     for (int i = 0; i < 8; i++) gfx_text(&np_font_body, 8, 80 + 18 * i, lines[i], i ? 0xAD55 : WHITE, 256);
     return;
   }

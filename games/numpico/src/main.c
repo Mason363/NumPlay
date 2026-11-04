@@ -172,7 +172,11 @@ static void none_scene(void *ctx) {
   blank_scene(ctx);
   ptext(14, 12, "numpico", WHITE, 2);
   ptext(14, 70, "no carts yet", WHITE, 2);
+#ifdef NP_PORT /* (another target: the carts are built in, CARTS in the Makefile) */
+  paragraph(14, 100, 292, "build numpico with your .p8 and .p8.png carts: make port carts=\"...\"", GREY, 2);
+#else
   paragraph(14, 100, 292, "add your .p8 and .p8.png carts in numplay studio.", GREY, 2);
+#endif
   keys_line("home quit", NULL);
 }
 
@@ -311,6 +315,6 @@ int numpico_main(void) {
   return plat_end();
 }
 
-#if PLATFORM_DEVICE
+#if PLATFORM_DEVICE || defined(NP_PORT)
 int main(void) { return numpico_main(); }
 #endif

@@ -107,6 +107,12 @@ perf: $(OBJ)
 # the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
 PORT_ID = numpico
 PORT_NAME = NumPico
-PORT_SRC = src/femto8/lua/lapi.c src/femto8/lua/lauxlib.c src/femto8/lua/lbaselib.c src/femto8/lua/lcode.c src/femto8/lua/lcorolib.c src/femto8/lua/lctype.c src/femto8/lua/ldebug.c src/femto8/lua/ldo.c src/femto8/lua/lfunc.c src/femto8/lua/lgc.c src/femto8/lua/linit.c src/femto8/lua/llex.c src/femto8/lua/lmem.c src/femto8/lua/lobject.c src/femto8/lua/lopcodes.c src/femto8/lua/lparser.c src/femto8/lua/lpico8lib.c src/femto8/lua/lstate.c src/femto8/lua/lstring.c src/femto8/lua/lstrlib.c src/femto8/lua/ltable.c src/femto8/lua/ltablib.c src/femto8/lua/ltm.c src/femto8/lua/lvm.c src/femto8/lua/lzio.c src/femto8/p8_lua.c src/pico.c src/heap.c src/main.c src/carts.c src/plat_eadk.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
-PORT_FLAGS = -DEPSILON_XL=1 -DNDEBUG -I../../launcher/src -Isrc -Isrc/femto8 -Isrc/femto8/lua
+PORT_SRC = $(CORE_SRC) src/main.c src/carts.c src/plat_eadk.c $(L)/gfx.c $(L)/xfont.c $(PORT_OUT)/carts.c
+# (Lua's headers for quoted includes only, and its functions renamed there: the TI-Nspire has a Lua of its own)
+PORT_FLAGS = -DEPSILON_XL=1 -DNDEBUG -I$(L) -Isrc -Isrc/femto8 -iquote src/femto8/lua \
+  $(if $(filter nspire,$(TARGET)),-include src/nspire_lua.h)
 include ../../platform/port.mk
+# the carts, built in as on the calculator (CARTS, CARTS_LIST)
+$(PORT_OUT)/carts.c: FORCE
+	@mkdir -p $(@D)
+	$(Q) $(PYTHON) -I tools/p8cart.py --c $@ $(CARTS) $(if $(CARTS_LIST),--list $(CARTS_LIST))
