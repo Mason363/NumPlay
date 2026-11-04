@@ -44,6 +44,7 @@ int world_light(int x, int y, int z);         /* the light byte there */
 void world_new(uint32_t seed);
 void world_center(int x, int y, int z, bool all);   /* keeps the window around (x, y, z) */
 bool world_busy(void);                        /* parts of the window still being made */
+bool world_behind(void);                      /* so many that the view would see past them */
 void world_step(void);                        /* makes a little more of them */
 int world_top(int x, int z);                  /* the highest block's y + 1 (spawning) */
 extern uint32_t world_seed;
@@ -62,7 +63,8 @@ typedef struct {
 } Column;
 void gen_seed(uint32_t seed);
 void gen_column(int x, int z, Column *c);
-int gen_cell(int x, int y, int z, const Column *c);   /* the terrain, caves, ores, water */
+int gen_cell(int x, int y, int z, const Column *c);
+void gen_cells(int x, int z, const Column *c, int y0, int y1, uint8_t *out);   /* gen_cell for [y0, y1) */   /* the terrain, caves, ores, water */
 /* trees and plants whose blocks fall in [x0, x1) x [y0, y1) x [z0, z1): put(x, y, z, block) for each */
 void gen_decorate(int x0, int z0, int x1, int z1, int y0, int y1, void (*put)(int, int, int, int));
 int gen_plant(int x, int z, const Column *c);   /* the plant on top of a column (0: none) */

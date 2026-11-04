@@ -168,7 +168,7 @@ void render_sky_palette(void) {
 
 /* ---------------------------------------------------------------- textures and shades in RAM, 256-aligned */
 /* (rs_poly's loop reads a texel and its shade by setting a page's low byte: both tables 256-byte aligned) */
-#define TC_N 32
+#define TC_N 28
 static uint8_t tcache[TC_N][256] __attribute__((aligned(256)));
 static uint8_t shade_ram[N_SHADE][256] __attribute__((aligned(256)));
 static uint8_t fogc[FC_N][256] __attribute__((aligned(256)));
@@ -202,7 +202,7 @@ static const uint8_t *tex_of(uint8_t t) {
   if (s == 255) {
     /* a slot not used in this frame (round and round) */
     for (uint8_t n = 0; n < TC_N; n++) {
-      s = (uint8_t)(tc_next++ & (TC_N - 1));
+      s = tc_next, tc_next = tc_next + 1 == TC_N ? 0 : (uint8_t)(tc_next + 1);
       if (tc_used[s] != frame_no) break;
     }
     if (tc_tex[s] != 255) tc_slot[tc_tex[s]] = 255;

@@ -23,6 +23,8 @@ uint8_t rs_hidden(int x, int y, int z, int r);
 int rs_code(int x, int y, int z);
 /* dst[i] = f[a[i]] for the 256 bytes, all three 256-byte aligned */
 void rs_compose(uint8_t *dst, const uint8_t *a, const uint8_t *f);
+/* a + floor((b - a) f / 256), a and b 0..255, f 0..256 */
+int rs_lerp(int a, int b, int f);
 /* the 160 x 120 picture to the screen at 2x, 0s as the row's sky colour (sky[y]); from screen row 180 on, the HUD's
  * layer (187 wide at x 67, 0 see-through) over it (hud 0: none) */
 void rs_expand(const uint8_t *src, uint8_t *dst, const uint8_t *sky, const uint8_t *hud);

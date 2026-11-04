@@ -1856,6 +1856,355 @@ _rs_compose:
 	jr	nz, .Lcm_loop
 	ret
 
+; ------------------------------------------------------------------------------------------------- rs_lerp
+; int rs_lerp(int a, int b, int f): a + floor((b - a) f / 256), a and b 0..255, f 0..256
+	.section	.text._rs_lerp
+	.global	_rs_lerp
+	.type	_rs_lerp, @function
+_rs_lerp:
+	ld	iy, 0
+	add	iy, sp
+	ld	a, (iy+10)
+	or	a, a
+	jr	nz, .Llp_b
+	ld	a, (iy+6)
+	sub	a, (iy+3)
+	jr	c, .Llp_neg
+	ld	h, a
+	ld	l, (iy+9)
+	mlt	hl
+	ld	a, h
+	add	a, (iy+3)
+	sbc	hl, hl
+	ld	l, a
+	ret
+.Llp_neg:
+	neg
+	ld	h, a
+	ld	l, (iy+9)
+	mlt	hl
+	ld	de, 255
+	add	hl, de
+	ld	a, (iy+3)
+	sub	a, h
+	sbc	hl, hl
+	ld	l, a
+	ret
+.Llp_b:
+	ld	hl, (iy+6)
+	ret
+
+; ------------------------------------------------------------------------------------------------- w_neighbours
+; void w_neighbours(uint16_t i): the window cell i's neighbours inside it (-Y +Y -Z +Z -X +X) into w_nbr, how many
+; into w_nbr_n (world.c; i = y << 10 | z << 5 | x, each 0..31; w_esx.. the window's first and last slots)
+	.section	.text._w_neighbours
+	.global	_w_neighbours
+	.type	_w_neighbours, @function
+_w_neighbours:
+	ld	iy, 0
+	add	iy, sp
+	ld	l, (iy+3)
+	ld	h, (iy+4)
+	ld	iy, _w_nbr
+	ld	c, 0
+	ld	a, h
+	rrca
+	rrca
+	and	a, 0x1F
+	ld	b, a			; y
+	ld	a, (_w_esy)
+	cp	a, b
+	jr	z, .Lnb_y1
+	ld	a, h
+	sub	a, 4
+	and	a, 0x7C
+	ld	d, a
+	ld	a, h
+	and	a, 3
+	or	a, d
+	ld	(iy+1), a
+	ld	(iy+0), l
+	lea	iy, iy+2
+	inc	c
+.Lnb_y1:
+	ld	a, (_w_eey)
+	cp	a, b
+	jr	z, .Lnb_z0
+	ld	a, h
+	add	a, 4
+	and	a, 0x7C
+	ld	d, a
+	ld	a, h
+	and	a, 3
+	or	a, d
+	ld	(iy+1), a
+	ld	(iy+0), l
+	lea	iy, iy+2
+	inc	c
+.Lnb_z0:
+	ld	a, h
+	and	a, 3
+	rlca
+	rlca
+	rlca
+	ld	b, a
+	ld	a, l
+	rlca
+	rlca
+	rlca
+	and	a, 7
+	or	a, b
+	ld	b, a			; z
+	ld	a, (_w_esz)
+	cp	a, b
+	jr	z, .Lnb_z1
+	ld	a, b
+	dec	a
+	and	a, 31
+	call	nb_z
+	inc	c
+.Lnb_z1:
+	ld	a, (_w_eez)
+	cp	a, b
+	jr	z, .Lnb_x0
+	ld	a, b
+	inc	a
+	and	a, 31
+	call	nb_z
+	inc	c
+.Lnb_x0:
+	ld	a, l
+	and	a, 31
+	ld	b, a			; x
+	ld	a, (_w_esx)
+	cp	a, b
+	jr	z, .Lnb_x1
+	ld	a, b
+	dec	a
+	and	a, 31
+	ld	d, a
+	ld	a, l
+	and	a, 0xE0
+	or	a, d
+	ld	(iy+0), a
+	ld	(iy+1), h
+	lea	iy, iy+2
+	inc	c
+.Lnb_x1:
+	ld	a, (_w_eex)
+	cp	a, b
+	jr	z, .Lnb_done
+	ld	a, b
+	inc	a
+	and	a, 31
+	ld	d, a
+	ld	a, l
+	and	a, 0xE0
+	or	a, d
+	ld	(iy+0), a
+	ld	(iy+1), h
+	inc	c
+.Lnb_done:
+	ld	a, c
+	ld	(_w_nbr_n), a
+	ret
+
+; z' in a: lo = (z' & 7) << 5 | x, hi = y << 2 | z' >> 3, to (iy), iy on (b, c, h, l kept)
+nb_z:
+	ld	e, a
+	and	a, 7
+	rrca
+	rrca
+	rrca
+	ld	d, a
+	ld	a, l
+	and	a, 31
+	or	a, d
+	ld	(iy+0), a
+	ld	a, e
+	rrca
+	rrca
+	rrca
+	and	a, 3
+	ld	d, a
+	ld	a, h
+	and	a, 0x7C
+	or	a, d
+	ld	(iy+1), a
+	lea	iy, iy+2
+	ret
+
+; ------------------------------------------------------------------------------------------------- w_expose
+; void w_expose(void): a window column's cells with a face to draw into xp_out (4 bytes, bit y & 31), from its cell
+; at the window's bottom (xp_p, slot xp_ys) up; a face shows unless what is next to it is opaque, the same block or
+; both are liquids; plants and torches always; past the window: below it as if solid, above air; the columns
+; around it at xp_ox0.. (bits of xp_sides: 1 -x, 2 +x, 4 -z, 8 +z inside the window) (world.c)
+	.section	.text._w_expose
+	.global	_w_expose
+	.type	_w_expose, @function
+	.equ	M_CROSS, 2
+	.equ	M_TORCH, 6
+	.equ	BF_OPAQUE, 1
+	.equ	BF_LIQUID, 8
+_w_expose:
+	push	ix
+	ld	ix, (_xp_p)
+	xor	a, a
+	ld	(xp_k), a
+	ld	hl, xp_m
+	ld	(hl), a
+	inc	hl
+	ld	(hl), a
+	inc	hl
+	ld	(hl), a
+	inc	hl
+	ld	(hl), a
+.Lxp_cell:
+	ld	a, (_xp_ys)
+	cp	a, 31
+	ld	de, 1024
+	jr	nz, .Lxp_up
+	ld	de, -31 * 1024
+.Lxp_up:
+	lea	hl, ix+0
+	add	hl, de
+	ld	(xp_up), hl
+	ld	a, (ix+0)
+	or	a, a
+	jp	z, .Lxp_next
+	ld	(xp_b), a
+	ld	de, 0
+	ld	e, a
+	ld	hl, _blk_model
+	add	hl, de
+	ld	a, (hl)
+	cp	a, M_CROSS
+	jp	z, .Lxp_show
+	cp	a, M_TORCH
+	jp	z, .Lxp_show
+	ld	a, (xp_k)
+	cp	a, 31
+	jp	z, .Lxp_show
+	ld	hl, _blk_flags
+	add	hl, de
+	ld	a, (hl)
+	and	a, BF_LIQUID
+	ld	(xp_liq), a
+	ld	hl, (xp_up)
+	call	xp_shows
+	jp	nz, .Lxp_show
+	ld	a, (xp_k)
+	or	a, a
+	jr	z, .Lxp_sides
+	ld	a, (_xp_ys)
+	or	a, a
+	ld	de, -1024
+	jr	nz, .Lxp_dn
+	ld	de, 31 * 1024
+.Lxp_dn:
+	lea	hl, ix+0
+	add	hl, de
+	call	xp_shows
+	jp	nz, .Lxp_show
+.Lxp_sides:
+	ld	a, (_xp_sides)
+	bit	2, a
+	jr	z, .Lxp_s1
+	ld	de, (_xp_oz0)
+	lea	hl, ix+0
+	add	hl, de
+	call	xp_shows
+	jp	nz, .Lxp_show
+.Lxp_s1:
+	ld	a, (_xp_sides)
+	bit	3, a
+	jr	z, .Lxp_s2
+	ld	de, (_xp_oz1)
+	lea	hl, ix+0
+	add	hl, de
+	call	xp_shows
+	jp	nz, .Lxp_show
+.Lxp_s2:
+	ld	a, (_xp_sides)
+	bit	0, a
+	jr	z, .Lxp_s3
+	ld	de, (_xp_ox0)
+	lea	hl, ix+0
+	add	hl, de
+	call	xp_shows
+	jp	nz, .Lxp_show
+.Lxp_s3:
+	ld	a, (_xp_sides)
+	bit	1, a
+	jr	z, .Lxp_next
+	ld	de, (_xp_ox1)
+	lea	hl, ix+0
+	add	hl, de
+	call	xp_shows
+	jr	z, .Lxp_next
+.Lxp_show:
+	ld	a, (_xp_ys)
+	ld	c, a
+	rrca
+	rrca
+	rrca
+	and	a, 3
+	ld	hl, xp_m
+	ld	de, 0
+	ld	e, a
+	add	hl, de
+	ld	a, c
+	and	a, 7
+	ld	b, a
+	ld	a, 1
+	jr	z, .Lxp_bit
+.Lxp_sh:
+	add	a, a
+	djnz	.Lxp_sh
+.Lxp_bit:
+	or	a, (hl)
+	ld	(hl), a
+.Lxp_next:
+	ld	ix, (xp_up)
+	ld	a, (_xp_ys)
+	inc	a
+	and	a, 31
+	ld	(_xp_ys), a
+	ld	a, (xp_k)
+	inc	a
+	ld	(xp_k), a
+	cp	a, 32
+	jp	nz, .Lxp_cell
+	ld	hl, xp_m
+	ld	de, (_xp_out)
+	ld	bc, 4
+	ldir
+	pop	ix
+	ret
+
+; nz when the cell at hl shows xp_b's face next to it
+xp_shows:
+	ld	a, (hl)
+	ld	hl, xp_b
+	cp	a, (hl)
+	ret	z
+	ld	de, 0
+	ld	e, a
+	ld	hl, _blk_flags
+	add	hl, de
+	ld	a, (hl)
+	ld	c, a
+	and	a, BF_OPAQUE
+	jr	nz, .Lxs_hid
+	ld	a, (xp_liq)
+	and	a, c
+	jr	nz, .Lxs_hid
+	or	a, 1
+	ret
+.Lxs_hid:
+	xor	a, a
+	ret
+
 ; ------------------------------------------------------------------------------------------------- data
 	.section	.data._rs_vars
 r_tex:	.d24	0
@@ -2044,6 +2393,27 @@ q_a:	.db	0
 q_c:	.db	0
 q_xs:	.db	0
 q_zs:	.db	0
+	.global	_xp_p
+	.global	_xp_out
+	.global	_xp_ox0
+	.global	_xp_ox1
+	.global	_xp_oz0
+	.global	_xp_oz1
+	.global	_xp_ys
+	.global	_xp_sides
+_xp_p:	.d24	0
+_xp_out:	.d24	0
+_xp_ox0:	.d24	0
+_xp_ox1:	.d24	0
+_xp_oz0:	.d24	0
+_xp_oz1:	.d24	0
+_xp_ys:	.db	0
+_xp_sides:	.db	0
+xp_up:	.d24	0
+xp_k:	.db	0
+xp_b:	.db	0
+xp_liq:	.db	0
+xp_m:	.ds	4
 
 	.section	.rodata._rs_rtab
 ; 1371 << 12 / (256 + i)
@@ -2055,5 +2425,15 @@ r_rtab:
 	.extern	_rbuf
 	.extern	_rs_cell
 	.extern	_wexp
+	.extern	_w_nbr
+	.extern	_blk_model
+	.extern	_blk_flags
+	.extern	_w_nbr_n
+	.extern	_w_esx
+	.extern	_w_eex
+	.extern	_w_esz
+	.extern	_w_eez
+	.extern	_w_esy
+	.extern	_w_eey
 	.extern	_rs_recip
 	.extern	_rs_ratio

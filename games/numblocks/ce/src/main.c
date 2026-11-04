@@ -148,11 +148,11 @@ static void look(uint32_t keys, uint32_t dt) {
 static void play(uint32_t keys, uint32_t pressed) {
   uint32_t now = plat_ms(), dt = now - last_ms;
   last_ms = now;
-  if (dt > 250) dt = 250;
+  if (dt > 500) dt = 500;   /* (the game's 20 ticks a second kept down to 2 pictures a second) */
   if (gui == GUI_NONE) look(keys, dt);
   tick_acc += dt;
   int n = 0;
-  while (tick_acc >= 50 && n < 4) {
+  while (tick_acc >= 50 && n < 10) {
     tick_acc -= 50, n++;
     if (gui == GUI_NONE) player_tick(keys, n == 1 ? pressed : 0);
     gui_tick();
@@ -162,7 +162,8 @@ static void play(uint32_t keys, uint32_t pressed) {
   }
   if (tick_acc > 200) tick_acc = 0;
   world_center(FXI(pl.x), FXI(pl.y) + 1, FXI(pl.z), false);
-  for (int k = 0; k < 2 && world_busy(); k++) world_step();
+  /* a row a picture, more when the view would see past them */
+  for (int k = 0; world_busy() && (!k || world_behind()); k++) world_step();
   if (gui == GUI_NONE) {
     if (pressed & K_INV) {
       gui_open(pl.mode ? GUI_CREATIVE : GUI_INVENTORY);
@@ -238,6 +239,56 @@ int main(void) {
     LAP("world");
     render_sky_palette();
     LAP("sky");
+#if NB_BENCH == 7
+    {
+      /* one picture, as the computer build makes it (to compare) */
+      in_game = true, gui = GUI_NONE;
+      render_frame();
+      hud_draw();
+      compose(true, true);
+      for (uint32_t t = plat_ms(); plat_ms() - t < 3000;) plat_frame();
+      plat_exit();
+    }
+#endif
+#if NB_BENCH >= 5 && NB_BENCH <= 6
+    {
+      /* rows of the window made (5: 16 of them, 6: none) */
+      for (int f = 0; f < (NB_BENCH == 5 ? 16 : 0); f++) {
+        pl.x += FX1;
+        world_center(FXI(pl.x), FXI(pl.y) + 1, FXI(pl.z), false);
+        while (world_busy()) world_step();
+      }
+      LAP("rows");
+      plat_save("NBBENCH", out, (unsigned)n, 0, 0);
+      plat_exit();
+    }
+#endif
+#if NB_BENCH == 4
+    {
+      /* walking: 16 frames of 3 ticks each, each part's average */
+      static const char *const part[5] = {"ticks", "rows", "render", "hud", "compose"};
+      uint32_t sum[5] = {0, 0, 0, 0, 0};
+      in_game = true, gui = GUI_NONE;
+      for (int f = 0; f < 16; f++) {
+        uint32_t t0 = plat_ms();
+        for (int k = 0; k < 3; k++) player_tick(K_FWD | K_SPRINT, 0);
+        uint32_t t1 = plat_ms();
+        world_center(FXI(pl.x), FXI(pl.y) + 1, FXI(pl.z), false);
+        for (int k = 0; k < 2 && world_busy(); k++) world_step();
+        uint32_t t2 = plat_ms();
+        render_frame();
+        uint32_t t3 = plat_ms();
+        hud_draw();
+        uint32_t t4 = plat_ms();
+        compose(true, true);
+        uint32_t t5 = plat_ms();
+        sum[0] += t1 - t0, sum[1] += t2 - t1, sum[2] += t3 - t2, sum[3] += t4 - t3, sum[4] += t5 - t4;
+      }
+      for (int k = 0; k < 5; k++) n += sprintf(out + n, "%s %lu\n", part[k], (unsigned long)(sum[k] / 16));
+      plat_save("NBBENCH", out, (unsigned)n, 0, 0);
+      plat_exit();
+    }
+#endif
     for (int v = 0; v < (NB_BENCH > 1 ? 24 : 4); v++) {
       pl.yaw = (uint16_t)((v & 3) * 16384);
       pl.pitch = (v & 3) == 3 ? 6000 : 0;

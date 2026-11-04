@@ -20,7 +20,10 @@ void RS(rs_proj)(int x, int y, int z, int *out);
 uint8_t RS(rs_hidden)(int x, int y, int z, int r);
 int RS(rs_code)(int x, int y, int z);
 void RS(rs_compose)(uint8_t *dst, const uint8_t *a, const uint8_t *f);
+int RS(rs_lerp)(int a, int b, int f);
 void RS(rs_expand)(const uint8_t *src, uint8_t *dst, const uint8_t *sky, const uint8_t *hud);
+int RS(rs_lerp)(int a, int b, int f) { return a + (((b - a) * f) >> 8); }
+
 void RS(rs_compose)(uint8_t *dst, const uint8_t *a, const uint8_t *f) {
   for (int i = 0; i < 256; i++) dst[i] = f[a[i]];
 }
