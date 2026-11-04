@@ -657,6 +657,214 @@ __attribute__((noinline)) static void raster_tri(const Poly *q) {
   }
 }
 
+#if NP_SOFT_FLOAT
+/* ---------------------------------------------------------------- the same in integers
+ * (calculators without a floating-point unit: per polygon a few conversions, then no float at all in its rows) */
+#include "np_fixed.h"
+
+/* the depth and texture planes at pixel (x, y) (its middle), 16.16 */
+typedef struct {
+  int64_t za, zb, zc, ua, ub, uc, va, vb, vc;
+} Planes;
+static void planes(const Poly *q, Planes *P) {
+  P->za = fx_from_float(q->a, 16), P->zb = fx_from_float(q->b, 16);
+  P->zc = fx_from_float(q->c, 16) + ((P->za + P->zb) >> 1);
+  if (q->kind == K_PERSP) {
+    const UV *w = &uvs[q->extra];
+    P->ua = fx_from_float(w->ua, 16), P->ub = fx_from_float(w->ub, 16);
+    P->uc = fx_from_float(w->uc, 16) + ((P->ua + P->ub) >> 1);
+    P->va = fx_from_float(w->va, 16), P->vb = fx_from_float(w->vb, 16);
+    P->vc = fx_from_float(w->vc, 16) + ((P->va + P->vb) >> 1);
+  }
+}
+
+/* a texel place over the depth (16.16) as fix16 makes it: within 16000 texels */
+static inline int32_t tex16(int64_t t) {
+  return t > (int64_t)16000 << 16 ? 16000 << 16 : t < -((int64_t)16000 << 16) ? -(16000 << 16) : (int32_t)t;
+}
+/* u = qu / qz and v = qv / qz, as raster_row finds them (qz under 1 counts as 1) */
+static inline void persp(int64_t qz, int64_t qu, int64_t qv, int32_t *u, int32_t *v) {
+  if (qz <= 65536) {
+    *u = tex16(qu), *v = tex16(qv);
+    return;
+  }
+  uint32_t d = qz >= (int64_t)1 << 32 ? 0xFFFFFFFFu : (uint32_t)qz;
+  int s = __builtin_clz(d);
+  int32_t r = fx_rcp(d << s);   /* 2^61 / (d << s) */
+  *u = tex16((int64_t)fx_sat32(qu >> 16) * r >> (29 - s));
+  *v = tex16((int64_t)fx_sat32(qv >> 16) * r >> (29 - s));
+}
+
+/* raster_row with the planes */
+__attribute__((noinline)) static void raster_row_fx(const Poly *q, const Planes *P, int kind, int y, int x0, int x1,
+                                                    const Texture *tx, int32_t da, int alpha, uint16_t col) {
+  int64_t qz = P->zc + P->zb * y + P->za * x0;
+  uint32_t z = qz < 0 ? 0 : qz > (int64_t)65535 << 16 ? (uint32_t)65535 << 16 : (uint32_t)qz;
+  uint16_t *zb = zbuf + (y - r_y0) * SCREEN_W, *cb = r_col + (y - r_y0) * SCREEN_W;
+  if (kind == K_FLAT) {
+    if (alpha >= 31) {
+      for (int x = x0; x < x1; x++, z += (uint32_t)da) {
+        uint16_t zz = (uint16_t)(z >> 16);
+        if (zz > zb[x]) zb[x] = zz, cb[x] = col;
+      }
+    } else {
+      for (int x = x0; x < x1; x++, z += (uint32_t)da)
+        if ((uint16_t)(z >> 16) > zb[x]) cb[x] = r_mix565(cb[x], col, alpha);
+    }
+    return;
+  }
+  if (kind == K_PERSP) {
+    int light = q->alpha;
+    const uint32_t *sp = light < 32 ? spread(tx) : NULL;
+    int64_t qu = P->uc + P->ub * y + P->ua * x0, qv = P->vc + P->vb * y + P->va * x0;
+    int32_t u = 0, v = 0;
+    bool known = false;
+    for (int x = x0; x < x1;) {
+      int n = x1 - x < 16 ? x1 - x : 16;
+      uint16_t *zp = zb + x, *cp = cb + x, *ze = zp + n;
+      int64_t qz2 = qz + P->za * n, qu2 = qu + P->ua * n, qv2 = qv + P->va * n;
+      uint32_t zt = z;
+      uint16_t *zq = zp;
+      while (zq < ze && (uint16_t)(zt >> 16) <= *zq) zq++, zt += (uint32_t)da;
+      if (zq == ze) {
+        z = zt, x += n;
+        qz = qz2, qu = qu2, qv = qv2;
+        known = false;
+        continue;
+      }
+      if (!known) persp(qz, qu, qv, &u, &v);
+      int32_t u2, v2;
+      persp(qz2, qu2, qv2, &u2, &v2);
+      uint32_t du, dv;
+      if (n == 16) du = (uint32_t)((u2 - u) >> 4), dv = (uint32_t)((v2 - v) >> 4);
+      else {
+        /* (over n without a division: 2^32 / n, rounded up) */
+        static const int64_t over[16] = {0, 4294967296, 2147483648, 1431655766, 1073741824, 858993460, 715827883, 613566757,
+                                        536870912, 477218589, 429496730, 390451573, 357913942, 330382100, 306783379, 286331154};
+        int64_t k = over[n];
+        du = (uint32_t)(int32_t)((u2 - u) * k >> 32), dv = (uint32_t)(int32_t)((v2 - v) * k >> 32);
+      }
+      uint32_t uu = (uint32_t)u, vv = (uint32_t)v;
+      if (tx->wl == 9 && tx->hl == 9) z = tex_run9(zp, ze, cp, z, (uint32_t)da, uu, du, vv, dv, tx, light, sp);
+      else if (tx->wl == 8 && tx->hl == 8) z = tex_run8(zp, ze, cp, z, (uint32_t)da, uu, du, vv, dv, tx, light, sp);
+      else z = tex_run0(zp, ze, cp, z, (uint32_t)da, uu, du, vv, dv, tx, light, sp);
+      x += n;
+      qz = qz2, qu = qu2, qv = qv2, u = u2, v = v2;
+      known = true;
+    }
+  }
+}
+
+/* an edge from (xa, ya) down to (xb, yb), in 1/8 pixels: its x at a row's middle Y, 1/8 pixels with 12 more bits */
+typedef struct {
+  int32_t ya, yb, xa, dx, r, sh;
+} EdgeI;
+static void edge_i(EdgeI *E, int xa, int ya, int xb, int yb) {
+  uint32_t d = (uint32_t)(yb - ya);
+  int s = __builtin_clz(d);
+  E->ya = ya, E->yb = yb, E->xa = xa, E->dx = xb - xa, E->r = fx_rcp(d << s), E->sh = 49 - s;
+}
+static inline int32_t edge_x(const EdgeI *E, int32_t Y) {
+  return (E->xa << 12) + (int32_t)((int64_t)((Y - E->ya) * E->dx) * E->r >> E->sh);
+}
+/* the pixels [x0, x1) between two edges' places, as raster rounds them; false when none */
+static inline bool span_x(int32_t xl, int32_t xr, int *x0, int *x1) {
+  if (xl > xr) {
+    int32_t t = xl;
+    xl = xr, xr = t;
+  }
+  int a = xl <= -(8 << 12) ? 0 : (xl + (4 << 12)) >> 15, b = xr >= SCREEN_W * 8 << 12 ? SCREEN_W : (xr + (4 << 12)) >> 15;
+  if (a < 0) a = 0;
+  *x0 = a, *x1 = b;
+  return a < b;
+}
+static inline int32_t clamp_da(int64_t za) {
+  return za > (int64_t)30000 << 16 ? 30000 << 16 : za < -((int64_t)30000 << 16) ? -(30000 << 16) : (int32_t)za;
+}
+
+static void raster_fx(const Poly *q) {
+  int ya = q->y0 > r_y0 ? q->y0 : r_y0, yb = q->y1 < r_y1 ? q->y1 : r_y1;
+  if (ya >= yb) return;
+  const Pos *pp = pos + q->v0;
+  int n = q->n;
+  int64_t area = 0;
+  for (int i = 0, j = n - 1; i < n; j = i++) area += (int64_t)pp[j].x * pp[i].y - (int64_t)pp[i].x * pp[j].y;
+  EdgeI e[2][MAXN];
+  int ne[2] = {0, 0};
+  for (int i = 0, j = n - 1; i < n; j = i++) {
+    int ay = pp[j].y, by = pp[i].y;
+    if (ay == by) continue;
+    int ka = j, kb = i;
+    bool down = by > ay;
+    if (!down) {
+      int t = ay;
+      ay = by, by = t;
+      ka = i, kb = j;
+    }
+    if (by <= ya * 8 || ay >= yb * 8) continue;
+    int side = (down == (area > 0)) ? 1 : 0;
+    int k = ne[side]++;
+    while (k > 0 && e[side][k - 1].ya > ay) e[side][k] = e[side][k - 1], k--;
+    edge_i(&e[side][k], pp[ka].x, ay, pp[kb].x, by);
+  }
+  if (!ne[0] || !ne[1]) return;
+  Planes P;
+  planes(q, &P);
+  uint16_t col = q->color;
+  int kind = q->kind;
+  const Texture *tx = kind == K_PERSP ? r_tex[q->color] : NULL;
+  int alpha = q->alpha >> 3;
+  int32_t da = clamp_da(P.za);
+  int li = 0, ri = 0;
+  for (int y = ya; y < yb; y++) {
+    int32_t Y = y * 8 + 4;
+    while (li < ne[0] - 1 && Y >= e[0][li].yb) li++;
+    while (ri < ne[1] - 1 && Y >= e[1][ri].yb) ri++;
+    const EdgeI *L = &e[0][li], *R = &e[1][ri];
+    if (Y < L->ya || Y >= L->yb || Y < R->ya || Y >= R->yb) continue;
+    int x0, x1;
+    if (span_x(edge_x(L, Y), edge_x(R, Y), &x0, &x1)) raster_row_fx(q, &P, kind, y, x0, x1, tx, da, alpha, col);
+  }
+}
+
+__attribute__((noinline)) static void raster_tri_fx(const Poly *q) {
+  int ya = q->y0 > r_y0 ? q->y0 : r_y0, yb = q->y1 < r_y1 ? q->y1 : r_y1;
+  if (ya >= yb) return;
+  const Pos *p0 = pos + q->v0, *p1 = p0 + 1, *p2 = p0 + 2, *t;
+  if (p1->y < p0->y) t = p0, p0 = p1, p1 = t;
+  if (p2->y < p1->y) t = p1, p1 = p2, p2 = t;
+  if (p1->y < p0->y) t = p0, p0 = p1, p1 = t;
+  if (p0->y == p2->y) return;
+  EdgeI e02, e;
+  edge_i(&e02, p0->x, p0->y, p2->x, p2->y);
+  Planes P;
+  planes(q, &P);
+  int kind = q->kind;
+  const Texture *tx = kind == K_PERSP ? r_tex[q->color] : NULL;
+  int32_t da = clamp_da(P.za);
+  int alpha = q->alpha >> 3;
+  uint16_t col = q->color;
+  /* rows whose middles lie in [ys, ye): from ceil(ys - 0.5) */
+  int r0 = (p0->y + 3) >> 3, r1 = (p1->y + 3) >> 3, r2 = (p2->y + 3) >> 3;
+  if (r0 < ya) r0 = ya;
+  if (r2 > yb) r2 = yb;
+  int m = r1 < r0 ? r0 : r1 > r2 ? r2 : r1;
+  int x0, x1;
+  if (p0->y != p1->y && r0 < m) {
+    edge_i(&e, p0->x, p0->y, p1->x, p1->y);
+    for (int y = r0; y < m; y++)
+      if (span_x(edge_x(&e02, y * 8 + 4), edge_x(&e, y * 8 + 4), &x0, &x1))
+        raster_row_fx(q, &P, kind, y, x0, x1, tx, da, alpha, col);
+  }
+  if (p1->y != p2->y && m < r2) {
+    edge_i(&e, p1->x, p1->y, p2->x, p2->y);
+    for (int y = m; y < r2; y++)
+      if (span_x(edge_x(&e02, y * 8 + 4), edge_x(&e, y * 8 + 4), &x0, &x1))
+        raster_row_fx(q, &P, kind, y, x0, x1, tx, da, alpha, col);
+  }
+}
+#endif
+
 /* the fog's table for the current r_fog0, r_fog1 and r_fog_rgb */
 static void fog_make(void) {
   if (fog_made0 == r_fog0 && fog_made1 == r_fog1) return;
@@ -759,8 +967,13 @@ void r_render(const Texture *tex, r_ground_fn ground, r_band_fn overlay) {
       if (i == opaque) back_band(tex, ground);
       const Poly *q = &polys[order[i]];
       if (q->y1 > r_y0 && q->y0 < r_y1) {
+#if NP_SOFT_FLOAT
+        if (q->n == 3 && (q->kind == K_FLAT || q->kind == K_PERSP)) raster_tri_fx(q);
+        else raster_fx(q);
+#else
         if (q->n == 3 && (q->kind == K_FLAT || q->kind == K_PERSP)) raster_tri(q);
         else raster(q);
+#endif
       }
     }
     if (opaque == npolys) back_band(tex, ground);
