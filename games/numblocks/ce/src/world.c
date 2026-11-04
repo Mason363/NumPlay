@@ -363,6 +363,7 @@ __attribute__((noinline)) static void col_seed(uint16_t c, uint8_t ys, uint8_t y
 /* makes the columns [x0, x1) x [z0, z1) at levels [y0, y1) (cols: their column data too), then their light and
  * faces */
 static void fill(int x0, int z0, int x1, int z1, int y0, int y1, bool cols) {
+  render_stale = 1;   /* (the light's queues are in rbuf) */
   uint8_t ys0 = MOD32[y0];
   for (int z = z0; z < z1; z++)
     for (int x = x0; x < x1; x++) {
@@ -441,6 +442,7 @@ static void fill(int x0, int z0, int x1, int z1, int y0, int y1, bool cols) {
 /* ---------------------------------------------------------------- changes */
 void world_set(int x, int y, int z, int b) {
   if (!in_win(x, y, z)) return;
+  render_stale = 1;
   uint16_t i = (uint16_t)WI(x, y, z);
   int old = wblk[i];
   if (old == b) return;

@@ -94,41 +94,43 @@ uint32_t plat_keys(void) {
 }
 
 static uint32_t read_keys(void) {
-  /* (keypadc scans on its own in continuous mode) */
-  uint32_t k = 0;
+  /* (keypadc scans on its own in continuous mode; the K_* bits set a byte at a time: on the eZ80 a 32-bit or and a
+   * shift are calls) */
+  static union { uint32_t k; uint8_t b[4]; } u;
   uint8_t g1 = kb_Data[1], g2 = kb_Data[2], g3 = kb_Data[3], g4 = kb_Data[4], g5 = kb_Data[5], g6 = kb_Data[6],
-          g7 = kb_Data[7];
-  if (g7 & kb_Left) k |= K_LEFT;
-  if (g7 & kb_Right) k |= K_RIGHT;
-  if (g7 & kb_Up) k |= K_UP;
-  if (g7 & kb_Down) k |= K_DOWN;
-  if (g4 & kb_Cos) k |= K_FWD;
-  if (g4 & kb_LParen) k |= K_BACK;
-  if (g3 & kb_Comma) k |= K_SLEFT;
-  if (g5 & kb_RParen) k |= K_SRIGHT;
-  if (g1 & kb_Yequ) k |= K_JUMP;
-  if (g2 & kb_Alpha) k |= K_SNEAK;
-  if (g1 & kb_Del) k |= K_SPRINT;
-  if (g1 & kb_2nd) k |= K_ATTACK;
-  if (g6 & kb_Clear) k |= K_USE;
-  if (g5 & kb_Vars) k |= K_INV;
-  if (g5 & kb_Chs) k |= K_PAUSE;
-  if (g1 & kb_Mode) k |= K_HOME;
-  if (g3 & kb_GraphVar) k |= K_DROP;
-  if (g2 & kb_Log) k |= K_PICK;
-  if (g6 & kb_Enter) k |= K_ENTER;
-  if (g3 & kb_1) k |= K_SLOT(0);
-  if (g4 & kb_2) k |= K_SLOT(1);
-  if (g5 & kb_3) k |= K_SLOT(2);
-  if (g3 & kb_4) k |= K_SLOT(3);
-  if (g4 & kb_5) k |= K_SLOT(4);
-  if (g5 & kb_6) k |= K_SLOT(5);
-  if (g3 & kb_7) k |= K_SLOT(6);
-  if (g4 & kb_8) k |= K_SLOT(7);
-  if (g5 & kb_9) k |= K_SLOT(8);
-  if (kb_On) k |= K_HOME;
-  return k;
+          g7 = kb_Data[7], b0 = 0, b1 = 0, b2 = 0, b3 = 0;
+  if (g7 & kb_Left) b0 |= 1;           /* K_LEFT */
+  if (g7 & kb_Right) b0 |= 2;          /* K_RIGHT */
+  if (g7 & kb_Up) b0 |= 4;             /* K_UP */
+  if (g7 & kb_Down) b0 |= 8;           /* K_DOWN */
+  if (g4 & kb_Cos) b0 |= 16;           /* K_FWD */
+  if (g4 & kb_LParen) b0 |= 32;        /* K_BACK */
+  if (g3 & kb_Comma) b0 |= 64;         /* K_SLEFT */
+  if (g5 & kb_RParen) b0 |= 128;       /* K_SRIGHT */
+  if (g1 & kb_Yequ) b1 |= 1;           /* K_JUMP */
+  if (g2 & kb_Alpha) b1 |= 2;          /* K_SNEAK */
+  if (g1 & kb_Del) b1 |= 4;            /* K_SPRINT */
+  if (g1 & kb_2nd) b1 |= 8;            /* K_ATTACK */
+  if (g6 & kb_Clear) b1 |= 16;         /* K_USE */
+  if (g5 & kb_Vars) b1 |= 32;          /* K_INV */
+  if (g5 & kb_Chs) b1 |= 64;           /* K_PAUSE */
+  if ((g1 & kb_Mode) || kb_On) b1 |= 128;   /* K_HOME */
+  if (g3 & kb_GraphVar) b2 |= 1;       /* K_DROP */
+  if (g2 & kb_Log) b2 |= 2;            /* K_PICK */
+  if (g6 & kb_Enter) b2 |= 4;          /* K_ENTER */
+  if (g3 & kb_1) b2 |= 8;              /* K_SLOT(0) .. */
+  if (g4 & kb_2) b2 |= 16;
+  if (g5 & kb_3) b2 |= 32;
+  if (g3 & kb_4) b2 |= 64;
+  if (g4 & kb_5) b2 |= 128;
+  if (g5 & kb_6) b3 |= 1;
+  if (g3 & kb_7) b3 |= 2;
+  if (g4 & kb_8) b3 |= 4;
+  if (g5 & kb_9) b3 |= 8;              /* .. K_SLOT(8) */
+  u.b[0] = b0, u.b[1] = b1, u.b[2] = b2, u.b[3] = b3;
+  return u.k;
 }
+_Static_assert(K_SLOT1 == 1 << 19 && K_ENTER == 1 << 18 && K_HOME == 1 << 15 && K_SRIGHT == 1 << 7, "the key bits");
 
 uint32_t plat_ms(void) { return (uint32_t)clock() * 125 >> 12; }   /* (32768 a second) */
 /* (a frame is done: tools/ce_emu counts frames here) */

@@ -22,6 +22,7 @@ static bool full;         /* all of it to draw (just opened) */
 
 /* ---------------------------------------------------------------- drawing off screen, then onto it */
 static void offscreen(int x, int y, int w, int h, void (*fn)(void)) {
+  render_stale = 1;
   if (x < 0) w += x, x = 0;
   if (y < 0) h += y, y = 0;
   if (x + w > SCREEN_W) w = SCREEN_W - x;
@@ -56,7 +57,7 @@ static int last_slot = -1, last_id = -1;
 int xp_level, xp_points;   /* experience: the level, the points into it */
 int xp_need(int l) { return l >= 30 ? 9 * l - 158 : l >= 15 ? 5 * l - 38 : 2 * l + 7; }
 
-void hud_draw(void) {
+bool hud_draw(void) {
   static uint32_t sig;
   /* redrawn when something on it changed */
   uint32_t s = (uint32_t)pl.slot * 7 + (uint32_t)pl.health * 131 + (uint32_t)(pl.air / 30) * 1031 + (uint32_t)xp_points * 7919 +
@@ -66,7 +67,7 @@ void hud_draw(void) {
     tip_ticks = held()->id ? 40 : 0;
     last_id = held()->id, last_slot = pl.slot;
   }
-  if (s == sig && !hud_dirty) return;
+  if (s == sig && !hud_dirty) return false;
   sig = s, hud_dirty = false;
   cv = (Canvas){hud_layer, HUD_W, HUD_X, HUD_Y, HUD_W, HUD_H};
   memset(hud_layer, 0, HUD_W * HUD_H);
@@ -107,6 +108,7 @@ void hud_draw(void) {
   const char *t = msg_ticks > 0 ? msg : tip_ticks > 0 ? (held()->id >= IT0 ? it_label[held()->id - IT0] : blk_label[held()->id]) : 0;
   if (t) text_center(SCREEN_W / 2, SCREEN_H - (pl.mode ? 38 : 59 - 9), t, C_WHITE);
   canvas_screen();
+  return true;
 }
 
 /* ---------------------------------------------------------------- tiles: chests and furnaces */
@@ -605,6 +607,7 @@ static void draw_menu(void) {
 /* ---------------------------------------------------------------- opening, input, drawing */
 void gui_open(int screen) {
   int prev = gui;
+  render_stale = 1;
   gui = screen;
   sel = 0;
   shown = false, full = true;
@@ -625,6 +628,7 @@ void gui_open(int screen) {
 }
 
 void gui_close(void) {
+  render_stale = 1;
   if (gui >= GUI_INVENTORY && gui <= GUI_CREATIVE) close_container();
   else gui = GUI_NONE;
   hud_dirty = true;

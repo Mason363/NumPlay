@@ -28,6 +28,7 @@ static int look_held;
 #define TITLE_SEED 20151008u   /* the title's world */
 
 static void loading(const char *what) {
+  render_stale = 1;
   canvas_screen();
   dirt_background(0, SCREEN_H);
   text_center(SCREEN_W / 2, SCREEN_H / 2 - 4, what, C_WHITE);
@@ -184,10 +185,9 @@ static void play(uint32_t keys, uint32_t pressed) {
       gui_open(GUI_PAUSE);
       return;
     }
-    render_frame();
+    bool drawn = render_frame();
     plat_poll();
-    hud_draw();
-    compose(true, true);
+    if (hud_draw() || drawn) compose(true, true);
   }
 }
 

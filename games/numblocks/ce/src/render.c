@@ -25,6 +25,7 @@ uint32_t stat_faces, stat_spans, stat_px, stat_cells;
 extern unsigned long st_cols, st_list, st_frus, st_cov, st_culled;
 #endif
 int view_dist = 10;
+uint8_t render_stale = 1;   /* rbuf no longer the last picture (its memory used for something else, the world changed) */
 uint32_t world_time;
 int crack_stage = -1;
 const uint8_t *rs_recip, *rs_ratio;
@@ -119,6 +120,7 @@ static uint16_t celestial(void) {
 }
 
 void render_sky_palette(void) {
+  render_stale = 1;
   uint16_t ang = celestial();
   /* World.getSunBrightness and getCelestialLight-ish: the sky's brightness 0.2 at night to 1 by day */
   int c = fcos(ang);   /* 1 at noon, -1 at midnight */
@@ -756,14 +758,21 @@ static void hand(void) {
   }
 }
 
-void render_frame(void) {
+bool render_frame(void) {
   fx ey = pl.y + (pl.sneaking ? FX1 * 154 / 100 : FX1 * 162 / 100);
   if (pl.hit_face >= 0) crack_x = pl.hit_x, crack_y = pl.hit_y, crack_z = pl.hit_z;
   crack_stage = pl.break_need > 0 && pl.break_ticks > 0 ? pl.break_ticks * 10 / pl.break_need : -1;
   if (crack_stage > 9) crack_stage = 9;
+  /* the same view as the last picture, nothing changed since: that picture again */
+  static struct { fx x, y, z; int hx, hy, hz; uint16_t yaw; int16_t pitch; int8_t hf, crack; uint8_t swing, held; } v, last;
+  v.x = pl.x, v.y = ey, v.z = pl.z, v.hx = pl.hit_x, v.hy = pl.hit_y, v.hz = pl.hit_z, v.yaw = pl.yaw, v.pitch = pl.pitch;
+  v.hf = (int8_t)pl.hit_face, v.crack = (int8_t)crack_stage, v.swing = (uint8_t)pl.swing, v.held = pl.inv[pl.slot].id;
+  if (!render_stale && !memcmp(&v, &last, sizeof v)) return false;
+  last = v, render_stale = 0;
   frame_from(pl.x, ey, pl.z, pl.yaw, pl.pitch);
   outline();
   hand();
+  return true;
 }
 
 /* shade row level, the sky's colours (1..15) darkened too: a 256-byte aligned row (the screens' veil) */
@@ -781,12 +790,14 @@ const uint8_t *render_veil_row(uint8_t level) {
 
 /* a picture kept (render_title's, rbuf then the sky's rows) shown again; the sky's rows */
 void render_picture(const uint8_t *p) {
+  render_stale = 1;
   memcpy(rbuf, p, RW * RH);
   memcpy(sky_row, p + RW * RH, RH);
 }
 const uint8_t *render_sky(void) { return sky_row; }
 
 void render_title(uint16_t yaw) {
+  render_stale = 1;
   crack_stage = -1;
   frame_from(pl.x, pl.y + FX1 * 162 / 100, pl.z, yaw, 1200);
 }

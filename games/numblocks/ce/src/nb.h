@@ -107,7 +107,8 @@ int item_max(int id);
 #define RH 120
 extern uint8_t *rbuf;          /* the picture, RW x RH */
 void render_init(void);
-void render_frame(void);       /* from the player's eyes */
+bool render_frame(void);       /* from the player's eyes (false: the same picture as the last) */
+extern uint8_t render_stale;   /* set when rbuf or what it shows changed otherwise */
 void render_title(uint16_t yaw);   /* the title's backdrop: the world turning */
 void render_picture(const uint8_t *p);   /* rbuf and the sky's rows as render_title left them, again */
 const uint8_t *render_sky(void);         /* the sky's rows (RH) */
@@ -126,7 +127,7 @@ extern int gui;
 void gui_open(int screen);
 void gui_input(uint32_t keys, uint32_t pressed);
 void gui_draw(void);          /* the open screen, over the picture */
-void hud_draw(void);          /* the hotbar and the rest, over the picture */
+bool hud_draw(void);          /* the hotbar and the rest, over the picture (false: as it was) */
 void gui_tick(void);          /* furnaces */
 void text(int x, int y, const char *s, uint8_t c);   /* Minecraft's font, with its shadow */
 int text_width(const char *s);
