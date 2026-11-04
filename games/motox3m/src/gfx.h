@@ -7,7 +7,11 @@
 #include "plat.h"
 #include "res.h"
 
+#if NP_SOFT_FLOAT
+#define BAND 48   /* (the scene's float work is done once a band: fewer of them where float is slow) */
+#else
 #define BAND 12
+#endif
 
 static inline uint16_t rgb565(uint32_t rgb) {
   return (uint16_t)(((rgb >> 8) & 0xF800) | ((rgb >> 5) & 0x07E0) | ((rgb >> 3) & 0x001F));
