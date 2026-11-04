@@ -103,7 +103,7 @@ static int bot(int p) {
 }
 #endif
 
-const game_t g_birds = {"Birds", "Birds",
+const game_t g_birds = {"Birds", "Birds", "Tap  flap",
                         "Every tap of your key is a flap. Fly through the gaps: touch a column or the ground and "
                         "you're out. The last bird flying takes the round.",
                         1, start, step, draw, icon BOT(bot)};

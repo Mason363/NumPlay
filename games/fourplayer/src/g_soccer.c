@@ -193,7 +193,7 @@ static int bot(int p) {
 }
 #endif
 
-const game_t g_soccer = {"Soccer", "Soccer",
+const game_t g_soccer = {"Soccer", "Soccer", "Tap  dash",
                          "Your arrow spins. Tap your key to dash where it points and hit the ball. Two sides: the first "
                          "goal takes the round. With three or four, let one in and you're out.",
                          1, start, step, draw, icon BOT(bot)};

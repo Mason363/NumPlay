@@ -174,7 +174,7 @@ static int bot(int p) {
 }
 #endif
 
-const game_t g_snakes = {"Snakes", "Snakes",
+const game_t g_snakes = {"Snakes", "Snakes", "Tap  turn right",
                          "Your snake never stops. Tap your key to turn right. Stars make you longer. Hit a wall or a "
                          "snake, yours too, and you're out: the last snake left takes the round.",
                          1, start, step, draw, icon BOT(bot)};

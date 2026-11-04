@@ -118,7 +118,7 @@ static int bot(int p) {
 }
 #endif
 
-const game_t g_paint = {"Paint", "Paint",
+const game_t g_paint = {"Paint", "Paint", "Tap  curve the other way",
                         "Your roller never stops and always curves. Tap your key to curve the other way. After 30 "
                         "seconds, the most floor in your colour takes the round.",
                         0, start, step, draw, icon BOT(bot)};

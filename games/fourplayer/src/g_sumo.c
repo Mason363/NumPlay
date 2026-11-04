@@ -120,7 +120,7 @@ static int bot(int p) {
 }
 #endif
 
-const game_t g_sumo = {"Sumo", "Sumo",
+const game_t g_sumo = {"Sumo", "Sumo", "Tap  dash",
                        "Your arrow spins. Tap your key to dash where it points: the spin turns the other way. Push the "
                        "others into the sea. The last one on the ice takes the round.",
                        1, start, step, draw, icon BOT(bot)};

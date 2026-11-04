@@ -156,7 +156,7 @@ static int bot(int p) {
 }
 #endif
 
-const game_t g_fish = {"Grab the Fish", "Fish",
+const game_t g_fish = {"Grab the Fish", "Fish", "Tap  swipe",
                        "Things jump out of the pond. Tap your key to swipe: the first paw on a goldfish keeps it. Swipe "
                        "at anything else and you're dizzy. Three goldfish take the round.",
                        0, start, step, draw, icon BOT(bot)};

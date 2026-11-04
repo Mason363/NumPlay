@@ -86,7 +86,7 @@ static int bot(int p) {
 }
 #endif
 
-const game_t g_skate = {"Skate Race", "Skate",
+const game_t g_skate = {"Skate Race", "Skate", "Tap  kick",
                         "Every tap of your key is a kick. Tap as fast as you can: the first over the line takes the "
                         "round.",
                         0, start, step, draw, icon BOT(bot)};

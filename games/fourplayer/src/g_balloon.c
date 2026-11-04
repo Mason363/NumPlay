@@ -109,7 +109,7 @@ static int bot(int p) {
 }
 #endif
 
-const game_t g_balloon = {"Balloons", "Balloons",
+const game_t g_balloon = {"Balloons", "Balloons", "Tap  pump",
                           "Tap your key to pump. Each balloon bursts at its own size, and nobody knows which. After 10 "
                           "seconds the biggest balloon still whole takes the round.",
                           0, start, step, draw, icon BOT(bot)};

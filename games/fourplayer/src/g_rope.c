@@ -107,7 +107,7 @@ static int bot(int p) {
 }
 #endif
 
-const game_t g_rope = {"Jump Rope", "Rope",
+const game_t g_rope = {"Jump Rope", "Rope", "Tap  jump",
                        "A bar sweeps round the platform. Tap your key to jump over it. Caught on the ground, you're "
                        "thrown off. The last one standing takes the round.",
                        1, start, step, draw, icon BOT(bot)};

@@ -102,7 +102,7 @@ static int bot(int p) {
 }
 #endif
 
-const game_t g_clock = {"Stop the Clock", "Clock",
+const game_t g_clock = {"Stop the Clock", "Clock", "Tap  stop",
                         "The stopwatch hides after two seconds. Tap your key when you think it shows the time asked. "
                         "The closest takes the round.",
                         0, start, step, draw, icon BOT(bot)};

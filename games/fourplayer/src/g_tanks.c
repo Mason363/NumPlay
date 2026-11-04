@@ -13,9 +13,9 @@ typedef struct {
   int16_t x, y, w, h;
 } rect_t;
 static const rect_t LAYOUT[3][7] = {
-  {{152, 86, 16, 90}, {115, 123, 90, 16}, {70, 72, 26, 14}, {224, 72, 26, 14}, {70, 190, 26, 14}, {224, 190, 26, 14}},
-  {{100, 62, 14, 48}, {206, 62, 14, 48}, {100, 154, 14, 48}, {206, 154, 14, 48}, {145, 116, 30, 30}},
-  {{80, 70, 18, 18}, {151, 70, 18, 18}, {222, 70, 18, 18}, {80, 174, 18, 18}, {151, 174, 18, 18}, {222, 174, 18, 18},
+  {{152, 86, 16, 90}, {115, 123, 90, 16}, {84, 76, 26, 14}, {210, 76, 26, 14}, {84, 172, 26, 14}, {210, 172, 26, 14}},
+  {{112, 66, 14, 44}, {194, 66, 14, 44}, {112, 152, 14, 44}, {194, 152, 14, 44}, {145, 116, 30, 30}},
+  {{92, 74, 18, 18}, {151, 70, 18, 18}, {210, 74, 18, 18}, {92, 170, 18, 18}, {151, 174, 18, 18}, {210, 170, 18, 18},
    {120, 122, 80, 18}},
 };
 static const rect_t *map;
@@ -31,6 +31,7 @@ static struct {
   int32_t born;
 } sh[NSH];
 
+static void push_out(body_t *b);
 static void start(void) {
   int k = rn(3);
   map = LAYOUT[k], nmap = 0;
@@ -39,6 +40,7 @@ static void start(void) {
     float s = seat(p);
     t[p].b = (body_t){160 + fcos(s) * 122, 131 + fsin(s) * 82, 0, 0};
     if (np == 3 && p == 2) t[p].b.y = 214;
+    push_out(&t[p].b);
     t[p].a = fatan2(131 - t[p].b.y, 160 - t[p].b.x), t[p].shot_t = -10000, t[p].dead_t = -1;
   }
   for (int i = 0; i < NSH; i++) sh[i].own = -1;
@@ -194,7 +196,7 @@ static int bot(int p) {
 }
 #endif
 
-const game_t g_tanks = {"Tanks", "Tanks",
+const game_t g_tanks = {"Tanks", "Tanks", "Hold  drive    Let go  fire",
                         "Your tank turns on the spot. Hold your key to drive, let go to fire. Shells bounce off the "
                         "walls. One hit and you're out: the last tank left takes the round.",
                         1, start, step, draw, icon BOT(bot)};

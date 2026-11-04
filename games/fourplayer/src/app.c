@@ -365,6 +365,9 @@ static void countdown(int32_t left) { /* 3, 2, 1 */
   int k = (int)(left % 667);
   disc_a(160, 128, 34, INK, 200);
   say(&np_font_title, 160, 136, s, k > 560 ? GOLD : WHITE);
+  int w = gfx_text_width(&np_font_body, G()->hint) + 24;
+  gfx_rrect(160 - w / 2, 170, w, 22, 11, INK, 210);
+  gfx_text_center(&np_font_body, 160, 185, G()->hint, WHITE, 256);
 }
 
 static void pips(int x, int y, int s, bool pop) { /* a side's rounds: won ones filled */

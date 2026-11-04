@@ -81,7 +81,7 @@ char *num(char *o, uint32_t v);
 
 /* ---- the minigames */
 typedef struct {
-  const char *name, *shortname, *rules;
+  const char *name, *shortname, *hint, *rules; /* hint: its key, under the countdown */
   uint8_t last;                  /* the last side standing takes the round */
   void (*start)(void);
   void (*step)(void);

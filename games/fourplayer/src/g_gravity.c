@@ -127,7 +127,7 @@ static int bot(int p) {
 }
 #endif
 
-const game_t g_gravity = {"Gravity Run", "Gravity",
+const game_t g_gravity = {"Gravity Run", "Gravity", "Tap  flip",
                           "You run on your own. Tap your key to flip your gravity, from the floor to the ceiling and "
                           "back. Fall through a hole and you're out: the last runner left takes the round.",
                           1, start, step, draw, icon BOT(bot)};

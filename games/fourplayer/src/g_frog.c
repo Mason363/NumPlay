@@ -131,7 +131,7 @@ static int bot(int p) {
 }
 #endif
 
-const game_t g_frog = {"Frog Jump", "Frogs",
+const game_t g_frog = {"Frog Jump", "Frogs", "Hold  gather    Let go  jump",
                        "Hold your key to gather a jump: the ring shows where you'll land. Let go to jump. Miss the "
                        "lily pads and you swim back. The first frog across takes the round.",
                        0, start, step, draw, icon BOT(bot)};

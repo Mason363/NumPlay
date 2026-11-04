@@ -40,8 +40,8 @@ static void start(void) {
   for (int i = 0, k = 0; i < 3; i++)
     if (i != skip) oil[k][0] = SPOT[i][0] + rr(-30, 30) * (i == 0), oil[k][1] = SPOT[i][1] + rr(-22, 22) * (i > 0), k++;
   for (int p = 0; p < np; p++) {
-    int row = p / 3, lane = p % 3, lanes = np < 3 ? np : 3;
-    c[p].x = 148 - row * 22 - lane * 3, c[p].y = 212 + (lane - (lanes - 1) / 2.0f) * 16;
+    int lanes = np <= 3 ? np : (np + 1) / 2, row = p / lanes, lane = p % lanes; /* (two rows from 4 cars) */
+    c[p].x = 148 - row * 22 - lane * 3, c[p].y = 212 + (lane - (lanes - 1) / 2.0f) * 17;
     c[p].h = c[p].va = 0, c[p].s = 0, c[p].oil_t = -10000, c[p].bump_t = -10000;
     c[p].last_a = fatan2(c[p].y - MY, c[p].x - MX), c[p].prog = PI / 2 - c[p].last_a;
   }
@@ -144,7 +144,7 @@ static void draw(void) {
     float h = c[p].h;
     if (rt - c[p].oil_t < 550) h += (rt - c[p].oil_t) * 0.012f; /* a spin on the oil */
     car(p, c[p].x, c[p].y, h);
-    tag_by(p, c[p].x - 6, c[p].y, -1);
+    tag_by(p, c[p].x + (c[p].x > 140 ? 6 : -6), c[p].y, c[p].x > 140 ? 1 : -1); /* (the front row's ahead of it) */
   }
 }
 
@@ -164,7 +164,7 @@ static int bot(int p) {
 }
 #endif
 
-const game_t g_race = {"Racing", "Racing",
+const game_t g_race = {"Racing", "Racing", "Hold  turn left",
                        "Your car drives itself. Hold your key to turn left: every bend turns left. Grass slows you, oil "
                        "spins you. Three laps: the first one home takes the round.",
                        0, start, step, draw, icon BOT(bot)};

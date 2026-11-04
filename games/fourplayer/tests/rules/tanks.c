@@ -61,6 +61,21 @@ void rules_tanks(void) {
   run(0, 100);
   CHECK(gone[0] && WINNER == 1, "tanks: your own shell can hit you");
 
+  bool clear = true; /* every layout, every mode: nobody starts against a wall */
+  for (int m = 0; m < 5; m++)
+    for (int k = 0; k < 30; k++) {
+      app_test_round(m, G_TANKS);
+      for (int p = 0; p < np; p++) {
+        body_t b = t[p].b;
+        push_out(&b);
+        clear &= b.x == t[p].b.x && b.y == t[p].b.y;
+        for (int i = 0; i < nmap; i++)
+          clear &= !(t[p].b.x > map[i].x - TR - 2 && t[p].b.x < map[i].x + map[i].w + TR + 2 &&
+                     t[p].b.y > map[i].y - TR - 2 && t[p].b.y < map[i].y + map[i].h + TR + 2);
+      }
+    }
+  CHECK(clear, "tanks: no tank starts against a wall");
+
   app_test_round(M2, G_TANKS); /* the walls */
   t[0].b = (body_t){map[0].x + map[0].w / 2.0f, map[0].y + map[0].h / 2.0f, 0, 0};
   app_test_step(0);
