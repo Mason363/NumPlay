@@ -71,6 +71,7 @@ ALONE = {
     "mrbullet": ("Mr Bullet", "Lion Studios' spy puzzles: 596 levels of Classic, Grenades, Hostages and Friendly Fire, read from the game's own files"),
     "motox3m": ("Moto X3M", "Madpuffers' stunt bike racing: all 50 levels, the flips, the stars and the six bikes, on the game's own physics"),
     "amongus": ("Among Us", "Innersloth's game on the Skeld against up to 9 bots: every task, sabotages, vents, kills, meetings and votes"),
+    "imposter": ("Imposter", "the party game: pass the calculator, everyone sees the secret word but the imposter, 30 categories"),
     "numpico": ("NumPico", "PICO-8 carts on the calculator: add your own .p8 and .p8.png carts in NumPlay Studio"),
 }
 VARIANTS = [

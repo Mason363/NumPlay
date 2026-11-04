@@ -24,7 +24,7 @@ HOST = ["numblocks", "numdrive", "championisland", "undertale", "doom", "isaac",
         "hillclimb", "leveldevil", "cookieclicker", "jetpackjoyride", "donkeykong", "dune", "monkeymart",
         "tombofthemask", "invaders", "sudoku", "uttt", "sokoban", "twoplayer", "flappydunk", "towerblock", "suika",
         "doodlejump", "stickmanhook", "coreball", "uno", "fnf", "angrybirds", "polytrack", "paperclips", "badtime",
-        "mahjong", "rider", "snowrider", "templerun", "fnaf2", "famidash", "catninja", "motox3m", "amongus"]
+        "mahjong", "rider", "snowrider", "templerun", "fnaf2", "famidash", "catninja", "motox3m", "amongus", "imposter"]
 HOST_ARGS = {"fnf": " BUILD_DIR=../../build/data/games/fnf"}
 # seconds on CI (v1.24.3's run); the emulator's 71 apps took 2450 in all, the Python tests about 380
 WEIGHT = {"numblocks": 89, "numdrive": 20, "championisland": 69, "undertale": 445, "doom": 54, "isaac": 380,
@@ -33,7 +33,7 @@ WEIGHT = {"numblocks": 89, "numdrive": 20, "championisland": 69, "undertale": 44
           "invaders": 7, "sudoku": 3, "uttt": 2, "sokoban": 2, "twoplayer": 114, "flappydunk": 2, "towerblock": 2,
           "suika": 112, "doodlejump": 5, "stickmanhook": 103, "coreball": 26, "uno": 36, "fnf": 80, "angrybirds": 627,
           "polytrack": 116, "paperclips": 164, "badtime": 59, "mahjong": 25, "rider": 137, "snowrider": 30,
-          "templerun": 384, "fnaf2": 654, "famidash": 7, "catninja": 60, "motox3m": 10, "amongus": 110}
+          "templerun": 384, "fnaf2": 654, "famidash": 7, "catninja": 60, "motox3m": 10, "amongus": 110, "imposter": 20}
 EMULATOR = 2450
 PYTHON = 380
 

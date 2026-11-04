@@ -21,6 +21,12 @@
     "repo": "https://github.com/Mason363/NumDash",
     "reset": [
       "numdash.nds"
+    ],
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
     ]
   },
   {
@@ -94,7 +100,13 @@
       "docs/shot.png"
     ],
     "app": "NumBlocks.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/numblocks"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/numblocks",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "numdrive",
@@ -111,7 +123,10 @@
     "shots": [
       "docs/shot1.png"
     ],
-    "repo": "https://github.com/Mason363/NumDrive"
+    "repo": "https://github.com/Mason363/NumDrive",
+    "ports": [
+      "web"
+    ]
   },
   {
     "id": "balatro",
@@ -128,7 +143,13 @@
     "shots": [
       "docs/shot.png"
     ],
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/balatro"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/balatro",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "buckshot",
@@ -145,7 +166,13 @@
     "shots": [
       "docs/shot.png"
     ],
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/buckshot"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/buckshot",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "blockblast",
@@ -164,7 +191,14 @@
       "docs/shot.png"
     ],
     "app": "BlockBlast.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/blockblast"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/blockblast",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "suika",
@@ -200,7 +234,13 @@
     "shots": [
       "docs/shot.png"
     ],
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/portal"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/portal",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "tetris",
@@ -236,7 +276,14 @@
       "docs/shot.png"
     ],
     "app": "ChromeDino.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/dinorun"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/dinorun",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "doodlejump",
@@ -255,7 +302,14 @@
       "docs/shot.png"
     ],
     "app": "DoodleJump.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/doodlejump"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/doodlejump",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "chess",
@@ -272,7 +326,13 @@
     "shots": [
       "docs/italian.png"
     ],
-    "repo": "https://github.com/Mason363/NumChess"
+    "repo": "https://github.com/Mason363/NumChess",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "flappybird",
@@ -290,7 +350,13 @@
       "docs/shot.png"
     ],
     "app": "FlappyBird.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/flappybird"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/flappybird",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "flappydunk",
@@ -309,7 +375,14 @@
       "docs/shot.png"
     ],
     "app": "FlappyDunk.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/flappydunk"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/flappydunk",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "towerblock",
@@ -328,7 +401,14 @@
       "docs/shot.png"
     ],
     "app": "TowerBlocks.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/towerblock"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/towerblock",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "coreball",
@@ -347,7 +427,14 @@
       "docs/shot.png"
     ],
     "app": "CoreBall.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/coreball"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/coreball",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "pacman",
@@ -365,7 +452,14 @@
       "docs/shot.png"
     ],
     "app": "PacMan.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/pacman"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/pacman",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "snake",
@@ -383,7 +477,14 @@
       "docs/shot.png"
     ],
     "app": "Snake.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/snake"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/snake",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "connectfour",
@@ -401,7 +502,14 @@
       "docs/shot.png"
     ],
     "app": "ConnectFour.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/connectfour"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/connectfour",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "solitaire",
@@ -419,7 +527,14 @@
       "docs/shot.png"
     ],
     "app": "Solitaire.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/solitaire"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/solitaire",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "g2048",
@@ -437,7 +552,14 @@
       "docs/shot.png"
     ],
     "app": "2048.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/g2048"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/g2048",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "minesweeper",
@@ -455,7 +577,14 @@
       "docs/shot.png"
     ],
     "app": "Minesweeper.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/minesweeper"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/minesweeper",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "breakout",
@@ -473,7 +602,14 @@
       "docs/shot.png"
     ],
     "app": "BlockBreaker.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/breakout"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/breakout",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "twoplayer",
@@ -492,7 +628,13 @@
     ],
     "colors": 16,
     "app": "TwoPlayers.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/twoplayer"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/twoplayer",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "invaders",
@@ -511,7 +653,13 @@
       "docs/card.png"
     ],
     "app": "SpaceInvaders.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/invaders"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/invaders",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "sudoku",
@@ -530,7 +678,13 @@
       "docs/card.png"
     ],
     "app": "Sudoku.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/sudoku"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/sudoku",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "uttt",
@@ -549,7 +703,13 @@
       "docs/card.png"
     ],
     "app": "UltimateTicTacToe.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/uttt"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/uttt",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "sokoban",
@@ -568,7 +728,13 @@
       "docs/shot.png"
     ],
     "app": "Sokoban.nwa",
-    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/sokoban"
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/sokoban",
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "meowdoku",
@@ -588,7 +754,14 @@
     ],
     "app": "Meowdoku.nwa",
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/meowdoku",
-    "default": false
+    "default": false,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "retrogo",
@@ -642,7 +815,12 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/celeste",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire"
+    ]
   },
   {
     "id": "hollowknight",
@@ -667,7 +845,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/hollowknight",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "undertale",
@@ -695,7 +879,12 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/undertale",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "deltarune",
@@ -723,7 +912,12 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/deltarune",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "championisland",
@@ -745,7 +939,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/championisland",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "finalearth2",
@@ -767,7 +967,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/finalearth2",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "numpowder",
@@ -799,7 +1005,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/numpowder",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "subway",
@@ -821,7 +1033,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/subway",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "fnaf",
@@ -843,7 +1061,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/fnaf",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "doom",
@@ -904,7 +1128,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/isaac",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "hillclimb",
@@ -948,7 +1178,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/pvz",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "sonic",
@@ -969,7 +1205,11 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/sonic",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "cookieclicker",
@@ -990,7 +1230,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/cookieclicker",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "leveldevil",
@@ -1011,7 +1257,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/leveldevil",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "jetpackjoyride",
@@ -1032,7 +1284,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/jetpackjoyride",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "stickmanhook",
@@ -1053,7 +1311,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/stickmanhook",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "donkeykong",
@@ -1074,7 +1338,14 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/donkeykong",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "dune",
@@ -1095,7 +1366,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/dune",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "monkeymart",
@@ -1116,7 +1393,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/monkeymart",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "tombofthemask",
@@ -1137,7 +1420,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/tombofthemask",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "uno",
@@ -1158,7 +1447,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/uno",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "fnf",
@@ -1179,9 +1474,14 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/fnf",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
-
   {
     "id": "angrybirds",
     "rank": 5,
@@ -1221,7 +1521,14 @@
       "docs/shot.png"
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/numvisuals",
-    "default": false
+    "default": false,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   },
   {
     "id": "polytrack",
@@ -1285,7 +1592,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/badtime",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "mahjong",
@@ -1306,7 +1619,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/mahjong",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "rider",
@@ -1348,7 +1667,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/snowrider",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "templerun",
@@ -1369,7 +1694,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/templerun",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "fnaf2",
@@ -1391,7 +1722,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/fnaf2",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "fnaf3",
@@ -1413,7 +1750,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/fnaf3",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "fnaf4",
@@ -1435,7 +1778,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/fnaf4",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "fnafworld",
@@ -1458,7 +1807,12 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/fnafworld",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire"
+    ]
   },
   {
     "id": "famidash",
@@ -1479,8 +1833,14 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/famidash",
     "default": false,
-    "xl": true
-    },
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
+  },
   {
     "id": "clashroyale",
     "rank": 37,
@@ -1501,7 +1861,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/clashroyale",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "catninja",
@@ -1522,7 +1888,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/catninja",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "kingdomrush",
@@ -1543,7 +1915,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/kingdomrush",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "mrbullet",
@@ -1591,7 +1969,10 @@
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/numpico",
     "default": false,
     "xl": true,
-    "carts": true
+    "carts": true,
+    "ports": [
+      "web"
+    ]
   },
   {
     "id": "motox3m",
@@ -1612,7 +1993,13 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/motox3m",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
   },
   {
     "id": "amongus",
@@ -1634,6 +2021,40 @@
     ],
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/amongus",
     "default": false,
-    "xl": true
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg"
+    ]
+  },
+  {
+    "id": "imposter",
+    "rank": 46,
+    "title": "Imposter",
+    "tagline": "One of you doesn't know the word",
+    "credit": null,
+    "top": "0x292C62",
+    "bottom": "0x080C20",
+    "accent": "0xFFC83A",
+    "colors": 16,
+    "records": [
+      "imposter.sav",
+      "imposter_saves.py"
+    ],
+    "shots": [
+      "docs/shot.png"
+    ],
+    "repo": "https://github.com/Mason363/NumPlay/tree/main/games/imposter",
+    "default": false,
+    "xl": true,
+    "ports": [
+      "sdl",
+      "web",
+      "nspire",
+      "casio-cg",
+      "ti84ce"
+    ]
   }
 ]

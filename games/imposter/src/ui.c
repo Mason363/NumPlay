@@ -12,10 +12,12 @@ extern int host_trace;
 
 /* the launcher's drawing sends its strips here */
 void np_push(int x, int y, int w, int h, const color_t *px) { plat_push(x, y, w, h, px); }
+#ifndef NP_PORT /* (the other targets bring their own: platform/common/np_alloc.c) */
 void *np_alloc(uint32_t size) { /* (gfx_init's: never called, the strip is ours) */
   (void)size;
   return 0;
 }
+#endif
 static color_t strip[SCREEN_W * STRIP_H];
 
 #define WHITE 0xFFFF

@@ -4,13 +4,15 @@ Every NumPlay game talks to its calculator through one interface: [EADK](include
 
 | Target | Folder | Builds | Status |
 | --- | --- | --- | --- |
-| NumWorks | (the calculator's own EADK) | `.nwa` | all games |
-| A computer, a Raspberry Pi | [sdl](sdl/) | a program | first games |
-| TI-84 Plus CE, TI-83 Premium CE | [ti84ce](ti84ce/) | `.8xp`, `.8xv` | first games build; to run in CEmu |
-| TI-Nspire CX, CX II | [nspire](nspire/) | `.tns` | first games build; to run in Firebird |
-| Casio fx-CG50, Graph 90+E | casio-cg | `.g3a` | next |
+| NumWorks | (the calculator's own EADK) | `.nwa` | every game |
+| A computer, a Raspberry Pi | [sdl](sdl/) | a program | every game |
+| A web browser | [sdl](sdl/) with Emscripten | a page | every game but Undertale and Deltarune |
+| TI-Nspire CX, CX II | [nspire](nspire/) | `.tns` | every game |
+| Casio fx-CG50, Graph 90+E | [casio-cg](casio-cg/) | `.g3a` | every game up to 2 MB |
+| TI-84 Plus CE, TI-83 Premium CE | [ti84ce](ti84ce/) | `.8xp` | the light games |
 | Casio Graph 35+E II | casio-fx | `.g1a` | later |
-| A web browser | [sdl](sdl/) with Emscripten | WebAssembly | first games |
+
+`games/games.json` lists each game's targets (`"ports"`). `python3 tools/ports.py build <target>` builds them all, `python3 tools/ports.py run` plays each computer build for a few seconds without a window and saves its screens.
 
 ## A game on another target
 
@@ -36,6 +38,7 @@ Implement the functions of `include/eadk.h` and `include/np_port.h` in `platform
 - **Time:** milliseconds since the start; sleep.
 - **Files:** one buffer of records, kept when `np_storage_changed()` is called.
 - **Heap:** `_heap_start` and `_heap_end` around the RAM a game may use beyond its own.
+- **Data:** a game's `.S` data files assemble as they are; for WebAssembly, `embed.py` turns them into C.
 
 ## Writing for every target
 
