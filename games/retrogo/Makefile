@@ -50,7 +50,7 @@ MOD_CORE_O = $(patsubst src/%.c,$(BUILD_DIR)/mod/%.o,$(MOD_CORE_SRC))
 MOD_APP_O = $(patsubst src/%.c,$(BUILD_DIR)/mod/%.o,$(APP_SRC))
 
 .PHONY: build check clean test module sim-module FORCE
-build: $(BUILD_DIR)/retrogo.nwa
+build: $(BUILD_DIR)/retrogo.nwa $(BUILD_DIR)/retrogo-app.o
 
 check: $(BUILD_DIR)/retrogo.nwa
 	$(Q) $(NWLINK) nwa-bin $< $(BUILD_DIR)/retrogo.bin
@@ -88,6 +88,12 @@ $(BUILD_DIR)/retrogo-full.nwa: $(CORE_O) $(APP_O) $(BUILD_DIR)/gfx.o $(BUILD_DIR
   $(BUILD_DIR)/icon.o $(BUILD_DIR)/roms.o src/roms.ld
 	@echo "LD      $@"
 	$(Q) $(CC) $(CFLAGS) $(LDFLAGS) -Wl,-T,src/roms.ld $(filter %.o,$^) -o $@
+# Retro-Go on its own without its games, for NumPlay Studio: it links this with its table of games
+# (ld -r -T src/roms.ld retrogo-app.o roms.o), the Mega Drive's way onto the calculator
+$(BUILD_DIR)/retrogo-app.o: $(CORE_O) $(APP_O) $(BUILD_DIR)/gfx.o $(BUILD_DIR)/font_data.o $(BUILD_DIR)/xfont.o $(BUILD_DIR)/icon.o
+	@echo "LD      $@"
+	$(Q) $(CC) $(CFLAGS) $(LDFLAGS) $(filter %.o,$^) -o $@.tmp
+	$(Q) arm-none-eabi-strip --strip-unneeded -K np_roms -K np_retrogo_end -o $@ $@.tmp && rm -f $@.tmp
 # (the same, stripped: what goes on the calculator; retrogo-full.nwa keeps its symbols, for tools/emu.py --profile)
 $(BUILD_DIR)/retrogo.nwa: $(BUILD_DIR)/retrogo-full.nwa
 	$(Q) arm-none-eabi-strip --strip-unneeded -o $@ $<
@@ -120,9 +126,9 @@ HOST_CC = cc
 HOST_CFLAGS = -std=gnu11 -Isrc/nes -I$(BUILD_DIR) -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-sanitize=alignment,shift \
   -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-implicit-fallthrough -Wno-missing-field-initializers
 TEST_ROMS ?= $(HOME)/Documents/Assets/gamesrc/retrogo/roms
-$(BUILD_DIR)/host/core: tests/host_core.c $(CORE_SRC) $(CORE_H)
+$(BUILD_DIR)/host/core: tests/host_core.c $(CORE_SRC) src/pack.c $(CORE_H)
 	@mkdir -p $(BUILD_DIR)/host
-	$(Q) $(HOST_CC) $(HOST_CFLAGS) tests/host_core.c $(CORE_SRC) -o $@
+	$(Q) $(HOST_CC) $(HOST_CFLAGS) tests/host_core.c $(CORE_SRC) src/pack.c -o $@
 $(BUILD_DIR)/host/romtable: tests/host_romtable.c src/romtable.c src/romtable.h
 	@mkdir -p $(BUILD_DIR)/host
 	$(Q) $(HOST_CC) $(HOST_CFLAGS) tests/host_romtable.c src/romtable.c -o $@
@@ -142,6 +148,7 @@ test: $(BUILD_DIR)/host/core $(BUILD_DIR)/host/romtable $(BUILD_DIR)/host/pack $
 # the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
 PORT_ID = retrogo
 PORT_NAME = Retro-Go
-PORT_SRC = src/gb/cpu.c src/gb/hw.c src/gb/mem.c src/gb/lcdc.c src/gb/rtc.c src/gb/lcd.c src/gb/gb.c src/nes/nes6502.c src/nes/nes_ppu.c src/nes/nes_mmc.c src/nes/mmclist.c src/nes/nes_apu.c src/nes/nes.c src/nes/mappers/map000.c src/nes/mappers/map001.c src/nes/mappers/map002.c src/nes/mappers/map003.c src/nes/mappers/map004.c src/nes/mappers/map005.c src/nes/mappers/map007.c src/nes/mappers/map008.c src/nes/mappers/map009.c src/nes/mappers/map011.c src/nes/mappers/map015.c src/nes/mappers/map016.c src/nes/mappers/map018.c src/nes/mappers/map019.c src/nes/mappers/map024.c src/nes/mappers/map032.c src/nes/mappers/map033.c src/nes/mappers/map034.c src/nes/mappers/map040.c src/nes/mappers/map064.c src/nes/mappers/map065.c src/nes/mappers/map066.c src/nes/mappers/map070.c src/nes/mappers/map075.c src/nes/mappers/map078.c src/nes/mappers/map079.c src/nes/mappers/map085.c src/nes/mappers/map094.c src/nes/mappers/map099.c src/nes/mappers/map231.c src/nes/mappers/mapvrc.c src/sms/z80.c src/sms/sms.c src/sms/coleco_bios.c src/main.c src/romtable.c src/pack.c src/roms_port.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
-PORT_FLAGS = -Isrc/nes
+PORT_SRC = src/gb/cpu.c src/gb/hw.c src/gb/mem.c src/gb/lcdc.c src/gb/rtc.c src/gb/lcd.c src/gb/gb.c src/nes/nes6502.c src/nes/nes_ppu.c src/nes/nes_mmc.c src/nes/mmclist.c src/nes/nes_apu.c src/nes/nes.c src/nes/mappers/map000.c src/nes/mappers/map001.c src/nes/mappers/map002.c src/nes/mappers/map003.c src/nes/mappers/map004.c src/nes/mappers/map005.c src/nes/mappers/map007.c src/nes/mappers/map008.c src/nes/mappers/map009.c src/nes/mappers/map011.c src/nes/mappers/map015.c src/nes/mappers/map016.c src/nes/mappers/map018.c src/nes/mappers/map019.c src/nes/mappers/map024.c src/nes/mappers/map032.c src/nes/mappers/map033.c src/nes/mappers/map034.c src/nes/mappers/map040.c src/nes/mappers/map064.c src/nes/mappers/map065.c src/nes/mappers/map066.c src/nes/mappers/map070.c src/nes/mappers/map075.c src/nes/mappers/map078.c src/nes/mappers/map079.c src/nes/mappers/map085.c src/nes/mappers/map094.c src/nes/mappers/map099.c src/nes/mappers/map231.c src/nes/mappers/mapvrc.c src/sms/z80.c src/sms/sms.c src/sms/coleco_bios.c $(GW_SRC) $(MD_SRC) src/main.c src/romtable.c src/pack.c src/roms_port.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+PORT_FLAGS = -Isrc/nes -I$(BUILD_DIR) -DNDEBUG
+PORT_DEPS = $(BUILD_DIR)/m68k_tab.h
 include ../../platform/port.mk
