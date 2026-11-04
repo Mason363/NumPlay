@@ -9,11 +9,11 @@
 #define N g.n
 
 /* the office's small pictures, decoded once */
-#define DOOR_LW 72
-#define DOOR_RW 64
+#define DOOR_LW 70
+#define DOOR_RW 60
 #define PATCH_MAX (LIGHT_R_W * LIGHT_R_H > LIGHT_L_W * LIGHT_L_H ? LIGHT_R_W * LIGHT_R_H : LIGHT_L_W * LIGHT_L_H)
 static uint8_t door_l[DOOR_LW * 120], door_r[DOOR_RW * 120];
-static uint8_t panel_l[4][32 * 40], panel_r[4][48 * 40], fans[3][48 * 24];
+static uint8_t panel_l[3][32 * 40], panel_r[3][48 * 40], fans[3][48 * 24];   /* (the buttons lit: 1 to 3) */
 static uint8_t patch[PATCH_MAX > DARK_FREDDY_W * DARK_FREDDY_H ? PATCH_MAX : DARK_FREDDY_W * DARK_FREDDY_H];
 static bool office_ready;
 static int patch_pic = -1;
@@ -33,9 +33,9 @@ static void office_pictures(void) {
   if (office_ready) return;
   pic_full(PIC_DOOR_L, door_l, DOOR_LW);
   pic_full(PIC_DOOR_R, door_r, DOOR_RW);
-  for (int k = 0; k < 4; k++) {
-    pic_full(PIC_PANEL_L0 + k, panel_l[k], 32);
-    pic_full(PIC_PANEL_R0 + k, panel_r[k], 48);
+  for (int k = 0; k < 3; k++) {
+    pic_full(PIC_PANEL_L1 + k, panel_l[k], 32);
+    pic_full(PIC_PANEL_R1 + k, panel_r[k], 48);
   }
   for (int k = 0; k < 3; k++) pic_full(PIC_FAN0 + k, fans[k], 48);
   office_ready = true;
@@ -63,20 +63,16 @@ static void prepare(void) {
   f.seed = rnd();
 }
 
-/* the static's four phases, from its strength (of 32): each a share of it, toward a grey of its own (the
- * NumWorks version's static: each pixel toward a random grey, 0 to 143) */
-const uint8_t *static_phases(int a) {
-  static uint8_t ph[8];
-  for (int k = 0; k < 4; k++) {
-    uint32_t r = rnd();
-    ph[k] = (uint8_t)(a * (int)(r % 5) / 4);
-    ph[4 + k] = (uint8_t)(r >> 8 & 15);
-  }
-  return ph;
-}
-
 static const uint8_t GREYS[8] = {UI_BLACK, UI_WHITE1, UI_GREY1, UI_SPARE, UI_DIM, UI_GREY2, UI_EDGE, UI_BOX};
 static const uint8_t DARK_GREYS[8] = {UI_BLACK, UI_BLACK, UI_BOX, UI_BLACK, UI_EDGE, UI_BLACK, UI_BOX, UI_GREY1};
+
+/* the static over a picture (the NumWorks version: each pixel a share of the way to a random grey): snow, and a
+ * lighter line now and then */
+void static_over(int a, int group) {
+  d_snow(a * 110, rnd(), GREYS);
+  uint32_t r = rnd();
+  if ((r & 3) == 0) d_remap(0, (int)(r >> 8) % SCR_H, SCR_W, 1 + (int)(r >> 4 & 1), map_remap(group, 1));
+}
 
 /* ------------------------------------------------------------------ text helpers */
 static void small_digits(int font, int x, int y, int v, Ink ink) {
@@ -228,8 +224,10 @@ static int office(void) {
     d_blit(patch, LIGHT_R_W, 0, 0, LIGHT_R_W, LIGHT_R_H, LIGHT_R_X - px, 2 * LIGHT_R_Y, true);
   }
   d_blit(fans[f.fan], 48, 0, 0, 48, 24, FAN_X - px, FAN_Y, true);
-  d_blit(panel_l[N.door[LEFT] | (N.light == 1 + LEFT) << 1], 32, 0, 0, 26, 40, PANEL_L_X - px, PANEL_Y, true);
-  d_blit(panel_r[N.door[RIGHT] | (N.light == 1 + RIGHT) << 1], 48, 0, 0, 48, 40, PANEL_R_X - px, PANEL_Y, true);
+  /* the buttons (all off: as the office has them) */
+  int bl = N.door[LEFT] | (N.light == 1 + LEFT) << 1, br = N.door[RIGHT] | (N.light == 1 + RIGHT) << 1;
+  if (bl) d_blit(panel_l[bl - 1], 32, 0, 0, 26, 40, PANEL_L_X - px, PANEL_Y, true);
+  if (br) d_blit(panel_r[br - 1], 48, 0, 0, 48, 40, PANEL_R_X - px, PANEL_Y, true);
   for (int s = 0; s < 2; s++) {
     int vis = (int)(N.door_anim[s] * 120 + 0.5f);
     if (vis > 0)
@@ -259,7 +257,7 @@ static int cam_picture(void) {
     return b && c ? PIC_CAM1A_BCF : b ? PIC_CAM1A_BF : c ? PIC_CAM1A_CF : PIC_CAM1A_F;
   case CAM_1B: return PIC_CAM1B_EMPTY + (b && c && fr ? 7 : b && c ? 4 : b && fr ? 5 : c && fr ? 6 : b ? 1 : c ? 2 : fr ? 3 : 0);
   case CAM_1C: return PIC_CAM1C_0 + (N.foxy < 3 ? N.foxy : 3);
-  case CAM_2A: return !f.hall_lit ? PIC_CAM2A_DARK : b ? PIC_CAM2A_B : PIC_CAM2A_EMPTY;
+  case CAM_2A: return b ? PIC_CAM2A_B : PIC_CAM2A_EMPTY;   /* (its light flickering: the palette) */
   case CAM_2B: return (N.gold == 1 || N.gold == 2) && !b ? PIC_CAM2B_GOLD : b ? PIC_CAM2B_B : PIC_CAM2B_EMPTY;
   case CAM_3: return b ? PIC_CAM3_B : PIC_CAM3_EMPTY;
   case CAM_4A: return c && fr ? PIC_CAM4A_CF : c ? PIC_CAM4A_C : fr ? PIC_CAM4A_F : PIC_CAM4A_EMPTY;
@@ -309,8 +307,9 @@ static int cameras(bool paused) {
     grp = pic_group_of(pic);
   }
   if (grp < 0) grp = pic_group_of(PIC_CAM1A_EMPTY);   /* (no picture shows: its colours unused) */
-  pal_set(grp, paused ? 9 : 32, paused ? NULL : static_phases(noise),
-          g.blip > 0 && !paused ? (int)(g.blip * 120) : 0);
+  else if (!paused) static_over(noise, grp);
+  int dim = N.cam == CAM_2A && !f.hall_lit && N.foxy_run < 0 ? 11 : 32;   /* 2A's lamp, off most of the time */
+  pal_set(grp, paused ? 9 * dim / 32 : dim, g.blip > 0 && !paused ? (int)(g.blip * 120) : 0);
   d_frame(5, 5, 310, 230, UI_FRAME);
   if ((int)(g.t * 1.5f) & 1) {   /* the recording dot */
     static const uint8_t dot[7] = {2, 1, 0, 0, 0, 1, 2};
@@ -349,11 +348,11 @@ static void night_draw(bool paused) {
       d_blit2(extra, 160, 0, UI_BLACK);
       grp = pic_group_of(PIC_FLIP0 + k);
     }
-    pal_set(grp, paused ? 9 : 32, NULL, 0);
+    pal_set(grp, paused ? 9 : 32, 0);
   }
   if (paused) return;
   int shown = hallucination(grp);
-  if (shown != grp) pal_set(shown, 32, NULL, 0);
+  if (shown != grp) pal_set(shown, 32, 0);
   if (!N.dark) {
     clock_and_night();
     power_hud();
@@ -382,5 +381,5 @@ void view_scare(void) {
   int dx = g.scare_t > 0.1f ? f.shake : 0;
   scene_want(first[w] + k);
   d_blit2(scene, SCENE_W, dx, UI_BLACK);
-  pal_set(pic_group_of(first[w]), 32, NULL, 0);
+  pal_set(pic_group_of(first[w]), 32, 0);
 }

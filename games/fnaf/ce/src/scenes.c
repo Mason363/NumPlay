@@ -17,15 +17,18 @@ static void title_draw(void) {
   static const int faces[4][5] = {{0}, {PIC_TITLE1, TITLE1_X, TITLE1_Y, TITLE1_W, TITLE1_H},
                                   {PIC_TITLE2, TITLE2_X, TITLE2_Y, TITLE2_W, TITLE2_H},
                                   {PIC_TITLE3, TITLE3_X, TITLE3_Y, TITLE3_W, TITLE3_H}};
+  static int twitch;   /* the twitch beside the title in scene (its rows are 536 wide) */
+  if (scene_pic != PIC_TITLE0) twitch = 0;
   scene_want(PIC_TITLE0);
   d_blit(scene, SCENE_W, 0, 0, SCR_W, SCENE_H, 0, 0, true);
   if (face) {
     const int *fc = faces[face];
-    extra_want(fc[0], fc[3]);
-    d_blit(extra, fc[3], 0, 0, fc[3], fc[4], fc[1], 2 * fc[2], true);
+    if (twitch != face) pic_full(fc[0], scene + SCR_W, SCENE_W), twitch = face;
+    d_blit(scene + SCR_W, SCENE_W, 0, 0, fc[3], fc[4], fc[1], 2 * fc[2], true);
   }
   int grp = pic_group_of(PIC_TITLE0);
-  pal_set(grp, face_light, static_phases(7), 0);
+  pal_set(grp, face_light, 0);
+  static_over(7, grp);
   /* the slow light band going down, and lines that flash */
   const uint8_t *light = map_remap(grp, 1);
   int sy = (int)(g.t / 20 * (SCR_H + 10)) % (SCR_H + 10) - 10;
@@ -51,7 +54,7 @@ static void title_draw(void) {
 /* ------------------------------------------------------------------ the newspaper, how to play, the card */
 static void news_draw(void) {
   still(PIC_NEWSPAPER);
-  pal_set(pic_group_of(PIC_NEWSPAPER), fade(g.t, 2, 7, 2), NULL, 0);
+  pal_set(pic_group_of(PIC_NEWSPAPER), fade(g.t, 2, 7, 2), 0);
 }
 
 static void keys_draw(void) {
@@ -83,7 +86,7 @@ static void keys_draw(void) {
   d_text_c(FONT_TEXT, 160, 196, "Watch the power: every door, light and", INK_GREY);
   d_text_c(FONT_TEXT, 160, 209, "camera drains it. Survive until 6 AM.", INK_GREY);
   if ((int)(g.t * 2) & 1) d_text_c(FONT_HUD, 160, 226, "2nd", INK_WHITE);
-  pal_set(-1, 32, NULL, 0);
+  pal_set(-1, 32, 0);
 }
 
 static const char *const nth[] = {"", "1st Night", "2nd Night", "3rd Night", "4th Night", "5th Night", "6th Night",
@@ -95,7 +98,7 @@ static void intro_draw(void) {
                                                                          UI_GREY1, UI_BOX, UI_BLACK, UI_EDGE});
   d_text_c(FONT_HUGE, 160, 92, "12:00 AM", INK_WHITE);
   d_text_c(FONT_BIG, 160, 124, nth[g.n.night], INK_WHITE);
-  pal_set(-1, 32, NULL, 0);
+  pal_set(-1, 32, 0);
   if (g.t > 1.2f) pal_ui((int)((2.2f - g.t) * 32));
 }
 
@@ -130,14 +133,14 @@ static void six_draw(void) {
   d_fill(110, cy + dh, 30, dh, UI_BLACK);
   d_text(FONT_HUGE, 148, cy, "AM", INK_WHITE);
   d_text_c(FONT_TEXT, 160, 170, g.t > 6.2f ? "*children cheering*" : "*chimes*", INK_SILVER);
-  pal_set(-1, 32, NULL, 0);
+  pal_set(-1, 32, 0);
   pal_ui(fade(g.t, 1, 10.5f, 1));
 }
 
 static void paper_draw(void) {
   static const int pics[3] = {PIC_PAYCHECK, PIC_OVERTIME, PIC_PINKSLIP};
   still(pics[g.paper]);
-  pal_set(pic_group_of(pics[g.paper]), fade(g.t, 2, 17, 2), NULL, 0);
+  pal_set(pic_group_of(pics[g.paper]), fade(g.t, 2, 17, 2), 0);
 }
 
 /* ------------------------------------------------------------------ the end of a night */
@@ -147,16 +150,23 @@ static void over_draw(void) {
   if (g.t < 2.5f) {
     still_forget();
     d_noise(0, 0, SCR_W, SCR_H, rnd(), GREYS);
-    pal_set(-1, 32, NULL, 0);
+    pal_set(-1, 32, 0);
     return;
   }
-  if (!still(PIC_GAMEOVER)) d_text_r(FONT_HUGE, 306, 200, "Game Over", INK_WHITE);
-  pal_set(pic_group_of(PIC_GAMEOVER), 32, static_phases(g.t < 3 ? 26 : 6), 0);
+  still_forget();
+  scene_want(PIC_GAMEOVER);
+  d_blit(scene, SCENE_W, 0, 0, SCR_W, SCENE_H, 0, 0, true);
+  static_over(g.t < 3 ? 26 : 6, pic_group_of(PIC_GAMEOVER));
+  d_text_r(FONT_HUGE, 306, 200, "Game Over", INK_WHITE);
+  pal_set(pic_group_of(PIC_GAMEOVER), 32, 0);
 }
 
 static void golden_draw(void) {
-  still(PIC_GOLDEN);
-  pal_set(pic_group_of(PIC_GOLDEN), 32, static_phases(6 + (int)(rnd() % 8)), 0);
+  still_forget();
+  scene_want(PIC_GOLDEN);
+  d_blit(scene, SCENE_W, 0, 0, SCR_W, SCENE_H, ((int)(g.t * 60) & 2) - 1, 0, true);
+  static_over(6 + (int)(rnd() % 8), pic_group_of(PIC_GOLDEN));
+  pal_set(pic_group_of(PIC_GOLDEN), 32, 0);
 }
 
 /* ------------------------------------------------------------------ the custom night */
@@ -165,9 +175,10 @@ static const char *const names[4] = {"Freddy", "Bonnie", "Chica", "Foxy"};
 
 static void custom_draw(void) {
   /* the faces, in extra once */
-  if (extra_pic != EXTRA_FACES) {
+  static int faces_gen = -1;
+  if (extra_pic != EXTRA_FACES || faces_gen != gfx_temp_uses) {
     for (int i = 0; i < 4; i++) pic_full(face_pics[i], extra + 64 * 64 * i, 64);
-    extra_pic = EXTRA_FACES;
+    extra_pic = EXTRA_FACES, faces_gen = gfx_temp_uses;
   }
   d_fill(0, 0, SCR_W, SCR_H, UI_BLACK);
   d_text_c(FONT_BIG, 160, 14, "Customize Night", INK_WHITE);
@@ -186,7 +197,7 @@ static void custom_draw(void) {
   }
   d_text(FONT_TEXT, 12, 214, "< > pick   up down: level", INK_DIM);
   d_text_r(FONT_BIG, 308, 208, "Ready", (int)(g.t * 2) & 1 ? INK_WHITE : INK_GREY);
-  pal_set(pic_group_of(PIC_FACE_FREDDY), 32, NULL, 0);
+  pal_set(pic_group_of(PIC_FACE_FREDDY), 32, 0);
 }
 
 /* ------------------------------------------------------------------ a frame */

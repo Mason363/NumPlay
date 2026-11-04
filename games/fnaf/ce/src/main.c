@@ -47,10 +47,11 @@ void scene_want(int pic) {
   scene_pic = pic;
 }
 
+static int extra_gen;   /* (extra is also where pictures unpack their grids: gfx_temp_uses) */
 void extra_want(int pic, int stride) {
-  if (extra_pic == pic) return;
+  if (extra_pic == pic && extra_gen == gfx_temp_uses) return;
   pic_full(pic, extra, stride);
-  extra_pic = pic;
+  extra_pic = pic, extra_gen = gfx_temp_uses;
 }
 
 bool still(int pic) {
@@ -96,7 +97,7 @@ int fnaf_start(void) {
   scene = ce_ram(&n);
   if (n < RAM_NEEDED) return 2;
   extra = scene + SCENE_W * SCENE_H;
-  gfx_init(&assets, ASSET_TABLES);
+  gfx_init(&assets, extra, 160 * 120);
   game_init();
   return 0;
 }

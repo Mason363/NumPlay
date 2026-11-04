@@ -1,32 +1,24 @@
-/* The pictures (tools/cpic.py codes them): decoded into palette indices, a macroblock of 8 x 8 at a time.
+/* The pictures (tools/cvq.py codes them): grids of 2 x 2 blocks, each one of its group's codewords (four palette
+ * indices), the grid's bytes in zx0. A block of 255 keeps what dst holds (a picture coded over its base).
  *
- * A picture is H.264's 4 x 4 integer transform of Y, Cb and Cr (the colour at half resolution), Huffman coded;
- * one coded over its base keeps the base's macroblocks it skips (what dst already holds). Each picture group
- * (the office, a camera, a jumpscare...) has a Map: from (Y, Cb, Cr) to its palette, with ordered dithering. */
+ * A group's map (MAP_*, unpacked once): the codewords (four pages: top left, top right, bottom left, bottom right)
+ * at 0, the palette at MAP_PALETTE, two remap tables at MAP_REMAP. */
 #ifndef CE_PIC_H
 #define CE_PIC_H
 #include <stdbool.h>
 #include <stdint.h>
 
-#define YQ_LO (-96)   /* the Y values the Map's YQ covers: YQ_LO to YQ_HI - 1 (dither included) */
-#define YQ_HI 352
-#define CQ_LO (-192)  /* and the colour ones */
-#define CQ_HI 192
+#define MAP_PALETTE 1024
+#define MAP_REMAP 1536
+#define PIC_MAP_SIZE 2048    /* (unpacked: 1024-aligned, the codewords in one 64 KB bank) */
 
-typedef struct {
-  const uint8_t *yq;     /* (YQ_HI - YQ_LO): Y -> its place among the 32 levels, times 8 */
-  const uint8_t *cbq;    /* (CQ_HI - CQ_LO): Cb -> its place among 8 levels, times 32 */
-  const uint8_t *crq;    /* and Cr */
-  const uint8_t *lut;    /* 32 x 8 x 8: the levels -> a palette index */
-  const uint8_t *phase;  /* NULL, or 256 random bytes: the static's phase (their low 2 bits), ORed in */
-} PicMap;
-
-/* the codec's tables (the Huffman tables, the dequantization steps), from the data: once */
-void pic_init(const uint8_t *tables);
-/* a picture's size in pixels, and the base picture it is coded over (-1: none) */
 int pic_width(const uint8_t *pic);
 int pic_height(const uint8_t *pic);
-int pic_base(const uint8_t *pic);
-/* decodes the picture into dst (stride bytes a row, room for all of it) */
-void pic_decode(const uint8_t *pic, uint8_t *dst, int stride, const PicMap *m);
+int pic_base(const uint8_t *pic);   /* the picture it is coded over, or -1 */
+bool pic_keeps(const uint8_t *pic); /* some blocks keep what dst holds */
+/* decodes the picture into dst (stride bytes a row) with its group's map. Its grid is unpacked into temp (its
+ * blocks' count of bytes); temp NULL: into the end of dst itself (a picture that keeps nothing, as wide as dst) */
+void pic_decode(const uint8_t *pic, uint8_t *dst, int stride, const uint8_t *map, uint8_t *temp);
+/* (the grid's blocks into pixels: pic_ez80.s on the calculator) */
+void pic_expand(const uint8_t *grid, uint8_t *dst, int stride, int bw, int bh, const uint8_t *map);
 #endif

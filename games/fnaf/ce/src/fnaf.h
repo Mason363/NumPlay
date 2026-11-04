@@ -8,10 +8,10 @@
 #include "../engine/gfx.h"
 #include "assets.h"
 
-/* the RAM: scene (the office, a camera, the title, an animation's frames) and what is left after it */
-#define SCENE_W 536
+/* the RAM: scene (the office, a camera, the title (its twitches beside it), an animation's frames) and extra */
+#define SCENE_W 534
 #define SCENE_H 120
-#define RAM_NEEDED (SCENE_W * SCENE_H + 26 * 1024)
+#define RAM_NEEDED (SCENE_W * SCENE_H + 160 * 120)   /* scene, then extra (160 x 120) */
 extern uint8_t *scene, *extra;
 extern int scene_pic;        /* the picture scene holds, -1 none */
 void scene_want(int pic);    /* scene holds pic: its bases (or the frames before it) decoded first as needed */
@@ -33,7 +33,7 @@ Ink ink_fade(Ink ink, int a);
 
 /* view.c */
 void view_paused(void);
-const uint8_t *static_phases(int a);   /* the static's four phases this frame, from its strength (of 32) */
+void static_over(int a, int group);   /* the static over the screen, of a strength (of 32) */
 void view_reset(void);       /* a new night: the office's pictures again */
 int office_pan(void);
 /* save.c */

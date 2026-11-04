@@ -6,9 +6,10 @@ ICON = icon.png
 DESCRIPTION = "Five Nights at Freddy's"
 COMPRESSED = YES
 ARCHIVED = YES
-CFLAGS = -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Oz
+CFLAGS = -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Oz -DCE_ASM
 SRCDIR = src
 EXTRA_C_SOURCES = engine/pic.c engine/gfx.c engine/ce_calc.c
+EXTRA_ASM_SOURCES = engine/pic_ez80.s engine/draw_ez80.s
 
 all: target appvars
 include $(shell cedev-config --makefile)
