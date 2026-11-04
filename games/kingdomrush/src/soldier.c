@@ -5,6 +5,7 @@
 #include "kr.h"
 #include "settings.h"
 #include "special.h"
+#include "hero.h"
 
 typedef struct {
   int16_t charge, charge_dmg, speed10, respawn_wait, x_adj;
@@ -12,6 +13,11 @@ typedef struct {
 } SoldierKind;
 
 static SoldierKind kind_of(int k) {
+  if (k >= SK_HERO) {
+    int16_t v[10];
+    hero_soldier_kind(k, v);
+    return (SoldierKind){v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9]};
+  }
   switch (k) {
   case SK_L1: return (SoldierKind){11, 5, 20, 1, 0, AN_SO_STANDAR_IDLE, AN_SO_STANDAR_RUNNING, AN_SO_STANDAR_FIGHTING, AN_SO_STANDAR_DEAD, -1};
   case SK_L2: return (SoldierKind){20, 5, 20, 1, 0, AN_SO_STANDARLEVEL2_IDLE, AN_SO_STANDARLEVEL2_RUNNING, AN_SO_STANDARLEVEL2_FIGHTING, AN_SO_STANDARLEVEL2_DEAD, -1};
@@ -101,6 +107,8 @@ int soldier_new(int kind, int spot, Pt at, Pt rally) {
     so->home_x = rally.x, so->home_y = rally.y;
     so->rx = so->dx = at.x, so->ry = so->dy = at.y;
     so->hidden = 0, so->respawning = 0, so->active = 1, so->idle = 1;
+  } else if (kind >= SK_HERO) {
+    hero_soldier_new(so);
   } else {   /* the sorcerer's elemental */
     special_elemental_stats(so, spot);
   }
@@ -194,6 +202,12 @@ static void fight_position(Soldier *so) {   /* setFightingPosition */
   play(so, kind_of(so->kind).an_run);
 }
 
+static void engage(Soldier *so, int i, bool block);
+void soldier_engage(Soldier *so, int enemy, bool block) { engage(so, enemy, block); }
+void soldier_stop_fight(Soldier *so) { stop_fight(so); }
+void soldier_go_home(Soldier *so) { go_home(so); }
+void soldier_play(Soldier *so, int an) { play(so, an); }
+
 static void engage(Soldier *so, int i, bool block) {
   Enemy *e = &B.en[i];
   if (block) {   /* §_-Df§: it stops the enemy */
@@ -258,6 +272,11 @@ static void hit(Soldier *so) {
     return;
   }
   if (site_soldier_hit(so)) {
+    if (!e->active) stop_fight(so);
+    return;
+  }
+  if (so->kind >= SK_HERO) {
+    hero_hit(so);
     if (!e->active) stop_fight(so);
     return;
   }
@@ -330,8 +349,11 @@ static void idle(Soldier *so) {   /* playIdle: turns now and then; heals after 2
 }
 
 /* ------------------------------------------------------------------ a frame */
+bool soldier_find_enemy(Soldier *so) { return find_enemy(so); }
+
 void soldier_step(Soldier *so) {
   so->anim_t++;
+  if (so->kind >= SK_HERO && hero_soldier_step(so)) return;
   if (so->dead) {   /* readyToRespawn */
     if (++so->dead_t < so->dead_time) return;
     if (reinforcement(so)) {
@@ -415,8 +437,10 @@ void soldier_step(Soldier *so) {
         return;
       }
       so->charge_t = 0, so->charging = 0;
+      if (so->kind == SK_HERO) hero_blow_done(so);
     } else if (++so->reload_t == so->reload) {
       play(so, kind_of(so->kind).an_fight);
+      if (so->kind >= SK_HERO) hero_attack_anim(so);
       so->reload_t = 0;
       if (!special_soldier_attack_anim(so)) so->charging = 1;
     }

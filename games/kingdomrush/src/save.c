@@ -8,7 +8,7 @@
 
 #define SAVE_NAME "kingdomrush.sav"
 #define COPY_NAME "kingdomrush_saves.py"
-#define SAVE_VERSION 1
+#define SAVE_VERSION 2   /* 1: before the Hero Room (2 bytes less) */
 #define NAME_LEN (sizeof SAVE_NAME - 1)
 
 static uint8_t sum(const uint8_t *p, uint32_t n) {
@@ -111,15 +111,19 @@ void load_progress(void) {
   restore_copy();
   uint32_t n = 0;
   const uint8_t *d = plat_load(SAVE_NAME, &n);
-  if (!d || n != 4 + sizeof(Progress) + 1 || memcmp(d, "KRS", 3) || d[3] != SAVE_VERSION || sum(d, n - 1) != d[n - 1])
-    return;
+  if (!d || n < 5 || memcmp(d, "KRS", 3) || sum(d, n - 1) != d[n - 1]) return;
+  uint32_t len = d[3] == SAVE_VERSION ? sizeof(Progress) : d[3] == 1 ? PROGRESS_V1 : 0;
+  if (!len || n != 4 + len + 1) return;
   Progress p;
-  memcpy(&p, d + 4, sizeof p);
+  memset(&p, 0, sizeof p);
+  memcpy(&p, d + 4, len);
   /* anything out of range: a fresh start rather than a broken one */
   for (int i = 0; i < 12; i++)
     if (p.camp[i] > 3 || p.heroic[i] > 1 || p.iron[i] > 1) return;
   for (int i = 0; i < 6; i++)
     if (p.ups[i] > 5) return;
   if (p.difficulty > 2) p.difficulty = 1;
+  if (p.hero_room > 1) p.hero_room = 0;
+  if (!p.hero_room || p.hero > 7) p.hero = 0;
   g.p = p;
 }

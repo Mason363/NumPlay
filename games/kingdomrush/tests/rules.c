@@ -15,6 +15,7 @@
 #include "plat.h"
 #include "settings.h"
 #include "special.h"
+#include "hero.h"
 
 extern const uint8_t kr_data[];
 const uint8_t *kr_bin;
@@ -216,6 +217,151 @@ static void test_all(void) {
   printf("  the general won %d of %d\n", won, total);
 }
 
+
+/* ------------------------------------------------------------------ the heroes */
+static void hero_orders(void) {   /* the general sends the hero where the enemy furthest along walks */
+  Soldier *h = hero_soldier();
+  if (!h || h->dead || h->respawning) return;
+  int best = -1;
+  for (int i = 0; i < MAX_ENEMIES; i++) {
+    Enemy *e = &B.en[i];
+    if (!e->alive || !e->active || e->dead || e->flying) continue;
+    if (best < 0 || path_len(e->path, e->lane) - e->node < path_len(B.en[best].path, B.en[best].lane) - B.en[best].node) best = i;
+  }
+  if (best < 0) return;
+  Pt at = enemy_road(&B.en[best], -20);
+  if (hero_rally_ok(at)) hero_set_rally(at);
+}
+
+static void test_hero_numbers(void) {
+  memset(upgrades, 0, sizeof upgrades);
+  hero_pick = HERO_GERALD;
+  battle_start(0, MODE_CAMPAIGN);
+  for (int t = 0; t < 40; t++) battle_step();
+  battle_call_wave();
+  for (int t = 0; t < 5; t++) battle_step();
+  Soldier *h = hero_soldier();
+  CHECK(h && h->kind == SK_HERO, "Gerald comes with the first wave");
+  if (h) {
+    CHECK(h->init_health == 400 && h->armor == 30 && h->min_dmg == 11 && h->max_dmg == 18, "Gerald level 1 (heroGeneral)");
+    CHECK(h->range_w == 130 && fabsf(h->speed - 1.65f) < 0.01f && h->dead_time == 450, "his range, speed and respawn");
+    CHECK(fabsf(h->x - 672) < 1 && fabsf(h->y - 346) < 1, "at stage 1's defense point");
+  }
+  hero_pick = HERO_IGNUS;
+  battle_start(0, MODE_CAMPAIGN);
+  for (int t = 0; t < 40; t++) battle_step();
+  battle_call_wave();
+  for (int t = 0; t < 5; t++) battle_step();
+  h = hero_soldier();
+  CHECK(h && h->dead_time == 360 && h->init_health == 400 && h->min_dmg == 18 && h->max_dmg == 30, "Ignus (heroFire)");
+  hero_pick = HERO_MAGNUS;
+  battle_start(0, MODE_HEROIC);
+  for (int t = 0; t < 40; t++) battle_step();
+  battle_call_wave();
+  for (int t = 0; t < 5; t++) battle_step();
+  CHECK(!hero_soldier(), "no hero in a heroic challenge of stage 1");
+  battle_start(10, MODE_HEROIC);
+  for (int t = 0; t < 40; t++) battle_step();
+  battle_call_wave();
+  for (int t = 0; t < 5; t++) battle_step();
+  CHECK(hero_soldier() != 0, "but in stage 11's (it brings one to every mode)");
+  hero_pick = 0;
+}
+
+static void test_heroes(void) {
+  static const char *const nm[8] = {"", "Gerald", "Malik", "Alleria", "Bolin", "Magnus", "Ignus", "Denas"};
+  for (int id = 1; id < HERO_COUNT; id++) {
+    hero_pick = (uint8_t)id;
+    int lv = id % 3 == 0 ? 2 : id % 3 == 1 ? 5 : 8;   /* the Gate of Hammerhold, the Silveroak Forest, the Coldstep Mines */
+    memset(upgrades, 5, sizeof upgrades);
+    battle_seed = (uint32_t)(id * 77);
+    bot_style = id;
+    battle_start(lv, MODE_CAMPAIGN);
+    for (int t = 0; t < 40; t++) battle_step();
+    battle_call_wave();
+    int deaths = 0, maxlvl = 0;
+    bool was_dead = false;
+    uint32_t seen = 0;   /* what the skills left on the field, a bit each */
+    for (int t = 0; t < 30 * 60 * 60 && B.state != LS_WIN && B.state != LS_OVER; t++) {
+      battle_step();
+      if (t % 15 == 0) general();
+      if (t % 200 == 0) hero_orders();
+      B.pending_note = B.pending_more = 0;
+      if (B.flags_up && alive_enemies() < 4) battle_call_wave();
+      Soldier *h = hero_soldier();
+      if (h && h->dead && !was_dead) deaths++;
+      was_dead = h && h->dead;
+      if (hero_level() > maxlvl) maxlvl = hero_level();
+      for (int i = 0; i < MAX_SOLDIERS; i++) {
+        Soldier *o = &B.so[i];
+        if (!o->alive) continue;
+        if (o->kind == SK_WILDCAT && o->active) seen |= 1;
+        if (o->kind == SK_ILLUSION && o->active) seen |= 2;
+        if (o->courage_t) seen |= 4;
+      }
+      for (int i = 0; i < MAX_ENEMIES; i++)
+        if (B.en[i].alive && B.en[i].stun_t) seen |= 8;
+      for (int i = 0; i < B.nspots; i++)
+        if (B.spot[i].buff_t) seen |= 16;
+      for (int i = 0; i < MAX_BULLETS; i++) {
+        Bullet *b = &B.bu[i];
+        if (b->alive && b->kind == BU_BOMB && b->bombs == 11) seen |= 32;
+        if (b->alive && b->kind >= BU_HERO) seen |= 64u << (b->kind - BU_HERO);   /* throws, bolts, mines and tar */
+      }
+    }
+    static const uint32_t want[8] = {0, 4, 8, 1, 256, 2 | 128, 0, 16 | 32 | 64};
+    CHECK((seen & want[id]) == want[id], "%s's skills at work (%#x of %#x)", nm[id], seen, want[id]);
+    CHECK(hero_soldier() != 0, "%s fought", nm[id]);
+    CHECK(maxlvl >= 4, "%s reached level 4 or more (%d)", nm[id], maxlvl);
+    CHECK(hero_skill(1) >= 1 && (maxlvl < 4 || hero_skill(2) >= 1), "%s has both skills", nm[id]);
+    printf("  %-8s stage %2d %s, level %d, fell %d times, %d lives\n", nm[id], lv + 1, B.state == LS_WIN ? "won" : "lost", maxlvl,
+           deaths, B.lives);
+  }
+  hero_pick = 0;
+}
+
+static void test_hero_save(void) {
+  /* a save from before the heroes (version 1, 2 bytes shorter) still loads */
+  game_init();
+  Progress p;
+  memset(&p, 0, sizeof p);
+  p.camp[0] = 3, p.camp[1] = 1, p.ups[UP_ARCHERS] = 1, p.difficulty = 2;
+  uint8_t buf[4 + sizeof(Progress) + 1];
+  uint32_t n = 4 + PROGRESS_V1 + 1;
+  memcpy(buf, "KRS", 3), buf[3] = 1;
+  memcpy(buf + 4, &p, PROGRESS_V1);
+  uint8_t s = 0x5A;
+  for (uint32_t i = 0; i < n - 1; i++) s = (uint8_t)(s * 31 + buf[i]);
+  buf[n - 1] = s;
+  remove("build/host-saves/kingdomrush_saves.py");
+  FILE *f = fopen("build/host-saves/kingdomrush.sav", "wb");
+  if (f) fwrite(buf, 1, n, f), fclose(f);
+  load_progress();
+  CHECK(g.p.camp[0] == 3 && g.p.camp[1] == 1 && g.p.ups[UP_ARCHERS] == 1 && g.p.difficulty == 2 && !g.p.hero_room && !g.p.hero,
+        "a version 1 save loads");
+  /* the room's stars, the pick, saved */
+  for (int i = 0; i < NLEVELS; i++) g.p.camp[i] = 3;
+  int before = stars_free();
+  g.screen = SCR_MAP;
+  press(K_DIGIT(5));
+  CHECK(g.screen == SCR_HEROES, "5 opens the Hero Room");
+  press(K_OK);
+  CHECK(g.p.hero_room && stars_free() == before - HERO_ROOM_STARS, "15 stars open it");
+  press(K_RIGHT), press(K_DOWN);
+  press(K_OK);
+  CHECK(g.p.hero == HERO_MAGNUS, "Magnus picked");
+  press(K_BACK);
+  memset(&g.p, 0, sizeof g.p);
+  load_progress();
+  CHECK(g.p.hero_room && g.p.hero == HERO_MAGNUS, "the pick comes back");
+  heroes_open();
+  press(K_DEL);
+  CHECK(!g.p.hero_room && !g.p.hero && stars_free() == before, "shut: the stars come back");
+  g.screen = SCR_MAP;
+  remove("build/host-saves/kingdomrush.sav");
+  remove("build/host-saves/kingdomrush_saves.py");
+}
+
 /* ------------------------------------------------------------------ random keys */
 static uint32_t fz = 12345;
 static uint32_t fuzz_rand(void) {
@@ -225,11 +371,12 @@ static uint32_t fuzz_rand(void) {
 
 static void test_fuzz(int sessions) {
   static const uint32_t keys[] = {K_LEFT, K_RIGHT, K_UP, K_DOWN, K_OK, K_OK, K_OK, K_BACK, K_DEL, K_DIGIT(0),
-                                  K_DIGIT(1), K_DIGIT(2), K_DIGIT(3), K_EXE, 0, 0, 0};
+                                  K_DIGIT(1), K_DIGIT(2), K_DIGIT(3), K_DIGIT(4), K_DIGIT(5), K_EXE, 0, 0, 0};
   for (int s = 0; s < sessions; s++) {
     game_init();
     /* every stage open, stars to spend */
     for (int i = 0; i < NLEVELS; i++) g.p.camp[i] = 3;
+    g.p.hero_room = (uint8_t)(s % 8 != 0), g.p.hero = (uint8_t)(s % 8);   /* (every hero, and none) */
     for (int t = 0; t < 4000 && g.running; t++) {
       uint32_t k = keys[fuzz_rand() % (sizeof keys / sizeof keys[0])];
       step(k);
@@ -413,6 +560,51 @@ int main(int argc, char **argv) {
     }
     return 0;
   }
+  if (argc > 2 && !strcmp(argv[1], "heroshots")) {   /* the Hero Room, then each hero at work */
+    char p[512];
+    for (int i = 0; i < NLEVELS; i++) g.p.camp[i] = 3;
+    memset(g.p.seen_note, 0xFF, sizeof g.p.seen_note);
+    heroes_open();
+    game_draw();
+    snprintf(p, sizeof p, "%s/room_shut.ppm", argv[2]);
+    host_shot(p);
+    press(K_OK);
+    press(K_RIGHT);
+    press(K_OK);
+    game_draw();
+    snprintf(p, sizeof p, "%s/room.ppm", argv[2]);
+    host_shot(p);
+    for (int id = 1; id < HERO_COUNT; id++) {
+      g.p.hero_room = 1, g.p.hero = (uint8_t)id;
+      int lv = id % 3 == 0 ? 2 : id % 3 == 1 ? 5 : 8;
+      play_start(lv, MODE_CAMPAIGN);
+      memset(upgrades, 5, sizeof upgrades);
+      bot_style = id;
+      for (int t = 0; t < 40; t++) step(0);
+      battle_call_wave();
+      int shot = 0;
+      for (int t = 0; t < 30 * 60 * 20 && B.state == LS_NORMAL && shot < 2; t++) {
+        step(0);
+        if (t % 15 == 0) general();
+        if (t % 200 == 0) hero_orders();
+        B.pending_note = B.pending_more = 0;
+        if (B.flags_up && alive_enemies() < 4) battle_call_wave();
+        Soldier *h = hero_soldier();
+        if (h && h->active && hero_level() >= (shot ? 6 : 3) && t % 30 == 0) {
+          bool near = false;
+          for (int i = 0; i < MAX_ENEMIES; i++) near |= B.en[i].alive && B.en[i].active && fabsf(B.en[i].x - h->x) < 90 && fabsf(B.en[i].y - h->y) < 70;
+          if (!near) continue;
+          if (shot == 1) press(K_DIGIT(4));
+          game_draw();
+          snprintf(p, sizeof p, "%s/hero%d_%d.ppm", argv[2], id, shot++);
+          host_shot(p);
+          printf("%s %d %d %d\n", p, 40 + (int)(h->x * 0.4f), (int)(h->y * 0.4f), h->anim);
+          if (shot == 2) press(K_BACK);
+        }
+      }
+    }
+    return 0;
+  }
   if (argc > 2 && !strcmp(argv[1], "shots")) {
     char p[512];
     game_draw();
@@ -485,6 +677,14 @@ int main(int argc, char **argv) {
   test_level1();
   test_sites();
   test_save();
+  test_hero_numbers();
+  test_hero_save();
+  if (argc > 1 && !strcmp(argv[1], "heroes")) {
+    test_heroes();
+    printf("%d checks, %s\n", checks, fails ? "FAILED" : "ok");
+    return fails != 0;
+  }
+  test_heroes();
   test_fuzz(argc > 1 && !strcmp(argv[1], "quick") ? 20 : 150);
   if (!(argc > 1 && !strcmp(argv[1], "quick"))) test_all();
   printf("%d checks, %s\n", checks, fails ? "FAILED" : "ok");

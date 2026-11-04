@@ -6,6 +6,7 @@
 #include "settings.h"
 #include "special.h"
 #include "gfx.h"
+#include "hero.h"
 
 Bullet *bullet_new(int kind) {
   for (int i = 0; i < MAX_BULLETS; i++)
@@ -95,6 +96,10 @@ void bomb_blast(Bullet *b) {
 }
 
 void bullet_step(Bullet *b) {
+  if (b->kind >= BU_HERO) {
+    hero_bullet(b);
+    return;
+  }
   b->anim_t++;
   if (!b->active) {
     fade(b);

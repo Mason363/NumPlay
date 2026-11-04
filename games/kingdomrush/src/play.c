@@ -14,6 +14,7 @@
 #include "ui.h"
 #include "anim.h"
 #include "strings.h"
+#include "hero.h"
 
 #define MAP_X 40
 #define SX(x) (MAP_X + (int)lroundf((x) * 0.4f))
@@ -22,7 +23,7 @@
 static uint8_t bg_mem[288 * 240];
 
 enum { M_SELECT, M_RING, M_AIM, M_PAUSE, M_NOTE, M_RESULT, M_QUIT };
-enum { AIM_FIRE, AIM_REINF, AIM_RALLY, AIM_SUNRAY };
+enum { AIM_FIRE, AIM_REINF, AIM_RALLY, AIM_SUNRAY, AIM_HERO };
 enum { SEL_SPOT, SEL_FLAG, SEL_ENEMY };
 
 static struct {
@@ -47,6 +48,7 @@ void play_start(int level, int mode) {
   memcpy(upgrades, g.p.ups, sizeof upgrades);
   enemy_health_pct = g.p.difficulty == 0 ? 80 : g.p.difficulty == 2 ? 120 : 100;
   battle_seed = g.ticks * 2654435761u;
+  hero_pick = g.p.hero_room ? g.p.hero : 0;
   battle_start(level, mode);
   bg_load(PIC_LEVEL1 + level, bg_mem);
   bg_dim(false);
@@ -303,6 +305,13 @@ void play_step(void) {
     }
     if (pr & K_DIGIT(1)) start_aim(AIM_FIRE);
     else if (pr & K_DIGIT(2)) start_aim(AIM_REINF);
+    else if (pr & K_DIGIT(4)) {   /* the hero: its portrait's key (192) */
+      Soldier *h = hero_soldier();
+      if (P.mode == M_AIM && P.aim == AIM_HERO) P.mode = M_SELECT;
+      else if (!h) say(hero_pick ? "Your hero comes with the first wave" : "Pick a hero in the Hero Room (5 on the map)");
+      else if (h->dead || h->respawning) say("Your hero is coming back");
+      else P.mode = M_AIM, P.aim = AIM_HERO, P.cx = h->x, P.cy = h->y;
+    }
     else if (pr & (K_DEL | K_DIGIT(3))) {
       if (battle_call_wave()) P.mode = P.mode == M_RING ? M_SELECT : P.mode;
       else if (B.state == LS_NORMAL) say("The next wave isn't ready");
@@ -342,6 +351,12 @@ void play_step(void) {
         } else if (P.aim == AIM_REINF) {
           if (power_reinforce(at)) P.mode = M_SELECT;
           else say("Put them on a road");
+        } else if (P.aim == AIM_HERO) {
+          if (hero_rally_ok(at)) {
+            hero_set_rally(at);
+            P.mode = M_SELECT;
+          } else
+            say("Send your hero to a road");
         } else {
           if (spot_rally_ok(P.aim_spot, at)) {
             spot_rally(P.aim_spot, at);
@@ -508,6 +523,7 @@ static void draw_field(void) {
   for (int s = 0; s < B.nspots; s++) draw_base(&B.spot[s], SX(B.spot[s].x), SY(B.spot[s].y), terrain());
   for (int i = 0; i < MAX_FX; i++)
     if (B.fx[i].alive && B.fx[i].decal) draw_fx(&B.fx[i]);
+  hero_draw_decals();
   for (int i = 0; i < (int)(sizeof B.egg / sizeof B.egg[0]); i++)
     if (B.egg[i].on)
       spr_anim(B.egg[i].on == 2 ? AN_B_JUGGERNAUTEGG_START : AN_B_SPIDEREGG, B.egg[i].t, false, SX(B.egg[i].x), SY(B.egg[i].y), false);
@@ -572,7 +588,11 @@ static void draw_selection(void) {
   } else if (P.mode == M_AIM) {
     int x = SX(P.cx), y = SY(P.cy);
     Pt at = {P.cx, P.cy};
-    bool good = P.aim == AIM_FIRE || (P.aim == AIM_REINF ? power_reinforce_ok(at) : spot_rally_ok(P.aim_spot, at));
+    bool good = P.aim == AIM_FIRE || (P.aim == AIM_REINF ? power_reinforce_ok(at) : P.aim == AIM_HERO ? hero_rally_ok(at) : spot_rally_ok(P.aim_spot, at));
+    if (P.aim == AIM_HERO) {
+      Soldier *h = hero_soldier();
+      if (h) draw_range(at, h->range_w, RGB(0xFFFFFF));
+    }
     if (P.aim == AIM_FIRE) {
       int lo, hi, r = S_powers_fireball_range;
       (void)lo, (void)hi;
@@ -596,7 +616,8 @@ static void draw_selection(void) {
 static void draw_side(void) {
   draw_sidebar(P.mode == M_AIM ? (P.aim == AIM_FIRE ? 1 : P.aim == AIM_REINF ? 2 : 0) : 0);
   /* what is selected: an enemy's life and armour, a tower's numbers */
-  if (P.mode == M_SELECT && P.sel_kind == SEL_ENEMY && EN(P.sel)) draw_enemy_info(EN(P.sel));
+  if (P.mode == M_AIM && P.aim == AIM_HERO) hero_draw_info();
+  else if (P.mode == M_SELECT && P.sel_kind == SEL_ENEMY && EN(P.sel)) draw_enemy_info(EN(P.sel));
   else if (P.mode == M_SELECT && P.sel_kind == SEL_SPOT) draw_spot_info(&B.spot[P.sel]);
 }
 
@@ -605,14 +626,16 @@ static void draw_keys(void) {
   switch (P.mode) {
   case M_RING: k = P.ring[P.ring_sel].name; break;
   case M_AIM:
-    k = P.aim == AIM_RALLY ? "Arrows move  OK set rally point  Back cancel"
+    k = P.aim == AIM_HERO ? "Arrows move  OK send your hero  Back cancel"
+        : P.aim == AIM_RALLY ? "Arrows move  OK set rally point  Back cancel"
         : P.aim == AIM_SUNRAY ? "Arrows pick an enemy  OK fire  Back cancel" : "Arrows aim  OK cast  Back cancel";
     break;
   default:
     if (P.sel_kind == SEL_FLAG) k = "OK call the wave now (gold for it)";
     else if (P.sel_kind == SEL_SPOT && B.spot[P.sel].ice == 2) k = "OK break the ice (3 hits)";
-    else if (P.sel_kind == SEL_SPOT && B.spot[P.sel].kind == TW_NONE) k = "OK build   1 fire   2 soldiers   Back pause";
-    else k = "OK tower menu   1 fire   2 soldiers   Back pause";
+    else if (P.sel_kind == SEL_SPOT && B.spot[P.sel].kind == TW_NONE)
+      k = hero_soldier() ? "OK build  1 fire  2 soldiers  4 hero  Back pause" : "OK build   1 fire   2 soldiers   Back pause";
+    else k = hero_soldier() ? "OK menu  1 fire  2 soldiers  4 hero  Back pause" : "OK tower menu   1 fire   2 soldiers   Back pause";
   }
   draw_key_line(MAP_X, k, P.mode == M_RING ? &P.ring[P.ring_sel] : 0, B.cash);
   if (P.msg_t) {
@@ -625,6 +648,7 @@ static void draw_keys(void) {
 
 static void draw_band(void) {
   draw_field();
+  hero_draw_hud(P.mode == M_AIM && P.aim == AIM_HERO);
   draw_selection();
   draw_side();
   if (P.mode == M_SELECT || P.mode == M_RING || P.mode == M_AIM) draw_keys();

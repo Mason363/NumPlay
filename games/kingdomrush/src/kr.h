@@ -91,6 +91,7 @@ typedef struct Enemy {
   uint8_t teleporting, thorned;
   uint8_t no_teleport, no_thorn, no_poly;
   uint8_t froze;           /* bosses: a phase */
+  int16_t stun_t;          /* Malik's earthquake: stunned (no step) */
 } Enemy;
 
 typedef struct Soldier {
@@ -115,6 +116,8 @@ typedef struct Soldier {
   int8_t sp_target;
   Pt sp_at;
   float home_x, home_y;    /* reinforcements: where they were called (§_-Fm§) */
+  int16_t courage_t;       /* Gerald's Courage (DebuffSoldierCourage): its time left, and its level */
+  uint8_t courage_lvl;
 } Soldier;
 
 typedef struct Spot {
@@ -147,12 +150,14 @@ typedef struct Spot {
   uint8_t disabled;        /* frozen, or held by Vez'nan */
   uint8_t ice, ice_hits;   /* J.T.'s ice: 1 forming, 2 holding (3 hits break it), 3 melting; 4 to 6: Vez'nan's hold */
   int16_t ice_t;
+  int16_t buff_t;          /* King Denas' Royal Edict: faster, further, for this long */
 } Spot;
 
 enum {
   BU_ARROW, BU_BOLT, BU_BOMB, BU_FIREBALL, BU_ARROW_ENEMY, BU_AXE, BU_AXE_ENEMY, BU_MISSILE, BU_MISSILE_ENEMY,
   BU_RAY_ARCANE, BU_RAY_DEATH, BU_RAY_POLY, BU_RAY_TESLA, BU_BOLT_SORCERER, BU_BOLT_NECRO, BU_SPEAR, BU_SHOT,
-  BU_FIELD, BU_NET, BU_SUNRAY
+  BU_FIELD, BU_NET, BU_SUNRAY,
+  BU_HERO   /* the heroes' (hero.c): BU_HERO + HB_* */
 };
 typedef struct Bullet {
   uint8_t alive, kind, level, active, crit, first;
@@ -298,8 +303,14 @@ void soldier_free(Soldier *so);
 static inline Soldier *SO(int i) { return i >= 0 && i < MAX_SOLDIERS && B.so[i].alive ? &B.so[i] : 0; }
 enum {
   SK_L1, SK_L2, SK_L3, SK_PALADIN, SK_BARBARIAN, SK_FARMER, SK_REINF2, SK_REINF3, SK_REINF4, SK_ELEMENTAL,
-  SK_IMPERIAL, SK_ELF, SK_SASQ
+  SK_IMPERIAL, SK_ELF, SK_SASQ,
+  SK_HERO, SK_ILLUSION, SK_WILDCAT   /* the hero, Magnus' illusions, Alleria's wildcat (hero.c) */
 };
+void soldier_engage(Soldier *so, int enemy, bool block);
+void soldier_stop_fight(Soldier *so);
+void soldier_go_home(Soldier *so);
+bool soldier_find_enemy(Soldier *so);
+void soldier_play(Soldier *so, int an);
 
 /* site.c: the stages' buildings */
 static inline bool site_kind(int k) { return k >= TW_ELFRUIN && k <= TW_TEMPLE; }

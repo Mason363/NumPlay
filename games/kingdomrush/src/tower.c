@@ -8,6 +8,7 @@
 
 #define BUILD_TIME 30
 
+static bool edict;   /* the tower stepping now is under King Denas' Royal Edict */
 TowerStat tower_stat(int kind, int level) {
   TowerStat t = {0};
 #define T(c, r, lo, hi, rl, ar) t = (TowerStat){c, r, lo, hi, rl, ar}
@@ -49,6 +50,7 @@ TowerStat tower_stat(int kind, int level) {
   if (eng && up_on(UP_ENGINEERS, 2)) t.range = (int16_t)(t.range + (int)ceilf(t.range * 0.1f));
   /* the mages' and engineers' price cut (Hermetic Study, Field Logistics) */
   if ((mage && up_on(UP_MAGES, 3)) || (eng && up_on(UP_ENGINEERS, 3))) t.cost = (int16_t)ceilf(t.cost - t.cost * 0.1f);
+  if (edict) t.range = (int16_t)(t.range + 20 * t.range / 100);   /* King Denas' Royal Edict (getRangeModifier) */
   return t;
 }
 
@@ -384,12 +386,20 @@ static void ice_step(Spot *t) {
   else if (t->ice == 6 && ++t->ice_t >= 10) t->ice = 0, t->disabled = 0;
 }
 
+static void tower_act(int s);
 void tower_step(int s) {
   Spot *t = &B.spot[s];
   if (t->kind == TW_NONE || t->kind == 0xFF) return;
   t->anim_t++, t->shooter_t[0]++, t->shooter_t[1]++;
   if (t->ice) ice_step(t);
   if (t->disabled) return;
+  edict = t->buff_t > 0;
+  tower_act(s);
+  edict = false;
+}
+
+static void tower_act(int s) {
+  Spot *t = &B.spot[s];
   if (site_kind(t->kind)) {
     site_step(s);
     return;
@@ -418,7 +428,7 @@ void tower_step(int s) {
   }
   bool mage_like = base_kind(t->kind) != TW_ARCHER;
   if (mage_like && special_run(s)) return;
-  if (!t->ready && ++t->reload_t >= t->reload) t->ready = 1, t->reload_t = 0;
+  if (!t->ready && ++t->reload_t >= t->reload - (edict ? 20 * t->reload / 100 : 0)) t->ready = 1, t->reload_t = 0;
   if (t->ready) {
     if (!mage_like && special_run(s)) return;
     bool fliers = base_kind(t->kind) != TW_ENGINEER || t->kind == TW_TESLA;

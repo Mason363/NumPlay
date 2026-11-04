@@ -6,6 +6,7 @@
 #include "gfx.h"
 #include "kr.h"
 #include "strings.h"
+#include "hero.h"
 
 #define C_TEXT RGB(0xF4E6C8)
 #define C_GOLD RGB(0xFFD32A)
@@ -81,6 +82,10 @@ void map_step(void) {
     g.screen = SCR_UPGRADES;
     return;
   }
+  if (pr & K_DIGIT(5)) {
+    heroes_open();
+    return;
+  }
   int dx = 0, dy = 0;
   if (play_key(K_LEFT)) dx = -1;
   else if (play_key(K_RIGHT)) dx = 1;
@@ -135,7 +140,7 @@ static void map_band(void) {
   }
   if (!win_open) {
     char s[64];
-    snprintf(s, sizeof s, "OK play %s    0 upgrades", level_title(g.map_sel));
+    snprintf(s, sizeof s, "OK play %s   0 upgrades   5 heroes", level_title(g.map_sel));
     key_line(s);
     return;
   }
@@ -183,7 +188,7 @@ int stars_free(void) {
   int spent = 0;
   for (int l = 0; l < 6; l++)
     for (int k = 0; k < g.p.ups[l]; k++) spent += up_cost[l][k];
-  return stars_won() - spent;
+  return stars_won() - spent - (g.p.hero_room ? HERO_ROOM_STARS : 0);
 }
 
 void upgrades_step(void) {
@@ -273,13 +278,94 @@ static void help_band(void) {
     {"1", "Rain of fire: aim, then OK"},
     {"2", "Reinforcements: aim, then OK"},
     {"3", "The next wave now, for gold"},
+    {"4", "Your hero: move it, then OK"},
     {"Back", "Pause"},
     {"Home", "Save and quit"},
   };
   for (int i = 0; i < (int)(sizeof keys / sizeof keys[0]); i++) {
-    gfx_text(FONT_HUD, 12, y + 8 + 19 * i, keys[i][0], C_GOLD);
-    gfx_text(FONT_TEXT, 72, y + 9 + 19 * i, keys[i][1], C_TEXT);
+    gfx_text(FONT_HUD, 12, y + 6 + 17 * i, keys[i][0], C_GOLD);
+    gfx_text(FONT_TEXT, 72, y + 7 + 17 * i, keys[i][1], C_TEXT);
   }
   gfx_text_c(FONT_SMALL, 160, 226, "OK back", C_DIM);
 }
 void help_draw(void) { gfx_frame(help_band); }
+
+/* ------------------------------------------------------------------ the Hero Room (the later Flash build's) */
+/* the portraits' grid in the room's order: Alleria, Gerald, Malik / Bolin, Magnus, Ignus / Denas */
+static const uint8_t room_order[7] = {HERO_ALLERIA, HERO_GERALD, HERO_MALIK, HERO_BOLIN, HERO_MAGNUS, HERO_IGNUS, HERO_DENAS};
+static uint8_t room_sel;
+
+void heroes_open(void) {
+  room_sel = 0;
+  for (int i = 0; i < 7; i++)
+    if (room_order[i] == g.p.hero) room_sel = (uint8_t)i;
+  g.screen = SCR_HEROES;
+}
+
+void heroes_step(void) {
+  uint32_t pr = g.pressed;
+  if (pr & (K_BACK | K_DIGIT(5))) {
+    save_progress();
+    g.screen = SCR_MAP;
+    return;
+  }
+  if (!g.p.hero_room) {   /* the room is shut: 15 stars open it */
+    if ((pr & (K_OK | K_EXE)) && stars_free() >= HERO_ROOM_STARS) {
+      g.p.hero_room = 1;
+      save_progress();
+    }
+    return;
+  }
+  int c = room_sel % 3, r = room_sel / 3;
+  if (play_key(K_LEFT) && c > 0) c--;
+  if (play_key(K_RIGHT) && c < 2 && r * 3 + c + 1 < 7) c++;
+  if (play_key(K_UP) && r > 0) r--;
+  if (play_key(K_DOWN) && r < 2 && (r + 1) * 3 + c < 7) r++;
+  room_sel = (uint8_t)(r * 3 + c);
+  if (pr & (K_OK | K_EXE)) {
+    int h = room_order[room_sel];
+    g.p.hero = (uint8_t)(g.p.hero == h ? 0 : h);
+    save_progress();
+  }
+  if (pr & K_DEL) {   /* the room shut again: its stars back */
+    g.p.hero_room = 0, g.p.hero = 0;
+    save_progress();
+  }
+}
+
+static void heroes_band(void) {
+  pic_draw(PIC_HEROROOM, 0, 0);
+  char s[48];
+  snprintf(s, sizeof s, "%d", stars_free());
+  gfx_text_o(FONT_HUD, 256, 25, s, C_GOLD);
+  static const uint8_t gx[3] = {46, 72, 98}, gy[3] = {91, 119, 147};
+  bool open = g.p.hero_room;
+  int h = room_order[room_sel];
+  for (int i = 0; i < 7; i++) {
+    int x = gx[i % 3], y = gy[i / 3];
+    if (!open) gfx_blend(x - 12, y - 12, 25, 25, BLACK, 18);
+    else if (room_order[i] == g.p.hero) spr_anim(AN_H_SEL, 0, false, x, y, false);
+  }
+  if (open) {
+    int x = gx[room_sel % 3], y = gy[room_sel / 3];
+    gfx_frame_rect(x - 13, y - 13, 27, 27, RGB(0xFFE14D));
+    gfx_frame_rect(x - 14, y - 14, 29, 29, RGB(0x6A4A00));
+  }
+  /* the card, the name, the four bars (health, attack, range, speed), the skills */
+  spr_frame(anim_slot(AN_H_CARDS, h - 1, false), 159, 124, false);
+  if (!open) gfx_blend(121, 64, 77, 118, BLACK, 16);
+  gfx_text_box(FONT_SMALL, 203, 68, 86, hero_name(h), C_GOLD);
+  uint8_t st[4];
+  hero_stats(h, st);
+  for (int k = 0; k < 4; k++) spr_anim(AN_H_STATBAR, st[k], false, 219, 120 + 10 * k, false);
+  gfx_text(FONT_SMALL, 203, 157, "Special abilities", C_GOLD);
+  gfx_text_box(FONT_SMALL, 203, 170, 86, hero_special(h), C_TEXT);
+  if (!open) {
+    bool can = stars_free() >= HERO_ROOM_STARS;
+    panel(28, 166, 92, 22);
+    gfx_text_c(FONT_SMALL, 74, 171, can ? "OK open: 15 stars" : "Needs 15 stars", can ? C_GOLD : RGB(0xFF6040));
+    key_line("OK open the Hero Room for 15 stars   Back map");
+  } else
+    key_line(g.p.hero == h ? "OK leave out   Backspace stars back   Back map" : "OK take   Backspace stars back   Back map");
+}
+void heroes_draw(void) { gfx_frame(heroes_band); }
