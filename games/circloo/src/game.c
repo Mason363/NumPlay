@@ -339,6 +339,8 @@ static void draw_menu(void) {
     int font = id > 0.7f ? F_BIG : id > 0.3f ? F_MEDIUM : F_SMALL;
     const char *s = label(g.items[i], buf);
     while (font > F_SMALL && word_w(font, s) > r * 1.75f) font--;
+    int n0 = gfx_wrap(font, 0, 0, s, (int)(r * 1.8f), 0, 0, AL_CENTER, 0);
+    if (word_w(font, s) > r * 1.9f || n0 * gfx_font_h(font) > r * 1.7f) continue;   /* (too small a circle for it) */
     int w = (int)(r * 1.8f), n = gfx_wrap(font, 0, 0, s, w, 0, 0, AL_CENTER, 0), h = gfx_font_h(font);
     char sub[48] = "";
     if (id > 0.7f) {
