@@ -119,7 +119,7 @@ enum { S_MODE, S_GAMES, S_RULES, S_PLAY, S_SCORE, S_OVER, S_PAUSE, S_ASK };
 #define SCORE_MS 3000  /* the scores between rounds */
 static struct {
   int screen, sel, under;   /* under: the screen under Paused or Quit game? */
-  int cur, last_cur;        /* the game playing, the one before (Mix) */
+  int cur;                  /* the game playing */
   int nsides, score[4], round, winner, matches; /* winner: the round's side, -1 a draw */
   bool decided, started, dirty;
   int32_t end_t, freeze;    /* freeze: ms of countdown left after Resume */

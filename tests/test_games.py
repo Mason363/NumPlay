@@ -747,8 +747,10 @@ CHECKS = {
     "amongus": (lambda v: v[:4] == b"AUSG" and v[4] == 1,) * 2,
     # "IMPS", version 1: the players and the round; after the reinstall, from the copy, the same
     "imposter": (lambda v: v[:4] == b"IMPS" and v[4] == 1,) * 2,
-    # "FOUR", version 1, its size (188): 4 players (5), Sumo (6), first to 3 (7); after the reinstall, from the copy
-    "fourplayer": (lambda v: len(v) == 188 and v[:4] == b"FOUR" and v[4:8] == bytes([1, 2, 0, 3]),) * 2,
+    # "FOUR", version 1, its size (188): 4 players (5), Sumo (6), first to 3 (7); after the reinstall, from the copy,
+    # Down chose 2 v 2
+    "fourplayer": (lambda v: len(v) == 188 and v[:4] == b"FOUR" and v[4:8] == bytes([1, 2, 0, 3]),
+                   lambda v: len(v) == 188 and v[:4] == b"FOUR" and v[4:8] == bytes([1, 3, 0, 3])),
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
                  lambda v: v[4] == 0 and struct.unpack_from("<I", v, 8)[0] >= 1),  # best kept, shake off
     # Air Hockey and the easy computer chosen; then the normal computer and Tanks, the tallies of the six games kept
