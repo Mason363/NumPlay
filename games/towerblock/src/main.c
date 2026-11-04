@@ -56,7 +56,7 @@ typedef struct {
 } slab_t;
 
 /* towerblocks.sav: the best, and the tower in progress */
-static struct {
+static struct __attribute__((aligned(4))) { /* whole words, as the sum reads them (a TI-84 CE packs structs) */
   uint8_t magic, version, flags, pad; /* flags: 1 a tower to go on with, 2 the guide was read */
   uint32_t sum;                       /* of the words after it: a damaged file starts afresh */
   uint32_t best, score, offset;       /* offset: the colours' start, the original's colorOffset */

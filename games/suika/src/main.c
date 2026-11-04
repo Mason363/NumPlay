@@ -88,7 +88,7 @@ typedef struct {
   int16_t v[7]; /* x, y, vx, vy, c, s, w, times scale[] */
   uint8_t k, land;
 } packed_t;
-static struct {
+static struct __attribute__((aligned(4))) { /* whole words, as the sum reads them (a TI-84 CE packs structs) */
   uint8_t magic, version, flags, cur; /* cur: the fruit in (or coming to) the cloud */
   uint8_t next, drop, pad[2];         /* drop: the falling fruit + 1 */
   uint32_t sum;                       /* of the words after it: a damaged file starts afresh */
