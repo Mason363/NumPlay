@@ -77,3 +77,11 @@ data:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = isaac
+PORT_NAME = The Binding of Isaac
+PORT_SRC = src/bosses.c src/ents.c src/floor.c src/game.c src/hud.c src/items.c src/main.c src/monsters.c src/pickups.c src/player.c src/room.c src/save.c src/tears.c src/gfx.c src/res.c src/plat_eadk.c
+PORT_ASM = src/data.S
+PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
+include ../../platform/port.mk

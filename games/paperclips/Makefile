@@ -74,3 +74,10 @@ build/fr/play: $(HOST_SRC) $(wildcard src/*) lang/fr.txt tools/french.py
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = paperclips
+PORT_NAME = Universal Paperclips
+PORT_SRC = src/main.c src/sim.c src/projects.c src/num.c src/ui.c src/save.c src/plat_eadk.c src/font_data.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c $(BUILD_DIR)/fr/main.c $(BUILD_DIR)/fr/sim.c $(BUILD_DIR)/fr/projects.c $(BUILD_DIR)/fr/num.c $(BUILD_DIR)/fr/ui.c $(BUILD_DIR)/fr/save.c $(BUILD_DIR)/fr/plat_eadk.c $(BUILD_DIR)/fr/font_data.c
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc -DPC_FR=1
+include ../../platform/port.mk

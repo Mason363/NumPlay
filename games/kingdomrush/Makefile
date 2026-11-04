@@ -76,3 +76,11 @@ data:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = kingdomrush
+PORT_NAME = Kingdom Rush
+PORT_SRC = src/bullet.c src/enemy.c src/enemy2.c src/game.c src/level.c src/main.c src/menus.c src/play.c src/power.c src/save.c src/site.c src/soldier.c src/special.c src/stats.c src/strings.c src/tower.c src/ui.c src/pic.c src/gfx.c src/plat_eadk.c
+PORT_ASM = src/data.S
+PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
+include ../../platform/port.mk

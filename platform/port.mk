@@ -9,7 +9,8 @@ TARGET ?= sdl
 NP_PLATFORM := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
 NP_ROOT := $(NP_PLATFORM)/..
 PORT_OUT = build/$(TARGET)
-PORT_COMMON = $(NP_PLATFORM)/common/eadk_text.c $(NP_ROOT)/launcher/src/font_data.c
+PORT_COMMON = $(NP_PLATFORM)/common/eadk_text.c $(NP_ROOT)/launcher/src/font_data.c \
+  $(if $(filter %launcher/src/gfx.c,$(PORT_SRC)),$(NP_PLATFORM)/common/np_alloc.c)
 PORT_CFLAGS = -std=gnu11 -O2 -g -Wall -Wno-unused-parameter -Wno-unused-function -DNP_PORT=1 \
   -DNP_APP_ID='"$(PORT_ID)"' -DNP_APP_NAME='"$(PORT_NAME)"' -I$(NP_PLATFORM)/include $(PORT_FLAGS)
 

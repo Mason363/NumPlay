@@ -94,3 +94,11 @@ data:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = finalearth2
+PORT_NAME = The Final Earth 2
+PORT_SRC = src/assign.c src/bld.c src/bld_decoration.c src/bld_draw.c src/bld_entertainment.c src/bld_hobbies.c src/bld_houses.c src/bld_production.c src/bld_services.c src/bld_transport.c src/bld_unique.c src/bld_window.c src/bld_world.c src/build.c src/citizen.c src/city.c src/classes.c src/game.c src/input.c src/lang_data.c src/path.c src/save.c src/savecopy.c src/sim.c src/stories_data.c src/story.c src/systems.c src/ui.c src/ui_bwin.c src/ui_city.c src/ui_draw.c src/ui_info.c src/ui_menu.c src/ui_pick.c src/ui_story.c src/ui_win.c src/unlocks.c src/upgrades.c src/upgrades_data.c src/view.c src/gfx.c src/bg.c src/plat_eadk.c
+PORT_ASM = src/data.S
+PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
+include ../../platform/port.mk

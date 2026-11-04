@@ -77,3 +77,10 @@ test: build/play
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = fnf
+PORT_NAME = Friday Night Funkin
+PORT_SRC = src/main.c src/app.c src/game.c src/draw.c src/screens.c src/save.c src/inflate.c src/plat_eadk.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c $(BUILD_DIR)/gen/data.c
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc -I$(BUILD_DIR)/gen
+include ../../platform/port.mk

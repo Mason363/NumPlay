@@ -80,3 +80,11 @@ data:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = cookieclicker
+PORT_NAME = Cookie Clicker
+PORT_SRC = src/ascend.c src/elder.c src/game.c src/garden.c src/grimoire.c src/logic.c src/lumps.c src/main.c src/menus.c src/minigames.c src/news.c src/numbers.c src/pantheon.c src/prestige.c src/rows.c src/save.c src/season.c src/shimmer.c src/special.c src/text.c src/tooltip.c src/ui.c src/ui_left.c src/ui_store.c src/upgrades.c src/gfx.c src/plat_eadk.c
+PORT_ASM = src/data.S
+PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
+include ../../platform/port.mk

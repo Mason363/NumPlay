@@ -47,3 +47,9 @@ host-test: | $(OUT)
 
 sprites:
 	python3 tools/sprites.py $(SHEET)
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = dinorun
+PORT_NAME = Chrome Dino
+PORT_SRC = src/main.c
+include ../../platform/port.mk

@@ -72,3 +72,10 @@ data:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = subway
+PORT_NAME = Subway Surfers
+PORT_SRC = src/actors.c src/app.c src/assets.c src/data.c src/draw.c src/game.c src/icons.c src/main.c src/plat_eadk.c src/r3d.c src/save.c src/scene.c src/world.c
+PORT_FLAGS = -DEPSILON_XL=1
+include ../../platform/port.mk

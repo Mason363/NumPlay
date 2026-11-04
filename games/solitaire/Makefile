@@ -54,3 +54,9 @@ $(BUILD_DIR)/sim-module.o: $(SRC) $(HEADERS) | $(BUILD_DIR)
 	$(Q) mkdir -p $(BUILD_DIR)/sim
 	$(Q) cc -std=c11 -O2 -fPIC $(shell $(NWLINK) eadk-cflags-simulator) -Dmain=np_solitaire_main -c $(SRC) -o $(BUILD_DIR)/sim/main.o
 	$(Q) ld -r $(BUILD_DIR)/sim/main.o -exported_symbol _np_solitaire_main -o $@
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = solitaire
+PORT_NAME = Solitaire
+PORT_SRC = src/main.c
+include ../../platform/port.mk

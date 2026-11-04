@@ -68,3 +68,9 @@ build/sim-module.o: $(COMMON) src/platform_eadk.c src/main.c $(HEADERS) node_mod
 	for f in $(COMMON) src/platform_eadk.c src/main.c; do cc -std=c11 -O2 -fPIC -Isrc \
 	  $(shell $(NWLINK) eadk-cflags-simulator) -Dmain=np_numdash_main -c $$f -o build/sim/$$(basename $$f .c).o || exit 1; done
 	ld -r build/sim/*.o -exported_symbol _np_numdash_main -o $@
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = numdash
+PORT_NAME = NumDash
+PORT_SRC = src/game.c src/trig.c src/level.c src/inflate.c src/leveldata.c src/objdefs.c src/assets.c src/assets_lv.c src/gfx.c src/scene.c src/fx.c src/save.c src/ui.c src/app.c src/menu.c src/play.c src/editor.c src/platform_eadk.c src/main.c
+include ../../platform/port.mk

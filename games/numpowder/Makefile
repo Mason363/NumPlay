@@ -80,3 +80,10 @@ gen:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = numpowder
+PORT_NAME = NumPowder
+PORT_SRC = src/canmove_data.c src/elements_data.c src/font.c src/font_data.c src/gol.c src/gravity.c src/input.c src/main.c src/tools.c src/ui.c src/ui_draw.c src/ui_menu.c src/ui_opts.c src/ui_save.c src/walls.c src/air.c src/el_elec.c src/el_fire.c src/el_force.c src/el_gases.c src/el_liquids.c src/el_misc.c src/el_nuclear.c src/el_pipe.c src/el_powders.c src/el_sensors.c src/el_solids.c src/el_special.c src/el_stkm.c src/render.c src/render_el.c src/render_el2.c src/render_ovl.c src/sim.c src/sim_move.c src/simsave.c src/plat_eadk.c
+PORT_FLAGS = -DEPSILON_XL=1
+include ../../platform/port.mk

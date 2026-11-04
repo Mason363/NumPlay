@@ -77,3 +77,11 @@ data:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build/rules build/host-saves build/shots
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = clashroyale
+PORT_NAME = Clash Royale
+PORT_SRC = src/bot.c src/game.c src/main.c src/save.c src/tables.c src/gfx.c src/view.c src/sim.c src/plat_eadk.c
+PORT_ASM = src/data.S
+PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
+include ../../platform/port.mk

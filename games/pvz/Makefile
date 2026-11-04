@@ -80,3 +80,11 @@ data:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = pvz
+PORT_NAME = Plants vs. Zombies
+PORT_SRC = src/board.c src/boss.c src/boss_art.c src/defs.c src/draw.c src/hud.c src/main.c src/plants.c src/save.c src/screens.c src/zombies.c ../../launcher/src/inflate.c src/gfx.c src/plat_eadk.c
+PORT_ASM = src/data.S
+PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
+include ../../platform/port.mk

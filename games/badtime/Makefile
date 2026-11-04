@@ -91,3 +91,10 @@ test: build/play
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = badtime
+PORT_NAME = Bad Time Simulator
+PORT_SRC = src/main.c src/save.c src/text.c src/art.c src/attacks.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c src/sim.c src/draw.c src/fight.c src/plat_eadk.c
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc
+include ../../platform/port.mk

@@ -77,3 +77,11 @@ data:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build/play build/shots
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = sonic
+PORT_NAME = Sonic the Hedgehog
+PORT_SRC = src/anim.c src/collide.c src/dle.c src/ending.c src/game.c src/hud.c src/level.c src/main.c src/menus.c src/obj.c src/obj_cards.c src/obj_common.c src/obj_ghz.c src/obj_items.c src/obj_lz.c src/obj_mz.c src/obj_sbz.c src/obj_slz.c src/obj_syz.c src/objects.c src/palette.c src/react.c src/save.c src/screens.c src/solid.c src/sonic.c src/special.c src/ui.c src/water.c src/vdp.c src/plat_eadk.c
+PORT_ASM = src/data.S
+PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
+include ../../platform/port.mk

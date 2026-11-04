@@ -107,3 +107,11 @@ test: build/play
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = polytrack
+PORT_NAME = PolyTrack
+PORT_SRC = src/main.c src/draw.c src/save.c src/ghost.c src/data.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+PORT_ASM = src/data.S
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc -DDATA_BIN='"src/data.bin"'
+include ../../platform/port.mk

@@ -66,3 +66,9 @@ $(BUILD_DIR)/sim-module.o: $(SRC) $(HDR) | $(BUILD_DIR)
 	$(Q) for f in $(basename $(notdir $(filter-out src/libc.c,$(SRC)))); do cc -std=c99 -O2 -fPIC $(shell $(NWLINK) eadk-cflags-simulator) \
 	  -Dmain=np_buckshot_main -c src/$$f.c -o $(BUILD_DIR)/sim/$$f.o || exit 1; done
 	$(Q) ld -r $(BUILD_DIR)/sim/*.o -exported_symbol _np_buckshot_main -o $@
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = buckshot
+PORT_NAME = Buckshot Roulette
+PORT_SRC = src/main.c src/game.c src/scene.c src/anim.c src/story.c src/gfx.c src/pixcode.c src/assets.c src/font.c
+include ../../platform/port.mk

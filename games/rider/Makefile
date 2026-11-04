@@ -116,3 +116,10 @@ test: build/play
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = rider
+PORT_NAME = Rider
+PORT_SRC = src/main.c src/game.c src/draw.c src/plat_eadk.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc -DB2_TREE_NODES=320 -DB2_STACK_SIZE=16384 -DB2_CHUNK_SIZE=1024 -DB2_CHUNK_ARRAY_INCREMENT=64 -DPH_ARENA=102400
+include ../../platform/port.mk

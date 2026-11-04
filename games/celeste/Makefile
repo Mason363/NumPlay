@@ -65,3 +65,11 @@ data:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = celeste
+PORT_NAME = Celeste
+PORT_SRC = src/res.c src/gfx.c src/util.c src/ent.c src/level.c src/tiles.c src/style.c src/player.c src/entities.c src/fx.c src/ptypes.c src/font.c src/light.c src/spinner.c src/berry.c src/save.c src/text.c src/wipe.c src/cutscene.c src/npc.c src/talk.c src/heart.c src/cassette.c src/dust.c src/breath.c src/pic.c src/menu.c src/ch0.c src/ch1.c src/ch2.c src/ch3.c src/ch4.c src/ch5.c src/ch6.c src/ch7.c src/ch8.c src/ch9.c src/game.c src/lzma/LzmaDec.c src/plat_eadk.c src/main.c
+PORT_ASM = src/data.S
+PORT_FLAGS = -DDATA_BIN='"src/data.bin"' -DEPSILON_XL=1
+include ../../platform/port.mk

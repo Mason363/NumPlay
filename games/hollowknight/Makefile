@@ -62,3 +62,11 @@ data:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = hollowknight
+PORT_NAME = Hollow Knight
+PORT_SRC = src/res.c src/tex.c src/room.c src/gfx.c src/phys.c src/anim.c src/hero.c src/camera.c src/game.c src/world.c src/obj.c src/enemy.c src/hud.c src/spell.c src/text.c src/npc.c src/title.c src/vm.c src/msg.c src/save.c src/death.c src/menu.c src/inv.c src/shop.c src/collect.c src/stag.c src/map.c src/lzma/LzmaDec.c src/plat_eadk.c src/main.c
+PORT_ASM = src/data.S
+PORT_FLAGS = -DDATA_BIN='"src/data.bin"' -DEPSILON_XL=1
+include ../../platform/port.mk

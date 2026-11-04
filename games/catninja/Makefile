@@ -91,3 +91,10 @@ test: build/play
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = catninja
+PORT_NAME = Cat Ninja
+PORT_SRC = src/main.c src/game.c src/env.c src/draw.c src/data.c src/plat_eadk.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c ../../launcher/src/inflate.c
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc
+include ../../platform/port.mk

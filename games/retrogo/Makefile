@@ -126,3 +126,10 @@ test: $(BUILD_DIR)/host/core $(BUILD_DIR)/host/romtable $(BUILD_DIR)/host/pack $
 	$(Q) $(PY) tests/test_romtable.py $(BUILD_DIR)/host/romtable
 	$(Q) $(PY) tests/test_cores.py $(BUILD_DIR)/host/core $(TEST_ROMS) $(BUILD_DIR)/host/z80
 	$(Q) NWLINK="$(NWLINK)" $(PY) tests/test_app.py
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = retrogo
+PORT_NAME = Retro-Go
+PORT_SRC = src/gb/cpu.c src/gb/hw.c src/gb/mem.c src/gb/lcdc.c src/gb/rtc.c src/gb/lcd.c src/gb/gb.c src/nes/nes6502.c src/nes/nes_ppu.c src/nes/nes_mmc.c src/nes/mmclist.c src/nes/nes_apu.c src/nes/nes.c src/nes/mappers/map000.c src/nes/mappers/map001.c src/nes/mappers/map002.c src/nes/mappers/map003.c src/nes/mappers/map004.c src/nes/mappers/map005.c src/nes/mappers/map007.c src/nes/mappers/map008.c src/nes/mappers/map009.c src/nes/mappers/map011.c src/nes/mappers/map015.c src/nes/mappers/map016.c src/nes/mappers/map018.c src/nes/mappers/map019.c src/nes/mappers/map024.c src/nes/mappers/map032.c src/nes/mappers/map033.c src/nes/mappers/map034.c src/nes/mappers/map040.c src/nes/mappers/map064.c src/nes/mappers/map065.c src/nes/mappers/map066.c src/nes/mappers/map070.c src/nes/mappers/map075.c src/nes/mappers/map078.c src/nes/mappers/map079.c src/nes/mappers/map085.c src/nes/mappers/map094.c src/nes/mappers/map099.c src/nes/mappers/map231.c src/nes/mappers/mapvrc.c src/sms/z80.c src/sms/sms.c src/sms/coleco_bios.c src/main.c src/romtable.c src/pack.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+PORT_FLAGS = -Isrc/nes
+include ../../platform/port.mk

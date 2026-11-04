@@ -53,6 +53,7 @@ static inline bool epsilon_is_upsilon(void) { return false; }
 static inline bool epsilon_slow_model(void) { return np_slow(); }
 static inline void np_app_begin(void) { np_begin(); }
 static inline int np_app_end(void) { return np_end(); }
+#define numplay_launcher ((const uint8_t *)NULL) /* never inside NumPlay there */
 
 #elif PLATFORM_DEVICE && !defined(HOST)
 #include <eadk.h>

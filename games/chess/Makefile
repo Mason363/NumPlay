@@ -60,3 +60,9 @@ $(BUILD_DIR)/sim-module.o: src/main.c src/chess.c src/chess.h src/sprites.h | $(
 	$(Q) for f in main chess; do cc -std=c99 -O2 -fPIC $(shell $(NWLINK) eadk-cflags-simulator) \
 	  -Dmain=np_chess_main -c src/$$f.c -o $(BUILD_DIR)/sim/$$f.o || exit 1; done
 	$(Q) ld -r $(BUILD_DIR)/sim/*.o -exported_symbol _np_chess_main -o $@
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = chess
+PORT_NAME = Chess
+PORT_SRC = src/main.c src/chess.c
+include ../../platform/port.mk

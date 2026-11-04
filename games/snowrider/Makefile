@@ -75,3 +75,10 @@ data:
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = snowrider
+PORT_NAME = Snow Rider 3D
+PORT_SRC = src/data.c src/draw.c src/game.c src/logo.c src/main.c src/plat_eadk.c src/r3d.c src/save.c src/sr.c src/ui.c src/world.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src
+include ../../platform/port.mk

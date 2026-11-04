@@ -68,3 +68,9 @@ $(BUILD_DIR)/sim-module.o: $(SRC) $(HEADERS) | $(BUILD_DIR)
 	$(Q) cc -std=c11 -O2 -fPIC $(shell $(NWLINK) eadk-cflags-simulator) -DNP_MODULE=1 -Dmain=np_blockblast_main \
 	  -c $(SRC) -o $(BUILD_DIR)/sim/main.o
 	$(Q) ld -r $(BUILD_DIR)/sim/main.o -exported_symbol _np_blockblast_main -o $@
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = blockblast
+PORT_NAME = Block Blast
+PORT_SRC = src/main.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+include ../../platform/port.mk

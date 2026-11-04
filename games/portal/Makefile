@@ -72,3 +72,9 @@ host: $(BUILD_DIR)/host
 $(BUILD_DIR)/host: $(SRC) $(HDR) test/host.c | $(BUILD_DIR)
 	$(Q) cc -std=gnu99 -O2 -w -DPORTAL_TEST $(shell $(NWLINK) eadk-cflags-simulator) -Dmain=portal_main -c src/main.c -o $(BUILD_DIR)/host_main.o
 	$(Q) cc -std=gnu99 -O2 -w -DPORTAL_TEST $(shell $(NWLINK) eadk-cflags-simulator) test/host.c src/game.c src/gfx.c src/inflate.c $(BUILD_DIR)/host_main.o -o $@
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+PORT_ID = portal
+PORT_NAME = Portal Returns
+PORT_SRC = src/main.c src/game.c src/gfx.c src/inflate.c
+include ../../platform/port.mk
