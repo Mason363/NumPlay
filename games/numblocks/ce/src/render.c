@@ -539,7 +539,11 @@ __attribute__((noinline)) static void cell(uint8_t b, int X, int Y, int Z, int f
   if (ck[17] < zmin) zmin = ck[17];
   if (ck[20] < zmin) zmin = ck[20];
   if (ck[23] < zmin) zmin = ck[23];
-  int split = zmin < (int)(Q1 / 2) ? 4 : zmin < (int)(2 * Q1) ? 2 : 1;
+#ifndef NB_SPLIT4
+#define NB_SPLIT4 4
+#define NB_SPLIT2 2
+#endif
+  int split = zmin < (int)(Q1 / 2) ? NB_SPLIT4 : zmin < (int)(2 * Q1) ? NB_SPLIT2 : 1;
   const uint8_t *bt = &blk_tex[0][0] + blk_tex_off[b];
   uint8_t m = blk_model[b], tint = blk_tint[b];
   if (m == M_CROSS || m == M_TORCH) {

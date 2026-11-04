@@ -139,19 +139,22 @@ static uint64_t cycles_now(void) { return sched_total_cycles(); }
 uint64_t emu_ms(void) { return now_ms; }
 bool emu_key_held(int group, int bit) { return group >= 0 && group < 8 && bit >= 0 && bit < 8 && held[group][bit]; }
 uint32_t emu_key_presses(int group, int bit) { return group >= 0 && group < 8 && bit >= 0 && bit < 8 ? presses[group][bit] : 0; }
-/* an OS routine's time; a long one's (from 0.1 s: archiving, a garbage collection) in steps of a millisecond, the
- * scheduler's events between them (timers, the LCD, the seconds), as they go on while a calculator runs it: charged
- * at once, a second's worth left events behind the second and stopped the core (sched_second's assertion) */
+/* an OS routine's time, passed as a halted CPU passes it (CEmu's cpu_halt): up to the scheduler's next event, that
+ * event run (timers, the LCD, the seconds), and so on, the LCD's memory reads kept up with; charged at once, archiving
+ * a 19 KB appvar left a second's events behind and stopped the core (sched_second's assertion) */
 static bool in_hook;
 void emu_charge(uint32_t cycles) {
-  if (!in_hook || cycles < 4800000) {
+  if (!in_hook) {
     debug.cpuCycles += cycles;
     return;
   }
   cpu.cycles = debug.cpuCycles;
   while (cycles) {
-    uint32_t step = cycles < 48000 ? cycles : 48000;
+    uint32_t next = sched_event_next_cycle(), step = next > cpu.cycles ? next - cpu.cycles : 0;
+    if (step > cycles) step = cycles;
+    if (step > 4800) step = 4800; /* (0.1 ms) */
     cpu.cycles += step, cycles -= step;
+    sched_process_pending_dma(0);
     sched_process_pending_events();
   }
   /* (what the debugger puts back after the hook: these, and the events looked at again at once) */
@@ -632,7 +635,7 @@ int main(int argc, char **argv) {
     uint32_t sp = cpu.registers.SPL;
     if (cpu.ADL && (sp < STACK_BOT - 0x100 || sp > STACK_TOP)) {
       static bool told;
-      if (!told) emu_warn("the stack pointer left the stack: %06X at %llu ms", sp, (unsigned long long)now_ms);
+      if (!told) emu_warn("the stack pointer left the stack: %06X at %llu ms (PC %06X)", sp, (unsigned long long)now_ms, pc);
       told = true;
     }
   }

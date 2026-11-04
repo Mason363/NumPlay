@@ -23,10 +23,26 @@ void RS(rs_compose)(uint8_t *dst, const uint8_t *a, const uint8_t *f);
 int RS(rs_lerp)(int a, int b, int f);
 uint8_t RS(rs_clip2)(const SV *in, uint8_t n, SV *out, uint8_t k);
 uint8_t RS(rs_face)(uint8_t f);
-void RS(rs_shade)(uint8_t *p, const uint8_t *row);
+void RS(rs_shade)(uint8_t *p, const uint8_t *row, uint16_t n);
+void RS(rs_rle)(uint8_t *q, const uint8_t *p, int sw);
 void RS(rs_expand)(const uint8_t *src, uint8_t *dst, const uint8_t *sky, const uint8_t *hud);
-void RS(rs_shade)(uint8_t *p, const uint8_t *row) {
-  for (int i = 0; i < 256; i++) p[i] = row[p[i]];
+void RS(rs_shade)(uint8_t *p, const uint8_t *row, uint16_t n) {
+  for (unsigned i = 0; i < n; i++) p[i] = row[p[i]];
+}
+
+void RS(rs_rle)(uint8_t *q, const uint8_t *p, int sw) {
+  while (sw > 0) {
+    uint8_t n = *p++;
+    if (n < 128) {
+      for (int k = 0; k <= n; k++, q++, p++)
+        if (*p) *q = *p;
+      sw -= n + 1;
+    } else {
+      uint8_t c = *p++;
+      if (c) memset(q, c, (size_t)(n - 126));
+      q += n - 126, sw -= n - 126;
+    }
+  }
 }
 
 int RS(rs_lerp)(int a, int b, int f) { return a + (((b - a) * f) >> 8); }

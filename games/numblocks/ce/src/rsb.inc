@@ -2244,25 +2244,27 @@ b_xp_shows:
 	ret
 
 ; ------------------------------------------------------------------------------------------------- rs_shade
-; void rs_shade(uint8_t *p, const uint8_t *row): p[i] = row[p[i]] for 256 bytes, row 256-byte aligned
+; void rs_shade(uint8_t *p, const uint8_t *row, uint16_t n): p[i] = row[p[i]] for n bytes (1..65535), row
+; 256-byte aligned
 b__rs_shade:
 	ld	iy, 0
 	add	iy, sp
-	ld	de, (iy+3)
-	ld	hl, (iy+6)
-	ld	b, 128
+	ld	hl, (iy+3)		; p
+	ld	de, (iy+6)		; row (256-aligned: e the byte)
+	ld	a, (iy+9)		; n: djnz's count the low byte, c the high (one more when the low is not 0)
+	ld	c, (iy+10)
+	ld	b, a
+	or	a, a
+	jr	z, .Lsh_loop
+	inc	c
 .Lsh_loop:
+	ld	e, (hl)
 	ld	a, (de)
-	ld	l, a
-	ld	a, (hl)
-	ld	(de), a
-	inc	de
-	ld	a, (de)
-	ld	l, a
-	ld	a, (hl)
-	ld	(de), a
-	inc	de
+	ld	(hl), a
+	inc	hl
 	djnz	.Lsh_loop
+	dec	c
+	jr	nz, .Lsh_loop
 	ret
 
 ; ------------------------------------------------------------------------------------------------- data
@@ -3042,4 +3044,75 @@ b_Lls_n:
 b_Lls_done:
 .Lls_done:
 	pop	ix
+	ret
+
+; ------------------------------------------------------------------------------------------------- rs_rle
+; void rs_rle(uint8_t *q, const uint8_t *p, int sw): a picture's row of runs (tools/pack.py rle: n < 128, n + 1
+; pixels follow; else n - 126 of the next) to q, sw pixels; 0 see-through
+b__rs_rle:
+	ld	iy, 0
+	add	iy, sp
+	ld	hl, (iy+9)
+	exx
+	ld	de, (iy+3)
+	ld	hl, (iy+6)
+.Lrl_run:
+	ld	a, (hl)
+	inc	hl
+	cp	a, 128
+	jr	nc, .Lrl_fill
+	inc	a
+	ld	b, a
+	exx
+	ld	de, 0
+	ld	e, a
+	or	a, a
+	sbc	hl, de
+	exx
+.Lrl_lit:
+	ld	a, (hl)
+	inc	hl
+	or	a, a
+	jr	z, .Lrl_skip
+	ld	(de), a
+.Lrl_skip:
+	inc	de
+	djnz	.Lrl_lit
+	jr	.Lrl_more
+.Lrl_fill:
+	sub	a, 126
+	ld	b, a
+	exx
+	ld	de, 0
+	ld	e, a
+	or	a, a
+	sbc	hl, de
+	exx
+	ld	a, (hl)
+	inc	hl
+	or	a, a
+	jr	z, .Lrl_none
+.Lrl_f:
+	ld	(de), a
+	inc	de
+	djnz	.Lrl_f
+	jr	.Lrl_more
+.Lrl_none:
+	push	hl
+	ex	de, hl
+	ld	de, 0
+	ld	e, b
+	add	hl, de
+	ex	de, hl
+	pop	hl
+.Lrl_more:
+	exx
+	ld	a, h
+	or	a, l
+	jr	z, .Lrl_done
+	bit	7, h
+	jr	nz, .Lrl_done
+	exx
+	jr	.Lrl_run
+.Lrl_done:
 	ret

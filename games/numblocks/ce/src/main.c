@@ -204,7 +204,7 @@ int main(void) {
 #include <stdio.h>
   {
     /* (timing, built with -DNB_BENCH: each part's ms x 10, as text in the appvar NBBENCH) */
-    static char out[400];
+    static char out[700];
     int n = 0;
     uint32_t t = plat_ms();
 #define LAP(name)                                                                            \
@@ -252,6 +252,10 @@ int main(void) {
     LAP("world");
     render_sky_palette();
     LAP("sky");
+    {
+      extern const uint8_t *rs_flash;
+      n += sprintf(out + n, "flash %p\n", (const void *)rs_flash);
+    }
 #if NB_BENCH == 11
     /* the window's blocks and light (to check world.c's loops in assembly against the C, -DNB_WORLD_C) */
     plat_save("NBWB", wblk, WS * WS * WH / 2, 0, 0);
@@ -261,7 +265,7 @@ int main(void) {
     plat_save("NBBENCH", out, (unsigned)n, 0, 0);
     plat_exit();
 #endif
-#if NB_BENCH == 8
+#if NB_BENCH == 8 || NB_BENCH == 15
     {
       /* a screen opened over the world: the creative inventory */
       in_game = true, gui = GUI_NONE;
@@ -273,6 +277,9 @@ int main(void) {
       LAP("open");
       gui_draw();
       LAP("draw");
+      for (int k = 0; k < (NB_BENCH == 15 ? 20 : 0); k++) gui_redraw(), gui_draw();
+      LAP("draws");
+      for (uint32_t t = plat_ms(); plat_ms() - t < 2000;) plat_frame();   /* (its picture taken) */
       plat_save("NBBENCH", out, (unsigned)n, 0, 0);
       plat_exit();
     }
@@ -365,11 +372,15 @@ int main(void) {
       plat_exit();
     }
 #endif
-    for (int v = 0; v < (NB_BENCH > 1 ? 24 : 4); v++) {
-      pl.yaw = (uint16_t)((v & 3) * 16384);
-      pl.pitch = (v & 3) == 3 ? 6000 : 0;
+    for (int v = 0; v < (NB_BENCH >= 12 ? 96 : NB_BENCH > 1 ? 24 : 4); v++) {
+      /* (13: the fourth view over and over, a little apart) */
+      int w = NB_BENCH == 13 ? 3 : NB_BENCH == 14 ? 0 : v;
+      pl.yaw = (uint16_t)((w & 3) * 16384 + (NB_BENCH >= 13 ? (v & 1) * 64 : 0));
+      pl.pitch = (w & 3) == 3 ? 6000 : 0;
       render_frame();
       LAP("render");
+      extern uint32_t stat_faces, stat_cells;
+      if (v < 4) n += sprintf(out + n, " cells %lu faces %lu\n", (unsigned long)stat_cells, (unsigned long)stat_faces);
       hud_draw();
       LAP("hud");
       compose(true, true);

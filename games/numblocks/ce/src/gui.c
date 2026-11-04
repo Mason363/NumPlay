@@ -40,10 +40,26 @@ static void offscreen(int x, int y, int w, int h, void (*fn)(void)) {
 }
 
 /* darkens what is on the screen (Minecraft's grey veil over the world behind a screen) */
-static void veil(int level) {
-  /* (a row of 256 at a time, through the shade row, in assembly) */
-  const uint8_t *row = render_veil_row((uint8_t)level);
-  for (unsigned i = 0; i < SCREEN_W * SCREEN_H; i += 256) rs_shade(scr + i, row);
+#ifndef NB_VEIL_IN
+#define NB_VEIL_IN 4
+#endif
+static const uint8_t *veil_row;
+static void veil_span(unsigned a, unsigned b) {
+  for (unsigned n; a < b; a += n) {
+    n = b - a > 65535 ? 65535 : b - a;
+    rs_shade(scr + a, veil_row, (uint16_t)n);   /* (through the shade row, in assembly) */
+  }
+}
+/* (but for the rectangle hx, hy, hw, hh: under a panel's inside, drawn all over) */
+static void veil(int level, int hx, int hy, int hw, int hh) {
+  veil_row = render_veil_row((uint8_t)level);
+  unsigned a = 0;
+  for (int r = hy; r < hy + hh; r++) {
+    unsigned b = (unsigned)r * SCREEN_W + (unsigned)hx;
+    veil_span(a, b);
+    a = b + (unsigned)hw;
+  }
+  veil_span(a, SCREEN_W * SCREEN_H);
 }
 
 void gui_message(const char *s) {
@@ -754,7 +770,11 @@ void gui_draw(void) {
   bool over_world = container || gui == GUI_TITLE || gui == GUI_PAUSE || gui == GUI_DEATH;
   if (full) {
     /* the world behind a screen, darkened (Minecraft's grey veil; red-brown when you died) */
-    if (over_world && gui != GUI_TITLE) veil(gui == GUI_DEATH ? 12 : 14);
+    if (over_world && gui != GUI_TITLE) {
+      int in = NB_VEIL_IN;   /* (a panel's corners are rounded: its inside from 4 pixels in) */
+      if (container) veil(14, panel_x + in, panel_y + in, panel_w - 2 * in, panel_h - 2 * in);
+      else veil(gui == GUI_DEATH ? 12 : 14, 0, 0, 0, 0);
+    }
     if (container) strip_keep(), offscreen(panel_x - 2, panel_y - 14, panel_w + 4, panel_h + 16, draw_panel_off);
     else offscreen(0, 0, SCREEN_W, SCREEN_H, draw_menu_off);
   } else if (container) offscreen(panel_x - 2, panel_y - 14, panel_w + 4, panel_h + 16, draw_panel_off);

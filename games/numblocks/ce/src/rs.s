@@ -60,6 +60,8 @@ _rs_build:	.d24	RSF_BUILD
 	.set	_w_expose, t__w_expose
 	.global	_rs_shade
 	.set	_rs_shade, t__rs_shade
+	.global	_rs_rle
+	.set	_rs_rle, t__rs_rle
 	.global	_rs_clip2
 	.set	_rs_clip2, t__rs_clip2
 	.global	_rs_face

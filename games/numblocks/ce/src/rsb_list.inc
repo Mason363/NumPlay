@@ -76,4 +76,5 @@
 	\m	Lws
 	\m	Lws_done
 	\m	Lwsb
+	\m	_rs_rle
 	.endm

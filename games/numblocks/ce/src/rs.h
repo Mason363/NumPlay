@@ -33,8 +33,10 @@ extern int rs_ck[24];
 extern SV rs_fs[4];
 extern uint8_t rs_fclip;
 uint8_t rs_face(uint8_t f);
-/* p[i] = row[p[i]] for 256 bytes, row 256-byte aligned */
-void rs_shade(uint8_t *p, const uint8_t *row);
+/* p[i] = row[p[i]] for n bytes (1..65535), row 256-byte aligned */
+void rs_shade(uint8_t *p, const uint8_t *row, uint16_t n);
+/* a picture's row of runs (tools/pack.py rle) to q (its column 0), sw pixels; 0 see-through */
+void rs_rle(uint8_t *q, const uint8_t *p, int sw);
 /* a + floor((b - a) f / 256), a and b 0..255, f 0..256 */
 int rs_lerp(int a, int b, int f);
 /* the 160 x 120 picture to the screen at 2x, 0s as the row's sky colour (sky[y]); from screen row 180 on, the HUD's
