@@ -143,9 +143,146 @@ static bool fit(const float *x, const float *y, const float *w, float *a, float 
   return true;
 }
 
+#if NP_SOFT_FLOAT
+/* ---------------------------------------------------------------- emit in integers
+ * (calculators without a floating-point unit: a polygon wholly in front of the near plane and within the guard band,
+ * its corners projected in 16.16 with a reciprocal each, its depth and texture planes fitted through the three corners
+ * spanning the most, kept as floats as emit keeps them; anything else, or a number too big, goes to emit) */
+#include "np_fixed.h"
+
+/* the plane through three screen points (16.16) with values w (2^k): w(x, y) = a x + b y + c, a b c 16.16 of w's
+ * unit; false when one passes 2^34 */
+static bool fit_fx(const int32_t *x, const int32_t *y, const int64_t *w, int k, int64_t det, int64_t *a, int64_t *b,
+                   int64_t *c) {
+  int64_t x1 = x[1] - x[0], y1 = y[1] - y[0], x2 = x[2] - x[0], y2 = y[2] - y[0], w1 = w[1] - w[0], w2 = w[2] - w[0];
+  *a = fx_div(w1 * y2 - w2 * y1, det, 32 - k), *b = fx_div(x1 * w2 - x2 * w1, det, 32 - k);
+  const int64_t big = (int64_t)1 << 34;
+  if (*a > big || *a < -big || *b > big || *b < -big) return false;
+  *c = (k <= 16 ? w[0] << (16 - k) : w[0] >> (k - 16)) - (*a * x[0] >> 16) - (*b * y[0] >> 16);
+  return true;
+}
+
+static uint16_t haze_fx(uint16_t color, int64_t zsum, int n) {
+  int64_t h0 = fx_from_float(r_haze0, 16) * n, h1 = fx_from_float(r_haze1, 16) * n;
+  if (zsum <= h0) return color;
+  int64_t k = (zsum - h0) * 240 / (h1 - h0);
+  uint32_t c8 = (uint32_t)(color >> 11) * 255 / 31 << 16 | (uint32_t)((color >> 5) & 63) * 255 / 63 << 8 | (uint32_t)(color & 31) * 255 / 31;
+  return r_565(r_mix888(c8, r_haze_rgb, k >= 240 ? 240 : (int)k));
+}
+
+static bool emit_fx(const CV *p, int n, int kind, uint16_t color, int flags, int alpha, uint16_t avg) {
+  int32_t X[MAXN], Y[MAXN], Z[MAXN], sx[MAXN], sy[MAXN];
+  int64_t w[MAXN];
+  const int32_t near = (int32_t)(NEAR * 65536), g = (int32_t)(GUARD * 65536);
+  int32_t cx = (int32_t)fx_from_float(cam.cx, 16), cy = (int32_t)fx_from_float(cam.cy, 16);
+  int64_t f = fx_from_float(cam.f, 16), zsum = 0;
+  int32_t x0 = INT32_MAX, x1 = INT32_MIN, y0 = INT32_MAX, y1 = INT32_MIN;
+  for (int i = 0; i < n; i++) {
+    if (p[i].x > 30000 || p[i].x < -30000 || p[i].y > 30000 || p[i].y < -30000 || p[i].z > 30000) return false;
+    X[i] = (int32_t)fx_from_float(p[i].x, 16), Y[i] = (int32_t)fx_from_float(p[i].y, 16), Z[i] = (int32_t)fx_from_float(p[i].z, 16);
+    if (Z[i] < near) return false;
+    int sh = __builtin_clz((uint32_t)Z[i]);
+    int64_t r = fx_rcp((uint32_t)Z[i] << sh);   /* 2^61 / (z 2^16 2^sh) */
+    int64_t qx = ((int64_t)X[i] * r >> (45 - sh)) * f >> 16, qy = ((int64_t)Y[i] * r >> (45 - sh)) * f >> 16;
+    if (qx > g || qx < -g || qy > g || qy < -g) return false;
+    sx[i] = (int32_t)qx + cx, sy[i] = (int32_t)-qy + cy, w[i] = (int64_t)ZK * r >> (29 - sh);
+    if (sx[i] < x0) x0 = sx[i];
+    if (sx[i] > x1) x1 = sx[i];
+    if (sy[i] < y0) y0 = sy[i];
+    if (sy[i] > y1) y1 = sy[i];
+    zsum += Z[i];
+  }
+  if (x1 < 0 || x0 >= SCREEN_W << 16 || y1 < 0 || y0 >= SCREEN_H << 16) return true;
+  int64_t area = 0;
+  for (int i = 0, j = n - 1; i < n; j = i++) area += (int64_t)sx[j] * sy[i] - (int64_t)sx[i] * sy[j];
+  const int64_t tiny = 42949673;   /* (0.01 square pixels) */
+  if (area < tiny && !(flags & P_TWOSIDED && area < -tiny)) return true;
+  /* the three corners spanning the most: the planes go through them */
+  int best = 1;
+  int64_t ba = -1;
+  for (int i = 1; i + 1 < n; i++) {
+    int64_t ar = (int64_t)(sx[i] - sx[0]) * (sy[i + 1] - sy[0]) - (int64_t)(sx[i + 1] - sx[0]) * (sy[i] - sy[0]);
+    if (ar < 0) ar = -ar;
+    if (ar > ba) ba = ar, best = i;
+  }
+  int k3[3] = {0, best, best + 1};
+  int32_t px[3], py[3];
+  int64_t pw[3];
+  for (int i = 0; i < 3; i++) px[i] = sx[k3[i]], py[i] = sy[k3[i]], pw[i] = w[k3[i]];
+  int64_t det = (int64_t)(px[1] - px[0]) * (py[2] - py[0]) - (int64_t)(px[2] - px[0]) * (py[1] - py[0]);
+  if (det > -4294967 && det < 4294967) return false;   /* (under 0.001: emit's Newell plane) */
+  int64_t a, b, c;
+  if (!fit_fx(px, py, pw, 16, det, &a, &b, &c)) return false;
+  if (flags & P_DECAL) c += 3 << 16;
+  if (flags & P_DECAL2) c += 6 << 16;
+  if (flags & P_DECAL3) c += 9 << 16;
+  Poly *q = &polys[npolys];
+  q->kind = (uint8_t)kind & 15;
+  q->extra = 0;
+  if (kind == K_PERSP) {
+    const Texture *t = r_tex[color];
+    int64_t far16 = fx_from_float(r_far, 16), h1 = fx_from_float(r_haze1, 16);
+    if (t->clear && !avg && (nuv >= MAXT || zsum * 5 > far16 * 8 * n)) return true;
+    if ((!t->clear && (zsum * 5 > h1 * 3 * n || nuv >= MAXT)) || (avg && (zsum > far16 * n || nuv >= MAXT))) {
+      uint16_t c0 = avg ? avg : t->pal[t->clear ? 1 : 0];
+      uint32_t a8 = (uint32_t)(c0 >> 11) * 255 / 31 << 16 | (uint32_t)((c0 >> 5) & 63) * 255 / 63 << 8 | (uint32_t)(c0 & 31) * 255 / 31;
+      color = r_565(r_mix888(a8, 0, 256 - alpha * 8 > 256 ? 0 : 256 - alpha * 8));
+      kind = K_FLAT;
+      q->kind = K_FLAT;
+      alpha = 255;
+      flags &= ~P_NOHAZE;
+      color = haze_fx(color, zsum, n);
+    } else {
+      /* u and v over the depth (u w in 1/16 texels) */
+      int64_t wu[3], wv[3], ua, ub, uc, va, vb, vc;
+      for (int i = 0; i < 3; i++) {
+        const CV *pc = &p[k3[i]];
+        if (pc->u > 4096 || pc->u < -4096 || pc->v > 4096 || pc->v < -4096) return false;
+        wu[i] = fx_from_float(pc->u, 16) * pw[i] >> 28, wv[i] = fx_from_float(pc->v, 16) * pw[i] >> 28;
+      }
+      if (!fit_fx(px, py, wu, 4, det, &ua, &ub, &uc) || !fit_fx(px, py, wv, 4, det, &va, &vb, &vc)) return false;
+      UV *u = &uvs[nuv];
+      u->ua = fx_to_float(ua, 16), u->ub = fx_to_float(ub, 16), u->uc = fx_to_float(uc, 16);
+      u->va = fx_to_float(va, 16), u->vb = fx_to_float(vb, 16), u->vc = fx_to_float(vc, 16);
+      q->extra = (uint16_t)nuv++;
+    }
+  }
+  if (kind == K_FLAT && !(flags & P_NOHAZE)) color = haze_fx(color, zsum, n);
+  q->a = fx_to_float(a, 16), q->b = fx_to_float(b, 16), q->c = fx_to_float(c, 16);
+  q->color = color;
+  q->alpha = (uint8_t)(kind == K_PERSP ? alpha : flags & P_ALPHA ? (alpha > 255 ? 255 : alpha < 0 ? 0 : alpha) : 255);
+  q->v0 = (uint16_t)nverts, q->n = (uint8_t)n & 15;
+  for (int i = 0; i < n; i++) {
+    int32_t xx = sx[i] * 8 + 32768, yy = sy[i] * 8 + 32768;   /* (as (int16_t)(x * SUB + 0.5f)) */
+    pos[nverts + i] = (Pos){(int16_t)(xx < 0 ? -(-xx >> 16) : xx >> 16), (int16_t)(yy < 0 ? -(-yy >> 16) : yy >> 16)};
+  }
+  if (kind == K_SHADE || kind == K_TEX) {
+    q->at = (uint16_t)nattr;
+    for (int i = 0; i < n; i++) {
+      int64_t l = (fx_from_float(p[i].s, 1) + 1) >> 1, u = (fx_from_float(p[i].u, 1) + 1) >> 1, v = (fx_from_float(p[i].v, 1) + 1) >> 1;
+      uint32_t lu = l < 0 ? 0 : l > 255 ? 255 : (uint32_t)l, uu = u < 0 ? 0 : u > 4095 ? 4095 : (uint32_t)u,
+               vu = v < 0 ? 0 : v > 4095 ? 4095 : (uint32_t)v;
+      attr[nattr + i] = lu | uu << 8 | vu << 20;
+    }
+    nattr += n;
+  }
+  int iy0 = y0 < 0 ? 0 : (y0 + 32768) >> 16, iy1 = y1 >= SCREEN_H << 16 ? SCREEN_H : (y1 + 32768) >> 16;
+  if (iy0 >= iy1) return true;
+  q->y0 = (uint8_t)iy0, q->y1 = (uint8_t)iy1;
+  nverts += n;
+  if (q->alpha != 255 && kind != K_PERSP) nalpha++;
+  order[npolys] = (uint16_t)npolys;
+  npolys++;
+  return true;
+}
+#endif
+
 /* projects, checks and keeps a polygon in camera space */
 static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, uint16_t avg) {
   if (npolys >= MAXP || nverts + MAXN > MAXV || ((kind == K_SHADE || kind == K_TEX) && nattr + MAXN > MAXA)) return;
+#if NP_SOFT_FLOAT
+  if (emit_fx(p, n, kind, color, flags, alpha, avg)) return;
+#endif
   CV b1[MAXN], b2[MAXN];
   int behind = 0;
   for (int i = 0; i < n; i++) behind += p[i].z < NEAR;
@@ -586,7 +723,6 @@ static void raster(const Poly *q) {
 /* ---------------------------------------------------------------- the same in integers
  * (calculators without a floating-point unit: a polygon's planes read once a band into 16.16, its edges and their
  * light and texture places stepped exactly from the corners, the perspective's divisions a reciprocal) */
-#include "np_fixed.h"
 
 /* an edge from (xa, ya) down to (xb, yb), in 1/8 pixels, with its light and texture places at the top and their
  * changes down it */
