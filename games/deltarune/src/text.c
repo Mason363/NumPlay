@@ -188,6 +188,9 @@ static int g_choice_n;           /* a \C choice showing: its options (0: none) *
 static int g_choice, g_choice_sel = -1;
 static const char *g_choices[4];
 static int g_cue;
+static void (*choice_hook)(int);
+static bool chose;
+static bool box_refill(void);
 
 /* the marks the writer passes as it types (their effects) */
 static void passed(Writer *w, const char *p) {
@@ -254,7 +257,8 @@ bool writer_update(Writer *w, uint32_t pressed, uint32_t held) {
     if ((pressed & K_Z) && g_choice_sel >= 0) {
       g_choice = g_choice_sel;
       g_choice_n = 0;
-      w->done = true;
+      chose = true;
+      if (!box_refill()) w->done = true;
     }
     return !w->done;
   }
@@ -449,12 +453,47 @@ void text_addf(const char *fmt, ...) {
 
 void text_face(int fc, int fe) { start_fc = (uint8_t)fc, start_fe = (uint8_t)fe; }
 void text_side(int side) { box_side = side; }
+/* (GameMaker's "#" is a new line: the choices are kept with it made one) */
 void text_set_choices(const char *a, const char *b, const char *c, const char *d) {
-  g_choices[0] = a, g_choices[1] = b, g_choices[2] = c, g_choices[3] = d;
+  static char bufs[4][48];
+  const char *in[4] = {a, b, c, d};
+  for (int i = 0; i < 4; i++) {
+    if (!in[i]) {
+      g_choices[i] = NULL;
+      continue;
+    }
+    int n = 0;
+    for (const char *p = in[i]; *p && n < 47; p++) bufs[i][n++] = *p == '#' ? '\n' : *p;
+    bufs[i][n] = 0;
+    g_choices[i] = bufs[i];
+  }
 }
+int text_choosing(void) { return box_open ? g_choice_n : 0; }
+
+/* the box goes on with the messages a choice's hook gave */
+static bool box_refill(void) {
+  void (*h)(int) = choice_hook;
+  choice_hook = NULL;
+  if (!h) return false;
+  npending = 0;
+  h(g_choice);
+  if (!npending) return false;
+  uint8_t fc = box.fc, fe = box.fe;
+  int x = box.x, y = box.y;
+  writer_start(&box, x, y, 33);
+  box.fc = fc, box.fe = fe;
+  for (int i = 0; i < npending; i++) writer_add(&box, pending[i]);
+  if (box.fc) box.charline = 26, msg_begin(&box);
+  npending = 0;
+  chose = false;
+  return true;
+}
+void text_on_choice(void (*hook)(int choice)) { choice_hook = hook; }
+bool text_chose(void) { return chose; }
 
 void text_open(void) {
   if (!npending) return;
+  chose = false;
   side_now = box_side >= 0 ? box_side : !world_kris_low();
   writer_start(&box, 29, side_now ? 170 : 15, 33);
   box.fc = start_fc, box.fe = start_fe;
@@ -471,7 +510,7 @@ int text_choice(void) { return g_choice; }
 int text_cue(void) { return g_cue; }
 void text_set_cue(int v) { g_cue = v; }
 int text_msgno(void) { return box.cur; }
-void text_close(void) { box_open = false, g_choice_n = 0; }
+void text_close(void) { box_open = false, g_choice_n = 0, choice_hook = NULL; }
 
 void text_update(uint32_t pressed, uint32_t held) {
   if (!box_open) return;
@@ -479,7 +518,7 @@ void text_update(uint32_t pressed, uint32_t held) {
   writer_update(&box, pressed, held);
   if (box.fc != fc) box.charline = box.fc ? 26 : 33;
   face_t++;
-  if (box.done) box_open = false;
+  if (box.done) box_open = false, choice_hook = NULL;
 }
 
 static void draw_choices(int top) {

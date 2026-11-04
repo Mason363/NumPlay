@@ -39,6 +39,8 @@ void gfx_frame_rect(int x, int y, int w, int h, int t, uint16_t color);     /* a
 void gfx_sprite(uint16_t s, int i, int x, int y, uint8_t flags, uint8_t alpha);
 /* the same, every opaque pixel in one colour (a flash, a silhouette) */
 void gfx_sprite_color(uint16_t s, int i, int x, int y, uint8_t flags, uint16_t color, uint8_t alpha);
+/* the same, its colours multiplied by color (GameMaker's image_blend; 0xFFFF: as they are) */
+void gfx_sprite_blend(uint16_t s, int i, int x, int y, uint8_t flags, uint16_t color, uint8_t alpha);
 /* the same, scaled (fixed point 8.8, 256 = 1) around its origin, and turned by angle (0-255 for a turn) */
 void gfx_sprite_ex(uint16_t s, int i, int x, int y, int scale_x, int scale_y, int angle, uint16_t color, uint8_t alpha);
 /* the room's tiles (world.c gives them), its point (wx, wy) in screen pixels at the screen's top-left; front:

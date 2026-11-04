@@ -7,6 +7,7 @@
 #include <string.h>
 #include "battle.h"
 #include "game.h"
+#include "gmath.h"
 #include "gfx.h"
 #include "menu.h"
 #include "res.h"
@@ -19,7 +20,8 @@ Bullet bul[MAX_BUL];
 int g_tension;
 int g_last_encounter;
 
-enum { P_INTRO, P_MENU, P_ACTIONS, P_FIGHT, P_FIGHT_HIT, P_TALK, P_DODGE, P_TURN_END, P_LESSON, P_WIN, P_LOST, P_DONE };
+enum { P_INTRO, P_MENU, P_ACTIONS, P_FIGHT, P_FIGHT_HIT, P_TALK, P_DODGE, P_TURN_END, P_LESSON, P_WIN, P_LOST, P_DONE,
+       P_CAMEO };
 enum { M_BUTTONS, M_ENEMY, M_ACTS, M_SPELLS, M_ITEMS, M_PARTY };
 
 typedef struct {
@@ -79,7 +81,21 @@ static struct {
   int defend_tp[3];
   int dmg_show[3], dmg_t[3], dmg_kind[3];
   int shake;
+  int enemy_turns;             /* the enemies' turns gone */
+  bool hold_text;              /* the box's text stays (OK is the enemy's: Rabbick's blowing) */
+  int16_t hp_turn[4];          /* HP as the enemies' turn began */
 } B;
+
+/* the cutscene's guest (battle_cameo) */
+static struct {
+  bool set[2];
+  uint16_t spr[2];
+  int y[2], fc[2], fe[2];
+  const int *ids[2];
+  int when, ph, t, x, after;   /* after: the phase it goes back to */
+  uint16_t vic_text;
+  int vic_fc, vic_fe;
+} CM;
 
 #define BOX_CX 320
 #define BOX_CY 170
@@ -213,6 +229,12 @@ static const char *subst(int slot, uint16_t id, const char *a, const char *b) {
   o[n] = 0;
   return o;
 }
+void battle_say_ids(int fc, int fe, const int *ids) {
+  extern const char *face_msg(int code);
+  battle_face(fc, fe);
+  writer_box();
+  for (int i = 0; ids[i] >= 0 && i < MAX_MSG; i++) writer_add(&B.w, ids[i] & 0x40000 ? face_msg(ids[i]) : str((uint16_t)ids[i]));
+}
 void battle_say_strs(const char *const *m, int n) {
   writer_box();
   for (int i = 0; i < n && i < MAX_MSG; i++) writer_add(&B.w, m[i]);
@@ -252,6 +274,7 @@ void enemy_defeat_run(Enemy *e) {
     return;
   }
   e->alive = false, e->killed = true, e->fade = 1;
+  if (!e->outcome) e->outcome = 1;
   B.gold += monster_defs[e->type].gold;
 }
 void enemy_leave(Enemy *e) { e->alive = false, e->fade = 1; }
@@ -261,10 +284,64 @@ void enemy_spare(Enemy *e) {
     return;
   }
   e->alive = false, e->spared = true, e->fade = 1;
+  if (!e->outcome) e->outcome = 2;
   B.gold += monster_defs[e->type].gold;
 }
 
+/* GameMaker's motion for a bullet: its speed's friction (negative: it speeds up) and gravity */
+void bullet_gm(Bullet *b) {
+  float sp = sqrtf(b->fvx * b->fvx + b->fvy * b->fvy);
+  if (b->fric && sp > 0) {
+    float ns = sp - b->fric;
+    if (ns < 0) ns = 0;
+    b->fvx *= ns / sp, b->fvy *= ns / sp;
+  }
+  if (b->grav) b->fvx += lengthdir_x(b->grav, b->gdir), b->fvy += lengthdir_y(b->grav, b->gdir);
+  b->fx += b->fvx, b->fy += b->fvy;
+  b->x = (int32_t)(b->fx * BFX), b->y = (int32_t)(b->fy * BFX), b->vx = b->vy = 0;
+}
+void bullets_fade_out(void) {
+  for (int i = 0; i < MAX_BUL; i++)
+    if (bul[i].on) {
+      bul[i].harmless = true;
+      bul[i].alpha = (uint8_t)max_i(0, bul[i].alpha - 26);
+      if (!bul[i].alpha) bul[i].on = false;
+    }
+}
+
 /* ---------------------------------------------------------------- starting */
+void battle_cameo(int when, uint16_t spr, int y, int fc, int fe, const int *ids) {
+  when &= 1;
+  CM.set[when] = true, CM.spr[when] = spr, CM.y[when] = y, CM.fc[when] = fc, CM.fe[when] = fe, CM.ids[when] = ids;
+}
+void battle_victory_text(uint16_t id, int fc, int fe) { CM.vic_text = id, CM.vic_fc = fc, CM.vic_fe = fe; }
+static void cameo_start(int when, int after) {
+  CM.set[when] = false;
+  CM.when = when, CM.ph = 0, CM.t = 0, CM.x = 640, CM.after = after;
+  B.phase = P_CAMEO;
+}
+static void cameo_update(void) {
+  int w = CM.when;
+  CM.t++;
+  switch (CM.ph) {
+    case 0:   /* in: -20 a frame for 15 frames */
+      CM.x -= 20;
+      if (CM.t >= 15) CM.ph = 1, CM.t = 0, battle_say_ids(CM.fc[w], CM.fe[w], CM.ids[w]);
+      break;
+    case 1:
+      if (!B.w_on) CM.ph = 2, CM.t = 0;
+      break;
+    default:  /* out: +20 a frame for 20 frames */
+      CM.x += 20;
+      if (CM.t >= 20) {
+        CM.ph = 3;
+        B.phase = CM.after;
+        B.t = 0;
+      }
+      break;
+  }
+}
+
 void battle_start(int enc) {
   memset(&B, 0, sizeof B);
   memset(en, 0, sizeof en);
@@ -612,7 +689,7 @@ static void do_spell(int k) {
       if (e->tired) {
         battle_sayf(scr_spelltext_slash_scr_spelltext_gml_23_0, char_name(h->c), NULL);
         if (e->def && (e->def->flags & EF_STAYS)) e->def->script(e, BS_PACIFIED, 0);
-        else enemy_spare(e);
+        else e->outcome = 3, enemy_spare(e);
       } else if (e->mercy >= 100) {
         battle_sayf(scr_spelltext_slash_scr_spelltext_gml_36_0, char_name(h->c), NULL);
       } else {
@@ -738,7 +815,7 @@ static void hero_attack(int k) {
   int at = sv.at[h->c] + weapon_defs[sv.weapon[h->c]].at + armor_defs[sv.armor1[h->c]].at + armor_defs[sv.armor2[h->c]].at;
   int dmg = (at * h->points + 10) / 20 - e->df * 3;
   if (dmg < 0) dmg = 0;
-  if (h->points == 0) dmg = -1;   /* a miss */
+  if (h->points == 0 || e->automiss) dmg = -1;   /* a miss */
   h->anim_t = 1;
   e->dmg_show = dmg, e->dmg_t = 40, e->dmg_kind = h->c;
   if (dmg > 0) {
@@ -748,6 +825,23 @@ static void hero_attack(int k) {
     if (e->hp <= 0) enemy_defeat_run(e);
   }
 }
+
+/* a cutscene's FIGHT (C. Round's ACT, Susie on her own): member c hits the first enemy with these points */
+void hero_auto_attack(int c, int points) {
+  for (int k = 0; k < B.nh; k++)
+    if (B.h[k].c == c) {
+      for (int i = 0; i < MAX_EN; i++)
+        if (en[i].alive) {
+          B.h[k].target = i;
+          break;
+        }
+      B.h[k].points = points;
+      hero_attack(k);
+    }
+}
+void battle_set_battlemsg(uint16_t id) { battle_say(&id, 1); }
+void battle_text_hold(bool on) { B.hold_text = on; }
+void battle_end_text(void) { B.w_on = false; }
 
 static void fight_update(uint32_t pressed) {
   if (pressed & K_Z) {
@@ -812,6 +906,7 @@ static void begin_dodge(void) {
   B.phase = P_DODGE;
   B.t = 0;
   B.box_t = 0;
+  for (int c = 0; c < 4; c++) B.hp_turn[c] = sv.hp[c];
   B.hx = BOX_CX - 10, B.hy = BOX_CY - 10;
   B.turntimer = 0;
   bullets_clear();
@@ -906,6 +1001,10 @@ static void bullets_update(void) {
   for (int i = 0; i < MAX_BUL; i++) {
     Bullet *b = &bul[i];
     if (!b->on) continue;
+    if (b->upd) {
+      b->upd(b);
+      if (!b->on) continue;
+    }
     b->vx += b->ax, b->vy += b->ay;
     b->x += b->vx, b->y += b->vy;
     b->t++;
@@ -973,6 +1072,11 @@ static void dodge_update(uint32_t held) {
     bullets_clear();
     B.phase = P_TURN_END;
     B.t = 0;
+    /* (the Hathy fight: Lancer comes, the first turn, if Kris and the next lost nothing) */
+    if (CM.set[BC_CLEAN_TURN] && B.enemy_turns == 0 && sv.hp[sv.chr[0]] >= B.hp_turn[sv.chr[0]] &&
+        sv.hp[sv.chr[1]] >= B.hp_turn[sv.chr[1]])
+      cameo_start(BC_CLEAN_TURN, P_TURN_END);
+    B.enemy_turns++;
   }
 }
 
@@ -988,11 +1092,39 @@ static void win_check(void) {
     if (sv.hp[B.h[k].c] < 1) sv.hp[B.h[k].c] = (int16_t)((sv.maxhp[B.h[k].c] + 7) / 8);
   char g[12];
   snprintf(g, sizeof g, "%d", gold);
-  battle_sayf(obj_battlecontroller_slash_Step_0_gml_40_0, "0", g);
+  if (CM.vic_text) {
+    battle_face(CM.vic_fc, CM.vic_fe);
+    battle_sayf(CM.vic_text, "0", g);
+  } else {
+    battle_sayf(obj_battlecontroller_slash_Step_0_gml_40_0, "0", g);
+  }
   B.result = BR_WON;
 }
 
+/* scr_monsterdefeat's counts: flag 40 beaten, 41 spared, 42 pacified, 43 (Susie's own); 50 how it went; and the
+ * Field's Rudinns (event_user 11) */
+static void outcomes(void) {
+  int v = 0, s = 0, p = 0;
+  for (int i = 0; i < MAX_EN; i++) {
+    Enemy *e = &en[i];
+    if (!e->type) continue;
+    set_flag(51 + i, e->outcome);
+    if (e->outcome == 1) set_flag(40, flag(40) + 1), v++;
+    if (e->outcome == 2) set_flag(41, flag(41) + 1), s++;
+    if (e->outcome == 3) set_flag(42, flag(42) + 1), p++;
+    if (e->outcome == 5) set_flag(43, flag(43) + 1);
+  }
+  set_flag(50, v ? 1 : s ? 2 : p ? 3 : 0);
+  for (int i = 0; i < MAX_EN; i++) {
+    if (!en[i].type || !en[i].outcome || en[i].outcome == 4) continue;
+    if (g_room == room_field1) set_flag(500, flag(500) + 1);
+    if (g_room == room_field2 && flag(50) != 0) set_flag(501, flag(50));
+  }
+}
+
 static void finish(void) {
+  if (B.result == BR_WON) outcomes();
+  memset(&CM, 0, sizeof CM);
   B.over = true;
   B.phase = P_DONE;
   g_mode = B.saved_mode == MODE_BATTLE ? MODE_WORLD : B.saved_mode;
@@ -1018,7 +1150,8 @@ void battle_update(uint32_t pressed, uint32_t held) {
   if (B.shake > 0) B.shake--;
   script_ask(BS_STEP, 0);
   bool text_was = B.w_on;
-  if (B.w_on && !writer_update(&B.w, B.phase == P_MENU ? 0 : pressed, B.phase == P_MENU ? 0 : held)) B.w_on = false;
+  bool keys_to_text = B.phase != P_MENU && !B.hold_text;
+  if (B.w_on && !writer_update(&B.w, keys_to_text ? pressed : 0, keys_to_text ? held : 0)) B.w_on = false;
   switch (B.phase) {
     case P_INTRO:
       B.bp = B.bp + ((152 - B.bp) < 40 ? (152 - B.bp + 1) / 2 : 30);
@@ -1071,11 +1204,16 @@ void battle_update(uint32_t pressed, uint32_t held) {
       }
       break;
     case P_WIN:
+      if (!B.w_on && CM.set[BC_VICTORY]) {
+        cameo_start(BC_VICTORY, P_WIN);
+        break;
+      }
       if (!B.w_on) {
         B.bp -= 30;
         if (B.bp <= 0) finish();
       }
       break;
+    case P_CAMEO: cameo_update(); break;
     case P_LOST:
       if (B.t > 30) {
         B.over = true;
@@ -1145,7 +1283,7 @@ static void draw_heroes(void) {
 static void draw_enemies(void) {
   for (int i = 0; i < MAX_EN; i++) {
     Enemy *e = &en[i];
-    if (!e->type || (e->fade >= 20)) continue;
+    if (!e->type || (e->fade >= 20) || e->hidden) continue;
     const EnemyDef *d = e->def;
     int x = bx2(e->x), y = bx2(e->y);
     int a = e->fade ? 255 - e->fade * 12 : 255;
@@ -1379,6 +1517,7 @@ static void draw_bubble(void) {
 void battle_draw(void) {
   draw_background();
   draw_enemies();
+  if (B.phase == P_CAMEO && CM.ph < 3) gfx_sprite(CM.spr[CM.when], 0, CM.x / 2, CM.y[CM.when] / 2, 0, 255);
   draw_heroes();
   script_ask(BS_DRAW, 0);
   draw_box();

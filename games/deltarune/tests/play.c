@@ -170,6 +170,7 @@ int main(int argc, char **argv) {
   int frames = 300, room = -1, ax = 0, ay = 0, plotv = -1, battle = -1, every = 0;
   unsigned fuzz = 0;
   bool all = false, mash = false, trace = false, perfect = false;
+  int choose = 0;
   int bars_t = -1, mk_wait = 0;
   const char *menukeys = NULL;
   const char *out = "build/shots", *shots = "";
@@ -187,13 +188,18 @@ int main(int argc, char **argv) {
     } else if (!strcmp(a, "--out")) out = v, i++;
     else if (!strcmp(a, "--saves")) host_save_dir(v), i++;
     else if (!strcmp(a, "--room")) room = atoi(v), i++;
-    else if (!strcmp(a, "--at")) sscanf(v, "%d,%d", &ax, &ay), i++;
+    else if (!strcmp(a, "--at")) {
+      if (!strcmp(v, "start")) ax = ay = -1;   /* (where the room's door A puts Kris) */
+      else sscanf(v, "%d,%d", &ax, &ay);
+      i++;
+    }
     else if (!strcmp(a, "--plot")) plotv = atoi(v), i++;
     else if (!strcmp(a, "--party")) sscanf(v, "%d,%d,%d", &party[0], &party[1], &party[2]), i++;
     else if (!strcmp(a, "--flag") && nflags < 64) sscanf(v, "%d=%d", &flags[nflags][0], &flags[nflags][1]), nflags++, i++;
     else if (!strcmp(a, "--battle")) battle = atoi(v), i++;
     else if (!strcmp(a, "--fuzz")) fuzz = (unsigned)atoi(v), i++;
     else if (!strcmp(a, "--mash")) mash = true;
+    else if (!strcmp(a, "--choose")) choose = atoi(v), i++;
     else if (!strcmp(a, "--perfect")) perfect = true;
     else if (!strcmp(a, "--menukeys")) menukeys = v, i++;
     else if (!strcmp(a, "--trace")) trace = true;
@@ -209,7 +215,8 @@ int main(int argc, char **argv) {
     if (plotv >= 0) sv.plot = (int16_t)plotv;
     if (party[0]) for (int k = 0; k < 3; k++) sv.chr[k] = (uint8_t)party[k];
     for (int k = 0; k < nflags; k++) set_flag(flags[k][0], flags[k][1]);
-    if (room >= 0) world_enter(room, ax, ay, DIR_DOWN);
+    if (room >= 0 && ax == -1 && ay == -1) world_enter_marker(room, 1);
+    else if (room >= 0) world_enter(room, ax, ay, DIR_DOWN);
     if (battle >= 0) battle_start(battle);
   }
   uint32_t seed = fuzz * 2654435761u + 1;
@@ -235,6 +242,10 @@ int main(int argc, char **argv) {
       k = bars_t == 29 ? K_Z : 0;
       bars_t++;
     } else if (!k && (k = path_keys())) {
+    } else if (mash && !k && text_choosing()) {
+      /* a choice: the one --choose says (0 left, 1 right, 2 up, 3 down), then Z */
+      static const uint32_t dirs[4] = {K_LEFT, K_RIGHT, K_UP, K_DOWN};
+      k = f % 4 == 0 ? K_Z : dirs[choose & 3];
     } else if (mash && !k && f % 4 == 0) {
       k = K_Z;
     }

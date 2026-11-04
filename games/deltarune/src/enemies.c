@@ -9,6 +9,7 @@
 #include "game.h"
 #include "gfx.h"
 #include "res.h"
+#include "foes.h"
 #include "tables.h"
 
 /* GameMaker's lengthdir_x / lengthdir_y, in 1/16 unit */
@@ -889,8 +890,12 @@ static const EnemyDef defs[] = {
    dummy_act, NULL, 150, NULL, 0, 0, 0, dummy_script, EF_AMBUSH | EF_STAYS},
 };
 
+void spinheart_attack(Enemy *e, int t) { hathy_attack(e, t); }
+
 const EnemyDef *enemy_def(int obj) {
   for (unsigned i = 0; i < sizeof defs / sizeof defs[0]; i++)
     if (defs[i].obj == obj) return &defs[i];
+  for (int i = 0; i < foes_count; i++)
+    if (foes_defs[i].obj == obj) return &foes_defs[i];
   return &defs[0];
 }

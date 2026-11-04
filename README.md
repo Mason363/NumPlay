@@ -359,10 +359,10 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 
 - [x] Five Nights at Freddy's 4
 - [x] Clash Royale, against bots
+- [x] Cat Ninja
 
 </details>
 
-- [x] Cat Ninja
 - [x] A tower defense game: Kingdom Rush
 - [x] Deltarune: Chapter 1's start, from Kris's room to Castle Town, Lancer, Ralsei's lessons and the Field's first rooms
 - [x] Villages, desert temples and mineshafts in NumBlocks
@@ -372,6 +372,7 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] Moto X3M
 - [x] Among Us, against bots
 - [x] 2 3 4 Player Games, with teams
+- [x] Deltarune: the Field, the Great Board and the start of the Forest
 - [ ] Full Minecraft 1.18.2 as a standalone app
 - [ ] Into the Breach
 - [ ] A racing game: F1 or GT3
@@ -379,7 +380,7 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Hades
 - [ ] Super Smash Bros
 - [ ] Rocket League
-- [ ] Deltarune: the rest of Chapter 1 (the Field's puzzles, shops, the Great Board, the Forest, the Card Castle, Jevil, the King), and each later chapter as an app of its own
+- [ ] Deltarune: the rest of Chapter 1 (the Forest, the shops, the Card Castle, Jevil, the King), and each later chapter as an app of its own
 - [ ] Hollow Knight: more of Hallownest after Greenpath
 - [ ] Hill Climb Racing: the stages and vehicles added after version 1.10.2
 - [ ] Tower Destiny Survive

@@ -8,7 +8,7 @@
 
 <p align="center">
   <b>Chapter 1, on the NumWorks calculator.</b><br>
-  From Kris's room to the school's supply closet, the Dark World, Castle Town and the Field.
+  From Kris's room to the school's supply closet, the Dark World, Castle Town, the Field, the Great Board and the Forest.
 </p>
 
 <p align="center">
@@ -24,7 +24,10 @@
 
 * **The Light World:** Toriel wakes Kris up, drives Kris to school, Alphys's class, Susie in the hall and the supply closet, where the floor gives way. Every bed, shelf and sign says what it says in the game.
 * **The Dark World:** the cliffs where Kris lands, Susie in the dust pile, the eye puzzle, the slopes, Lancer's chase, the castle, Lancer's first fight and Ralsei, Castle Town, Ralsei's lessons with his training dummy and the Great Door to the Field.
-* **Battles like in the game:** each member of the party picks FIGHT, ACT or MAGIC, ITEM, SPARE or DEFEND. FIGHT's bars, TP from defending, hitting and grazing, Rude Buster, Pacify and Heal Prayer, the enemies' bubbles and their bullets in the box: Lancer, the Dummy, Rudinn and Hathy.
+* **The Field:** the candy trees, the glowing tiles, Lancer's Hathys, Susie back, the puzzle pieces at Seam's door, Susie grabbing Lancer, the box puzzle and the secret room behind the suits.
+* **The Great Board:** the lit squares that send you back to the start, the Ponmen in ambush, Lancer's team name and C. Round crowned K. Round, then Susie leaving with Lancer.
+* **The Forest's first rooms:** the Rabbicks in the bushes, Susie in Lancer's gang, the dark Ponmen and the suits puzzle with Susie and Lancer. Seam's shortcut doors take you back.
+* **Battles like in the game:** each member of the party picks FIGHT, ACT or MAGIC, ITEM, SPARE or DEFEND. FIGHT's bars, TP from defending, hitting and grazing, Rude Buster, Pacify and Heal Prayer, the enemies' bubbles and their bullets in the box: Lancer, the Dummy, Rudinn, Hathy, C. Round, Ponman, Jigsawry, Rabbick and K. Round with its crown and its milk.
 * **The original's own pictures, rooms and texts**, read from Chapter 1's game files, with its numbers: stats, items, spells, enemies and battles.
 * **Saved like in the game:** SAVE at the SAVE points. Home keeps the moment you were at, and your save is also copied into `deltarune_saves.py`, so installing the app again doesn't erase it.
 
@@ -32,6 +35,10 @@
   <tr>
     <td align="center"><img src="docs/shot.png" width="390" alt="Castle Town"><br><sub>Castle Town, with Ralsei</sub></td>
     <td align="center"><img src="docs/battle.png" width="390" alt="A battle"><br><sub>Rudinn's diamonds</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/board.png" width="390" alt="The Great Board"><br><sub>The Great Board</sub></td>
+    <td align="center"><img src="docs/kround.png" width="390" alt="K. Round"><br><sub>K. Round's leap</sub></td>
   </tr>
 </table>
 
@@ -51,7 +58,7 @@ Name the vessel, then walk and talk your way from Kris's room into the Dark Worl
 
 ## Good to know
 
-* The chapter goes as far as the Field's first rooms so far. The Field's puzzles, shops, the Great Board, the Forest and the Card Castle come next.
+* The chapter goes as far as the Forest's suits puzzle so far. The rest of the Forest, Seam's shop, the Card Castle, Jevil and the King come next.
 * The battle's menus and numbers are drawn at half the original's size, as the Dark World is; the enemies' bubbles keep their size, so their words stay readable.
 * No music or sound: the calculator has no speaker.
 

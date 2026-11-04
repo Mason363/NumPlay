@@ -5,7 +5,7 @@
 
 - the battle's rules against the original's (spec: FIGHT's points and damage, TP, ACTs, sparing)
 - a scripted run from Kris's room into the Dark World, and one from the landing to the castle, Lancer's
-  fight and Ralsei
+  fight and Ralsei; the Field's, the Great Board's and the Forest's cutscenes and battles
 - random keys in many places, a few hundred thousand frames: nothing may crash"""
 import os
 import re
@@ -86,19 +86,54 @@ rc, s = play("--room", R["room_castle_tutorial"], "--at", "90,310", "--plot", 30
 check("the tutorial, FIGHT to SPARE, and the Manual", rc == 0 and s.get("plot") == "31" and s.get("alive") == "0"
       and s.get("mercy", "").startswith("100"))
 
+# the Field: Lancer's Hathys (he looks in on the battle), Susie back, Lancer grabbed and his Jigsawries
+rc, s = play("--room", R["room_field_maze"], "--at", "1250,1150", "--plot", 35, "--party", "1,3,0", "--frames", 4000,
+             "--keys", "1-20:right", "--mash")
+check("the Hathy fight, won", rc == 0 and s.get("plot") == "36" and s.get("alive") == "0" and s.get("mode") == "1")
+rc, s = play("--room", R["room_field_getsusie"], "--at", "120,240", "--plot", 36, "--party", "1,3,0", "--frames", 2500,
+             "--keys", "1-80:right", "--mash")
+check("Susie joins again", rc == 0 and s.get("plot") == "37" and s.get("party") == "1,3,2")
+rc, s = play("--room", R["room_field3"], "--at", "10,220", "--plot", 42, "--party", "1,3,2", "--frames", 9000,
+             "--keys", "1-200:right", "--mash")
+check("Lancer grabbed, the Jigsawries beaten", rc == 0 and s.get("plot") == "45" and s.get("alive") == "0")
+# the Great Board: Lancer's team name (the first choice), C. Round crowned K. Round
+rc, s = play("--room", R["room_field_checkers3"], "--at", "start", "--plot", 50, "--party", "1,3,2", "--frames", 4000,
+             "--mash", "--choose", "1")
+check("the team's name", rc == 0 and s.get("plot") == "55")
+rc, s = play("--battle", 7, "--party", "1,3,2", "--frames", 3000, "--mash", "--menukeys", "right,z,z,right,z")
+check("C. Round: Susie's strike", rc == 0 and s.get("alive") == "0")
+# the Forest: Susie in Lancer's gang, the suits with them, a shortcut door, and no way on past the suits room yet
+rc, s = play("--room", R["room_forest_area1"], "--at", "300,160", "--plot", 60, "--party", "1,3,0", "--frames", 3000,
+             "--keys", "1-30:right", "--mash")
+check("Susie with Lancer's gang", rc == 0 and s.get("plot") == "70")
+rc, s = play("--room", R["room_forest_puzzle1"], "--at", "start", "--plot", 70, "--party", "1,3,0", "--frames", 2500,
+             "--keys", "1-30:right", "--mash")
+check("the suits with Susie and Lancer", rc == 0 and s.get("plot") == "71")
+rc, s = play("--room", R["room_forest_savepoint1"], "--at", "296,130", "--plot", 61, "--party", "1,3,0", "--frames", 900,
+             "--keys", "1-6:up,10:z", "--mash", "--choose", "0")
+check("a shortcut door to the Field", rc == 0 and s.get("room") == str(R["room_field3"]))
+rc, s = play("--room", R["room_forest_puzzle1"], "--at", "560,220", "--plot", 72, "--party", "1,3,0", "--frames", 200,
+             "--keys", "1-120:right")
+check("the chapter ends at the suits room for now", rc == 0 and s.get("room") == str(R["room_forest_puzzle1"]))
+
 # ---------------------------------------------------------------- random keys
 starts = [("room_krisroom", "246,97", 0), ("room_schoollobby", "110,200", 3), ("room_dark1", "280,200", 10),
-          ("room_dark_eyepuzzle", "200,300", 12), ("room_castle_town", "300,600", 30), ("room_field1", "450,310", 33)]
+          ("room_dark_eyepuzzle", "200,300", 12), ("room_castle_town", "300,600", 30), ("room_field1", "450,310", 33),
+          ("room_field_maze", "start", 35), ("room_field_puzzle2", "start", 37), ("room_field_boxpuzzle", "start", 45),
+          ("room_field_checkers4", "start", 50), ("room_field_checkers5", "start", 55), ("room_forest_area1", "start", 60),
+          ("room_forest_puzzle1", "start", 71)]
 bad = 0
-for i in range(60):
+for i in range(78):
     room, at, plot = starts[i % len(starts)]
-    rc, s = play("--room", R[room], "--at", at, "--plot", plot, "--party", "1,2,3" if plot >= 33 else "1,0,0",
+    party = "1,0,0" if plot < 33 else "1,3,2" if 37 <= plot < 60 else "1,3,0" if plot >= 60 else "1,2,3"
+    rc, s = play("--room", R[room], "--at", at, "--plot", plot, "--party", party,
                  "--frames", 4000, "--fuzz", i + 1)
     bad += rc != 0
-for i in range(20):
-    rc, s = play("--battle", [2, 3, 4, 5, 6, 9][i % 6], "--party", "1,2,3", "--frames", 4000, "--fuzz", 100 + i)
+for i in range(28):
+    rc, s = play("--battle", [2, 3, 4, 5, 6, 9, 7, 12, 13, 14, 16, 17, 22, 24][i % 14], "--party", "1,3,2", "--frames", 4000,
+                 "--fuzz", 100 + i)
     bad += rc != 0
-check("random keys: 80 sessions, nothing crashed", bad == 0)
+check("random keys: 106 sessions, nothing crashed", bad == 0)
 
 print("%d failed" % fails if fails else "all passed")
 sys.exit(1 if fails else 0)

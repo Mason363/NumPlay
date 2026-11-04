@@ -19,7 +19,7 @@ typedef struct {
   int16_t x, y;                /* sprite: its top-left; text: its top-left; line: start */
   int16_t a, b;                /* line: end; circle: radius; sprite_ex: scale x, scale y; text: shake, spacing */
   uint16_t ref, sub;           /* sprite, frame / text: pool offset, length */
-  uint16_t color;              /* sprite: 0 its own colours, else 1 + RGB565 (in `extra`) */
+  uint16_t color;              /* sprite: 0 its own colours, 1 all `extra`, 2 its own times `extra` (image_blend) */
   uint16_t extra;
   uint32_t seed;
 } Item;
@@ -91,7 +91,7 @@ void gfx_frame_rect(int x, int y, int w, int h, int t, uint16_t color) {
   gfx_rect(x + w - t, y + t, t, h - 2 * t, color, 255);
 }
 
-static void sprite_item(uint16_t s, int i, int x, int y, uint8_t flags, uint16_t color, bool tint, uint8_t alpha) {
+static void sprite_item(uint16_t s, int i, int x, int y, uint8_t flags, uint16_t color, int tint, uint8_t alpha) {
   Frame f;
   if (!alpha || !frame_get(s, i, &f)) return;
   int tx = x - ((flags & GFX_FLIPX) ? f.w - 1 - f.ox : f.ox), ty = y - ((flags & GFX_FLIPY) ? f.h - 1 - f.oy : f.oy);
@@ -101,9 +101,17 @@ static void sprite_item(uint16_t s, int i, int x, int y, uint8_t flags, uint16_t
   it->ref = s, it->sub = (uint16_t)i, it->flags = flags, it->alpha = alpha;
   it->color = tint, it->extra = color;
 }
-void gfx_sprite(uint16_t s, int i, int x, int y, uint8_t flags, uint8_t alpha) { sprite_item(s, i, x, y, flags, 0, false, alpha); }
+void gfx_sprite(uint16_t s, int i, int x, int y, uint8_t flags, uint8_t alpha) { sprite_item(s, i, x, y, flags, 0, 0, alpha); }
 void gfx_sprite_color(uint16_t s, int i, int x, int y, uint8_t flags, uint16_t color, uint8_t alpha) {
-  sprite_item(s, i, x, y, flags, color, true, alpha);
+  sprite_item(s, i, x, y, flags, color, 1, alpha);
+}
+void gfx_sprite_blend(uint16_t s, int i, int x, int y, uint8_t flags, uint16_t color, uint8_t alpha) {
+  sprite_item(s, i, x, y, flags, color, color == 0xFFFF ? 0 : 2, alpha);
+}
+/* a colour times another (GameMaker's image_blend) */
+static uint16_t mul565(uint16_t a, uint16_t b) {
+  int r = ((a >> 11) * (b >> 11) + 15) / 31, g = (((a >> 5) & 63) * ((b >> 5) & 63) + 31) / 63, bl = ((a & 31) * (b & 31) + 15) / 31;
+  return (uint16_t)(r << 11 | g << 5 | bl);
 }
 
 /* scaled and turned: the bounds of the turned rectangle (sin and cos in 1/256 steps of a turn) */
@@ -269,7 +277,8 @@ static void rast_sprite(const Item *it, int by0, int by1) {
   uint32_t a = a32(it->alpha);
   bool fx = it->flags & GFX_FLIPX, fy = it->flags & GFX_FLIPY;
   uint16_t pal[256];
-  for (int k = 0; k < f.ncol; k++) pal[k] = it->color ? it->extra : rd16(f.pal + 2 * k);
+  for (int k = 0; k < f.ncol; k++)
+    pal[k] = it->color == 1 ? it->extra : it->color == 2 ? mul565(rd16(f.pal + 2 * k), it->extra) : rd16(f.pal + 2 * k);
   int cx0 = it->x0, cx1 = it->x1;
   for (int y = y0; y < y1; y++) {
     int r = y - it->y;
@@ -315,7 +324,8 @@ static void rast_sprite_ex(const Item *it, int by0, int by1) {
   int y0 = it->y0 > by0 ? it->y0 : by0, y1 = it->y1 < by1 ? it->y1 : by1;
   uint32_t a = a32(it->alpha);
   uint16_t pal[256];
-  for (int k = 0; k < f.ncol; k++) pal[k] = it->color ? it->extra : rd16(f.pal + 2 * k);
+  for (int k = 0; k < f.ncol; k++)
+    pal[k] = it->color == 1 ? it->extra : it->color == 2 ? mul565(rd16(f.pal + 2 * k), it->extra) : rd16(f.pal + 2 * k);
   int c = gfx_cos((int)it->seed), s = gfx_sin((int)it->seed);
   /* inverse: source = R(-angle) (screen - origin) / scale, in 1/1024 */
   static uint8_t rowbuf[640];

@@ -67,9 +67,9 @@ static bool box_hits_solid(int x0, int y0, int x1, int y1, const uint8_t *s) {
   }
 }
 
-static bool box_free(int x0, int y0, int x1, int y1, int ignore) {
+static bool box_free_ex(int x0, int y0, int x1, int y1, int ignore, bool enemy) {
   for (int i = 0; i < ri.nsolid; i++)
-    if (box_hits_solid(x0, y0, x1, y1, ri.solids + 10 * i)) return false;
+    if ((enemy || !ri.solids[10 * i + 1]) && box_hits_solid(x0, y0, x1, y1, ri.solids + 10 * i)) return false;
   for (int i = 0; i < MAX_OBJS; i++) {
     const Obj *o = &objs[i];
     if ((o->flags & (OF_SOLID | OF_GONE)) != OF_SOLID || i == ignore) continue;
@@ -78,6 +78,8 @@ static bool box_free(int x0, int y0, int x1, int y1, int ignore) {
   }
   return true;
 }
+static bool box_free(int x0, int y0, int x1, int y1, int ignore) { return box_free_ex(x0, y0, x1, y1, ignore, false); }
+bool world_box_free(int x0, int y0, int x1, int y1, bool enemy) { return box_free_ex(x0, y0, x1, y1, -1, enemy); }
 
 bool world_place_free(int x, int y, int ignore) {
   int x0, y0, x1, y1;
@@ -135,7 +137,11 @@ int obj_py(const Obj *o) { return o->y / FX; }
 void obj_place(Obj *o, int x, int y) { o->x = x * FX, o->y = y * FX; }
 
 static void obj_step(Obj *o) {
-  if (o->walking) {
+  if (o->mt > 0) {
+    o->x += o->hs, o->y += o->vs;
+    o->img += o->ispd;
+    if (--o->mt == 0) o->x = o->tx, o->y = o->ty, o->hs = o->vs = 0;
+  } else if (o->walking) {
     int dx = o->tx - o->x, dy = o->ty - o->y;
     if (o->sprs[0]) {
       if (abs_i(dx) > abs_i(dy)) o->dir = dx < 0 ? DIR_LEFT : DIR_RIGHT;
@@ -221,6 +227,19 @@ static void follow_step(void) {
 Obj *follower(int c) {
   (void)c;
   return NULL;
+}
+bool follower_xy(int c, int *x, int *y) {
+  for (int k = 0; k < nfl; k++)
+    if (fl[k].c == c) {
+      *x = fl[k].x, *y = fl[k].y;
+      return true;
+    }
+  *x = pl.x, *y = pl.y;
+  return false;
+}
+void follow_place(int c, int x, int y, int dir) {
+  for (int k = 0; k < nfl; k++)
+    if (fl[k].c == c) fl[k].x = x, fl[k].y = y, fl[k].dir = (uint8_t)dir;
 }
 
 /* ---------------------------------------------------------------- entering a room */
@@ -511,6 +530,7 @@ void world_draw_scene(void) {
   int ox = cam_x / s - shx, oy = cam_y / s;
   if (ri.bgcol) gfx_rect(0, 0, SCREEN_W, SCREEN_H, ri.bgcol, 255);
   gfx_tiles(ox, oy, false);
+  room_draw_under();
   DrawRef refs[MAX_OBJS + 4];
   int n = 0;
   for (int i = 0; i < MAX_OBJS; i++) {

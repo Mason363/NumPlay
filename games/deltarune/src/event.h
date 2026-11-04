@@ -38,7 +38,11 @@ typedef struct Ev {
 #define BATTLE(id) do { battle_start(id); WAIT_UNTIL(battle_over()); } while (0)
 #define FADE_TO(r, e) do { world_fade_to(r, e); WAIT_UNTIL(!world_fading()); } while (0)
 
+/* in a TALK's list: a message that only changes the face (the original's scr_ralface(i, fe)...); who 0 none */
+#define F_(who, fe) (0x40000 | (who) << 8 | (fe))
 void say_list(int fc, int fe, const int *ids);
+void say_unskippable(int id);
+void say_add(const int *ids);   /* (more of the same into the box being made: text_clear first) */
 void event_start(int id, Obj *self);
 bool event_running(void);
 bool event_blocking(void);   /* running, and Kris can't walk */

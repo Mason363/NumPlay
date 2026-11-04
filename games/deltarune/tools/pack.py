@@ -18,7 +18,7 @@ data.bin: "DRD1", the number of sections, their offsets, then the sections (SEC_
   grid drawn over the characters), its solids and its instances, its flags (1: the Dark World, drawn at half size)
 - GRID: the rooms' tile ids (u16, 0xFFFF none)
 - SOLIDS: 10 bytes each: the shape (0 a box; 1-4 a right triangle, its square corner bottom-left, bottom-right,
-  top-left, top-right; 5 an ellipse) and its box (s16 x0, y0, x1, y1, the original's units, x1 and y1 past it)
+  top-left, top-right; 5 an ellipse), 1 if only the enemies' (obj_solidenemy), and its box (s16 x0, y0, x1, y1, the original's units, x1 and y1 past it)
 - INSTS: 12 bytes each: the object (OBJ number in data.h), x, y (s16), its scale x and y (s16, 1/100), the
   instance's place among the room's instances (u16)
 - FONTS: height, first character, count, flags, then 8 bytes a glyph (advance, w, h, ox, oy, 0, bitmap
@@ -313,7 +313,7 @@ def solid_kind(g, oi):
         name = g.objects[o]["name"]
         if name in SOLID_SHAPES:
             return SOLID_SHAPES[name]
-        if name == "obj_solidblock":
+        if name in ("obj_solidblock", "obj_solidenemy"):
             return 0
         o = g.objects[o]["parent"]
     return None
@@ -398,7 +398,9 @@ def pack_room(g, r, tiles, used_objs, obj_ids):
                 kind = {1: 2, 2: 1, 3: 4, 4: 3}.get(kind, kind)
             if inst["sy"] < 0:
                 kind = {1: 3, 3: 1, 2: 4, 4: 2}.get(kind, kind)
-            solids.append(struct.pack("<BBhhhh", kind, 0, x0, y0, x1, y1))
+            # (byte 1: 1 for the enemies' own walls, obj_solidenemy: Kris walks through them)
+            solids.append(struct.pack("<BBhhhh", kind, 1 if g.objects[oi]["name"] == "obj_solidenemy" else 0,
+                                      x0, y0, x1, y1))
         name = g.objects[oi]["name"]
         if name in used_objs:
             insts.append(struct.pack("<Hhhhhh", obj_ids[name], inst["x"], inst["y"], int(round(inst["sx"] * 100)),

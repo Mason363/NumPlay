@@ -7,7 +7,9 @@
 #include <stdio.h>
 #include <string.h>
 #include "battle.h"
+#include "cut.h"
 #include "event.h"
+#include "puzzles.h"
 #include "game.h"
 #include "gfx.h"
 #include "rooms.h"
@@ -16,7 +18,7 @@
 
 enum {
   EV_SUSIE_DUST = EV_DW_FIRST, EV_EYE_SWITCH, EV_EYE_OPEN, EV_CHASE1, EV_SLIDE, EV_CASTLE_FRONT, EV_TUTORIAL,
-  EV_BIGDOOR, EV_CHASER, EV_DARKSLIDE
+  EV_BIGDOOR, EV_DARKSLIDE
 };
 
 static Obj *marker(uint16_t spr, int x, int y, int ispd, int name) {
@@ -33,10 +35,10 @@ static void walker(Obj *o, int c) {
 
 /* the eye puzzle (obj_darkeyepuzzle): three eyes, three switches; two lit open the way */
 static uint8_t eye[3];
-static bool chase_done(int k) { int b = (g_room * 3 + k) & 511; return sv.chased[b >> 3] & (1 << (b & 7)); }
-static void chase_set(int k) { int b = (g_room * 3 + k) & 511; sv.chased[b >> 3] |= (uint8_t)(1 << (b & 7)); }
 
 void dw_setup(int room) {
+  puzzles_reset();
+  cut_reset();
   Inst in;
   switch (room) {
     case room_dark7:
@@ -94,14 +96,12 @@ void dw_setup(int room) {
     obj_set_box(s, 0, 0, 20 * in.sx / 100, 20 * in.sy / 100);
     s->event = EV_DARKSLIDE;
   }
-  /* the Field's enemies (obj_chaseenemy): touch one, fight it */
-  for (int k = 0; k < 3; k++) {
-    if (!world_inst(obj_chaseenemy, k, &in) || chase_done(k)) continue;
-    Obj *e = marker(spr_diamond_overworld, in.x, in.y, FX / 5, 0);
-    e->flags |= OF_TOUCH;
-    obj_set_box(e, 0, 20, 40, 40);
-    e->event = EV_CHASER, e->arg = (int16_t)k;
-  }
+  chasers_setup();
+  chests_setup();
+  shortcut_setup();
+  field_setup(room);
+  forest_setup(room);
+  castle_setup(room);
 }
 
 /* the eyes, drawn over the room */
@@ -126,19 +126,22 @@ void dw_step(void) {
     Obj *l = obj_find(ACT_LANCER);
     if (l) obj_walk_to(l, pl.x + 40, pl.y - 120, 3);
   }
-  /* the field's enemies come at Kris */
-  for (int i = 0; i < MAX_OBJS; i++) {
-    Obj *o = &objs[i];
-    if ((o->flags & OF_GONE) || o->event != EV_CHASER || event_running()) continue;
-    int dx = pl.x - o->x / FX, dy = pl.y + 40 - o->y / FX;
-    if (abs_i(dx) < 200 && abs_i(dy) < 160) {
-      o->x += clamp_i(dx * FX, -2 * FX, 2 * FX);
-      o->y += clamp_i(dy * FX, -2 * FX, 2 * FX);
-    }
-  }
+  chasers_step();
+  cut_step();
+  puzzles_step();
+  field_step();
+  forest_step();
+  castle_step();
 }
 
-void dw_draw(void) { eyes_draw(); }
+void dw_draw(void) {
+  eyes_draw();
+  chasers_draw();
+  cut_draw();
+  field_draw();
+  forest_draw();
+  castle_draw();
+}
 
 /* ---------------------------------------------------------------- events */
 static int ev_susie_dust(Ev *c) {
@@ -408,26 +411,6 @@ static int ev_bigdoor(Ev *c) {
   EV_END;
 }
 
-/* obj_chaseenemy: touched, it's a battle (the room's encounter); won or spared, it's gone */
-static int ev_chaser(Ev *c) {
-  EV_BEGIN;
-  {
-    static const struct {
-      uint16_t room;
-      uint8_t enc;
-    } encs[] = {{room_field1, 4}, {room_field2, 5}, {room_field_puzzle1, 6}, {room_field_getsusie, 7},
-                {room_field4, 33}, {room_field_secret1, 23}};
-    int e = 4;
-    for (unsigned i = 0; i < sizeof encs / sizeof encs[0]; i++)
-      if (encs[i].room == g_room) e = encs[i].enc;
-    c->v[0] = e, c->v[1] = c->self->arg;
-  }
-  obj_free(c->self);
-  chase_set(c->v[1]);
-  BATTLE(c->v[0]);
-  EV_END;
-}
-
 static bool on_slide(const Obj *o) {
   int x0 = pl.x, y0 = pl.y + 50, x1 = pl.x + 38, y1 = pl.y + 78;
   int ox = o->x / FX + o->bx, oy = o->y / FX + o->by;
@@ -456,6 +439,9 @@ static int ev_darkslide(Ev *c) {
 }
 
 int dw_event(Ev *c) {
+  if (c->id >= EV_CASTLE_FIRST) return castle_event(c);
+  if (c->id >= EV_FOREST_FIRST) return forest_event(c);
+  if (c->id >= EV_FIELD_FIRST) return field_event(c);
   switch (c->id) {
     case EV_SUSIE_DUST: return ev_susie_dust(c);
     case EV_EYE_SWITCH: return ev_eye_switch(c);
@@ -465,7 +451,13 @@ int dw_event(Ev *c) {
     case EV_CASTLE_FRONT: return ev_castle_front(c);
     case EV_TUTORIAL: return ev_tutorial(c);
     case EV_BIGDOOR: return ev_bigdoor(c);
-    case EV_CHASER: return ev_chaser(c);
+    case EV_CHASE_BATTLE: return chase_battle_event(c);
+    case EV_CHEST: return chest_event(c);
+    case EV_GLOW_SWITCH: return glow_switch_event(c);
+    case EV_GLOW_HINT: return glow_hint_event(c);
+    case EV_GLOW_SHAKE: return glow_shake_event(c);
+    case EV_SUITS_BUTTON: return suits_button_event(c);
+    case EV_SHORTCUT: return shortcut_event(c);
     case EV_DARKSLIDE: return ev_darkslide(c);
     default: return 1;
   }

@@ -9,6 +9,7 @@
 #include "game.h"
 #include "gmtexts.h"
 #include "menu.h"
+#include "puzzles.h"
 #include "rooms.h"
 #include "text.h"
 #include "world.h"
@@ -69,6 +70,7 @@ static int door_dest(int obj, int *entrance) {
     case obj_doorE: *entrance = 6; return room_next(g_room, 3);
     case obj_doorF: *entrance = 7; return room_next(g_room, -3);
     case obj_doorX: case obj_doorX_musfade:
+      /* (the original's tables, obj_doorX's and obj_doorX_musfade's alarm 2) */
       *entrance = 24;
       switch (g_room) {
         case room_castle_town: return room_castle_tutorial;
@@ -85,17 +87,48 @@ static int door_dest(int obj, int *entrance) {
         case room_flowershop_1f: return room_town_north;
         case room_torhouse: return room_town_krisyard;
         case room_town_krisyard: return room_torhouse;
+        case room_field_shop1: return room_shop1;
+        case room_man: return room_forest_savepoint2;
+        case room_forest_area5: return rnd_n(50) == 49 && flag(910) == 0 ? room_man : room_forest_starwalker;
+        case room_cc_1f: return pl.x >= 1300 ? room_cc_prisonelevator : g_room;
+        case room_cc_5f: return room_shop2;
+        case room_cc_prisonelevator:
+          return flag(239) == 1 ? room_cc_1f : flag(239) == 2 ? room_cc_5f : flag(239) == 3 ? room_cc_prison_prejoker
+                                                                                             : room_cc_prison_to_elevator;
+        case room_cc_prison_to_elevator: set_flag(239, 0); return room_cc_prisonelevator;
+        case room_cc_prison_prejoker: set_flag(239, 3); return room_cc_prisonelevator;
+        case room_cc_entrance: return room_forest_castlefront;
+        case room_cc_prisonlancer: return room_cc_prison_cells;
+        case room_cc_prison_cells: return room_cc_prisonlancer;
+        case room_forest_secret1: return room_forest_dancers1;
+        case room_forest_dancers1: return room_forest_secret1;
+        case room_forest_savepoint3: return room_forest_savepoint_relax;
+        case room_forest_savepoint_relax: return plot() < 120 ? room_forest_maze1 : room_forest_savepoint3;
+        case room_forest_maze_susie:
+          if (pl.y >= world_room_info()->h / 2) {
+            set_flag(292, 0), set_flag(291, 0);
+            return room_forest_savepoint_relax;
+          }
+          return room_forest_maze2;
+        case room_forest_castlefront: return plot() < 150 ? room_next(g_room, -1) : room_forest_fightsusie;
+        case room_forest_fightsusie: return plot() < 150 ? room_next(g_room, 1) : room_forest_castlefront;
+        case room_forest_maze1: case room_forest_maze2: return forest_maze_door(entrance);
         default: return g_room;
       }
     case obj_doorW: case obj_doorw_musfade:
       *entrance = 23;
       switch (g_room) {
-        case room_town_mid: return room_hospital_lobby;
-        case room_hospital_lobby: return room_town_mid;
-        case room_town_south: return room_alphysalley;
-        case room_alphysalley: return room_town_south;
+        case room_town_south: return room_hospital_lobby;
+        case room_hospital_lobby: return room_town_south;
+        case room_town_mid: return room_alphysalley;
+        case room_alphysalley: return room_town_mid;
         case room_town_north: return room_beach;
         case room_beach: return room_town_north;
+        case room_cc_1f: set_flag(239, 1); return room_cc_elevator;
+        case room_cc_5f: set_flag(239, 2); return room_cc_elevator;
+        case room_cc_elevator: return flag(239) == 2 ? room_cc_5f : room_cc_1f;
+        case room_forest_castlefront: return room_cc_entrance;
+        case room_cc_entrance: return room_forest_castlefront;
         default: return g_room;
       }
     default: *entrance = 1; return g_room;
@@ -153,7 +186,8 @@ void room_setup(int room) {
       obj_set_box(o, 0, 10 * s, 20 * s, 10 * s);
       o->event = EV_SAVE;
       o->name = ACT_SAVE;
-    } else if (in.obj == obj_npc_room || in.obj == obj_npc_sign || in.obj == obj_npc_facing) {
+    } else if (in.obj == obj_npc_room || in.obj == obj_npc_sign || in.obj == obj_npc_facing ||
+               in.obj == obj_npc_room_animated) {
       npc_setup(&in);
     }
   }
@@ -174,6 +208,10 @@ void room_step(void) {
   else lw_step();
 }
 
+void room_draw_under(void) {
+  if (world_dark()) puzzles_draw_under(), board_draw_under();
+}
+
 void room_draw_over(void) {
   if (world_dark()) dw_draw();
   else lw_draw();
@@ -182,12 +220,19 @@ void room_draw_over(void) {
 void room_menu(void) { menu_open(); }
 
 /* ---------------------------------------------------------------- the common events */
+/* the chapter as far as it is made: no door goes past the Forest's suits room (room_forest_puzzle1) */
+bool room_open(int room) {
+  const uint8_t *o = section(SEC_ORDER);
+  int last = rd16(o + 2 * room_forest_puzzle1);
+  return rd16(o + 2 * room) <= last;
+}
+
 static int ev_door(Ev *c) {
   EV_BEGIN;
   {
     int e;
     int dest = door_dest(c->self->obj, &e);
-    if (dest == g_room) return 1;
+    if (dest == g_room || !room_open(dest)) return 1;
     c->v[0] = dest, c->v[1] = e;
   }
   pl.frozen = true;
@@ -206,6 +251,26 @@ void txt_msg(TxtCtx *c, int i, const char *s) {
   c->msg[i] = s;
   if (i + 1 > c->nmsg) c->nmsg = i + 1;
 }
+void txt_subst_into(char *o, int cap, const char *s, const char *a) {
+  int n = 0;
+  for (int j = 0; s[j] && n < cap - 1; j++) {
+    if (s[j] == '~' && s[j + 1] == '1') {
+      for (const char *q = a; *q && n < cap - 1; q++) o[n++] = *q;
+      j++;
+    } else {
+      o[n++] = s[j];
+    }
+  }
+  o[n] = 0;
+}
+void txt_msg_subst(TxtCtx *c, int i, const char *s, const char *a) {
+  static char bufs[4][160];
+  static int k;
+  char *o = bufs[k++ & 3];
+  txt_subst_into(o, 160, s, a);
+  txt_msg(c, i, o);
+}
+
 /* scr_susface and the others: a message that only changes the face (who 0: none) */
 void txt_face(TxtCtx *c, int i, char who, int fe) {
   if (i < 0 || i >= MAX_MSG) return;
@@ -219,38 +284,52 @@ void txt_face(TxtCtx *c, int i, char who, int fe) {
   m[n++] = '%', m[n] = 0;
   txt_msg(c, i, m);
 }
+int g_noroom;
+int g_signal_obj = -1, g_signal_con;
+int g_door_dest = -1;
+void gm_signal(int obj, int con) { g_signal_obj = obj, g_signal_con = con; }
 void gm_itemget(int id) {
+  g_noroom = 1;
   for (int i = 0; i < NITEMS; i++)
     if (!sv.item[i]) {
       sv.item[i] = (uint8_t)id;
+      g_noroom = 0;
       return;
     }
 }
 void gm_keyitemget(int id) {
+  g_noroom = 1;
   for (int i = 0; i < NITEMS; i++)
     if (!sv.keyitem[i]) {
       sv.keyitem[i] = (uint8_t)id;
+      g_noroom = 0;
       return;
     }
 }
 void gm_weaponget(int id) {
+  g_noroom = 1;
   for (int i = 0; i < NITEMS; i++)
     if (!sv.weapons[i]) {
       sv.weapons[i] = (uint8_t)id;
+      g_noroom = 0;
       return;
     }
 }
 void gm_armorget(int id) {
+  g_noroom = 1;
   for (int i = 0; i < NITEMS; i++)
     if (!sv.armors[i]) {
       sv.armors[i] = (uint8_t)id;
+      g_noroom = 0;
       return;
     }
 }
 void gm_litemget(int id) {
+  g_noroom = 1;
   for (int i = 0; i < 8; i++)
     if (!sv.litem[i]) {
       sv.litem[i] = (uint8_t)id;
+      g_noroom = 0;
       return;
     }
 }
@@ -289,6 +368,8 @@ static void tc_begin(const Obj *o) {
       break;
     }
   }
+  tc.spr = o->spr;
+  tc.type = o->arg;
   tc.read = reads[o->inst & 255];
   tc.talked = tc.read;
   tc.facing = pl.dir;
@@ -305,6 +386,34 @@ static bool tc_say(void) {
   return true;
 }
 
+/* a choice made (obj_choicer_neo): scr_text(global.msc + 1) goes on */
+static void tc_choice(int choice) {
+  tc.choice = choice;
+  tc.msc++;
+  tc.arg = tc.msc;
+  tc.nmsg = 0;
+  memset(tc.msg, 0, sizeof tc.msg);
+  memset(tc.choicemsg, 0, sizeof tc.choicemsg);
+  int msc = tc.msc;
+  gm_scr_text(&tc);
+  for (int i = 0; i < tc.nmsg; i++) text_add(tc.msg[i] ? tc.msg[i] : " %");
+  if (tc.choicemsg[0]) text_set_choices(tc.choicemsg[0], tc.choicemsg[1], tc.choicemsg[2], tc.choicemsg[3]);
+  /* (a choice in the new messages: it goes on again) */
+  if (tc.msc != msc || tc.choicemsg[0]) text_on_choice(tc_choice);
+}
+
+/* an npc's own talk: scr_text(msc), its choices going on as they do (side: 0 the box on top, -1 by Kris) */
+bool talk_msc(int msc, int side) {
+  memset(&tc, 0, sizeof tc);
+  tc.msc = tc.arg = msc;
+  tc.facing = pl.dir;
+  gm_scr_text(&tc);
+  text_side(side);
+  if (!tc_say()) return false;
+  if (tc.msc) text_on_choice(tc_choice);
+  return true;
+}
+
 /* obj_readable_room1, obj_npc_room...: what it says, by the room, where it is, how often it was read */
 static int ev_read(Ev *c) {
   EV_BEGIN;
@@ -313,10 +422,12 @@ static int ev_read(Ev *c) {
     case obj_npc_room: gm_npc_room_talk(&tc); break;
     case obj_npc_sign: gm_npc_sign_talk(&tc); break;
     case obj_npc_facing: gm_npc_facing_talk(&tc); break;
+    case obj_npc_room_animated: gm_npc_room_animated_talk(&tc); break;
     default: gm_readable_room1(&tc); break;
   }
   reads[c->self->inst & 255]++;
   if (!tc_say()) return 1;
+  if (tc.msc) text_on_choice(tc_choice);
   WAIT_UNTIL(!text_active());
   EV_END;
 }
@@ -324,24 +435,31 @@ static int ev_read(Ev *c) {
 /* an npc's sprite (its create) */
 static void npc_setup(const Inst *in) {
   memset(&tc, 0, sizeof tc);
-  tc.x = in->x, tc.y = in->y, tc.spr = 0xFFFF;
+  tc.x = in->x, tc.y = in->y, tc.spr = 0xFFFF, tc.ispd = -1;
   switch (in->obj) {
     case obj_npc_room: gm_npc_room_create(&tc); break;
     case obj_npc_sign: gm_npc_sign_create(&tc); break;
     case obj_npc_facing: gm_npc_facing_create(&tc); break;
+    case obj_npc_room_animated: gm_npc_room_animated_create(&tc); break;
     default: break;
   }
+  if (tc.gone) return;
   Obj *o = obj_new(tc.spr, tc.x, tc.y);
   o->flags |= OF_TALK | OF_SOLID;
+  if (tc.hidden) o->flags |= OF_HIDDEN;
   o->obj = in->obj, o->inst = (int16_t)in->n;
   o->event = EV_READ;
+  o->ispd = tc.ispd >= 0 ? tc.ispd : in->obj == obj_npc_room_animated ? FX / 5 : 0;
+  o->arg = (int16_t)tc.type;
+  if (tc.tspr[0]) memcpy(o->sprs, tc.tspr, sizeof o->sprs);
   /* its box: its sprite's (the original's interactablesolid) */
   int s = world_scale();
   int w = tc.spr != 0xFFFF ? spr_w(tc.spr) * s : 20, h = tc.spr != 0xFFFF ? spr_h(tc.spr) * s : 20;
   obj_set_box(o, 0, h / 2, w, h - h / 2);
 }
 
-/* obj_savepoint's texts, by the room */
+/* obj_savepoint's texts, by the room (-1: save_extra, a text made here) */
+static const char *save_extra;
 static int c_talked;   /* (the eye puzzle's SAVE point talks once) */
 static int save_text(int *ids) {
   int n = 0;
@@ -374,6 +492,32 @@ static int save_text(int *ids) {
       else
         ids[n++] = obj_savepoint_slash_Other_10_gml_66_0, ids[n++] = obj_savepoint_slash_Other_10_gml_67_0;
       break;
+    case room_field_checkers3: {
+      /* the team's name (flag 214, from Lancer's question) */
+      static char power[96];
+      static const uint16_t names[4] = {obj_savepoint_slash_Other_10_gml_92_0, obj_savepoint_slash_Other_10_gml_93_0,
+                                        obj_savepoint_slash_Other_10_gml_94_0, obj_savepoint_slash_Other_10_gml_95_0};
+      const char *f = str(obj_savepoint_slash_Other_10_gml_96_0), *nm = str(names[flag(214) & 3]);
+      int k = 0;
+      for (int i = 0; f[i] && k < 90; i++) {
+        if (f[i] == '~' && f[i + 1] == '1') {
+          for (const char *q = nm; *q && k < 90; q++) power[k++] = *q;
+          i++;
+        } else {
+          power[k++] = f[i];
+        }
+      }
+      power[k] = 0;
+      ids[n++] = -1;
+      save_extra = power;
+      break;
+    }
+    case room_forest_savepoint1:
+      ids[n++] = obj_savepoint_slash_Other_10_gml_102_0, ids[n++] = obj_savepoint_slash_Other_10_gml_103_0;
+      break;
+    case room_forest_savepoint2:
+      ids[n++] = obj_savepoint_slash_Other_10_gml_110_0, ids[n++] = obj_savepoint_slash_Other_10_gml_111_0;
+      break;
     case room_field_shop1:
       if (!have_char(CH_SUSIE))
         ids[n++] = obj_savepoint_slash_Other_10_gml_84_0, ids[n++] = obj_savepoint_slash_Other_10_gml_85_0;
@@ -395,7 +539,7 @@ static int ev_save(Ev *c) {
       if (sv.hp[i] < sv.maxhp[i]) sv.hp[i] = sv.maxhp[i];
     if (n) {
       text_clear();
-      for (int i = 0; i < n; i++) text_add(str((uint16_t)ids[i]));
+      for (int i = 0; i < n; i++) text_add(ids[i] < 0 ? save_extra : str((uint16_t)ids[i]));
       text_open();
     }
   }
