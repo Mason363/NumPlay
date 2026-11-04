@@ -186,6 +186,141 @@ _ce_hash_items:
 	pop	ix
 	ret
 
+/* item_t *ce_add(int type, int x, int y, int w, int h) (src/gfx_ce.c): a new item at the list's end (ce_item_next,
+   ce_nitems, at most 360), or NULL when none is left, it is empty or wholly outside the clip (ce_clip: x0, y0, x1, y1
+   in 16 bits, 0 to 320; ce_clip_i its number). Its type, place and clip, its strips (rows of 16) the clip leaves,
+   the rest 0. Coordinates are small: no overflow in the compares. */
+	.section	.text.ce_add, "ax", @progbits
+	.global	_ce_add
+	.type	_ce_add, @function
+_ce_add:
+	ld	iy, 0
+	add	iy, sp			; type +3, x +6, y +9, w +12, h +15
+	ld	hl, (_ce_nitems)
+	ld	de, 360
+	or	a, a
+	sbc	hl, de
+	jp	nc, .L.anone
+	ld	de, 1
+	ld	hl, (iy + 12)
+	or	a, a
+	sbc	hl, de
+	jp	m, .L.anone		; w <= 0
+	ld	hl, (iy + 15)
+	or	a, a
+	sbc	hl, de
+	jp	m, .L.anone		; h <= 0
+	push	ix
+	ld	ix, (_ce_clip)
+	ld	de, 0
+	ld	e, (ix + 4)
+	ld	d, (ix + 5)
+	ld	hl, (iy + 6)
+	or	a, a
+	sbc	hl, de
+	jp	p, .L.aout		; x >= x1
+	ld	e, (ix + 6)
+	ld	d, (ix + 7)
+	ld	hl, (iy + 9)
+	or	a, a
+	sbc	hl, de
+	jp	p, .L.aout		; y >= y1
+	ld	e, (ix + 0)
+	ld	d, (ix + 1)
+	ld	hl, (iy + 6)
+	ld	bc, (iy + 12)
+	add	hl, bc
+	scf
+	sbc	hl, de
+	jp	m, .L.aout		; x + w <= x0
+	ld	e, (ix + 2)
+	ld	d, (ix + 3)
+	ld	hl, (iy + 9)
+	ld	bc, (iy + 15)
+	add	hl, bc
+	scf
+	sbc	hl, de
+	jp	m, .L.aout		; y + h <= y0
+	ld	hl, (iy + 9)		; its first strip: max(y, y0) / 16
+	or	a, a
+	sbc	hl, de
+	ld	a, e
+	jp	m, .L.ay0
+	ld	a, (iy + 9)
+.L.ay0:
+	rrca
+	rrca
+	rrca
+	rrca
+	and	a, 15
+	ld	c, a
+	ld	e, (ix + 6)		; its last: (min(y + h, y1) - 1) / 16
+	ld	d, (ix + 7)
+	ld	hl, (iy + 9)
+	ld	a, (iy + 15)
+	add	a, (iy + 9)		; (y + h's low byte, if under y1)
+	push	af
+	push	bc
+	ld	bc, (iy + 15)
+	add	hl, bc
+	pop	bc
+	or	a, a
+	sbc	hl, de
+	pop	hl			; (h: the low byte's sum)
+	ld	a, h
+	jp	m, .L.ay1
+	ld	a, e
+.L.ay1:
+	dec	a
+	rrca
+	rrca
+	rrca
+	rrca
+	and	a, 15
+	ld	b, a
+	ld	hl, (_ce_item_next)	; the item
+	push	hl
+	ld	de, 22
+	add	hl, de
+	ld	(_ce_item_next), hl
+	ld	hl, (_ce_nitems)
+	inc	hl
+	ld	(_ce_nitems), hl
+	pop	ix
+	ld	a, (iy + 3)
+	ld	(ix + 8), a		; type
+	ld	hl, (iy + 6)
+	ld	(ix + 0), l
+	ld	(ix + 1), h
+	ld	hl, (iy + 9)
+	ld	(ix + 2), l
+	ld	(ix + 3), h
+	ld	hl, (iy + 12)
+	ld	(ix + 4), l
+	ld	(ix + 5), h
+	ld	hl, (iy + 15)
+	ld	(ix + 6), l
+	ld	(ix + 7), h
+	ld	a, (_ce_clip_i)
+	ld	(ix + 9), a
+	ld	(ix + 17), c		; its strips
+	ld	(ix + 18), b
+	or	a, a
+	sbc	hl, hl
+	ld	(ix + 10), hl		; r, fx, a's low byte
+	ld	(ix + 13), hl		; a's high byte, b
+	ld	(ix + 16), l		; anim
+	ld	(ix + 19), hl		; no text
+	lea	hl, ix + 0
+	pop	ix
+	ret
+.L.aout:
+	pop	ix
+.L.anone:
+	or	a, a
+	sbc	hl, hl
+	ret
+
 /* unsigned ce_hash_str(unsigned h, const char *s): the same as ce_hash over a string's bytes */
 	.section	.text.ce_hash_str, "ax", @progbits
 	.global	_ce_hash_str

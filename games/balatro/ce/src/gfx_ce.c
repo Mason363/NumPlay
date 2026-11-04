@@ -49,11 +49,15 @@ _Static_assert(offsetof(item_t, clip) == 9 && offsetof(item_t, anim) == 16 && of
 #endif
 void ce_hash_items(unsigned *hs, const item_t *it, unsigned n, const unsigned *clip_hash);
 
-static item_t items[MAXI], *item_next;
+static item_t items[MAXI];
+item_t *ce_item_next; /* (blit.S's ce_add reads these) */
+int ce_nitems;
+const int16_t *ce_clip; /* the clip's: x0, y0, x1, y1 */
+uint8_t ce_clip_i;
 static char strbuf[2560]; /* (a frame takes under 1 KB: the How to play page) */
-static int strpos, nitems;
+static int strpos;
 static int16_t clips[MAXCLIP][4];
-static int nclips, cur_clip;
+static int nclips;
 static uint8_t strip[SCR_W * SH];
 static const uint16_t ROW_OFF[SH] = {0, 320, 640, 960, 1280, 1600, 1920, 2240, 2560, 2880, 3200, 3520, 3840, 4160,
                                      4480, 4800}; /* (a strip's rows: the eZ80 multiplies by calls) */
@@ -277,12 +281,12 @@ static unsigned long prof_now(void) {
 
 void g_begin(void) {
   PROF(0); /* (the time between frames: the rules, the keys, the waiting) */
-  nitems = 0;
-  item_next = items;
+  ce_nitems = 0;
+  ce_item_next = items;
   bg_cover_x = 0;
   strpos = 0;
   nclips = 1;
-  cur_clip = 0;
+  ce_clip_i = 0, ce_clip = clips[0];
   frame_dyn = 0;
   ed_frame = (unsigned)(g_time / ED_DT_MS);
   clips[0][0] = 0, clips[0][1] = 0, clips[0][2] = SCR_W, clips[0][3] = SCR_H;
@@ -294,24 +298,32 @@ void g_clip(int x, int y, int w, int h) {
   clips[nclips][1] = (int16_t)(y < 0 ? 0 : y);
   clips[nclips][2] = (int16_t)(x + w > SCR_W ? SCR_W : x + w);
   clips[nclips][3] = (int16_t)(y + h > SCR_H ? SCR_H : y + h);
-  cur_clip = nclips++;
+  ce_clip_i = (uint8_t)nclips, ce_clip = clips[nclips++];
 }
-void g_noclip(void) { cur_clip = 0; }
+void g_noclip(void) { ce_clip_i = 0, ce_clip = clips[0]; }
 
-static item_t *add(int type, int x, int y, int w, int h) {
-  if (nitems >= MAXI || w <= 0 || h <= 0) return 0;
-  const int16_t *c = clips[cur_clip];
+/* a new item in the list, or NULL (none left, empty, or wholly outside the clip): its strips worked out, the rest 0
+   (blit.S; its C on a computer) */
+item_t *ce_add(int type, int x, int y, int w, int h);
+#ifdef NP_HOST
+item_t *ce_add(int type, int x, int y, int w, int h) {
+  if (ce_nitems >= MAXI || w <= 0 || h <= 0) return 0;
+  const int16_t *c = ce_clip;
   if (x >= c[2] || y >= c[3] || x + w <= c[0] || y + h <= c[1]) return 0;
-  item_t *it = item_next++;
-  nitems++;
+  item_t *it = ce_item_next++;
+  ce_nitems++;
   it->type = (uint8_t)type;
   it->x = (int16_t)x, it->y = (int16_t)y, it->w = (int16_t)w, it->h = (int16_t)h;
-  it->clip = (uint8_t)cur_clip;
+  it->clip = ce_clip_i;
   it->fx = 0, it->r = 0, it->a = 0, it->b = 0, it->s = 0, it->anim = 0;
   int y0 = y > c[1] ? y : c[1], y1 = y + h < c[3] ? y + h : c[3];
-  it->s0 = (uint8_t)((uint8_t)y0 >> 4), it->s1 = (uint8_t)((uint8_t)(y1 - 1) >> 4); /* (SH 16; y0 < y1 <= 240) */
+  it->s0 = (uint8_t)(y0 / SH), it->s1 = (uint8_t)((y1 - 1) / SH);
   return it;
 }
+#else
+_Static_assert(SH == 16 && MAXI == 360, "blit.S's ce_add");
+#endif
+#define add ce_add
 
 void g_rect(int x, int y, int w, int h, C c) {
   item_t *it = add(I_RECT, x, y, w, h);
@@ -837,7 +849,7 @@ long ce_strips_drawn, ce_pal_misses;
 
 void g_end(void) {
 #ifdef NP_HOST
-  if (nitems > ce_max_items) ce_max_items = nitems;
+  if (ce_nitems > ce_max_items) ce_max_items = ce_nitems;
   if (strpos > ce_max_str) ce_max_str = strpos;
 #endif
   PROF(1); /* (the frame's list) */
@@ -851,7 +863,7 @@ void g_end(void) {
   unsigned b = ce_hash_words(0, base, 3);
   for (int s = 0; s < NSTRIP; s++) hs[s] = b + (unsigned)s;
   for (int i = 0; i < nclips; i++) clip_hash[i] = ce_hash(0x5A17u, clips[i], sizeof clips[i]);
-  ce_hash_items(hs, items, (unsigned)nitems, clip_hash);
+  ce_hash_items(hs, items, (unsigned)ce_nitems, clip_hash);
   PROF(2); /* (the hashes) */
   uint8_t *d = strip;
   for (int s = 0, y0 = 0; s < NSTRIP; s++, y0 += SH) {
@@ -875,7 +887,7 @@ void g_end(void) {
     } else
       memset(strip, bg_solid, sizeof strip);
     PROF(13);
-    for (int i = 0; i < nitems; i++) {
+    for (int i = 0; i < ce_nitems; i++) {
       item_t *it = &items[i];
       if (s < it->s0 || s > it->s1) continue;
       const int16_t *c = clips[it->clip];
