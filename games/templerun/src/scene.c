@@ -153,6 +153,80 @@ static void reach_make(void) {
   }
 }
 
+#if NP_SOFT_FLOAT
+/* (calculators without a floating-point unit: the same, each corner moved, turned and projected in integers, the
+ * mesh's turn and place read once into fixed point; the faces still go through r_poly_view in float) */
+#include "np_fixed.h"
+static inline void move_fx(const MVert *mv, const int64_t *q0, const int32_t *mx, const int32_t *my, const int32_t *mz,
+                           SVq *o) {
+  o->x = fx_sat32(q0[0] + (((int64_t)mx[0] * mv->x + (int64_t)mz[0] * mv->z) >> 14));
+  o->y = fx_sat32(q0[1] + (((int64_t)mx[1] * mv->x + (int64_t)my[1] * mv->y + (int64_t)mz[1] * mv->z) >> 14));
+  o->z = fx_sat32(q0[2] + (((int64_t)mx[2] * mv->x + (int64_t)my[2] * mv->y + (int64_t)mz[2] * mv->z) >> 14));
+  if (o->z >= (int32_t)(R_NEAR * 65536)) r_screen_fx(o);
+}
+void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
+  float dx = ox - cx_, dy = oy - cy_, dz = oz - cz_;
+  float x0 = dx * cc - dz * cs, z0 = dx * cs + dz * cc;
+  const Mesh *me = &meshes[m];
+  float r = me->r, h = (float)reach[m];
+  if (z0 + h < 0 || z0 - h > VIEW) return;
+  if (x0 - r > z0 * 1.6f + 8 || -x0 - r > z0 * 1.6f + 8) return;
+  if (me->far >= 0 && z0 > MESH_FAR) me = &meshes[me->far];
+  float s, c;
+  r_sincos(yaw - cyaw, &s, &c);
+  /* a corner (a quarter unit) in camera space: q0 + vx mx + vy my + vz mz, the pitch (cam.sp, cam.cp) folded in; the
+   * columns in 2^30ths of a metre, the place in 16.16 metres */
+  float k = 0.25f * S, sp = cam.sp, cp = cam.cp;
+  int32_t mx[3] = {(int32_t)fx_from_float(k * c, 30), (int32_t)fx_from_float(-k * s * sp, 30), (int32_t)fx_from_float(-k * s * cp, 30)};
+  int32_t my[3] = {0, (int32_t)fx_from_float(k * cp, 30), (int32_t)fx_from_float(-k * sp, 30)};
+  int32_t mz[3] = {(int32_t)fx_from_float(k * s, 30), (int32_t)fx_from_float(k * c * sp, 30), (int32_t)fx_from_float(k * c * cp, 30)};
+  int64_t q0[3] = {fx_from_float(x0 * S, 16), fx_from_float((dy * cp + z0 * sp) * S, 16), fx_from_float((-dy * sp + z0 * cp) * S, 16)};
+  const int32_t near = (int32_t)(R_NEAR * 65536);
+  static SVq v[MESH_CORNERS];
+  static uint16_t made[MESH_CORNERS], stamp;
+  if (++stamp == 0) {
+    memset(made, 0, sizeof made);
+    stamp = 1;
+  }
+  SVq tmp[3];
+#define CORNER_FX(j, k3)                                                                                         \
+  ((j) >= MESH_CORNERS ? (move_fx(&me->v[j], q0, mx, my, mz, &tmp[k3]), &tmp[k3])                                    \
+   : made[j] == stamp  ? &v[j]                                                                                        \
+                       : (made[j] = stamp, move_fx(&me->v[j], q0, mx, my, mz, &v[j]), &v[j]))
+  int flags = alpha < 255 ? P_ALPHA : 0;
+  for (int i = 0; i < me->nf; i++) {
+    const MFace *f = &me->f[i];
+    V3 p[12];
+    int n = f->n > 12 ? 12 : f->n;
+    for (int kk = 0; kk < n; kk++) {
+      const SVq *q = CORNER_FX(me->idx[f->first + kk], 0);
+      p[kk] = (V3){fx_to_float(q->x, 16), fx_to_float(q->y, 16), fx_to_float(q->z, 16)};
+    }
+    float nx = f->nx * (1.0f / 127), ny = f->ny * (1.0f / 127), nz = f->nz * (1.0f / 127);
+    V3 nn = {nx * c + nz * s, ny, -nx * s + nz * c};
+    r_poly_view(p, n, r_shade(f->rgb, nn), flags | (f->flags & 1 ? P_TWOSIDED : 0), alpha);
+  }
+  int nt = me->nt;
+  if (m < 2 * M_PIECES) {
+    float d2 = dx * dx + dz * dz;
+    if (d2 > LOD_NEAR * LOD_NEAR) nt = (int)((float)nt * (LOD_NEAR * LOD_NEAR) / d2);
+  }
+  for (int i = 0; i < nt; i++) {
+    const TFace *t = &me->t[i];
+    const uint16_t *ix = me->tidx + 3 * i;
+    const int16_t *q = me->uv + 6 * i;
+    const SVq *a = CORNER_FX(ix[0], 0), *b = CORNER_FX(ix[1], 1), *cc3 = CORNER_FX(ix[2], 2);
+    if (a->z >= near && b->z >= near && cc3->z >= near && r_tri_tex_screen_fx(a, b, cc3, q, t->tex, t->light + 1, flags, t->avg))
+      continue;
+    float uv[6] = {q[0] * 0.25f, q[1] * 0.25f, q[2] * 0.25f, q[3] * 0.25f, q[4] * 0.25f, q[5] * 0.25f};
+    V3 p[3] = {{fx_to_float(a->x, 16), fx_to_float(a->y, 16), fx_to_float(a->z, 16)},
+               {fx_to_float(b->x, 16), fx_to_float(b->y, 16), fx_to_float(b->z, 16)},
+               {fx_to_float(cc3->x, 16), fx_to_float(cc3->y, 16), fx_to_float(cc3->z, 16)}};
+    r_poly_tex_view(p, uv, 3, t->tex, t->light + 1, flags, t->avg);
+  }
+#undef CORNER_FX
+}
+#else
 void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
   float dx = ox - cx_, dy = oy - cy_, dz = oz - cz_;
   float x0 = dx * cc - dz * cs, z0 = dx * cs + dz * cc;
@@ -210,6 +284,7 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
 #undef CORNER
 #undef MOVE
 }
+#endif
 
 static void draw_tile(const Tile *t) {
   float x = path_cx(t), z = path_cz(t);

@@ -96,6 +96,18 @@ void r_poly_tex(const V3 *v, const float *uv, int n, int tex, int light, int fla
 /* a textured triangle of a mesh, as r_poly_tex_avg, its corners from r_corner and all in front of the near plane:
  * left out at once when it is turned away; false when it reaches too far off the screen (r_poly_tex_avg then) */
 bool r_tri_tex_screen(const SV *a, const SV *b, const SV *c, const float *uv, int tex, int light, int flags, uint16_t avg);
+#if NP_SOFT_FLOAT
+/* (calculators without a floating-point unit) a corner as r_corner makes it, in 16.16: camera space, the screen from its
+ * middle and its depth (as the polygons'), which r_screen_fx fills in from x, y, z in front of the near plane;
+ * r_tri_tex_screen with such corners and the places in quarter texels */
+typedef struct {
+  int32_t x, y, z, sx, sy;
+  int64_t w;
+} SVq;
+void r_screen_fx(SVq *s);
+bool r_tri_tex_screen_fx(const SVq *a, const SVq *b, const SVq *c, const int16_t *uv, int tex, int light, int flags,
+                         uint16_t avg);
+#endif
 void r_poly_tex_avg(const V3 *v, const float *uv, int n, int tex, int light, int flags, uint16_t avg);
 void r_poly_tex_view(const V3 *v, const float *uv, int n, int tex, int light, int flags, uint16_t avg);   /* (camera space) */
 

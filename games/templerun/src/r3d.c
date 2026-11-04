@@ -322,6 +322,112 @@ bool r_tri_tex_screen(const SV *A, const SV *B, const SV *C, const float *uv, in
   return true;
 }
 
+#if NP_SOFT_FLOAT
+/* ---------------------------------------------------------------- a mesh's triangle in integers
+ * (calculators without a floating-point unit: r_tri_tex_screen and emit_screen for a textured triangle, its corners in
+ * 16.16 and the planes fitted through them with reciprocals; the planes are kept as floats, as emit_screen keeps them) */
+#include "np_fixed.h"
+
+void r_screen_fx(SVq *s) {
+  int sh = __builtin_clz((uint32_t)s->z);
+  int64_t r = fx_rcp((uint32_t)s->z << sh), f = fx_from_float(cam.f, 16);   /* r: 2^61 / (z 2^16 2^sh) */
+  s->sx = fx_sat32(((int64_t)s->x * r >> (45 - sh)) * f >> 16), s->sy = fx_sat32(-(((int64_t)s->y * r >> (45 - sh)) * f >> 16));
+  s->w = (int64_t)ZK * r >> (29 - sh);
+}
+
+/* emit_screen for a triangle in perspective, false when a number would not fit (emit_screen then) */
+static bool emit_tri_fx(const SVq *const c[3], const int16_t *uv, int tex, int flags, int alpha, uint16_t avg) {
+  int32_t sx[3], sy[3], cx = (int32_t)fx_from_float(cam.cx, 16), cy = (int32_t)fx_from_float(cam.cy, 16);
+  int64_t zsum = 0, w[3], wmax = 0;
+  int32_t x0 = INT32_MAX, x1 = INT32_MIN, y0 = INT32_MAX, y1 = INT32_MIN;
+  for (int i = 0; i < 3; i++) {
+    sx[i] = c[i]->sx + cx, sy[i] = c[i]->sy + cy, w[i] = c[i]->w;
+    if (sx[i] < x0) x0 = sx[i];
+    if (sx[i] > x1) x1 = sx[i];
+    if (sy[i] < y0) y0 = sy[i];
+    if (sy[i] > y1) y1 = sy[i];
+    zsum += c[i]->z;
+    if (w[i] > wmax) wmax = w[i];
+  }
+  if (x1 < 0 || x0 >= SCREEN_W << 16 || y1 < 0 || y0 >= SCREEN_H << 16) return true;
+  int64_t ax = sx[1] - sx[0], ay = sy[1] - sy[0], bx = sx[2] - sx[0], by = sy[2] - sy[0], det = ax * by - bx * ay;
+  /* the depth plane through the corners: depth = a x + b y + c */
+  int64_t a = fx_div((w[1] - w[0]) * by - (w[2] - w[0]) * ay, det, 16), b = fx_div(ax * (w[2] - w[0]) - bx * (w[1] - w[0]), det, 16);
+  const int64_t big = (int64_t)1 << 34;
+  if (a > big || a < -big || b > big || b < -big) return false;
+  Poly *q = &polys[npolys];
+  int64_t pc = w[0] - (a * sx[0] >> 16) - (b * sy[0] >> 16);
+  if (flags & P_DECAL) pc += 3 << 16;
+  if (flags & P_DECAL2) pc += 6 << 16;
+  if (flags & P_DECAL3) pc += 9 << 16;
+  int kind = K_PERSP;
+  uint16_t color = (uint16_t)tex;
+  const Texture *t = r_tex[tex];
+  /* (zm: the corners' mean depth, as thrice it) */
+  int64_t far16 = fx_from_float(r_far, 16), fog16 = fx_from_float(r_fog1, 16);
+  if (t->clear && !avg && (nuv >= MAXT || zsum * 5 > far16 * 24)) return true;
+  UV *u = &uvs[nuv];
+  if ((!t->clear && (zsum * 5 > fog16 * 9 || nuv >= MAXT)) || (avg && (zsum > far16 * 3 || nuv >= MAXT))) {
+    uint16_t c0 = avg ? avg : t->pal[t->clear ? 1 : 0];
+    uint32_t a8 = (uint32_t)(c0 >> 11) * 255 / 31 << 16 | (uint32_t)((c0 >> 5) & 63) * 255 / 63 << 8 | (uint32_t)(c0 & 31) * 255 / 31;
+    color = r_565(r_mix888(a8, 0, 256 - alpha * 8 > 256 ? 0 : 256 - alpha * 8));
+    kind = K_FLAT;
+    alpha = 255;
+  } else {
+    /* u and v over the depth, as planes (4 u w and 4 v w, the places being in quarter texels) */
+    int64_t pa[2], pb[2], pk[2];
+    for (int k = 0; k < 2; k++) {
+      int64_t t0 = (int64_t)uv[k] * w[0] >> 16, t1 = (int64_t)uv[2 + k] * w[1] >> 16, t2 = (int64_t)uv[4 + k] * w[2] >> 16;
+      pa[k] = fx_div((t1 - t0) * by - (t2 - t0) * ay, det, 30), pb[k] = fx_div(ax * (t2 - t0) - bx * (t1 - t0), det, 30);
+      if (pa[k] > big || pa[k] < -big || pb[k] > big || pb[k] < -big) return false;
+      pk[k] = (t0 << 14) - (pa[k] * sx[0] >> 16) - (pb[k] * sy[0] >> 16);
+    }
+    u->ua = fx_to_float(pa[0], 16), u->ub = fx_to_float(pb[0], 16), u->uc = fx_to_float(pk[0], 16);
+    u->va = fx_to_float(pa[1], 16), u->vb = fx_to_float(pb[1], 16), u->vc = fx_to_float(pk[1], 16);
+  }
+  int iy0 = y0 < 0 ? 0 : (y0 + 32768) >> 16, iy1 = y1 >= SCREEN_H << 16 ? SCREEN_H : (y1 + 32768) >> 16;
+  if (iy0 >= iy1) return true;
+  q->a = fx_to_float(a, 16), q->b = fx_to_float(b, 16), q->c = fx_to_float(pc, 16);
+  q->near = (uint8_t)(wmax >= (int64_t)65535 << 16 ? 255 : (int)(wmax >> 24));
+  q->kind = (uint8_t)kind;
+  q->extra = kind == K_PERSP ? (uint16_t)nuv++ : 0;
+  q->color = color;
+  q->alpha = (uint8_t)alpha;
+  q->v0 = (uint16_t)nverts, q->n = 3;
+  for (int i = 0; i < 3; i++) {
+    int32_t px = sx[i] * 8 + 32768, py = sy[i] * 8 + 32768;   /* (as (int16_t)(x * SUB + 0.5f)) */
+    pos[nverts + i] = (Pos){(int16_t)(px < 0 ? -(-px >> 16) : px >> 16), (int16_t)(py < 0 ? -(-py >> 16) : py >> 16)};
+  }
+  q->y0 = (uint8_t)iy0, q->y1 = (uint8_t)iy1;
+  nverts += 3;
+  order[npolys] = (uint16_t)npolys;
+  npolys++;
+  return true;
+}
+
+bool r_tri_tex_screen_fx(const SVq *A, const SVq *B, const SVq *C, const int16_t *uv, int tex, int light, int flags,
+                         uint16_t avg) {
+  const int32_t far = (int32_t)(FAR * 65536), fog = (int32_t)fx_from_float(r_fog1, 16), g = (int32_t)(GUARD * 65536);
+  if (A->z > far && B->z > far && C->z > far) return true;
+  if (A->z > fog && B->z > fog && C->z > fog) return true;
+  const SVq *c[3] = {A, B, C};
+  for (int i = 0; i < 3; i++)
+    if (c[i]->sx > g || c[i]->sx < -g || c[i]->sy > g || c[i]->sy < -g) return false;
+  if ((int64_t)(B->sx - A->sx) * (C->sy - A->sy) - (int64_t)(C->sx - A->sx) * (B->sy - A->sy) < (int64_t)1 << 32) return true;
+  if (npolys >= MAXP || nverts + MAXN > MAXV) return true;
+  int l = light >> 3;
+  if (emit_tri_fx(c, uv, tex, flags, l > 32 ? 32 : l < 0 ? 0 : l, avg)) return true;
+  /* (numbers too big: as r_tri_tex_screen) */
+  float u[6];
+  for (int i = 0; i < 6; i++) u[i] = uv[i] * 0.25f;
+  SV s[3];
+  for (int i = 0; i < 3; i++)
+    s[i] = (SV){fx_to_float(c[i]->x, 16), fx_to_float(c[i]->y, 16), fx_to_float(c[i]->z, 16), fx_to_float(c[i]->sx, 16),
+                fx_to_float(c[i]->sy, 16)};
+  return r_tri_tex_screen(&s[0], &s[1], &s[2], u, tex, light, flags, avg);
+}
+#endif
+
 static V3 add3(V3 a, V3 b, V3 c, V3 d) { return (V3){a.x + b.x + c.x + d.x, a.y + b.y + c.y + d.y, a.z + b.z + c.z + d.z}; }
 static V3 neg(V3 a) { return (V3){-a.x, -a.y, -a.z}; }
 static V3 unit(V3 a) {
@@ -660,7 +766,6 @@ __attribute__((noinline)) static void raster_tri(const Poly *q) {
 #if NP_SOFT_FLOAT
 /* ---------------------------------------------------------------- the same in integers
  * (calculators without a floating-point unit: per polygon a few conversions, then no float at all in its rows) */
-#include "np_fixed.h"
 
 /* the depth and texture planes at pixel (x, y) (its middle), 16.16 */
 typedef struct {
