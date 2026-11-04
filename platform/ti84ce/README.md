@@ -24,13 +24,13 @@ make port TARGET=ti84ce        (in a game's folder): build/ti84ce/<game>/bin/<GA
 | (−) | ans |
 | 0 to 9, + − × ÷ . , ( ) ^ x² ln log sin cos tan | the same |
 
-2nd is OK because it sits by the arrows, as OK does on a NumWorks, and enter is EXE at the bottom right. An arrow or del held down repeats in the menus.
+2nd is OK because it sits by the arrows, as OK does on a NumWorks, and enter is EXE at the bottom right. An arrow or del held down repeats, as on a NumWorks. ×10ˣ, eˣ, i, π and √ have no key: no game needs them.
 
 Saves: the appvar `NP` + the game's id, its first 5 letters and its last when it's longer than 6 (`NPflappd` for Flappy Bird), archived when the game ends.
 
 ## Room
 
-A CE program runs from RAM, unpacked: about 150 KB for the program as stored and unpacked, 60 KB for its static data, a stack of 4 KB, and an `int` of 24 bits. Each build prints what the game takes and stops when it's too much (`check.py`). In a game's folder,
+A CE program is unpacked into RAM when it starts. It has about 150 KB for itself (stored and unpacked), 60 KB for its static data, a 4 KB stack, and an `int` of 24 bits. Each build prints what the game takes and stops when it's too much (`check.py`). In a game's folder,
 
 ```
 python3 ../../platform/ti84ce/check.py --ints build/ti84ce/<game>
