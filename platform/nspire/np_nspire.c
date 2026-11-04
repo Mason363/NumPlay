@@ -7,7 +7,6 @@
  *
  * Build defines: NP_APP_ID (the game's id). */
 #include <libndls.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <eadk.h>
@@ -64,6 +63,7 @@ static void blit(void) {
   dirty = false;
   lcd_blit(fb, SCR_320x240_565);
   if (!timer_ok) fallback_ms += 16;
+  last_blit = (uint32_t)eadk_timing_millis(); /* (a game showing its frames: none half drawn from push_rect) */
 }
 void eadk_display_push_rect(eadk_rect_t r, const eadk_color_t *px) {
   start();
@@ -73,7 +73,7 @@ void eadk_display_push_rect(eadk_rect_t r, const eadk_color_t *px) {
   }
   dirty = true;
   uint32_t now = (uint32_t)eadk_timing_millis();
-  if (now - last_blit >= 16) last_blit = now, blit();
+  if (now - last_blit >= 16) blit();
 }
 void eadk_display_push_rect_uniform(eadk_rect_t r, eadk_color_t c) {
   start();
@@ -91,6 +91,11 @@ void eadk_display_pull_rect(eadk_rect_t r, eadk_color_t *px) {
 bool eadk_display_wait_for_vblank(void) {
   start();
   blit();
+  if (timer_ok) { /* as the NumWorks's: till the screen's next refresh, 60 a second (games pace themselves by it) */
+    uint64_t now = ticks(), next = (now * 60 / 32768 + 1) * 32768 / 60;
+    unsigned ms = (unsigned)((next - now) * 1000 / 32768);
+    if (ms) msleep(ms);
+  }
   return true;
 }
 
@@ -100,8 +105,7 @@ static const struct {
   const t_key *key;
   eadk_key_t to;
 } KEYS[] = {
-  K(LEFT, eadk_key_left), K(RIGHT, eadk_key_right), K(UP, eadk_key_up), K(DOWN, eadk_key_down),
-  K(ENTER, eadk_key_ok), K(CLICK, eadk_key_ok), K(RET, eadk_key_exe), K(ESC, eadk_key_back),
+  K(ENTER, eadk_key_ok), K(RET, eadk_key_exe), K(ESC, eadk_key_back),
   K(HOME, eadk_key_home), K(DEL, eadk_key_backspace), K(SHIFT, eadk_key_shift), K(CTRL, eadk_key_alpha),
   K(MENU, eadk_key_toolbox), K(VAR, eadk_key_var), K(TAB, eadk_key_xnt), K(0, eadk_key_zero), K(1, eadk_key_one),
   K(2, eadk_key_two), K(3, eadk_key_three), K(4, eadk_key_four), K(5, eadk_key_five), K(6, eadk_key_six),
@@ -111,22 +115,31 @@ static const struct {
   K(EXP, eadk_key_power), K(SQU, eadk_key_square), K(PI, eadk_key_pi), K(SIN, eadk_key_sine), K(COS, eadk_key_cosine),
   K(TAN, eadk_key_tangent), K(EE, eadk_key_ee), K(NEGATIVE, eadk_key_ans),
 };
+/* the arrows: the touchpad's regions (tpad_arrow_t, the corners two arrows, the middle OK), or the clickpad's keys */
+#define A(k) (1ull << eadk_key_##k)
+static const eadk_keyboard_state_t PAD[] = {0, A(up), A(up) | A(right), A(right), A(right) | A(down), A(down),
+                                           A(down) | A(left), A(left), A(left) | A(up), A(ok)};
+static const t_key *const PAD_KEYS[] = {NULL, &KEY_NSPIRE_UP, &KEY_NSPIRE_UPRIGHT, &KEY_NSPIRE_RIGHT,
+                                        &KEY_NSPIRE_RIGHTDOWN, &KEY_NSPIRE_DOWN, &KEY_NSPIRE_DOWNLEFT,
+                                        &KEY_NSPIRE_LEFT, &KEY_NSPIRE_LEFTUP, &KEY_NSPIRE_CLICK};
 eadk_keyboard_state_t eadk_keyboard_scan(void) {
   start();
   eadk_keyboard_state_t s = 0;
   for (unsigned i = 0; i < sizeof KEYS / sizeof KEYS[0]; i++)
     if (isKeyPressed(*KEYS[i].key)) s |= (eadk_keyboard_state_t)1 << KEYS[i].to;
-  /* (the touchpad's corners: two arrows) */
-  if (isKeyPressed(KEY_NSPIRE_UPRIGHT)) s |= 1ull << eadk_key_up | 1ull << eadk_key_right;
-  if (isKeyPressed(KEY_NSPIRE_RIGHTDOWN)) s |= 1ull << eadk_key_right | 1ull << eadk_key_down;
-  if (isKeyPressed(KEY_NSPIRE_DOWNLEFT)) s |= 1ull << eadk_key_down | 1ull << eadk_key_left;
-  if (isKeyPressed(KEY_NSPIRE_LEFTUP)) s |= 1ull << eadk_key_left | 1ull << eadk_key_up;
-  if (on_key_pressed()) s |= 1ull << eadk_key_home | 1ull << eadk_key_on_off;
+  if (is_touchpad) { /* read once: isKeyPressed reads it over I2C for each arrow */
+    touchpad_report_t r;
+    if (!touchpad_scan(&r) && r.pressed && r.arrow < sizeof PAD / sizeof PAD[0]) s |= PAD[r.arrow];
+  } else
+    for (unsigned i = 1; i < sizeof PAD / sizeof PAD[0]; i++)
+      if (isKeyPressed(*PAD_KEYS[i])) s |= PAD[i];
+  if (on_key_pressed()) s |= A(home) | A(on_off);
   return s;
 }
 eadk_event_t eadk_event_get(int32_t *timeout) {
   static eadk_keyboard_state_t before = ~(eadk_keyboard_state_t)0;
   uint64_t until = eadk_timing_millis() + (uint64_t)(timeout && *timeout > 0 ? *timeout : 0);
+  blit(); /* (what was drawn is shown while the key is awaited) */
   do {
     eadk_keyboard_state_t now = eadk_keyboard_scan(), hit = now & ~before;
     before = now;
@@ -146,7 +159,7 @@ uint64_t eadk_timing_millis(void) {
 void eadk_timing_msleep(uint32_t ms) {
   start();
   blit();
-  msleep(ms);
+  if (ms) msleep(ms);
   if (!timer_ok) fallback_ms += ms;
 }
 void eadk_timing_usleep(uint32_t us) { eadk_timing_msleep((us + 999) / 1000); }
@@ -165,7 +178,7 @@ bool eadk_usb_is_plugged(void) { return false; }
 const char *eadk_external_data = NULL;
 size_t eadk_external_data_size = 0;
 
-/* ---- the files ---- */
+/* ---- the files (the OS's own calls: newlib's fopen leaves its FILE pool on the OS's heap till a restart) ---- */
 #define STORAGE_SIZE (64 * 1024)
 static uint8_t storage[STORAGE_SIZE + 64];
 static bool loaded;
@@ -178,10 +191,10 @@ static uint32_t storage_end(void) {
 uint8_t *np_storage(uint32_t *size) {
   if (!loaded) {
     loaded = true;
-    FILE *f = fopen(SAVE_PATH, "rb");
+    NUC_FILE *f = nuc_fopen(SAVE_PATH, "rb");
     if (f) {
-      size_t n = fread(storage, 1, STORAGE_SIZE, f);
-      fclose(f);
+      size_t n = nuc_fread(storage, 1, STORAGE_SIZE, f);
+      nuc_fclose(f);
       if (storage_end() + 2 > n) memset(storage, 0, sizeof storage);
     }
   }
@@ -189,17 +202,17 @@ uint8_t *np_storage(uint32_t *size) {
   return storage;
 }
 void np_storage_changed(void) {
-  FILE *f = fopen(SAVE_PATH, "wb");
+  NUC_FILE *f = nuc_fopen(SAVE_PATH, "wb");
   if (!f) return;
-  fwrite(storage, 1, storage_end() + 2, f);
-  fclose(f);
+  nuc_fwrite(storage, 1, storage_end() + 2, f);
+  nuc_fclose(f);
 }
 
 bool np_slow(void) { return false; }
 const char *np_target(void) { return "nspire"; }
 void np_begin(void) { start(); }
 int np_end(void) {
-  if (started) timer_stop(), started = false;
+  if (started) timer_stop(), lcd_init(SCR_TYPE_INVALID), started = false;
   refresh_osscr();
   return 0;
 }
