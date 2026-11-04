@@ -2,6 +2,10 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.13: Among Us
+
+- **Among Us:** AmongUs.nwa, the Skeld against up to 9 bots, as a crewmate or the Impostor: every task, sabotages, vents, kills, meetings and votes, with the game's own pictures.
+
 ## 1.24.12: Crossy Road's characters
 
 - **Crossy Road:** OK on a character not won yet does nothing, instead of taking 100 coins.
