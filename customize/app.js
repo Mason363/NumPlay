@@ -412,6 +412,18 @@
     render();
   }
 
+  // A ROM without the padding its file has to reach a power of two (16 KB banks at its end, all 0xFF or all 0x00):
+  // the cores repeat the banks a game has for those it lacks, as a flash cart does (tools/romtable.py's trim)
+  function trimRom(bytes, sys) {
+    const B = 16384;
+    if (![1, 2, 4, 5, 6].includes(sys) || bytes.length % B) return bytes;
+    const keep = sys <= 2 ? 0x8000 : bytes.length <= 0x8000 ? bytes.length : 0xC000, pad = bytes[bytes.length - 1];
+    if (pad !== 0x00 && pad !== 0xFF) return bytes;
+    let n = bytes.length;
+    while (n - B >= keep && bytes.subarray(n - B, n).every((v) => v === pad)) n -= B;
+    return n < bytes.length ? bytes.slice(0, n) : bytes;
+  }
+
   async function addRoms(files) {
     if (solo()) { bump($('#drop'), 'shake'); toast(byId[solo()].title + " takes the whole calculator, so there's no room for Retro-Go"); return; }
     const ok = new Set(rg && rg.systems ? rg.systems : [1, 2, 3]);
@@ -421,7 +433,7 @@
         toast('Retro-Go plays ' + [...ok].map((s) => SYS[s].name).join(', ').replace(/, ([^,]*)$/, ' and $1') + ' games');
         continue;
       }
-      const bytes = new Uint8Array(await f.arrayBuffer());
+      const bytes = trimRom(new Uint8Array(await f.arrayBuffer()), sys);
       const r = { key: ++romKey, sys, bytes, name: romName(f.name) };
       const over = total(ordered(), st.roms.concat([r])) - capacity();
       if (over > 0) { bump($('#drop'), 'shake'); tooBig(r) || overflow(over); continue; }
