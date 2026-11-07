@@ -9,7 +9,7 @@ edition = "2021"
 crate-type = ["rlib", "staticlib"]
 
 [profile.release]
-opt-level = "s"
+opt-level = "z"
 lto = true
 codegen-units = 1
 panic = "abort"
