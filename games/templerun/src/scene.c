@@ -21,6 +21,7 @@
 #define SCENERY_POLYS 1080   /* the polygons a frame the scenery's reach is kept to (of the renderer's 1800) */
 #define INTRO_FAR 250.0f     /* the scenery's reach in the run's intro, the temple's front close by (half in the fog) */
 #define LOD_NEAR 70.0f       /* path pieces nearer than this are whole */
+#define FADE 50.0f           /* the scenery comes in from the fog over its last units within reach */
 #define VIEW (FOG1 + 20)     /* units seen ahead */
 #define PI 3.14159265f
 
@@ -351,9 +352,9 @@ static void draw_scenery(void) {
     }
   /* nearest first, ring by ring round the camera's square, as far as scenery_far: a piece of scenery is there or not by
    * where it is, never by how many polygons came before it, so none comes and goes from one frame to the next. Past
-   * SCENERY_POLYS a frame, scenery_far comes a little nearer each frame, and goes back out when there is room */
-  float far2 = scenery_far * scenery_far;
-  if (intro_t < INTRO && !title && far2 > INTRO_FAR * INTRO_FAR) far2 = INTRO_FAR * INTRO_FAR;
+   * SCENERY_POLYS a frame, scenery_far comes a little nearer each frame, and goes back out when there is room (the
+   * intro's reach too, when it is over); what comes within it comes in from the fog */
+  if (intro_t < INTRO && !title && scenery_far > INTRO_FAR) scenery_far = INTRO_FAR;
   for (int ring = 0; ring <= SGRID / 2; ring++)
     for (int a = SGRID / 2 - ring; a <= SGRID / 2 + ring; a++)
       for (int b = SGRID / 2 - ring; b <= SGRID / 2 + ring; b += (a == SGRID / 2 - ring || a == SGRID / 2 + ring) ? 1 : 2 * ring) {
@@ -366,11 +367,13 @@ static void draw_scenery(void) {
         float ox = (float)((int)((h >> 20) % 21) - 10), oz = (float)((int)((h >> 25) % 21) - 10);
         float wx = (float)cx * TILE + ox, wz = (float)cz * TILE + oz, dx = wx - cx_, dz = wz - cz_, d2 = dx * dx + dz * dz;
         /* (the small ones, a few pixels in the haze past SMALL_FAR, aren't drawn there) */
-        if ((k >= 11 && k <= 14) || k >= 19) {
-          if (d2 > SMALL_FAR * SMALL_FAR) continue;
-        }
-        if (d2 > far2) continue;
+        float reach = ((k >= 11 && k <= 14) || k >= 19) && scenery_far > SMALL_FAR ? SMALL_FAR : scenery_far;
+        if (d2 > reach * reach) continue;
+        /* (coming within reach, it comes in from the fog: the last FADE units it is that much in the fog's colour) */
+        float in = reach - FADE;
+        r_fade = d2 > in * in ? (int)((__builtin_sqrtf(d2) - in) * (256 / FADE)) : 0;
         scene_mesh(m, wx, 0, wz, 0, 255);
+        r_fade = 0;
       }
   int n = r_count();
   if (n > SCENERY_POLYS && scenery_far > 200) scenery_far -= 3;
