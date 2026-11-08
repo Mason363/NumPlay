@@ -215,6 +215,50 @@ void scene_background(void) {
 /* ---------------------------------------------------------------- the game's baked models */
 static int lit = 256;      /* the light on the baked faces (full) */
 
+/* the part of polygon (v, uv, n) where s (coordinate axis of a corner, 0 x 1 y) - at has the sign of s; corners out */
+static int keep_side(const V3 *v, const float *uv, int n, V3 *ov, float *ouv, int axis, float at, float sign) {
+  int m = 0;
+  for (int i = 0, j = n - 1; i < n; j = i++) {
+    float di = sign * ((axis ? v[i].y : v[i].x) - at), dj = sign * ((axis ? v[j].y : v[j].x) - at);
+    if ((di >= 0) != (dj >= 0)) {
+      float t = dj / (dj - di);
+      ov[m] = (V3){v[j].x + t * (v[i].x - v[j].x), v[j].y + t * (v[i].y - v[j].y), v[j].z + t * (v[i].z - v[j].z)};
+      ouv[2 * m] = uv[2 * j] + t * (uv[2 * i] - uv[2 * j]), ouv[2 * m + 1] = uv[2 * j + 1] + t * (uv[2 * i + 1] - uv[2 * j + 1]);
+      m++;
+    }
+    if (di >= 0) ov[m] = v[i], ouv[2 * m] = uv[2 * i], ouv[2 * m + 1] = uv[2 * i + 1], m++;
+  }
+  return m;
+}
+
+/* a baked face. A wall across the tracks (where the elevated line, a station or the tunnel starts or ends) has the
+ * tracks' own section painted at its foot, a little above the ground where its picture's texels straddle it, a dark
+ * line across them: over the tracks, nothing of it is drawn below CLEAR (nothing of a wall stands there) */
+#define CLEAR 0.3f
+static bool walls;         /* the faces drawn are the city's (stretch) */
+static void face(const V3 *v, const float *uv, int n, int tex, uint16_t avg) {
+  float xa = v[0].x, xb = v[0].x, ya = v[0].y, za = v[0].z, zb = v[0].z;
+  for (int k = 1; k < n; k++) {
+    xa = v[k].x < xa ? v[k].x : xa, xb = v[k].x > xb ? v[k].x : xb, ya = v[k].y < ya ? v[k].y : ya;
+    za = v[k].z < za ? v[k].z : za, zb = v[k].z > zb ? v[k].z : zb;
+  }
+  if (!walls || zb - za > 0.02f || ya >= CLEAR || xb <= -TRACKS || xa >= TRACKS) {
+    r_poly_tex_avg(v, uv, n, tex, lit, 0, avg);
+    return;
+  }
+  V3 a[12], b[12];
+  float ua[24], ub[24];
+  /* left of the tracks, right of them, and over them above CLEAR */
+  int k = keep_side(v, uv, n, a, ua, 0, -TRACKS, -1);
+  if (k >= 3) r_poly_tex_avg(a, ua, k, tex, lit, 0, avg);
+  k = keep_side(v, uv, n, a, ua, 0, TRACKS, 1);
+  if (k >= 3) r_poly_tex_avg(a, ua, k, tex, lit, 0, avg);
+  k = keep_side(v, uv, n, a, ua, 0, -TRACKS, 1);
+  if (k >= 3) k = keep_side(a, ua, k, b, ub, 0, TRACKS, -1);
+  if (k >= 3) k = keep_side(b, ub, k, a, ua, 1, CLEAR, 1);
+  if (k >= 3) r_poly_tex_avg(a, ua, k, tex, lit, 0, avg);
+}
+
 /* is a face of a baked model placed at z oz big enough on the screen to be seen? Its area over its distance squared,
  * SEEN pixels or more where nothing is in the haze (on the slower calculators, whose details stop sooner, that over
  * detail squared), more in the haze, none past r_haze1 (there it is the haze's colour). So it comes in small and pale,
@@ -282,7 +326,7 @@ static void bmodel(const BModel *m, float ox, float oy, float oz) {
       v[k] = (V3){ox + c->x * 0.01f, oy + c->y * 0.01f, oz + c->z * 0.01f};
       uv[2 * k] = c->u * 0.25f, uv[2 * k + 1] = c->v * 0.25f;
     }
-    r_poly_tex_avg(v, uv, f->n, m->tex, lit, 0, f->avg);
+    face(v, uv, f->n, m->tex, f->avg);
   }
 }
 
@@ -312,10 +356,12 @@ static const BModel *const *model_list(int *n) {
 static void stretch(int seg) {
   float z0 = (float)seg * SEG;
   Stretch s = world_stretch(seg);
+  walls = true;
   if (s.kind == SC_STREET) {
     bmodel(street_l[s.part], 0, 0, z0);
     bmodel(street_r[s.right], 0, 0, z0);
   } else bmodel(sections[s.kind - 1][s.part], 0, 0, z0);
+  walls = false;
   lit = 256;
 }
 
