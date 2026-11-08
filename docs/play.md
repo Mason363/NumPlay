@@ -1024,15 +1024,16 @@ Chrome's game when you're offline, as Chrome plays it. Run as far as you can: ju
 
 ## Doodle Jump
 
-<img src="../games/doodlejump/docs/shot.png" width="320" align="right" alt="Doodle Jump">
+<img src="../games/doodlejump/docs/shot.png" width="320" align="right" alt="Doodle Jump: the doodler shooting at a red monster on the graph paper">
 
 | Key | What it does |
 | --- | --- |
 | **Left, Right** (or **4**, **6**) | Steer the doodler |
-| **OK** | Shoot |
-| **Back** | Menu (with How to play and Quit) |
+| **OK** or **Up** | Shoot |
+| **Back** | Pause (Resume, Menu, Quit game) |
+| **Home** | Save and quit |
 
-He jumps by himself whenever he lands: steer him from platform to platform, as high as you can. Off one side of the page he comes back on the other. Green platforms stay, blue ones slide, brown ones break under him, white ones are gone after one jump and yellow ones blow up. Springs, trampolines, propeller hats and jetpacks throw him higher. Shoot monsters or land on their heads, and keep away from black holes; falling off the bottom ends the climb. Your climb and high score are saved.
+He jumps by himself whenever he lands: steer him from platform to platform, as high as you can. Off one side of the page he comes back on the other. Green platforms stay, blue ones slide, brown ones break under him, white ones are gone after one jump and yellow ones turn red and blow up. Springs, trampolines, propeller hats and jetpacks throw him higher. Shoot monsters and UFOs or land on their heads, and keep away from black holes. Falling off the bottom ends the climb. Your ten best scores and your stats are kept in Scores.
 
 <br clear="right">
 
