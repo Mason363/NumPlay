@@ -213,6 +213,8 @@ static void scene_load(void) {
     return;
   }
   if (!room_load(g->next_room)) return;
+  /* (OnNextLevelReady: the pause allowed again, as a door took it away) */
+  g_pd.disable_pause = false;
   room_entered();
   int n;
   const Ent *es = room_ents(&n);

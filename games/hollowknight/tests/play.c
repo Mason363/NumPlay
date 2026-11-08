@@ -1094,6 +1094,39 @@ static int inventory_pause_test(void) {
   return fails ? 1 : 0;
 }
 
+/* through a door (Mason363/NumPlay#359): up out of the Crossroads by the well's Ascend, into Sly's shop; in the room
+ * past it, the inventory opens again (the door took the pause away, the next room gives it back: OnNextLevelReady) */
+static int doors_test(void) {
+  static const struct { int room, to; float x, y; int walk, wait; const char *flags; } doors[] = {
+      {ROOM_CROSSROADS_01, ROOM_TOWN, 52.6f, 11, 0, 600, ""}, {ROOM_TOWN, ROOM_ROOM_SHOP, 116, 12, 30, 80, "23"}};
+  int fails = 0;
+  shielded = true;
+  for (unsigned k = 0; k < sizeof doors / sizeof doors[0]; k++) {
+    game_new();
+    pd_set_flag(PDF_VISITED_DIRTMOUTH, true);
+    if (*doors[k].flags) pd_set_flag(atoi(doors[k].flags), true);
+    game_enter(doors[k].room, doors[k].x, doors[k].y, true);
+    run_ticks(100, 0);
+    run_ticks(doors[k].walk, K_RIGHT);
+    run_ticks(doors[k].wait, 0);
+    run_ticks(3, K_UP);
+    run_ticks(300, 0);
+    bool there = g_room.id == doors[k].to && hero_free();
+    run_ticks(2, K_INV);
+    run_ticks(30, 0);
+    bool inv = inv_open();
+    run_ticks(2, K_INV);
+    run_ticks(30, 0);
+    bool ok = there && inv;
+    printf("%s door from %s to %s: %s\n", ok ? "ok  " : "FAIL", room_name(doors[k].room), room_name(doors[k].to),
+           !there ? "not through it" : !inv ? "the inventory does not open" : "the inventory opens past it");
+    fails += !ok;
+  }
+  shielded = false;
+  printf("doors: %d failing\n", fails);
+  return fails ? 1 : 0;
+}
+
 /* the way to the False Knight (Mason363/NumPlay#172), played as one game, room by room, each room's keys from when the
  * Knight comes into it: from the new game's fall into King's Pass, through Dirtmouth and down its well, past the Temple of
  * the Black Egg, down through the tollbooth into Crossroads_03 (its lever's gates open: the game's Knight opens them from
@@ -1292,6 +1325,7 @@ static int gates_test(const char *which) {
   if (!strcmp(which, "shopcharm")) return shop_charm_test();
   if (!strcmp(which, "mapshop")) return map_shop_test();
   if (!strcmp(which, "invpause")) return inventory_pause_test();
+  if (!strcmp(which, "doors")) return doors_test();
 #endif
   if (!strcmp(which, "texts")) return texts_test();
   if (!strcmp(which, "seams")) return seams_test();
