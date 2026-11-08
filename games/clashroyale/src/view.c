@@ -67,7 +67,8 @@ static int unit_img(const Ent *e, bool *mirror) {
   return a->img + dir * a->nf + f;
 }
 
-static void hp_bar(int x, int y, int w, int32_t hp, int32_t max, int team, bool number) {
+/* number: its hitpoints written over the bar (1), under it (2), or not (0) */
+static void hp_bar(int x, int y, int w, int32_t hp, int32_t max, int team, int number) {
   if (max <= 0) return;
   int fw = (int)((int64_t)(w - 2) * (hp > 0 ? hp : 0) / max);
   gfx_fill(x, y, w, 4, RGB(0x202020));
@@ -75,7 +76,7 @@ static void hp_bar(int x, int y, int w, int32_t hp, int32_t max, int team, bool 
   if (number) {
     char t[12];
     snprintf(t, sizeof t, "%ld", (long)(hp > 0 ? hp : 0));
-    gfx_text_oc(FONT_NUM, x + w / 2, y - 10, t, WHITE);
+    gfx_text_oc(FONT_NUM, x + w / 2, number == 2 ? y + 6 : y - 10, t, WHITE);
   }
 }
 
@@ -86,7 +87,7 @@ static void draw_tower(const Ent *e) {
   gfx_ellipse(px, py + 2, d->radius / 100 + 3, d->radius / 160 + 2, BLACK, 7);
   if (d->flags & U_KING) {
     gfx_img_tint(SETS[d->set].idle.img, px, py, e->team, false, WHITE, e->flash > 0 ? 12 : 0);
-    hp_bar(px - 16, py - 44, 32, e->hp, e->maxhp, e->team, true);
+    hp_bar(px - 16, py - 44, 32, e->hp, e->maxhp, e->team, 1);
     return;
   }
   gfx_img_tint(SETS[d->set].idle.img, px, py, e->team, false, WHITE, e->flash > 0 ? 12 : 0);
@@ -99,7 +100,11 @@ static void draw_tower(const Ent *e) {
     int img = unit_img(&a, &mirror);
     gfx_img(img, px, top, e->team, mirror);
   }
-  if (d->flags & U_TOWER) hp_bar(px - 14, py - 38, 28, e->hp, e->maxhp, e->team, true);
+  /* (a tower at the top of the screen: its bar under it, where it can be seen) */
+  if (d->flags & U_TOWER) {
+    if (py - 48 < 0) hp_bar(px - 14, py + 8, 28, e->hp, e->maxhp, e->team, 2);
+    else hp_bar(px - 14, py - 38, 28, e->hp, e->maxhp, e->team, 1);
+  }
 }
 
 static void draw_unit(const Ent *e) {
@@ -136,7 +141,7 @@ static void draw_unit(const Ent *e) {
   }
   if (e->hp < e->maxhp && !(d->flags & U_BOMB)) {
     int w = d->radius >= 700 ? 18 : 12;
-    hp_bar(px - w / 2, py - h + by - 5, w, e->hp, e->maxhp, e->team, false);
+    hp_bar(px - w / 2, py - h + by - 5, w, e->hp, e->maxhp, e->team, 0);
   }
   if (d->dmg2 && (e->flags & E_ATTACKING) && ent_alive(&bt, e->target)) {
     /* the Inferno Tower's beam */
