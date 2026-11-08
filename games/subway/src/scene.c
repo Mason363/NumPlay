@@ -200,7 +200,11 @@ void scene_background(void) {
     if (xb < xa) xb = xa;
     for (; x < xa; x++) p[x] = left;
     u += du * xa;
-    for (; x < xb; x++, u += du) p[x] = lut[(uint32_t)u >> 16];
+    /* (two pixels a word, from a pixel on a word) */
+    if (x < xb && (uintptr_t)(p + x) & 2) p[x++] = lut[(uint32_t)u >> 16], u += du;
+    for (; x + 1 < xb; x += 2, u += 2 * du)
+      *(uint32_t *)(void *)(p + x) = lut[(uint32_t)u >> 16] | (uint32_t)lut[(uint32_t)(u + du) >> 16] << 16;
+    if (x < xb) p[x++] = lut[(uint32_t)u >> 16];
     for (; x < SCREEN_W; x++) p[x] = right;
     if (g->x0 < g->x1) r_band_depth(y, g->x0, g->x1, g->depth);
   }

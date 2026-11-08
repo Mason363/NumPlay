@@ -16,14 +16,16 @@ enum { K_FLAT, K_SHADE, K_TEX, K_PERSP };
 
 typedef struct {
   float a, b, c;         /* its depth at (sx, sy): a sx + b sy + c */
-  uint16_t v0, at;       /* its first corner, and its first corner's light and texture place */
+  uint16_t v0;           /* its first corner */
+  uint16_t at;           /* its first corner's light and texture place; a textured face in perspective: its planes (uvs) */
   uint16_t color;        /* RGB565, or the texture's number */
-  uint16_t extra;        /* a textured face in perspective: its planes (uvs) */
   uint8_t n : 4, kind : 4;   /* (corners: MAXN at most) */
   uint8_t y0, y1;        /* the rows it covers */
   uint8_t alpha;         /* see-through (255: not); textured faces: their light 0..32 */
+  uint8_t near;          /* its nearest depth >> 8: the polygons are drawn nearest first */
 } Poly;
 _Static_assert(sizeof(Poly) == 24, "a polygon in 24 bytes");
+_Static_assert(SCREEN_W * BAND_H >= MAXP + 256, "the depth buffer holds the sort's lists");
 typedef struct {
   int16_t x, y;
 } Pos;
@@ -218,7 +220,10 @@ static bool emit_fx(const CV *p, int n, int kind, uint16_t color, int flags, int
   if (flags & P_DECAL3) c += 9 << 16;
   Poly *q = &polys[npolys];
   q->kind = (uint8_t)kind & 15;
-  q->extra = 0;
+  q->at = 0;
+  int64_t wmax = w[0];
+  for (int i = 1; i < n; i++) wmax = w[i] > wmax ? w[i] : wmax;
+  q->near = (uint8_t)(wmax >= (int64_t)65535 << 16 ? 255 : (int)(wmax >> 24));
   if (kind == K_PERSP) {
     const Texture *t = r_tex[color];
     int64_t far16 = fx_from_float(r_far, 16), h1 = fx_from_float(r_haze1, 16);
@@ -244,7 +249,7 @@ static bool emit_fx(const CV *p, int n, int kind, uint16_t color, int flags, int
       UV *u = &uvs[nuv];
       u->ua = fx_to_float(ua, 16), u->ub = fx_to_float(ub, 16), u->uc = fx_to_float(uc, 16);
       u->va = fx_to_float(va, 16), u->vb = fx_to_float(vb, 16), u->vc = fx_to_float(vc, 16);
-      q->extra = (uint16_t)nuv++;
+      q->at = (uint16_t)nuv++;
     }
   }
   if (kind == K_FLAT && !(flags & P_NOHAZE)) color = haze_fx(color, zsum, n);
@@ -344,9 +349,12 @@ static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, u
   if (flags & P_DECAL) q->c += 3;
   if (flags & P_DECAL2) q->c += 6;
   if (flags & P_DECAL3) q->c += 9;
-  float zm = zsum / (float)n;
+  float zm = zsum / (float)n, zn = p[0].z;
+  for (int i = 1; i < n; i++) zn = p[i].z < zn ? p[i].z : zn;
+  float dn = ZK / zn;
+  q->near = (uint8_t)(dn >= 65535 ? 255 : (int)dn >> 8);
   q->kind = (uint8_t)kind & 15;
-  q->extra = 0;
+  q->at = 0;
   if (kind == K_PERSP) {
     /* far off, a picture is only its average colour (color already holds it when kind comes back flat) */
     const Texture *t = r_tex[color];
@@ -380,7 +388,7 @@ static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, u
       for (int i = 0; i < 3; i++) wu[i] = c3[i]->u * ZK / c3[i]->z, wv[i] = c3[i]->v * ZK / c3[i]->z;
       UV *u = &uvs[nuv];
       if (!fit(px, py, wu, &u->ua, &u->ub, &u->uc) || !fit(px, py, wv, &u->va, &u->vb, &u->vc)) return;
-      q->extra = (uint16_t)nuv++;
+      q->at = (uint16_t)nuv++;
     }
   }
   if (kind == K_FLAT && !(flags & P_NOHAZE) && zm > r_haze0) {
@@ -514,6 +522,78 @@ int r_show_holes;
 uint32_t r_stat[4], r_stat_tex[64], r_stat_rows, r_stat_polys, r_stat_skips, r_stat_chunks, r_stat_written, r_stat_holes;   /* (pixels tried, by kind and texture: for measuring) */
 #endif
 
+/* pixels [zp, ze) of a textured run (their colours at cp): where it lies in front, its texel, see-through where the
+ * picture is, lit by light (32: as it is). WL, HL: the picture's sides, log2, when they are known here (0:
+ * the picture's own). Returns the depth after the run */
+__attribute__((always_inline)) static inline uint32_t tex_run(uint16_t *zp, const uint16_t *ze, uint16_t *cp, uint32_t z,
+                                                              uint32_t da, uint32_t uu, uint32_t du, uint32_t vv, uint32_t dv,
+                                                              const Texture *tx, int light, int WL, int HL) {
+  const uint8_t *px = tx->px;
+  const uint16_t *pal = tx->pal;
+  bool clear = tx->clear;
+  /* u and v in one word, so that the loop has the registers it needs: v's place in the picture in the top 16 bits (its
+   * hl bits and their fraction), u's in the low 16; a step carries from u into v only as u comes round the picture,
+   * and then by a 256th of a texel at most. The texel: v's bits times the width, and u's */
+  uint32_t wl = WL ? (uint32_t)WL : tx->wl, hl = WL ? (uint32_t)HL : tx->hl;
+  uint32_t wm = (1u << wl) - 1, vs = 32 - hl, us = 16 - wl;
+  uint32_t uv = (vv >> hl) << 16 | ((uu >> wl) & 0xFFFF), duv = ((dv >> hl) << 16) + (uint32_t)((int32_t)du >> wl);
+#define TEXEL ((uv >> vs) << wl | (uv >> us & wm))
+  /* (three loops: the plain one kept as short as can be) */
+  if (light >= 32 && !clear) {
+    for (; zp < ze; zp++, cp++, z += da, uv += duv) {
+      uint16_t d = (uint16_t)(z >> 16);
+      if (d > *zp) *zp = d, *cp = pal[px[TEXEL]];
+    }
+  } else if (light >= 32) {
+    for (; zp < ze; zp++, cp++, z += da, uv += duv) {
+      uint16_t d = (uint16_t)(z >> 16);
+      if (d <= *zp) continue;
+      uint8_t t = px[TEXEL];
+      if (t) *zp = d, *cp = pal[t];
+#ifdef HOST
+      if (t) r_stat_written++;
+      else {
+        r_stat_holes++;
+        extern int r_show_holes;
+        if (r_show_holes) *cp = 0xF81F;
+      }
+#endif
+    }
+  } else {
+    for (; zp < ze; zp++, cp++, z += da, uv += duv) {
+      uint16_t d = (uint16_t)(z >> 16);
+      if (d <= *zp) continue;
+      uint8_t t = px[TEXEL];
+      if (clear && !t) continue;
+      *zp = d, *cp = r_mix565(0, pal[t], light);
+    }
+  }
+#undef TEXEL
+  return z;
+}
+
+/* (each its own function: the run's loop has the registers to itself) */
+#define TEX_RUN(name, WL, HL)                                                                                          \
+  __attribute__((noinline)) static uint32_t name(uint16_t *zp, const uint16_t *ze, uint16_t *cp, uint32_t z, uint32_t da, \
+                                                 uint32_t uu, uint32_t du, uint32_t vv, uint32_t dv, const Texture *tx,  \
+                                                 int light) {                                                             \
+    return tex_run(zp, ze, cp, z, da, uu, du, vv, dv, tx, light, WL, HL);                                              \
+  }
+TEX_RUN(tex_run78, 7, 8)   /* (the streets) */
+TEX_RUN(tex_run77, 7, 7)   /* (the wagons) */
+TEX_RUN(tex_run87, 8, 7)   /* (the trains' heads) */
+TEX_RUN(tex_run88, 8, 8)   /* (the elevated line, the stations, the tunnel) */
+TEX_RUN(tex_run76, 7, 6)   /* (the barriers) */
+TEX_RUN(tex_run66, 6, 6)   /* (the coins) */
+TEX_RUN(tex_run0, 0, 0)
+/* the run's function for a picture */
+static uint32_t (*tex_run_of(const Texture *tx))(uint16_t *, const uint16_t *, uint16_t *, uint32_t, uint32_t, uint32_t,
+                                                  uint32_t, uint32_t, uint32_t, const Texture *, int) {
+  int s = tx->wl << 4 | tx->hl;
+  return s == 0x78 ? tex_run78 : s == 0x77 ? tex_run77 : s == 0x87 ? tex_run87 : s == 0x88 ? tex_run88 : s == 0x76 ? tex_run76
+         : s == 0x66 ? tex_run66 : tex_run0;
+}
+
 static void raster(const Poly *q) {
   int ya = q->y0 > r_y0 ? q->y0 : r_y0, yb = q->y1 < r_y1 ? q->y1 : r_y1;
   if (ya >= yb) return;
@@ -606,13 +686,10 @@ static void raster(const Poly *q) {
       continue;
     }
     if (kind == K_PERSP) {
-      const UV *w = &uvs[q->extra];
-      const uint8_t *px = tx->px;
-      const uint16_t *pal = tx->pal;
-      /* the texel: (v >> vs & hmask) | (u >> 16 & wm), v's row already times the width */
-      uint32_t wm = (1u << tx->wl) - 1, hmask = ((1u << tx->hl) - 1) << tx->wl;
-      int vs = 16 - tx->wl, light = q->alpha;
-      bool clear = tx->clear;
+      const UV *w = &uvs[q->at];
+      int light = q->alpha;
+      uint32_t (*run)(uint16_t *, const uint16_t *, uint16_t *, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t,
+                      const Texture *, int) = tex_run_of(tx);
       /* u and v exactly every 16 pixels, straight lines between; a run of 16 all behind what is drawn is passed
        * over without its texture places */
       float fx = (float)x0 + 0.5f;
@@ -624,10 +701,13 @@ static void raster(const Poly *q) {
         uint16_t *zp = zb + x, *cp = cb + x, *ze = zp + n;
         float fn = (float)n;
         float qz2 = qz + q->a * fn, qu2 = qu + w->ua * fn, qv2 = qv + w->va * fn;
-        /* (any pixel in front?) */
+        /* (any pixel in front? the run starts at the first one) */
         uint32_t zt = z;
         uint16_t *zq = zp;
-        while (zq < ze && (uint16_t)(zt >> 16) <= *zq) zq++, zt += (uint32_t)da;
+        do {
+          if ((uint16_t)(zt >> 16) > *zq) break;
+          zt += (uint32_t)da;
+        } while (++zq < ze);
 #ifdef HOST
         r_stat_chunks++;
 #endif
@@ -649,37 +729,8 @@ static void raster(const Poly *q) {
         uint32_t du, dv;
         if (n == 16) du = (uint32_t)((u2 - u) >> 4), dv = (uint32_t)((v2 - v) >> 4);
         else du = (uint32_t)((u2 - u) / n), dv = (uint32_t)((v2 - v) / n);
-        uint32_t uu = (uint32_t)u, vv = (uint32_t)v;
-        /* (three loops: the plain one kept as short as can be) */
-        if (light >= 32 && !clear) {
-          for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
-            uint16_t d = (uint16_t)(z >> 16);
-            if (d > *zp) *zp = d, *cp = pal[px[(vv >> vs & hmask) | (uu >> 16 & wm)]];
-          }
-        } else if (light >= 32) {
-          for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
-            uint16_t d = (uint16_t)(z >> 16);
-            if (d <= *zp) continue;
-            uint8_t t = px[(vv >> vs & hmask) | (uu >> 16 & wm)];
-            if (t) *zp = d, *cp = pal[t];
-#ifdef HOST
-            if (t) r_stat_written++;
-            else {
-              r_stat_holes++, r_stat_texhole[q->color]++;
-              extern int r_show_holes;
-              if (r_show_holes) *cp = 0xF81F;
-            }
-#endif
-          }
-        } else {
-          for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
-            uint16_t d = (uint16_t)(z >> 16);
-            if (d <= *zp) continue;
-            uint8_t t = px[(vv >> vs & hmask) | (uu >> 16 & wm)];
-            if (clear && !t) continue;
-            *zp = d, *cp = r_mix565(0, pal[t], light);
-          }
-        }
+        uint32_t k = (uint32_t)(zq - zp);
+        z = run(zq, ze, cp + k, zt, (uint32_t)da, (uint32_t)u + du * k, du, (uint32_t)v + dv * k, dv, tx, light);
         x += n;
         qz = qz2, qu = qu2, qv = qv2, u = u2, v = v2;
         known = true;
@@ -801,7 +852,7 @@ static void raster_fx(const Poly *q) {
   int32_t da = za > (int64_t)30000 << 16 ? 30000 << 16 : za < -((int64_t)30000 << 16) ? -(30000 << 16) : (int32_t)za;
   int64_t ua = 0, ub = 0, uc = 0, va = 0, vb = 0, vc = 0;
   if (kind == K_PERSP) {
-    const UV *w = &uvs[q->extra];
+    const UV *w = &uvs[q->at];
     ua = fx_from_float(w->ua, 16), ub = fx_from_float(w->ub, 16), uc = fx_from_float(w->uc, 16) + ((ua + ub) >> 1);
     va = fx_from_float(w->va, 16), vb = fx_from_float(w->vb, 16), vc = fx_from_float(w->vc, 16) + ((va + vb) >> 1);
   }
@@ -838,11 +889,9 @@ static void raster_fx(const Poly *q) {
       continue;
     }
     if (kind == K_PERSP) {
-      const uint8_t *px = tx->px;
-      const uint16_t *pal = tx->pal;
-      uint32_t wm = (1u << tx->wl) - 1, hmask = ((1u << tx->hl) - 1) << tx->wl;
-      int vs = 16 - tx->wl, light = q->alpha;
-      bool clear = tx->clear;
+      int light = q->alpha;
+      uint32_t (*run)(uint16_t *, const uint16_t *, uint16_t *, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t,
+                      const Texture *, int) = tex_run_of(tx);
       int64_t qu = uc + ub * y + ua * x0, qv = vc + vb * y + va * x0;
       int32_t u = 0, v = 0;
       bool known = false;
@@ -854,7 +903,10 @@ static void raster_fx(const Poly *q) {
         else qz2 = qz + za * n, qu2 = qu + ua * n, qv2 = qv + va * n;
         uint32_t zt = z;
         uint16_t *zq = zp;
-        while (zq < ze && (uint16_t)(zt >> 16) <= *zq) zq++, zt += (uint32_t)da;
+        do {
+          if ((uint16_t)(zt >> 16) > *zq) break;
+          zt += (uint32_t)da;
+        } while (++zq < ze);
         if (zq == ze) {
           z = zt, x += n;
           qz = qz2, qu = qu2, qv = qv2;
@@ -873,28 +925,8 @@ static void raster_fx(const Poly *q) {
                                           306783379, 286331154};
           du = (uint32_t)(int32_t)((u2 - u) * over[n] >> 32), dv = (uint32_t)(int32_t)((v2 - v) * over[n] >> 32);
         }
-        uint32_t uu = (uint32_t)u, vv = (uint32_t)v;
-        if (light >= 32 && !clear) {
-          for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
-            uint16_t d = (uint16_t)(z >> 16);
-            if (d > *zp) *zp = d, *cp = pal[px[(vv >> vs & hmask) | (uu >> 16 & wm)]];
-          }
-        } else if (light >= 32) {
-          for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
-            uint16_t d = (uint16_t)(z >> 16);
-            if (d <= *zp) continue;
-            uint8_t t = px[(vv >> vs & hmask) | (uu >> 16 & wm)];
-            if (t) *zp = d, *cp = pal[t];
-          }
-        } else {
-          for (; zp < ze; zp++, cp++, z += (uint32_t)da, uu += du, vv += dv) {
-            uint16_t d = (uint16_t)(z >> 16);
-            if (d <= *zp) continue;
-            uint8_t t = px[(vv >> vs & hmask) | (uu >> 16 & wm)];
-            if (clear && !t) continue;
-            *zp = d, *cp = r_mix565(0, pal[t], light);
-          }
-        }
+        uint32_t k = (uint32_t)(zq - zp);
+        z = run(zq, ze, cp + k, zt, (uint32_t)da, (uint32_t)u + du * k, du, (uint32_t)v + dv * k, dv, tx, light);
         x += n;
         qz = qz2, qu = qu2, qv = qv2, u = u2, v = v2;
         known = true;
@@ -948,8 +980,13 @@ uint16_t r_floor_depth(float z) {
 }
 
 void r_band_depth(int y, int x0, int x1, uint16_t d) {
-  uint16_t *zb = zbuf + (y - r_y0) * SCREEN_W;
-  for (int x = x0; x < x1; x++) zb[x] = d;
+  uint16_t *zb = zbuf + (y - r_y0) * SCREEN_W;   /* (on a word: the buffer and its rows are) */
+  int x = x0;
+  if (x < x1 && x & 1) zb[x++] = d;
+  /* (two a word) */
+  uint32_t dd = d | (uint32_t)d << 16;
+  for (; x + 1 < x1; x += 2) *(uint32_t *)(void *)(zb + x) = dd;
+  if (x < x1) zb[x] = d;
 }
 
 void r_render(r_band_fn bg, r_band_fn overlay) {
@@ -961,6 +998,18 @@ void r_render(r_band_fn bg, r_band_fn overlay) {
     for (int i = 0; i < npolys; i++)
       if (polys[i].alpha != 255 && polys[i].kind != K_PERSP) order[k++] = (uint16_t)i;
   }
+  /* the opaque ones nearest first: what lies behind them is then passed over, not drawn and drawn over (a counting
+   * sort by their nearest depths, its lists in the depth buffer's room, unused till the bands) */
+  int opaque = npolys - nalpha;
+  uint16_t *sorted = (uint16_t *)(void *)zbuf, *count = sorted + MAXP;
+  for (int k = 0; k < 256; k++) count[k] = 0;
+  for (int i = 0; i < opaque; i++) count[polys[order[i]].near]++;
+  for (int k = 255, at = 0; k >= 0; k--) {
+    int c = count[k];
+    count[k] = (uint16_t)at, at += c;
+  }
+  for (int i = 0; i < opaque; i++) sorted[count[polys[order[i]].near]++] = order[i];
+  for (int i = 0; i < opaque; i++) order[i] = sorted[i];
   for (int band = 0; band < NBANDS; band++) {
     r_y0 = band * BAND_H, r_y1 = r_y0 + BAND_H;
     /* (cleared a word at a time: the C library's is a byte at a time) */

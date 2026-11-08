@@ -4,6 +4,13 @@
 /* Flat drawing over a band (draw.h). */
 #include "draw.h"
 
+/* (what is drawn every frame, the HUD's boxes, letters and pictures: fast rather than small) */
+#if defined(__GNUC__) && !defined(__clang__)
+#define HOT __attribute__((optimize("O2")))
+#else
+#define HOT
+#endif
+
 static int imax(int a, int b) { return a > b ? a : b; }
 static int imin(int a, int b) { return a < b ? a : b; }
 static uint16_t *row(int y) { return r_col + (y - r_y0) * SCREEN_W; }
@@ -47,21 +54,34 @@ static int rr_cover(int i, int j, int x, int y, int w, int h, int r) {
   return e >= 1 ? 32 : e <= 0 ? 0 : (int)(e * 32);
 }
 
-void d_rrect(int x, int y, int w, int h, int r, uint16_t c, int a) {
+HOT void d_rrect(int x, int y, int w, int h, int r, uint16_t c, int a) {
   if (r * 2 > w) r = w / 2;
   if (r * 2 > h) r = h / 2;
-  int y0 = imax(y, r_y0), y1 = imin(y + h, r_y1);
+  int y0 = imax(y, r_y0), y1 = imin(y + h, r_y1), x0 = imax(x, 0), x1 = imin(x + w, SCREEN_W);
+  /* (inside, a see-through box's colour spread as r_mix565 spreads it, times its share: a pixel is a multiply and a
+   * fold) */
+  int ka = 32 * a >> 8;
+  uint32_t cs = ((c | (uint32_t)c << 16) & 0x07E0F81F) * (uint32_t)ka, keep = (uint32_t)(32 - ka);
   for (int j = y0; j < y1; j++) {
     uint16_t *p = row(j);
-    bool edge = j < y + r || j >= y + h - r;
-    int x0 = imax(x, 0), x1 = imin(x + w, SCREEN_W);
-    for (int i = x0; i < x1; i++) {
-      int k = 32;
-      if (edge && (i < x + r || i >= x + w - r)) k = rr_cover(i, j, x, y, w, h, r);
-      if (!k) continue;
-      k = k * a >> 8;
-      p[i] = k >= 32 ? c : r_mix565(p[i], c, k);
+    int i0 = x0, i1 = x1;
+    if (j < y + r || j >= y + h - r) {
+      /* the rounded corners' rows: their ends pixel by pixel */
+      i0 = imin(imax(x + r, x0), x1), i1 = imax(imin(x + w - r, x1), i0);
+      for (int side = 0; side < 2; side++)
+        for (int i = side ? i1 : x0, e = side ? x1 : i0; i < e; i++) {
+          int k = rr_cover(i, j, x, y, w, h, r) * a >> 8;
+          if (k) p[i] = k >= 32 ? c : r_mix565(p[i], c, k);
+        }
     }
+    if (ka >= 32)
+      for (int i = i0; i < i1; i++) p[i] = c;
+    else
+      for (int i = i0; i < i1; i++) {
+        uint32_t q = (p[i] | (uint32_t)p[i] << 16) & 0x07E0F81F;
+        q = ((q * keep + cs) >> 5) & 0x07E0F81F;
+        p[i] = (uint16_t)(q | q >> 16);
+      }
   }
 }
 
@@ -155,19 +175,21 @@ static const Glyph *glyph_of(const Font *f, char ch) {
   return &f->glyphs[c - f->first];
 }
 
-static void glyph(const uint8_t *data, const Glyph *g, int x, int baseline, uint16_t c, int a) {
+HOT static void glyph(const uint8_t *data, const Glyph *g, int x, int baseline, uint16_t c, int a) {
   int top = baseline + g->y, left = x + g->x;
   if (top >= r_y1 || top + g->h <= r_y0) return;
   const uint8_t *d = data + g->offset;
-  for (int j = 0; j < g->h; j++) {
-    int y = top + j;
-    if (y < r_y0 || y >= r_y1) continue;
-    uint16_t *p = row(y);
-    for (int i = 0; i < g->w; i++) {
-      int k = j * g->w + i, v = d[k >> 1] >> ((k & 1) * 4) & 15, xx = left + i;
-      if (!v || xx < 0 || xx >= SCREEN_W) continue;
-      int t = (v * 2 + (v >> 3)) * a >> 8;   /* 0..15 to 0..32 */
-      p[xx] = t >= 32 ? c : r_mix565(p[xx], c, t);
+  /* (the rows and columns in the band and on the screen; each of its 16 levels as r_mix565 takes it) */
+  int j0 = imax(r_y0 - top, 0), j1 = imin(r_y1 - top, g->h), i0 = imax(-left, 0), i1 = imin(SCREEN_W - left, g->w);
+  uint8_t tv[16];
+  for (int v = 0; v < 16; v++) tv[v] = (uint8_t)((v * 2 + (v >> 3)) * a >> 8);   /* 0..15 to 0..32 */
+  for (int j = j0; j < j1; j++) {
+    uint16_t *p = row(top + j) + left;
+    for (int i = i0, k = j * g->w + i0; i < i1; i++, k++) {
+      int v = d[k >> 1] >> ((k & 1) * 4) & 15;
+      if (!v) continue;
+      int t = tv[v];
+      p[i] = t >= 32 ? c : r_mix565(p[i], c, t);
     }
   }
 }
@@ -208,7 +230,7 @@ void d_label(const Font *f, int x, int baseline, const char *s, uint16_t fill, u
   d_text(f, x, baseline, s, fill, 255);
 }
 
-void d_image(int x, int y, const Image *im) {
+HOT void d_image(int x, int y, const Image *im) {
   int y0 = imax(y, r_y0), y1 = imin(y + im->h, r_y1);
   for (int j = y0; j < y1; j++) {
     const uint8_t *r = im->runs + im->rows[j - y], *e = im->runs + im->rows[j - y + 1];
