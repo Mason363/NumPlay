@@ -31,7 +31,7 @@ HOST_ARGS = {"fnf": " BUILD_DIR=../../build/data/games/fnf"}
 WEIGHT = {"numblocks": 89, "numdrive": 20, "championisland": 69, "undertale": 445, "doom": 54, "isaac": 380,
           "pvz": 214, "fnaf": 215, "sonic": 53, "subway": 46, "hillclimb": 94, "leveldevil": 3, "cookieclicker": 61,
           "jetpackjoyride": 134, "donkeykong": 291, "dune": 135, "monkeymart": 85, "tombofthemask": 119,
-          "invaders": 7, "sudoku": 3, "uttt": 2, "sokoban": 2, "twoplayer": 114, "flappydunk": 2, "towerblock": 2,
+          "invaders": 7, "sudoku": 3, "uttt": 2, "sokoban": 2, "twoplayer": 114, "flappydunk": 90, "towerblock": 2,
           "suika": 112, "doodlejump": 5, "stickmanhook": 103, "coreball": 26, "uno": 36, "fnf": 80, "angrybirds": 627,
           "polytrack": 116, "paperclips": 164, "badtime": 59, "mahjong": 25, "rider": 137, "snowrider": 30,
           "templerun": 384, "fnaf2": 654, "famidash": 7, "catninja": 60, "motox3m": 10, "amongus": 110, "imposter": 20,

@@ -1066,14 +1066,16 @@ He jumps by himself whenever he lands: steer him from platform to platform, as h
 
 ## Flappy Dunk
 
-<img src="../games/flappydunk/docs/shot.png" width="320" align="right" alt="Flappy Dunk">
+<img src="../games/flappydunk/docs/shot.png" width="320" align="right" alt="Flappy Dunk: the ball on fire after a swish x7">
 
 | Key | What it does |
 | --- | --- |
-| **OK** (or **EXE**, **Up**) | Flap |
-| **Back** | Menu (with Balls, How to play and Quit) |
+| **OK** (or **EXE**, **Up**) | Flap, or choose in the menus |
+| **Arrows** | Move in the menus (Down from the title: skins, challenges, How to play) |
+| **Back** | Pause: Resume, Main menu, How to play, Quit game |
+| **Home** | Save and quit |
 
-Each press flaps the wings once and the ball falls in between: drop it down through every hoop, as a missed hoop ends the run. The floor and the ceiling bounce it back, and the rims stop it dead. Going in without touching the rim is a swish: a basket is worth 1, a swish 2, and every swish in a row one more, with the ball on fire from the second. Six balls unlock with the original's goals. Your run, best score and balls are saved.
+Each press flaps the wings once and the ball falls in between. Drop it down through every hoop. Missing a hoop, going up through one or touching the floor or the ceiling ends the run. Going in without touching the rim is a swish. A basket is worth 1, a swish 2, and every swish in a row one more, with the ball smoking after one and on fire from the second. The hoops get tilted, narrower and moving as you go. The 51 challenges have their own hoops and rules, and Mirror plays them flipped. Goals unlock the game's balls, wings, hoops and flames.
 
 <br clear="right">
 

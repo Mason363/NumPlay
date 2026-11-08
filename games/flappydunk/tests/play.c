@@ -81,50 +81,9 @@ static int fails;
 #define CHECK(c, ...) do { if (!(c)) { printf("FAIL %s:%d: ", __FILE__, __LINE__); printf(__VA_ARGS__); printf("\n"); fails++; } } while (0)
 static bool near(float a, float b, float e) { return fabsf(a - b) <= e; }
 
-/* ---------------------------------------------------------------- a bot: random futures of both choices */
-static fd_game_t snap;
-/* a policy: flap when the ball is below a line falling towards the next hoop (lo above it at the hoop, hi
-   farther back), at most every 4 steps */
-static float rollout(bool flap_now, float lo, float hi, float reach) {
-  G = snap;
-  fd_quiet = true;
-  uint32_t hoops0 = G.hoops, sw0 = G.swishes;
-  if (flap_now) game_flap();
-  int i, after = -1;
-  for (i = 1; i < 420 && G.state <= ST_PLAY; i++) {
-    const hoop_t *h = G.next < G.nh ? &G.h[G.next] : 0;
-    if (i % 4 == 0) {
-      float dx = h ? h->hx - G.x : 9, ty = h ? h->hy : 0;
-      if (G.challenge >= 0 && !h) ty = 0, dx = 9;
-      float f = dx / reach;
-      if (f < 0) f = 0;
-      if (f > 1) f = 1;
-      if (G.y < ty + lo + (hi - lo) * f && G.vy < 1) game_flap();
-    }
-    game_step();
-    if (G.hoops > hoops0 && after < 0) after = i;
-    if (after >= 0 && i - after > 40) break;
-  }
-  float v = (float)(G.hoops - hoops0) * 1000 + (float)(G.swishes - sw0) * 400;
-  if (G.state == ST_DEAD) v -= 6000 - (float)i;
-  if (G.state == ST_WON) v += 3000;
-  v -= fabsf(G.y) * 10;
-  return v;
-}
-static bool bot(void) {
-  static const float pol[][3] = {{0.2f, 1.5f, 4}, {0.5f, 2.5f, 6}, {0.0f, 1.0f, 3}, {0.8f, 3.0f, 8},
-                                 {0.3f, 0.6f, 2}, {1.0f, 2.0f, 5}, {-0.3f, 1.2f, 3}, {0.4f, 4.0f, 10}};
-  snap = G;
-  float best[2] = {-1e9f, -1e9f};
-  for (int choice = 0; choice < 2; choice++)
-    for (int k = 0; k < 8; k++) {
-      float v = rollout(choice, pol[k][0], pol[k][1], pol[k][2]);
-      if (v > best[choice]) best[choice] = v;
-    }
-  G = snap;
-  fd_quiet = false;
-  return best[1] > best[0] + 1;
-}
+/* ---------------------------------------------------------------- the bot (src/bot.c) */
+bool bot_wants_flap(int effort); /* (src/bot.c) */
+static bool bot(void) { return bot_wants_flap(8); }
 /* plays the run in G to its end (or max steps): flaps chosen every 4 steps */
 static int bot_play(int max_steps) {
   int steps = 0;
@@ -376,7 +335,7 @@ static void shots(const char *dir) {
     for (int s = 0; s < 8000 && G.state == ST_PLAY; s++) {
       if (s % 4 == 0 && bot()) game_flap();
       game_step();
-      if (G.fever == 2 && G.streak >= 3 && G.pop_t > 0.15f && G.pop_t < 0.5f && G.score > 20) {
+      if (G.fever == 2 && G.streak >= 3 && G.pop_t > 0.05f && G.score > 20 && G.next < G.nh && G.h[G.next].hx - G.x < 4.6f && G.h[G.next].hx - G.x > 2.0f && G.y > G.h[G.next].hy + 0.5f) {
         render();
         snprintf(p, sizeof p, "%s/shot.ppm", dir), ppm(p);
         shot = true;
@@ -434,6 +393,21 @@ static void shots(const char *dir) {
   sc = SC_HELP;
   render();
   snprintf(p, sizeof p, "%s/help.ppm", dir), ppm(p);
+  /* challenges that look different: mirrored, upside down, pixelated, narrow, the mad hoop up close */
+  static const struct { int c; bool m; int steps; const char *name; } looks[] = {
+    {1, true, 400, "mirror"}, {21, false, 300, "upside"}, {8, false, 250, "pixel"}, {13, false, 300, "narrow"},
+    {48, false, 260, "wtf"}};
+  for (unsigned i = 0; i < sizeof looks / sizeof looks[0]; i++) {
+    game_new(looks[i].c, looks[i].m, 3);
+    sc = SC_PLAY;
+    game_flap();
+    for (int s = 0; s < looks[i].steps && G.state == ST_PLAY; s++) {
+      if (s % 4 == 0 && bot()) game_flap();
+      game_step();
+    }
+    render();
+    snprintf(p, sizeof p, "%s/%s.ppm", dir, looks[i].name), ppm(p);
+  }
 }
 
 static void film(const char *dir, int frames) {

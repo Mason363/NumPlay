@@ -36,7 +36,7 @@ LDFLAGS += -Wl,--gc-sections -flinker-output=nolto-rel
 RAM = 133652
 APP_SPACE = 2031616
 
-.PHONY: build check clean host test data perf
+.PHONY: build check clean host test data perf record
 build: $(BUILD_DIR)/flappydunk.nwa
 
 check: $(BUILD_DIR)/flappydunk.nwa
@@ -80,10 +80,20 @@ perf: $(BUILD_DIR)/perf.nwa
 	$(PYTHON) ../../tools/emu.py $< --nwlink "$(NWLINK)" --ms 9000 --out $(BUILD_DIR) --model n0110 \
 	  --keys "400-480:ok,1500-1580:ok,2200-2280:ok,2700-2780:ok,3200-3280:ok,3700-3780:ok,4200-4280:ok,4700-4780:ok"
 
+# the gallery's clip: the app played by src/bot.c in tools/emu.py, its frames made a GIF by tools/record.py
+REC_DIR = $(BUILD_DIR)/rec
+$(BUILD_DIR)/record.nwa: $(HOT) $(COLD) src/bot.c $(HEADERS) $(BUILD_DIR)/icon.o
+	$(Q) $(CC) $(CFLAGS) -Os -DFD_AUTOPLAY=1 $(LDFLAGS) $(HOT) $(COLD) src/bot.c $(BUILD_DIR)/icon.o -lm -o $@
+record: $(BUILD_DIR)/record.nwa
+	$(Q) rm -rf $(REC_DIR) && mkdir -p $(REC_DIR)
+	$(PYTHON) ../../tools/emu.py $< --nwlink "$(NWLINK)" --ms 21000 --out $(REC_DIR) --frames $(REC_DIR)/raw \
+	  --keys "400-480:ok,1200-1280:ok"
+	$(PYTHON) ../../tools/record.py --frames $(REC_DIR)/raw --out $(REC_DIR) --fps 25 --gif 1300-14300:flappydunk.gif
+
 # on a computer: tests/play.c checks the game and saves pictures
 HOST_FLAGS = -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -DHOST -I$(L) -Isrc \
   -fsanitize=address,undefined -fno-sanitize-recover=undefined
-HOST_SRC = src/game.c src/draw.c src/data.c $(L)/gfx.c $(L)/font_data.c $(L)/xfont.c $(L)/icons.c
+HOST_SRC = src/game.c src/draw.c src/data.c src/bot.c $(L)/gfx.c $(L)/font_data.c $(L)/xfont.c $(L)/icons.c
 host: build/play
 build/play: tests/play.c src/main.c $(HOST_SRC) $(HEADERS)
 	$(Q) mkdir -p build

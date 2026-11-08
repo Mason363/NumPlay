@@ -1,30 +1,81 @@
-# Flappy Dunk
+> **Flappy Dunk is a [NumPlay](../../README.md) game that comes on its own.** It is too big to fit next to NumPlay on the calculator. Get `FlappyDunk.nwa` from the [latest release](https://github.com/Mason363/NumPlay/releases/latest).
 
-Flap the winged ball and drop it down through every hoop. Voodoo's endless game for the NumWorks calculator, playing and looking like the phone game.
+<p align="center">
+  <img src="src/icon.png" width="84" alt="Flappy Dunk icon">
+</p>
 
-<img src="docs/shot.png" width="320" alt="A run of Flappy Dunk: the ball on fire after four swishes in a row">
+<h1 align="center">Flappy Dunk</h1>
 
-- **One button.** Each press of OK flaps the wings once, and the ball falls in between.
-- **Every hoop, from above.** Miss one and the run is over. The floor and the ceiling bounce the ball back, and the rims stop it dead, like in the original.
-- **Swishes.** Go through without touching the rim for a swish. A basket is worth 1, a swish 2, and every swish in a row one more: 3, 4, 5... From the second one the ball catches fire.
-- **The real numbers.** Gravity, flap, speed, the size of the ball and hoops, and how the rims and floor behave come from the game's own files.
-- **Harder as you go.** Tilted hoops after 10 baskets, hoops moving up and down or side to side after 20, narrower ones after 40.
-- **Six balls**, unlocked with the original's goals: score 20, 50 or 125, 10 swishes in a row, 100 swishes in all.
-- Your run, best score and balls are saved, so you can stop and carry on later.
+<p align="center">
+  <b>Flap the winged ball down through every hoop, on the NumWorks calculator.</b><br>
+  The endless run and all 51 challenges, with the game's balls, wings, hoops and flames.
+</p>
+
+<p align="center">
+  <a href="https://github.com/Mason363/NumPlay/releases/latest/download/FlappyDunk.nwa"><b>Download FlappyDunk.nwa</b></a>
+  &nbsp;·&nbsp; <a href="#controls">Controls</a>
+</p>
+
+<p align="center">
+  <img src="../../docs/media/gallery/flappydunk.gif" width="640" alt="Flappy Dunk: swishes in a row set the ball on fire">
+</p>
+
+## Highlights
+
+* **The game's own physics:** its gravity, flap, speed, rims that stop the ball dead and the ball rolling on them, 100 steps a second, read from the game's Android build.
+* **Endless mode:** hoops 9 apart, tilted, narrower and moving up and down or side to side as the game's own difficulty curves bring them in.
+* **All 51 challenges:** every hoop where the game puts it, the mad hoops, the heavy, low and upside down gravity, the swishes only, the narrow and pixelated levels, and the Mirror mode that plays them flipped.
+* **Swishes:** no rim touched is a swish, and each swish in a row scores one more. The ball smokes after one and catches fire after two, the hoop throws its stars and bursts.
+* **Balls, wings, hoops and flames:** 26 balls, 10 wings, 9 hoops and 6 flames, unlocked with the game's goals, from scoring 20 to the mystery skins.
+* **The game's look:** its ball, wings, hoops in their back and front halves with the ball between, flames, stars and brick wall, and its Lilita One lettering.
+* **Saved as you go:** best score, goals, skins and challenges. Home saves and quits. It is all copied into `flappydunk_saves.py` too, so installing the app again doesn't erase it, and the first Flappy Dunk's best score and balls carry over.
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/title.png" width="390" alt="The title over the first hoops"><br><sub>The title</sub></td>
+    <td align="center"><img src="docs/moving.png" width="390" alt="A tilted hoop moving on its track"><br><sub>Tilted and moving hoops</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/skins.png" width="390" alt="The skins: balls, wings, hoops and flames"><br><sub>The skins and their goals</sub></td>
+    <td align="center"><img src="docs/challenges.png" width="390" alt="The 51 challenges"><br><sub>The 51 challenges</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/wtf.png" width="390" alt="The mad hoop"><br><sub>A mad hoop</sub></td>
+    <td align="center"><img src="docs/mirror.png" width="390" alt="A challenge in Mirror mode"><br><sub>Mirror mode</sub></td>
+  </tr>
+</table>
+
+## How to play
+
+Press **OK** to flap. Each press beats the wings once and the ball falls in between. Drop it down through every hoop. Missing a hoop, going up through one or touching the floor or the ceiling ends the run.
+
+Going in without touching the rim is a swish. A basket is worth 1, a swish 2, and every swish in a row one more. From the title, **Down** reaches the skins, the challenges and How to play. In a challenge, reach the finish line on its terms.
 
 ## Controls
 
-| Key | Action |
+| Key | What it does |
 | --- | --- |
-| OK, EXE or Up | Flap |
-| Back | Menu: Resume, Balls, How to play, Quit |
+| OK, EXE or Up | Flap; in the menus, choose |
+| Arrows | Move in the menus |
+| Back | Pause (Resume, Main menu, How to play, Quit game), or go back |
+| Home | Save and quit |
+
+## Good to know
+
+* **On its own:** Flappy Dunk is too big to fit next to NumPlay. Installing it from the NumWorks website swaps out NumPlay and the other apps, and installing NumPlay again swaps it back out. Your progress in each one is kept.
+* **What's left out:** ads and what they give (revives and the skins they unlock), in-app purchases, the cards, ranks, duels and events of later versions, the days-in-a-row goals (the calculator has no calendar), holiday skins, music and sound.
+* **Goals:** they say what the game's skins say. The skins played goals count 12, 25 and 35 skins, as the game's own counters do.
 
 ## Credits
 
-Flappy Dunk is **Voodoo**'s game (2017), developed with Acid Cousins. **Bobydeluxe** brought it to NumPlay. This version is written in C for NumPlay with no code or art from the original. Its physics and hoops follow the numbers in the game's Android build, and its French and Chinese texts are the original's own where it has them.
+Inspired by Flappy Dunk by Voodoo (2017), not affiliated with Voodoo. Go play the original.
 
-Inside NumPlay it draws with the launcher's own shapes and fonts and saves through its file functions, so the game itself is about 8 KB.
+* The pictures (ball, wings, hoops, flames, stars, brick wall, icons) come from the game's Android build, and its rules, numbers, challenges and goals follow the game's own data and code.
+* The lettering is **Lilita One** by Juan Montoreano (SIL Open Font License, see [LICENSES/OFL-1.1-LilitaOne.txt](../../LICENSES/OFL-1.1-LilitaOne.txt)).
+* **Bobydeluxe** brought the first Flappy Dunk to NumPlay.
 
-It comes inside [NumPlay](https://github.com/Mason363/NumPlay), or on its own as `FlappyDunk.nwa` from the [latest release](https://github.com/Mason363/NumPlay/releases/latest).
+Made by Mason Chen as part of NumPlay.
 
-Build: `make` (needs `arm-none-eabi-gcc` and Node.js for nwlink). Tests: `make test`.
+## License
+
+The game's code is licensed under the GNU General Public License v3.0: see the `LICENSE` file at the root of the repository. The game's pictures keep their own terms (see Credits). Flappy Dunk is a trademark of Voodoo.

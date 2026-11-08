@@ -75,6 +75,7 @@ ALONE = {
     "imposter": ("Imposter", "the party game: pass the calculator, everyone sees the secret word but the imposter, 30 categories"),
     "fourplayer": ("2 3 4 Players", "one-key party games for 2, 3 or 4 players on one calculator, and teams: 14 minigames"),
     "circloo": ("circloO", "Florian van Strien's physics game: its 14 levels and 6 hard mode levels, read from the game's own files"),
+    "flappydunk": ("Flappy Dunk", "Voodoo's winged ball through the hoops: the endless run and all 51 challenges, with the game's balls, wings, hoops and flames"),
     "numpico": ("NumPico", "PICO-8 carts on the calculator: add your own .p8 and .p8.png carts in NumPlay Studio"),
 }
 VARIANTS = [
@@ -88,7 +89,7 @@ LANGUAGES = [
 ]
 # big games in another language (in build/compiled/games)
 ALONE_LANGUAGES = [("UniversalPaperclips-French.nwa", "Universal Paperclips en français")]
-UPSILON = ("NumPlay-Upsilon.nwa", "For calculators running Upsilon (N0110, N0115): the 24 games that fit in the memory "
+UPSILON = ("NumPlay-Upsilon.nwa", "For calculators running Upsilon (N0110, N0115): the 23 games that fit in the memory "
            "Upsilon gives apps. Install it with nwlink, see the README")
 
 

@@ -2,7 +2,7 @@
 
 <img src="../media/calcs/numworks.png" height="200" align="right" alt="NumWorks">
 
-29 free games in one app, NumPlay.nwa, and 48 big games that install on their own. For the N0110, N0115 and N0120.
+28 free games in one app, NumPlay.nwa, and 49 big games that install on their own. For the N0110, N0115 and N0120.
 
 ## Install
 
@@ -21,7 +21,7 @@ Updating? Install the new file the same way: your progress comes back by itself.
 
 The games use the calculator's own keys: arrows to move, **OK** and **EXE** to act, **Back** to pause or go back, and **Home** to save and quit.
 
-## The 29 games in NumPlay.nwa
+## The 28 games in NumPlay.nwa
 
 | Game | |
 | --- | --- |
@@ -39,7 +39,6 @@ The games use the calculator's own keys: arrows to move, **OK** and **EXE** to a
 | [Doodle Jump](../../games/doodlejump/README.md) | Bounce as high as you can |
 | [Chess](../../games/chess/README.md) | Bots, puzzles, 2 players |
 | [Flappy Bird](../../games/flappybird/README.md) | Flap through the pipes |
-| [Flappy Dunk](../../games/flappydunk/README.md) | Flap the ball down through every hoop |
 | [Tower Blocks](../../games/towerblock/README.md) | Stack the blocks as high as you can |
 | [Core Ball](../../games/coreball/README.md) | Stick every ball to the spinning core |
 | [Pac-Man](../../games/pacman/README.md) | Eat dots, dodge ghosts |
@@ -55,7 +54,7 @@ The games use the calculator's own keys: arrows to move, **OK** and **EXE** to a
 | [Ultimate Tic-Tac-Toe](../../games/uttt/README.md) | Tic-tac-toe in tic-tac-toe |
 | [Sokoban](../../games/sokoban/README.md) | Push every box home |
 
-## The 48 big games
+## The 49 big games
 
 Each one installs on its own, the same way.
 
@@ -76,6 +75,7 @@ Each one installs on its own, the same way.
 | [Doom](../../games/doom/README.md) | Rip and tear | [Doom.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/Doom.nwa) |
 | [UNO](../../games/uno/README.md) | Match the cards, shout UNO | [UNO.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/UNO.nwa) |
 | [Mahjong](../../games/mahjong/README.md) | Match free tiles, clear the board | [Mahjong.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/Mahjong.nwa) |
+| [Flappy Dunk](../../games/flappydunk/README.md) | Flap the ball down through every hoop | [FlappyDunk.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/FlappyDunk.nwa) |
 | [Five Nights at Freddy's](../../games/fnaf/README.md) | Survive five nights | [FiveNightsAtFreddys.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/FiveNightsAtFreddys.nwa) |
 | [Donkey Kong](../../games/donkeykong/README.md) | Climb the girders and save Pauline | [DonkeyKong.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/DonkeyKong.nwa) |
 | [NumPowder](../../games/numpowder/README.md) | Sand, water, fire and more | [NumPowder.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPowder.nwa) |

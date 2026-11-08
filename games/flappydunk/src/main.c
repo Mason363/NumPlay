@@ -856,6 +856,16 @@ int main(void) {
     uint32_t raw = plat_keys(), k = raw & ~(stale &= raw), hit = k & ~held;
     held = k;
     if (raw & PK_HOME) break;
+#ifdef FD_AUTOPLAY /* (the gallery's recording: src/bot.c flies) */
+    {
+      extern bool bot_wants_flap(int effort);
+      if (sc == SC_PLAY && ((G.state == ST_READY && (now / 500) % 2) || (G.state == ST_PLAY && bot_wants_flap(8)))) hit |= PK_OK;
+      static uint32_t res_t;
+      if (sc != SC_RESULT) res_t = 0;
+      else if (!res_t) res_t = now;
+      else if (now - res_t > 1500) hit |= PK_OK, res_t = 0;
+    }
+#endif
     keys(hit);
     if (sc == SC_QUIT && (hit & (PK_OK | PK_EXE)) && sel == 0) break;
     /* the physics at the original's 100 steps a second, catching up after a slow frame */
