@@ -80,7 +80,8 @@ GAMES = {
     "coreball": ("CoreBall.nwa", "coreball.sav", presses((1500, "ok"), (2000, "ok"), (2800, "ok"), (3300, "ok")), 3800,
                  presses((1500, "back"), (1800, "down"), (2100, "down"), (2400, "ok"), (2800, "right"), (3100, "right"),
                          (3400, "ok")), 4500),
-    # past how to play, a climb started; next time it goes on after OK
+    # past how to play, the title's play: a climb; Home keeps it. Next time, from the copy, back paused on it, OK goes
+    # on, quit with On/Off
     "doodlejump": ("DoodleJump.nwa", "doodlejump.sav", presses((1500, "ok"), (2200, "ok")), 3500,
                    presses((1500, "ok")), 2500),
     "flappybird": ("FlappyBird.nwa", "flappy.sav",
@@ -454,7 +455,7 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "catninja": "catninja_saves.py",
           "kingdomrush": "kingdomrush_saves.py",
           "mrbullet": "mrbullet_saves.py", "motox3m": "motox3m_saves.py", "amongus": "amongus_saves.py", "imposter": "imposter_saves.py",
-          "fourplayer": "fourplayer_saves.py", "circloo": "circloo_saves.py"}
+          "fourplayer": "fourplayer_saves.py", "circloo": "circloo_saves.py", "doodlejump": "doodlejump_saves.py"}
 
 
 def paperclips_ok(v):
@@ -495,6 +496,16 @@ def clashroyale_ok(v):
     for x in v[:-4]:
         h = (h ^ x) * 16777619 & 0xFFFFFFFF
     return struct.unpack_from("<I", v, 44)[0] == h
+
+
+def doodlejump_ok(v):
+    """Doodle Jump's save: "D", version 2, an FNV-1a sum at 4 of what follows the first 8 bytes"""
+    if len(v) < 120 or v[:2] != b"D\2":
+        return False
+    h = 2166136261
+    for x in v[8:]:
+        h = (h ^ x) * 16777619 & 0xFFFFFFFF
+    return struct.unpack_from("<I", v, 4)[0] == h
 
 
 def catninja_ok(v):
@@ -614,9 +625,10 @@ CHECKS = {
     # a tower kept (guide read) with one block placed; then kept as it was
     "towerblock": (lambda v: len(v) == 668 and v[:2] == b"T\1" and v[2] & 3 == 3 and struct.unpack_from("<I", v, 12)[0] == 1,
                    lambda v: v[2] & 1 and struct.unpack_from("<I", v, 12)[0] == 1),
-    # a climb kept (guide read) with some height; then still there
-    "doodlejump": (lambda v: len(v) == 488 and v[:2] == b"D\1" and v[2] & 3 == 3 and struct.unpack_from("<I", v, 12)[0] > 40,
-                   lambda v: v[2] & 1 and struct.unpack_from("<I", v, 12)[0] > 40),
+    # "D", version 2: a climb kept (guide read) with some height (the climb's score at 108, its sum at 4); then still
+    # there, further along
+    "doodlejump": (lambda v: doodlejump_ok(v) and v[2] & 3 == 3 and struct.unpack_from("<I", v, 108)[0] > 40,
+                   lambda v: doodlejump_ok(v) and v[2] & 1 and struct.unpack_from("<I", v, 108)[0] > 40),
     "flappybird": (lambda v: len(v) == 26 and v[:3] == b"F\1\1" and v[8] == 3,  # Custom, Speed Fast
                    lambda v: v[2] == 1 and v[8] == 4),  # read back, Speed Insane
     # the game went on (more points, fewer dots), then Fast was chosen and the game kept
