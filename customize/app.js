@@ -2015,12 +2015,13 @@
       const [a, b] = t.dataset.tip.split('|');
       tip.textContent = a;
       if (b) tip.appendChild(el('small')).textContent = b;
-      const r = t.getBoundingClientRect(), w = tip.offsetWidth;
-      const x = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2));
-      const y = r.top - tip.offsetHeight - 8 < 8 ? r.bottom + 8 : r.top - tip.offsetHeight - 8;
+      tip.classList.add('show'); /* (shown first: a hidden tip measures 0, and one at the right edge ran off it) */
+      const r = t.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+      const vw = document.documentElement.clientWidth; /* (without the scroll bar) */
+      const x = Math.max(8, Math.min(vw - w - 8, r.left + r.width / 2 - w / 2));
+      const y = r.top - h - 8 < 8 ? r.bottom + 8 : r.top - h - 8;
       tip.style.left = x + 'px';
       tip.style.top = y + 'px';
-      tip.classList.add('show');
     });
     document.addEventListener('pointerdown', () => tip.classList.remove('show'));
   }
