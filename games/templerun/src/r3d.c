@@ -39,6 +39,7 @@ uint16_t *r_col;
 int r_y0, r_y1;
 Camera cam;
 float r_fog0 = 19, r_fog1 = 76, r_far = 40;
+int r_fade;
 uint32_t r_fog_rgb = 0x325256;
 /* the fog by depth: its amount (0..32) for depths d >> 3, below fog_d0 (nearer than r_fog0: none; farther than r_fog1,
  * below fog_d1: all) */
@@ -185,6 +186,12 @@ static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, u
   emit_screen(p, n, sx, sy, kind, color, flags, alpha, avg);
 }
 
+/* a plain face's colour gone r_fade into the fog's */
+static uint16_t fade(uint16_t c) {
+  uint32_t c8 = (uint32_t)(c >> 11) * 255 / 31 << 16 | (uint32_t)((c >> 5) & 63) * 255 / 63 << 8 | (uint32_t)(c & 31) * 255 / 31;
+  return r_565(r_mix888(c8, r_fog_rgb, r_fade > 256 ? 256 : r_fade));
+}
+
 /* the rest of emit, from the corners on the screen (sx, sy from its middle) */
 static void emit_screen(const CV *p, int n, float *sx, float *sy, int kind, uint16_t color, int flags, int alpha, uint16_t avg) {
   float f = cam.f;
@@ -227,7 +234,7 @@ static void emit_screen(const CV *p, int n, float *sx, float *sy, int kind, uint
     /* far off, a picture is only its average colour (color already holds it when kind comes back flat) */
     const Texture *t = r_tex[color];
     if (t->clear && !avg && (nuv >= MAXT || zm > r_far * 1.6f)) return;   /* (a see-through one is only drawn as itself: near) */
-    if ((!t->clear && (zm > r_fog1 * 0.6f || nuv >= MAXT)) || (avg && (zm > r_far || nuv >= MAXT))) {
+    if ((!t->clear && (zm > r_fog1 * 0.6f || nuv >= MAXT)) || (avg && (zm > r_far || nuv >= MAXT || r_fade))) {
       /* (the palette's first useful colour stands for it: the tool puts the average there; or the face's own) */
       uint16_t c = avg ? avg : t->pal[t->clear ? 1 : 0];
       uint32_t a8 = (uint32_t)(c >> 11) * 255 / 31 << 16 | (uint32_t)((c >> 5) & 63) * 255 / 63 << 8 | (uint32_t)(c & 31) * 255 / 31;
@@ -253,6 +260,7 @@ static void emit_screen(const CV *p, int n, float *sx, float *sy, int kind, uint
       q->extra = (uint16_t)nuv++;
     }
   }
+  if (kind == K_FLAT && r_fade) color = fade(color);
   q->color = color;
   q->alpha = (uint8_t)(kind == K_PERSP ? alpha : flags & P_ALPHA ? (alpha > 255 ? 255 : alpha < 0 ? 0 : alpha) : 255);
   q->v0 = (uint16_t)nverts, q->n = (uint8_t)n;
@@ -367,10 +375,11 @@ static bool emit_tri_fx(const SVq *const c[3], const int16_t *uv, int tex, int f
   int64_t far16 = fx_from_float(r_far, 16), fog16 = fx_from_float(r_fog1, 16);
   if (t->clear && !avg && (nuv >= MAXT || zsum * 5 > far16 * 24)) return true;
   UV *u = &uvs[nuv];
-  if ((!t->clear && (zsum * 5 > fog16 * 9 || nuv >= MAXT)) || (avg && (zsum > far16 * 3 || nuv >= MAXT))) {
+  if ((!t->clear && (zsum * 5 > fog16 * 9 || nuv >= MAXT)) || (avg && (zsum > far16 * 3 || nuv >= MAXT || r_fade))) {
     uint16_t c0 = avg ? avg : t->pal[t->clear ? 1 : 0];
     uint32_t a8 = (uint32_t)(c0 >> 11) * 255 / 31 << 16 | (uint32_t)((c0 >> 5) & 63) * 255 / 63 << 8 | (uint32_t)(c0 & 31) * 255 / 31;
     color = r_565(r_mix888(a8, 0, 256 - alpha * 8 > 256 ? 0 : 256 - alpha * 8));
+    if (r_fade) color = fade(color);
     kind = K_FLAT;
     alpha = 255;
   } else {

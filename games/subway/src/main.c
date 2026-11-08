@@ -6,10 +6,14 @@
  * Inspired by Subway Surfers by SYBO and Kiloo, not affiliated with them.
  * Made by Mason Chen as part of NumPlay. */
 #include "app.h"
+#include "game.h"
 #include "plat.h"
 #include "r3d.h"
 
 #ifndef HOST
+#ifdef SS_BENCH
+#include "../tests/bot.h"
+#endif
 #ifndef NP_PORT /* (another target: platform/port.mk names the app) */
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Subway Surfers";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
@@ -18,6 +22,11 @@ const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level")))
 uint32_t perf_frames __attribute__((used));   /* read by tools/emu.py */
 uint32_t perf_max __attribute__((used));
 uint32_t perf_slow __attribute__((used));
+uint32_t perf_draw __attribute__((used));   /* (milliseconds spent drawing) */
+#ifdef SS_BENCH
+/* (read by tools/bench.py after each drawing: in a run, its distance and polygons) */
+uint32_t bench_run __attribute__((used)), bench_dist __attribute__((used)), bench_polys __attribute__((used));
+#endif
 
 int main(void) {
   uint16_t band[SCREEN_W * BAND_H];   /* (here: on the stack, out of the RAM apps get) */
@@ -35,7 +44,13 @@ int main(void) {
   while (app_running) {
     int n = 0;
     uint32_t now = plat_millis() * 3, keys = plat_keys();
+#ifdef SS_BENCH
+    /* (timing: two steps a drawing, the same frames whatever the speed; nothing hurts the runner) */
+    while (n < 2 && app_running) {
+      if (app_in_run()) keys = bot();
+#else
     while ((int32_t)(now - next) >= 0 && n < 4 && app_running) {
+#endif
       app_step(keys, n ? 0 : keys & ~prev);
       next += 50;
       n++;
@@ -47,8 +62,12 @@ int main(void) {
       uint32_t t0 = plat_millis();
       app_draw();
       uint32_t dt = plat_millis() - t0;
+      perf_draw += dt;
       if (dt > perf_max) perf_max = dt;
       if (dt > 33) perf_slow++;
+#ifdef SS_BENCH
+      bench_run = app_in_run(), bench_dist = (uint32_t)run.dist, bench_polys = (uint32_t)r_count();
+#endif
       perf_frames++;
     } else
       plat_sleep(1);

@@ -21,6 +21,10 @@
 #define SCENERY_POLYS 1080   /* the polygons a frame the scenery's reach is kept to (of the renderer's 1800) */
 #define INTRO_FAR 250.0f     /* the scenery's reach in the run's intro, the temple's front close by (half in the fog) */
 #define LOD_NEAR 70.0f       /* path pieces nearer than this are whole */
+#define LOD_FADE 0.3f        /* past LOD_FADE_AT (r_far: where they are plain), a piece's last triangles drawn, this part */
+#define LOD_FADE_AT 210.0f   /* of them, come in from the fog's colour; and over LOD_FADE_RAMP more, the piece itself goes */
+#define LOD_FADE_RAMP 120.0f /* into it as much as it lacks triangles */
+#define FADE 50.0f           /* the scenery comes in from the fog over its last units within reach */
 #define VIEW (FOG1 + 20)     /* units seen ahead */
 #define PI 3.14159265f
 
@@ -54,6 +58,33 @@ static float atan2_(float y, float x) {
 static float dir_yaw(int d) { return d == 1 ? PI / 2 : d == 2 ? PI : d == 3 ? -PI / 2 : 0; }
 
 static void reach_make(void);
+
+/* a path piece far off (game units squared from the camera, d2): how many of its triangles are drawn, the biggest first,
+ * and how far each one is in the fog's colour. The last LOD_FADE of them come in from it, so that coming nearer the
+ * piece gains them smoothly; and a piece showing few of its triangles, apart from one another, is that much in it, so
+ * that far off it doesn't stand out as loose shards */
+typedef struct {
+  int nt, base;    /* triangles drawn; how far all of them are in the fog's colour (0..256) */
+  int plain;       /* the first ones drawn as they are */
+  float solid, keep;   /* the first solid ones are only base in it, then more up to keep */
+} Lod;
+static Lod lod_of(int m, int nt, float d2) {
+  Lod l = {nt, 0, nt, (float)nt, (float)nt};
+  if (m >= 2 * M_PIECES || d2 <= LOD_NEAR * LOD_NEAR) return l;
+  l.keep = (float)nt * (LOD_NEAR * LOD_NEAR) / d2, l.nt = l.plain = (int)l.keep, l.solid = l.keep;   /* (fewer as the distance squared) */
+  if (d2 > LOD_FADE_AT * LOD_FADE_AT) {
+    float ramp = (__builtin_sqrtf(d2) - LOD_FADE_AT) / LOD_FADE_RAMP;
+    l.solid = l.keep * (1 - LOD_FADE);
+    l.base = (int)(256 * (ramp > 1 ? 1 : ramp) * (1 - l.keep / (float)nt));
+    l.plain = l.base ? 0 : (int)l.solid;
+  }
+  return l;
+}
+/* how far triangle i is in the fog's colour, or -1 past the last one */
+static inline int lod_fade(const Lod *l, int i) {
+  float k = (float)i >= l->solid ? ((float)i - l->solid) / (l->keep - l->solid) : 0;
+  return k >= 1 ? -1 : l->base + (int)(k * (float)(256 - l->base));
+}
 
 void scene_init(void) {
   r_fog0 = FOG0 * S, r_fog1 = FOG1 * S, r_fog_rgb = FOG_RGB;
@@ -206,15 +237,17 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
     V3 nn = {nx * c + nz * s, ny, -nx * s + nz * c};
     r_poly_view(p, n, r_shade(f->rgb, nn), flags | (f->flags & 1 ? P_TWOSIDED : 0), alpha);
   }
-  int nt = me->nt;
-  if (m < 2 * M_PIECES) {
-    float d2 = dx * dx + dz * dz;
-    if (d2 > LOD_NEAR * LOD_NEAR) nt = (int)((float)nt * (LOD_NEAR * LOD_NEAR) / d2);
-  }
-  for (int i = 0; i < nt; i++) {
+  Lod lod = lod_of(m, me->nt, dx * dx + dz * dz);
+  int fade0 = r_fade;
+  for (int i = 0; i < lod.nt; i++) {
     const TFace *t = &me->t[i];
     const uint16_t *ix = me->tidx + 3 * i;
     const int16_t *q = me->uv + 6 * i;
+    if (i >= lod.plain) {
+      int f = lod_fade(&lod, i);
+      if (f < 0) break;
+      r_fade = f > fade0 ? f : fade0;
+    }
     const SVq *a = CORNER_FX(ix[0], 0), *b = CORNER_FX(ix[1], 1), *cc3 = CORNER_FX(ix[2], 2);
     if (a->z >= near && b->z >= near && cc3->z >= near && r_tri_tex_screen_fx(a, b, cc3, q, t->tex, t->light + 1, flags, t->avg))
       continue;
@@ -224,6 +257,7 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
                {fx_to_float(cc3->x, 16), fx_to_float(cc3->y, 16), fx_to_float(cc3->z, 16)}};
     r_poly_tex_view(p, uv, 3, t->tex, t->light + 1, flags, t->avg);
   }
+  r_fade = fade0;
 #undef CORNER_FX
 }
 #else
@@ -246,8 +280,9 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
     memset(made, 0, sizeof made);
     stamp = 1;
   }
-#define MOVE(j) r_corner((V3){(x0 + me->v[j].x * 0.25f * c + me->v[j].z * 0.25f * s) * S, (dy + me->v[j].y * 0.25f) * S, \
-                              (z0 - me->v[j].x * 0.25f * s + me->v[j].z * 0.25f * c) * S})
+  /* (a quarter unit turned, in metres: one multiply a coordinate) */
+  float kc = 0.25f * S * c, ks = 0.25f * S * s, ky = 0.25f * S, bx = x0 * S, by = dy * S, bz = z0 * S;
+#define MOVE(j) r_corner((V3){bx + me->v[j].x * kc + me->v[j].z * ks, by + me->v[j].y * ky, bz - me->v[j].x * ks + me->v[j].z * kc})
 #define CORNER(j) ((j) >= MESH_CORNERS ? MOVE(j) : made[j] == stamp ? v[j] : (made[j] = stamp, v[j] = MOVE(j)))
   int flags = alpha < 255 ? P_ALPHA : 0;
   for (int i = 0; i < me->nf; i++) {
@@ -263,17 +298,19 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
     r_poly_view(p, n, r_shade(f->rgb, nn), flags | (f->flags & 1 ? P_TWOSIDED : 0), alpha);
   }
   /* (a path piece has its faces biggest first: past LOD_NEAR, only the first of them, fewer as it is farther, so that
-   * coming nearer it gains them one by one, the biggest first; by its distance, not by the way the camera looks, so a
+   * coming nearer it gains them, the biggest first (lod_of); by its distance, not by the way the camera looks, so a
    * turn of the camera changes none. Scenery stays whole, as its leaves and roots would be left in the air) */
-  int nt = me->nt;
-  if (m < 2 * M_PIECES) {
-    float d2 = dx * dx + dz * dz;
-    if (d2 > LOD_NEAR * LOD_NEAR) nt = (int)((float)nt * (LOD_NEAR * LOD_NEAR) / d2);   /* (fewer as the square of the distance) */
-  }
-  for (int i = 0; i < nt; i++) {
+  Lod lod = lod_of(m, me->nt, dx * dx + dz * dz);
+  int fade0 = r_fade;
+  for (int i = 0; i < lod.nt; i++) {
     const TFace *t = &me->t[i];
     const uint16_t *ix = me->tidx + 3 * i;
     const int16_t *q = me->uv + 6 * i;
+    if (i >= lod.plain) {
+      int f = lod_fade(&lod, i);
+      if (f < 0) break;
+      r_fade = f > fade0 ? f : fade0;
+    }
     SV a = CORNER(ix[0]), b = CORNER(ix[1]), cc3 = CORNER(ix[2]);
     float uv[6] = {q[0] * 0.25f, q[1] * 0.25f, q[2] * 0.25f, q[3] * 0.25f, q[4] * 0.25f, q[5] * 0.25f};
     /* (all in front of the camera: as it is on the screen, turned away ones left out at once) */
@@ -281,6 +318,7 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
     V3 p[3] = {{a.x, a.y, a.z}, {b.x, b.y, b.z}, {cc3.x, cc3.y, cc3.z}};
     r_poly_tex_view(p, uv, 3, t->tex, t->light + 1, flags, t->avg);
   }
+  r_fade = fade0;
 #undef CORNER
 #undef MOVE
 }
@@ -350,9 +388,9 @@ static void draw_scenery(void) {
     }
   /* nearest first, ring by ring round the camera's square, as far as scenery_far: a piece of scenery is there or not by
    * where it is, never by how many polygons came before it, so none comes and goes from one frame to the next. Past
-   * SCENERY_POLYS a frame, scenery_far comes a little nearer each frame, and goes back out when there is room */
-  float far2 = scenery_far * scenery_far;
-  if (intro_t < INTRO && !title && far2 > INTRO_FAR * INTRO_FAR) far2 = INTRO_FAR * INTRO_FAR;
+   * SCENERY_POLYS a frame, scenery_far comes a little nearer each frame, and goes back out when there is room (the
+   * intro's reach too, when it is over); what comes within it comes in from the fog */
+  if (intro_t < INTRO && !title && scenery_far > INTRO_FAR) scenery_far = INTRO_FAR;
   for (int ring = 0; ring <= SGRID / 2; ring++)
     for (int a = SGRID / 2 - ring; a <= SGRID / 2 + ring; a++)
       for (int b = SGRID / 2 - ring; b <= SGRID / 2 + ring; b += (a == SGRID / 2 - ring || a == SGRID / 2 + ring) ? 1 : 2 * ring) {
@@ -365,11 +403,13 @@ static void draw_scenery(void) {
         float ox = (float)((int)((h >> 20) % 21) - 10), oz = (float)((int)((h >> 25) % 21) - 10);
         float wx = (float)cx * TILE + ox, wz = (float)cz * TILE + oz, dx = wx - cx_, dz = wz - cz_, d2 = dx * dx + dz * dz;
         /* (the small ones, a few pixels in the haze past SMALL_FAR, aren't drawn there) */
-        if ((k >= 11 && k <= 14) || k >= 19) {
-          if (d2 > SMALL_FAR * SMALL_FAR) continue;
-        }
-        if (d2 > far2) continue;
+        float reach = ((k >= 11 && k <= 14) || k >= 19) && scenery_far > SMALL_FAR ? SMALL_FAR : scenery_far;
+        if (d2 > reach * reach) continue;
+        /* (coming within reach, it comes in from the fog: the last FADE units it is that much in the fog's colour) */
+        float in = reach - FADE;
+        r_fade = d2 > in * in ? (int)((__builtin_sqrtf(d2) - in) * (256 / FADE)) : 0;
         scene_mesh(m, wx, 0, wz, 0, 255);
+        r_fade = 0;
       }
   int n = r_count();
   if (n > SCENERY_POLYS && scenery_far > 200) scenery_far -= 3;

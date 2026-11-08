@@ -66,6 +66,10 @@ extern float r_fog0, r_fog1;
 /* beyond r_far (m) a baked face with an average colour is drawn in it, plain */
 extern float r_far;
 extern uint32_t r_fog_rgb;
+/* how far the faces being drawn have gone into the fog's colour before the fog (0..256): what comes in at the edge of
+ * what is drawn (the scenery at its reach, a far piece's next triangles) comes in from the fog, not all at once; a face
+ * with a picture is drawn plain in its average colour then */
+extern int r_fade;
 
 /* pictures laid on polygons: width and height are powers of two; index 0 can be see-through */
 typedef struct {
