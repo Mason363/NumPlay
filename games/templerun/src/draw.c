@@ -209,6 +209,10 @@ void d_label(const Font *f, int x, int baseline, const char *s, uint16_t fill, u
 }
 
 /* ---------------------------------------------------------------- the game's pictures */
+/* (drawn every frame: fast rather than small) */
+#if defined(__GNUC__) && !defined(__clang__)
+__attribute__((optimize("O2")))
+#endif
 static void blit(const HudPic *p, int x, int y, int a256, int flip, int from_row) {
   int y0 = imax(y + from_row, r_y0), y1 = imin(y + p->h, r_y1);
   int x0 = imax(x, 0), x1 = imin(x + p->w, SCREEN_W);

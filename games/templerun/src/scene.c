@@ -246,8 +246,9 @@ void scene_mesh(int m, float ox, float oy, float oz, float yaw, int alpha) {
     memset(made, 0, sizeof made);
     stamp = 1;
   }
-#define MOVE(j) r_corner((V3){(x0 + me->v[j].x * 0.25f * c + me->v[j].z * 0.25f * s) * S, (dy + me->v[j].y * 0.25f) * S, \
-                              (z0 - me->v[j].x * 0.25f * s + me->v[j].z * 0.25f * c) * S})
+  /* (a quarter unit turned, in metres: one multiply a coordinate) */
+  float kc = 0.25f * S * c, ks = 0.25f * S * s, ky = 0.25f * S, bx = x0 * S, by = dy * S, bz = z0 * S;
+#define MOVE(j) r_corner((V3){bx + me->v[j].x * kc + me->v[j].z * ks, by + me->v[j].y * ky, bz - me->v[j].x * ks + me->v[j].z * kc})
 #define CORNER(j) ((j) >= MESH_CORNERS ? MOVE(j) : made[j] == stamp ? v[j] : (made[j] = stamp, v[j] = MOVE(j)))
   int flags = alpha < 255 ? P_ALPHA : 0;
   for (int i = 0; i < me->nf; i++) {
