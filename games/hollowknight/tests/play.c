@@ -1032,6 +1032,36 @@ static int shop_charm_test(void) {
   return fails ? 1 : 0;
 }
 
+/* Dirtmouth's map shop (Mason363/NumPlay#359): shut, Inspect at its sign; open, Enter at its door and nothing else; also
+ * as the Knight walks on past it and comes back */
+static int map_shop_test(void) {
+  extern int prompts_up(int16_t *labels, int max);
+  static const struct { uint32_t keys; int ticks; bool check; } steps[] = {
+      {0, 100, false}, {K_RIGHT, 48, false}, {0, 60, true}, {K_RIGHT, 40, false}, {0, 60, false}, {K_LEFT, 40, false},
+      {0, 60, true}};
+  int fails = 0;
+  shielded = true;
+  for (int open = 0; open < 2; open++) {
+    game_new();
+    pd_set_flag(PDF_VISITED_DIRTMOUTH, true);
+    pd_set_flag(PDF_OPENED_MAPPER_SHOP, open);
+    game_enter(ROOM_TOWN, 146, 12, true);
+    for (unsigned s = 0; s < sizeof steps / sizeof steps[0]; s++) {
+      run_ticks(steps[s].ticks, steps[s].keys);
+      if (!steps[s].check) continue;
+      int16_t up[4];
+      int n = prompts_up(up, 4), want = open ? TXT_PROMPT_ENTER : TXT_PROMPT_INSPECT;
+      bool ok = n == 1 && up[0] == want;
+      printf("%s map shop %s, at its door%s: %d prompt%s up%s\n", ok ? "ok  " : "FAIL", open ? "open" : "shut",
+             s > 2 ? " again" : "", n, n == 1 ? "" : "s", ok ? "" : n && up[0] != want ? ", not the one it should be" : "");
+      fails += !ok;
+    }
+  }
+  shielded = false;
+  printf("map shop: %d failing\n", fails);
+  return fails ? 1 : 0;
+}
+
 /* the way to the False Knight (Mason363/NumPlay#172), played as one game, room by room, each room's keys from when the
  * Knight comes into it: from the new game's fall into King's Pass, through Dirtmouth and down its well, past the Temple of
  * the Black Egg, down through the tollbooth into Crossroads_03 (its lever's gates open: the game's Knight opens them from
@@ -1228,6 +1258,7 @@ static int gates_test(const char *which) {
   if (!strcmp(which, "shaman")) return shaman_test();
   if (!strcmp(which, "respawn")) return respawn_test();
   if (!strcmp(which, "shopcharm")) return shop_charm_test();
+  if (!strcmp(which, "mapshop")) return map_shop_test();
 #endif
   if (!strcmp(which, "texts")) return texts_test();
   if (!strcmp(which, "seams")) return seams_test();
