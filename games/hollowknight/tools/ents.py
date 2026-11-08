@@ -24,6 +24,14 @@ AREAS = {"KINGSPASS": (0, True, None), "DIRTMOUTH": (1, False, "visitedDirtmouth
          "MANTIS_VILLAGE": (0, True, None), "FUNGUS_CORE": (0, True, None), "MAGE_TOWER": (0, True, None)}
 # every part's rooms (pack.GLOBAL_ROOMS): a gate to one of another part leads to another app
 GLOBAL_ROOMS = []
+# (scene, gate) -> (scene, gate): Greenpath's way to Hornet, where the game's goes through rooms this port leaves out
+# (Mason363/NumPlay#402). Without the dash, the ledge Hornet is first seen on in Fungus1_02 is out of reach, and the way
+# on is down past the acid and out at the bottom right, through Fungus1_06, 07, 19, 10 and 05, and up into Fungus1_03
+# from below; past the Moss Knights in Fungus1_32 it goes up through Fungus1_20_v02 and down into Fungus1_21 from above
+# (its pit by the way in from Fungus1_32's left only opens once its vine is cut from the other side). Here those gates
+# lead straight to each other, both ways.
+WAYS = {("Fungus1_02", "right2"): ("Fungus1_03", "bot1"), ("Fungus1_03", "bot1"): ("Fungus1_02", "right2"),
+        ("Fungus1_32", "top1"): ("Fungus1_21", "top1"), ("Fungus1_21", "top1"): ("Fungus1_32", "top1")}
 # the battle gates' events (src/game.h: BG_*)
 BG_EVENTS = ["BG CLOSE", "BG QUICK CLOSE", "BG OPEN", "BG QUICK OPEN", "BG DESTROY"]
 # battle gates (BG Control: OK_BGATE's s0): closed at first, the bone ones' clips, gone once a PlayerData bool is set
@@ -1306,7 +1314,7 @@ def room(d, rooms, strings, persist, name, sprites=None, owners=None, rec_base=0
                 fl = entry_only | (G_DOOR if v.get("isADoor") else 0) | (G_ENTER_RIGHT if v.get("alwaysEnterRight") else 0) | \
                     (G_ENTER_LEFT if v.get("alwaysEnterLeft") else 0) | (G_DONT_WALK_OUT if v.get("dontWalkOutOfDoor") else 0) | \
                     (G_NON_HAZARD if v.get("nonHazardGate") else 0) | (G_HARD_LAND if v.get("hardLandOnExit") else 0)
-                target = v.get("targetScene") or ""
+                target, entry = WAYS.get((name, o["name"]), (v.get("targetScene") or "", v.get("entryPoint") or ""))
                 # (to a room of another part of the game, another app: 0x8000 and its number among them all)
                 ti = rooms.index(target) if target in rooms else \
                     0x8000 | GLOBAL_ROOMS.index(target) if target in GLOBAL_ROOMS else 0xFFFF
@@ -1317,7 +1325,7 @@ def room(d, rooms, strings, persist, name, sprites=None, owners=None, rec_base=0
                                oo["id"] in marker_index), -1)
                 off = v.get("entryOffset") or {"x": 0, "y": 0}
                 recs.append(rec(ENT_GATE, fl, box, (float(v.get("entryDelay", 0)), off["x"], off["y"], marker + 1), a=ti,
-                                s0=strings.id(o["name"]), s1=strings.id(v.get("entryPoint") or "")))
+                                s0=strings.id(o["name"]), s1=strings.id(entry)))
                 recs += _more_boxes(o)
                 # (the gate's own place, where the Knight comes in: a box record flagged 1, not part of its trigger)
                 recs.append(rec(ENT_BOX, 1, (o["pos"][0], o["pos"][1], o["pos"][0], o["pos"][1])))

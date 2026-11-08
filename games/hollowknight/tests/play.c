@@ -1039,7 +1039,7 @@ static int shop_charm_test(void) {
  * must come down; and from the Aspid Hunters' arena by the hot spring back up to the well and on the same way. Nothing
  * hurts the Knight: the way is what is checked, not the fights. (Each room's keys, as --play has them, were found by
  * trying moves on the computer.) */
-typedef struct { int room; const char *keys; } Leg;
+typedef struct { int room; const char *keys; bool strike; } Leg;   /* (strike: the enemies near him struck down) */
 #define WAY_KINGS_PASS \
   "_*400,R*300,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12," \
   "RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4," \
@@ -1092,16 +1092,69 @@ static const Leg way_new_game[] = {
 static const Leg way_hot_spring[] = {
   {ROOM_CROSSROADS_08, WAY_08}, {ROOM_CROSSROADS_33, WAY_33}, {ROOM_CROSSROADS_07, WAY_07},
   {ROOM_CROSSROADS_01, WAY_01_LEFT}, WAY_TEMPLE};
-static int way_run(const char *name, const Leg *legs, int n) {
+/* the way to Hornet (Mason363/NumPlay#402), as one game from Greenpath's first room: past its first bench, down the room
+ * where she is first seen (her ledge out of reach without the dash) and out at its bottom right, up into Fungus1_03 from
+ * below, past the toll bench, through the Moss Knights' arena (struck down for him) and up out of it, down into
+ * Fungus1_21 from above and on into her arena, where she must wake: the game's way, but for the rooms between that this
+ * port leaves out (tools/ents.py: WAYS) */
+#define WAY_GP_01 \
+  "_*60,RJ*12,_*1,LJ*30,L*20,_*1,LJ*12,_*1,LJ*30,L*20,_*1,L*8,_*1,L*25,_*1,LJ*30,L*20,_*1,R*8,_*1,LJ*30,_*1,L*8,_*1," \
+  "LJ*30,L*20,_*1,LJ*30,_*1,L*25,_*1,LJ*12,_*1,J*16,RJ*14,_*1,L*8,_*1,R*3,_*1,LA*4,_*8,LA*4,_*8,L*25,_*1,J*8,LJ*22,_*1," \
+  "J*8,LJ*22,_*1,LJ*30,_*1,L*25,_*1,J*22,LJ*8,L*10,_*1,L*25,_*1,LJ*30,L*20,_*1,L*3,_*1,LJ*30,L*20,_*1,R*3,_*1,J*8,LJ*22," \
+  "_*1,LJ*30,L*20,_*1,R*25,_*1,LJ*30,L*20,_*1,LJ*30,_*1,L*3,_*1,L*25,_*1,LA*4,_*8,LJ*30,_*1,LA*4,_*8,J*30,_*1,LJ*30,L*20," \
+  "_*1,LJ*30,L*20,_*1,J*8,LJ*22,_*1,LJ*30,L*20,_*1,LJ*30,L*20,_*1,L*25,_*1"
+#define WAY_GP_01B \
+  "_*60,L*25,_*1,L*25,_*1,J*16,LJ*14,_*1,LJ*12,_*1,LJ*30,L*20,_*1,LJ*12,_*1,LJ*30,_*1,LJ*30,L*20,_*1,L*25,_*1,J*22,LJ*8," \
+  "L*10,_*1"
+#define WAY_GP_02 \
+  "_*60,L*25,_*1,L*25,_*1,LJ*12,_*1,LJ*30,_*1,L*25,_*1,L*8,_*1,L*3,_*1,LJ*30,L*20,_*1,_*20,RJ*12,_*1,L*25,_*1,RJ*30,_*1," \
+  "_*20,RJ*30,R*20,_*1,J*22,RJ*8,R*10,_*1,RJ*30,R*20,_*1,J*22,RJ*8,R*10,_*1,R*25,_*1,J*8,RJ*22,_*1,R*25,_*1"
+#define WAY_GP_03 \
+  "_*60,J*22,LJ*8,L*10,_*1,J*22,LJ*8,L*10,_*1,L*8,_*1,L*8,_*1,J*22,RJ*8,R*10,_*1,LJ*30,_*1,L*25,_*1,L*25,_*1,RA*4,_*8," \
+  "J*8,LJ*22,_*1,LJ*30,_*1,LJ*30,_*1,RA*4,_*8,L*8,_*1,LJ*30,L*20,_*1,R*8,_*1,RA*4,_*8,J*22,RJ*8,R*10,_*1,RJ*30,R*20,_*1," \
+  "RJ*30,_*1,R*25,_*1,R*25,_*1,RJ*30,R*20,_*1,RJ*30,R*20,_*1,LJ*30,L*20,_*1,LJ*30,L*20,_*1,R*25,_*1,LJ*30,_*1,LJ*30,L*20," \
+  "_*1,J*22,RJ*8,R*10,_*1,LA*4,_*8,J*22,LJ*8,L*10,_*1,J*16,LJ*14,_*1,RJ*30,_*1,LJ*30,_*1,LJ*30,L*20,_*1,L*25,_*1,LJ*30,_*1"
+#define WAY_GP_31 \
+  "_*60,RA*4,_*8,L*25,_*1,J*22,LJ*8,L*10,_*1,J*16,LJ*14,_*1,R*3,_*1,J*16,LJ*14,_*1,LJ*30,L*20,_*1,LJ*30,L*20,_*1,J*22," \
+  "LJ*8,L*10,_*1,RJ*30,R*20,_*1,J*22,LJ*8,L*10,_*1,J*8,RJ*22,_*1,_*20,J*16,RJ*14,_*1,J*8,RJ*22,_*1,R*8,_*1,RJ*30,_*1," \
+  "RJ*30,R*20,_*1,L*25,_*1,L*8,_*1,L*3,_*1,J*22,LJ*8,L*10,_*1,L*25,_*1,J*22,LJ*8,L*10,_*1,LJ*30,L*20,_*1"
+#define WAY_GP_32 \
+  "_*60,RJ*30,R*20,_*1,RJ*30,_*1,RJ*30,R*20,_*1,RJ*30,_*1,RJ*30,_*1,R*25,_*1,RJ*30,_*1,J*8,RJ*22,_*1,J*16,RJ*14,_*1,J*30," \
+  "_*1,LJ*30,_*1,RA*4,_*8,J*22,RJ*8,R*10,_*1,J*22,RJ*8,R*10,_*1,R*25,_*1,R*8,_*1,J*8,RJ*22,_*1,J*22,LJ*8,L*10,_*1,RJ*30," \
+  "_*1,R*3,_*1,RJ*30,R*20,_*1,RJ*30,_*1,LA*4,_*8,L*3,_*1,LJ*30,L*20,_*1,J*22,LJ*8,L*10,_*1,RJ*30,R*20,_*1,RJ*30,R*20,_*1," \
+  "RJ*12,_*1,J*8,LJ*22,_*1,LJ*30,_*1,L*8,_*1,L*25,_*1,J*16,RJ*14,_*1,DA*4,_*8,J*22,LJ*8,L*10,_*1"
+#define WAY_GP_21 \
+  "_*60,R*8,_*1,R*8,_*1,J*8,LJ*22,_*1,RJ*12,_*1,J*22,RJ*8,R*10,_*1,J*8,RJ*22,_*1,RJ*12,_*1,LJ*30,_*1,LJ*30,_*1,J*22,RJ*8," \
+  "R*10,_*1,RJ*30,_*1,J*22,RJ*8,R*10,_*1,RJ*30,R*20,_*1,J*16,RJ*14,_*1,J*8,RJ*22,_*1,J*8,RJ*22,_*1,RJ*30,_*1,RJ*30,R*20," \
+  "_*1,_*20,LJ*30,L*20,_*1,LJ*30,L*20,_*1,L*25,_*1,L*8,_*1,LA*4,_*8,L*8,_*1,J*16,LJ*14,_*1,LJ*30,_*1,LJ*30,L*20,_*1," \
+  "LJ*30,L*20,_*1,L*25,_*1,J*16,RJ*14,_*1,_*20,RJ*30,R*20,_*1,LA*4,_*8,LJ*30,L*20,_*1,LJ*12,_*1"
+/* (her arena: down into it, then her words read through) */
+#define WAY_GP_04 \
+  "_*30,LA*4,_*8,L*25,_*1,LJ*30,_*1,L*25,_*1,LJ*30,_*1,LJ*30,L*20,_*1,LJ*30,L*20,_*1,LJ*30,_*1,L*8,_*1,LJ*30,L*20,_*1," \
+  "LJ*12,_*1,LJ*30,L*20,_*1,_*30,L*20,_*60,J*3,_*40,J*3,_*40,J*3,_*40,J*3,_*40,J*3,_*40,J*3,_*40,J*3,_*40,_*300"
+static const Leg way_greenpath[] = {
+  {ROOM_FUNGUS1_01, WAY_GP_01}, {ROOM_FUNGUS1_01B, WAY_GP_01B}, {ROOM_FUNGUS1_02, WAY_GP_02}, {ROOM_FUNGUS1_03, WAY_GP_03},
+  {ROOM_FUNGUS1_31, WAY_GP_31}, {ROOM_FUNGUS1_32, WAY_GP_32, true}, {ROOM_FUNGUS1_21, WAY_GP_21},
+  {ROOM_FUNGUS1_04, WAY_GP_04}};
+static bool fk_down(void) {
   extern bool enemies_fk_awake(void);
-  int leg = 0, t = 0, idle = 0;
+  return g_room.id == ROOM_CROSSROADS_10 && enemies_fk_awake();
+}
+static bool hornet_up(void) {
+  extern bool enemies_hornet_awake(void);
+  return g_room.id == ROOM_FUNGUS1_04 && enemies_hornet_awake();
+}
+static int way_run(const char *name, const Leg *legs, int n, bool (*goal)(void), const char *what) {
+  extern void enemies_debug_hit(int damage);
+  int leg = 0, t = 0, idle = 0, in = 0;
   const char *p = legs[0].keys;
-  for (int tick = 0; tick < 30000; tick++) {
-    if (leg + 1 < n && g_room.id == legs[leg + 1].room) leg++, p = legs[leg].keys, t = idle = 0;
-    if (g_room.id == ROOM_CROSSROADS_10 && enemies_fk_awake()) {
-      printf("ok   way %s: the False Knight comes down after %.0f s\n", name, tick * 0.02f);
+  for (int tick = 0; tick < 30000; tick++, in++) {
+    if (leg + 1 < n && g_room.id == legs[leg + 1].room) leg++, p = legs[leg].keys, t = idle = in = 0;
+    if (goal()) {
+      printf("ok   way %s: %s after %.0f s\n", name, what, tick * 0.02f);
       return 0;
     }
+    if (legs[leg].strike && in % 10 == 0) enemies_debug_hit(21);
     /* (the leg's keys: "KEYS*TICKS,...", as --play has them) */
     uint32_t keys = 0;
     if (*p) {
@@ -1125,8 +1178,7 @@ static int way_run(const char *name, const Leg *legs, int n) {
     }
     run_ticks(1, keys);
   }
-  printf("FAIL way %s: the False Knight never came down (in %s at %.2f,%.2f)\n", name, room_name(g_room.id), g_hero.body.x,
-         g_hero.body.y);
+  printf("FAIL way %s: never %s (in %s at %.2f,%.2f)\n", name, what, room_name(g_room.id), g_hero.body.x, g_hero.body.y);
   return 1;
 }
 static int way_test(void) {
@@ -1137,7 +1189,8 @@ static int way_test(void) {
   game_enter_gate(ROOM_TUTORIAL_01, "top1");
   g_game.fade = 1, g_screen_fade = 255;
   game_fade_scene_in();
-  fails += way_run("from King's Pass", way_new_game, sizeof way_new_game / sizeof way_new_game[0]);
+  fails += way_run("from King's Pass", way_new_game, sizeof way_new_game / sizeof way_new_game[0], fk_down,
+                   "the False Knight comes down");
   /* (the Aspid Hunters beaten, the Knight back from the hot spring) */
   game_new();
   room_load(ROOM_CROSSROADS_08);
@@ -1146,10 +1199,22 @@ static int way_test(void) {
   for (int i = 0; i < ne; i++)
     if (es[i].type == ENT_OBJ && es[i].flags == OK_ARENA) persist_set(es[i].persist);
   game_enter_gate(ROOM_CROSSROADS_08, "right1");
-  fails += way_run("from the Aspid Hunters' arena", way_hot_spring, sizeof way_hot_spring / sizeof way_hot_spring[0]);
+  fails += way_run("from the Aspid Hunters' arena", way_hot_spring, sizeof way_hot_spring / sizeof way_hot_spring[0], fk_down,
+                   "the False Knight comes down");
   shielded = false;
   printf("way: %d failing\n", fails);
   return fails ? 1 : 0;
+}
+
+static int way_greenpath_test(void) {
+  /* (a new game, the Knight come into Greenpath from the Forgotten Crossroads) */
+  game_new();
+  shielded = true;
+  game_enter_gate(ROOM_FUNGUS1_01, "right1");
+  int fails = way_run("through Greenpath", way_greenpath, sizeof way_greenpath / sizeof way_greenpath[0], hornet_up,
+                      "Hornet wakes");
+  shielded = false;
+  return fails;
 }
 
 #endif
@@ -1157,6 +1222,7 @@ static int way_test(void) {
 static int gates_test(const char *which) {
 #ifdef ROOM_TOWN
   if (!strcmp(which, "way")) return way_test();
+  if (!strcmp(which, "greenpath")) return way_greenpath_test();
   if (!strcmp(which, "charms")) return charms_test();
   if (!strcmp(which, "stations")) return stations_test();
   if (!strcmp(which, "shaman")) return shaman_test();

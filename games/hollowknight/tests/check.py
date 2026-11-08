@@ -25,6 +25,8 @@
   a death or a load at a bench, and after a rest in their own room; the persistent ones and a broken cocoon there not
 - the way to the False Knight, played room by room as one game (the Knight unhurt): from a new game's fall into King's
   Pass, and from the Aspid Hunters' arena by the hot spring, to his arena, where he comes down
+- the way to Hornet, played room by room as one game (the Knight unhurt): from Greenpath's first room, out of the room
+  she is first seen in at its bottom right and up out of the Moss Knights' arena, to her arena, where she wakes
 - every room played with its enemies hit, in a new game and after the bosses, drawn whole and fast (as a slow
   calculator draws it): the sanitizers stop on any fault
 """
@@ -122,6 +124,8 @@ def main():
     results.append(report("enemies out again after a rest, a death or a load at a bench", rc, out, ("FAIL",)))
     rc, out = play("--gates", "way")
     results.append(report("the way to the False Knight", rc, out, ("FAIL",)))
+    rc, out = play("--gates", "greenpath")
+    results.append(report("the way to Hornet", rc, out, ("FAIL",)))
     return finish(results)
 
 
