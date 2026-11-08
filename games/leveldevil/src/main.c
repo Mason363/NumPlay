@@ -554,11 +554,13 @@ static void contacts(void) {
     int kind = o->kind & 15, t = o->kind >> 4 & 3, w = o->w >> 4, h = o->h >> 4;
     if (!there(o)) continue;
     box(o, b);
-    if (kind == K_SPIKE) { /* the teeth: the 5 pixels of 16 they stand in, turned with it */
-      if (t == 0) b[1] = b[3] - h * 5 / 8;
-      if (t == 2) b[3] = b[1] + h * 5 / 8;
-      if (t == 1) b[2] = b[0] + w * 5 / 8;
-      if (t == 3) b[0] = b[2] - w * 5 / 8;
+    if (kind == K_SPIKE) { /* the game's own box: 4 to 12 of the 16 pixels across, 1 to 5 up from the base, turned with it */
+      if (t == 0 || t == 2) b[0] += w / 2, b[2] -= w / 2;
+      else b[1] += h / 2, b[3] -= h / 2;
+      if (t == 0) b[1] = b[3] - h * 5 / 8, b[3] -= h / 8;
+      if (t == 2) b[3] = b[1] + h * 5 / 8, b[1] += h / 8;
+      if (t == 1) b[2] = b[0] + w * 5 / 8, b[0] += w / 8;
+      if (t == 3) b[0] = b[2] - w * 5 / 8, b[2] -= w / 8;
     }
     if (kind == K_COIN || kind == K_BAD || kind == K_DEATH) b[0] += w / 3, b[1] += h / 3, b[2] -= w / 3, b[3] -= h / 3;
     if (kind == K_SPRING) b[1] = b[3] - h * 3 / 8;
