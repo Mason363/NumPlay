@@ -21,6 +21,8 @@
 - each shop's first charm bought: its lesson sent away by a key, the Knight free again
 - Dirtmouth's map shop: at its door, Inspect while it is shut, Enter once it is open and never both, also as the Knight
   comes back to it
+- the inventory opened as the Knight runs: he stays where he was behind it, the run key let go or held, and stands once
+  it is closed
 - the Snail Shaman's temple, played as one game: his spell taken, the Elder Baldur killed, his talk opening the gate, and
   so after a save and a load too; its lifeblood cocoon broken through a load and a rest there, whole after another bench
 - the enemies the game keeps dead until a rest: still dead as the Knight comes back, out again after a rest at a bench,
@@ -120,6 +122,8 @@ def main():
     results.append(report("a shop's first charm: its lesson, the Knight free after it", rc, out, ("FAIL",)))
     rc, out = play("--gates", "mapshop")
     results.append(report("Dirtmouth's map shop: Inspect shut, Enter open, never both", rc, out, ("FAIL",)))
+    rc, out = play("--gates", "invpause")
+    results.append(report("the inventory opened running: the game paused, the Knight standing after", rc, out, ("FAIL",)))
     with tempfile.TemporaryDirectory() as saves:
         rc, out = play("--gates", "shaman", env={"HKSAVES": saves})
     results.append(report("the Snail Shaman: his spell, the Elder Baldur, his gate, saved and loaded", rc, out, ("FAIL",)))

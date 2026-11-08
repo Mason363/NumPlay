@@ -1062,6 +1062,38 @@ static int map_shop_test(void) {
   return fails ? 1 : 0;
 }
 
+/* the inventory opened as the Knight runs (Mason363/NumPlay#359): the game paused behind it (SetIsInventoryOpen), so
+ * he stays where he was, the run key let go or not; closed, he stands there */
+static int inventory_pause_test(void) {
+  int fails = 0;
+  for (int hold = 0; hold < 2; hold++) {
+    game_new();
+    pd_set_flag(PDF_VISITED_DIRTMOUTH, true);
+    game_enter(ROOM_TOWN, 50, 12, true);
+    run_ticks(60, 0);
+    run_ticks(30, K_RIGHT);
+    run_ticks(2, K_RIGHT | K_INV);
+    float x0 = g_hero.body.x;
+    run_ticks(10, K_RIGHT);
+    run_ticks(50, hold ? K_RIGHT : 0);
+    float x1 = g_hero.body.x;
+    bool up = inv_open();
+    run_ticks(2, (hold ? K_RIGHT : 0) | K_INV);
+    run_ticks(30, hold ? K_RIGHT : 0);
+    run_ticks(70, 0);
+    float x2 = g_hero.body.x;
+    bool ok = up && fabsf(x1 - x0) < 0.01f && !inv_open() && fabsf(x2 - x0) < 0.5f && fabsf(g_hero.body.vx) < 0.01f &&
+              g_hero.state == HS_IDLE;
+    printf("%s inventory opened running, the run key %s: %s\n", ok ? "ok  " : "FAIL", hold ? "held" : "let go",
+           !up ? "not up" : fabsf(x1 - x0) >= 0.01f ? "the Knight moved behind it" : inv_open() ? "not closed"
+           : fabsf(x2 - x0) >= 0.5f || fabsf(g_hero.body.vx) >= 0.01f ? "the Knight went on after it" : g_hero.state != HS_IDLE ?
+           "the Knight not standing" : "he stays, then stands");
+    fails += !ok;
+  }
+  printf("inventory pause: %d failing\n", fails);
+  return fails ? 1 : 0;
+}
+
 /* the way to the False Knight (Mason363/NumPlay#172), played as one game, room by room, each room's keys from when the
  * Knight comes into it: from the new game's fall into King's Pass, through Dirtmouth and down its well, past the Temple of
  * the Black Egg, down through the tollbooth into Crossroads_03 (its lever's gates open: the game's Knight opens them from
@@ -1259,6 +1291,7 @@ static int gates_test(const char *which) {
   if (!strcmp(which, "respawn")) return respawn_test();
   if (!strcmp(which, "shopcharm")) return shop_charm_test();
   if (!strcmp(which, "mapshop")) return map_shop_test();
+  if (!strcmp(which, "invpause")) return inventory_pause_test();
 #endif
   if (!strcmp(which, "texts")) return texts_test();
   if (!strcmp(which, "seams")) return seams_test();
