@@ -386,13 +386,15 @@
     "accent": "0xFFE08A",
     "colors": 16,
     "records": [
-      "flappydunk.sav"
+      "flappydunk.sav",
+      "flappydunk_saves.py"
     ],
     "shots": [
       "docs/shot.png"
     ],
-    "app": "FlappyDunk.nwa",
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/flappydunk",
+    "default": false,
+    "xl": true,
     "ports": [
       "sdl",
       "web",

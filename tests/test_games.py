@@ -66,9 +66,10 @@ GAMES = {
                            (3300, "ok"), (3700, "up"), (4000, "up")), 5000,
                    presses((1500, "up")), 2500),
     # settings: Speed to Fast, back, then a Custom game; next time Speed goes on to Insane
-    # past how to play, two flaps; next time the run goes on after a flap
+    # the first version's save read (its guide read), a run started from the title and two flaps; Home keeps it.
+    # Next time, from the copy, another run, quit with On/Off
     "flappydunk": ("FlappyDunk.nwa", "flappydunk.sav", presses((1500, "ok"), (2200, "ok"), (2550, "ok")), 3500,
-                   presses((1500, "ok")), 2500),
+                   presses((1500, "ok"), (1900, "ok")), 2500),
     # past how to play, a fruit dropped, the cloud moved, another dropped; next time the box is still there, and one
     # more falls in
     "suika": ("SuikaGame.nwa", "suika.sav", presses((1500, "ok"), (2200, "ok"), (2600, "right", 400), (3600, "ok")), 4800,
@@ -411,11 +412,33 @@ def monkeymart_save():
     return v + struct.pack("<I", h)
 
 
+def flappydunk_ok(v):
+    """Flappy Dunk's save: "FDK2", version 1, 100 bytes, an FNV-1a sum of the rest at the end"""
+    if len(v) != 100 or v[:4] != b"FDK2" or struct.unpack_from("<HH", v, 4) != (1, 100):
+        return False
+    h = 2166136261
+    for x in v[:-4]:
+        h = (h ^ x) * 16777619 & 0xFFFFFFFF
+    return struct.unpack_from("<I", v, 96)[0] == h
+
+
+def flappydunk_v1():
+    """the first version's flappydunk.sav: 'F', version 1, flags (a run, the guide read), the Ocean ball, an FNV sum
+    of the 32-bit words after it; best 57, 140 swishes, 33 games, 9 swishes in a row, then its run"""
+    w = [0] * 50
+    w[2:6] = [57, 140, 33, 9]
+    h = 0x811C9DC5
+    for x in w[2:]:
+        h = (h ^ x) * 0x01000193 & 0xFFFFFFFF
+    return bytes([ord("F"), 1, 3, 2]) + struct.pack("<I", h) + struct.pack("<48I", *w[2:])
+
+
 SEEDS = {
     # (games/hollowknight/tests/cross.sav: the first app's save as the Knight goes into the second's part)
     "hkfungal": open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "games", "hollowknight", "tests",
                                   "cross.sav"), "rb").read(),
     "monkeymart": monkeymart_save(),
+    "flappydunk": flappydunk_v1(),
     # level 5 to play, 9 reached, how to play not read yet
     "coreball": coreball_save(5, 9),
     # the first level done and last played
@@ -455,7 +478,8 @@ COPIES = {"championisland": "champion_saves.py", "numblocks": "numblocks_saves.p
           "catninja": "catninja_saves.py",
           "kingdomrush": "kingdomrush_saves.py",
           "mrbullet": "mrbullet_saves.py", "motox3m": "motox3m_saves.py", "amongus": "amongus_saves.py", "imposter": "imposter_saves.py",
-          "fourplayer": "fourplayer_saves.py", "circloo": "circloo_saves.py", "doodlejump": "doodlejump_saves.py"}
+          "fourplayer": "fourplayer_saves.py", "circloo": "circloo_saves.py", "doodlejump": "doodlejump_saves.py",
+          "flappydunk": "flappydunk_saves.py"}
 
 
 def paperclips_ok(v):
@@ -613,9 +637,10 @@ CHECKS = {
                  lambda v: v[:4] == b"HKSV" and struct.unpack_from("<f", v, 152)[0] > 10),
     "numvisuals": (lambda v: v[:2] == b"V\1" and v[3] == 4 and struct.unpack_from("<i", v, 8)[0] == 2,
                    lambda v: struct.unpack_from("<i", v, 8)[0] == 3),  # the add-on and its count
-    # a run kept (guide read), the ball on its way; then further along the same run
-    "flappydunk": (lambda v: len(v) == 200 and v[:2] == b"F\1" and v[2] & 3 == 3 and struct.unpack_from("<f", v, 24)[0] > 1,
-                   lambda v: v[2] & 1 and struct.unpack_from("<f", v, 24)[0] > 6),
+    # the first version's records carried over (best 57, 33 games, its Ocean ball as the football), a game played;
+    # then one more
+    "flappydunk": (lambda v: flappydunk_ok(v) and struct.unpack_from("<II", v, 16) == (57, 34) and v[9] == 10,
+                   lambda v: flappydunk_ok(v) and struct.unpack_from("<II", v, 16) == (57, 35)),
     # a game kept (guide read) with fruit in the box; then one more
     "suika": (lambda v: len(v) == 1052 and v[:2] == b"S\1" and v[2] & 3 == 3 and sum(v[42 + 16 * i] > 0 for i in range(64)) >= 1,
               lambda v: v[2] & 1 and sum(v[42 + 16 * i] > 0 for i in range(64)) >= 2),

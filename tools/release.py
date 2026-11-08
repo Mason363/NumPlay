@@ -76,6 +76,7 @@ ALONE = {
     "fourplayer": ("2 3 4 Players", "one-key party games for 2, 3 or 4 players on one calculator, and teams: 14 minigames"),
     "circloo": ("circloO", "Florian van Strien's physics game: its 14 levels and 6 hard mode levels, read from the game's own files"),
     "doodlejump": ("Doodle Jump", "Lima Sky's endless climb on graph paper: every platform, spring, jetpack and monster, with the game's own pictures"),
+    "flappydunk": ("Flappy Dunk", "Voodoo's winged ball through the hoops: the endless run and all 51 challenges, with the game's balls, wings, hoops and flames"),
     "numpico": ("NumPico", "PICO-8 carts on the calculator: add your own .p8 and .p8.png carts in NumPlay Studio"),
 }
 VARIANTS = [

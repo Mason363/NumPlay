@@ -1,47 +1,67 @@
-# Flappy Dunk: flap the winged ball down through every hoop.
-#   make          build output/flappydunk.nwa
-#   make check    link the app like the calculator does (output/flappydunk.bin)
-#
-# In NumPlay the game draws with the launcher's strips, shapes and fonts and saves through its
-# file functions (module.o leaves them to the launcher); on its own it brings them along.
+# Flappy Dunk on the NumWorks calculator, an app of its own.
+#   make          output/flappydunk.nwa
+#   make check    link it like the calculator does (output/flappydunk.bin), within the RAM and the app space
+#   make host     build/play: the game on a computer, for tests and pictures
+#   make test     the rules against the original's numbers (spec/), scripted runs through the challenges, random
+#                 keys, saves (kept, damaged, lost, from the copy, from the first version's), with the sanitizers
+#   make data     src/data.c from Flappy Dunk's own files (GAMESRC: what was taken out of its Android build)
+#   make perf     every frame drawn in tools/emu.py at an N0110's speed, its frame times
 Q ?= @
-CC = arm-none-eabi-gcc
+TOOLCHAIN ?=
+BIN = $(if $(TOOLCHAIN),$(TOOLCHAIN)/)
+CC = $(BIN)arm-none-eabi-gcc
+STRIP ?= $(BIN)arm-none-eabi-strip --strip-unneeded
 NWLINK ?= npx --yes -- nwlink@1.0.0
 BUILD_DIR = output
-SRC = src/main.c
-HEADERS = ../common/epsilon_app.h ../common/epsilon_files.h ../common/np_text.h ../../launcher/src/gfx.h \
-  ../../launcher/src/np.h ../../launcher/src/font.h
+L = ../../launcher/src
+PYTHON ?= python3
+GAMESRC ?= $(HOME)/Documents/Assets/gamesrc/flappydunk
 
-CFLAGS = -std=c11 $(shell $(NWLINK) eadk-cflags-device)
-CFLAGS += -Os -Wall -Wextra -Wno-unused-parameter -fno-math-errno -fsingle-precision-constant
+# the physics and the drawing run every frame at -O2; the rest is small at -Os
+HOT = src/game.c src/draw.c
+COLD = src/main.c src/data.c src/plat_eadk.c $(L)/gfx.c $(L)/font_data.c $(L)/xfont.c $(L)/icons.c
+HEADERS = src/fd.h src/data.h src/draw.h src/plat.h $(L)/gfx.h $(L)/font.h $(L)/np.h ../common/epsilon_app.h \
+  ../common/epsilon_files.h
+
+CFLAGS = -std=gnu11 $(shell $(NWLINK) eadk-cflags-device) -DPLATFORM_DEVICE=1 -DEPSILON_XL=1 -I$(L) -Isrc
+CFLAGS += -Wall -Wextra -Wno-unused-parameter -fno-math-errno -fsingle-precision-constant
 CFLAGS += -fno-tree-loop-distribute-patterns -flto -fno-fat-lto-objects -fwhole-program -fvisibility=internal
+CFLAGS += -ffunction-sections -fdata-sections
 LDFLAGS = -Wl,--relocatable -nostartfiles --specs=nano.specs
 LDFLAGS += -Wl,-e,main -Wl,-u,eadk_app_name -Wl,-u,eadk_app_icon -Wl,-u,eadk_api_level
 LDFLAGS += -Wl,--gc-sections -flinker-output=nolto-rel
 
-.PHONY: build check clean
+# apps get 133652 bytes of RAM on custom builds of Epsilon 25.2 (148928 or more on official ones), and the
+# calculator's app space is 2031616 bytes
+RAM = 133652
+APP_SPACE = 2031616
+
+.PHONY: build check clean host test data perf record
 build: $(BUILD_DIR)/flappydunk.nwa
 
 check: $(BUILD_DIR)/flappydunk.nwa
-	$(Q) $(NWLINK) nwa-bin $< $(BUILD_DIR)/flappydunk.bin
-	@echo "BIN     $(BUILD_DIR)/flappydunk.bin: $$(wc -c < $(BUILD_DIR)/flappydunk.bin) bytes"
+	$(Q) $(NWLINK) nwa-bin --ram-length $(RAM) $< $(BUILD_DIR)/flappydunk.bin
+	$(Q) n=$$(wc -c < $(BUILD_DIR)/flappydunk.bin); [ $$n -le $(APP_SPACE) ] || \
+	  { echo "flappydunk.nwa is bigger than the calculator's app space ($(APP_SPACE) bytes)"; exit 1; }; \
+	  echo "BIN     $(BUILD_DIR)/flappydunk.bin: $$n bytes, $$(( $(APP_SPACE) - n )) to spare, RAM within $(RAM) bytes"
 
-# compiled, then linked (the link options would upset the compiler)
-$(BUILD_DIR)/main.o: $(SRC) $(HEADERS) | $(BUILD_DIR)
+$(BUILD_DIR)/hot/%.o: src/%.c $(HEADERS) | $(BUILD_DIR)
+	@mkdir -p $(@D)
 	@echo "CC      $<"
-	$(Q) $(CC) $(CFLAGS) -c $(SRC) -o $@
-$(BUILD_DIR)/gfx.o: ../../launcher/src/gfx.c $(HEADERS) | $(BUILD_DIR)
-	$(Q) $(CC) $(CFLAGS) -c $< -o $@
-$(BUILD_DIR)/font_data.o: ../../launcher/src/font_data.c ../../launcher/src/font.h | $(BUILD_DIR)
-	$(Q) $(CC) $(CFLAGS) -c $< -o $@
-$(BUILD_DIR)/xfont.o: ../../launcher/src/xfont.c ../../launcher/src/np_xfont.h $(HEADERS) | $(BUILD_DIR)
-	$(Q) $(CC) $(CFLAGS) -c $< -o $@
+	$(Q) $(CC) $(CFLAGS) -O2 -c $< -o $@
+$(BUILD_DIR)/cold/%.o: src/%.c $(HEADERS) | $(BUILD_DIR)
+	@mkdir -p $(@D)
+	@echo "CC      $<"
+	$(Q) $(CC) $(CFLAGS) -Os -c $< -o $@
+$(BUILD_DIR)/cold/%.o: $(L)/%.c $(HEADERS) | $(BUILD_DIR)
+	@mkdir -p $(@D)
+	$(Q) $(CC) $(CFLAGS) -Os -c $< -o $@
 
-$(BUILD_DIR)/flappydunk.nwa: $(BUILD_DIR)/main.o $(BUILD_DIR)/gfx.o $(BUILD_DIR)/font_data.o $(BUILD_DIR)/xfont.o \
-  $(BUILD_DIR)/icon.o
+OBJ = $(patsubst %.c,$(BUILD_DIR)/hot/%.o,$(notdir $(HOT))) $(patsubst %.c,$(BUILD_DIR)/cold/%.o,$(notdir $(COLD)))
+$(BUILD_DIR)/flappydunk.nwa: $(OBJ) $(BUILD_DIR)/icon.o
 	@echo "LD      $@"
-	$(Q) $(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
-	$(Q) arm-none-eabi-strip --strip-unneeded $@
+	$(Q) $(CC) $(CFLAGS) -Os $(LDFLAGS) $^ -lm -o $@
+	$(Q) $(STRIP) $@
 
 $(BUILD_DIR)/icon.o: src/icon.png | $(BUILD_DIR)
 	@echo "ICON    $<"
@@ -50,40 +70,44 @@ $(BUILD_DIR)/icon.o: src/icon.png | $(BUILD_DIR)
 $(BUILD_DIR):
 	$(Q) mkdir -p $@
 
-clean:
-	$(Q) rm -rf $(BUILD_DIR)
+data:
+	$(PYTHON) -I tools/data.py $(GAMESRC) src
 
-# NumPlay launcher: the app as a module (see ../../tools/npmodule.py) for the
-# calculator, and as a relocatable object for the simulator build.
-.PHONY: module sim-module
-module: $(BUILD_DIR)/module.o
-$(BUILD_DIR)/module-main.o: $(SRC) $(HEADERS) | $(BUILD_DIR)
-	$(Q) $(CC) $(CFLAGS) -DNP_MODULE=1 -c $(SRC) -o $@
-$(BUILD_DIR)/module.o: $(BUILD_DIR)/module-main.o
-	$(Q) $(CC) $(CFLAGS) -Wl,--relocatable -nostartfiles -nostdlib -Wl,-e,main -flinker-output=nolto-rel $< -o $@
+# every frame drawn, at an N0110's speed in tools/emu.py: How to play closed, then an endless run, flapping
+$(BUILD_DIR)/perf.nwa: $(OBJ) $(BUILD_DIR)/icon.o
+	$(Q) $(CC) $(CFLAGS) -Os $(LDFLAGS) $^ -lm -o $@
+perf: $(BUILD_DIR)/perf.nwa
+	$(PYTHON) ../../tools/emu.py $< --nwlink "$(NWLINK)" --ms 9000 --out $(BUILD_DIR) --model n0110 \
+	  --keys "400-480:ok,1500-1580:ok,2200-2280:ok,2700-2780:ok,3200-3280:ok,3700-3780:ok,4200-4280:ok,4700-4780:ok"
 
-sim-module: $(BUILD_DIR)/sim-module.o
-$(BUILD_DIR)/sim-module.o: $(SRC) $(HEADERS) | $(BUILD_DIR)
-	$(Q) mkdir -p $(BUILD_DIR)/sim
-	$(Q) cc -std=c11 -O2 -fPIC $(shell $(NWLINK) eadk-cflags-simulator) -DNP_MODULE=1 -Dmain=np_flappydunk_main \
-	  -c $(SRC) -o $(BUILD_DIR)/sim/main.o
-	$(Q) ld -r $(BUILD_DIR)/sim/main.o -exported_symbol _np_flappydunk_main -o $@
+# the gallery's clip: the app played by src/bot.c in tools/emu.py, its frames made a GIF by tools/record.py
+REC_DIR = $(BUILD_DIR)/rec
+$(BUILD_DIR)/record.nwa: $(HOT) $(COLD) src/bot.c $(HEADERS) $(BUILD_DIR)/icon.o
+	$(Q) $(CC) $(CFLAGS) -Os -DFD_AUTOPLAY=1 $(LDFLAGS) $(HOT) $(COLD) src/bot.c $(BUILD_DIR)/icon.o -lm -o $@
+record: $(BUILD_DIR)/record.nwa
+	$(Q) rm -rf $(REC_DIR) && mkdir -p $(REC_DIR)
+	$(PYTHON) ../../tools/emu.py $< --nwlink "$(NWLINK)" --ms 25000 --out $(REC_DIR) --frames $(REC_DIR)/raw \
+	  --keys "400-480:ok,1200-1280:ok"
+	$(PYTHON) ../../tools/record.py --frames $(REC_DIR)/raw --out $(REC_DIR) --fps 25 --gif 11200-24200:flappydunk.gif
 
-# on a computer, with the sanitizers: a bot plays 300 runs (tests/play.c)
-HOST_FLAGS = -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -DPLATFORM_DEVICE=1 -DHOST \
-  $(shell $(NWLINK) eadk-cflags-simulator) -fsanitize=address,undefined -fno-sanitize-recover=undefined
-.PHONY: host test
+# on a computer: tests/play.c checks the game and saves pictures
+HOST_FLAGS = -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -DHOST -I$(L) -Isrc \
+  -fsanitize=address,undefined -fno-sanitize-recover=undefined
+HOST_SRC = src/game.c src/draw.c src/data.c src/bot.c $(L)/gfx.c $(L)/font_data.c $(L)/xfont.c $(L)/icons.c
 host: build/play
-build/play: $(SRC) tests/play.c $(HEADERS)
+build/play: tests/play.c src/main.c $(HOST_SRC) $(HEADERS)
 	$(Q) mkdir -p build
-	$(Q) cc $(HOST_FLAGS) tests/play.c ../../launcher/src/gfx.c ../../launcher/src/font_data.c \
-	  ../../launcher/src/xfont.c -lm -o $@
+	$(Q) cc $(HOST_FLAGS) tests/play.c $(HOST_SRC) -lm -o $@
 	@echo "HOST    $@"
 test: build/play
 	build/play test
 
-# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, ti84ce
+clean:
+	$(Q) rm -rf $(BUILD_DIR) build
+
+# the other targets (platform/port.mk): make port TARGET=sdl, web, nspire, casio-cg
 PORT_ID = flappydunk
 PORT_NAME = Flappy Dunk
-PORT_SRC = src/main.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
+PORT_SRC = src/main.c src/game.c src/draw.c src/data.c src/plat_eadk.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c ../../launcher/src/icons.c
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc
 include ../../platform/port.mk

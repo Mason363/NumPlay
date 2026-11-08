@@ -29,7 +29,7 @@ RAM_LIMIT = 148928
 # custom builds of Epsilon 25.2's source give apps less: 133652 bytes; every game fits there too, in NumPlay and on
 # its own (their big buffers are on the stack, 32 KB apart from that RAM, or in the RAM the software has left)
 CUSTOM_RAM = 133652
-BIG_APPS = Celeste HollowKnight HollowKnightFungalWastes Undertale ChampionIsland FinalEarth2 NumPowder NumBlocks NumDrive SubwaySurfers FiveNightsAtFreddys Doom BindingOfIsaac HillClimbRacing PlantsVsZombies SonicTheHedgehog CookieClicker LevelDevil JetpackJoyride StickmanHook DonkeyKong Dune MonkeyMart TombOfTheMask UNO FridayNightFunkin AngryBirds PolyTrack UniversalPaperclips BadTimeSimulator Mahjong Rider SnowRider3D TempleRun FiveNightsAtFreddys2 FiveNightsAtFreddys3 FiveNightsAtFreddys4 Famidash ClashRoyale UniversalPaperclips-French CatNinja KingdomRush Deltarune FiveNightsAtFreddysWorld MrBullet NumPico MotoX3M AmongUs Imposter FourPlayers CircloO DoodleJump
+BIG_APPS = Celeste HollowKnight HollowKnightFungalWastes Undertale ChampionIsland FinalEarth2 NumPowder NumBlocks NumDrive SubwaySurfers FiveNightsAtFreddys Doom BindingOfIsaac HillClimbRacing PlantsVsZombies SonicTheHedgehog CookieClicker LevelDevil JetpackJoyride StickmanHook DonkeyKong Dune MonkeyMart TombOfTheMask UNO FridayNightFunkin AngryBirds PolyTrack UniversalPaperclips BadTimeSimulator Mahjong Rider SnowRider3D TempleRun FiveNightsAtFreddys2 FiveNightsAtFreddys3 FiveNightsAtFreddys4 Famidash ClashRoyale UniversalPaperclips-French CatNinja KingdomRush Deltarune FiveNightsAtFreddysWorld MrBullet NumPico MotoX3M AmongUs Imposter FourPlayers CircloO DoodleJump FlappyDunk
 # the calculator's space for installed apps: from the end of its software (64 KiB aligned) to 64 KiB before the
 # end of its 4 MiB slot of flash, 0x903F0000. The software's size sets the start: 0x90200000 is the latest a
 # NumPlay counts on (1.94 MB, APP_SPACE); Epsilon 26.4 on an N0120 ends at 0x90180000 (2.44 MB, the
@@ -47,7 +47,7 @@ XL_APP_SPACE = 6291456
 # the spaces the customizer website offers (kit.json "spaces"; tools/kit.py links a NumPlay at each)
 SPACES = std:$(APP_START):$(APP_END) e26:$(APP_START_26):$(APP_END) xl:$(APP_START):$(XL_END) xl26:$(APP_START_26):$(XL_END)
 # big games that must install on their own without Enlarged Extra Apps: make check holds them to APP_SPACE
-APP_SPACE_APPS = HollowKnight HollowKnightFungalWastes HillClimbRacing FridayNightFunkin AngryBirds PolyTrack UniversalPaperclips UniversalPaperclips-French BadTimeSimulator Mahjong SnowRider3D TempleRun Famidash CatNinja MrBullet NumPico MotoX3M AmongUs Imposter FourPlayers Deltarune CircloO DoodleJump
+APP_SPACE_APPS = HollowKnight HollowKnightFungalWastes HillClimbRacing FridayNightFunkin AngryBirds PolyTrack UniversalPaperclips UniversalPaperclips-French BadTimeSimulator Mahjong SnowRider3D TempleRun Famidash CatNinja MrBullet NumPico MotoX3M AmongUs Imposter FourPlayers Deltarune CircloO DoodleJump FlappyDunk
 # Upsilon, the N0110 and N0115's custom software, gives .nwa apps less RAM: NumPlay-Upsilon.nwa has
 # the games that fit it (NumPlay draws their text there: see launcher/src/compat.c)
 UPSILON_RAM = 107674
@@ -351,6 +351,7 @@ APP_imposter = $(B)/games/imposter/imposter.nwa:Imposter.nwa
 APP_fourplayer = $(B)/games/fourplayer/fourplayer.nwa:FourPlayers.nwa
 APP_circloo = $(B)/games/circloo/circloo.nwa:CircloO.nwa
 APP_doodlejump = $(B)/games/doodlejump/doodlejump.nwa:DoodleJump.nwa
+APP_flappydunk = $(B)/games/flappydunk/flappydunk.nwa:FlappyDunk.nwa
 # the big games' modules are made from these (the kit)
 $(foreach g,$(XL_GAMES),$(eval MOD_$(g) = $$(word 1,$$(subst :, ,$$(APP_$(g))))))
 # (NumPico's leaves its table of carts to NumPlay Studio, which links the carts dropped on it in its block)
@@ -414,6 +415,7 @@ apps: | $(B)
 	$(MAKE) -C games/fourplayer build NWLINK="$(NWLINK)" BUILD_DIR=../../$(B)/games/fourplayer
 	$(MAKE) -C games/circloo build NWLINK="$(NWLINK)" BUILD_DIR=../../$(B)/games/circloo
 	$(MAKE) -C games/doodlejump build NWLINK="$(NWLINK)" BUILD_DIR=../../$(B)/games/doodlejump
+	$(MAKE) -C games/flappydunk build NWLINK="$(NWLINK)" BUILD_DIR=../../$(B)/games/flappydunk
 	cd games/tetris/tetris && NWLINK="$(NWLINK)" $(CARGO) build --release --quiet
 	cp $(word 1,$(subst :, ,$(APP_numdash))) $(B)/apps/$(word 2,$(subst :, ,$(APP_numdash)))
 	cp $(word 1,$(subst :, ,$(APP_crossyroad))) $(B)/apps/$(word 2,$(subst :, ,$(APP_crossyroad)))
@@ -474,6 +476,7 @@ apps: | $(B)
 	cp $(word 1,$(subst :, ,$(APP_fourplayer))) $(B)/apps/$(word 2,$(subst :, ,$(APP_fourplayer)))
 	cp $(word 1,$(subst :, ,$(APP_circloo))) $(B)/apps/$(word 2,$(subst :, ,$(APP_circloo)))
 	cp $(word 1,$(subst :, ,$(APP_doodlejump))) $(B)/apps/$(word 2,$(subst :, ,$(APP_doodlejump)))
+	cp $(word 1,$(subst :, ,$(APP_flappydunk))) $(B)/apps/$(word 2,$(subst :, ,$(APP_flappydunk)))
 	arm-none-eabi-strip --strip-unneeded $(B)/apps/Tetris.nwa
 
 STD_APPS = $(foreach g,$(STD_GAMES),$(B)/apps/$(NWA_$(g)))
@@ -574,5 +577,6 @@ clean:
 	-$(MAKE) -C games/fourplayer clean
 	-$(MAKE) -C games/circloo clean
 	-$(MAKE) -C games/doodlejump clean
+	-$(MAKE) -C games/flappydunk clean
 	-cd games/tetris/tetris && $(CARGO) clean
 	-$(foreach g,$(STD_GAMES),$(MAKE) -C games/$(g) clean;)
