@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """How fast Subway Surfers draws a run (../../tools/emu.py, which runs at an N0110's speed whatever the model; an N0120 is
-about 2.5 times faster): bench.py build/bench/subway.nwa [--model n0110|n0120] [--seconds S] [--shots DIR] [--csv FILE]
+about 2.5 times faster): bench.py build/bench/subway.nwa [--model n0110|n0120] [--frames N] [--shots DIR] [--csv FILE]
 (make bench). The timing build (EXTRA="-DSS_BENCH") takes two game steps a drawing, so every build draws the same frames;
-tests/bot.h plays and nothing hurts the runner. Prints the drawing's milliseconds a frame: in all, in the run's first
-5 s (the start), on the busiest tenth of the frames (the most polygons), and the slowest."""
+tests/bot.h plays and nothing hurts the runner. It times the run's first N drawings (1200: 40 s of the game), whatever
+the build's speed, so that two builds are timed on the same frames. Prints the drawing's milliseconds a frame: in all,
+in the run's first 5 s (the start), on the busiest tenth of the frames (the most polygons), and the slowest."""
 import argparse
 import os
 import struct
@@ -15,7 +16,7 @@ import emu  # noqa: E402
 ap = argparse.ArgumentParser()
 ap.add_argument("nwa")
 ap.add_argument("--model", choices=["n0110", "n0120"], default="n0110")
-ap.add_argument("--seconds", type=int, default=40)
+ap.add_argument("--frames", type=int, default=1200)
 ap.add_argument("--shots", help="a picture every 4 s here")
 ap.add_argument("--csv", help="each drawing in the run: frame, distance, polygons, milliseconds")
 a = ap.parse_args()
@@ -49,7 +50,9 @@ def each_ms(calc):
 
 c.run(100)
 last[0], last[1] = rd("perf_frames"), rd("perf_draw")
-c.run(a.seconds * 1000, each_ms, 1)
+while len(frames) < a.frames and c.now_ms < 300000:
+    c.run(c.now_ms + 500, each_ms, 1)
+del frames[a.frames:]
 if a.csv:
     with open(a.csv, "w") as f:
         f.write("frame,dist,polys,ms\n")
