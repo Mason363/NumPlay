@@ -409,6 +409,20 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Cult of the Lamb
 - [ ] Zombie Tsunami
 - [ ] Bread & Fred, for two players
+- [ ] Infinite Pizza
+- [ ] Fez
+- [ ] Grand Theft Auto, the first one
+- [ ] Basketball Stars
+- [ ] Stumble Guys, against bots
+- [ ] Run 3
+- [ ] Paper.io 2, against bots
+- [ ] Enter the Gungeon
+- [ ] Baldi's Basics
+- [ ] Retro Bowl
+- [ ] Castle Crush, against bots
+- [ ] Bowmasters, for two players or against a bot
+- [ ] OvO
+- [ ] Ragdoll Archers
 - [ ] The big games in French and Chinese too
 
 ## Credits
