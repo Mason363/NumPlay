@@ -48,6 +48,94 @@ static int console_of(int kind_or_type, bool is_type) {
   return -1;
 }
 
+/* the meeting's lines (meeting.c) */
+enum { L_NEAR_BODY = 1, L_SAW_KILL = 2, L_WITH = 5, L_SUS = 6, L_SAW_WITH = 13 };
+
+/* the round on until the ejection (or the end) */
+static void to_ejection(void) {
+  for (int k = 0; k < 30 * 400 && g.screen != S_EJECT && g.screen != S_END; k++) game_tick(0);
+}
+
+/* the bots only say and vote what they saw: a kill seen gets the killer out, a crewmate seen far from the
+ * murder isn't accused */
+static void witnesses(void) {
+  bots_frozen = false;
+  /* the player killed in front of a crewmate bot: it reports, says so first, and the killer goes out */
+  int seen = 0, out = 0, told = 0;
+  for (int s = 0; s < 30; s++) {
+    g.rng = 1000u + (uint32_t)s * 7919u;
+    round_of(7 + s % 3, 1, 1);
+    for (int i = 0; i < g.nplayers; i++) g.p[i].kill_cd = 99, g.p[i].emergencies = 0;
+    run(5 + s % 20);   /* (the bots spread out) */
+    int imp = first(true, -1), w = first(false, 0);
+    if (g.screen != S_PLAY || imp < 0 || w < 0) continue;
+    g.p[w].pos = (V2){g.p[0].pos.x + 0.7f, g.p[0].pos.y};
+    g.p[imp].pos = (V2){g.p[0].pos.x - 0.6f, g.p[0].pos.y};
+    kill_player(imp, 0);
+    if (g.p[w].bot.saw_kill != imp) continue;
+    seen++;
+    if (s & 1) {
+      /* (someone else reports it, and the others had seen the witness with the dead there) */
+      int r = first(false, w), room = ship_room_at(g.p[0].pos);
+      for (int i = 1; i < g.nplayers; i++)
+        if (i != w) g.p[i].bot.seen_t[0] = g.t - 3, g.p[i].bot.seen_room[0] = (uint8_t)room, g.p[i].bot.seen_with[0] = (uint8_t)w;
+      g.p[r].bot.body_room = (uint8_t)room;
+      start_meeting(r, 0);
+    }
+    for (int k = 0; k < 30 * 60 && g.screen != S_MEETING; k++) game_tick(0);
+    for (int k = 0; k < 30 * 30 && g.screen == S_MEETING && g.meet_stage == 0; k++) game_tick(0);
+    /* (before anything but the report and what others saw) */
+    for (int l = 0; l < g.nlines && g.lines[l].kind <= L_SAW_KILL; l++)
+      if (g.lines[l].who == w && g.lines[l].kind == L_SAW_KILL) {
+        told++;
+        break;
+      }
+    to_ejection();
+    out += !g.p[imp].alive;
+  }
+  CHECK(seen >= 25, "the kill seen (%d of 30)", seen);
+  CHECK(told == seen && out * 10 >= seen * 9, "a kill seen: told first %d, the killer out %d of %d", told, out, seen);
+
+  /* the bots saw the player with the dead in the Cafeteria, then in Admin; the body is in Electrical: nobody
+   * says the player was with the dead or is sus, nobody votes the player out */
+  int accused = 0, votes = 0, alibis = 0;
+  for (int s = 0; s < 20; s++) {
+    g.rng = 5000u + (uint32_t)s * 7919u;
+    round_of(7, 1, 1);
+    int imp = first(true, -1), v = first(false, 0), r = first(false, v);
+    int c = 0;
+    while (c < N_CONSOLES && CONSOLES[c].room != R_ELECTRICAL) c++;
+    g.p[v].pos = (V2){CONSOLES[c].sx, CONSOLES[c].sy};
+    g.p[imp].pos = g.p[v].pos;
+    run(1);
+    g.t = 100;
+    kill_player(imp, v);
+    for (int i = 1; i < g.nplayers; i++) {
+      Bot *B = &g.p[i].bot;
+      B->seen_t[v] = 80, B->seen_room[v] = R_CAFETERIA, B->seen_with[v] = 0;
+      B->seen_t[0] = 97, B->seen_room[0] = R_ADMIN, B->with_t[0] = 0;
+    }
+    g.p[r].bot.body_room = R_ELECTRICAL;
+    start_meeting(r, v);
+    for (int k = 0; k < 30 * 200 && g.screen != S_EJECT && g.screen != S_END; k++) {
+      if (g.screen == S_MEETING && g.meet_stage == 1 && g.votes[0] == NONE) g.votes[0] = SKIP;
+      game_tick(0);
+      if (g.screen == S_MEETING && g.meet_stage == 2) break;
+    }
+    for (int l = 0; l < g.nlines; l++) {
+      const Line *L = &g.lines[l];
+      if (g.p[L->who].imp) continue;
+      accused += L->a == 0 && (L->kind == L_SUS || L->kind == L_SAW_WITH || L->kind == L_NEAR_BODY);
+      for (int m = 0; m < g.nlines; m++)   /* (never for and against the same one) */
+        alibis += g.lines[m].who == L->who && g.lines[m].kind == L_WITH && L->kind == L_SUS && L->a == g.lines[m].a;
+    }
+    for (int i = 1; i < g.nplayers; i++) votes += !g.p[i].imp && g.p[i].alive && g.votes[i] == 0;
+  }
+  CHECK(accused == 0 && votes == 0 && alibis == 0, "the player seen far away: accused %d times, %d votes, %d contradictions",
+        accused, votes, alibis);
+  bots_frozen = true;
+}
+
 int rules(void) {
   bots_frozen = true;
   /* the lobby's defaults (GameOptionsData) */
@@ -274,6 +362,7 @@ int rules(void) {
         CHECK(console_use(0, c) == 0, "%s step %d usable from console %d's spot", TASK_DEFS[d2].name, st, c);
       }
     }
+  witnesses();
   bots_frozen = false;
   printf("RULES %d checks, %d failed\n", checks, fails);
   return fails;

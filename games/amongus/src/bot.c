@@ -7,6 +7,11 @@
 #include "world.h"
 
 enum { B_IDLE, B_WALK, B_TASK, B_FIX, B_HUNT, B_VENT, B_WAIT, B_REPORT, B_BUTTON };
+/* the meeting's lines (meeting.c's line_text) */
+enum {
+  L_BODY_IN, L_NEAR_BODY, L_SAW_KILL, L_SAW_VENT, L_WAS_IN, L_WITH, L_SUS, L_WHO, L_WHERE, L_SKIP, L_NOT_ME,
+  L_SCANNED, L_BUTTON, L_SAW_WITH
+};
 /* what a walk is for */
 enum { G_NONE, G_TASK, G_FAKE, G_FIX, G_BODY, G_BUTTON, G_WANDER, G_VENT, G_HUNT };
 
@@ -181,13 +186,13 @@ bool bot_enclosed(V2 p) {
 
 static float dist2(V2 a, V2 b) { return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y); }
 
-/* would anyone (but the impostors and the victim) see a kill at p */
+/* would a crewmate see a kill at p: one the impostor sees, near enough to see the spot (it knows only what it sees, and
+ * how far the crew sees) */
 static bool witnessed(int imp, int victim, V2 p) {
   for (int j = 0; j < g.nplayers; j++) {
     const Player *Q = &g.p[j];
-    if (j == imp || j == victim || !Q->alive || Q->imp || Q->vent != NONE) continue;
-    float r = vision_radius(j) + 0.5f;
-    if (dist2(Q->pos, p) < r * r && !ship_light_between(Q->pos, p)) return true;
+    if (j == imp || j == victim || !Q->alive || Q->imp) continue;
+    if (sees_point(j, p, FEET_Y) && can_see(imp, j)) return true;
   }
   return false;
 }
@@ -232,9 +237,7 @@ void bot_see(int i) {
   /* bodies */
   for (int b = 0; b < MAXP; b++) {
     const Body *D = &g.bodies[b];
-    if (!D->on) continue;
-    float r = vision_radius(i);
-    if (dist2(P->pos, D->pos) > r * r || ship_light_between(P->pos, D->pos)) continue;
+    if (!D->on || !sees_point(i, D->pos, 0)) continue;
     if (B->state == B_REPORT && B->found_body == b) continue;
     B->found_body = (uint8_t)b;
     B->body_room = (uint8_t)ship_room_at(D->pos);
@@ -259,7 +262,7 @@ void bot_saw_kill(int i, int killer) {
   if (g.p[i].imp) return;
   if (can_see(i, killer)) {
     B->saw_kill = (uint8_t)killer;
-    B->saw_kill_room = g.p[killer].room;
+    B->saw_kill_room = (uint8_t)ship_room_at(g.p[killer].pos);   /* (where the victim stood: the killer is there now) */
     suspect(B, killer, 100);
   }
 }
@@ -403,26 +406,36 @@ static void wander(int i) {
   go(i, stand(c), G_WANDER, c);
 }
 
+/* what a crewmate bot saw for itself: a kill or a vent by someone still alive (the line's kind, -1 if none), who and
+ * where */
+static int evidence(int i, int *who, int *where) {
+  const Bot *B = &g.p[i].bot;
+  if (g.p[i].imp) return -1;
+  if (B->saw_kill != NONE && g.p[B->saw_kill].alive) return *who = B->saw_kill, *where = B->saw_kill_room, L_SAW_KILL;
+  if (B->saw_vent != NONE && g.p[B->saw_vent].alive) return *who = B->saw_vent, *where = B->saw_vent_room, L_SAW_VENT;
+  return -1;
+}
+
 static void decide(int i) {
   Player *P = &g.p[i];
   Bot *B = &P->bot;
   if (!P->imp) {
-    int t = -1, c = next_task(i, &t);
-    if (c >= 0) {
+    int t = -1, c = next_task(i, &t), who, where;
+    bool button = P->alive && P->emergencies && g.emergency_cd <= 0 && !g.sab;
+    /* a vent seen (or a kill whose body is gone): the button now */
+    bool tell = button && evidence(i, &who, &where) >= 0;
+    if (c >= 0 && !tell) {
       go(i, stand(c), G_TASK, c);
       B->task = (uint8_t)t;
       return;
     }
     /* all done (or waiting on a sample): call a meeting on a strong suspicion, else walk around */
-    if (P->alive && P->emergencies && g.emergency_cd <= 0 && !g.sab) {
-      for (int j = 0; j < g.nplayers; j++)
-        if (g.p[j].alive && B->sus[j] >= 80 && rnd_n(3) == 0) {
-          go(i, stand(N_CONSOLES - 1 >= 0 ? 0 : 0), G_BUTTON, 0);
-          for (int c2 = 0; c2 < N_CONSOLES; c2++)
-            if (CONSOLES[c2].kind == 2) go(i, stand(c2), G_BUTTON, c2);
-          return;
-        }
-    }
+    for (int j = 0; j < g.nplayers && button; j++)
+      if (tell || (g.p[j].alive && B->sus[j] >= 80 && rnd_n(3) == 0)) {
+        for (int c2 = 0; c2 < N_CONSOLES; c2++)
+          if (CONSOLES[c2].kind == 2) go(i, stand(c2), G_BUTTON, c2);
+        return;
+      }
     wander(i);
     return;
   }
@@ -733,11 +746,6 @@ void bot_tick(int i) {
 
 /* ---- meetings ---- */
 
-enum {
-  L_BODY_IN, L_NEAR_BODY, L_SAW_KILL, L_SAW_VENT, L_WAS_IN, L_WITH, L_SUS, L_WHO, L_WHERE, L_SKIP, L_NOT_ME,
-  L_SCANNED, L_BUTTON, L_SAW_WITH
-};
-
 static void say(int who, int kind, int a, int b) {
   if (g.nlines >= 32) {
     memmove(g.lines, g.lines + 1, sizeof g.lines[0] * 31);
@@ -747,7 +755,7 @@ static void say(int who, int kind, int a, int b) {
   g.lines[g.nlines++] = (Line){(uint8_t)who, (uint8_t)kind, (uint8_t)a, (uint8_t)b};
 }
 
-/* each bot's lines for this meeting, said one after another in bot_meeting_tick */
+/* each bot's lines for this meeting, said one after another in bot_meeting_tick (at seconds from its start) */
 static uint8_t queue_who[48], queue_kind[48], queue_a[48], queue_b[48];
 static float queue_at[48];
 static int nqueue, qnext;
@@ -776,44 +784,39 @@ void bot_meeting_start(void) {
   g.nlines = 0;
   g.line_shown = 0;
   float at = 1.5f;
-  /* a body: who each crewmate last saw in its room lately is a little suspect */
-  if (g.reported != NONE) {
-    int room = NONE;
-    for (int b = 0; b < MAXP; b++)
-      if (g.bodies[b].on && g.bodies[b].who == g.reported) room = ship_room_at(g.bodies[b].pos);
-    for (int i = 0; i < g.nplayers; i++) {
-      if (!is_bot(i) || !g.p[i].alive || g.p[i].imp) continue;
-      Bot *B = &g.p[i].bot;
-      for (int j = 0; j < g.nplayers; j++)
-        if (j != i && g.p[j].alive && B->seen_room[j] == room && room != R_HALLWAY && g.t - B->seen_t[j] < 25)
-          suspect(B, j, B->with_t[j] > 20 ? 5 : 15);
-    }
+  int v = g.reported, room = NONE, who, where;
+  for (int b = 0; b < MAXP && v != NONE; b++)
+    if (g.bodies[b].on && g.bodies[b].who == v) room = ship_room_at(g.bodies[b].pos);
+  bool in_room = room != NONE && room != R_HALLWAY;
+  /* a body in a room: who each crewmate last saw there lately is a little suspect */
+  for (int i = 0; i < g.nplayers && in_room; i++) {
+    if (!is_bot(i) || !g.p[i].alive || g.p[i].imp) continue;
+    Bot *B = &g.p[i].bot;
+    for (int j = 0; j < g.nplayers; j++)
+      if (j != i && g.p[j].alive && B->seen_room[j] == room && g.t - B->seen_t[j] < 25)
+        suspect(B, j, B->with_t[j] > 20 ? 5 : 15);
   }
-  /* the caller first */
+  /* the caller first: the body, then what it saw */
   int c = g.caller;
   if (is_bot(c)) {
     Bot *B = &g.p[c].bot;
-    if (g.reported != NONE) {
-      queue(c, L_BODY_IN, g.reported, g.p[c].imp ? g.p[c].room : B->body_room, at), at += 1.6f;
-      if (!g.p[c].imp && B->saw_kill != NONE && g.p[B->saw_kill].alive)
-        queue(c, L_SAW_KILL, B->saw_kill, B->saw_kill_room, at), at += 1.6f;
-      else if (!g.p[c].imp && B->near_body != NONE && g.p[B->near_body].alive)
-        queue(c, L_NEAR_BODY, B->near_body, B->body_room, at), at += 1.6f;
-      else if (g.p[c].imp) {
-        /* a lie: whoever it last saw */
-        int best = -1;
-        float bt = -1;
-        for (int j = 0; j < g.nplayers; j++)
-          if (j != c && g.p[j].alive && !g.p[j].imp && B->seen_t[j] > bt) bt = B->seen_t[j], best = j;
-        if (best >= 0 && rnd_n(2)) queue(c, L_NEAR_BODY, best, g.p[c].room, at), at += 1.6f;
-      }
-    } else {
-      int s, w = top_suspect(c, &s);
-      if (w >= 0 && s >= 40) queue(c, B->saw_vent == w ? L_SAW_VENT : L_SUS, w, B->saw_vent_room, at), at += 1.6f;
-      else queue(c, L_BUTTON, 0, 0, at), at += 1.6f;
-    }
+    bool crew = !g.p[c].imp;
+    if (v != NONE) queue(c, L_BODY_IN, v, crew ? B->body_room : g.p[c].room, at), at += 1.6f;
+    int k = evidence(c, &who, &where), s, w = top_suspect(c, &s);
+    if (k >= 0) queue(c, k, who, where, at), at += 1.6f;
+    else if (v != NONE && crew && B->near_body != NONE && g.p[B->near_body].alive)
+      queue(c, L_NEAR_BODY, B->near_body, B->body_room, at), at += 1.6f;
+    else if (v != NONE && !crew) {
+      /* a lie: whoever it last saw */
+      int best = -1;
+      float bt = -1;
+      for (int j = 0; j < g.nplayers; j++)
+        if (j != c && g.p[j].alive && !g.p[j].imp && B->seen_t[j] > bt) bt = B->seen_t[j], best = j;
+      if (best >= 0 && rnd_n(2)) queue(c, L_NEAR_BODY, best, g.p[c].room, at), at += 1.6f;
+    } else if (v == NONE)
+      queue(c, w >= 0 && s >= 40 ? L_SUS : L_BUTTON, w, 0, at), at += 1.6f;
   }
-  /* the others, in a random order */
+  /* the others in a random order, those who saw a kill or a vent first */
   int order[MAXP], n = 0;
   for (int i = 0; i < g.nplayers; i++)
     if (is_bot(i) && i != c && g.p[i].alive) order[n++] = i;
@@ -821,101 +824,102 @@ void bot_meeting_start(void) {
     int j = rnd_n(k + 1), t = order[k];
     order[k] = order[j], order[j] = t;
   }
+  for (int k = 1; k < n; k++)
+    for (int j = k; j > 0 && evidence(order[j], &who, &where) >= 0 && evidence(order[j - 1], &who, &where) < 0; j--) {
+      int t = order[j];
+      order[j] = order[j - 1], order[j - 1] = t;
+    }
   for (int k = 0; k < n; k++) {
     int i = order[k];
     Bot *B = &g.p[i].bot;
+    bool crew = !g.p[i].imp;
     at += 0.6f + rnd_f() * 1.6f;
-    if (!g.p[i].imp && B->saw_kill != NONE && g.p[B->saw_kill].alive) {
-      queue(i, L_SAW_KILL, B->saw_kill, B->saw_kill_room, at);
+    int e = evidence(i, &who, &where);
+    if (e >= 0) {
+      queue(i, e, who, where, at);
       continue;
     }
-    if (!g.p[i].imp && B->saw_vent != NONE && g.p[B->saw_vent].alive) {
-      queue(i, L_SAW_VENT, B->saw_vent, B->saw_vent_room, at);
-      continue;
-    }
-    /* the one last seen with the dead */
-    int v = g.reported;
-    if (!g.p[i].imp && v != NONE && B->seen_with[v] != NONE && B->seen_with[v] != i && g.p[B->seen_with[v]].alive &&
-        g.t - B->seen_t[v] < 40) {
-      suspect(B, B->seen_with[v], 25);
-      queue(i, L_SAW_WITH, B->seen_with[v], B->seen_room[v], at);
+    /* the one it last saw with the dead, lately and there, and not seen elsewhere since */
+    int x = v != NONE ? B->seen_with[v] : NONE;
+    if (crew && in_room && x != NONE && x != i && g.p[x].alive && B->seen_room[v] == room && g.t - B->seen_t[v] < 30 &&
+        (B->seen_room[x] == room || B->seen_t[x] < B->seen_t[v] + 0.5f)) {
+      suspect(B, x, 25);
+      queue(i, L_SAW_WITH, x, room, at);
       continue;
     }
     int r = rnd_n(10);
-    if (!g.p[i].imp && B->scanned != NONE && g.p[B->scanned].alive && r < 3) {
+    if (crew && B->scanned != NONE && g.p[B->scanned].alive && r < 3) {
       queue(i, L_SCANNED, B->scanned, 0, at);
       continue;
     }
     if (r < 2) {
-      queue(i, g.reported != NONE ? L_WHERE : L_WHO, g.reported, 0, at);
+      queue(i, v != NONE ? L_WHERE : L_WHO, v, 0, at);
       continue;
     }
-    /* an alibi: where it was, with whom (impostors make one up) */
-    int with = NONE;
+    /* an alibi: where it is, with whom it has been there a while (not its suspect); impostors make one up */
+    int s, w = top_suspect(i, &s), with = NONE, here = g.p[i].room;
     float wt = 8;
     for (int j = 0; j < g.nplayers; j++)
-      if (j != i && g.p[j].alive && B->with_t[j] > wt) wt = B->with_t[j], with = j;
-    int room = g.p[i].room;
-    if (g.p[i].imp && rnd_n(2)) room = TASK_DEFS[g.p[i].tasks[rnd_n(g.p[i].ntasks)].def].room;
-    if (with != NONE && !g.p[i].imp) queue(i, L_WITH, with, room, at);
-    else queue(i, L_WAS_IN, room, 0, at);
-    int s, w = top_suspect(i, &s);
-    if (w >= 0 && (s >= 30 || (g.p[i].imp && rnd_n(3) == 0))) at += 1.2f, queue(i, L_SUS, w, g.p[w].room, at);
+      if (j != i && g.p[j].alive && B->with_t[j] > wt && g.t - B->seen_t[j] < 3 && B->seen_room[j] == here &&
+          (j != w || s < 30))
+        wt = B->with_t[j], with = j;
+    if (!crew && rnd_n(2)) here = TASK_DEFS[g.p[i].tasks[rnd_n(g.p[i].ntasks)].def].room;
+    if (with != NONE && crew) queue(i, L_WITH, with, here, at);
+    else queue(i, L_WAS_IN, here, 0, at);
+    if (w >= 0 && (crew ? s >= 30 : rnd_n(3) == 0)) at += 1.2f, queue(i, L_SUS, w, g.p[w].room, at);
   }
 }
 
 void bot_meeting_tick(void) {
-  while (qnext < nqueue && g.meet_t >= queue_at[qnext]) {
-    int who = queue_who[qnext];
-    if (g.p[who].alive) say(who, queue_kind[qnext], queue_a[qnext], queue_b[qnext]);
-    /* what's said moves the listeners: an accusation weighs by how much the speaker is trusted */
-    int k = queue_kind[qnext], a = queue_a[qnext];
-    if (k == L_SAW_KILL || k == L_SAW_VENT || k == L_SUS || k == L_NEAR_BODY || k == L_SAW_WITH) {
-      for (int i = 0; i < g.nplayers; i++) {
-        if (i == who || !is_bot(i) || !g.p[i].alive || g.p[i].imp) continue;
-        Bot *B = &g.p[i].bot;
-        if (i == a) {
-          suspect(B, who, 25);   /* being accused */
-          continue;
-        }
-        int trust = B->sus[who] < -30 ? 2 : B->sus[who] > 40 ? 0 : 1;
-        int w = (k == L_SAW_KILL ? 45 : k == L_SAW_VENT ? 40 : k == L_NEAR_BODY || k == L_SAW_WITH ? 20 : 12) * trust;
-        suspect(B, a, w);
-      }
-    }
-    if (k == L_SCANNED)
-      for (int i = 0; i < g.nplayers; i++)
-        if (is_bot(i) && !g.p[i].imp && g.p[i].bot.sus[who] < 30) suspect(&g.p[i].bot, a, -40);
+  /* (the clock goes on from the discussion into the vote) */
+  float now = g.meet_t + (g.meet_stage ? g.opt.discuss : 0);
+  while (g.meet_stage < 2 && qnext < nqueue && now >= queue_at[qnext]) {
+    int who = queue_who[qnext], k = queue_kind[qnext], a = queue_a[qnext];
+    say(who, k, a, queue_b[qnext]);
     qnext++;
+    /* what's said moves the listeners: an accusation as much as the speaker is trusted, an alibi or a scan the other
+     * way */
+    for (int i = 0; i < g.nplayers; i++) {
+      if (i == who || !is_bot(i) || !g.p[i].alive || g.p[i].imp) continue;
+      Bot *B = &g.p[i].bot;
+      int trust = B->sus[who] >= 80 ? 0 : B->sus[who] >= 50 ? 1 : B->sus[who] < -30 ? 4 : 2;
+      if (k == L_SCANNED || k == L_WITH) {
+        suspect(B, a, (k == L_SCANNED ? -20 : -4) * trust);
+        continue;
+      }
+      if (k != L_SAW_KILL && k != L_SAW_VENT && k != L_SUS && k != L_NEAR_BODY && k != L_SAW_WITH) break;
+      /* accused, or accusing one it knows is a crewmate (it saw the scan): the speaker is wrong */
+      if (i == a || B->sus[a] <= -80) {
+        suspect(B, who, 25);
+        continue;
+      }
+      int by = (k == L_SAW_KILL ? 30 : k == L_SAW_VENT ? 25 : k == L_NEAR_BODY ? 10 : k == L_SAW_WITH ? 8 : 6) * trust;
+      /* (hearsay, however often repeated, makes a suspect, not a sure one: only what was seen goes past 40) */
+      if (k != L_SAW_KILL && k != L_SAW_VENT && by > 40 - B->sus[a]) by = 40 - B->sus[a] > 0 ? 40 - B->sus[a] : 0;
+      suspect(B, a, by);
+    }
   }
 }
 
-/* the bots' votes (each at its own moment in the voting time) */
+/* the bots' votes, each at its own moment once everything is said (or the time runs short) */
 void bot_votes(void) {
+  if (g.meet_stage != 1 || (qnext < nqueue && g.meet_t < g.opt.vote * 5 - 5)) return;
   for (int i = 0; i < g.nplayers; i++) {
     if (!is_bot(i) || !g.p[i].alive || g.votes[i] != NONE) continue;
-    if (g.meet_stage != 1) continue;
-    /* decide after a few seconds of voting, or soon after everyone spoke */
     float when = 2.0f + (float)((i * 37 + g.nlines * 11) % 9);
-    if (g.meet_t < when) continue;
-    Bot *B = &g.p[i].bot;
+    if (g.meet_t < when && qnext >= nqueue) continue;
     int s, w = top_suspect(i, &s);
+    int counts[MAXP + 1] = {0};
+    for (int j = 0; j < g.nplayers; j++)
+      if (g.votes[j] != NONE) counts[g.votes[j]]++;
     if (g.p[i].imp) {
       /* with the crowd against a crewmate, or skip */
-      int counts[MAXP + 1] = {0};
-      for (int j = 0; j < g.nplayers; j++)
-        if (g.votes[j] != NONE) counts[g.votes[j]]++;
       int best = SKIP, bc = 0;
       for (int j = 0; j < g.nplayers; j++)
         if (!g.p[j].imp && g.p[j].alive && counts[j] > bc) bc = counts[j], best = j;
       g.votes[i] = (uint8_t)(bc ? best : (w >= 0 && s > 10 && rnd_n(2)) ? w : SKIP);
-    } else {
+    } else
       /* sure enough: that one; half sure: with the crowd if it's the same one */
-      int counts[MAXP + 1] = {0};
-      for (int j = 0; j < g.nplayers; j++)
-        if (g.votes[j] != NONE && g.votes[j] != SKIP) counts[g.votes[j]]++;
-      bool crowd = w >= 0 && counts[w] >= 2 && s >= 15 && B->sus[w] > -30;
-      g.votes[i] = (uint8_t)(w >= 0 && (s >= 30 || crowd) ? w : SKIP);
-    }
+      g.votes[i] = (uint8_t)(w >= 0 && (s >= 30 || (counts[w] >= 2 && s >= 15)) ? w : SKIP);
   }
 }
