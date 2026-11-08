@@ -186,12 +186,18 @@ def _behaviours(rm, o):
 FAR_CONDS = {"visitedRuins", "visitedDeepnest"}
 
 
-def _conds(o, pdf):
-    """its DeactivateIfPlayerdata conditions this game knows: [(bool, off if true)], those on places further in last"""
+def _conds(o, pdf, rm=None):
+    """its DeactivateIfPlayerdata conditions this game knows: [(bool, off if true)], those on places further in last;
+    with rm, also those of what it is under, up to an object of the scripts' own (off with it: src/vm.c obj_active), as
+    Dirtmouth's closed map shop's sign under its Check Opened (Mason363/NumPlay#359)"""
     out = []
-    for bn, off_if in state.conditions(o):
-        if bn in pdf and (bn, off_if) not in out:
-            out.append((bn, off_if))
+    while o is not None:
+        for bn, off_if in state.conditions(o):
+            if bn in pdf and (bn, off_if) not in out:
+                out.append((bn, off_if))
+        o = rm.by_id.get(o.get("parent")) if rm is not None else None
+        if o is not None and o["id"] in rm.obj_index:
+            break
     return sorted(out, key=lambda c: c[0] in FAR_CONDS)
 
 
@@ -1864,7 +1870,7 @@ def room_blob(name, clip_index, sprites, owners=(), persist=None):
                 # (its own size, drawn at its scale: its texture as fine as it is drawn)
                 sprite = sprites.id(o.get("_doc") or rm.d, sr["m_Sprite"], 1.0, max(abs(sx), abs(sy)), world=True)
         # (DeactivateIfPlayerdataTrue, False: two at most)
-        conds = [pdf[bn] | (0x8000 if off_if else 0) for bn, off_if in _conds(o, pdf)][:2]   # (more: _behaviours')
+        conds = [pdf[bn] | (0x8000 if off_if else 0) for bn, off_if in _conds(o, pdf, rm)][:2]   # (more: _behaviours')
         if o.get("_variant"):
             # (a scene loaded with the room's by a PlayerData bool: there only when it has that value)
             bn, val = o["_variant"]

@@ -19,12 +19,20 @@
 - the stag stations: each seen (their blanker faded out), come in by its gate, by the stag (called by its bell) and
   loaded at its bench
 - each shop's first charm bought: its lesson sent away by a key, the Knight free again
+- Dirtmouth's map shop: at its door, Inspect while it is shut, Enter once it is open and never both, also as the Knight
+  comes back to it
+- the inventory opened as the Knight runs: he stays where he was behind it, the run key let go or held, and stands once
+  it is closed
+- through a door (up out of the Crossroads by the well, into Sly's shop): the inventory opens in the room past it
+- Vengeful Spirit cast by a platform: its blast, ball and impact screened over the view, nothing behind them darker
 - the Snail Shaman's temple, played as one game: his spell taken, the Elder Baldur killed, his talk opening the gate, and
   so after a save and a load too; its lifeblood cocoon broken through a load and a rest there, whole after another bench
 - the enemies the game keeps dead until a rest: still dead as the Knight comes back, out again after a rest at a bench,
   a death or a load at a bench, and after a rest in their own room; the persistent ones and a broken cocoon there not
 - the way to the False Knight, played room by room as one game (the Knight unhurt): from a new game's fall into King's
   Pass, and from the Aspid Hunters' arena by the hot spring, to his arena, where he comes down
+- the way to Hornet, played room by room as one game (the Knight unhurt): from Greenpath's first room, out of the room
+  she is first seen in at its bottom right and up out of the Moss Knights' arena, to her arena, where she wakes
 - every room played with its enemies hit, in a new game and after the bosses, drawn whole and fast (as a slow
   calculator draws it): the sanitizers stop on any fault
 """
@@ -114,6 +122,14 @@ def main():
     results.append(report("stag stations: seen, the rides", rc, out, ("FAIL",)))
     rc, out = play("--gates", "shopcharm")
     results.append(report("a shop's first charm: its lesson, the Knight free after it", rc, out, ("FAIL",)))
+    rc, out = play("--gates", "mapshop")
+    results.append(report("Dirtmouth's map shop: Inspect shut, Enter open, never both", rc, out, ("FAIL",)))
+    rc, out = play("--gates", "invpause")
+    results.append(report("the inventory opened running: the game paused, the Knight standing after", rc, out, ("FAIL",)))
+    rc, out = play("--gates", "doors")
+    results.append(report("through a door: the inventory opens in the room past it", rc, out, ("FAIL",)))
+    rc, out = play("--gates", "spellblend")
+    results.append(report("Vengeful Spirit screened over the view, nothing behind it darker", rc, out, ("FAIL",)))
     with tempfile.TemporaryDirectory() as saves:
         rc, out = play("--gates", "shaman", env={"HKSAVES": saves})
     results.append(report("the Snail Shaman: his spell, the Elder Baldur, his gate, saved and loaded", rc, out, ("FAIL",)))
@@ -122,6 +138,8 @@ def main():
     results.append(report("enemies out again after a rest, a death or a load at a bench", rc, out, ("FAIL",)))
     rc, out = play("--gates", "way")
     results.append(report("the way to the False Knight", rc, out, ("FAIL",)))
+    rc, out = play("--gates", "greenpath")
+    results.append(report("the way to Hornet", rc, out, ("FAIL",)))
     return finish(results)
 
 

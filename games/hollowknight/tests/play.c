@@ -1032,6 +1032,144 @@ static int shop_charm_test(void) {
   return fails ? 1 : 0;
 }
 
+/* Dirtmouth's map shop (Mason363/NumPlay#359): shut, Inspect at its sign; open, Enter at its door and nothing else; also
+ * as the Knight walks on past it and comes back */
+static int map_shop_test(void) {
+  extern int prompts_up(int16_t *labels, int max);
+  static const struct { uint32_t keys; int ticks; bool check; } steps[] = {
+      {0, 100, false}, {K_RIGHT, 48, false}, {0, 60, true}, {K_RIGHT, 40, false}, {0, 60, false}, {K_LEFT, 40, false},
+      {0, 60, true}};
+  int fails = 0;
+  shielded = true;
+  for (int open = 0; open < 2; open++) {
+    game_new();
+    pd_set_flag(PDF_VISITED_DIRTMOUTH, true);
+    pd_set_flag(PDF_OPENED_MAPPER_SHOP, open);
+    game_enter(ROOM_TOWN, 146, 12, true);
+    for (unsigned s = 0; s < sizeof steps / sizeof steps[0]; s++) {
+      run_ticks(steps[s].ticks, steps[s].keys);
+      if (!steps[s].check) continue;
+      int16_t up[4];
+      int n = prompts_up(up, 4), want = open ? TXT_PROMPT_ENTER : TXT_PROMPT_INSPECT;
+      bool ok = n == 1 && up[0] == want;
+      printf("%s map shop %s, at its door%s: %d prompt%s up%s\n", ok ? "ok  " : "FAIL", open ? "open" : "shut",
+             s > 2 ? " again" : "", n, n == 1 ? "" : "s", ok ? "" : n && up[0] != want ? ", not the one it should be" : "");
+      fails += !ok;
+    }
+  }
+  shielded = false;
+  printf("map shop: %d failing\n", fails);
+  return fails ? 1 : 0;
+}
+
+/* the inventory opened as the Knight runs (Mason363/NumPlay#359): the game paused behind it (SetIsInventoryOpen), so
+ * he stays where he was, the run key let go or not; closed, he stands there */
+static int inventory_pause_test(void) {
+  int fails = 0;
+  for (int hold = 0; hold < 2; hold++) {
+    game_new();
+    pd_set_flag(PDF_VISITED_DIRTMOUTH, true);
+    game_enter(ROOM_TOWN, 50, 12, true);
+    run_ticks(60, 0);
+    run_ticks(30, K_RIGHT);
+    run_ticks(2, K_RIGHT | K_INV);
+    float x0 = g_hero.body.x;
+    run_ticks(10, K_RIGHT);
+    run_ticks(50, hold ? K_RIGHT : 0);
+    float x1 = g_hero.body.x;
+    bool up = inv_open();
+    run_ticks(2, (hold ? K_RIGHT : 0) | K_INV);
+    run_ticks(30, hold ? K_RIGHT : 0);
+    run_ticks(70, 0);
+    float x2 = g_hero.body.x;
+    bool ok = up && fabsf(x1 - x0) < 0.01f && !inv_open() && fabsf(x2 - x0) < 0.5f && fabsf(g_hero.body.vx) < 0.01f &&
+              g_hero.state == HS_IDLE;
+    printf("%s inventory opened running, the run key %s: %s\n", ok ? "ok  " : "FAIL", hold ? "held" : "let go",
+           !up ? "not up" : fabsf(x1 - x0) >= 0.01f ? "the Knight moved behind it" : inv_open() ? "not closed"
+           : fabsf(x2 - x0) >= 0.5f || fabsf(g_hero.body.vx) >= 0.01f ? "the Knight went on after it" : g_hero.state != HS_IDLE ?
+           "the Knight not standing" : "he stays, then stands");
+    fails += !ok;
+  }
+  printf("inventory pause: %d failing\n", fails);
+  return fails ? 1 : 0;
+}
+
+/* through a door (Mason363/NumPlay#359): up out of the Crossroads by the well's Ascend, into Sly's shop; in the room
+ * past it, the inventory opens again (the door took the pause away, the next room gives it back: OnNextLevelReady) */
+static int doors_test(void) {
+  static const struct { int room, to; float x, y; int walk, wait; const char *flags; } doors[] = {
+      {ROOM_CROSSROADS_01, ROOM_TOWN, 52.6f, 11, 0, 600, ""}, {ROOM_TOWN, ROOM_ROOM_SHOP, 116, 12, 30, 80, "23"}};
+  int fails = 0;
+  shielded = true;
+  for (unsigned k = 0; k < sizeof doors / sizeof doors[0]; k++) {
+    game_new();
+    pd_set_flag(PDF_VISITED_DIRTMOUTH, true);
+    if (*doors[k].flags) pd_set_flag(atoi(doors[k].flags), true);
+    game_enter(doors[k].room, doors[k].x, doors[k].y, true);
+    run_ticks(100, 0);
+    run_ticks(doors[k].walk, K_RIGHT);
+    run_ticks(doors[k].wait, 0);
+    run_ticks(3, K_UP);
+    run_ticks(300, 0);
+    bool there = g_room.id == doors[k].to && hero_free();
+    run_ticks(2, K_INV);
+    run_ticks(30, 0);
+    bool inv = inv_open();
+    run_ticks(2, K_INV);
+    run_ticks(30, 0);
+    bool ok = there && inv;
+    printf("%s door from %s to %s: %s\n", ok ? "ok  " : "FAIL", room_name(doors[k].room), room_name(doors[k].to),
+           !there ? "not through it" : !inv ? "the inventory does not open" : "the inventory opens past it");
+    fails += !ok;
+  }
+  shielded = false;
+  printf("doors: %d failing\n", fails);
+  return fails ? 1 : 0;
+}
+
+/* Vengeful Spirit cast by a platform (Mason363/NumPlay#395): its blast, ball and impact screened over the view (their
+ * material's Screen), so nothing behind them gets darker, the platforms and the Knight seen through them */
+static int spell_blend_test(void) {
+  extern bool g_fireballs_hidden;
+  extern uint16_t host_fb[SCREEN_W * SCREEN_H];
+  static uint16_t with[SCREEN_W * SCREEN_H];
+  int fails = 0, frames = 0;
+  game_new();
+  shielded = true;
+  g_pd.fireball_level = 1, g_pd.mp = 99;
+  game_enter(ROOM_CROSSROADS_07, 20.9f, 54.5f, true);
+  run_ticks(150, 0);
+  run_ticks(4, K_SPELL | K_FOCUS);
+  for (int t = 0; t < 40; t++) {
+    run_ticks(1, 0);
+    game_draw();
+    memcpy(with, host_fb, sizeof with);
+    g_fireballs_hidden = true;
+    game_draw();
+    g_fireballs_hidden = false;
+    /* (a pixel darker by an eighth of its light or more: red and blue weigh twice, as green's 6 bits) */
+    int darker = 0, changed = 0;
+    for (int i = 0; i < SCREEN_W * SCREEN_H; i++) {
+      uint16_t a = with[i], b = host_fb[i];
+      if (a == b) continue;
+      changed++;
+      int la = 2 * (a >> 11) + (a >> 5 & 63) + 2 * (a & 31), lb = 2 * (b >> 11) + (b >> 5 & 63) + 2 * (b & 31);
+      darker += lb - la > 32;
+    }
+    if (!changed) continue;
+    frames++;
+    if (darker > changed / 100) {
+      printf("FAIL spell blend: %d ticks after the cast, %d of the %d pixels it covers darker\n", t, darker, changed);
+      fails++;
+      break;
+    }
+  }
+  shielded = false;
+  if (!frames) printf("FAIL spell blend: no spell seen\n"), fails++;
+  else if (!fails) printf("ok   spell blend: over %d frames, nothing behind it darker\n", frames);
+  return fails ? 1 : 0;
+}
+
 /* the way to the False Knight (Mason363/NumPlay#172), played as one game, room by room, each room's keys from when the
  * Knight comes into it: from the new game's fall into King's Pass, through Dirtmouth and down its well, past the Temple of
  * the Black Egg, down through the tollbooth into Crossroads_03 (its lever's gates open: the game's Knight opens them from
@@ -1039,7 +1177,7 @@ static int shop_charm_test(void) {
  * must come down; and from the Aspid Hunters' arena by the hot spring back up to the well and on the same way. Nothing
  * hurts the Knight: the way is what is checked, not the fights. (Each room's keys, as --play has them, were found by
  * trying moves on the computer.) */
-typedef struct { int room; const char *keys; } Leg;
+typedef struct { int room; const char *keys; bool strike; } Leg;   /* (strike: the enemies near him struck down) */
 #define WAY_KINGS_PASS \
   "_*400,R*300,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12," \
   "RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4,R*12,RA*4," \
@@ -1092,16 +1230,69 @@ static const Leg way_new_game[] = {
 static const Leg way_hot_spring[] = {
   {ROOM_CROSSROADS_08, WAY_08}, {ROOM_CROSSROADS_33, WAY_33}, {ROOM_CROSSROADS_07, WAY_07},
   {ROOM_CROSSROADS_01, WAY_01_LEFT}, WAY_TEMPLE};
-static int way_run(const char *name, const Leg *legs, int n) {
+/* the way to Hornet (Mason363/NumPlay#402), as one game from Greenpath's first room: past its first bench, down the room
+ * where she is first seen (her ledge out of reach without the dash) and out at its bottom right, up into Fungus1_03 from
+ * below, past the toll bench, through the Moss Knights' arena (struck down for him) and up out of it, down into
+ * Fungus1_21 from above and on into her arena, where she must wake: the game's way, but for the rooms between that this
+ * port leaves out (tools/ents.py: WAYS) */
+#define WAY_GP_01 \
+  "_*60,RJ*12,_*1,LJ*30,L*20,_*1,LJ*12,_*1,LJ*30,L*20,_*1,L*8,_*1,L*25,_*1,LJ*30,L*20,_*1,R*8,_*1,LJ*30,_*1,L*8,_*1," \
+  "LJ*30,L*20,_*1,LJ*30,_*1,L*25,_*1,LJ*12,_*1,J*16,RJ*14,_*1,L*8,_*1,R*3,_*1,LA*4,_*8,LA*4,_*8,L*25,_*1,J*8,LJ*22,_*1," \
+  "J*8,LJ*22,_*1,LJ*30,_*1,L*25,_*1,J*22,LJ*8,L*10,_*1,L*25,_*1,LJ*30,L*20,_*1,L*3,_*1,LJ*30,L*20,_*1,R*3,_*1,J*8,LJ*22," \
+  "_*1,LJ*30,L*20,_*1,R*25,_*1,LJ*30,L*20,_*1,LJ*30,_*1,L*3,_*1,L*25,_*1,LA*4,_*8,LJ*30,_*1,LA*4,_*8,J*30,_*1,LJ*30,L*20," \
+  "_*1,LJ*30,L*20,_*1,J*8,LJ*22,_*1,LJ*30,L*20,_*1,LJ*30,L*20,_*1,L*25,_*1"
+#define WAY_GP_01B \
+  "_*60,L*25,_*1,L*25,_*1,J*16,LJ*14,_*1,LJ*12,_*1,LJ*30,L*20,_*1,LJ*12,_*1,LJ*30,_*1,LJ*30,L*20,_*1,L*25,_*1,J*22,LJ*8," \
+  "L*10,_*1"
+#define WAY_GP_02 \
+  "_*60,L*25,_*1,L*25,_*1,LJ*12,_*1,LJ*30,_*1,L*25,_*1,L*8,_*1,L*3,_*1,LJ*30,L*20,_*1,_*20,RJ*12,_*1,L*25,_*1,RJ*30,_*1," \
+  "_*20,RJ*30,R*20,_*1,J*22,RJ*8,R*10,_*1,RJ*30,R*20,_*1,J*22,RJ*8,R*10,_*1,R*25,_*1,J*8,RJ*22,_*1,R*25,_*1"
+#define WAY_GP_03 \
+  "_*60,J*22,LJ*8,L*10,_*1,J*22,LJ*8,L*10,_*1,L*8,_*1,L*8,_*1,J*22,RJ*8,R*10,_*1,LJ*30,_*1,L*25,_*1,L*25,_*1,RA*4,_*8," \
+  "J*8,LJ*22,_*1,LJ*30,_*1,LJ*30,_*1,RA*4,_*8,L*8,_*1,LJ*30,L*20,_*1,R*8,_*1,RA*4,_*8,J*22,RJ*8,R*10,_*1,RJ*30,R*20,_*1," \
+  "RJ*30,_*1,R*25,_*1,R*25,_*1,RJ*30,R*20,_*1,RJ*30,R*20,_*1,LJ*30,L*20,_*1,LJ*30,L*20,_*1,R*25,_*1,LJ*30,_*1,LJ*30,L*20," \
+  "_*1,J*22,RJ*8,R*10,_*1,LA*4,_*8,J*22,LJ*8,L*10,_*1,J*16,LJ*14,_*1,RJ*30,_*1,LJ*30,_*1,LJ*30,L*20,_*1,L*25,_*1,LJ*30,_*1"
+#define WAY_GP_31 \
+  "_*60,RA*4,_*8,L*25,_*1,J*22,LJ*8,L*10,_*1,J*16,LJ*14,_*1,R*3,_*1,J*16,LJ*14,_*1,LJ*30,L*20,_*1,LJ*30,L*20,_*1,J*22," \
+  "LJ*8,L*10,_*1,RJ*30,R*20,_*1,J*22,LJ*8,L*10,_*1,J*8,RJ*22,_*1,_*20,J*16,RJ*14,_*1,J*8,RJ*22,_*1,R*8,_*1,RJ*30,_*1," \
+  "RJ*30,R*20,_*1,L*25,_*1,L*8,_*1,L*3,_*1,J*22,LJ*8,L*10,_*1,L*25,_*1,J*22,LJ*8,L*10,_*1,LJ*30,L*20,_*1"
+#define WAY_GP_32 \
+  "_*60,RJ*30,R*20,_*1,RJ*30,_*1,RJ*30,R*20,_*1,RJ*30,_*1,RJ*30,_*1,R*25,_*1,RJ*30,_*1,J*8,RJ*22,_*1,J*16,RJ*14,_*1,J*30," \
+  "_*1,LJ*30,_*1,RA*4,_*8,J*22,RJ*8,R*10,_*1,J*22,RJ*8,R*10,_*1,R*25,_*1,R*8,_*1,J*8,RJ*22,_*1,J*22,LJ*8,L*10,_*1,RJ*30," \
+  "_*1,R*3,_*1,RJ*30,R*20,_*1,RJ*30,_*1,LA*4,_*8,L*3,_*1,LJ*30,L*20,_*1,J*22,LJ*8,L*10,_*1,RJ*30,R*20,_*1,RJ*30,R*20,_*1," \
+  "RJ*12,_*1,J*8,LJ*22,_*1,LJ*30,_*1,L*8,_*1,L*25,_*1,J*16,RJ*14,_*1,DA*4,_*8,J*22,LJ*8,L*10,_*1"
+#define WAY_GP_21 \
+  "_*60,R*8,_*1,R*8,_*1,J*8,LJ*22,_*1,RJ*12,_*1,J*22,RJ*8,R*10,_*1,J*8,RJ*22,_*1,RJ*12,_*1,LJ*30,_*1,LJ*30,_*1,J*22,RJ*8," \
+  "R*10,_*1,RJ*30,_*1,J*22,RJ*8,R*10,_*1,RJ*30,R*20,_*1,J*16,RJ*14,_*1,J*8,RJ*22,_*1,J*8,RJ*22,_*1,RJ*30,_*1,RJ*30,R*20," \
+  "_*1,_*20,LJ*30,L*20,_*1,LJ*30,L*20,_*1,L*25,_*1,L*8,_*1,LA*4,_*8,L*8,_*1,J*16,LJ*14,_*1,LJ*30,_*1,LJ*30,L*20,_*1," \
+  "LJ*30,L*20,_*1,L*25,_*1,J*16,RJ*14,_*1,_*20,RJ*30,R*20,_*1,LA*4,_*8,LJ*30,L*20,_*1,LJ*12,_*1"
+/* (her arena: down into it, then her words read through) */
+#define WAY_GP_04 \
+  "_*30,LA*4,_*8,L*25,_*1,LJ*30,_*1,L*25,_*1,LJ*30,_*1,LJ*30,L*20,_*1,LJ*30,L*20,_*1,LJ*30,_*1,L*8,_*1,LJ*30,L*20,_*1," \
+  "LJ*12,_*1,LJ*30,L*20,_*1,_*30,L*20,_*60,J*3,_*40,J*3,_*40,J*3,_*40,J*3,_*40,J*3,_*40,J*3,_*40,J*3,_*40,_*300"
+static const Leg way_greenpath[] = {
+  {ROOM_FUNGUS1_01, WAY_GP_01}, {ROOM_FUNGUS1_01B, WAY_GP_01B}, {ROOM_FUNGUS1_02, WAY_GP_02}, {ROOM_FUNGUS1_03, WAY_GP_03},
+  {ROOM_FUNGUS1_31, WAY_GP_31}, {ROOM_FUNGUS1_32, WAY_GP_32, true}, {ROOM_FUNGUS1_21, WAY_GP_21},
+  {ROOM_FUNGUS1_04, WAY_GP_04}};
+static bool fk_down(void) {
   extern bool enemies_fk_awake(void);
-  int leg = 0, t = 0, idle = 0;
+  return g_room.id == ROOM_CROSSROADS_10 && enemies_fk_awake();
+}
+static bool hornet_up(void) {
+  extern bool enemies_hornet_awake(void);
+  return g_room.id == ROOM_FUNGUS1_04 && enemies_hornet_awake();
+}
+static int way_run(const char *name, const Leg *legs, int n, bool (*goal)(void), const char *what) {
+  extern void enemies_debug_hit(int damage);
+  int leg = 0, t = 0, idle = 0, in = 0;
   const char *p = legs[0].keys;
-  for (int tick = 0; tick < 30000; tick++) {
-    if (leg + 1 < n && g_room.id == legs[leg + 1].room) leg++, p = legs[leg].keys, t = idle = 0;
-    if (g_room.id == ROOM_CROSSROADS_10 && enemies_fk_awake()) {
-      printf("ok   way %s: the False Knight comes down after %.0f s\n", name, tick * 0.02f);
+  for (int tick = 0; tick < 30000; tick++, in++) {
+    if (leg + 1 < n && g_room.id == legs[leg + 1].room) leg++, p = legs[leg].keys, t = idle = in = 0;
+    if (goal()) {
+      printf("ok   way %s: %s after %.0f s\n", name, what, tick * 0.02f);
       return 0;
     }
+    if (legs[leg].strike && in % 10 == 0) enemies_debug_hit(21);
     /* (the leg's keys: "KEYS*TICKS,...", as --play has them) */
     uint32_t keys = 0;
     if (*p) {
@@ -1125,8 +1316,7 @@ static int way_run(const char *name, const Leg *legs, int n) {
     }
     run_ticks(1, keys);
   }
-  printf("FAIL way %s: the False Knight never came down (in %s at %.2f,%.2f)\n", name, room_name(g_room.id), g_hero.body.x,
-         g_hero.body.y);
+  printf("FAIL way %s: never %s (in %s at %.2f,%.2f)\n", name, what, room_name(g_room.id), g_hero.body.x, g_hero.body.y);
   return 1;
 }
 static int way_test(void) {
@@ -1137,7 +1327,8 @@ static int way_test(void) {
   game_enter_gate(ROOM_TUTORIAL_01, "top1");
   g_game.fade = 1, g_screen_fade = 255;
   game_fade_scene_in();
-  fails += way_run("from King's Pass", way_new_game, sizeof way_new_game / sizeof way_new_game[0]);
+  fails += way_run("from King's Pass", way_new_game, sizeof way_new_game / sizeof way_new_game[0], fk_down,
+                   "the False Knight comes down");
   /* (the Aspid Hunters beaten, the Knight back from the hot spring) */
   game_new();
   room_load(ROOM_CROSSROADS_08);
@@ -1146,10 +1337,22 @@ static int way_test(void) {
   for (int i = 0; i < ne; i++)
     if (es[i].type == ENT_OBJ && es[i].flags == OK_ARENA) persist_set(es[i].persist);
   game_enter_gate(ROOM_CROSSROADS_08, "right1");
-  fails += way_run("from the Aspid Hunters' arena", way_hot_spring, sizeof way_hot_spring / sizeof way_hot_spring[0]);
+  fails += way_run("from the Aspid Hunters' arena", way_hot_spring, sizeof way_hot_spring / sizeof way_hot_spring[0], fk_down,
+                   "the False Knight comes down");
   shielded = false;
   printf("way: %d failing\n", fails);
   return fails ? 1 : 0;
+}
+
+static int way_greenpath_test(void) {
+  /* (a new game, the Knight come into Greenpath from the Forgotten Crossroads) */
+  game_new();
+  shielded = true;
+  game_enter_gate(ROOM_FUNGUS1_01, "right1");
+  int fails = way_run("through Greenpath", way_greenpath, sizeof way_greenpath / sizeof way_greenpath[0], hornet_up,
+                      "Hornet wakes");
+  shielded = false;
+  return fails;
 }
 
 #endif
@@ -1157,11 +1360,16 @@ static int way_test(void) {
 static int gates_test(const char *which) {
 #ifdef ROOM_TOWN
   if (!strcmp(which, "way")) return way_test();
+  if (!strcmp(which, "greenpath")) return way_greenpath_test();
   if (!strcmp(which, "charms")) return charms_test();
   if (!strcmp(which, "stations")) return stations_test();
   if (!strcmp(which, "shaman")) return shaman_test();
   if (!strcmp(which, "respawn")) return respawn_test();
   if (!strcmp(which, "shopcharm")) return shop_charm_test();
+  if (!strcmp(which, "mapshop")) return map_shop_test();
+  if (!strcmp(which, "invpause")) return inventory_pause_test();
+  if (!strcmp(which, "doors")) return doors_test();
+  if (!strcmp(which, "spellblend")) return spell_blend_test();
 #endif
   if (!strcmp(which, "texts")) return texts_test();
   if (!strcmp(which, "seams")) return seams_test();

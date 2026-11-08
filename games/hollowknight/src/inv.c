@@ -1,8 +1,8 @@
 /* The inventory (Inventory Control): opened with the inventory key when the Knight can be stopped, or at a bench;
- * the world goes on behind it (the game's frozen, blurred screen: here the world dimmed) and a hit closes it. Its
- * panes: Inventory (UI Inventory: what the Knight has), Charms (UI Charms: the charms, equipped at a bench), side by
- * side; the cursor goes from one to the next through the arrows at their sides. Places in HUD units: the border's
- * from the inventory's place, a pane's from its own (tools/inv.py). */
+ * the game is paused behind it (SetIsInventoryOpen: game.c), its screen frozen (the game's blurred: here the world
+ * dimmed). Its panes: Inventory (UI Inventory: what the Knight has), Charms (UI Charms: the charms, equipped at a
+ * bench), side by side; the cursor goes from one to the next through the arrows at their sides. Places in HUD units:
+ * the border's from the inventory's place, a pane's from its own (tools/inv.py). */
 #pragma GCC optimize("Os")   /* (its code small: not where a frame's time goes) */
 #include <math.h>
 #include "game.h"
@@ -324,7 +324,7 @@ static void close_now(void) {
   g_pd.current_inv_pane = iv.pane;
   g_pd.disable_pause = false;
   hud_slide(false);
-  if (!pd_flag(PDF_AT_BENCH)) hero_regain_control();
+  if (!pd_flag(PDF_AT_BENCH)) hero_regain_control(), hero_start_anim_control();   /* (Regain Control) */
 }
 
 void inv_open_map(void) {

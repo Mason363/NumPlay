@@ -7023,6 +7023,12 @@ bool enemies_fk_awake(void) {
   const Enemy *e = fk_body();
   return e && e->st != FK_DORMANT;
 }
+
+/* (tests: Hornet woken in her arena, her fight begun) */
+bool enemies_hornet_awake(void) {
+  const Enemy *e = hornet();
+  return e && e->st != HO_INERT && e->st != HO_REFIGHT_READY;
+}
 #endif
 
 /* her Hornet Saver (walls round her arena): ActivateAllChildren */
