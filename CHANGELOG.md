@@ -2,6 +2,30 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.16: circloO, 2 3 4 Players, Fungal Wastes and fixes
+
+- **circloO:** CircloO.nwa, Florian van Strien's physics game: its 14 levels and 6 hard mode levels, read from the game's own files.
+- **2 3 4 Players:** FourPlayers.nwa, one-key party games for 2, 3 or 4 players on one calculator, with teams: 14 minigames.
+- **Hollow Knight: Fungal Wastes:** HollowKnightFungalWastes.nwa, from the Forgotten Crossroads down to Queen's Station, Mantis Village and the Mantis Lords. It shares Hollow Knight's saves.
+- **Kingdom Rush:** the seven heroes and the Hero Room.
+- **Retro-Go:** Game & Watch games, and Mega Drive games.
+- **Deltarune:** the Field's puzzles, the Great Board and the start of the Forest.
+- **Flappy Dunk:** FlappyDunk.nwa, now on its own with the original's ball, hoops, physics, all 51 challenges and its skins. Your best score comes along.
+- **Doodle Jump:** DoodleJump.nwa, now on its own with the original's doodler, platforms, monsters and screens. Your high score comes along.
+- **TI-84 Plus CE:** NumPlay-TI84CE.zip, 15 games, in beta. The TI-Nspire and Casio games run faster.
+- **Hollow Knight:** Greenpath's way to Hornet opens, Vengeful Spirit glows instead of hiding the platforms, Dirtmouth's map shop says Enter, the game pauses behind the inventory, and the pause menu works again after a door.
+- **Subway Surfers:** buildings, trains and wires far off no longer pop in, no dark line across the side tracks, and no jumping through the low roofs.
+- **Temple Run:** trees, rocks and cliffs come in from the fog instead of popping in.
+- **Among Us:** a bot who sees a kill calls it out and the crew votes the killer out, and bots only say what they saw.
+- **Level Devil:** spikes hurt where the game's do, so the first spring of Springs 2 clears them again.
+- **Crossy Road:** the lanes always leave a way forward, and the crossing lights blink steadily while a train goes by.
+- **Clash Royale:** the hitpoints of the towers at the top of the screen show.
+- **Bad Time Simulator:** Sans stands on one pair of legs.
+- **2 Players:** Tanks drive the way the arrows point.
+- **Imposter:** the same screen for every role, only the words tell.
+- **Saves:** the save scripts of 18 games end properly, so the Python editor no longer shows the next file in them.
+- **NumPlay Studio:** a game's label stays on the screen at its right edge.
+
 ## 1.24.15: Imposter, and NumPlay on other calculators
 
 - **Imposter:** Imposter.nwa, the party game. Pass the calculator around: everyone sees the secret word but the imposter. 30 categories, 1,695 words.
