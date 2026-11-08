@@ -217,15 +217,16 @@ static void draw_sans(const world_t *w, int feet_x, int feet_y, uint32_t tick) {
   int itx = bt_ifloor(tx * 0.5f + 0.5f), ity = bt_ifloor(ty * 0.5f + 0.5f);
   int ihx = itx + bt_ifloor(hx * 0.5f + 0.5f), ihy = ity + bt_ifloor(hy * 0.5f + 0.5f);
   const art_t *legs = &ART_LEGS[0];
-  blit(legs, feet_x, feet_y, false, 0, false);
   int tbx = feet_x - legs->ax + legs->jx + itx, tby = feet_y - legs->ay + legs->jy + ity;
   const art_t *torso;
-  if (w->body != BODY_NONE) {
+  if (w->body != BODY_NONE) { /* (the whole body, legs and all, where the legs stand: the legs aren't drawn) */
     static const art_t *const SET[4] = {ART_BODY_UP, ART_BODY_DOWN, ART_BODY_LEFT, ART_BODY_RIGHT};
     static const uint8_t COUNT[4] = {5, 4, 5, 5};
     int n = w->body & 3, k = w->anim_t / 2;
     torso = &SET[n][k < COUNT[n] ? k : COUNT[n] - 1];
+    tbx = feet_x, tby = feet_y;
   } else {
+    blit(legs, feet_x, feet_y, false, 0, false);
     torso = &ART_TORSO[w->torso == TORSO_SHRUG];
   }
   blit(torso, tbx, tby, false, 0, false);
