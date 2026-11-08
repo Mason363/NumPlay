@@ -114,19 +114,10 @@ bool player_visible(int j) {
   if (j == g.me) return Q->vent == NONE || Q->vent_anim;
   if (Q->vent != NONE && !Q->vent_anim) return false;
   if (!M->alive) return true;
-  if (!Q->alive) return false;
-  float dx = Q->pos.x - M->pos.x, dy = Q->pos.y - M->pos.y, r = view.radius + 0.3f;
-  if (dx * dx + dy * dy > r * r) return false;
-  return !ship_light_between((V2){M->pos.x, M->pos.y + FEET_Y}, (V2){Q->pos.x, Q->pos.y + FEET_Y});
+  return Q->alive && sees_point(g.me, Q->pos, FEET_Y);
 }
 
-static bool body_visible(const Body *B) {
-  const Player *M = &g.p[g.me];
-  if (!M->alive) return true;
-  float dx = B->pos.x - M->pos.x, dy = B->pos.y - M->pos.y, r = view.radius + 0.3f;
-  if (dx * dx + dy * dy > r * r) return false;
-  return !ship_light_between((V2){M->pos.x, M->pos.y + FEET_Y}, B->pos);
-}
+static bool body_visible(const Body *B) { return !g.p[g.me].alive || sees_point(g.me, B->pos, 0); }
 
 void view_prepare(void) {
   const Player *M = &g.p[g.me];

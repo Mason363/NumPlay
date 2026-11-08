@@ -311,13 +311,15 @@
     "accent": "0xF7F7F4",
     "colors": 16,
     "records": [
-      "doodlejump.sav"
+      "doodlejump.sav",
+      "doodlejump_saves.py"
     ],
     "shots": [
       "docs/shot.png"
     ],
-    "app": "DoodleJump.nwa",
     "repo": "https://github.com/Mason363/NumPlay/tree/main/games/doodlejump",
+    "default": false,
+    "xl": true,
     "ports": [
       "sdl",
       "web",

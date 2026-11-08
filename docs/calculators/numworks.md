@@ -36,7 +36,6 @@ The games use the calculator's own keys: arrows to move, **OK** and **EXE** to a
 | [Portal Returns](../../games/portal/README.md) | Think with portals |
 | [Tetris](../../games/tetris/README.md) | Stack and clear lines |
 | [Chrome Dino](../../games/dinorun/README.md) | Jump, duck, survive |
-| [Doodle Jump](../../games/doodlejump/README.md) | Bounce as high as you can |
 | [Chess](../../games/chess/README.md) | Bots, puzzles, 2 players |
 | [Flappy Bird](../../games/flappybird/README.md) | Flap through the pipes |
 | [Tower Blocks](../../games/towerblock/README.md) | Stack the blocks as high as you can |
@@ -70,6 +69,7 @@ Each one installs on its own, the same way.
 | [Monkey Mart](../../games/monkeymart/README.md) | Run a grocery mart as a monkey | [MonkeyMart.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/MonkeyMart.nwa) |
 | [Plants vs. Zombies](../../games/pvz/README.md) | Plant your lawn | [PlantsVsZombies.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/PlantsVsZombies.nwa) |
 | [Tomb of the Mask](../../games/tombofthemask/README.md) | Dash through the tomb ahead of the lava | [TombOfTheMask.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/TombOfTheMask.nwa) |
+| [Doodle Jump](../../games/doodlejump/README.md) | Bounce as high as you can | [DoodleJump.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/DoodleJump.nwa) |
 | [Stickman Hook](../../games/stickmanhook/README.md) | Swing from hook to hook | [StickmanHook.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/StickmanHook.nwa) |
 | [Dune](../../games/dune/README.md) | Roll down the dunes and fly over the line | [Dune.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/Dune.nwa) |
 | [Doom](../../games/doom/README.md) | Rip and tear | [Doom.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/Doom.nwa) |

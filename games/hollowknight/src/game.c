@@ -213,6 +213,8 @@ static void scene_load(void) {
     return;
   }
   if (!room_load(g->next_room)) return;
+  /* (OnNextLevelReady: the pause allowed again, as a door took it away) */
+  g_pd.disable_pause = false;
   room_entered();
   int n;
   const Ent *es = room_ents(&n);
@@ -488,6 +490,12 @@ static void step(uint32_t keys) {
 void game_tick(uint32_t keys) {
   Game *g = &g_game;
   g_pd.play_time += 0.02f;   /* (GameManager: PlayerData's playTime, in real time) */
+  /* (the inventory up: GameManager.SetIsInventoryOpen, the game paused, its time scale 0, till it is down again; the HUD
+   * slides away meanwhile) */
+  if (inv_open()) {
+    hud_tick();
+    return;
+  }
   freeze_tick(0.02f);
   scene_tick(0.02f);
   /* (game time runs at the time scale: frozen, no steps) */

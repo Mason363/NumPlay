@@ -318,13 +318,18 @@ void check_win(void) {
   else if (tasks_progress() >= 1) end_game(0, 2);
 }
 
-/* PhysicsHelpers.AnythingBetween with the ship and its objects */
+/* PhysicsHelpers.AnythingBetween with the ship and its objects: what a player sees, as the screen shows it (eye to eye,
+ * in the light, and whoever jumps in or out of a vent) */
 bool can_see(int a, int b) {
-  const Player *A = &g.p[a], *B = &g.p[b];
-  if (B->vent != NONE) return false;
-  float dx = A->pos.x - B->pos.x, dy = A->pos.y - B->pos.y, r = vision_radius(a);
+  const Player *B = &g.p[b];
+  if (B->vent != NONE && !B->vent_anim) return false;
+  return sees_point(a, B->pos, FEET_Y);
+}
+bool sees_point(int a, V2 p, float up) {
+  const Player *A = &g.p[a];
+  float dx = A->pos.x - p.x, dy = A->pos.y - p.y, r = vision_radius(a) + 0.3f;
   if (dx * dx + dy * dy > r * r) return false;
-  return !ship_light_between(A->pos, B->pos);
+  return !ship_light_between((V2){A->pos.x, A->pos.y + FEET_Y}, (V2){p.x, p.y + up});
 }
 
 void kill_player(int killer, int victim) {

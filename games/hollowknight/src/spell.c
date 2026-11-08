@@ -365,7 +365,21 @@ void fireballs_tick(void) {
   }
 }
 
+/* (their material's UI/BlendModes/Screen: the blast, the ball and its impact screened over what is behind, their black
+ * nothing) */
+static void fireball_actor(Inst *in) {
+  in->flags = (uint8_t)((in->flags & ~F_BLEND) | BL_SCREEN);
+  gfx_actor(in, SORT_KEY(0, 0));
+}
+
+#ifdef HOST
+bool g_fireballs_hidden;   /* (tests: the view without them) */
+#endif
+
 void fireballs_draw(void) {
+#ifdef HOST
+  if (g_fireballs_hidden) return;
+#endif
   for (int i = 0; i < MAX_FIREBALLS; i++) {
     const Fireball *f = &fbs[i];
     if (f->st == FB_OFF) continue;
@@ -373,16 +387,16 @@ void fireballs_draw(void) {
     Inst in;
     if (f->blast_on) {
       sprite_inst(f->blast.sprite, f->bx, f->by, -0.001f, 2 * k, 2, 0, &in);
-      gfx_actor(&in, SORT_KEY(0, 0));
+      fireball_actor(&in);
     }
     if (f->st == FB_PAUSE || f->st == FB_IDLE || f->st == FB_DISSIPATE) {
       sprite_inst(f->anim.sprite, f->body.x, f->body.y, -0.002f, f->sx * k, f->sy, 0, &in);
-      gfx_actor(&in, SORT_KEY(0, 0));
+      fireball_actor(&in);
     }
     if (f->impact_on) {
       /* (Wall Impact: its child, 1.71 ahead, at 2.5 its scale) */
       sprite_inst(f->impact.sprite, f->body.x + 1.7094f * f->sx * k, f->body.y, -0.002f, 2.5f * f->sx * k, 2.5f * f->sy, 0, &in);
-      gfx_actor(&in, SORT_KEY(0, 0));
+      fireball_actor(&in);
     }
   }
 }

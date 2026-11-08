@@ -551,6 +551,16 @@ void prompt_hide(int handle) {
 
 void prompts_reset(void) { memset(prompts, 0, sizeof prompts); }
 
+#ifdef HOST
+/* (tests: the prompts up, their texts) */
+int prompts_up(int16_t *labels, int max) {
+  int n = 0;
+  for (int i = 0; i < MAX_PROMPTS && n < max; i++)
+    if (prompts[i].used && prompts[i].visible) labels[n++] = prompts[i].label;
+  return n;
+}
+#endif
+
 void prompts_tick(void) {
   for (int i = 0; i < MAX_PROMPTS; i++) {
     Prompt *p = &prompts[i];
