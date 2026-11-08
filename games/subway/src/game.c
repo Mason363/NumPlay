@@ -476,6 +476,11 @@ void run_step(uint32_t keys, uint32_t pressed) {
   /* along */
   pl.z += speed * DT;
   run.dist += speed * DT;
+  /* (a low roof stops a jump begun before it, as the game's roof collider does: the head under it) */
+  if (pl.fly <= 0 && pl.state == ST_AIR) {
+    float top = world_roof(pl.z) - STAND_H;
+    if (pl.y > top) pl.y = top > pl.ground ? top : pl.ground, pl.vy = pl.vy > 0 ? 0 : pl.vy;
+  }
   pl.phase += DT * (8 + speed * 0.22f);
   pl.on_roof = pl.fly <= 0 && pl.ground > TRAIN_H - 0.1f && pl.y <= pl.ground + 0.05f;
   if (pl.on_roof) run.roof += speed * DT;

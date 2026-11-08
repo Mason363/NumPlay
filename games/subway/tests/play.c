@@ -160,6 +160,7 @@ int main(int argc, char **argv) {
   bool all = !strcmp(shots, "all");
   uint32_t prev = 0;
   int max_polys = 0, f = 0;
+  float roof_over = -100;
   extern uint32_t perf_polys;
   for (f = 0; f < frames && app_running; f++) {
     uint32_t k = 0;
@@ -176,6 +177,8 @@ int main(int argc, char **argv) {
     bool was_dead = pl.dead;
     app_step(k, k & ~prev);
     prev = k;
+    /* how far the runner's head went into a low roof (never: tests/check.py) */
+    if (pl.fly <= 0 && !pl.dead && pl.y + 9.2f * U - world_roof(pl.z) > roof_over) roof_over = pl.y + 9.2f * U - world_roof(pl.z);
     if (stats && pl.dead && !was_dead) {
       /* what the runner ran into */
       printf("dead at frame %d: z %.1f x %.2f y %.2f lane %d from %d state %d roll %.2f chase %.2f\n", f, pl.z, pl.x, pl.y,
@@ -250,8 +253,8 @@ int main(int argc, char **argv) {
                     r_stat[3] / (unsigned)(f / draw_every + 1));
   if (stats)
     printf("frames %d running %d dead %d dist %.0f score %u coins %u multiplier %d polys %d total_coins %u "
-           "best %u runs %u mset %u jumps %d rolls %d stumbles %d\n",
+           "best %u runs %u mset %u jumps %d rolls %d stumbles %d roof_over %.2f\n",
            f, app_running, pl.dead, run.dist, run.score, run.coins, run.multiplier, max_polys, pg.coins, pg.best,
-           pg.runs, pg.mset, run.jumps, run.rolls, run.stumbles);
+           pg.runs, pg.mset, run.jumps, run.rolls, run.stumbles, roof_over);
   return 0;
 }

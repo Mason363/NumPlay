@@ -3,7 +3,8 @@
 
 - a first start shows how to play, then the title; Home saves (subway.sav and its copy, subway_saves.py);
 - runs played by the bot on many seeds: no fault, the world keeps coming, the score and coins add up;
-- long runs where nothing hurts: minutes of track at full speed, tunnels, stations, every power-up;
+- long runs where nothing hurts: minutes of track at full speed, tunnels, stations, every power-up; the runner never
+  jumps through a low roof;
 - the shop: upgrades, items, characters and boards bought, coins taken, all kept;
 - the save comes back from its copy when the file is gone (as after installing apps);
 - Save me: keys spent, the run goes on; pause and Quit game: the coins are kept.
@@ -92,6 +93,7 @@ def long_runs(d):
         assert st["dist"] > 6000 and not st["dead"], (seed, st)
         assert st["polys"] < 1750, st   # (the renderer keeps 1800)
         assert st["mset"] >= 1, st   # (missions done along the way)
+        assert st["roof_over"] <= 0.01, st   # (under the elevated line and in stations, a jump stops at the roof)
 
 
 def shop(d):
