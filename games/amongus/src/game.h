@@ -175,6 +175,7 @@ bool sabotage_ready(void);
 void fix_sabotage(void);
 int nearest_vent(V2 p, float maxd);
 bool can_see(int a, int b);
+bool sees_point(int a, V2 p, float up);   /* (up: FEET_Y for a player's middle, 0 for a body) */
 void check_win(void);
 void enter_vent(int i, int v);
 void exit_vent(int i);

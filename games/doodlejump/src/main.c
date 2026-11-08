@@ -97,8 +97,12 @@ static uint32_t rnd(void) {
 }
 static float frand(float a, float b) { return a + (b - a) * (float)(rnd() & 0xFFFF) / 65535.0f; }
 static bool chance(int per1000) { return (int)(rnd() % 1000) < per1000; }
-static float fabs_(float v) { return v < 0 ? -v : v; }
+static float fabs_(float v) { return __builtin_fabsf(v); }
+#ifdef __ARM_FP /* (one instruction) */
+static float minf(float a, float b) { return __builtin_fminf(a, b); }
+#else
 static float minf(float a, float b) { return a < b ? a : b; }
+#endif
 static float sin_(float x) { /* (the flying monster's sway: no libm) */
   const float tp = 6.2831853f;
   x -= tp * (float)(int)(x / tp);
@@ -145,15 +149,15 @@ static void spawn(plat_t *p) {
     *p = (plat_t){frand(PW, W - PW), sv.top + frand(15, gmax * 0.8f), 0, 1, P_BROWN, I_NONE, 0};
     return;
   }
-  sv.top += frand(gmin, gmax);
-  float x = frand(PW, W - PW);
-  if (sv.side) x = sv.side > 0 ? frand(W / 2 + 10, W - PW) : frand(PW, W / 2 - 10), sv.side = 0; /* (away from the monster) */
-  *p = (plat_t){x, sv.top, 0, (int8_t)(rnd() & 1 ? 1 : -1), P_GREEN, I_NONE, 0};
   int r = (int)(rnd() % 1000), blue = h < 1000 ? 0 : (int)minf((h - 1000) / 22, 400);
   int white = h < 3000 ? 0 : (int)minf(100 + (h - 3000) / 60, 250), bomb = h < 8000 ? 0 : 80;
-  if (r < blue) p->type = P_BLUE;
-  else if (r < blue + white) p->type = P_WHITE;
-  else if (r < blue + white + bomb) p->type = P_BOMB;
+  int type = r < blue ? P_BLUE : r < blue + white ? P_WHITE : r < blue + white + bomb ? P_BOMB : P_GREEN;
+  float y = sv.top + frand(gmin, gmax), x = frand(PW, W - PW);
+  if (type != P_BOMB) { /* (a bomb may be gone by the time he gets there: never the only way up) */
+    sv.top = y;
+    if (sv.side) x = sv.side > 0 ? frand(W / 2 + 10, W - PW) : frand(PW, W / 2 - 10), sv.side = 0; /* (away from the monster) */
+  }
+  *p = (plat_t){x, y, 0, (int8_t)(rnd() & 1 ? 1 : -1), (uint8_t)type, I_NONE, 0};
   if (p->type == P_GREEN || p->type == P_BLUE) {
     r = (int)(rnd() % 1000);
     if (r < 80) p->item = I_SPRING;
@@ -219,7 +223,7 @@ static void step(int steer) {
   sv.x += sv.vx;
   if (sv.x < 0) sv.x += W;
   if (sv.x >= W) sv.x -= W;
-  float oy = sv.y;
+  float oy = sv.y, page = sv.cam + VIEW;
   if (sv.fly > 0) sv.vy = sv.item == I_JET ? JET : PROP, sv.fly--;
   else sv.vy -= G;
   sv.y += sv.vy;
@@ -229,9 +233,9 @@ static void step(int steer) {
       p->x += p->dir * (1.0f + minf(sv.score / 8000.0f, 1.2f));
       if (p->x < PW || p->x > W - PW) p->dir = (int8_t)-p->dir;
     }
-    if (p->state == 1 || p->type == P_BOMB) p->t += 1;
-    if (p->type == P_BOMB && p->state == 0 && p->t > 180) p->state = 1, p->t = 0; /* yellow, orange, red, gone */
-    if (dead || sv.vy >= 0 || p->state == 1 || oy < p->y || sv.y > p->y || !over_x(p->x, PW)) continue;
+    if (p->state == 1) p->t += 1;
+    else if (p->type == P_BOMB && p->y < page && (p->t += 1) > 180) p->state = 1, p->t = 0; /* lit on the page */
+    if (dead || (ready && i) || sv.vy >= 0 || p->state == 1 || oy < p->y || sv.y > p->y || !over_x(p->x, PW)) continue;
     if (p->type == P_BROWN) { /* it breaks, he falls on */
       p->state = 1, p->t = 0;
       continue;
@@ -273,7 +277,7 @@ static void step(int steer) {
     if (shot_on[s] && (shot_y[s] += 15) > sv.cam + VIEW + 40) shot_on[s] = false;
   /* the page follows him up, and new platforms come in at the top */
   if (sv.y > sv.cam + VIEW / 2) sv.cam = sv.y - VIEW / 2;
-  if (sv.y > (float)sv.score) sv.score = (uint32_t)sv.y;
+  if (sv.y > (float)sv.score && !ready) sv.score = (uint32_t)sv.y; /* (the title's bounce, in place, scores nothing) */
   if (sv.score > sv.best) sv.best = sv.score;
   for (int i = 0; i < NP; i++)
     if (sv.plat[i].y < sv.cam - 40) spawn(&sv.plat[i]);

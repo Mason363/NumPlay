@@ -173,7 +173,7 @@ struct Rom {
 };
 
 struct State {
-  uint16_t reach_prev;      // bits 0..8: playable columns reachable in the previous lane
+  uint16_t reach_prev;      // bits 0..8: playable columns reachable in the previous lane (roads and rails crossed straight)
   float ox, oy;             // screen position of the world origin (whole pixels)
   float lxa, lxb;           // visible x range of the lane being drawn
   float cam_x, cam_z, shake;
@@ -994,14 +994,17 @@ static int pick_tree(int edge) {
   return r < 10 ? O_TALL : r < 40 ? O_MEDIUM : r < 80 ? O_SHORT : O_ROCK;
 }
 
-static uint16_t spread(uint16_t seed, uint16_t fr) {
+// The columns of fr reached sideways from seed's: both ways (dir 0), or only the way a log drifts.
+static uint16_t spread(uint16_t seed, uint16_t fr, int dir) {
   uint16_t m = seed & fr, old;
   do {
     old = m;
-    m |= ((m << 1) | (m >> 1)) & fr;
+    m |= ((dir >= 0 ? m << 1 : 0) | (dir <= 0 ? m >> 1 : 0)) & fr;
   } while (m != old);
   return m;
 }
+
+static NOINLINE int rand_dir(void) { return irand(2) ? 1 : -1; }
 
 static int random_bit(uint16_t mask) {
   int n = 0;
@@ -1078,18 +1081,16 @@ static void gen_lane(void) {
         uint16_t fr = 0;
         for (int i = 0; i < 9; i++)
           if (!L->cells[COL0 + PLAY_MIN + i]) fr |= 1 << i;
-        reach_prev = spread(reach_prev, fr);
+        reach_prev = spread(reach_prev, fr, 0);
         if (row > 1 && irand(100) < 10) {
           int c = random_bit(fr);
           L->coin = (int8_t)(c + PLAY_MIN);
         }
-      } else {
-        reach_prev = ALLPLAY;
       }
       break;
     }
     case L_ROAD: {
-      dir = prev_dir ? -prev_dir : (irand(2) ? 1 : -1);
+      dir = prev_dir ? -prev_dir : rand_dir();
       int kind = irand(8);
       float len = is_truck(kind) ? 2 * TRUCK_HALF : 2 * CAR_HALF, span = 30 + len;
       float boost = 1.0f + (row > 300 ? 300 : row) / 600.0f;
@@ -1100,12 +1101,10 @@ static void gen_lane(void) {
       if (n > MAXOBJ) n = MAXOBJ;
       place_movers(L, span / n);
       for (int i = 0; i < L->nobj; i++) L->obj[i].kind = (uint8_t)kind;
-      if (irand(100) < 5) L->coin = (int8_t)(PLAY_MIN + irand(9));
-      reach_prev = ALLPLAY;
-      break;
+      break;  // (crossed straight: the reach stays as it was)
     }
     case L_RIVER: {
-      dir = prev_dir && irand(100) < 95 ? -prev_dir : (irand(2) ? 1 : -1);
+      dir = prev_dir && irand(100) < 95 ? -prev_dir : rand_dir();
       L->speed = frand(1.33f, 3.0f);
       place_movers(L, L->speed * frand(2.5f, 3.0f));
       float maxlen = L->period / L->nobj - 1.2f;
@@ -1115,21 +1114,16 @@ static void gen_lane(void) {
         L->obj[i].kind = (uint8_t)len;
         L->obj[i].coin = irand(100) < 5 ? (int8_t)irand(len) : -1;
       }
-      reach_prev = ALLPLAY;
+      reach_prev = spread(reach_prev, ALLPLAY, dir);  // the logs carry it one way
       break;
     }
     case L_LILY: {
       uint16_t pads = 1 << random_bit(reach_prev);
       int n = 1;
-      for (int i = 0; i < 9 && n < 3; i++) {
-        if (pads >> i & 1) continue;
-        if (irand(100) < ((reach_prev >> i & 1) ? 30 : 10)) {
-          pads |= 1 << i;
-          n++;
-        }
-      }
-      for (int i = 0; i < 9; i++)
+      for (int i = 0; i < 9; i++) {
+        if (!(pads >> i & 1) && n < 3 && irand(100) < ((reach_prev >> i & 1) ? 30 : 10)) pads |= 1 << i, n++;
         if (pads >> i & 1) L->cells[COL0 + PLAY_MIN + i] = O_PAD;
+      }
       for (int c = 0; c < NCOLS; c++)
         if ((c - COL0 < PLAY_MIN || c - COL0 > PLAY_MAX) && irand(100) < 12) L->cells[c] = O_PAD;
       if (irand(100) < 5) L->coin = (int8_t)(random_bit(pads) + PLAY_MIN);
@@ -1137,18 +1131,16 @@ static void gen_lane(void) {
       break;
     }
     case L_RAIL: {
-      dir = irand(2) ? 1 : -1;
       float wait = frand(3.0f, 8.0f);
       L->period = wait;
       L->timer = frand(0, wait) + TRAIN_WARN;
-      if (irand(100) < 5) L->coin = (int8_t)(PLAY_MIN + irand(9));
-      reach_prev = ALLPLAY;
       dir = 0;  // trains do not set the next lane's direction
-      L->dir = irand(2) ? 1 : -1;
+      L->dir = (int8_t)rand_dir();
       break;
     }
   }
   if (type != L_RAIL) L->dir = (int8_t)dir;
+  if ((type == L_ROAD || type == L_RAIL) && irand(100) < 5) L->coin = (int8_t)(PLAY_MIN + irand(9));
   prev_dir = dir;
 }
 
@@ -1623,7 +1615,6 @@ static void draw_lane_objects(int row) {
       it[n++] = (Item){L->obj[i].x, I_LOG, (uint8_t)i, (uint8_t)(MD_LOG + k - 2)};
   }
   if (L->type == L_RAIL) {
-    it[n++] = (Item){-0.4f, I_SIGNAL, 0, MD_SIGNAL};
     if (L->train)
       for (int i = 0; i < TRAIN_CARS; i++)
         it[n++] = (Item){L->trainx - L->dir * (WAGON * 0.5f + WAGON * i), I_MODEL, 0,
@@ -1644,6 +1635,8 @@ static void draw_lane_objects(int row) {
     while (j >= 0 && it[j].key > t.key) { it[j + 1] = it[j]; j--; }
     it[j + 1] = t;
   }
+  // the crossing's signal stands in front of the rails: over the train, whatever its x
+  if (L->type == L_RAIL) it[n++] = (Item){-0.4f, I_SIGNAL, 0, MD_SIGNAL};
   if (P.visible && prow == row && flat) draw_player();  // the pancake lies under the traffic
   // shadows on this lane's ground
   for (int i = 0; i < n; i++) {
