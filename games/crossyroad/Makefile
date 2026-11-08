@@ -2,6 +2,7 @@
 #   make            build output/crossyroad.nwa for the calculator
 #   make sim        build output/crossyroad.nwb for the native Epsilon simulator
 #   make host       build a desktop test harness (frame dumps)
+#   make test       on a computer: the lanes always leave a way forward (tests/path_test.c)
 
 NWLINK ?= npx --yes -- nwlink@1.0.0
 CC_DEVICE = arm-none-eabi-gcc
@@ -51,6 +52,12 @@ host: $(BUILD)/host
 $(BUILD)/host: src/crossy.c host/host.c | $(BUILD)
 	gcc -std=c11 -O2 -g -Wall -fno-math-errno -DPLATFORM_DEVICE=1 -DHOST=1 -Dmain=game_main -I$(EADK_INC) -c src/crossy.c -o $(BUILD)/crossy_host.o
 	gcc -std=c11 -O2 -g -DPLATFORM_DEVICE=1 -I$(EADK_INC) host/host.c $(BUILD)/crossy_host.o -o $@ -lm
+
+.PHONY: test
+test: $(BUILD)/path_test
+	$(BUILD)/path_test
+$(BUILD)/path_test: src/crossy.c tests/path_test.c | $(BUILD)
+	gcc -std=c11 -O2 -Wall -fno-math-errno -DPLATFORM_DEVICE=1 -DHOST=1 -I$(EADK_INC) tests/path_test.c -o $@ -lm
 
 clean:
 	rm -rf $(BUILD)
