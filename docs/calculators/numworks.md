@@ -2,7 +2,7 @@
 
 <img src="../media/calcs/numworks.png" height="200" align="right" alt="NumWorks">
 
-28 free games in one app, NumPlay.nwa, and 49 big games that install on their own. For the N0110, N0115 and N0120.
+27 free games in one app, NumPlay.nwa, and 50 big games that install on their own. For the N0110, N0115 and N0120.
 
 ## Install
 
@@ -21,7 +21,7 @@ Updating? Install the new file the same way: your progress comes back by itself.
 
 The games use the calculator's own keys: arrows to move, **OK** and **EXE** to act, **Back** to pause or go back, and **Home** to save and quit.
 
-## The 28 games in NumPlay.nwa
+## The 27 games in NumPlay.nwa
 
 | Game | |
 | --- | --- |
@@ -53,7 +53,7 @@ The games use the calculator's own keys: arrows to move, **OK** and **EXE** to a
 | [Ultimate Tic-Tac-Toe](../../games/uttt/README.md) | Tic-tac-toe in tic-tac-toe |
 | [Sokoban](../../games/sokoban/README.md) | Push every box home |
 
-## The 49 big games
+## The 50 big games
 
 Each one installs on its own, the same way.
 

@@ -86,9 +86,9 @@ $(BUILD_DIR)/record.nwa: $(HOT) $(COLD) src/bot.c $(HEADERS) $(BUILD_DIR)/icon.o
 	$(Q) $(CC) $(CFLAGS) -Os -DFD_AUTOPLAY=1 $(LDFLAGS) $(HOT) $(COLD) src/bot.c $(BUILD_DIR)/icon.o -lm -o $@
 record: $(BUILD_DIR)/record.nwa
 	$(Q) rm -rf $(REC_DIR) && mkdir -p $(REC_DIR)
-	$(PYTHON) ../../tools/emu.py $< --nwlink "$(NWLINK)" --ms 21000 --out $(REC_DIR) --frames $(REC_DIR)/raw \
+	$(PYTHON) ../../tools/emu.py $< --nwlink "$(NWLINK)" --ms 25000 --out $(REC_DIR) --frames $(REC_DIR)/raw \
 	  --keys "400-480:ok,1200-1280:ok"
-	$(PYTHON) ../../tools/record.py --frames $(REC_DIR)/raw --out $(REC_DIR) --fps 25 --gif 1300-14300:flappydunk.gif
+	$(PYTHON) ../../tools/record.py --frames $(REC_DIR)/raw --out $(REC_DIR) --fps 25 --gif 11200-24200:flappydunk.gif
 
 # on a computer: tests/play.c checks the game and saves pictures
 HOST_FLAGS = -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -DHOST -I$(L) -Isrc \
