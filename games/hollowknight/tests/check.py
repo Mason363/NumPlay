@@ -24,6 +24,7 @@
 - the inventory opened as the Knight runs: he stays where he was behind it, the run key let go or held, and stands once
   it is closed
 - through a door (up out of the Crossroads by the well, into Sly's shop): the inventory opens in the room past it
+- Vengeful Spirit cast by a platform: its blast, ball and impact screened over the view, nothing behind them darker
 - the Snail Shaman's temple, played as one game: his spell taken, the Elder Baldur killed, his talk opening the gate, and
   so after a save and a load too; its lifeblood cocoon broken through a load and a rest there, whole after another bench
 - the enemies the game keeps dead until a rest: still dead as the Knight comes back, out again after a rest at a bench,
@@ -127,6 +128,8 @@ def main():
     results.append(report("the inventory opened running: the game paused, the Knight standing after", rc, out, ("FAIL",)))
     rc, out = play("--gates", "doors")
     results.append(report("through a door: the inventory opens in the room past it", rc, out, ("FAIL",)))
+    rc, out = play("--gates", "spellblend")
+    results.append(report("Vengeful Spirit screened over the view, nothing behind it darker", rc, out, ("FAIL",)))
     with tempfile.TemporaryDirectory() as saves:
         rc, out = play("--gates", "shaman", env={"HKSAVES": saves})
     results.append(report("the Snail Shaman: his spell, the Elder Baldur, his gate, saved and loaded", rc, out, ("FAIL",)))

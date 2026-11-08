@@ -1127,6 +1127,49 @@ static int doors_test(void) {
   return fails ? 1 : 0;
 }
 
+/* Vengeful Spirit cast by a platform (Mason363/NumPlay#395): its blast, ball and impact screened over the view (their
+ * material's Screen), so nothing behind them gets darker, the platforms and the Knight seen through them */
+static int spell_blend_test(void) {
+  extern bool g_fireballs_hidden;
+  extern uint16_t host_fb[SCREEN_W * SCREEN_H];
+  static uint16_t with[SCREEN_W * SCREEN_H];
+  int fails = 0, frames = 0;
+  game_new();
+  shielded = true;
+  g_pd.fireball_level = 1, g_pd.mp = 99;
+  game_enter(ROOM_CROSSROADS_07, 20.9f, 54.5f, true);
+  run_ticks(150, 0);
+  run_ticks(4, K_SPELL | K_FOCUS);
+  for (int t = 0; t < 40; t++) {
+    run_ticks(1, 0);
+    game_draw();
+    memcpy(with, host_fb, sizeof with);
+    g_fireballs_hidden = true;
+    game_draw();
+    g_fireballs_hidden = false;
+    /* (a pixel darker by an eighth of its light or more: red and blue weigh twice, as green's 6 bits) */
+    int darker = 0, changed = 0;
+    for (int i = 0; i < SCREEN_W * SCREEN_H; i++) {
+      uint16_t a = with[i], b = host_fb[i];
+      if (a == b) continue;
+      changed++;
+      int la = 2 * (a >> 11) + (a >> 5 & 63) + 2 * (a & 31), lb = 2 * (b >> 11) + (b >> 5 & 63) + 2 * (b & 31);
+      darker += lb - la > 32;
+    }
+    if (!changed) continue;
+    frames++;
+    if (darker > changed / 100) {
+      printf("FAIL spell blend: %d ticks after the cast, %d of the %d pixels it covers darker\n", t, darker, changed);
+      fails++;
+      break;
+    }
+  }
+  shielded = false;
+  if (!frames) printf("FAIL spell blend: no spell seen\n"), fails++;
+  else if (!fails) printf("ok   spell blend: over %d frames, nothing behind it darker\n", frames);
+  return fails ? 1 : 0;
+}
+
 /* the way to the False Knight (Mason363/NumPlay#172), played as one game, room by room, each room's keys from when the
  * Knight comes into it: from the new game's fall into King's Pass, through Dirtmouth and down its well, past the Temple of
  * the Black Egg, down through the tollbooth into Crossroads_03 (its lever's gates open: the game's Knight opens them from
@@ -1326,6 +1369,7 @@ static int gates_test(const char *which) {
   if (!strcmp(which, "mapshop")) return map_shop_test();
   if (!strcmp(which, "invpause")) return inventory_pause_test();
   if (!strcmp(which, "doors")) return doors_test();
+  if (!strcmp(which, "spellblend")) return spell_blend_test();
 #endif
   if (!strcmp(which, "texts")) return texts_test();
   if (!strcmp(which, "seams")) return seams_test();
