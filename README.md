@@ -5,8 +5,8 @@
 <h1 align="center">NumPlay</h1>
 
 <p align="center">
-  <b>28 free games for your NumWorks calculator, in one app.</b><br>
-  Plus 48 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.<br>
+  <b>27 free games for your NumWorks calculator, in one app.</b><br>
+  Plus 50 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.<br>
   Now on the TI-84 Plus CE, TI-Nspire CX and Casio fx-CG50 too.
 </p>
 
@@ -47,7 +47,7 @@
 
 <table>
   <tr>
-    <td align="center" width="20%"><a href="docs/calculators/numworks.md"><img src="docs/media/calcs/numworks.png" height="150" alt="NumWorks"><br><b>NumWorks</b></a><br><sub>N0110, N0115, N0120<br>28 games, 49 big games</sub></td>
+    <td align="center" width="20%"><a href="docs/calculators/numworks.md"><img src="docs/media/calcs/numworks.png" height="150" alt="NumWorks"><br><b>NumWorks</b></a><br><sub>N0110, N0115, N0120<br>27 games, 50 big games</sub></td>
     <td align="center" width="20%"><a href="docs/calculators/ti-84-plus-ce.md"><img src="docs/media/calcs/ti84ce.png" height="150" alt="TI-84 Plus CE"><br><b>TI-84 Plus CE</b></a><br><sub>and TI-83 Premium CE<br>15 games</sub></td>
     <td align="center" width="20%"><a href="docs/calculators/ti-nspire.md"><img src="docs/media/calcs/nspire.png" height="150" alt="TI-Nspire CX II"><br><b>TI-Nspire CX</b></a><br><sub>CX and CX II, with Ndless<br>78 games</sub></td>
     <td align="center" width="20%"><a href="docs/calculators/casio-fx-cg50.md"><img src="docs/media/calcs/casio_cg50.png" height="150" alt="Casio fx-CG50"><br><b>Casio fx-CG50</b></a><br><sub>and Graph 90+E, fx-CG10, fx-CG20<br>73 games</sub></td>
@@ -158,7 +158,7 @@ The games with a blue ring are all in one app, **NumPlay.nwa**. The others are b
     <td align="center"><a href="games/donkeykong/README.md"><img src="docs/media/readme/thumb_donkeykong.png" width="240" alt="Donkey Kong"><br><b>Donkey Kong</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/DonkeyKong.nwa">Download</a></td>
   </tr>
   <tr>
-    <td align="center"><a href="games/flappydunk/README.md"><img src="docs/media/readme/thumb_flappydunk.png" width="240" alt="Flappy Dunk"><br><b>Flappy Dunk</b></a></td>
+    <td align="center"><a href="games/flappydunk/README.md"><img src="docs/media/readme/thumb_flappydunk.png" width="240" alt="Flappy Dunk"><br><b>Flappy Dunk</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/FlappyDunk.nwa">Download</a></td>
     <td align="center"><a href="games/towerblock/README.md"><img src="docs/media/readme/thumb_towerblock.png" width="240" alt="Tower Blocks"><br><b>Tower Blocks</b></a></td>
     <td align="center"><a href="games/coreball/README.md"><img src="docs/media/readme/thumb_coreball.png" width="240" alt="Core Ball"><br><b>Core Ball</b></a></td>
   </tr>
@@ -442,7 +442,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 - **[Gabriele Cirulli](https://github.com/gabrielecirulli/2048)** made 2048.
 - **Crossy Road** by Hipster Whale inspired NumPlay's Crossy Road, written in C for NumPlay. Its characters (the Chicken, and the nine more the prize machine gives) are built from the game's own models and named as the game names them, read from its iOS build (1.3.7825). Not affiliated with Hipster Whale.
 - **Block Blast!** by [Hungry Studio](https://www.hungrystudio.com) inspired NumPlay's Block Blast, written in C for NumPlay with no code or art from it. Its blocks, scoring and colours follow measurements of the app by the players behind [blockblast-Self-Improvement-loop](https://github.com/Kucze3205/blockblast-Self-Improvement-loop).
-- **Flappy Dunk** by Voodoo (made with Acid Cousins) inspired NumPlay's Flappy Dunk, written in C for NumPlay with no code or art from it. Its physics and hoops follow the numbers in the game's Android build. **Bobydeluxe** brought it to NumPlay. Not affiliated with Voodoo.
+- **Flappy Dunk** by Voodoo (made with Acid Cousins) inspired NumPlay's Flappy Dunk, which uses the game's own pictures, physics, challenges and skin goals from its Android release, lettered in the **Lilita One** font (SIL Open Font License, [license](LICENSES/OFL-1.1-LilitaOne.txt)). **Bobydeluxe** brought the first version to NumPlay. Not affiliated with Voodoo.
 - **Tower Blocks** by [Steve Gardner](https://codepen.io/ste-vg/pen/ppLQNW) (MIT License) is ported to C for NumPlay from its source: its sizes, speeds, colours, light and camera are the original's. **Bobydeluxe** brought it to NumPlay.
 - **Doodle Jump** by Lima Sky inspired NumPlay's Doodle Jump, which uses the game's own pictures, font and texts from its Android release. **Bobydeluxe** brought the first version to NumPlay. Not affiliated with Lima Sky.
 - **Suika Game** by Aladdin X inspired NumPlay's Suika Game, written in C for NumPlay with no code or art from it. Its fruit sizes, colours, speeds and timings were measured on the Switch version, with the sizes checked against [kairess/suika-game](https://github.com/kairess/suika-game). **Bobydeluxe** brought it to NumPlay. Not affiliated with Aladdin X.
@@ -598,7 +598,7 @@ NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyri
   <tr>
     <td align="center"><img src="docs/media/gallery/meowdoku.gif" alt="Meowdoku: a wrong cat costs a fish, the lamp crosses out what a cat rules out, the winking cat finds one more"><br><a href="games/meowdoku/README.md"><b>Meowdoku</b></a></td>
     <td align="center"><img src="docs/media/gallery/retrogo.gif" alt="Retro-Go: from the Game Boy tab to the NES list, then Thwaite, a homebrew game, starts and fireworks stop the missiles"><br><a href="games/retrogo/README.md"><b>Retro-Go</b></a></td>
-    <td align="center"><img src="docs/media/gallery/flappydunk.gif" alt="Flappy Dunk: swishes in a row, the ball on fire"><br><a href="games/flappydunk/README.md"><b>Flappy Dunk</b></a></td>
+    <td align="center"><img src="docs/media/gallery/flappydunk.gif" alt="Flappy Dunk: swishes in a row set the ball on fire, and the hoops throw their stars"><br><a href="games/flappydunk/README.md"><b>Flappy Dunk</b></a></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/media/gallery/towerblock.gif" alt="Tower Blocks: blocks dropped on the tower, the overhangs falling away"><br><a href="games/towerblock/README.md"><b>Tower Blocks</b></a></td>
