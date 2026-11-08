@@ -1,6 +1,8 @@
 /* Doodle Jump on a computer, for tests and pictures (make host, make test).
  *
- *   play test          a bot climbs 300 times: it must get past the moving, white and exploding platforms
+ *   play test          the page alone, carried past 100000 points 200 times, always has a way up that needs
+ *                      no bomb, and no bomb is lit before it shows; the title's bounce scores nothing; a bot
+ *                      climbs 300 times: it must get past the moving, white and exploding platforms
  *                      and the monsters, the platforms he can stand on never more than a jump apart, the
  *                      doodler always on the page; random keys for 300 more climbs break nothing; a save
  *                      comes back, and a damaged one starts afresh
@@ -78,11 +80,15 @@ static int bot(bool *fire) {
   return d > 3 ? 1 : d < -3 ? -1 : 0;
 }
 
+/* the platforms that stay (not brown, not a bomb) never more than a jump apart, and no bomb lit above the page */
 static void check_page(void) {
   float ys[NP];
   int n = 0;
-  for (int i = 0; i < NP; i++)
-    if (sv.plat[i].type != P_BROWN && sv.plat[i].y > sv.cam - 40) ys[n++] = sv.plat[i].y;
+  for (int i = 0; i < NP; i++) {
+    const plat_t *p = &sv.plat[i];
+    if (p->type != P_BROWN && p->type != P_BOMB && p->y > sv.cam - 40) ys[n++] = p->y;
+    CHECK(p->type != P_BOMB || p->y < sv.cam + VIEW || (p->t == 0 && p->state == 0), "a bomb lit above the page at %.0f", p->y);
+  }
   for (int i = 1; i < n; i++)
     for (int j = i; j > 0 && ys[j] < ys[j - 1]; j--) {
       float t = ys[j];
@@ -149,6 +155,31 @@ int main(int argc, char **argv) {
     printf("score %u\n", sv.score);
     return 0;
   }
+  /* the page alone, the doodler carried up by a hat past 100000, 200 times: always a way up */
+  for (int g = 0; g < 200; g++) {
+    seed = seed * 7 + 11;
+    now = seed;
+    new_climb();
+    for (int f = 0; f < 60 * 250; f++) {
+      sv.fly = 2, sv.item = I_PROP;
+      step(0);
+      if (f % 10 == 0) check_page();
+    }
+  }
+  /* on the title he bounces in place and scores nothing */
+  for (int g = 0; g < 50; g++) {
+    seed = seed * 7 + 11;
+    new_climb(), ready = true;
+    uint32_t best_before = sv.best;
+    for (int f = 0; f < 600; f++) {
+      step(0);
+      CHECK(sv.y < 40 + 174 && sv.cam == 0, "off the start platform on the title: %.0f", sv.y);
+    }
+    CHECK(sv.score == 0 && sv.best == best_before, "points on the title: %u", sv.score);
+  }
+  ready = false;
+  step(0);
+  CHECK(sv.score > 0, "no points once playing");
   long total = 0;
   uint32_t best = 0, far = 0;
   int dead = 0, holes = 0, fell = 0, hbins[8] = {0};
@@ -165,7 +196,7 @@ int main(int argc, char **argv) {
     printf("\n");
   }
   printf("bot: 300 climbs, %ld on average, best %u, %u past 12000\n", total / 300, best, far);
-  CHECK(far >= 30, "the bot should get past 12000 (bombs, black holes) in 30 climbs of 300");
+  CHECK(far >= 100, "the bot should get past 12000 (bombs, black holes) in 100 climbs of 300");
   for (int g = 0; g < 300; g++) climb(false, 60 * 60);
   /* the save: back as it was; damaged, a fresh start */
   climb(true, 600);
