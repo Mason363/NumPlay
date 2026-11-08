@@ -28,6 +28,7 @@ static bool drawn;              /* a screen that does not move is drawn once, th
 static bool hit_train;          /* the crash was into a train's front */
 static void runner_anim(float dt);
 static Anim a_run, a_guard, a_dog, a_shop;
+bool app_in_run(void) { return state == S_RUN; }
 /* the game's run camera: 33 units up and 33 behind the runner, following 0.75 of its moves across */
 #define CAM_Y (33 * U)
 #define CAM_BACK (33 * U)

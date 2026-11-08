@@ -3,6 +3,8 @@
 #   make check      link it like the calculator does (output/subway.bin)
 #   make host       build/play: the game on a computer, for tests and screenshots
 #   make test       the game played on a computer (tests/check.py, with the sanitizers)
+#   make bench      how fast it draws a run at an N0110's speed (tools/bench.py, on NumPlay's emulator tools/emu.py;
+#                   MODEL=n0120 for an N0120's memory)
 #   make assets     src/assets.c again: the fonts (tools/assets.py: Python + Pillow + NumPy)
 #   make data APK=DIR   src/data.c, src/data.h and src/icon.png again, from the game's own Android package unzipped
 #                   in DIR (tools/apk.py, tools/icon.py: Python + UnityPy + Pillow + NumPy; the package is only read)
@@ -15,6 +17,7 @@ NWLINK ?= npx --yes -- nwlink@1.0.0
 STRIP ?= $(BIN)arm-none-eabi-strip --strip-unneeded
 SIZE = $(BIN)arm-none-eabi-size
 BUILD_DIR = output
+MODEL ?= n0110
 
 # the drawing runs every frame at -O2; the rest is small at -Os (each file says so)
 SRC = $(filter-out src/plat_host.c,$(wildcard src/*.c))
@@ -28,7 +31,7 @@ LDFLAGS = -Wl,--relocatable -nostartfiles --specs=nano.specs
 LDFLAGS += -Wl,-e,main -Wl,-u,eadk_app_name -Wl,-u,eadk_app_icon -Wl,-u,eadk_api_level
 LDFLAGS += -Wl,--gc-sections -flinker-output=nolto-rel
 
-.PHONY: build check clean host test assets data
+.PHONY: build check clean host test bench assets data
 build: $(BUILD_DIR)/subway.nwa
 
 # apps get 133652 bytes of RAM on custom builds of Epsilon 25.2 (148928 or more on official ones)
@@ -61,6 +64,10 @@ build/play: $(HOST_SRC) tests/play.c $(HEADERS)
 
 test: build/play
 	python3 tests/check.py build/play
+
+bench:
+	$(Q) $(MAKE) --no-print-directory build BUILD_DIR=build/bench EXTRA=-DSS_BENCH NWLINK="$(NWLINK)" TOOLCHAIN="$(TOOLCHAIN)"
+	python3 tools/bench.py build/bench/subway.nwa --model $(MODEL)
 
 assets:
 	python3 tools/assets.py src/assets.c

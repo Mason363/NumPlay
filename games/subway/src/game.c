@@ -382,7 +382,7 @@ void run_step(uint32_t keys, uint32_t pressed) {
   }
   run.start_t += DT;
   pl.t += DT;
-#ifdef SS_GOD
+#if defined(SS_GOD) || defined(SS_BENCH)
   pl.safe = 0.1f;   /* (a build for measuring speed: nothing hurts) */
 #endif
   /* faster and faster: the game's speed, from 110 units a second to 220 over 179 s */
