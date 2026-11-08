@@ -5,8 +5,8 @@
 <h1 align="center">NumPlay</h1>
 
 <p align="center">
-  <b>29 free games for your NumWorks calculator, in one app.</b><br>
-  Plus 47 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.<br>
+  <b>28 free games for your NumWorks calculator, in one app.</b><br>
+  Plus 48 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.<br>
   Now on the TI-84 Plus CE, TI-Nspire CX and Casio fx-CG50 too.
 </p>
 
@@ -47,7 +47,7 @@
 
 <table>
   <tr>
-    <td align="center" width="20%"><a href="docs/calculators/numworks.md"><img src="docs/media/calcs/numworks.png" height="150" alt="NumWorks"><br><b>NumWorks</b></a><br><sub>N0110, N0115, N0120<br>29 games, 48 big games</sub></td>
+    <td align="center" width="20%"><a href="docs/calculators/numworks.md"><img src="docs/media/calcs/numworks.png" height="150" alt="NumWorks"><br><b>NumWorks</b></a><br><sub>N0110, N0115, N0120<br>28 games, 49 big games</sub></td>
     <td align="center" width="20%"><a href="docs/calculators/ti-84-plus-ce.md"><img src="docs/media/calcs/ti84ce.png" height="150" alt="TI-84 Plus CE"><br><b>TI-84 Plus CE</b></a><br><sub>and TI-83 Premium CE<br>15 games</sub></td>
     <td align="center" width="20%"><a href="docs/calculators/ti-nspire.md"><img src="docs/media/calcs/nspire.png" height="150" alt="TI-Nspire CX II"><br><b>TI-Nspire CX</b></a><br><sub>CX and CX II, with Ndless<br>78 games</sub></td>
     <td align="center" width="20%"><a href="docs/calculators/casio-fx-cg50.md"><img src="docs/media/calcs/casio_cg50.png" height="150" alt="Casio fx-CG50"><br><b>Casio fx-CG50</b></a><br><sub>and Graph 90+E, fx-CG10, fx-CG20<br>73 games</sub></td>
@@ -149,7 +149,7 @@ The games with a blue ring are all in one app, **NumPlay.nwa**. The others are b
   </tr>
   <tr>
     <td align="center"><a href="games/flappybird/README.md"><img src="docs/media/readme/thumb_flappybird.png" width="240" alt="Flappy Bird"><br><b>Flappy Bird</b></a></td>
-    <td align="center"><a href="games/doodlejump/README.md"><img src="docs/media/readme/thumb_doodlejump.png" width="240" alt="Doodle Jump"><br><b>Doodle Jump</b></a></td>
+    <td align="center"><a href="games/doodlejump/README.md"><img src="docs/media/readme/thumb_doodlejump.png" width="240" alt="Doodle Jump"><br><b>Doodle Jump</b></a><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/DoodleJump.nwa">Download</a></td>
     <td align="center"><a href="games/dinorun/README.md"><img src="docs/media/readme/thumb_dinorun.png" width="240" alt="Chrome Dino"><br><b>Chrome Dino</b></a></td>
   </tr>
   <tr>
@@ -430,7 +430,7 @@ NumPlay is a fan project, made out of love for these games and for the NumWorks 
 - **Block Blast!** by [Hungry Studio](https://www.hungrystudio.com) inspired NumPlay's Block Blast, written in C for NumPlay with no code or art from it. Its blocks, scoring and colours follow measurements of the app by the players behind [blockblast-Self-Improvement-loop](https://github.com/Kucze3205/blockblast-Self-Improvement-loop).
 - **Flappy Dunk** by Voodoo (made with Acid Cousins) inspired NumPlay's Flappy Dunk, written in C for NumPlay with no code or art from it. Its physics and hoops follow the numbers in the game's Android build. **Bobydeluxe** brought it to NumPlay. Not affiliated with Voodoo.
 - **Tower Blocks** by [Steve Gardner](https://codepen.io/ste-vg/pen/ppLQNW) (MIT License) is ported to C for NumPlay from its source: its sizes, speeds, colours, light and camera are the original's. **Bobydeluxe** brought it to NumPlay.
-- **Doodle Jump** by Lima Sky inspired NumPlay's Doodle Jump, written in C for NumPlay with no code or art from it, drawn in its style on its own page size. **Bobydeluxe** brought it to NumPlay. Not affiliated with Lima Sky.
+- **Doodle Jump** by Lima Sky inspired NumPlay's Doodle Jump, which uses the game's own pictures, font and texts from its Android release. **Bobydeluxe** brought the first version to NumPlay. Not affiliated with Lima Sky.
 - **Suika Game** by Aladdin X inspired NumPlay's Suika Game, written in C for NumPlay with no code or art from it. Its fruit sizes, colours, speeds and timings were measured on the Switch version, with the sizes checked against [kairess/suika-game](https://github.com/kairess/suika-game). **Bobydeluxe** brought it to NumPlay. Not affiliated with Aladdin X.
 - **[Core Ball](https://github.com/randomyang/core-ball)** by Random (Yang Hao, MIT License) is ported to C for NumPlay from its own build: its 60 levels, turns, speeds and timing are the original's. **Bobydeluxe** brought it to NumPlay.
 - **Balatro** by LocalThunk inspired NumPlay's Balatro, which uses art adapted from the game and the **m6x11** font by Daniel Linssen.
@@ -589,7 +589,7 @@ NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyri
   <tr>
     <td align="center"><img src="docs/media/gallery/towerblock.gif" alt="Tower Blocks: blocks dropped on the tower, the overhangs falling away"><br><a href="games/towerblock/README.md"><b>Tower Blocks</b></a></td>
     <td align="center"><img src="docs/media/gallery/coreball.gif" alt="Core Ball: every ball shot onto the spinning core, level 3 and level 4 cleared"><br><a href="games/coreball/README.md"><b>Core Ball</b></a></td>
-    <td align="center"><img src="docs/media/gallery/doodlejump.gif" alt="Doodle Jump: the doodler climbs past blue platforms and a monster"><br><a href="games/doodlejump/README.md"><b>Doodle Jump</b></a></td>
+    <td align="center"><img src="docs/media/gallery/doodlejump.gif" alt="Doodle Jump: the doodler shoots at a red monster, breaks through a brown platform and turns over on a trampoline"><br><a href="games/doodlejump/README.md"><b>Doodle Jump</b></a></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/media/gallery/jetpackjoyride.gif" alt="Jetpack Joyride: Barry grabs coins and rides the Profit Bird until it hits a zapper, then flies on past a missile"><br><a href="games/jetpackjoyride/README.md"><b>Jetpack Joyride</b></a></td>
