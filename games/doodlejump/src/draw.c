@@ -69,7 +69,7 @@ static void doodler(int x, int y, int alpha) {
   bool right = W.face, bent = W.frame - W.land < 7 && W.land, up = W.shot && W.frame - W.shot < 18;
   if (W.fly > 0 && W.item == I_JET) { /* the jetpack on his back, firing */
     int f = FLY - W.fly, id = f < 6 ? f / 3 : W.fly < 12 ? 8 + (W.fly < 6) : 2 + f / 3 % 6;
-    gfx_spr(S_JET0 + id, x + (right ? -9 : 9), y - 20, alpha);
+    gfx_spr(S_JET0 + id, x + (right ? -9 : 9), y - 25, alpha);
   }
   if (W.flip && !W.dead) { /* turning over on a trampoline */
     int k = (72 - W.flip) * 8 / 72 % 8;

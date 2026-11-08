@@ -212,9 +212,9 @@ static void draw_help(void) {
   /* the original's tutorial, its words for the keypad */
   draw_doodler_at(48, 76, true, false);
   gfx_text(F_SMALL, 104, 64, "left and right to move", INK, 0);
-  gfx_spr(S_T_GREEN, 36, 100, 32), gfx_spr(S_T_SPRING, 48, 94, 32), gfx_spr(S_T_BLUE, 70, 112, 32);
+  gfx_spr(S_P_GREEN, 28, 102, 32), gfx_spr(S_SPRING0, 32, 103, 32), gfx_spr(S_P_BLUE, 68, 110, 32);
   gfx_text(F_SMALL, 104, 110, "jump on these", INK, 0);
-  gfx_spr(S_M_HOLE, 24, 150, 32), gfx_spr(S_T_BROWN, 70, 152, 32);
+  gfx_spr(S_M_HOLE, 30, 148, 32), gfx_spr(S_P_BROWN0, 72, 150, 32);
   gfx_text(F_SMALL, 104, 154, "avoid", INK, 0);
   gfx_spr(S_M_BLOB0, 52, 192, 32);
   gfx_text(F_SMALL, 104, 186, "jump on monsters", INK, 0);

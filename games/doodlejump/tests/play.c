@@ -472,6 +472,35 @@ static void shots(const char *dir) {
     }
   }
   screen = SC_PAUSE, sel = 0, draw_play(), SHOT("pause");
+  /* every picture of the page at once */
+  game_new(5);
+  clear_page();
+  W.cam = 0, W.x = 60, W.y = 200, W.fly = 100, W.item = I_JET, W.face = 1;
+  static const uint8_t types[] = {P_GREEN, P_BLUE, P_WHITE, P_BROWN, P_BROWN, P_BROWN, P_BOMB, P_BOMB, P_BOMB, P_GREEN, P_GREEN, P_GREEN};
+  for (int i = 0; i < 12; i++) {
+    W.plat[i] = (plat_t){i % 3 * 100 + 50, 40 + i / 3 * 60, 0, 1, types[i], I_NONE, 0};
+    if (i == 4) W.plat[i].state = 1, W.plat[i].t = 4;
+    if (i == 5) W.plat[i].state = 1, W.plat[i].t = 9;
+    if (i == 7) W.plat[i].t = 120;
+    if (i == 8) W.plat[i].state = 1, W.plat[i].t = 7;
+  }
+  W.plat[9].item = I_SPRING, W.plat[10].item = I_TRAMP, W.plat[11].item = I_PROP, W.plat[0].item = I_JET;
+  W.plat[1].item = I_SPRING, W.plat[1].state = 2;
+  W.mon[0] = (mon_t){70, 330, 0, M_UFO, 0, {0}}, W.mon[1] = (mon_t){250, 300, 0, M_HOLE, 0, {0}};
+  W.mon[2] = (mon_t){240, 420, 0, M_CROC, 0, {0}}, W.mon[3] = (mon_t){120, 430, 0, M_BAT, 0, {0}};
+  W.shot_on[0] = 1, W.shot_x[0] = 160, W.shot_y[0] = 260;
+  screen = SC_PLAY, draw_margins(), draw_play(), SHOT("pictures");
+  W.fly = 120, W.item = I_PROP, W.shot = W.frame = 10, draw_play(), SHOT("pictures2");
+  W.fly = 0, W.dead = D_MONSTER, draw_play(), SHOT("pictures3");
+  W.dead = 0, W.flip = 40, draw_play(), SHOT("pictures4");
+  int more[] = {M_FLY, M_EYE, M_BLOB, M_HAIRY, M_BUG, M_RED, M_PURPLE};
+  clear_page();
+  for (int i = 0; i < 7; i++) W.mon[i % 4] = (mon_t){i % 2 * 160 + 80, 60 + i * 60, 0, (uint8_t)more[i], 0, {0}}, draw_play();
+  for (int i = 0; i < 4; i++) W.mon[i] = (mon_t){i % 2 * 160 + 80, 60 + i * 60, 0, (uint8_t)more[i], 0, {0}};
+  draw_play(), SHOT("monsters1");
+  for (int i = 0; i < 3; i++) W.mon[i] = (mon_t){i % 2 * 160 + 80, 60 + i * 80, 0, (uint8_t)more[4 + i], 0, {0}};
+  W.mon[3].kind = M_NONE;
+  draw_play(), SHOT("monsters2");
   screen = SC_ASK, sel = 0, draw_play(), SHOT("ask");
   screen = SC_OVER, sel = 0, gfx_screen(draw_over), SHOT("over");
 }
