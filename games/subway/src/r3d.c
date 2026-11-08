@@ -21,7 +21,7 @@ typedef struct {
   uint16_t color;        /* RGB565, or the texture's number */
   uint8_t n : 4, kind : 4;   /* (corners: MAXN at most) */
   uint8_t y0, y1;        /* the rows it covers */
-  uint8_t alpha;         /* see-through (255: not); textured faces: their light 0..32 */
+  uint8_t alpha;         /* see-through (255: not); textured faces: how much of the picture shows through the haze 0..32 */
   uint8_t near;          /* its nearest depth >> 8: the polygons are drawn nearest first */
 } Poly;
 _Static_assert(sizeof(Poly) == 24, "a polygon in 24 bytes");
@@ -62,6 +62,7 @@ static Work *work;
 #define uvs (work->uvs)
 #define zbuf (work->zbuf)
 static int npolys, nverts, nattr, nuv, nalpha;
+static uint16_t hz;   /* the haze's colour (RGB565), what a picture goes to (r_render) */
 
 void r_set_band_memory(uint16_t *band) { r_col = band; }
 uint32_t r_work_size(void) { return sizeof(Work); }
@@ -167,9 +168,17 @@ static bool fit_fx(const int32_t *x, const int32_t *y, const int64_t *w, int k, 
 static uint16_t haze_fx(uint16_t color, int64_t zsum, int n) {
   int64_t h0 = fx_from_float(r_haze0, 16) * n, h1 = fx_from_float(r_haze1, 16) * n;
   if (zsum <= h0) return color;
-  int64_t k = (zsum - h0) * 240 / (h1 - h0);
+  int64_t k = (zsum - h0) * 256 / (h1 - h0);
   uint32_t c8 = (uint32_t)(color >> 11) * 255 / 31 << 16 | (uint32_t)((color >> 5) & 63) * 255 / 63 << 8 | (uint32_t)(color & 31) * 255 / 31;
-  return r_565(r_mix888(c8, r_haze_rgb, k >= 240 ? 240 : (int)k));
+  return r_565(r_mix888(c8, r_haze_rgb, k >= 256 ? 256 : (int)k));
+}
+
+/* how much of a picture shows through the haze (32: all of it), for depths summing to zsum over n corners */
+static int haze_show_fx(int64_t zsum, int n) {
+  int64_t h0 = fx_from_float(r_haze0, 16) * n, h1 = fx_from_float(r_haze1, 16) * n;
+  if (zsum <= h0) return 32;
+  int64_t k = (zsum - h0) * 32 / (h1 - h0);
+  return k >= 32 ? 0 : 32 - (int)k;
 }
 
 static bool emit_fx(const CV *p, int n, int kind, uint16_t color, int flags, int alpha, uint16_t avg) {
@@ -227,7 +236,7 @@ static bool emit_fx(const CV *p, int n, int kind, uint16_t color, int flags, int
   if (kind == K_PERSP) {
     const Texture *t = r_tex[color];
     int64_t far16 = fx_from_float(r_far, 16), h1 = fx_from_float(r_haze1, 16);
-    if (t->clear && !avg && (nuv >= MAXT || zsum * 5 > far16 * 8 * n)) return true;
+    if (t->clear && !avg && nuv >= MAXT) return true;
     if ((!t->clear && (zsum * 5 > h1 * 3 * n || nuv >= MAXT)) || (avg && (zsum > far16 * n || nuv >= MAXT))) {
       uint16_t c0 = avg ? avg : t->pal[t->clear ? 1 : 0];
       uint32_t a8 = (uint32_t)(c0 >> 11) * 255 / 31 << 16 | (uint32_t)((c0 >> 5) & 63) * 255 / 63 << 8 | (uint32_t)(c0 & 31) * 255 / 31;
@@ -250,6 +259,8 @@ static bool emit_fx(const CV *p, int n, int kind, uint16_t color, int flags, int
       u->ua = fx_to_float(ua, 16), u->ub = fx_to_float(ub, 16), u->uc = fx_to_float(uc, 16);
       u->va = fx_to_float(va, 16), u->vb = fx_to_float(vb, 16), u->vc = fx_to_float(vc, 16);
       q->at = (uint16_t)nuv++;
+      int show = flags & P_NOHAZE ? 32 : haze_show_fx(zsum, n);
+      if (alpha > show) alpha = show;
     }
   }
   if (kind == K_FLAT && !(flags & P_NOHAZE)) color = haze_fx(color, zsum, n);
@@ -356,9 +367,10 @@ static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, u
   q->kind = (uint8_t)kind & 15;
   q->at = 0;
   if (kind == K_PERSP) {
-    /* far off, a picture is only its average colour (color already holds it when kind comes back flat) */
+    /* far off, a picture is only its average colour (color already holds it when kind comes back flat); one with
+     * too many holes for that is drawn as itself however far it is, in the haze */
     const Texture *t = r_tex[color];
-    if (t->clear && !avg && (nuv >= MAXT || zm > r_far * 1.6f)) return;   /* (a see-through one is only drawn as itself: near) */
+    if (t->clear && !avg && nuv >= MAXT) return;
     if ((!t->clear && (zm > r_haze1 * 0.6f || nuv >= MAXT)) || (avg && (zm > r_far || nuv >= MAXT))) {
       /* (the palette's first useful colour stands for it: the tool puts the average there; or the face's own) */
       uint16_t c = avg ? avg : t->pal[t->clear ? 1 : 0];
@@ -371,7 +383,7 @@ static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, u
       if (zm > r_haze0) {
         float h = (zm - r_haze0) / (r_haze1 - r_haze0);
         uint32_t c8 = (uint32_t)(color >> 11) * 255 / 31 << 16 | (uint32_t)((color >> 5) & 63) * 255 / 63 << 8 | (uint32_t)(color & 31) * 255 / 31;
-        color = r_565(r_mix888(c8, r_haze_rgb, h >= 1 ? 240 : (int)(h * 240)));
+        color = r_565(r_mix888(c8, r_haze_rgb, h >= 1 ? 256 : (int)(h * 256)));
       }
     } else {
       /* u and v over the depth, as planes: the three corners spanning the most */
@@ -389,12 +401,18 @@ static void emit(CV *p, int n, int kind, uint16_t color, int flags, int alpha, u
       UV *u = &uvs[nuv];
       if (!fit(px, py, wu, &u->ua, &u->ub, &u->uc) || !fit(px, py, wv, &u->va, &u->vb, &u->vc)) return;
       q->at = (uint16_t)nuv++;
+      /* (in the haze as the plain faces are: what shows of the picture over the haze's colour) */
+      if (zm > r_haze0 && !(flags & P_NOHAZE)) {
+        float h = (zm - r_haze0) / (r_haze1 - r_haze0);
+        int show = h >= 1 ? 0 : 32 - (int)(h * 32);
+        if (alpha > show) alpha = show;
+      }
     }
   }
   if (kind == K_FLAT && !(flags & P_NOHAZE) && zm > r_haze0) {
     float h = (zm - r_haze0) / (r_haze1 - r_haze0);
     uint32_t c8 = (uint32_t)(color >> 11) * 255 / 31 << 16 | (uint32_t)((color >> 5) & 63) * 255 / 63 << 8 | (uint32_t)(color & 31) * 255 / 31;
-    color = r_565(r_mix888(c8, r_haze_rgb, h >= 1 ? 240 : (int)(h * 240)));
+    color = r_565(r_mix888(c8, r_haze_rgb, h >= 1 ? 256 : (int)(h * 256)));
   }
   q->color = color;
   q->alpha = (uint8_t)(kind == K_PERSP ? alpha : flags & P_ALPHA ? (alpha > 255 ? 255 : alpha < 0 ? 0 : alpha) : 255);
@@ -523,7 +541,7 @@ uint32_t r_stat[4], r_stat_tex[64], r_stat_rows, r_stat_polys, r_stat_skips, r_s
 #endif
 
 /* pixels [zp, ze) of a textured run (their colours at cp): where it lies in front, its texel, see-through where the
- * picture is, lit by light (32: as it is). WL, HL: the picture's sides, log2, when they are known here (0:
+ * picture is, through the haze (light 32: none of it). WL, HL: the picture's sides, log2, when they are known here (0:
  * the picture's own). Returns the depth after the run */
 __attribute__((always_inline)) static inline uint32_t tex_run(uint16_t *zp, const uint16_t *ze, uint16_t *cp, uint32_t z,
                                                               uint32_t da, uint32_t uu, uint32_t du, uint32_t vv, uint32_t dv,
@@ -565,7 +583,7 @@ __attribute__((always_inline)) static inline uint32_t tex_run(uint16_t *zp, cons
       if (d <= *zp) continue;
       uint8_t t = px[TEXEL];
       if (clear && !t) continue;
-      *zp = d, *cp = r_mix565(0, pal[t], light);
+      *zp = d, *cp = r_mix565(hz, pal[t], light);
     }
   }
 #undef TEXEL
@@ -990,6 +1008,7 @@ void r_band_depth(int y, int x0, int x1, uint16_t d) {
 }
 
 void r_render(r_band_fn bg, r_band_fn overlay) {
+  hz = r_565(r_haze_rgb);
   /* the see-through polygons after the others, in the order they came */
   if (nalpha) {
     int k = 0;

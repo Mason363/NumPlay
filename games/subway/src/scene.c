@@ -63,8 +63,10 @@ static void ground_tables(void) {
   }
 }
 
+static void faces_make(void);
 void scene_init(void) {
   ground_tables();
+  faces_make();
   r_haze0 = 60, r_haze1 = 145;
   r_haze_rgb = 0xCFEFFF;
   if (plat_slow()) {
@@ -136,7 +138,7 @@ void scene_camera(float x, float y, float z, float pitch, float f, float cy) {
     g->u = (int32_t)(((cam.x + (0.5f - cam.cx) * zc / cam.f) - GROUND_X0) * scale * 65536);
     g->du = (int32_t)(zc / cam.f * scale * 65536);
     float h = (zc - r_haze0) / (r_haze1 - r_haze0);
-    g->haze = (uint8_t)(h <= 0 ? 0 : h >= 1 ? 240 : (int)(h * 240));
+    g->haze = (uint8_t)(h <= 0 ? 0 : h >= 1 ? 255 : (int)(h * 255));
     /* the pixels whose middles see the tracks */
     float px = cam.f / zc, xa = cam.cx - 0.5f + (-TRACKS - cam.x) * px, xb = cam.cx - 0.5f + (TRACKS - cam.x) * px;
     g->x0 = (int16_t)(xa <= 0 ? 0 : xa >= SCREEN_W ? SCREEN_W : (int)xa + ((float)(int)xa < xa));
@@ -213,19 +215,67 @@ void scene_background(void) {
 /* ---------------------------------------------------------------- the game's baked models */
 static int lit = 256;      /* the light on the baked faces (full) */
 
-/* a baked model placed at (ox, oy, oz), its first maxq faces (the most worth seeing come first) */
-static void bmodel(const BModel *m, float ox, float oy, float oz, int maxq) {
+/* is a face of a baked model placed at z oz big enough on the screen to be seen? Its area over its distance squared,
+ * SEEN pixels or more where nothing is in the haze (on the slower calculators, whose details stop sooner, that over
+ * detail squared), more in the haze, none past r_haze1 (there it is the haze's colour). So it comes in small and pale,
+ * whatever its place in the model's list. Each face's nearest z and its area are worked out once (face_z, face_a) */
+#define SEEN 40.0f
+#define FACES 1400
+static int8_t face_z[FACES];    /* its nearest z in the model, quarter metres */
+static uint8_t face_a[FACES];   /* log2 of its area in cm^2, eighths */
+static const BModel *const *model_list(int *n);
+/* log2 of a positive number, in eighths (a float's exponent and mantissa: near enough) */
+static int log8(float x) {
+  union {
+    float f;
+    uint32_t u;
+  } b = {x};
+  return (int)(b.u >> 20) - (127 << 3);
+}
+static void faces_make(void) {
+  int nm, k = 0;
+  const BModel *const *ms = model_list(&nm);
+  for (int i = 0; i < nm; i++)
+    for (int j = 0; j < ms[i]->n && k < FACES; j++, k++) {
+      const BCorner *c = ms[i]->c + ms[i]->f[j].first;
+      int n = ms[i]->f[j].n, zn = c[0].z;
+      float ax = 0, ay = 0, az = 0;
+      for (int q = 1; q < n; q++) zn = c[q].z < zn ? c[q].z : zn;
+      for (int q = 1; q + 1 < n; q++) {
+        float ux = c[q].x - c[0].x, uy = c[q].y - c[0].y, uz = c[q].z - c[0].z, vx = c[q + 1].x - c[0].x, vy = c[q + 1].y - c[0].y,
+              vz = c[q + 1].z - c[0].z;
+        ax += uy * vz - uz * vy, ay += uz * vx - ux * vz, az += ux * vy - uy * vx;
+      }
+      int z = zn >= 0 ? zn / 25 : -((-zn + 24) / 25), a = log8(0.5f * __builtin_sqrtf(ax * ax + ay * ay + az * az) + 1);
+      face_z[k] = (int8_t)(z < -128 ? -128 : z > 127 ? 127 : z), face_a[k] = (uint8_t)(a < 0 ? 0 : a > 255 ? 255 : a);
+    }
+}
+static bool seen(int k, float oz) {
+  if (k >= FACES) return true;
+  float d = oz + face_z[k] * 0.25f - cam.z;
+  if (d >= r_haze1) return false;
+  if (d < 2) return true;
+  float h = d > r_haze0 ? (d - r_haze0) / (r_haze1 - r_haze0) : 0;
+  return face_a[k] >= log8(SEEN * 1e4f * d * d / (cam.f * cam.f * (1 - h) * detail * detail));
+}
+
+/* a baked model placed at (ox, oy, oz), its faces big enough on the screen */
+static void bmodel(const BModel *m, float ox, float oy, float oz) {
   float z0 = oz + m->box[2] * 0.01f, z1 = oz + m->box[5] * 0.01f;
-  if (z1 < cam.z || z0 > cam.z + 190 * detail) return;
+  if (z1 < cam.z || z0 > cam.z + r_haze1) return;
   /* (all of it to one side out of view: nothing to draw) */
   float x0 = ox + m->box[0] * 0.01f, x1 = ox + m->box[3] * 0.01f, zn = z0 > cam.z + 0.5f ? z0 : cam.z + 0.5f;
   float reach = (z1 - cam.z) * (cam.cx + 4) / cam.f;
   if (x0 > cam.x + reach || x1 < cam.x - reach) return;
   (void)zn;
-  int n = m->n < maxq ? m->n : maxq;
-  for (int i = 0; i < n; i++) {
+  /* (its faces' first place in face_z and face_a) */
+  int nm, at = 0;
+  const BModel *const *ms = model_list(&nm);
+  for (int i = 0; i < nm && ms[i] != m; i++) at += ms[i]->n;
+  for (int i = 0; i < m->n; i++) {
     const BFace *f = &m->f[i];
     const BCorner *c = m->c + f->first;
+    if (!seen(at + i, oz)) continue;
     V3 v[8];
     float uv[16];
     for (int k = 0; k < f->n; k++, c++) {
@@ -234,12 +284,6 @@ static void bmodel(const BModel *m, float ox, float oy, float oz, int maxq) {
     }
     r_poly_tex_avg(v, uv, f->n, m->tex, lit, 0, f->avg);
   }
-}
-
-/* how many faces at this distance */
-static int faces_at(float d) {
-  d /= detail;
-  return d < 26 ? 999 : d < 50 ? 16 : d < 90 ? 9 : 5;
 }
 
 /* ---------------------------------------------------------------- the city */
@@ -252,15 +296,26 @@ static const BModel *const sections[3][3] = {
   {&bm_station_start, &bm_station_mid, &bm_station_end},
   {&bm_tube_start, &bm_tube_mid, &bm_tube_end},
 };
+/* every baked model, the city's first (the busiest) */
+static const BModel *const models[] = {
+  &bm_low_01_l, &bm_low_02_l, &bm_med_01_l, &bm_med_02_l, &bm_med_03_l, &bm_high_01_l, &bm_high_02_l, &bm_high_03_l, &bm_low_01_r,
+  &bm_low_02_r, &bm_med_01_r, &bm_med_02_r, &bm_med_03_r, &bm_high_01_r, &bm_high_02_r, &bm_high_03_r, &bm_pillars_start,
+  &bm_pillars_mid, &bm_pillars_end, &bm_station_start, &bm_station_mid, &bm_station_end, &bm_tube_start, &bm_tube_mid,
+  &bm_tube_end, &bm_car_sub, &bm_car_sub_wagon, &bm_car_standard, &bm_car_standard_wagon, &bm_car_cargo1, &bm_car_cargo2,
+  &bm_car_freight, &bm_car_ramp, &bm_barrier_jump, &bm_barrier_roll, &bm_barrier_standard,
+};
+static const BModel *const *model_list(int *n) {
+  *n = (int)(sizeof models / sizeof models[0]);
+  return models;
+}
 
 static void stretch(int seg) {
-  float z0 = (float)seg * SEG, d = z0 - cam.z;
+  float z0 = (float)seg * SEG;
   Stretch s = world_stretch(seg);
-  int nq = faces_at(d < 0 ? 0 : d);
   if (s.kind == SC_STREET) {
-    bmodel(street_l[s.part], 0, 0, z0, nq);
-    bmodel(street_r[s.right], 0, 0, z0, nq);
-  } else bmodel(sections[s.kind - 1][s.part], 0, 0, z0, nq * 2);
+    bmodel(street_l[s.part], 0, 0, z0);
+    bmodel(street_r[s.right], 0, 0, z0);
+  } else bmodel(sections[s.kind - 1][s.part], 0, 0, z0);
   lit = 256;
 }
 
@@ -281,12 +336,12 @@ static void train(const Obstacle *o, float zfar) {
     if (z > zfar) break;
     if (z + CAR_LEN < cam.z) continue;
     bool head = c == 0 && o->v != 1;
-    bmodel(car_model(o->look, c, head, moving), lx, 0, z, faces_at(z - cam.z));
+    bmodel(car_model(o->look, c, head, moving), lx, 0, z);
     if (head && moving) {
       /* the headlights' glow */
       float x0 = lx - TRAIN_W, x1 = lx + TRAIN_W;
       V3 g[4] = {{x0 - 0.5f, 2.2f, z - 0.2f}, {x1 + 0.5f, 2.2f, z - 0.2f}, {x1 + 0.5f, 0.2f, z - 0.2f}, {x0 - 0.5f, 0.2f, z - 0.2f}};
-      r_poly(g, 4, 0xFFF6C0, P_ALPHA | P_NOHAZE, 70);
+      r_poly(g, 4, 0xFFF6C0, P_ALPHA, 70);
     }
   }
 }
@@ -294,7 +349,7 @@ static void train(const Obstacle *o, float zfar) {
 static void barrier(const Obstacle *o) {
   float lx = LANE_X(o->lane);
   const BModel *m = o->type == O_HURDLE ? &bm_barrier_jump : o->type == O_HIGHBAR ? &bm_barrier_roll : &bm_barrier_standard;
-  bmodel(m, lx, 0, o->z0, 99);
+  bmodel(m, lx, 0, o->z0);
 }
 
 void scene_draw(float t) {
@@ -304,12 +359,12 @@ void scene_draw(float t) {
     const Obstacle *o = &obs[i];
     if (o->z0 > zfar || o->z1 < cam.z) continue;
     if (o->type == O_TRAIN || o->type == O_MOVING) train(o, zfar);
-    else if (o->type == O_RAMP) bmodel(&bm_car_ramp, LANE_X(o->lane), 0, o->z0 + 6.3f * U, faces_at(o->z0 - cam.z));
+    else if (o->type == O_RAMP) bmodel(&bm_car_ramp, LANE_X(o->lane), 0, o->z0 + 6.3f * U);
     else barrier(o);
   }
   for (int i = 0; i < nitems; i++) {
     const Item *it = &items[i];
-    if (it->z > cam.z + 110 * detail || it->z < cam.z + 1) continue;
+    if (it->z > cam.z + r_haze1 || it->z < cam.z + 1) continue;   /* (past r_haze1 it is the haze's colour) */
     if (it->kind == I_COIN) actors_coin(it, t, scene_light(it->z));
     else actors_pickup(it, t);
   }

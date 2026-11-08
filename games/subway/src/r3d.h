@@ -74,7 +74,8 @@ enum {
 void r_begin(void);
 void r_poly(const V3 *v, int n, uint32_t rgb, int flags, int alpha);
 /* a textured polygon, in perspective: uv gives each corner's place in the picture (in texels, two
- * floats a corner; the picture repeats), light 0..256 */
+ * floats a corner; the picture repeats), light 0..256: how much of it shows over the haze's colour (far off, the
+ * haze takes more) */
 void r_poly_tex(const V3 *v, const float *uv, int n, int tex, int light, int flags);
 /* the same, drawn plain in avg (RGB565, 0: never) beyond r_far */
 void r_poly_tex_avg(const V3 *v, const float *uv, int n, int tex, int light, int flags, uint16_t avg);

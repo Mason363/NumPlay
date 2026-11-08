@@ -282,7 +282,7 @@ void actors_pickup(const Item *it, float t) {
   /* a soft glow on the ground under it */
   float gy = world_ground(it->x, it->z, it->y) + 0.02f;
   V3 g[4] = {{it->x - 0.55f, gy, it->z + 0.55f}, {it->x + 0.55f, gy, it->z + 0.55f}, {it->x + 0.55f, gy, it->z - 0.55f}, {it->x - 0.55f, gy, it->z - 0.55f}};
-  r_poly(g, 4, it->kind == I_KEY ? 0x7FD0FF : 0xFFE680, P_ALPHA | P_NOHAZE, 60);
+  r_poly(g, 4, it->kind == I_KEY ? 0x7FD0FF : 0xFFE680, P_ALPHA, 60);
 }
 
 /* a coin: the game's gold coin, turning (as wide as the cosine of its turn); far away a gold disc */
