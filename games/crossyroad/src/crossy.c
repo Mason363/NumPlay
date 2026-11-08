@@ -1615,7 +1615,6 @@ static void draw_lane_objects(int row) {
       it[n++] = (Item){L->obj[i].x, I_LOG, (uint8_t)i, (uint8_t)(MD_LOG + k - 2)};
   }
   if (L->type == L_RAIL) {
-    it[n++] = (Item){-0.4f, I_SIGNAL, 0, MD_SIGNAL};
     if (L->train)
       for (int i = 0; i < TRAIN_CARS; i++)
         it[n++] = (Item){L->trainx - L->dir * (WAGON * 0.5f + WAGON * i), I_MODEL, 0,
@@ -1636,6 +1635,8 @@ static void draw_lane_objects(int row) {
     while (j >= 0 && it[j].key > t.key) { it[j + 1] = it[j]; j--; }
     it[j + 1] = t;
   }
+  // the crossing's signal stands in front of the rails: over the train, whatever its x
+  if (L->type == L_RAIL) it[n++] = (Item){-0.4f, I_SIGNAL, 0, MD_SIGNAL};
   if (P.visible && prow == row && flat) draw_player();  // the pancake lies under the traffic
   // shadows on this lane's ground
   for (int i = 0; i < n; i++) {
