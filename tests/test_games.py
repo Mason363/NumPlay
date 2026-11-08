@@ -872,6 +872,10 @@ def play(name, path, out, index=None, copy=None, tag=None, start=800):
         # a script added after the save, then a second session
         buf = bytearray(open(storage, "rb").read())
         lst = records(buf)
+        # (a script's text ends with a zero: without it the Python editor reads on into the next file)
+        for n, v in lst:
+            if n.endswith(".py") and n not in ("pi.py", "late.py") and b"\0" not in v[1:]:
+                problems.append(f"{n} does not end with a zero")
         if copy:
             text = dict(lst).get(copy, b"")
             mark = b"#>" + save.encode() + b":"

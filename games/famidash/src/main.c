@@ -100,6 +100,7 @@ static void save(void) {
     p[2] = left > 1 ? (uint8_t)b64[v >> 6 & 63] : '=', p[3] = left > 2 ? (uint8_t)b64[v & 63] : '=';
   }
   *p++ = '\n';
+  *p++ = 0; /* (a script's text ends with a zero) */
   plat_save(COPY_NAME, copy, (uint32_t)(p - copy));
 }
 static int b64v(uint8_t c) {

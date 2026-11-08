@@ -54,6 +54,7 @@ static bool copy_write(const fnf_file_t *f) {
     p[3] = left > 2 ? (uint8_t)b64[v & 63] : '=';
   }
   *p++ = '\n';
+  *p++ = 0; /* (a script's text ends with a zero) */
   return plat_save(FNF_COPY_NAME, copy, (uint32_t)(p - copy));
 }
 

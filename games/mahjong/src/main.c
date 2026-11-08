@@ -222,6 +222,7 @@ static void save(void) {
     for (int k = 0; k < 4; k++) p[k] = (uint8_t)(i + k - 1 < sizeof sv || k < 2 ? b64[v >> (18 - 6 * k) & 63] : '=');
   }
   *p++ = '\n';
+  *p++ = 0; /* (a script's text ends with a zero) */
   file_write(COPY_NAME, copy, (uint32_t)(p - copy));
 }
 static bool valid(void) {

@@ -333,14 +333,14 @@ void np_progress_backup(void) {
   if (!ef_write(COPY_NAME, NULL, total)) return;
   uint8_t *o = body(COPY_NAME, &len);
   if (!o || len != total) return;
+  uint8_t *stop = o + total - 1; /* (the place of the terminating zero) */
   *o++ = 0; /* not imported by the Python shell */
   for (const char *h = copy_head; *h; h++) *o++ = (uint8_t)*h;
-  uint8_t *stop = o + total;
   for (int i = 0; save_name(i, name); i++) {
     const uint8_t *d = ef_read(name, &len);
     if (!d) continue;
     uint32_t l = backup_line(name, d, len, NULL);
-    if (o + l >= stop) continue;
+    if (o + l > stop) continue;
     o += backup_line(name, ef_read(name, &len), len, o);
   }
   *o = 0;
