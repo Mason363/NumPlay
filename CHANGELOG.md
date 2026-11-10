@@ -2,7 +2,7 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
-## 1.24.16: circloO, 2 3 4 Players, Fungal Wastes and fixes
+## 1.24.17: circloO, 2 3 4 Players, Fungal Wastes and fixes
 
 - **circloO:** CircloO.nwa, Florian van Strien's physics game: its 14 levels and 6 hard mode levels, read from the game's own files.
 - **2 3 4 Players:** FourPlayers.nwa, one-key party games for 2, 3 or 4 players on one calculator, with teams: 14 minigames.

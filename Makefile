@@ -221,7 +221,7 @@ kit: $(KIT)/base.o $(B)/arm/arena.o $(KIT_GAMES) $(B)/NumPlay.nwa \
 	  --spaces "$(SPACES)" --ram $(CUSTOM_RAM) --ram-limit $(RAM_LIMIT) --upsilon-ram $(UPSILON_RAM) --nwlink "$(NWLINK)" \
 	  --langs "$(LANGS)" --alone "$(foreach g,$(XL_GAMES),$(g)=$(if $(XL_FROM),$(XL_FROM)/)$(APP_$(g)))" \
 	  $(if $(XL_FROM),--english "$(XL_FROM)/$(B)/site-kit")
-	gzip -9n < games/retrogo/output/retrogo-app.o > $(B)/site-kit/apps/RetroGo-app.o.gz  # (Retro-Go on its own, Studio)
+	[ -n "$(XL_FROM)" ] || gzip -9n < games/retrogo/output/retrogo-app.o > $(B)/site-kit/apps/RetroGo-app.o.gz  # (Retro-Go on its own, Studio; not in a language's tree, which builds no app of it)
 
 # ...and in French and Chinese, from each language's tree (make lang), in site-kit/<code>. The big games stay in
 # English: their modules come from this build (XL_FROM), their names, taglines and screenshots from the tree
