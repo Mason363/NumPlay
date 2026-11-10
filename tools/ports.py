@@ -8,8 +8,10 @@
                                              screen saved to build/ports/shots/<game>.png; fails if one doesn't run
   python3 tools/ports.py list TARGET         the games ported to TARGET
   python3 tools/ports.py pack TARGET out.zip [game...]
-                                             the built files in a zip, with a README.txt on installing them
-  python3 tools/ports.py kit DIR             DIR/ports.json for NumPlay Studio, from DIR/<target>/ (the zips' files)
+                                             the built files in a zip, with a README.txt on installing them,
+                                             and beside it out.json: which file is whose
+  python3 tools/ports.py kit DIR [LISTS]     DIR/ports.json for NumPlay Studio, from DIR/<target>/ (the zips' files)
+                                             and the out.json files in LISTS
 
 Without games named, build, run and pack take the games whose "ports" (games.json) list the target.
 `probe` reads the calculator build's own commands (make -Bn build), so a game's Makefile stays the one
@@ -155,14 +157,28 @@ def pack(target, out, todo):
         z.writestr("README.txt", readme)
         for _, p, n in files:
             z.write(p, n)
+    # beside it, which file is whose: kit reads it where the games aren't built (a TI-84 CE game's appvars)
+    whose = {}
+    for g, _, n in files:
+        whose.setdefault(g, []).append(n)
+    with open(os.path.splitext(out)[0] + ".json", "w") as f:
+        json.dump({"target": target, "games": whose}, f, indent=1)
+        f.write("\n")
     print(f"{out}: {len(todo)} games for {target}, {os.path.getsize(out) // 1024} KB")
     for _, p, n in files:
         if os.path.getsize(p) > LIMIT.get(target, 1 << 62):
             print(f"  {n} is {os.path.getsize(p)} bytes: the calculator takes {LIMIT[target]} at most")
 
 
-def kit(d):
-    """DIR/ports.json, what NumPlay Studio reads: each target's games, their file in DIR/<target>/ and its size."""
+def kit(d, lists=None):
+    """DIR/ports.json, what NumPlay Studio reads: each target's games, their file in DIR/<target>/ and its size. Which
+    file is whose comes from the lists pack leaves beside its zips, in LISTS, or else from the games' builds."""
+    whose = {}
+    for f in sorted(os.listdir(lists)) if lists else []:
+        if f.endswith(".json"):
+            j = json.load(open(os.path.join(lists, f)))
+            if "target" in j:
+                whose[j["target"]] = j["games"]
     version = open(os.path.join(ROOT, "VERSION")).read().strip()
     commit = os.environ.get("GITHUB_SHA") or subprocess.run(["git", "-C", ROOT, "rev-parse", "HEAD"],
                                                             capture_output=True, text=True).stdout.strip()
@@ -174,7 +190,7 @@ def kit(d):
         there = set(os.listdir(folder)) - {"README.txt"}
         listed = {}
         for g in games([], t):
-            names = [name for _, name in outputs(t, g)]
+            names = whose.get(t, {}).get(g) or [name for _, name in outputs(t, g)]
             for name in names:
                 if name not in there:
                     raise SystemExit(f"kit: {t}/{name} ({g}) missing")
@@ -327,8 +343,8 @@ def main():
     elif cmd == "pack" and len(a) >= 2:
         target, out = a[0], a[1]
         pack(target, out, games(a[2:], target))
-    elif cmd == "kit" and len(a) == 1:
-        kit(a[0])
+    elif cmd == "kit" and len(a) in (1, 2):
+        kit(*a)
     else:
         print(__doc__)
         return 1

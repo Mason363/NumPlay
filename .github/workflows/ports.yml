@@ -85,10 +85,13 @@ jobs:
           python3 tools/ports.py build "$TARGET" -j 4
           python3 tools/ports.py pack "$TARGET" "build/ports/$ZIP"
 
+      # (and pack's list of which file is whose, for the kit)
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.zip }}
-          path: build/ports/${{ matrix.zip }}
+          path: |
+            build/ports/${{ matrix.zip }}
+            build/ports/*.json
           if-no-files-found: error
 
   web:
@@ -280,7 +283,7 @@ jobs:
           unzip -q build/zips/NumPlay-TI84CE.zip -x README.txt -d build/kit/ti84ce
           unzip -q build/zips/NumPlay-Nspire.zip -x README.txt -d build/kit/nspire
           unzip -q build/zips/NumPlay-CasioCG.zip -x README.txt -d build/kit/casio-cg
-          python3 tools/ports.py kit build/kit
+          python3 tools/ports.py kit build/kit build/zips
           for _ in $(seq 60); do
             kit=$(gh api "repos/$GH_REPO/commits/kit" --jq .commit.message 2>/dev/null | grep -o '[0-9a-f]\{40\}' | tail -1 || true)
             how=none
