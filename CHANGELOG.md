@@ -2,6 +2,14 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.18: TI-Nspire fixes, and the TI and Casio downloads
+
+- **TI-Nspire:** Undertale, Deltarune, The Binding of Isaac, Among Us, Doom, Portal Returns, Cookie Clicker, Plants vs. Zombies, the Five Nights at Freddy's games, Pac-Man, Snake, 2048, Minesweeper, Solitaire, Connect Four, Flappy Bird and Block Breaker no longer freeze.
+- **TI-Nspire:** a game waiting for a key shows its whole screen, so NumDash's level select and NumBlocks' menus no longer keep old lines at the bottom.
+- **TI-Nspire:** A to Z, space and ?! work as the NumWorks keys with those letters, so NumBlocks types names, and sin, cos, ln, log, i and √ have keys.
+- **Downloads:** NumPlay-TI84CE.zip, NumPlay-Nspire.zip and NumPlay-CasioCG.zip are at the top of the release, under each calculator in the README and on each calculator's page. The TI-Nspire page says where Retro-Go's games go.
+- **Beta testers:** open an issue only when something doesn't work.
+
 ## 1.24.17: circloO, 2 3 4 Players, Fungal Wastes and fixes
 
 - **circloO:** CircloO.nwa, Florian van Strien's physics game: its 14 levels and 6 hard mode levels, read from the game's own files.
