@@ -12,14 +12,16 @@ ARM mode, in supervisor mode with interrupts off, from the stack Ndless gives it
 - the hardware the program reads itself: the keypad rows (0x900E0010), the touchpad's arrows (touchpad_read), the
   ON key (0x90140810), the SP804 timers (0x900D0000: msleep's, and the second one NumPlay's clock runs, 32768 Hz),
   the interrupt controller msleep masks, the RTC, the LCD controller's registers;
-- time: the instructions run, at --cpi cycles each on a --mhz CPU (1.3 at 396 MHz, a CX II), plus what wfi waits
-  (msleep), the frame copies and rough costs for the OS's calls (memset by size, file calls by milliseconds);
+- time: the instructions run, at --cpi cycles each on a --mhz CPU (1.3 at 396 MHz, a CX II), plus what wfi waits,
+  what np_nspire_pause waits (np_nspire.c's loop on the clock, skipped), the frame copies and rough costs for the
+  OS's calls (memset by size, file calls by milliseconds);
 - checks, each stopping the run or listed at the end: unaligned word and halfword loads and stores (an ARM926 rotates
   an unaligned LDR and stores to the aligned word, so they're silent bugs there: unlike the NumWorks, nothing
   faults), LDRD/STRD at 4 mod 8 (UNPREDICTABLE on ARMv5TE), an access outside the program, its heap and stack, an
   unmodelled register, an unknown system call, an undefined instruction (VFP code among them: there's no FPU), a
-  wfi nothing would wake, a bad free, a file left open, and a screen not shown while the game waits (np_nspire.c's
-  buffer still dirty, no lcd_blit);
+  wfi nothing would wake, a call to Ndless's msleep (on real calculators it waited for good, every interrupt but the
+  timer's masked, after a few hundred calls), a bad free, a file left open, and a screen not shown while the game
+  waits (np_nspire.c's buffer still dirty, no lcd_blit);
 - speed: the game's frames (its perf_frames when it counts them, else the screens shown) and the CPU's busy time,
   as the frame rate a 396 MHz ARM926 would give (--model cx: a 132 MHz CX); --profile shows where the time goes.
 
@@ -86,8 +88,14 @@ KEYS_TPAD = {  # Ndless keys.h, touchpad keypads (CX, CX II): row, bit; or the t
     "7": (0x16, 0x080), "SQU": (0x14, 0x200), "DIVIDE": (0x16, 0x100), "TAN": (0x18, 0x008), "EXP": (0x18, 0x200),
     "RP": (0x1A, 0x008), "LP": (0x1A, 0x020), "VAR": (0x1A, 0x002), "DEL": (0x1A, 0x200), "HOME": (0x10, 0x200),
     "MENU": (0x1C, 0x020), "ESC": (0x1C, 0x080), "TAB": (0x1C, 0x200), "SHIFT": (0x1E, 0x100), "CTRL": (0x1E, 0x200),
-    "TRIG": (0x12, 0x200), "DOC": (0x1C, 0x008), "CAT": (0x1A, 0x080),
-    # SIN and COS are on the dummy key there (0x1C, 0x400): never pressed
+    "TRIG": (0x12, 0x200), "DOC": (0x1C, 0x008), "CAT": (0x1A, 0x080), "eEXP": (0x16, 0x200), "SPACE": (0x10, 0x010),
+    "QUESEXCL": (0x10, 0x100), "A": (0x18, 0x040), "B": (0x18, 0x020), "C": (0x18, 0x010), "D": (0x18, 0x004),
+    "E": (0x18, 0x002), "F": (0x18, 0x001), "G": (0x16, 0x040), "H": (0x16, 0x020), "I": (0x16, 0x010),
+    "J": (0x16, 0x004), "K": (0x16, 0x002), "L": (0x16, 0x001), "M": (0x14, 0x040), "N": (0x14, 0x020),
+    "O": (0x14, 0x010), "P": (0x14, 0x004), "Q": (0x14, 0x002), "R": (0x14, 0x001), "S": (0x12, 0x040),
+    "T": (0x12, 0x020), "U": (0x12, 0x010), "V": (0x12, 0x004), "W": (0x12, 0x002), "X": (0x12, 0x001),
+    "Y": (0x10, 0x040), "Z": (0x10, 0x020),
+    # SIN and COS are on the dummy key there (0x1C, 0x400): never pressed (np_nspire.c reads them as G and H)
     "UP": "up", "RIGHT": "right", "DOWN": "down", "LEFT": "left", "CLICK": "click", "ON": "on",
 }
 NAMES = {  # the NumWorks key -> the Nspire key np_nspire.c reads for it
@@ -95,7 +103,8 @@ NAMES = {  # the NumWorks key -> the Nspire key np_nspire.c reads for it
     "back": "ESC", "home": "HOME", "backspace": "DEL", "shift": "SHIFT", "alpha": "CTRL", "toolbox": "MENU",
     "var": "VAR", "xnt": "TAB", "plus": "PLUS", "minus": "MINUS", "mul": "MULTIPLY", "div": "DIVIDE", "dot": "PERIOD",
     "comma": "COMMA", "lparen": "LP", "rparen": "RP", "power": "EXP", "square": "SQU", "pi": "PI", "tan": "TAN",
-    "ee": "EE", "ans": "NEGATIVE", "onoff": "ON", "sin": "SIN", "cos": "COS",
+    "ee": "EE", "ans": "NEGATIVE", "onoff": "ON", "sin": "G", "cos": "H", "exp": "eEXP", "ln": "B", "log": "C",
+    "i": "D", "sqrt": "K",
 }
 for _i, _n in enumerate("zero one two three four five six seven eight nine".split()):
     NAMES[_n] = NAMES[str(_i)] = str(_i)
@@ -459,6 +468,7 @@ class Nspire:
         self.samples = None
         self.wall_limit = None
         self.last_wfi = None
+        self.msleep_noted = False
         self.stale_since, self.stale_blits, self.stale_noted = None, 0, False
         # the CPU
         lib = self.lib = native()
@@ -485,6 +495,9 @@ class Nspire:
         uc.hook_add(UC_HOOK_MEM_INVALID, self._invalid)
         uc.hook_add(UC_HOOK_CODE, self._exit, begin=EXIT_STUB, end=EXIT_STUB)
         uc.hook_add(UC_HOOK_CODE, self._blit, begin=BLIT_STUB, end=BLIT_STUB)
+        for name, hook in (("np_nspire_pause", self._pause), ("msleep", self._msleep)):
+            if name in self.prog.symbols:
+                uc.hook_add(UC_HOOK_CODE, hook, begin=BASE + self.prog.symbols[name], end=BASE + self.prog.symbols[name])
         # the C hooks
         self.dmap = None
         words = 0
@@ -755,6 +768,20 @@ class Nspire:
         self.last_frame_busy = busy
         if self.on_frame:
             self.on_frame(self)
+
+    def _pause(self, uc, addr, size, data):
+        """np_nspire_pause(n): n ticks of the clock go by, as a wfi waits (its loop on the clock isn't run)"""
+        self.check_shown()
+        wait = self.reg(UC_ARM_REG_R0) * self.hz / TIMER_HZ
+        self.extra += wait
+        self.slept += wait
+        uc.reg_write(UC_ARM_REG_PC, self.reg(UC_ARM_REG_LR))
+
+    def _msleep(self, uc, addr, size, data):
+        if not self.msleep_noted:
+            self.msleep_noted = True
+            self.findings.append(f"msleep called from {self.site(self.reg(UC_ARM_REG_LR))}: on a real calculator it "
+                                 "can wait for good (np_nspire.c's np_nspire_pause waits on the clock instead)")
 
     def _exit(self, uc, addr, size, data):
         self.exited = True

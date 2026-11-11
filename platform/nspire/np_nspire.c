@@ -5,6 +5,10 @@
  * while the game runs, as the Nspire's SDL does, and is put back as it was at the end. If it doesn't count, time
  * goes by 16 ms a screen drawn (a game's pace stays right, only its clock is rough).
  *
+ * Waits read that clock. Not Ndless's msleep: it waits for the timer's interrupt with every other one masked, the ON
+ * key's too, and on real calculators the games calling it hundreds of times a second (Undertale, Isaac, Among Us...)
+ * soon waited there for good, with only the reset button left.
+ *
  * Build defines: NP_APP_ID (the game's id). */
 #include <libndls.h>
 #include <stdlib.h>
@@ -31,15 +35,21 @@ static uint32_t last_blit;
 /* ---- the clock ---- */
 #define T2 ((volatile uint32_t *)0x900D0020) /* load, value, control */
 static uint32_t saved_load, saved_control;
-static uint32_t ticks_hi, last_raw;
+static uint32_t ticks_hi, last_raw, spin_ms;
+/* a busy loop of about n / spin_ms milliseconds (only for the time a dead clock can't measure) */
+static void spin(uint32_t n) {
+  for (uint32_t i = 0; i < n; i++) __asm__ volatile("");
+}
 static void timer_start(void) {
+  spin_ms = is_cx2 ? 56000 : 18000; /* (the loop's turns a millisecond: about 7 cycles each, at 396 or 132 MHz) */
   saved_load = T2[0], saved_control = T2[2];
   T2[2] = 0;
   T2[0] = 0xFFFFFFFF;
   T2[2] = 0x82; /* enabled, 32 bits, free running, no interrupt */
-  last_raw = T2[1];
-  msleep(2);
-  timer_ok = T2[1] != last_raw;
+  uint32_t before = T2[1];
+  spin(2 * spin_ms);
+  timer_ok = T2[1] != before;
+  last_raw = 0xFFFFFFFF - T2[1];
 }
 static void timer_stop(void) {
   T2[2] = 0;
@@ -51,6 +61,16 @@ static uint64_t ticks(void) { /* 32768ths of a second since the start */
   if (raw < last_raw) ticks_hi++;
   last_raw = raw;
   return (uint64_t)ticks_hi << 32 | raw;
+}
+/* n ticks of the clock go by (tools/nspire_emu.py skips the loop, as wfi) */
+__attribute__((noinline)) void np_nspire_pause(uint32_t n) {
+  uint64_t until = ticks() + n;
+  while (ticks() < until) {}
+}
+static void pause_ms(uint32_t ms) {
+  if (!ms) return;
+  if (timer_ok) np_nspire_pause((uint32_t)((uint64_t)ms * 32768 / 1000));
+  else spin(ms * spin_ms), fallback_ms += ms;
 }
 
 static void start(void) {
@@ -96,8 +116,7 @@ bool eadk_display_wait_for_vblank(void) {
   blit();
   if (timer_ok) { /* as the NumWorks's: till the screen's next refresh, 60 a second (games pace themselves by it) */
     uint64_t now = ticks(), next = (now * 60 / 32768 + 1) * 32768 / 60;
-    unsigned ms = (unsigned)((next - now) * 1000 / 32768);
-    if (ms) msleep(ms);
+    np_nspire_pause((uint32_t)(next - now));
   }
   return true;
 }
@@ -116,7 +135,15 @@ static const struct {
   K(MULTIPLY, eadk_key_multiplication), K(DIVIDE, eadk_key_division), K(PERIOD, eadk_key_dot),
   K(COMMA, eadk_key_comma), K(LP, eadk_key_left_parenthesis), K(RP, eadk_key_right_parenthesis),
   K(EXP, eadk_key_power), K(SQU, eadk_key_square), K(PI, eadk_key_pi), K(SIN, eadk_key_sine), K(COS, eadk_key_cosine),
-  K(TAN, eadk_key_tangent), K(EE, eadk_key_ee), K(NEGATIVE, eadk_key_ans),
+  K(TAN, eadk_key_tangent), K(EE, eadk_key_ee), K(NEGATIVE, eadk_key_ans), K(eEXP, eadk_key_exp),
+  /* the letters: the NumWorks key that types each one with alpha (a e^x, b ln, c log, d i, g sin, h cos, k √...),
+     space its minus and ?! its 0, as the NumWorks types them. On a CX, sin and cos are only there, as g and h. */
+  K(A, eadk_key_exp), K(B, eadk_key_ln), K(C, eadk_key_log), K(D, eadk_key_imaginary), K(E, eadk_key_comma),
+  K(F, eadk_key_power), K(G, eadk_key_sine), K(H, eadk_key_cosine), K(I, eadk_key_tangent), K(J, eadk_key_pi),
+  K(K, eadk_key_sqrt), K(L, eadk_key_square), K(M, eadk_key_seven), K(N, eadk_key_eight), K(O, eadk_key_nine),
+  K(P, eadk_key_left_parenthesis), K(Q, eadk_key_right_parenthesis), K(R, eadk_key_four), K(S, eadk_key_five),
+  K(T, eadk_key_six), K(U, eadk_key_multiplication), K(V, eadk_key_division), K(W, eadk_key_one), K(X, eadk_key_two),
+  K(Y, eadk_key_three), K(Z, eadk_key_plus), K(SPACE, eadk_key_minus), K(QUESEXCL, eadk_key_zero),
 };
 /* the arrows: the touchpad's regions (tpad_arrow_t, the corners two arrows, the middle OK), or the clickpad's keys */
 #define A(k) (1ull << eadk_key_##k)
@@ -127,6 +154,9 @@ static const t_key *const PAD_KEYS[] = {NULL, &KEY_NSPIRE_UP, &KEY_NSPIRE_UPRIGH
                                         &KEY_NSPIRE_LEFT, &KEY_NSPIRE_LEFTUP, &KEY_NSPIRE_CLICK};
 eadk_keyboard_state_t eadk_keyboard_scan(void) {
   start();
+  /* what was drawn and isn't shown yet, once 16 ms have gone by: a game waiting for a key in a loop of its own,
+     drawing nothing more, shows its last lines too */
+  if (dirty && (uint32_t)eadk_timing_millis() - last_blit >= 16) blit();
   eadk_keyboard_state_t s = 0;
   for (unsigned i = 0; i < sizeof KEYS / sizeof KEYS[0]; i++)
     if (isKeyPressed(*KEYS[i].key)) s |= (eadk_keyboard_state_t)1 << KEYS[i].to;
@@ -148,7 +178,7 @@ eadk_event_t eadk_event_get(int32_t *timeout) {
     before = now;
     for (int k = 0; k < 64; k++)
       if (hit >> k & 1) return (eadk_event_t)k;
-    msleep(5);
+    pause_ms(5);
   } while (eadk_timing_millis() < until);
   if (timeout) *timeout = 0;
   return eadk_event_none;
@@ -162,8 +192,7 @@ uint64_t eadk_timing_millis(void) {
 void eadk_timing_msleep(uint32_t ms) {
   start();
   blit();
-  if (ms) msleep(ms);
-  if (!timer_ok) fallback_ms += ms;
+  pause_ms(ms);
 }
 void eadk_timing_usleep(uint32_t us) { eadk_timing_msleep((us + 999) / 1000); }
 uint32_t eadk_random(void) {
