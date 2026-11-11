@@ -1,18 +1,19 @@
 name: Beta tester
-description: Test NumPlay on your TI, Casio or other calculator before everyone else
+description: Something doesn't work on your TI-84 Plus CE, TI-Nspire or Casio
 title: "Beta tester: "
 labels: ["beta tester"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks! Each new build for your calculator comes to this issue first. Try it, say what works and what doesn't, and your name goes in the credits.
+        **Looking for the games?** They're out. Get them for your calculator from [its page](https://github.com/Mason363/NumPlay#pick-your-calculator), no issue needed.
+
+        Open one here only when something doesn't work. Your name goes in the credits.
   - type: dropdown
     id: model
     attributes:
       label: Calculator
-      description: The name is written above the screen. Pick all you have.
-      multiple: true
+      description: The name is written above the screen.
       options:
         - TI-84 Plus CE
         - TI-84 Plus CE Python
@@ -22,9 +23,6 @@ body:
         - Casio fx-CG50
         - Casio Graph 90+E
         - Casio fx-CG10 or fx-CG20
-        - Casio Graph 35+E II
-        - Casio fx-9750GIII or fx-9860GIII
-        - NumWorks
         - Another one (say which below)
     validations:
       required: true
@@ -34,8 +32,17 @@ body:
       label: Its software version
       description: "TI-84 Plus CE: 2nd, +, About. TI-Nspire: Home, 5, 4. Casio: MENU, System, Version."
       placeholder: "5.8.0"
-  - type: textarea
-    id: notes
+  - type: input
+    id: game
     attributes:
-      label: Anything else
-      description: Another calculator you have, if Ndless or arTIfiCE is already on it, games you'd like to try first.
+      label: Game
+      placeholder: "Celeste"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did and what you saw. A photo helps.
+    validations:
+      required: true

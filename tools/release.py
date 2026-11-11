@@ -90,6 +90,11 @@ LANGUAGES = [
 ]
 # big games in another language (in build/compiled/games)
 ALONE_LANGUAGES = [("UniversalPaperclips-French.nwa", "Universal Paperclips en français")]
+CALCULATORS = (  # (the zip, the calculators, their page in docs/calculators, the target in games.json "ports")
+    ("NumPlay-TI84CE.zip", "TI-84 Plus CE and TI-83 Premium CE", "ti-84-plus-ce.md", "ti84ce"),
+    ("NumPlay-Nspire.zip", "TI-Nspire CX and CX II, with Ndless", "ti-nspire.md", "nspire"),
+    ("NumPlay-CasioCG.zip", "Casio fx-CG50 and Graph 90+E", "casio-fx-cg50.md", "casio-cg"),
+)
 UPSILON = ("NumPlay-Upsilon.nwa", "For calculators running Upsilon (N0110, N0115): the 24 games that fit in the memory "
            "Upsilon gives apps. Install it with nwlink, see the README")
 
@@ -145,8 +150,14 @@ def main():
 
     files = [(os.path.join(a.build, "NumPlay.nwa"), f"NumPlay.nwa · Start here: {everything[0].lower() + everything[1:]}")]
     notes = ["### Start here", "", "| File | |", "| --- | --- |",
-             f"| **{link('NumPlay.nwa')}** | **{everything}.** Start here! |", "",
-             "### The same app, in disguise", "", "| File | |", "| --- | --- |"]
+             f"| **{link('NumPlay.nwa')}** | **{everything}.** Start here! |", ""]
+    # the other calculators' zips (the Ports workflow puts them on the release): each with its install page
+    ported = lambda t: sum(t in g.get("ports", []) for g in json.load(open(os.path.join(ROOT, "games", "games.json"))))
+    notes += ["### On a TI or Casio calculator", "", "| File | |", "| --- | --- |"]
+    for name, calc, page, target in CALCULATORS:
+        notes.append(f"| **{link(name)}** | {ported(target)} games for the {calc}. "
+                     f"[How to install]({REPO}/blob/main/docs/calculators/{page}) |")
+    notes += ["", "### The same app, in disguise", "", "| File | |", "| --- | --- |"]
     for name, what in VARIANTS:
         files.append((os.path.join(a.build, name), f"{name} · {what}"))
         notes.append(f"| {link(name)} | {what} |")

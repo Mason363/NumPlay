@@ -4,12 +4,14 @@
 
 73 free games for the Casio fx-CG50, Graph 90+E, fx-CG10 and fx-CG20: NumBlocks, Hollow Knight, NumDrive, Balatro, Undertale, NumDash and more. The same games as on the NumWorks, made for this calculator's screen and keys.
 
-> [!IMPORTANT]
-> **Beta testers wanted.** These builds haven't run on a real Casio fx-CG50 yet. [Sign up](https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml) to try each one first, and tell me what works.
+<a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-CasioCG.zip"><img src="https://img.shields.io/badge/Download-NumPlay--CasioCG.zip-1E7F74?style=for-the-badge" alt="Download NumPlay-CasioCG.zip"></a>
+
+> [!NOTE]
+> **In beta.** Something doesn't work? [Tell me](https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml).
 
 ## Install
 
-1. Get `NumPlay-CasioCG.zip` from the [latest release](https://github.com/Mason363/NumPlay/releases/latest) and unzip it.
+1. Get [NumPlay-CasioCG.zip](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-CasioCG.zip) and unzip it.
 2. Plug the calculator in with its USB cable and pick **USB Flash** on it: it shows up as a drive.
 3. Copy the games you want (`.g3a` files) to it, then eject it.
 4. Press **MENU** and pick a game.

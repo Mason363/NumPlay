@@ -4,17 +4,21 @@
 
 78 free games for the TI-Nspire CX and CX II, CAS or not: NumBlocks, Hollow Knight, NumDrive, Celeste, Balatro, Undertale and more. The same games as on the NumWorks, made for this calculator's screen and keys.
 
-> [!IMPORTANT]
-> **Beta testers wanted.** These builds haven't run on a real TI-Nspire CX yet. [Sign up](https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml) to try each one first, and tell me what works.
+<a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Nspire.zip"><img src="https://img.shields.io/badge/Download-NumPlay--Nspire.zip-1E7F74?style=for-the-badge" alt="Download NumPlay-Nspire.zip"></a>
+
+> [!NOTE]
+> **In beta.** Something doesn't work? [Tell me](https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml).
 
 ## Install
 
 1. Install [Ndless](https://ndless.me) on the calculator.
-2. Get `NumPlay-Nspire.zip` from the [latest release](https://github.com/Mason363/NumPlay/releases/latest) and unzip it.
+2. Get [NumPlay-Nspire.zip](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Nspire.zip) and unzip it.
 3. Copy the games you want (`.tns` files) to the calculator with TI-Nspire Link or the TI-Nspire computer software.
 4. Open a game from **My Documents**.
 
 Or pick just the games you want in [NumPlay Studio](https://mason363.github.io/NumPlay/customize/?calc=nspire).
+
+Retro-Go plays the games in a folder named **retrogo** in My Documents: Game Boy, Game Boy Color, NES, Master System, Game Gear, SG-1000 and ColecoVision files (`.gb` `.gbc` `.nes` `.sms` `.gg` `.sg` `.col`). Not Game Boy Advance.
 
 ## Keys
 
@@ -32,6 +36,8 @@ Or pick just the games you want in [NumPlay Studio](https://mason363.github.io/N
 | var | var |
 | tab | x,n,t |
 | 0 to 9, + − × ÷ . , ( ) ^ x² | the same |
+| e^x | e^x |
+| A to Z, space, ?! | the NumWorks key that types the same letter: A is e^x, B ln, C log, D i, G sin, H cos, K √, M 7, Z + |
 
 Games save by themselves, and when you leave with Home.
 

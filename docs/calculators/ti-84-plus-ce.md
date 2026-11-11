@@ -4,12 +4,14 @@
 
 15 free games for the TI-84 Plus CE, TI-84 Plus CE Python, TI-84 Plus CE-T and TI-83 Premium CE: Balatro, Block Blast, Pac-Man, 2 Players, Chess, Five Nights at Freddy's and more. The same games as on the NumWorks, made for this calculator's screen and keys.
 
-> [!IMPORTANT]
-> **Beta testers wanted.** These builds haven't run on a real TI-84 Plus CE yet. [Sign up](https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml) to try each one first, and tell me what works.
+<a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-TI84CE.zip"><img src="https://img.shields.io/badge/Download-NumPlay--TI84CE.zip-1E7F74?style=for-the-badge" alt="Download NumPlay-TI84CE.zip"></a>
+
+> [!NOTE]
+> **In beta.** Something doesn't work? [Tell me](https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml).
 
 ## Install
 
-1. Get `NumPlay-TI84CE.zip` from the [latest release](https://github.com/Mason363/NumPlay/releases/latest) and unzip it.
+1. Get [NumPlay-TI84CE.zip](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-TI84CE.zip) and unzip it.
 2. Send the games you want (`.8xp` files, and the `.8xv` files of Balatro and FNAF) with [TI Connect CE](https://education.ti.com/en/products/computer-software/ti-connect-ce-sw).
 3. Press **prgm**, pick a game, press **enter**.
 

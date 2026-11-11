@@ -7,7 +7,7 @@
 <p align="center">
   <b>27 free games for your NumWorks calculator, in one app.</b><br>
   Plus 50 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.<br>
-  Now on the TI-84 Plus CE, TI-Nspire CX and Casio fx-CG50 too.
+  Now on the <a href="#pick-your-calculator">TI-84 Plus CE, TI-Nspire CX and Casio fx-CG50</a> too.
 </p>
 
 <p align="center">
@@ -43,14 +43,14 @@
 <p align="center"><img src="docs/media/calcs/lineup.png" width="720" alt="A NumWorks, a TI-84 Plus CE, a TI-Nspire CX II, a Casio fx-CG50 and a Casio Graph 35+E II"></p>
 
 > [!IMPORTANT]
-> **Beta testers wanted.** Have a TI-Nspire CX, a Casio fx-CG50 or Graph 90+E, or a TI-84 Plus CE? These builds haven't run on a real one yet. [Sign up](https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml) to try each one first.
+> **The TI-84 Plus CE, TI-Nspire and Casio games are out, in beta.** Download yours below, its page says how to install it. Something doesn't work? [Tell me](https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml).
 
 <table>
   <tr>
-    <td align="center" width="20%"><a href="docs/calculators/numworks.md"><img src="docs/media/calcs/numworks.png" height="150" alt="NumWorks"><br><b>NumWorks</b></a><br><sub>N0110, N0115, N0120<br>27 games, 50 big games</sub></td>
-    <td align="center" width="20%"><a href="docs/calculators/ti-84-plus-ce.md"><img src="docs/media/calcs/ti84ce.png" height="150" alt="TI-84 Plus CE"><br><b>TI-84 Plus CE</b></a><br><sub>and TI-83 Premium CE<br>15 games</sub></td>
-    <td align="center" width="20%"><a href="docs/calculators/ti-nspire.md"><img src="docs/media/calcs/nspire.png" height="150" alt="TI-Nspire CX II"><br><b>TI-Nspire CX</b></a><br><sub>CX and CX II, with Ndless<br>78 games</sub></td>
-    <td align="center" width="20%"><a href="docs/calculators/casio-fx-cg50.md"><img src="docs/media/calcs/casio_cg50.png" height="150" alt="Casio fx-CG50"><br><b>Casio fx-CG50</b></a><br><sub>and Graph 90+E, fx-CG10, fx-CG20<br>73 games</sub></td>
+    <td align="center" width="20%"><a href="docs/calculators/numworks.md"><img src="docs/media/calcs/numworks.png" height="150" alt="NumWorks"><br><b>NumWorks</b></a><br><sub>N0110, N0115, N0120<br>27 games, 50 big games</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay.nwa">Download</a></td>
+    <td align="center" width="20%"><a href="docs/calculators/ti-84-plus-ce.md"><img src="docs/media/calcs/ti84ce.png" height="150" alt="TI-84 Plus CE"><br><b>TI-84 Plus CE</b></a><br><sub>and TI-83 Premium CE<br>15 games</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-TI84CE.zip">Download</a></td>
+    <td align="center" width="20%"><a href="docs/calculators/ti-nspire.md"><img src="docs/media/calcs/nspire.png" height="150" alt="TI-Nspire CX II"><br><b>TI-Nspire CX</b></a><br><sub>CX and CX II, with Ndless<br>78 games</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Nspire.zip">Download</a></td>
+    <td align="center" width="20%"><a href="docs/calculators/casio-fx-cg50.md"><img src="docs/media/calcs/casio_cg50.png" height="150" alt="Casio fx-CG50"><br><b>Casio fx-CG50</b></a><br><sub>and Graph 90+E, fx-CG10, fx-CG20<br>73 games</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-CasioCG.zip">Download</a></td>
     <td align="center" width="20%"><a href="docs/porting.md"><img src="docs/media/calcs/raspberrypi.png" height="110" alt="A Raspberry Pi 5"><br><b>Anything else</b></a><br><sub>a computer, a Raspberry Pi,<br>a board with a screen</sub></td>
   </tr>
 </table>

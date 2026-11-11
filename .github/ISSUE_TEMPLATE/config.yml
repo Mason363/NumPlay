@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Get the games for your TI or Casio
+    url: https://github.com/Mason363/NumPlay#pick-your-calculator
+    about: The TI-84 Plus CE, TI-Nspire and Casio games are out. Pick your calculator for its download, no issue needed.
   - name: Read the roadmap before suggesting a game
     url: https://github.com/Mason363/NumPlay#roadmap
     about: Games that are done or on the way. If yours is there, there's no need to open an issue.

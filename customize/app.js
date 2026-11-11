@@ -1206,7 +1206,7 @@
       words.append('. Choose yours and download them. ');
       const beta = words.appendChild(el('a', 'beta'));
       Object.assign(beta, { href: 'https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml',
-        target: '_blank', rel: 'noopener', textContent: 'Beta: tell us how they run' });
+        target: '_blank', rel: 'noopener', textContent: 'Beta: something wrong? Tell us' });
     }
     $('#small-head').textContent = o ? 'Games' : 'Games in NumPlay';
     document.querySelector('.side > .row-head').hidden = o && ![...$('#big').children].some((b) => !b.classList.contains('away'));
