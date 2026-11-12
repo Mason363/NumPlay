@@ -69,7 +69,7 @@ void nh_setup(int room, int from) {
       break;
     case ROOM_NH_HOUSE:
       thing(1640, 2815, 60, 30, EV_NH_CHAIN, ACTOR_ITEM, 0);
-      obj_sign(1765, 2800, 22, 44, "* (A note, hung on the chain.)|* (\"Howdy! I'm in the garden.\n  If you need to talk, come by.\")|* (\"The keys are in the kitchen\n  and the hallway.\")");
+      thing(1745, 2815, 58, 30, EV_NH_CHAIN, ACTOR_ITEM, 1);   /* (the chain itself, its note on it) */
       thing(1290, 2575, 50, 24, EV_NH_KEY, ACTOR_ITEM, 0);
       thing(2374, 2808, 20, 32, EV_NH_KEY, ACTOR_ITEM, 1);
       obj_sign(2198, 2808, 22, 32, "* (\"Room under renovations.\")");
@@ -145,10 +145,13 @@ static int ev_key(Ev *c) {
   EV_END;
 }
 
+/* the chain on the stairs down (its foot, or the chain itself with its note): both keys open it */
 static int ev_chain(Ev *c) {
   EV_BEGIN;
   if (!flag(F_NH_CHAIN)) {
     if (!flag(F_NH_KEY1) || !flag(F_NH_KEY2)) {
+      if (c->self && c->self->arg && !flag(F_NH_KEY1) && !flag(F_NH_KEY2))
+        NARRATE("* (A note, hung on the chain.)|* (\"Howdy! I'm in the garden.\n  If you need to talk, come by.\")|* (\"The keys are in the kitchen\n  and the hallway.\")");
       NARRATE(flag(F_NH_KEY1) || flag(F_NH_KEY2) ? "* (The stairs are chained shut.\n  One lock is still closed.)"
                                                  : "* (The stairs down are chained\n  shut. Two locks.)");
       return 1;
