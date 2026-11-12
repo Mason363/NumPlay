@@ -2,6 +2,11 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.19: Undertale and NumPlay Studio fixes
+
+- **Undertale:** the chain on the stairs in Asgore's home opens when you check it with both keys.
+- **NumPlay Studio:** no more Nwagra on Epsilon 26. It doesn't work there, and the installer showed the size as NaN.
+
 ## 1.24.18: TI-Nspire fixes, and the TI and Casio downloads
 
 - **TI-Nspire:** Undertale, Deltarune, The Binding of Isaac, Among Us, Doom, Portal Returns, Cookie Clicker, Plants vs. Zombies, the Five Nights at Freddy's games, Pac-Man, Snake, 2048, Minesweeper, Solitaire, Connect Four, Flappy Bird and Block Breaker no longer freeze.
