@@ -40,12 +40,12 @@ APP_END = 0x903F0000
 APP_SPACE = 2031616
 # with Enlarged Extra Apps (nwagyu's Nwagra), the app loader is told the space goes on to the end of the
 # external flash (0x90800000), over the second copy of the calculator's software: a NumPlay of the big
-# games (games.json "xl", made with the customizer website from `make kit`) is for that: 6 MB, or 6.5 MB
-# from 0x90180000 (the installer's 6656 KB)
+# games (games.json "xl", made with the customizer website from `make kit`) is for that: 6 MB. (Nwagra doesn't
+# work on Epsilon 26: the installer shows the space as NaN, so there's no 6.5 MB space from 0x90180000)
 XL_END = 0x90800000
 XL_APP_SPACE = 6291456
 # the spaces the customizer website offers (kit.json "spaces"; tools/kit.py links a NumPlay at each)
-SPACES = std:$(APP_START):$(APP_END) e26:$(APP_START_26):$(APP_END) xl:$(APP_START):$(XL_END) xl26:$(APP_START_26):$(XL_END)
+SPACES = std:$(APP_START):$(APP_END) e26:$(APP_START_26):$(APP_END) xl:$(APP_START):$(XL_END)
 # big games that must install on their own without Enlarged Extra Apps: make check holds them to APP_SPACE
 APP_SPACE_APPS = HollowKnight HollowKnightFungalWastes HillClimbRacing FridayNightFunkin AngryBirds PolyTrack UniversalPaperclips UniversalPaperclips-French BadTimeSimulator Mahjong SnowRider3D TempleRun Famidash CatNinja MrBullet NumPico MotoX3M AmongUs Imposter FourPlayers Deltarune CircloO DoodleJump FlappyDunk
 # Upsilon, the N0110 and N0115's custom software, gives .nwa apps less RAM: NumPlay-Upsilon.nwa has

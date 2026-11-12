@@ -59,7 +59,7 @@ Chests hold chips; wear four from the menu. Lolbit sells bytes, helpers that fig
 
 ## Good to know
 
-* **Needs 6 MB apps** (Enlarged Extra Apps with Nwagra): the game is 4.9 MB. It comes on its own, not inside NumPlay. Your files are kept in each.
+* **Needs 6 MB apps** (Enlarged Extra Apps with Nwagra, which doesn't work on Epsilon 26): the game is 4.9 MB. It comes on its own, not inside NumPlay. Your files are kept in each.
 * **No sound:** the calculator has no speaker.
 * **The pictures are the game's,** at 0.4 of their size: the battle is the game's 800 x 480 screen, the map at the same scale.
 * **Not in this version:** Halloween Land and its minigames (the portal there leads straight to the Geist Lair, once Security is beaten), the fishing spot, the hidden dungeons under the map, the clock, Fredbear's hints and the cutscenes.

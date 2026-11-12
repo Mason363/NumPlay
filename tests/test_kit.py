@@ -13,7 +13,7 @@ in the ARM emulator, with tests/test_games.py's sessions:
   one doesn't, OK on its card doesn't start it (the card says how much it lacks);
 - probe: each big game alone with --ram bytes of RAM, whatever it needs (to find the least it plays in);
 - spaces: for each space for apps the website offers (kit.json "spaces": the app area from 0x90200000, or from
-  0x90180000 as on Epsilon 26.4, each also on to 0x90800000 with Nwagra), the fullest NumPlay it lets you make
+  0x90180000 as on Epsilon 26.4, or from 0x90200000 on to 0x90800000 with Nwagra), the fullest NumPlay it lets you make
   there, NumPlay's games and the big games in their order while they fit, installed at that space's start, with
   the userland header's app area starting there: the last of NumPlay's games (without Nwagra) and the first and
   last big games played where they are, in the app area, past it, and into the second slot.
@@ -165,7 +165,7 @@ def main():
     ap.add_argument("--only", default="alone,sets,ram,spaces")
     ap.add_argument("--game", help="only this big game (alone, ram)")
     ap.add_argument("--set", type=int, help="only this set (0, 1...)")
-    ap.add_argument("--space", help="only this space (kit.json spaces: std, e26, xl, xl26)")
+    ap.add_argument("--space", help="only this space (kit.json spaces: std, e26, xl)")
     ap.add_argument("--ram", type=int, help="the RAM apps get (alone, sets; default: the least they fit in)")
     ap.add_argument("--out", default=os.path.join(ROOT, "build", "data", "test_kit"))
     a = ap.parse_args()
