@@ -722,10 +722,14 @@ static void use(uint32_t pressed) {
         neighbours_changed(x, y, z);
         tnt_light(x, y, z, 80);
       } else {
-        /* ItemFlintAndSteel.onItemUse: fire in the air against the face (BlockFire.onBlockAdded: out at once
-         * where it cannot stay) */
+        /* ItemFlintAndSteel.onItemUse: fire in the air against the face (BlockFire.onBlockAdded: a portal if it
+         * is in an empty frame, whichever face of the frame is lit; else out at once where it cannot stay) */
         int f = pl.hit_face, fx = x + NX[f], fy = y + NY[f], fz = z + NZ[f];
         if (world_get(fx, fy, fz) == B_AIR && fy >= 0 && fy < WORLD_H) {
+#if NB_DIMS
+          if (dims_portal_light(fx, fy, fz)) {
+          } else
+#endif
           if (fire_can_stay(fx, fy, fz)) fire_set(fx, fy, fz, 0);
         }
       }

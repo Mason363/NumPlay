@@ -108,7 +108,7 @@ int main(void) {
     for (int y = fy - 1; y <= fy + 3; y++)
       if (x == px - 1 || x == px + 2 || y == fy - 1 || y == fy + 3) world_set(x, y, pz, B_OBSIDIAN);
   hold(I_FLINT_AND_STEEL, 0);
-  player_use_on(px, fy - 1, pz, 1);   /* (flint and steel on the frame's bottom) */
+  player_use_on(px - 1, fy + 1, pz, 5);   /* (flint and steel on the inside of the frame's side, in the air) */
   int portals = 0;
   for (int x = px; x <= px + 1; x++)
     for (int y = fy; y <= fy + 2; y++) portals += world_get(x, y, pz) == B_PORTAL_X || world_get(x, y, pz) == B_PORTAL_Z;
