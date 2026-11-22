@@ -24,7 +24,7 @@
 
 * **One button:** hold it and the bike speeds up on the ground. Hold it in the air and the bike turns backwards. Let go to land on both wheels, not on its head.
 * **The game's own physics:** Box2D, the engine Rider runs on, set up as the game sets it up: the bike's body, wheels and sensors, their weights and every number, read from the game's files. Platforms tip, swing, fall and throw you as in the game. The track is slippery, as in the game.
-* **The endless run:** the game's 95 track pieces, picked at random, harder as your score grows. Every landed flip is a point, and two wheels down together is a perfect flip.
+* **The endless run:** the game's 95 track pieces, picked at random, harder as your score grows. Every landed flip is a point, and two wheels down together is a perfect landing: its flips count twice.
 * **48 levels** in six groups, from Easy to Extreme, with the game's tracks: loops, ramps that tip, catapults, trapdoors, falling platforms, speed pads and red saws. Finish fast for three stars. Each flip takes half a second off your time.
 * **55 bikes:** win them with gems, or open the special ones by playing runs, scoring, getting stars and finishing challenges, as the game has it.
 * **Challenges:** the game's challenges one after another, with gems, bikes and colours as rewards. **Ten colour themes** for the endless run.
@@ -49,7 +49,7 @@
 
 Hold **OK** and the bike rides. Over a ramp it flies: keep holding and it turns backwards, a flip. Let go before it comes down so that it lands on both wheels. If it lands on its head, or hits a red saw, it breaks.
 
-In the endless run every landed flip is a point. Gems you pick up win new bikes. In the levels, reach the end as fast as you can: flips take time off, crashes start the level again.
+In the endless run every landed flip is a point, two when both wheels touch down together. Gems you pick up win new bikes. In the levels, reach the end as fast as you can: flips take time off, crashes start the level again.
 
 ## Controls
 

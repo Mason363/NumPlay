@@ -44,6 +44,7 @@
 #define BOOST_VMAX 1050                 /* maxAdditionalBoosterForwardVelocityValue */
 #define FIRST_FLIP 270                  /* firstFlipDegreesAmount */
 #define PERFECT_MS 30                   /* gameCharacterPerfectLandingErrorMargin */
+#define PERFECT_FX_MS (30 * 16)         /* GameCharacter.perfectFlip: the body's colour back in 30 steps of 16 ms */
 #define BODY_LAND_MS 1000               /* flipTimeToLandOnWheelsAfterBodyTouch */
 #define MAX_LANDINGS 3                  /* maxPlatformLandingAmount */
 #define MAX_FORCE 10000                 /* maxRealImpactForce */
@@ -293,11 +294,13 @@ static void flip_made(rd_run *r, int n) {
   b->air_flips += n, r->flips += n;
   if (r->mode == RUN_ENDLESS) r->pending += n;
 }
-/* Board.characterLanded's end: the texts, the flips counted (a perfect landing or not) */
+/* Board.characterLanded's end: the texts, the flips counted (a perfect landing or not). GameController.perfectFlip
+   counts the flips landed perfectly; in the endless run mergeHudBonusScore adds the jump's points to the score:
+   twice as many when it landed perfectly (Hud.mergeBonusScore's landedPerfectlyBonus) */
 static void landed_texts(rd_run *r, bool perfect) {
   rd_bikestate *b = &r->b;
   int n = b->air_flips;
-  if (perfect) r->perfect++;
+  if (perfect) r->perfect += n;
   if (n >= 2) {
     int k = n > 6 ? 6 : n, kind = perfect ? 0 : 1, m = flip_ntexts[(k - 2) * 2 + kind];
     say(r, flip_texts[k - 2][kind][rd_rand(&r->seed) % m], 0);
@@ -313,7 +316,10 @@ static void landed_texts(rd_run *r, bool perfect) {
     say(r, air_texts[k], r->text);
   }
   if (n > r->best_flips_jump) r->best_flips_jump = n;
-  if (n && r->mode == RUN_ENDLESS) r->landed_flips += n, r->pending_ms = 500;
+  if (n && r->mode == RUN_ENDLESS) {
+    int got = perfect ? 2 * n : n;
+    r->pending += got - n, r->landed_flips += got, r->pending_ms = 500;
+  }
   b->air_flips = 0, b->front_flip = false;
   b->in_air_ms = -1;
 }
@@ -321,6 +327,7 @@ static void landing_check(rd_run *r) { /* waitForLandingOrDelay: checkPerfectLan
   rd_bikestate *b = &r->b;
   bool perfect = two_wheels_landed(r) && b->in_air_ms >= 0 && fabsf(b->landing_ms[0] - b->landing_ms[1]) < PERFECT_MS &&
                  b->air_flips > 0;
+  if (perfect) r->perfect_fx = PERFECT_FX_MS; /* GameCharacter.perfectFlip */
   landed_texts(r, perfect);
 }
 static void lose_bonus(rd_run *r) { /* hudResetBonusScore */
@@ -1087,6 +1094,7 @@ static void step_world(rd_run *r, bool held) {
   rd_bikestate *b = &r->b;
   ph_listen(&listener);
   if (r->text_ms > 0) r->text_ms -= DT_MS;
+  if (r->perfect_fx > 0) r->perfect_fx -= DT_MS;
   /* the touch */
   bool was_held = b->held;
   b->held = held;

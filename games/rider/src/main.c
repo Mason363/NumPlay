@@ -2,8 +2,9 @@
  * from the game's own files (tools/data.py, gamesrc/rider/spec).
  *
  * One button: OK (or EXE, or Up) held rides on, held in the air turns the bike backwards for a flip; let go to
- * land on both wheels. The endless run counts landed flips; the 48 levels give stars for their time, every flip
- * taking half a second off. Gems win bikes; runs, best scores, stars and challenges open the special ones.
+ * land on both wheels. The endless run counts landed flips (twice, both wheels down together); the 48 levels
+ * give stars for their time, every flip taking half a second off. Gems win bikes; runs, best scores, stars and
+ * challenges open the special ones.
  * Back pauses (Resume, How to play, Quit game, asked first), Home saves and quits.
  *
  * The ride runs at the game's 60 steps a second whatever the calculator manages to draw. */
@@ -699,7 +700,7 @@ static const char *help_lines[] = {
     "Red saws break it too.",
     "",
     "Endless run: each landed flip is a point,",
-    "both wheels down together a perfect flip.",
+    "two if both wheels touch down together.",
     "Levels: reach the end fast for 3 stars.",
     "Each flip takes half a second off.",
     "",
