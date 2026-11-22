@@ -566,9 +566,11 @@ static void contacts(void) {
     if (kind == K_SPRING) b[1] = b[3] - h * 3 / 8;
     if (kind == K_DOOR) b[0] += w / 4, b[2] -= w / 4, b[1] += h / 4;
     if (!touches(x, y, b[0], b[1], b[2], b[3])) continue;
-    if (kind == K_SAW) { /* round: the nearest point of the box to its middle */
+    if (kind == K_SAW) { /* round: the nearest point of the box to its middle, within the game's circle (a radius
+                            of 6 of the saw's 8 pixels, of 14 of the big one's 16) */
       int cx = o->x >> 8, cy = o->y >> 8, dx = cx - clampi(cx, x, x + hw - 1), dy = cy - clampi(cy, y, y + hh - 1);
-      if (dx * dx + dy * dy < (w - 1) * (w - 1)) die();
+      int r = w * (o->f & F_BIG ? 7 : 6) / 8;
+      if (dx * dx + dy * dy < r * r) die();
     } else if (kind == K_SPIKE || kind == K_BAD || kind == K_GSPIKE || kind == K_DEATH) {
       die();
     } else if (kind == K_SPRING && !o->t) {
