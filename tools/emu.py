@@ -274,6 +274,7 @@ class Calculator:
         self.exited = False
         self.svc_counts = {}
         self.locks = self.max_locks = 0
+        self.home_pending = self.left_home = False
         self.intr_hook = uc.hook_add(UC_HOOK_INTR, self._intr)
         uc.hook_add(UC_HOOK_CODE, self._draw_string, begin=DRAW_STRING_HOOK, end=DRAW_STRING_HOOK + 1)
         uc.hook_add(UC_HOOK_CODE, self._exit, begin=EXIT_HOOK, end=EXIT_HOOK + 1)
@@ -418,6 +419,13 @@ class Calculator:
         self.exited = True
         uc.emu_stop()
 
+    def _home_checkpoint(self, uc):
+        """Epsilon jumps back to its home screen: the app is left without returning."""
+        self.home_pending = False
+        self.left_home = True
+        self.exited = True
+        uc.emu_stop()
+
     def _draw_string(self, uc, addr, size, data):
         text_p, point, large, fg = (self.reg(r) for r in (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2, UC_ARM_REG_R3))
         sp = self.reg(UC_ARM_REG_SP)
@@ -527,6 +535,15 @@ class Calculator:
             self.max_locks = max(self.max_locks, self.locks)
         elif n == 13:
             self.locks -= 1
+            if self.locks == 0 and self.home_pending:
+                self._home_checkpoint(uc)
+        elif n == 8:  # has checkpoint: Epsilon's Home one (type 0) is always set
+            ret = 1 if (r0 & 0xFF) == 0 else 0
+        elif n == 9:  # load checkpoint: Epsilon's home screen, at once or at the last unlock
+            if self.locks > 0:
+                self.home_pending = True
+            else:
+                self._home_checkpoint(uc)
         elif n == 15:  # Ion::crc32Byte(data, length)
             ret = epsilon_crc32(bytes(uc.mem_read(r0, r1)))
         elif n == 16:  # Ion::crc32DoubleWord(data, words)

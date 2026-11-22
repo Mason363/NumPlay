@@ -7,7 +7,8 @@
  * after, resets, and loses its files (saves included). np_app_begin() asks
  * Epsilon to hold Home back while the app runs, so the app sees Home as a key
  * and quits by itself, and np_app_end() clears the app's RAM before handing it
- * back. Both do nothing when the game runs inside the NumPlay launcher, which
+ * back, then leaves through Epsilon's Home checkpoint, the one way that rebuilds
+ * the pool on every version (Epsilon 23 and 24 never do after an app returns). Both do nothing when the game runs inside the NumPlay launcher, which
  * does the same for all its games.
  *
  * Files. The file system is found through the userland header of the
@@ -140,8 +141,15 @@ __attribute__((unused, noinline)) static int np_app_end(void) {
   bool unlock = epsilon_home_held;
   for (volatile uint32_t *p = (volatile uint32_t *)(void *)_data_section_start_ram; p < (volatile uint32_t *)(void *)_heap_end; p++)
     *p = 0;
-  /* a Home press held back so far may take effect now: the RAM is clean */
-  if (unlock) __asm__ volatile("svc 13" ::: "r0", "r1", "r2", "r3", "r12", "memory");
+  if (unlock) {
+    /* a Home press held back so far may take effect now: the RAM is clean */
+    __asm__ volatile("svc 13" ::: "r0", "r1", "r2", "r3", "r12", "memory");
+    /* Then leave the way Home does, through Epsilon's Home checkpoint (system calls 8 and 9): it rebuilds the
+     * math memory (Poincare's pool) this RAM held. Returning leaves it cleared on Epsilon 23 and 24, which never
+     * rebuild it after an app, and opening Calculation then resets the calculator. */
+    __asm__ volatile("movs r0, #0\n svc 8\n uxtb r0, r0\n cbz r0, 1f\n movs r0, #0\n svc 9\n1:" ::: "r0", "r1", "r2", "r3",
+                     "r12", "memory", "cc");
+  }
   return 0;
 }
 

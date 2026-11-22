@@ -84,13 +84,24 @@ void np_session_begin(void) {
   session_locked = true;
 }
 
+/* Leaves the way Home does, through Epsilon's Home checkpoint (system calls 8 and 9): it rebuilds the math
+ * memory (Poincare's pool) this RAM held. Returning leaves it cleared on Epsilon 23 and 24, which never rebuild
+ * it after an app, and opening Calculation then resets the calculator. */
+static void __attribute__((noinline)) leave_home(void) {
+  __asm__ volatile("movs r0, #0\n svc 8\n uxtb r0, r0\n cbz r0, 1f\n movs r0, #0\n svc 9\n1:" ::: "r0", "r1", "r2", "r3",
+                   "r12", "memory", "cc");
+}
+
 int np_session_end(void) {
   /* a key still held (OK, EXE) would reach the home screen, which would open NumPlay again */
   np_wait_release();
   bool unlock = session_locked;
   for (volatile uint32_t *p = (volatile uint32_t *)(void *)_data_section_start_ram; p < (volatile uint32_t *)(void *)_heap_end; p++)
     *p = 0;
-  if (unlock) SVC2(13, 0, 0);
+  if (unlock) {
+    SVC2(13, 0, 0); /* (a Home press held back so far takes effect here) */
+    leave_home();
+  }
   return 0;
 }
 

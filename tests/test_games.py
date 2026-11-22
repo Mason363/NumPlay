@@ -864,6 +864,8 @@ def run_once(nwa, storage, keys, home, out, tag, quit_key="home"):
         problems.append("RAM not cleared on exit")
     if c.max_locks != 1 or c.locks != 0:
         problems.append(f"Home lock not held and released once (max {c.max_locks}, now {c.locks})")
+    if c.exited and not c.left_home:
+        problems.append("left by returning, not through Epsilon's Home checkpoint (Calculation resets on Epsilon 23 and 24)")
     changed = c.firmware_ram_changes()
     if changed:
         problems.append(f"{len(changed)} words of the firmware's RAM changed, first at {changed[0]:#x}")
