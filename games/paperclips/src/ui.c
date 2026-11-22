@@ -247,6 +247,9 @@ static void tab_clips(void) {
   }
   int x;
   if (g->humanFlag == 1) {
+    /* (the funds and the clips not sold yet, which the original's one page shows beside the button) */
+    line(S3("Available Funds: " PC_USD_PRE, cm(g->funds, 2), PC_USD_POST));
+    line(S2("Unsold Inventory: ", cm(g->unsoldClips, 0)));
     heading("Manufacturing");
     line(S2("Clips per Second: ", cm(js_round(g->clipRate), 0)));
     if (g->wireBuyerFlag == 1) {
