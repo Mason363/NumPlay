@@ -140,7 +140,7 @@ typedef struct {
   uint8_t counter_bite, pizza_fury, freddle_fury, block_confuse, block_unscrew;
   uint8_t bomb_used;
   int16_t shake, flash;              /* "follow 1" A, "flashhit" A */
-  uint8_t mimic, mimic_attack;
+  uint8_t mimic, mimic_attack, mimic_slot;   /* (mimic_slot: who made the attack it does again) */
   int16_t mimic_t;
   int16_t endo_t;
   int16_t hj_t, hj_kind, hj_level;   /* a happy jam playing */

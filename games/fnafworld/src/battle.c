@@ -346,7 +346,8 @@ static int attack_frame(int a) {
 static void do_attack(int a) {
   int power = B.cur_level * B.multiplier;   /* 587: "current attack power" */
   int level = B.cur_level;
-  int att_x = B.pm[B.att_slot - 1].x, att_y = B.pm[B.att_slot - 1].y;
+  int who = B.att_slot ? B.att_slot : B.mimic_slot ? B.mimic_slot : 1;   /* (the mimic's turn: no one attacks) */
+  int att_x = B.pm[who - 1].x, att_y = B.pm[who - 1].y;
   int t;
   Fx *f;
   switch (a) {
@@ -1099,7 +1100,7 @@ void battle_step(void) {
     if (B.att_img != prev && B.att_img == attack_frame(B.used) && !B.att_frame_done) {
       B.att_frame_done = 1;
       do_attack(B.used);
-      if (B.mimic > 0 && B.used != 49 && B.used != B.mimic_attack) B.mimic_attack = B.used;   /* 889-890 */
+      if (B.mimic > 0 && B.used != 49 && B.used != B.mimic_attack) B.mimic_attack = B.used, B.mimic_slot = B.att_slot;   /* 889-890 */
     }
     if (end) {
       if (!B.att_frame_done) do_attack(B.used);
