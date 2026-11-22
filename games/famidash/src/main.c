@@ -885,7 +885,7 @@ static void enter_settings(bool fun) {
     for (int x = 3; x <= 27; x++) nt_put(0, x, y, m[' ']);
   for (int i = 0; i < (fun ? NFUN : NSET); i++) nt_text(0, 6, y0 + i * 2, fun ? rows_fun[i] : rows_set[i], m);
   if (fun) nt_line(23, "PRESS OK TO TOGGLE");
-  nt_line(24, "PRESS BACK TO SAVE/RETURN");
+  nt_line(24, "PRESS BACK TO SAVE"); /* (24 letters at most: the 25th would be on the frame's colours) */
   set_sel = 0;
   set_rows();
   nt_scroll_x = nt_scroll_y = 0, nt_split_y0 = nt_split_y1 = -1;
