@@ -54,6 +54,7 @@ int pic_w(int id);   /* (in squares of 16 pixels, times 16) */
 int pic_h(int id);
 int pic_hx(int id);
 int pic_hy(int id);
+void pic_bounds(int id, int *x0, int *y0, int *x1, int *y1); /* what shows of it, from its top left corner */
 
 /* the map's pictures (SPRS): at their corner (x, y); an opaque one tiled over a rectangle */
 void gfx_spr(int id, int x, int y);
