@@ -132,6 +132,11 @@ static void battle_keys(void) {
 /* ------------------------------------------------------------------ the deck's keys */
 #define DCOLS 8
 #define DROWS_SHOWN 3
+/* the deck's row, the collection's rows: 3 pixels between the cards across, 3 down, so that the chosen card's frame
+ * stays off its neighbours */
+#define DECK_Y 14
+#define COLL_Y 86
+#define COLL_DY 48
 static int deck_has(int card) {
   for (int k = 0; k < 8; k++)
     if (g.prof.deck[k] == card) return k;
@@ -298,8 +303,9 @@ static void draw_title(void) {
   gfx_text_c(FONT_SMALL, x + w / 2, 222, "OK choose  Home quit", RGB(0x8090B0));
 }
 
+/* a card's picture (36 x 45) at (x, y): its frame a pixel round it, the chosen one's 2 pixels (the grid leaves room) */
 static void card_icon(int card, int x, int y, bool sel, bool dim) {
-  if (sel) gfx_round_rect(x - 3, y - 3, 42, 51, 4, GOLD);
+  if (sel) gfx_round_rect(x - 2, y - 2, 40, 49, 3, GOLD);
   else gfx_round_rect(x - 1, y - 1, 38, 47, 3, RGB(0x0E1626));
   gfx_img_dim(CARDS[card].icon, x + 18, y + 22, 0, false, dim ? 20 : 0);
   gfx_img(IMG_DROP_BIG, x + 6, y + 38, 0, false);
@@ -346,14 +352,14 @@ static void draw_deck(void) {
   snprintf(t, sizeof t, "Average Elixir cost: %d.%d", sum / 8, sum * 10 / 8 % 10);
   gfx_text_r(FONT_SMALL, 314, 2, t, PINK);
   for (int k = 0; k < 8; k++)
-    if (!(g.drow == 0 && g.dcol == k)) card_icon(g.prof.deck[k], 6 + k * 39, 15, false, false);
-  if (g.drow == 0) card_icon(g.prof.deck[g.dcol], 6 + g.dcol * 39, 15, true, false);
-  if (g.hold >= 100) gfx_frame_rect(4 + (g.hold - 100) * 39, 13, 40, 49, WHITE);
+    if (!(g.drow == 0 && g.dcol == k)) card_icon(g.prof.deck[k], 6 + k * 39, DECK_Y, false, false);
+  if (g.drow == 0) card_icon(g.prof.deck[g.dcol], 6 + g.dcol * 39, DECK_Y, true, false);
+  if (g.hold >= 100) gfx_frame_rect(4 + (g.hold - 100) * 39, DECK_Y - 2, 40, 49, WHITE);
   int card = deck_cursor_card();
-  gfx_fill(0, 63, SCREEN_W, 30, RGB(0x0E1830));
+  gfx_fill(0, DECK_Y + 48, SCREEN_W, 22, RGB(0x0E1830));
   if (card >= 0) {
-    gfx_text_o(FONT_MID, 6, 65, CARDS[card].name, WHITE);
-    card_stats(card, 120, 66);
+    gfx_text_o(FONT_MID, 6, DECK_Y + 50, CARDS[card].name, WHITE);
+    card_stats(card, 120, DECK_Y + 49);
   }
   for (int pass = 0; pass < 2; pass++)
     for (int r = 0; r < DROWS_SHOWN; r++) {
@@ -363,12 +369,12 @@ static void draw_deck(void) {
         if (i >= NCARDS) break;
         bool sel = g.drow == row + 1 && g.dcol == c;
         if (sel != (pass == 1)) continue;   /* (the chosen one last, its frame on top) */
-        card_icon(i, 6 + c * 39, 96 + r * 43, sel, deck_has(i) >= 0);
-        if (g.hold == i) gfx_frame_rect(4 + c * 39, 94 + r * 43, 40, 49, WHITE);
+        card_icon(i, 6 + c * 39, COLL_Y + r * COLL_DY, sel, deck_has(i) >= 0);
+        if (g.hold == i) gfx_frame_rect(4 + c * 39, COLL_Y - 2 + r * COLL_DY, 40, 49, WHITE);
       }
     }
   const char *hint = g.hold < 0 ? "OK pick a card   arrows move   Back done" : "OK put it here   Back cancel";
-  gfx_fill(0, 228, SCREEN_W, 12, RGB(0x0E1830));
+  gfx_fill(0, 229, SCREEN_W, 11, RGB(0x0E1830));
   gfx_text_c(FONT_SMALL, 160, 229, hint, RGB(0xC8D8F0));
 }
 
