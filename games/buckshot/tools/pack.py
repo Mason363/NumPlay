@@ -13,7 +13,9 @@ import re
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
+from scipy import ndimage
+from scipy.spatial import ConvexHull
 
 from pixcode import decode, encode
 
@@ -52,6 +54,116 @@ def ident(name):
     return re.sub(r"\W", "_", name).upper()
 
 
+# ---- the items on the table, each kept to its own slot
+# A slot's cut is everything that changed between the render with the item and the one without it: the item and its
+# shadow, but also specks, bits of the grid's lines and patches of light that changed with it anywhere on the table,
+# over other slots (a beer near you put specks over the item diagonally above it, and its picture, so its selection
+# box, was much taller than the beer). A cut now keeps what lies in its own slot's part of the table (the pixels
+# nearer its middle than another slot's of that side, and not much farther than halfway to the next), and, past it,
+# the item itself: the parts that differ clearly from the table, the largest and those next to it (and next to those),
+# within their outline and a fringe of NEAR pixels round it (a near beer rises over the slot behind it).
+ITEM = re.compile(r"(it\d[pd]|di\d)(\d)$")
+VIEWS = {"p": "table", "d": "table", "": "dealer"}   # the slots' side (the Dealer's view: none): its plate
+GRIDS = {"table": "t_grid", "dealer": "d_grid"}
+STRONG = 3     # levels (of 36) apart, the channels added up: the item, not the light on the table
+JOIN = 3       # pixels between two parts of an item
+NEAR = 3       # pixels of soft shadow kept round it
+SHADE = 0.08   # a shadow's colour: the table's, its channels' shares within this
+FLAT = (3, 4, 5, 8)  # flat items: how far they are from one slot to another moves a picture between them
+
+
+class Slots:
+    def __init__(self, art):
+        self.art = art
+        self.plate = {}
+        for view, grid in GRIDS.items():
+            p = Image.open(A / art["plates"][view]).convert("RGBA")
+            p.alpha_composite(Image.open(A / "sprites" / f"{grid}.png").convert("RGBA"), tuple(art["sprites"][grid]))
+            self.plate[view] = np.array(p)[..., :3].astype(np.int32)
+        self.cache = {}
+        self.box = {}  # each cut's item, in it: x, y, w, h
+        self.mid = {}  # each slot's middle: the median of the flat items' (as cut)
+        for side in VIEWS:
+            pre = "di%d" if not side else "it%d" + side
+            for g in range(8):
+                pts = []
+                for i in FLAT:
+                    name = (pre % i) + str(g)
+                    ys, xs = np.nonzero(np.array(Image.open(A / "sprites" / f"{name}.png").convert("RGBA"))[..., 3])
+                    pts.append((art["sprites"][name][0] + np.median(xs), art["sprites"][name][1] + np.median(ys)))
+                self.mid[side, g] = np.median(pts, axis=0)
+
+    @staticmethod
+    def slot(name):
+        m = ITEM.match(name)
+        return (m.group(1)[-1] if m.group(1).startswith("it") else ""), int(m.group(2))
+
+    def clean(self, name):
+        """The cut of an item in a slot without what isn't the item's: (x, y, rgba) cropped again"""
+        if name in self.cache:
+            return self.cache[name]
+        side, g = self.slot(name)
+        a = np.array(Image.open(A / "sprites" / f"{name}.png").convert("RGBA"))
+        x0, y0 = self.art["sprites"][name]
+        hh, ww = a.shape[:2]
+        gy, gx = np.mgrid[y0:y0 + hh, x0:x0 + ww]  # (on the screen)
+        seen = a[..., 3] > 0
+        plate = self.plate[VIEWS[side]][np.clip(gy, 0, 239), np.clip(gx, 0, 319)]
+        apart = np.abs(a[..., :3].astype(np.int32) // 36 - plate // 36).sum(axis=2)
+        strong = seen & (apart >= STRONG)
+        lab, n = ndimage.label(strong, structure=np.ones((3, 3)))
+        if not n:
+            self.cache[name] = x0, y0, a
+            return self.cache[name]
+        item = lab == 1 + int(np.argmax(ndimage.sum(strong, lab, range(1, n + 1))))
+        while True:  # the parts next to it, and those next to them...
+            parts = np.unique(lab[ndimage.binary_dilation(item, iterations=JOIN) & strong])
+            more = np.isin(lab, parts[parts > 0])
+            if (more == item).all():
+                break
+            item = more
+        ys, xs = np.nonzero(item)  # its outline, a magnifier's glass and the shadow between its parts inside
+        pts = np.stack([xs, ys], 1)
+        hull = Image.new("1", (ww, hh))
+        if len(pts) >= 3 and np.linalg.matrix_rank(pts - pts[0]) == 2:
+            ImageDraw.Draw(hull).polygon([tuple(map(int, pts[k])) for k in ConvexHull(pts).vertices], fill=1, outline=1)
+        dist = [np.hypot(gx - self.mid[side, k][0], gy - self.mid[side, k][1]) for k in range(8)]
+        reach = 0.7 * min(np.hypot(*(self.mid[side, k] - self.mid[side, g])) for k in range(8) if k != g)
+        own = (np.argmin(dist, axis=0) == g) & (dist[g] <= reach)
+        keep = seen & (own | ndimage.binary_dilation(item | np.array(hull, bool), iterations=NEAR))
+        ys, xs = np.nonzero(keep)
+        t, b, l, r = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+        out = a[t:b, l:r].copy()
+        out[..., 3] = np.where(keep[t:b, l:r], 255, 0)
+        # what the cursor's box goes round: the item, not its shadow (the table's colour, darker: no channel lighter,
+        # in the same mix)
+        rgb = a[..., :3].astype(np.float64)
+        mix = rgb / (rgb.sum(axis=2, keepdims=True) + 1) - plate / (plate.sum(axis=2, keepdims=True) + 1)
+        shade = (rgb <= plate + 8).all(axis=2) & (np.abs(mix).max(axis=2) < SHADE) & (rgb.sum(axis=2) >= 48)
+        # (all its clear parts, a near pair of handcuffs' apart, but specks)
+        body = keep & strong & ~shade
+        lab, n = ndimage.label(body, structure=np.ones((3, 3)))
+        if n:
+            body &= np.isin(lab, 1 + np.nonzero(ndimage.sum(body, lab, range(1, n + 1)) >= 6)[0])
+        ys, xs = np.nonzero(body if body.any() else item)
+        self.box[name] = int(xs.min()) - int(l), int(ys.min()) - int(t), int(xs.max() - xs.min()) + 1, int(ys.max() - ys.min()) + 1
+        self.cache[name] = x0 + int(l), y0 + int(t), out
+        return self.cache[name]
+
+    def centre(self, name):
+        x, y, a = self.clean(name)
+        ys, xs = np.nonzero(a[..., 3])
+        return np.array([x + xs.mean(), y + ys.mean()])
+
+    def move(self, src, dst):
+        """From one slot to another of the same side: how far the flat items are, the median of them"""
+        side, gs = self.slot(src)
+        _, gd = self.slot(dst)
+        pre = "di%d" if not side else "it%d" + side
+        d = [self.centre((pre % i) + str(gd)) - self.centre((pre % i) + str(gs)) for i in FLAT]
+        return np.median(d, axis=0)
+
+
 def main():
     art = json.loads((A / "art.json").read_text())
     pics = []  # (name, x, y, rgba array)
@@ -63,19 +175,27 @@ def main():
             half.add("PL_" + ident(name))
     pics.append(("LOGO", LOGO_POS[0], LOGO_POS[1], np.array(Image.open(A / "logo.png").convert("RGBA"))))
     alias = []
+    slots = Slots(art)
+    placed = {}  # each item in each slot: where its picture goes, and its size
     for name, pos in art["sprites"].items():
         if pos is None or name in SKIP:
             continue
-        a = np.array(Image.open(A / "sprites" / f"{name}.png").convert("RGBA"))
-        if name in ALIAS:
+        m = ITEM.match(name)
+        if m and name in ALIAS:
+            # another slot's picture, moved by the slots' middles (the cut of this slot only shows where it is)
             src = ALIAS[name]
-            b = np.array(Image.open(A / "sprites" / f"{src}.png").convert("RGBA"))
-            ca = np.argwhere(a[..., 3] > 0).mean(axis=0)
-            cb = np.argwhere(b[..., 3] > 0).mean(axis=0)
-            sp = art["sprites"][src]
-            alias.append((ident(name), ident(src), int(round(sp[0] + ca[1] + pos[0] - sp[0] - cb[1])),
-                           int(round(sp[1] + ca[0] + pos[1] - sp[1] - cb[0]))))
+            sx, sy, b = slots.clean(src)
+            d = slots.move(src, name)
+            x, y = sx + int(round(d[0])), sy + int(round(d[1]))
+            alias.append((ident(name), ident(src), x, y))
+            placed[name] = (x, y, slots.box[src])
             continue
+        if m:
+            x, y, a = slots.clean(name)
+            pos = [x, y]
+            placed[name] = (x, y, slots.box[name])
+        else:
+            a = np.array(Image.open(A / "sprites" / f"{name}.png").convert("RGBA"))
         if name in HALF_SPRITES:
             half.add(ident(name))
             pos = [pos[0] * 2, pos[1] * 2]
@@ -149,15 +269,17 @@ def main():
         h.append(f"  C_{n} = {i + 1},")
     h += ["};", f"#define PAL_COUNT {len(rgb565)}", "extern const img_t art_img[IMG_COUNT + 1];",
           "extern const uint8_t art_data[];", "extern const uint32_t art_pal[PAL_COUNT];",
-          "extern const int16_t slot_rect[2][8][4];", "extern const int16_t dslot_rect[8][4];", "#endif"]
+          "extern const int16_t slot_rect[2][8][4];", "extern const int16_t dslot_rect[8][4];",
+          "/* an item's own box in its picture (x, y, w, h, without its shadow), for the cursor: the table's (item * 16 +",
+          " * side * 8 + slot), then the Dealer view's (144 + item * 8 + slot) */",
+          "extern const uint8_t item_box[9 * 16 + 9 * 8][4];", "#endif"]
     (SRC / "assets.h").write_text("\n".join(h) + "\n")
 
     # the screen rectangle of each table slot, from the items drawn in it (for the cursor):
     # the table view (player, Dealer) and the Dealer view (his slots)
     def rect(name):
-        p = art["sprites"].get(name)
-        im = Image.open(A / "sprites" / f"{name}.png")
-        return [p[0] - 3, p[1] - 3, im.width + 6, im.height + 6]
+        x, y, (bx, by, w, hh) = placed[name]
+        return [x + bx - 2, y + by - 2, w + 4, hh + 4]
     rects = [[rect(f"it3{side}{g}") for g in range(8)] for side in "pd"]
     drects = [rect(f"di3{g}") for g in range(8)]
 
@@ -171,6 +293,9 @@ def main():
     c.append("const int16_t slot_rect[2][8][4] = {" + ",".join(
         "{" + ",".join("{" + ",".join(map(str, r)) + "}" for r in rs) + "}" for rs in rects) + "};")
     c.append("const int16_t dslot_rect[8][4] = {" + ",".join("{" + ",".join(map(str, r)) + "}" for r in drects) + "};")
+    boxes = [placed[f"it{i}{side}{g}"][2] for i in range(9) for side in "pd" for g in range(8)]
+    boxes += [placed[f"di{i}{g}"][2] for i in range(9) for g in range(8)]
+    c.append("const uint8_t item_box[9 * 16 + 9 * 8][4] = {" + ",".join("{" + ",".join(map(str, b)) + "}" for b in boxes) + "};")
     blob += bytes(4)  # the decoder may read a little ahead
     c.append("const uint8_t art_data[] = {")
     for k in range(0, len(blob), 32):

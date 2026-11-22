@@ -87,20 +87,21 @@ static void slot_box(int side, int g, int *x, int *y, int *w, int *h) {
   int it = G.items[side][g];
   if (it < 0 && !side && T.held >= 0) it = T.held;
   const img_t *m;
+  const uint8_t *b; /* the item in its picture, without its shadow (tools/pack.py) */
   if (T.view == V_DEALER && side) {
     if (it < 0) {
       *x = dslot_rect[g][0], *y = dslot_rect[g][1], *w = dslot_rect[g][2], *h = dslot_rect[g][3];
       return;
     }
-    m = &art_img[ditem_img(g, it)];
+    m = &art_img[ditem_img(g, it)], b = item_box[9 * 16 + it * 8 + g];
   } else {
     if (it < 0) {
       *x = slot_rect[side][g][0], *y = slot_rect[side][g][1], *w = slot_rect[side][g][2], *h = slot_rect[side][g][3];
       return;
     }
-    m = &art_img[item_img(side, g, it)];
+    m = &art_img[item_img(side, g, it)], b = item_box[it * 16 + side * 8 + g];
   }
-  *x = m->x - 2, *y = m->y - 2, *w = m->w + 4, *h = m->h + 4;
+  *x = m->x + b[0] - 2, *y = m->y + b[1] - 2, *w = b[2] + 4, *h = b[3] + 4;
 }
 
 /* The charges at a glance, top right: a small copy of the display (the

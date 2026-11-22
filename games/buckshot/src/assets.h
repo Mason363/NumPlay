@@ -397,4 +397,7 @@ extern const uint8_t art_data[];
 extern const uint32_t art_pal[PAL_COUNT];
 extern const int16_t slot_rect[2][8][4];
 extern const int16_t dslot_rect[8][4];
+/* an item's own box in its picture (x, y, w, h, without its shadow), for the cursor: the table's (item * 16 +
+ * side * 8 + slot), then the Dealer view's (144 + item * 8 + slot) */
+extern const uint8_t item_box[9 * 16 + 9 * 8][4];
 #endif
