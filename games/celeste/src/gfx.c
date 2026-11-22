@@ -291,7 +291,12 @@ static inline void span_run(uint16_t *d, int n, int step, uint8_t v) {
     for (; n > 0; n--, d += step) *d = add565(*d, c);
   } else {
     int a = alpha_of(v);
-    if (a >= 256)
+    if (a >= 256 && step > 0 && n > 3) {   /* two pixels a word (the solid runs of pictures see-through elsewhere) */
+      if ((uintptr_t)d & 2) *d++ = c, n--;
+      uint32_t cc = c | (uint32_t)c << 16;
+      for (; n >= 2; n -= 2, d += 2) memcpy(d, &cc, 4);
+      if (n) *d = c;
+    } else if (a >= 256)
       for (; n--; d += step) *d = c;
     else
       for (; n--; d += step) *d = blend565_in(*d, c, a);
