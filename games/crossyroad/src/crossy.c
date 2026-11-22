@@ -2215,8 +2215,13 @@ static void present(void) {
     uint32_t *d4 = (uint32_t *)strip;
     for (int i = 0; i < SW * STRIP / 4; i++) {
       uint32_t v = s4[i];
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__ /* (the fx-CG50: the first pixel in the highest byte, and half) */
+      d4[2 * i] = (uint32_t)p[v >> 24] << 16 | p[(v >> 16) & 255];
+      d4[2 * i + 1] = (uint32_t)p[(v >> 8) & 255] << 16 | p[v & 255];
+#else
       d4[2 * i] = p[v & 255] | (uint32_t)p[(v >> 8) & 255] << 16;
       d4[2 * i + 1] = p[(v >> 16) & 255] | (uint32_t)p[v >> 24] << 16;
+#endif
     }
     eadk_display_push_rect((eadk_rect_t){0, (uint16_t)y, SW, STRIP}, strip);
   }

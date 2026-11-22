@@ -12,7 +12,8 @@ int balatro_main(void);
 
 /* ------------------------------------------------------------------ files */
 /* The records (games/common/epsilon_files.h) live in the appvar itself, in RAM while the game runs (a fixed size:
-   it never moves), archived when it ends. */
+   it never moves), archived when it ends. On the calculator main() puts it in RAM before the game starts: the game
+   itself never asks TI-OS for anything. */
 #define STORAGE_SIZE 5120
 static const char SAVE_NAME[] = "NPbalato";
 static uint8_t *storage;
@@ -126,26 +127,9 @@ eadk_keyboard_state_t eadk_keyboard_scan(void) {
   return s;
 }
 
-/* the save in a RAM appvar of a fixed size while the game runs (archiving it could move the art in the archive: only
-   when the game ends); an archived one, or one of another size, is copied into a new one (through the strip buffer) */
-uint8_t *ce_storage_open(const char *name, size_t size) {
-  char op1[9];
-  op1_of(op1, name);
-  int scr;
-  uint8_t *v = ce_var_find(op1), *tmp = g_scratch(&scr);
-  size_t keep = 0, n = v ? (size_t)(v[0] | v[1] << 8) : 0;
-  if (v && v >= (uint8_t *)0xD00000 && n == size) return v + 2;
-  if (v) {
-    keep = n < size ? n : size;
-    if (keep > (size_t)scr) keep = (size_t)scr;
-    memcpy(tmp, v + 2, keep);
-    ce_var_delete(op1);
-  }
-  if (!(v = ce_var_create(op1, (unsigned)size))) return 0;
-  memcpy(v + 2, tmp, keep);
-  memset(v + 2 + keep, 0, size - keep);
-  return v + 2;
-}
+/* the save: the RAM appvar main() made, or none */
+static uint8_t *save_ram;
+uint8_t *ce_storage_open(const char *name, size_t size) { return save_ram; }
 void ce_storage_keep(void) {}
 
 void np_begin(void) { rs ^= (uint32_t)rtc_Time() * 2654435761u ^ (uint32_t)clock(); }
@@ -176,6 +160,31 @@ BOOT static void boot_archive(const char *name) {
   op1[0] = OS_TYPE_APPVAR;
   for (int i = 0; i < 8; i++) op1[1 + i] = name[i];
   ce_archive(op1);
+}
+
+/* The save in a RAM appvar of a fixed size while the game runs (archiving it could move the art in the archive: only
+   when the game ends). An archived one, or one of another size, is copied into a new one through tmp; an archived one
+   stays as it is when RAM has no room for it. Done before the game's code is put in place and the game runs: TI-OS
+   may use the pixel shadow while it deletes a variable from the archive, and its flash routines may turn the
+   interrupts back on. */
+BOOT static uint8_t *boot_save(uint8_t *tmp) {
+  char op1[9];
+  op1[0] = OS_TYPE_APPVAR;
+  for (int k = 0; k < 8; k++) op1[1 + k] = save_name[k];
+  uint8_t *v = ce_var_find(op1);
+  size_t keep = 0, n = v ? (size_t)(v[0] | v[1] << 8) : 0;
+  bool ram = v >= (uint8_t *)0xD00000;
+  if (v && ram && n == STORAGE_SIZE) return v + 2;
+  if (os_MemChk(NULL) + (ram ? n : 0) < STORAGE_SIZE + 64) return 0;
+  if (v) {
+    keep = n < STORAGE_SIZE ? n : STORAGE_SIZE;
+    memcpy(tmp, v + 2, keep);
+    ce_var_delete(op1);
+  }
+  if (!(v = ce_var_create(op1, STORAGE_SIZE))) return 0;
+  memcpy(v + 2, tmp, keep);
+  memset(v + 2 + keep, 0, STORAGE_SIZE - keep);
+  return v + 2;
 }
 
 BOOT static void boot_fail(void) {
@@ -215,6 +224,8 @@ BOOT int main(void) {
   memset((void *)0xD40000, 0, 320 * 240);
   lcd_UpBase = 0xD40000;
   lcd_Control = 0x927;
+  save_ram = boot_save(ce_vram_lo); /* (through the screen's half the code goes in: not shown, not filled yet) */
+  __asm__ volatile("di");
   memcpy(ce_vram_lo, src[0], len[0]);
   memcpy(ce_vram_lo + len[0], src[1], len[1]);
   memcpy(ce_pshadow_lo, src[2], len[2]);
@@ -236,6 +247,7 @@ BOOT int main(void) {
   memset((void *)0xD40000, 255, 320 * 240 * 2);
   memset((void *)0xD031F6, 0, 8400);
   lcd_Control = 0x92D;
+  if (save_ram) boot_archive(save_name); /* (the screen's half with code is gone: names from here) */
   if (!ok) {
     boot_fail();
     return 0;
@@ -244,7 +256,6 @@ BOOT int main(void) {
 #ifdef CE_PROF
   os_PutStrFull(prof_text);
 #endif
-  if (ce_save_pending) boot_archive(save_name); /* (the screen's half with code is gone: names from here) */
   return 0;
 }
 #endif
