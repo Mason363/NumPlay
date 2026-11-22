@@ -1,13 +1,14 @@
 /* Plays Moto X3M on a computer, with scripted keys, and saves frames.
  *
  *   play [--level N] [--frames N] [--keys "10-40:right,50:ok,..."] [--shots 30,60|every:N] [--out DIR]
- *        [--saves DIR] [--gas] [--auto] [--stunt H] [--fuzz SEED] [--draw] [--trace N]
+ *        [--saves DIR] [--gas] [--auto] [--stunt H] [--fuzz SEED] [--draw] [--trace N] [--at X,Y]
  *
  * Keys: left right up down ok back home. "a-b:key" holds the key from frame a to b, "a:key" for one frame (a frame
  * is a game tick, 1/30 s). --level starts that level (1-50) past the menus; --gas holds the gas from the start.
  * Screenshots are DIR/shot_<frame>.ppm. --fuzz presses random keys through menus and runs. --trace N prints the
  * bike every N ticks. --auto drives (the gas, and leaning to keep the bike level); --stunt H also back flips when
- * the ground is more than H below a jump. At the end: END state S level L timer T dead D finished F x X y Y. */
+ * the ground is more than H below a jump. --at X,Y puts the bike there, as a safe point would (crashes come back
+ * there). At the end: END state S level L timer T dead D finished F x X y Y. */
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -67,7 +68,7 @@ static int asleep(void) {
 
 int main(int argc, char **argv) {
   int frames = 300, level = 0, trace = 0, air_t = 0;
-  float stunt = 0, flip_from = NAN, flip_seen = 0;
+  float stunt = 0, flip_from = NAN, flip_seen = 0, at_x = NAN, at_y = NAN;
   bool gas = false, fuzz = false, draw = false, autop = false;
   const char *out = "build/shots";
   for (int i = 1; i < argc; i++) {
@@ -81,6 +82,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[i], "--stunt")) autop = true, stunt = (float)atof(argv[++i]);
     else if (!strcmp(argv[i], "--draw")) draw = true;
     else if (!strcmp(argv[i], "--trace")) trace = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--at")) sscanf(argv[++i], "%f,%f", &at_x, &at_y);
     else if (!strcmp(argv[i], "--fuzz")) fuzz = true, rng = (uint32_t)atoi(argv[++i]) * 2654435761u + 1;
     else if (!strcmp(argv[i], "--shots")) {
       const char *s = argv[++i];
@@ -102,6 +104,7 @@ int main(int argc, char **argv) {
   view_init(visbuf, scrbuf);
   game_init();
   if (level) game_start_level(level - 1);
+  if (level && !isnan(at_x)) bike.review_x = at_x, bike.review_y = at_y, bike.safe_id = 0, bike_review();
   uint32_t fk = 0;
   static int state_hist[8];
   for (int f = 0; f < frames && g.running; f++) {

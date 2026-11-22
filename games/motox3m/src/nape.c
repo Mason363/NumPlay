@@ -1978,6 +1978,7 @@ void np_apply_impulse(Body *b, V2 j, V2 at) {
 
 /* ---- queries ---- */
 
+/* where the ray enters a convex polygon, as Nape's polysect (not from inside: a ray starting in it misses it) */
 static bool ray_poly(V2 o, V2 d, float maxd, const V2 *gv, const V2 *gn, const float *gp, int n, float *t) {
   float tmin = 0, tmax = maxd;
   for (int i = 0; i < n; i++) {
@@ -1993,16 +1994,17 @@ static bool ray_poly(V2 o, V2 d, float maxd, const V2 *gv, const V2 *gn, const f
   }
   (void)gv;
   *t = tmin;
-  return true;
+  return tmin > 0;
 }
 
+/* Space.rayCast(ray) with no filter (inner false): the first shape the ray enters, sensors too, within maxd */
 bool np_raycast(V2 o, V2 d, float maxd, Body **body, int *sbody, float *dist) {
   float best = maxd;
   bool hit = false;
   *body = 0, *sbody = -1;
   for (int i = 0; i < sp.nsshapes; i++) {
     const SShape *s = &sp.sshapes[i];
-    if (!(sp.sbodies[s->body].flags & BF_SPACE) || (s->flags & SF_SENSOR)) continue;
+    if (!(sp.sbodies[s->body].flags & BF_SPACE)) continue;
     float x0 = o.x < o.x + d.x * best ? o.x : o.x + d.x * best, x1 = o.x < o.x + d.x * best ? o.x + d.x * best : o.x;
     if (s->x0 + s->w < x0 || s->x0 > x1) continue;
     SV v;
@@ -2015,15 +2017,13 @@ bool np_raycast(V2 o, V2 d, float maxd, Body **body, int *sbody, float *dist) {
     if (!(b->flags & BF_SPACE)) continue;
     for (int k = 0; k < b->nshapes; k++) {
       Shape *s = &b->shapes[k];
-      if (s->flags & SF_SENSOR) continue;
       float t;
-      if (s->type == SH_CIRCLE) {
+      if (s->type == SH_CIRCLE) { /* (Nape's circlesect: only where it enters a circle ahead of it) */
         float ox = o.x - s->wcom.x, oy = o.y - s->wcom.y, bq = ox * d.x + oy * d.y, c = ox * ox + oy * oy - s->radius * s->radius;
         float disc = bq * bq - c;
         if (disc < 0) continue;
         t = -bq - sqrtf(disc);
-        if (t < 0) t = 0;
-        if (t > best) continue;
+        if (t <= 0 || t > best) continue;
       } else if (!ray_poly(o, d, best, (const V2 *)(const void *)s->glob, (const V2 *)(const void *)(s->glob + 2 * s->n),
                            s->glob + 4 * s->n, s->n, &t) || t > best) continue;
       best = t, hit = true, *body = b, *sbody = -1;
