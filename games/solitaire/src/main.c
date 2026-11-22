@@ -697,6 +697,11 @@ static void say(const char *s) {
 static int32_t shown_score(void) { return V.gscoring == 1 && V.keep ? V.bank + (V.live ? V.score : 0) : V.score; }
 static int can_recycle(void) { return V.gscoring != 1 || V.passes < V.gdraw - 1; }
 
+/* a text of the bar, if it's over the columns x to x + w just painted (the others still show theirs: each second
+   the clock painted all the bar's texts again, 150 ms on the TI-84 Plus CE) */
+static void bar_str(const char *s, int sx, int x, int w, color c) {
+  if (sx < x + w && x < sx + slen(s) * 7) str(s, sx, 2, 0, c, BAR);
+}
 /* the text over the table: the bar's figures, and a message */
 static void over_text(int x, int y, int w, int h) {
   char s[16], *o;
@@ -705,15 +710,15 @@ static void over_text(int x, int y, int w, int h) {
     o = num(s, (int32_t)(t / 3600));
     o = two(cat(o, ":"), (int)(t / 60 % 60));
     two(cat(o, ":"), (int)(t % 60));
-    str(s, 96, 2, 0, WHITE, BAR);
+    bar_str(s, 96, x, w, WHITE);
     if (V.gscoring < 2) {
-      str(T("Score"), 162, 2, 0, RGB(0x9AA0A6), BAR);
+      bar_str(T("Score"), 162, x, w, RGB(0x9AA0A6));
       (V.gscoring ? money : num)(s, shown_score());
-      str(s, 204, 2, 0, WHITE, BAR);
+      bar_str(s, 204, x, w, WHITE);
     }
-    str(T("Moves"), 250, 2, 0, RGB(0x9AA0A6), BAR);
+    bar_str(T("Moves"), 250, x, w, RGB(0x9AA0A6));
     num(s, V.moves);
-    str(s, 292, 2, 0, WHITE, BAR);
+    bar_str(s, 292, x, w, WHITE);
   }
   if (msg && y + h > TOAST_Y && x < 320 - SIDEW && x + w > SIDEW) str(msg, 160 - slen(msg) * 7 / 2, TOAST_Y + 3, 0, WHITE, RGB(0x323232));
 }
@@ -791,14 +796,18 @@ static void game_scene(void) {
 }
 
 /* ------------------------------------------------------------------ moves */
-/* flies every card in flight to its place; skip lets a key land them all */
+/* flies every card in flight to its place; skip lets a key land them all. A frame is a 60th of a second: one that
+   took longer moves the cards on by the frames it took (the TI-84 Plus CE paints a frame of flying cards in about a
+   tenth of a second, and a move took over a second), so they land in the same time whatever the frame rate. */
 static void animate(int skip) {
+  uint32_t last = now;
   while (nfl) {
-    int j = 0, x, y;
+    int j = 0, x, y, step = (int)(now - last) / 17;
+    step = step < 1 ? 1 : step > 64 ? 64 : step, last = now;
     for (int i = 0; i < nfl; i++) {
       fly_t *f = &fl[i];
       if (f->t >= 0) fly_pos(f, &x, &y), dirty(x, y, CW, CH);
-      if (++f->t >= dur || (skip && pend)) {
+      if ((f->t = (int8_t)(f->t + step > dur ? dur : f->t + step)) >= dur || (skip && pend)) {
         hid &= ~(1ull << (f->c & 63));
         dirty(f->x1, f->y1, CW, CH);
         continue;
