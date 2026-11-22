@@ -284,7 +284,8 @@
     const s0 = solo(), picks = ordered();
     for (const [id, b] of buttons) {
       const g = byId[id], on = st.picked.has(id);
-      const fits = alone(id) ? !bigger(id) : !s0 && total(picks.concat([id])) <= cap;
+      // (a game that goes on its own doesn't fit beside the games picked: grey then, though picking it still swaps)
+      const fits = alone(id) ? !bigger(id) && picks.every((p) => p === id) : !s0 && total(picks.concat([id])) <= cap;
       b.classList.toggle('on', on);
       b.classList.toggle('off', !on && fits);
       b.classList.toggle('nofit', !on && !fits);
