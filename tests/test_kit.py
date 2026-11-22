@@ -161,7 +161,7 @@ def report(tag, problems, extra=""):
 
 def unresolved(kit):
     """what each game's object needs that neither NumPlay's own objects, its linker script, the calculator nor
-    Retro-Go's table of games gives: the website's link would stop on it"""
+    Retro-Go's and NumPico's tables of games give: the website's link would stop on it"""
     def syms(path, flag):
         out = subprocess.run(["arm-none-eabi-nm", flag, path], capture_output=True, text=True, check=True).stdout
         return {line.split()[-1] for line in out.splitlines() if line.strip()}
@@ -171,7 +171,7 @@ def unresolved(kit):
     bad = {}
     for i in kit.games:
         need = {s for s in syms(kit.obj(f"games/{i}.o"), "-u") - have
-                if not s.startswith(("eadk_", "_", f"np_{i}_")) and s not in ("np_roms", "np_retrogo_end")}
+                if not s.startswith(("eadk_", "_", f"np_{i}_")) and s not in ("np_roms", "np_retrogo_end", "np_carts")}
         if need:
             bad[i] = sorted(need)
     return bad
