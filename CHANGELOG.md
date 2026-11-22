@@ -2,6 +2,10 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.21: The TI and Casio downloads
+
+- **TI-84 Plus CE, TI-Nspire and Casio fx-CG50:** NumPlay-TI84CE.zip, NumPlay-Nspire.zip and NumPlay-CasioCG.zip with 1.24.20's fixes. Hollow Knight fits the Casio fx-CG50 again.
+
 ## 1.24.20: Fixes on every calculator
 
 - **NumPlay:** opening Calculation after NumPlay or one of its games no longer resets the calculator on Epsilon 23 and 24.
