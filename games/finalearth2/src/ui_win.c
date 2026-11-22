@@ -114,7 +114,7 @@ static void focus_ring(WinOut *w, int x, int y, int wd, int h) {
 /* a focusable element at content (x, y), w x h: whether it is focused */
 static bool focusable(WinOut *w, int x, int y, int wd, int h, int action) {
   int i = w->nfocus++;
-  if (w->mode == WO_NAV && w->nav && w->nnav < 48) {
+  if (w->mode == WO_NAV && w->nav && w->nnav < NAV_MAX) {
     NavRect *r = &w->nav[w->nnav++];
     r->x = (int16_t)x, r->y = (int16_t)y, r->w = (int16_t)wd, r->h = (int16_t)h, r->action = (int16_t)action;
   }
@@ -424,7 +424,7 @@ static void close_pending(WinOut *w) {
     w->pend.focused = false;
   }
   /* the button's rectangle for the arrows and OK */
-  if (!chosen && w->mode == WO_NAV && w->nav && w->nnav < 48) {
+  if (!chosen && w->mode == WO_NAV && w->nav && w->nnav < NAV_MAX) {
     NavRect *r = &w->nav[w->nnav++];
     r->x = 0, r->y = (int16_t)y0, r->w = (int16_t)w->cw, r->h = (int16_t)h, r->action = (int16_t)w->pend.action;
   }
@@ -481,7 +481,7 @@ bool win_activatable(WinOut *w, bool active, int action, const char *name, const
   w->y += 1;
   h = w->y - y0;
   if (!active) {
-    if (w->mode == WO_NAV && w->nav && w->nnav < 48) {
+    if (w->mode == WO_NAV && w->nav && w->nnav < NAV_MAX) {
       NavRect *r = &w->nav[w->nnav++];
       r->x = 0, r->y = (int16_t)y0, r->w = (int16_t)w->cw, r->h = (int16_t)h, r->action = (int16_t)action;
     }
@@ -518,7 +518,7 @@ bool win_checkbox(WinOut *w, bool checked, int action, const char *name, const c
   grow(w, tw + 6);
   w->y += 1;
   int h = w->y - y0;
-  if (w->mode == WO_NAV && w->nav && w->nnav < 48) {
+  if (w->mode == WO_NAV && w->nav && w->nnav < NAV_MAX) {
     NavRect *r = &w->nav[w->nnav++];
     r->x = 0, r->y = (int16_t)y0, r->w = (int16_t)w->cw, r->h = (int16_t)h, r->action = (int16_t)action;
   }
@@ -682,7 +682,7 @@ static void win_ready(Win *wn) {
     wn->flags &= (uint8_t)~WF2_NEW;
     /* the first button that shows is focused */
     WinOut w;
-    NavRect nav[48];
+    NavRect nav[NAV_MAX];
     win_setup(&w, wn, WO_NAV);
     w.nav = nav;
     UiFrame *keep = uf;
@@ -790,7 +790,7 @@ void win_draw(void) {
 static void win_nav(Win *wn, int dx, int dy) {
   wn->flags |= WF2_TIP;
   WinOut w;
-  NavRect nav[48];
+  NavRect nav[NAV_MAX];
   win_setup(&w, wn, WO_NAV);
   w.nav = nav;
   UiFrame *keep = uf;
@@ -925,7 +925,7 @@ void win_input(void) {
     } else if (wn->focus == 255 && !(wn->flags & WF2_NO_CLOSE)) {
       /* nothing focused (a long text): OK closes it, as its Close button would */
       bool has_close = false;
-      NavRect nav[48];
+      NavRect nav[NAV_MAX];
       win_setup(&w, wn, WO_NAV);
       w.nav = nav;
       uf = NULL;
@@ -954,7 +954,7 @@ bool win_action_rect(int action, int16_t r[4]) {
   if (!wn) return false;
   win_ready(wn);
   WinOut w;
-  NavRect nav[48];
+  NavRect nav[NAV_MAX];
   win_setup(&w, wn, WO_NAV);
   w.nav = nav;
   UiFrame *keep = uf;

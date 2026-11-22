@@ -167,6 +167,7 @@ static inline Win *win_top(void) { return nwins ? &wins[nwins - 1] : NULL; }
 /* the layout of a window's contents (win.h's WinOut) */
 enum { WO_DRAW, WO_NAV, WO_PRESS };
 typedef struct { int16_t x, y, w, h; int16_t action; } NavRect;
+#define NAV_MAX 192   /* (a window's focusables: the workers' window has four a kind of work building) */
 struct WinOut {
   uint8_t mode;
   Win *win;
