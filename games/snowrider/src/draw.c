@@ -232,6 +232,21 @@ static void draw_prefab(int prefab, const float m[12]) {
   }
 }
 
+/* a small obstacle: it stops the sled (an obstacle or breakable collider), it is not a tree (their trunks are
+ * capsules) and it is a few metres at most (not a piece of the slope with walls) */
+#define SLOPE_BANDS 17   /* the slope's 5 m bands drawn: up to VIEW + 20 m */
+static bool small_obstacle(int prefab) {
+  static uint8_t known[256];   /* 1 no, 2 yes */
+  if (prefab < 256 && known[prefab]) return known[prefab] == 2;
+  const Prefab *pf = &prefabs[prefab];
+  int stops = 0, trunk = 0;
+  for (int k = 0; k < pf->ncolls; k++)
+    stops |= pf->colls[k].layer & (L_OBSTACLE | L_BREAK), trunk |= pf->colls[k].kind == C_CAPSULE;
+  bool yes = stops && !trunk && pf->nparts && rmeshes[pf->parts[0].near].rad < 4;
+  if (prefab < 256) known[prefab] = yes ? 2 : 1;
+  return yes;
+}
+
 static V3 to_cam(float x, float y, float z) {
   const float *R = cam_rot;
   float dx = x - cam_pos[0], dz = z - cam_pos[2], dy = y - cam_pos[1] - dz * dz * CURVATURE;
@@ -280,14 +295,28 @@ static void draw_world(void) {
     }
   for (int i = 0; i < MAXB; i++)
     if (balls[i].alive) draw_prefab(ball_inst[i].prefab, ball_inst[i].m);
-  /* the slope, nearest first 5 m at a time: when the polygons do not all fit, the farthest are left out */
+  /* the slope, nearest first 5 m at a time: when the polygons do not all fit, the farthest are left out. The small
+   * obstacles (roots, stumps, rocks, snowmen, fences) go first, nearest first too: they cost little, and so are seen
+   * as far as the fog lets you even in a forest that fills the list */
   float z = cam_pos[2];
-  for (int band = 0; band * 5 < VIEW + 20; band++)
-    for (int i = 0; i < MAXI; i++) {
-      const Inst *in = &insts[i];
-      if (!in->alive) continue;
-      float d = fmaxf(fmaxf(in->lo[2] - z, z - in->hi[2]), 0);
-      if ((int)(d / 5) == band) draw_prefab(in->prefab, in->m);
+  static uint16_t order[MAXI];
+  static uint8_t band_of[MAXI];
+  uint16_t at[SLOPE_BANDS + 1] = {0};
+  for (int i = 0; i < MAXI; i++) {
+    const Inst *in = &insts[i];
+    band_of[i] = SLOPE_BANDS;
+    if (!in->alive) continue;
+    float d = fmaxf(fmaxf(in->lo[2] - z, z - in->hi[2]), 0);
+    if (d < SLOPE_BANDS * 5) band_of[i] = (uint8_t)(d / 5), at[band_of[i] + 1]++;
+  }
+  for (int k = 0; k < SLOPE_BANDS; k++) at[k + 1] += at[k];
+  int n = at[SLOPE_BANDS];
+  for (int i = 0; i < MAXI; i++)
+    if (band_of[i] < SLOPE_BANDS) order[at[band_of[i]]++] = (uint16_t)i;
+  for (int pass = 0; pass < 2; pass++)
+    for (int k = 0; k < n; k++) {
+      const Inst *in = &insts[order[k]];
+      if (small_obstacle(in->prefab) == (pass == 0)) draw_prefab(in->prefab, in->m);
     }
   /* (the far meshes come nearer while it is full, and go back out as room comes back) */
   if (r_full()) lod = fmaxf(lod - 1, 4);
