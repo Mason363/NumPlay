@@ -341,7 +341,7 @@ static void health_plate(void) {
   }
 }
 
-static void health_draw(int blink_side, int phase) {
+static void health_draw(int blink, int phase) {   /* blink: a bit a side */
   uint32_t key = 0x48465231u;
   for (const char *p = G.name; *p; p++) key = (key ^ (uint8_t)*p) * 16777619u;
   key |= 1;
@@ -351,7 +351,7 @@ static void health_draw(int blink_side, int phase) {
     draw_name();
     gfx_cache_store(key);
   }
-  for (int s = 0; s < 2; s++) draw_side(s, blink_side == s && phase);
+  for (int s = 0; s < 2; s++) draw_side(s, (blink >> s & 1) && phase);
 }
 
 void health_view(int blink_side, int ms) {
@@ -359,11 +359,10 @@ void health_view(int blink_side, int ms) {
   int t = 0;
   while (t < ms) {
     int ph = (t / 150) & 1;
-    int b = blink_side;
-    if (b < 0) {
-      if (G.hp[0] == 1 && !G.wire[0]) b = 0;
-      else if (G.hp[1] == 1 && !G.wire[1]) b = 1;
-    }
+    int b = blink_side >= 0 ? 1 << blink_side : 0;
+    if (blink_side < 0)
+      for (int s = 0; s < 2; s++)
+        if (G.hp[s] == 1 && !G.wire[s]) b |= 1 << s;   /* (both, when both are at 1) */
     health_draw(b, ph);
     gfx_present();
     int step = ms - t < 150 ? ms - t : 150;
