@@ -779,6 +779,7 @@ static void endless_more(rd_run *r) {
 #define RESERVE 20000      /* arena bytes kept free in Box2D's blocks and the arena's end */
 #define TAIL 14000         /* the arena's untouched end kept: new chunks, the step past its stack, the picture */
 #define EMERGENCY 6000     /* short of memory: what is right round the bike still comes in above this */
+#define POLY_ROOM 24       /* or while Box2D holds this many free blocks for polygons (theirs, and their contacts') */
 #define PROXY_BUDGET 140   /* fixtures in the physics world, at most (the tree holds B2_TREE_NODES / 2) */
 /* the bike goes 18 pixels a frame at most: what is this near comes in some frames before it can touch it; short of
  * memory (many falling platforms and their contacts), only what is right round the bike stays */
@@ -849,7 +850,8 @@ static void stream(rd_run *r, bool all) {
       if (all) pin = pkeep;
       uint64_t bit = (uint64_t)1 << k;
       if (!(r->pmask[i] & bit) && pin) {
-        if (ph_proxies() >= PROXY_BUDGET || (tight ? ph_tail() < EMERGENCY : ph_free() < RESERVE)) continue;
+        if (ph_proxies() >= PROXY_BUDGET || (tight ? ph_tail() < EMERGENCY && ph_poly_room() < POLY_ROOM : ph_free() < RESERVE))
+          continue;
         static_in(r, i, k, xy, n);
         r->pmask[i] |= bit;
       } else if ((r->pmask[i] & bit) && !pkeep) {

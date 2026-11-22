@@ -214,6 +214,23 @@ size_t ph_free(void) {
   return PH_ARENA - HEAD->top + (HEAD->top - sizeof(arena_head) - HEAD->used) + (size_t)world->GetFreeBlockBytes();
 }
 #endif
+/* static polygons that can come in on the blocks Box2D holds free, without a new chunk: a fixture, its proxy and its
+ * polygon each (the polygons' blocks are the contacts' too on the calculator) */
+#if defined(B2_BLOCK_HOOK) && defined(PH_DEVICE_ARENA)
+static int dev_spare(int32 host) { /* (tests: as the calculator would hold them) */
+  static const int cls[] = {16, 32, 64, 96, 128, 160, 192, 224, 256, 320, 384, 448, 512, 640};
+  int dv = dev_size(host), k = 0;
+  while (cls[k] < dv) k++;
+  return dev_chunks[k] * (B2_CHUNK_SIZE / cls[k]) - dev_live[k];
+}
+#define SPARE(size) dev_spare(size)
+#else
+#define SPARE(size) world->GetFreeBlocks(size)
+#endif
+int ph_poly_room(void) {
+  int a = SPARE(sizeof(b2Fixture)), b = SPARE(sizeof(b2FixtureProxy)), c = SPARE(sizeof(b2PolygonShape));
+  return a < b ? (a < c ? a : c) : (b < c ? b : c);
+}
 size_t ph_peak(void) { return HEAD->peak; }
 size_t ph_arena_size(void) { return PH_ARENA; }
 size_t ph_top(void) { return HEAD->top; }

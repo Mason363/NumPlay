@@ -63,6 +63,9 @@ public:
 	/// NumPlay: the bytes of the free blocks in its chunks (memory it can give again without b2Alloc).
 	int32 GetFreeBytes() const { return m_freeBytes; }
 
+	/// NumPlay: the free blocks an allocation of this size can have without a new chunk.
+	int32 GetFreeBlocks(int32 size) const;
+
 private:
 	b2Chunk* m_chunks;
 	int32 m_chunkCount;
@@ -70,6 +73,7 @@ private:
 
 	b2Block* m_freeLists[b2_blockSizes];
 	int32 m_freeBytes; // NumPlay
+	int32 m_freeCount[b2_blockSizes]; // NumPlay: the blocks in each free list
 
 	// Record giant allocations--ones bigger than the max block size
 	b2TrackedBlockAllocator m_giants;

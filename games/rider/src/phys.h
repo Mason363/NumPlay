@@ -37,6 +37,7 @@ void ph_world_new(void);
 size_t ph_used(void);
 size_t ph_free(void);
 size_t ph_tail(void); /* the end of the arena never used yet */
+int ph_poly_room(void); /* static polygons that can come in on the blocks Box2D holds free */
 /* where to go if the arena runs out (NULL: nowhere); the world is then lost. (GCC's own setjmp on the calculator:
  * the C library's would bring in the C++ unwinder) */
 #if defined(HOST) || defined(NP_PORT)

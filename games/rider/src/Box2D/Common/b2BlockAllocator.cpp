@@ -69,6 +69,7 @@ b2BlockAllocator::b2BlockAllocator()
 	memset(m_chunks, 0, m_chunkSpace * sizeof(b2Chunk));
 	memset(m_freeLists, 0, sizeof(m_freeLists));
 	m_freeBytes = 0;
+	memset(m_freeCount, 0, sizeof(m_freeCount));
 
 	if (s_blockSizeLookupInitialized == false)
 	{
@@ -129,6 +130,7 @@ void* b2BlockAllocator::Allocate(int32 size)
 		b2Block* block = m_freeLists[index];
 		m_freeLists[index] = block->next;
 		m_freeBytes -= s_blockSizes[index];
+		--m_freeCount[index];
 		return block;
 	}
 	else
@@ -163,6 +165,7 @@ void* b2BlockAllocator::Allocate(int32 size)
 
 		m_freeLists[index] = chunk->blocks->next;
 		m_freeBytes += (blockCount - 1) * blockSize;
+		m_freeCount[index] += blockCount - 1;
 		++m_chunkCount;
 
 		return chunk->blocks;
@@ -222,6 +225,16 @@ void b2BlockAllocator::Free(void* p, int32 size)
 	block->next = m_freeLists[index];
 	m_freeLists[index] = block;
 	m_freeBytes += s_blockSizes[index];
+	++m_freeCount[index];
+}
+
+int32 b2BlockAllocator::GetFreeBlocks(int32 size) const
+{
+	if (size <= 0 || size > b2_maxBlockSize)
+	{
+		return 0;
+	}
+	return m_freeCount[s_blockSizeLookup[size]];
 }
 
 void b2BlockAllocator::Clear()
@@ -236,4 +249,5 @@ void b2BlockAllocator::Clear()
 
 	memset(m_freeLists, 0, sizeof(m_freeLists));
 	m_freeBytes = 0;
+	memset(m_freeCount, 0, sizeof(m_freeCount));
 }

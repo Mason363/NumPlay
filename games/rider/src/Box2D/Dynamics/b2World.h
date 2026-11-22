@@ -225,6 +225,7 @@ public:
 
 	/// NumPlay: the bytes of free blocks its block allocator holds.
 	int32 GetFreeBlockBytes() const { return m_blockAllocator.GetFreeBytes(); }
+	int32 GetFreeBlocks(int32 size) const { return m_blockAllocator.GetFreeBlocks(size); }
 
 	/// Get the number of bodies.
 	int32 GetBodyCount() const;
