@@ -145,6 +145,21 @@ static int ux, udx, u_wait, u_hit, u_pts;
 enum { SET, CLEAR, TEST };
 static int blit(const uint16_t *a, int x, int y, int mode) {
   int hit = 0;
+#ifdef __TICE__ /* (the TI-84 Plus CE: no 32-bit shifts, its 24-bit int holds the 3 bytes of a row) */
+  int row = y - OFF, s = x & 7, r = 0;
+  if (row < 0) r = -row, row = 0;
+  uint8_t *p = vram[0] + (unsigned)row * sizeof vram[0] + (x >> 3);
+  for (; r < 8 && row < 240; r++, row++, p += sizeof vram[0]) {
+    unsigned v = (unsigned)a[r] << 8 >> s;
+    uint8_t b[3] = {(uint8_t)(v >> 16), (uint8_t)(v >> 8), (uint8_t)v};
+    for (int k = 0; k < 3; k++) {
+      hit |= p[k] & b[k];
+      if (mode == SET) p[k] |= b[k];
+      if (mode == CLEAR) p[k] &= (uint8_t)~b[k];
+    }
+  }
+  if (0)
+#endif
   for (int r = 0; r < 8; r++) {
     unsigned row = (unsigned)(y + r - OFF);
     uint32_t v = (uint32_t)a[r] << 16 >> (x & 7);
@@ -157,7 +172,7 @@ static int blit(const uint16_t *a, int x, int y, int mode) {
   }
   if (mode != TEST) {
     int a0 = (y - OFF) >> 3, a1 = (y + 7 - OFF) >> 3;
-    for (a0 = a0 < 0 ? 0 : a0; a0 <= a1 && a0 < 30; a0++) dirty |= 1u << a0;
+    for (a0 = a0 < 0 ? 0 : a0; a0 <= a1 && a0 < 30; a0++) dirty |= (uint32_t)1 << a0;
   }
   return hit;
 }
@@ -191,7 +206,7 @@ static void hud(void) {
   }
 }
 static void screen(void) { /* a clean picture: the scores and the credits */
-  for (uint8_t *p = vram[0]; p < vram[0] + sizeof vram; p++) *p = 0;
+  for (uint8_t *p = (uint8_t *)vram; p < (uint8_t *)vram + sizeof vram; p++) *p = 0;
   text(8, 8, "SCORE<1> HI-SCORE SCORE<2>", 26), text(168, 24, "0000", 4), text(136, LY, "CREDIT 00", 9);
   dirty = ALL;
   hud();
@@ -232,6 +247,7 @@ static int atext(int cx, int y, const char *s, int k, color_t c) { /* returns wh
     return cx - gfx_text_width(&np_font_body, s) / 2;
   }
   int x0 = cx - (n * 8 - 3) * k / 2;
+  if (y + 7 * k <= gfx_y0 || y >= gfx_y1) return x0; /* (not in this strip) */
   for (int x = x0; *s; s++, x += 8 * k) {
     int g = glyph((uint8_t)*s);
     for (int col = 0; g >= 0 && col < 5; col++)
@@ -246,11 +262,15 @@ static void overlay(void) {
   for (int i = 0; i < 2; i++) {
     int y = 120 + 20 * i;
     int x = atext(160, y, items[ov - 1][i], 1, sel == i ? GREEN : WHITE) - 22;
-    for (int r = 0; sel == i && r < 8; r++)
+    for (int r = 0; sel == i && y + 7 > gfx_y0 && y - 1 < gfx_y1 && r < 8; r++)
       for (int b = 0; b < 16; b++)
         if (art[4][r] << b & 0x8000) gfx_fill(x + b, y + r - 1, 1, 1, GREEN);
   }
 }
+
+#ifdef __TICE__
+static void overlay_call(const int *a) { overlay(); }
+#endif
 
 /* the picture's rows in the strip, through the cabinet's film */
 static void scene(void *ctx) {
@@ -284,10 +304,56 @@ static void scene(void *ctx) {
     gfx_text_center(&np_font_body, 160, 204, T("Press OK to play"), WHITE, 256);
     gfx_text_center(&np_font_small, 160, 222, T("Left Right: move    OK, EXE, Up: fire    Back: pause"), GREEN, 256);
   }
-  if (ov) overlay();
+  if (ov) {
+#ifdef __TICE__ /* (one call in the strips' lists, not one a pixel) */
+    const int a[2] = {ov, sel};
+    gfx_call(overlay_call, a, 2, 64, 72, 192, 96);
+#else
+    overlay();
+#endif
+  }
 }
 
+#ifdef __TICE__
+/* The TI-84 Plus CE: while nothing but the picture changes, each row of the bands that changed is sent from its
+   first byte that differs from what the screen shows to its last, straight from the picture. */
+static uint8_t shown[240][28];
+static void send_rows(void) {
+  static color_t px[224];
+  int b = 0;
+  for (uint32_t d = dirty; d; d >>= 1, b++) {
+    if (!(d & 1)) continue;
+    for (int y = b * 8; y < b * 8 + 8 && y < 240; y++) {
+      const uint8_t *v = vram[y];
+      uint8_t *o = shown[y];
+      int i0 = 0, i1 = 28;
+      while (i0 < 28 && v[i0] == o[i0]) i0++;
+      if (i0 == 28) continue;
+      while (v[i1 - 1] == o[i1 - 1]) i1--;
+      int py = y + OFF;
+      color_t c = py >= TOPY && py < 64 ? RED : py >= 184 ? GREEN : WHITE, *q = px;
+      bool low = py >= LY;
+      for (int i = i0; i < i1; i++) {
+        uint8_t bits = o[i] = v[i];
+        for (int k = 0, x = 8 * i; k < 8; k++, x++, bits <<= 1)
+          *q++ = !(bits & 0x80) ? 0 : low && (x < 16 || x >= 134) ? WHITE : c;
+      }
+      np_push(X0 + 8 * i0, y, 8 * (i1 - i0), 1, px);
+    }
+  }
+}
+#endif
+
 static void present(void) {
+#ifdef __TICE__
+  if (dirty != ALL && !ov) {
+    send_rows();
+    dirty = 0;
+    return;
+  }
+  for (int y = 0; y < 240; y++)
+    for (int i = 0; i < 28; i++) shown[y][i] = vram[y][i];
+#endif
   for (int b = 0, e; b < 30; b = e) {
     for (e = b; e < 30 && dirty >> e & 1; e++) {}
     if (e > b) gfx_render(scene, 0, b * 8, e * 8);
