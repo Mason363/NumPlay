@@ -354,39 +354,61 @@ static int sqx(int s) { return 30 * (flip ? 7 - (s & 7) : s & 7); }
 static int sqy(int s) { return 30 * (flip ? s >> 4 : 7 - (s >> 4)); }
 static int at(int vx, int vy) { return flip ? vy * 16 + 7 - vx : (7 - vy) * 16 + vx; }
 
-static void draw_sq(int s) {
-  int X = sqx(s), Y = sqy(s), light = ((s >> 4) + s) & 1, mark = 0;
+/* what a square shows: its piece, a move's mark there (1 a dot, 2 a ring round a piece to take), the king in check,
+   the cursor, the selected piece or the last move, the hint, a wrong move */
+static unsigned sq_key(int s) {
   Move lm = hp ? H[hp - 1].m : 0;
-  C base = light ? SQ_L : SQ_D;
-  if (s == sel || (hp && (s == MFROM(lm) || s == MTO(lm)))) base = light ? HL_L : HL_D;
-  if (s == hintsq) base = mix(base, HINT, 18);
-  if (s == badsq) base = mix(base, RED, 20);
-  int pc = s == anim_hide ? 0 : P.b[s];
+  int pc = s == anim_hide ? 0 : P.b[s], mark = 0;
   if (sel >= 0)
     for (int i = 0; i < ntg; i++)
       if (MFROM(tg[i]) == sel && MTO(tg[i]) == s) mark = pc ? 2 : 1;
-  int chk = incheck && s == P.king[P.side];
+  return (unsigned)pc | (unsigned)mark << 5 | (unsigned)(incheck && s == P.king[P.side]) << 7 |
+         (unsigned)(s == cur && sel != -2) << 8 | (unsigned)(s == sel || (hp && (s == MFROM(lm) || s == MTO(lm)))) << 9 |
+         (unsigned)(s == hintsq) << 10 | (unsigned)(s == badsq) << 11;
+}
+/* each square's key as it was drawn (draw_changed), NOT_SHOWN with the moving piece over it */
+#define NOT_SHOWN 0xFFFF
+static uint16_t shown[120];
+
+static void draw_sq(int s) {
+  unsigned k = sq_key(s);
+  int X = sqx(s), Y = sqy(s), light = ((s >> 4) + s) & 1, pc = k & 31, mark = k >> 5 & 3, chk = k >> 7 & 1;
+  C base = light ? SQ_L : SQ_D;
+  if (k >> 9 & 1) base = light ? HL_L : HL_D;
+  if (k >> 10 & 1) base = mix(base, HINT, 18);
+  if (k >> 11 & 1) base = mix(base, RED, 20);
   for (int y = 0; y < 30; y++)
     for (int x = 0; x < 30; x++) {
       C c = base;
-      int dx = 2 * x - 29, dy = 2 * y - 29, d2 = dx * dx + dy * dy;
-      if (chk && d2 < 1300) c = mix(c, RED, d2 < 500 ? 30 : (1300 - d2) * 30 / 800);
-      if (mark == 2 && d2 > 600 && d2 < 900) c = mix(c, 0, 8);
-      if (pc) c = shade(pc, x, y, c);
-      if (mark == 1 && d2 < 150) c = mix(c, 0, d2 < 118 ? 8 : 4);
+      if (chk || mark) { /* (the distance from the middle only for the check and the marks) */
+        int dx = 2 * x - 29, dy = 2 * y - 29, d2 = dx * dx + dy * dy;
+        if (chk && d2 < 1300) c = mix(c, RED, d2 < 500 ? 30 : (1300 - d2) * 30 / 800);
+        if (mark == 2 && d2 > 600 && d2 < 900) c = mix(c, 0, 8);
+        if (pc) c = shade(pc, x, y, c);
+        if (mark == 1 && d2 < 150) c = mix(c, 0, d2 < 118 ? 8 : 4);
+      } else if (pc) {
+        c = shade(pc, x, y, c);
+      }
       if (anim_pc) {
         int u = X + x - anim_x, v = Y + y - anim_y;
         if ((unsigned)u < 30 && (unsigned)v < 30) c = shade(anim_pc, u, v, c);
       }
-      if (s == cur && sel != -2 && (x < 3 || x > 26 || y < 3 || y > 26)) c = light ? mix(c, INK, 13) : mix(c, WHITE, 22);
+      if (k >> 8 & 1 && (x < 3 || x > 26 || y < 3 || y > 26)) c = light ? mix(c, INK, 13) : mix(c, WHITE, 22);
       buf[y * 30 + x] = c;
     }
   eadk_display_push_rect((eadk_rect_t){X, Y, 30, 30}, buf);
+  shown[s] = anim_pc ? NOT_SHOWN : (uint16_t)k;
 }
 
 static void draw_board(void) {
   for (int s = 0; s < 120; s++)
     if (!(s & 0x88)) draw_sq(s);
+}
+/* only the squares that show something else (a selection, a move): every square took 30 ms on the TI-84 Plus CE,
+   and a selection drew the 64 of them again. Over a board drawn whole since anything else covered it. */
+static void draw_changed(void) {
+  for (int s = 0; s < 120; s++)
+    if (!(s & 0x88) && shown[s] != sq_key(s)) draw_sq(s);
 }
 
 static void draw_rect_squares(int x, int y) {
@@ -848,7 +870,7 @@ static void do_move(Move m) {
   animate(m);
   make(m);
   refresh();
-  draw_board();
+  draw_changed();
   panel();
 }
 
@@ -894,11 +916,11 @@ static int human(int e) {
         }
     int p = P.b[cur];
     sel = p && COLOR(p) == P.side && sel != cur ? cur : -1;
-    draw_board();
+    draw_changed();
   } else if (e == K_BACK) {
     if (sel < 0) return -1;
     sel = -1;
-    draw_board();
+    draw_changed();
   } else if (e == K_UNDO) {
     return -2;
   }

@@ -31,6 +31,13 @@ static uint16_t fb[EADK_SCREEN_WIDTH * EADK_SCREEN_HEIGHT];
 static bool started, dirty, timer_ok;
 static uint64_t fallback_ms;
 static uint32_t last_blit;
+/* the keys seen down while a frame is drawn (push_rect reads them when 30 ms have gone by since the last read), kept
+   till the game's next scan: a game reads the keyboard once a frame, and at a few frames a second a tap came and went
+   between two reads (Temple Run's turns, Mason363/NumPlay#446). A game reading the keys every 30 ms or sooner (over
+   33 frames a second) is never read in between. */
+static eadk_keyboard_state_t keys_seen;
+static uint32_t keys_read;
+static eadk_keyboard_state_t keys_now(void);
 
 /* ---- the clock ---- */
 #define T2 ((volatile uint32_t *)0x900D0020) /* load, value, control */
@@ -97,6 +104,7 @@ void eadk_display_push_rect(eadk_rect_t r, const eadk_color_t *px) {
   dirty = true;
   uint32_t now = (uint32_t)eadk_timing_millis();
   if (now - last_blit >= 16) blit();
+  if (now - keys_read >= 30) keys_seen |= keys_now(), keys_read = now;
 }
 void eadk_display_push_rect_uniform(eadk_rect_t r, eadk_color_t c) {
   start();
@@ -152,11 +160,7 @@ static const eadk_keyboard_state_t PAD[] = {0, A(up), A(up) | A(right), A(right)
 static const t_key *const PAD_KEYS[] = {NULL, &KEY_NSPIRE_UP, &KEY_NSPIRE_UPRIGHT, &KEY_NSPIRE_RIGHT,
                                         &KEY_NSPIRE_RIGHTDOWN, &KEY_NSPIRE_DOWN, &KEY_NSPIRE_DOWNLEFT,
                                         &KEY_NSPIRE_LEFT, &KEY_NSPIRE_LEFTUP, &KEY_NSPIRE_CLICK};
-eadk_keyboard_state_t eadk_keyboard_scan(void) {
-  start();
-  /* what was drawn and isn't shown yet, once 16 ms have gone by: a game waiting for a key in a loop of its own,
-     drawing nothing more, shows its last lines too */
-  if (dirty && (uint32_t)eadk_timing_millis() - last_blit >= 16) blit();
+static eadk_keyboard_state_t keys_now(void) {
   eadk_keyboard_state_t s = 0;
   for (unsigned i = 0; i < sizeof KEYS / sizeof KEYS[0]; i++)
     if (isKeyPressed(*KEYS[i].key)) s |= (eadk_keyboard_state_t)1 << KEYS[i].to;
@@ -167,6 +171,16 @@ eadk_keyboard_state_t eadk_keyboard_scan(void) {
     for (unsigned i = 1; i < sizeof PAD / sizeof PAD[0]; i++)
       if (isKeyPressed(*PAD_KEYS[i])) s |= PAD[i];
   if (on_key_pressed()) s |= A(home) | A(on_off);
+  return s;
+}
+eadk_keyboard_state_t eadk_keyboard_scan(void) {
+  start();
+  /* what was drawn and isn't shown yet, once 16 ms have gone by: a game waiting for a key in a loop of its own,
+     drawing nothing more, shows its last lines too */
+  uint32_t now = (uint32_t)eadk_timing_millis();
+  if (dirty && now - last_blit >= 16) blit();
+  eadk_keyboard_state_t s = keys_now() | keys_seen;
+  keys_seen = 0, keys_read = now;
   return s;
 }
 eadk_event_t eadk_event_get(int32_t *timeout) {

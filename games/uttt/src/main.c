@@ -131,11 +131,25 @@ static void stroke(int x0, int y0, int x1, int y1, int n, int r, color_t c) {
   for (int i = 0; i <= n; i++) gfx_circle(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, r, c, 256);
 }
 /* X (who 0) or O (who 1), s pixels across, around (x, y) */
-static void mark(int who, int x, int y, int s, color_t c) {
+static void draw_mark(int who, int x, int y, int s, color_t c) {
   int t = s / 10 + 1, h = s / 2 - t;
   if (who) gfx_rrect_outline(x - s / 2, y - s / 2, s, s, s / 2, 2 * t, c, 256);
   else stroke(x - h, y - h, x + h, y + h, 2 * h, t, c), stroke(x - h, y + h, x + h, y - h, 2 * h, t, c);
 }
+#ifdef __TICE__
+/* The TI-84 Plus CE keeps a list of each strip's calls and draws a strip again only where its list changed: an X
+ * listed as its 18 to 82 discs made lists too long to keep (those strips were drawn again from the whole scene every
+ * time), and a mark that came or went, X or O, changed a list's length (the strip drawn again all along). A mark is
+ * one call there, and the tint of the boards to play in is listed on every board (none on the others): a move or
+ * the cursor draws again only the columns that changed. */
+static void mark_call(const int *a) { draw_mark(a[0], a[1], a[2], a[3], (color_t)a[4]); }
+static void mark(int who, int x, int y, int s, color_t c) {
+  const int a[5] = {who, x, y, s, c};
+  gfx_call(mark_call, a, 5, x - s / 2, y - s / 2, s, s);
+}
+#else
+#define mark(who, x, y, s, c) draw_mark(who, x, y, s, c)
+#endif
 /* a choice in the menus, as a move on a board: the one picked is marked with X, in X's colour */
 static void button(int y, const char *s, bool on) {
   gfx_text_center(&np_font_body, 160, y + 18, s, on ? WHITE : PALE, 256);
@@ -176,8 +190,13 @@ static void scene(void *ctx) {
     int x0 = OX + b % 3 * BP, y0 = OY + b / 3 * BP, won = pos.won[1] >> b & 1;
     bool open = !(pos.over >> b & 1), taken = (pos.won[0] | pos.won[1]) >> b & 1;
     box(x0 - 3, y0 - 3, 70, 70, taken ? gfx_mix(team[won], PLATE, 9) : open ? PLATE : HEX(0x2B2E3D));
+#ifdef __TICE__
+    bool on = mv[b] && !res; /* the small board(s) to play in, in the colour of who plays */
+    gfx_rrect(x0 - 3, y0 - 3, 70, 70, 7, on ? team[who] : 0, on ? pick == b ? 120 : 50 : 0);
+#else
     if (mv[b] && !res) /* the small board(s) to play in, in the colour of who plays */
       gfx_rrect(x0 - 3, y0 - 3, 70, 70, 7, team[who], pick == b ? 120 : 50);
+#endif
     for (int c = 0; c < 9; c++) {
       int x = x0 + c % 3 * 22, y = y0 + c / 3 * 22, m = b * 9 + c, t = pos.mark[1][b] >> c & 1;
       if (open) box(x, y, 20, 20, m == cur ? WHITE : m == last ? tint : SQUARE);

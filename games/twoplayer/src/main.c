@@ -270,6 +270,49 @@ static void hockey_cpu(float *tx, float *ty) {
   float x = bot.x - mx[1], y = bot.y - my[1], l = len(x, y) + 0.01f, v = V[cpu] * (l < 16 ? l / 16 : 1) / l;
   *tx = x * v, *ty = y * v;
 }
+#if NP_SOFT_FLOAT
+/* The puck's millisecond steps where float is done in software (the TI-84 Plus CE, a few hundred cycles a sum):
+   its place and speed in 4096ths of a pixel, the floats' steps only within reach of a post or a mallet, at a
+   board or past a goal line. False: a point was just won. */
+#define FX 4096
+static int fx(float v) { return (int)(v * FX + (v < 0 ? -.5f : .5f)); }
+static int iabs(int v) { return v < 0 ? -v : v; }
+static bool puck_steps(void) {
+  int x = fx(qx), y = fx(qy), vx = fx(qvx / 1000), vy = fx(qvy / 1000), bx[2], by[2];
+  for (int p = 0; p < 2; p++) bx[p] = fx(mx[p]), by[p] = fx(my[p]);
+  for (int i = 0; i < ms; i++) {
+    x += vx, y += vy;
+    bool near = false;
+    for (int k = 0; k < 4; k++) near |= iabs(x - (k & 1 ? RX1 : RX0) * FX) < QR * FX && iabs(y - (k & 2 ? GY1 : GY0) * FX) < QR * FX;
+    for (int p = 0; p < 2; p++) near |= iabs(x - bx[p]) < (MR + QR) * FX && iabs(y - by[p]) < (MR + QR) * FX;
+    if (near) { /* (as the float steps: the posts, the mallets, and a mallet pressing it into a corner giving way) */
+      qx = (float)x / FX, qy = (float)y / FX;
+      for (int k = 0; k < 4; k++) knock(k & 1 ? RX1 : RX0, k & 2 ? GY1 : GY0, 0, 0, 0);
+      for (int p = 0; p < 2; p++) knock(mx[p], my[p], mvx[p], mvy[p], MR);
+      x = fx(qx), y = fx(qy), vx = fx(qvx / 1000), vy = fx(qvy / 1000);
+    }
+    if (y < (RY0 + QR) * FX) y = (RY0 + QR) * FX, qvy = qvy < 0 ? -qvy * 0.9f : qvy, vy = fx(qvy / 1000);
+    else if (y > (RY1 - QR) * FX) y = (RY1 - QR) * FX, qvy = qvy > 0 ? -qvy * 0.9f : qvy, vy = fx(qvy / 1000);
+    if (y < GY0 * FX || y > GY1 * FX) {
+      if (x < (RX0 + QR) * FX) x = (RX0 + QR) * FX, qvx = qvx < 0 ? -qvx * 0.9f : qvx, vx = fx(qvx / 1000);
+      else if (x > (RX1 - QR) * FX) x = (RX1 - QR) * FX, qvx = qvx > 0 ? -qvx * 0.9f : qvx, vx = fx(qvx / 1000);
+    }
+    if (x < (RX0 - QR) * FX || x > (RX1 + QR) * FX) {
+      qx = (float)x / FX, qy = (float)y / FX;
+      point(x < 160 * FX);
+      return false;
+    }
+    for (int p = 0; p < 2; p++)
+      if (iabs(x - bx[p]) < (MR + QR) * FX && iabs(y - by[p]) < (MR + QR) * FX) {
+        qx = (float)x / FX, qy = (float)y / FX;
+        float dx = mx[p] - qx, dy = my[p] - qy, d = len(dx, dy) + .01f;
+        if (d < MR + QR) mx[p] = qx + dx / d * (MR + QR), my[p] = qy + dy / d * (MR + QR), bx[p] = fx(mx[p]), by[p] = fx(my[p]);
+      }
+  }
+  qx = (float)x / FX, qy = (float)y / FX;
+  return true;
+}
+#endif
 static void hockey_step(void) {
   for (int p = 0; p < 2; p++) {
     float tx, ty, k = clampf(ms * 0.014f, 0, 1);
@@ -284,6 +327,9 @@ static void hockey_step(void) {
     my[p] = clampf(my[p] + mvy[p] * ms / 1000, RY0 + MR, RY1 - MR);
   }
   if (phase) return;
+#if NP_SOFT_FLOAT
+  if (!puck_steps()) return;
+#else
   for (int i = 0; i < ms; i++) {
     qx += qvx / 1000, qy += qvy / 1000;
     for (int k = 0; k < 4; k++) knock(k & 1 ? RX1 : RX0, k & 2 ? GY1 : GY0, 0, 0, 0); /* the goal posts */
@@ -302,13 +348,11 @@ static void hockey_step(void) {
     }
     for (int p = 0; p < 2; p++) { /* and a mallet pressing it into a corner gives way */
       float dx = mx[p] - qx, dy = my[p] - qy;
-#if NP_SOFT_FLOAT
-      if (dx * dx + dy * dy >= (MR + QR) * (MR + QR)) continue;
-#endif
       float d = len(dx, dy) + .01f;
       if (d < MR + QR) mx[p] = qx + dx / d * (MR + QR), my[p] = qy + dy / d * (MR + QR);
     }
   }
+#endif
   float s = len(qvx, qvy), f = 1 - 0.00035f * ms;
   if (s * f > 560) f = 560 / s;
   qvx *= f, qvy *= f;
@@ -1011,9 +1055,6 @@ int main(void) {
           break;
         }
         play();
-#if NP_SOFT_FLOAT
-        if (game == HOCKEY) owed = 0; /* (there its puck's float steps would cost more than they make up) */
-#endif
         for (; owed > 0 && screen == S_PLAY; owed -= 40) { /* the game keeps its pace however slow the frames */
           ms = owed < 40 ? owed : 40, dt = ms * .001f, now += (uint32_t)ms;
           tap[0] = tap[1] = 0;
