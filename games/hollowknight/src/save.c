@@ -38,6 +38,15 @@ static const uint8_t *phash(uint32_t *n) {
 
 static void save_copy(void);
 static const uint8_t *whole(const uint8_t *p, uint32_t len, uint32_t *count, uint32_t *pd_size);
+/* the bit of an object's state by its name, or MAX_PERSIST if this app hasn't that object */
+static uint32_t persist_bit(uint32_t want) {
+  uint32_t nbits;
+  const uint8_t *names = phash(&nbits);
+  if (nbits > MAX_PERSIST) nbits = MAX_PERSIST;
+  for (uint32_t i = 0; i < nbits; i++)
+    if (rd32(names + 4 * i) == want) return i;
+  return MAX_PERSIST;
+}
 
 bool save_game(void) {
   /* (built in the decoders' scratch memory: no decoding goes on meanwhile) */
@@ -47,7 +56,7 @@ bool save_game(void) {
   uint32_t at = sizeof h;
   memcpy(buf + at, &g_pd, PD_SAVED);
   at += PD_SAVED;
-  uint32_t nbits, count = 0;
+  uint32_t nbits, count = 0, len, old_count, pd;
   const uint8_t *names = phash(&nbits);
   uint32_t count_at = at;
   at += 4;
@@ -59,27 +68,20 @@ bool save_game(void) {
   }
   /* the states of the other part of Hallownest's objects (the other app's: names this one hasn't), as the slot
    * has them, so that a save here keeps its broken walls, opened gates and won battles */
-  {
-    char name[8];
-    uint32_t len, old_count, pd;
-    slot_name(cur_slot, name);
-    const uint8_t *old = whole(plat_load(name, &len), len, &old_count, &pd);
-    for (uint32_t k = 0; old && k < old_count; k++) {
-      const uint8_t *q = old + pd + 4 + 4 * k;
-      uint32_t i = 0, want = rd32(q);
-      while (i < nbits && i < MAX_PERSIST && rd32(names + 4 * i) != want) i++;
-      if (i < nbits && i < MAX_PERSIST) continue;
-      if (at + 4 > cap) return false;
-      memcpy(buf + at, q, 4);
-      at += 4, count++;
-    }
+  char name[8];
+  slot_name(cur_slot, name);
+  const uint8_t *old = whole(plat_load(name, &len), len, &old_count, &pd);
+  for (uint32_t k = 0; old && k < old_count; k++) {
+    const uint8_t *q = old + pd + 4 + 4 * k;
+    if (persist_bit(rd32(q)) < MAX_PERSIST) continue;
+    if (at + 4 > cap) return false;
+    memcpy(buf + at, q, 4);
+    at += 4, count++;
   }
   memcpy(buf + count_at, &count, 4);
   h.size = at - sizeof h;
   h.crc = crc32(buf + sizeof h, h.size);
   memcpy(buf, &h, sizeof h);
-  char name[8];
-  slot_name(cur_slot, name);
   if (!plat_save(name, buf, at)) return false;
   save_copy();
   return true;
@@ -109,6 +111,11 @@ static const uint8_t *checked(int slot, uint32_t *count, uint32_t *pd_size) {
   return whole(p, len, count, pd_size);
 }
 
+/* (the fx-CG50: no installer takes files away there, and its add-in's 2 MB has no room for the copy) */
+#if defined(NP_PORT) && defined(__sh__)
+static void save_copy(void) {}
+void save_restore(void) {}
+#else
 /* The copy: installing apps from the NumWorks website keeps only Python scripts, so the saves are also kept in one,
  * a comment line "#>hk1.sav:base64" a slot (the way NumPlay keeps its games' saves), and come back from it when a
  * save itself is gone. */
@@ -189,6 +196,7 @@ void save_restore(void) {
     if (ok && o == size && whole(out, size, &count, &pd)) plat_save(name, out, size);
   }
 }
+#endif
 
 int save_stats(int slot, SaveStats *st) {
   char name[8];
@@ -245,16 +253,10 @@ bool save_load(int slot) {
   if (g_pd.map_key_pref > 2) g_pd.map_key_pref = 0;
   /* (names kept within their bounds whatever the file says) */
   g_pd.respawn_scene[SCENE_NAME - 1] = g_pd.respawn_marker[SCENE_NAME - 1] = g_pd.shade_scene[SCENE_NAME - 1] = 0;
-  uint32_t nbits;
-  const uint8_t *names = phash(&nbits);
   const uint8_t *q = p + pd + 4;
   for (uint32_t k = 0; k < count; k++, q += 4) {
-    uint32_t want = rd32(q);
-    for (uint32_t i = 0; i < nbits && i < MAX_PERSIST; i++)
-      if (rd32(names + 4 * i) == want) {
-        g_pd.persist[i >> 3] |= (uint8_t)(1 << (i & 7));
-        break;
-      }
+    uint32_t i = persist_bit(rd32(q));
+    if (i < MAX_PERSIST) g_pd.persist[i >> 3] |= (uint8_t)(1 << (i & 7));
   }
   return true;
 }
