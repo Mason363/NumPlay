@@ -63,6 +63,8 @@ static int rndi(int n) { return (int)(rnd() % (uint32_t)n); }
 
 /* f over b; a from 0 (all b) to 32 (all f) */
 #ifdef __TICE__ /* the TI-84 Plus CE: its own mixing (the same colours) */
+#include <string.h>
+#include <wchar.h>
 #include "../../../platform/ti84ce/ce_draw.h"
 __attribute__((naked)) static color ce_mix(color a, color b, unsigned t) { __asm__(CE_MIX_ASM); }
 #endif
@@ -206,12 +208,23 @@ static int brick_y(int r) { return BY0 + r * (BH + GAP); }
 static void mark_brick(int r, int c) { mark_at(brick_x(c) + sx, brick_y(r) + sy, BW, BH); } /* bricks shake */
 
 /* ------------------------------------------------------------------ drawing */
+#ifdef __TICE__ /* (the TI-84 Plus CE: fewer bands, each going through the whole scene) */
+#define BUFN (W * 64)
+#else
 #define BUFN (W * 16)
+#endif
 static color buf[BUFN];
 static int rx0, ry0, rx1, ry1, rw; /* the area buf holds */
 
 static void rect(int x, int y, int w, int h, color c, int a) {
   int x0 = imax(x, rx0), x1 = imin(x + w, rx1), y0 = imax(y, ry0), y1 = imin(y + h, ry1);
+#ifdef __TICE__ /* (the TI-84 Plus CE: rows of one colour filled by the C library's LDIR, no multiplies) */
+  if (a >= 32) {
+    if (x0 < x1)
+      for (color *p = buf + (y0 - ry0) * rw + x0 - rx0; y0 < y1; y0++, p += rw) wmemset((wchar_t *)p, (wchar_t)c, (size_t)(x1 - x0));
+    return;
+  }
+#endif
   for (int j = y0; j < y1; j++)
     for (color *p = buf + (j - ry0) * rw + x0 - rx0, *e = p + x1 - x0; p < e; p++) *p = a >= 32 ? c : mix(c, *p, a);
 }
@@ -219,6 +232,7 @@ static __attribute__((noinline)) void fill(int x, int y, int w, int h, color c) 
 static bool seen(int x, int y, int w, int h) { return x < rx1 && x + w > rx0 && y < ry1 && y + h > ry0; }
 /* a pixel-art circle, d pixels across */
 static void round_(int x, int y, int d, color c) {
+  if (!seen(x, y, d, d)) return;
   for (int j = 0; j < d; j++) {
     int t = 2 * j + 1 - d, e = 0;
     while ((2 * e + 1 - d) * (2 * e + 1 - d) + t * t > d * d) e++;
@@ -226,6 +240,7 @@ static void round_(int x, int y, int d, color c) {
   }
 }
 static void ring_(int x, int y, int d, color c) {
+  if (!seen(x, y, d, d)) return;
   for (int j = 0; j < d; j++) {
     int t = 2 * j + 1 - d, e = 0;
     while ((2 * e + 1 - d) * (2 * e + 1 - d) + t * t > d * d) e++;
@@ -381,7 +396,42 @@ static void draw_brick(int r, int c) {
   fill(x + 2, y + 2, BW - 4, BH - 4, face);
   if (v >> 3) icon(v >> 3, x, y, k[2]);
 }
+#ifdef __TICE__
+/* The TI-84 Plus CE: a row of bricks drawn a line at a time, each line copied from one of three made once (the top
+   and bottom lines, the lines next to them, the middle ones), on the night: draw_brick's picture, a frame of the
+   shake in a few copies instead of hundreds of fills. */
+static color line_[3][W];
+static void span(color *t, int a, int b, color c) {
+  a = imax(a, rx0), b = imin(b, rx1);
+  if (a < b) wmemset((wchar_t *)(t + a - rx0), (wchar_t)c, (size_t)(b - a));
+}
+static bool row_drawn[ROWS]; /* (rows with bricks: drawn whole by brick_row, the night with them) */
+static void brick_row(int r) {
+  int y = brick_y(r) + sy, ya = imax(y, ry0), yb = imin(y + BH, ry1), c;
+  if (ya >= yb || !row_drawn[r]) return;
+  for (int k = 0; k < 3; k++) wmemset((wchar_t *)line_[k], (wchar_t)BG, (size_t)rw);
+  for (c = 0; c < COLS; c++) {
+    int v = brick[r][c], x = brick_x(c) + sx;
+    if (!v) continue;
+    const color *k = BRICK[(v & 7) - 1];
+    color face = flash[r][c] ? mix(WHITE, k[0], flash[r][c] * 4) : k[0];
+    span(line_[0], x + 1, x + BW - 1, k[1]);
+    span(line_[1], x, x + BW, k[1]);
+    span(line_[2], x, x + BW, k[1]), span(line_[2], x + 2, x + BW - 2, face);
+  }
+  color *p = buf + (ya - ry0) * rw;
+  for (int j = ya - y; j < yb - y; j++, p += rw)
+    memcpy(p, line_[j == 0 || j == BH - 1 ? 0 : j == 1 || j == BH - 2 ? 1 : 2], (size_t)rw * sizeof(color));
+  for (c = 0; c < COLS; c++)
+    if (brick[r][c] >> 3 && seen(brick_x(c) + sx, y, BW, BH))
+      icon(brick[r][c] >> 3, brick_x(c) + sx, y, BRICK[(brick[r][c] & 7) - 1][2]);
+}
+#endif
 static void bricks(void) {
+#ifdef __TICE__
+  for (int r = 0; r < ROWS; r++) brick_row(r);
+  return;
+#endif
   for (int r = 0; r < ROWS; r++)
     if (seen(0, brick_y(r) + sy - 2, W, BH + 4))
       for (int c = 0; c < COLS; c++) draw_brick(r, c);
@@ -418,7 +468,8 @@ static void things(void) {
     if (shot[i].on) fill(shot[i].x, shot[i].y, 2, 8, RGB(0xFF6E5A)), fill(shot[i].x, shot[i].y, 2, 3, WHITE);
   for (int i = 0; i < NPART; i++) {
     part_t *p = &part[i];
-    if (p->life) rect(p->x >> 4, p->y >> 4, p->size, p->size, p->c, 8 + 24 * p->life / p->max);
+    if (p->life && seen(p->x >> 4, p->y >> 4, p->size, p->size))
+      rect(p->x >> 4, p->y >> 4, p->size, p->size, p->c, 8 + 24 * p->life / p->max);
   }
 }
 
@@ -440,6 +491,13 @@ static void hud(void) {
 static void background(void) {
   for (int y = ry0; y < ry1; y++) {
     color c = y < 228 ? BG : y < 232 ? RGB(0x18151B) : y < 235 ? RGB(0x151217) : y < 238 ? RGB(0x121014) : RGB(0x100E12);
+#ifdef __TICE__
+    if (y >= BY0 + sy && y < BY0 + sy + ROWS * (BH + GAP) && (y - BY0 - sy) % (BH + GAP) < BH &&
+        row_drawn[(y - BY0 - sy) / (BH + GAP)])
+      continue; /* (a row of bricks covers it: brick_row) */
+    wmemset((wchar_t *)(buf + (y - ry0) * rw), (wchar_t)c, (size_t)rw);
+    continue;
+#endif
     for (color *p = buf + (y - ry0) * rw, *e = p + rw; p < e; p++) *p = c;
   }
 }
@@ -576,6 +634,13 @@ static void overlay(void) {
 
 /* one area of the screen, in layers */
 static void render(void) {
+#ifdef __TICE__
+  for (int r = 0; r < ROWS; r++) {
+    int c = 0;
+    while (c < COLS && !brick[r][c]) c++;
+    row_drawn[r] = c < COLS;
+  }
+#endif
   background();
   bricks();
   things();
@@ -584,7 +649,12 @@ static void render(void) {
   hud();
   bool dimmed = state >= S_PAUSE || state <= S_SET || (state == S_READY && !hinted && !demo);
   if (dimmed) /* dimmed under a menu */
-    for (color *p = buf, *e = buf + rw * (ry1 - ry0); p < e; p++) *p = mix(0, *p, 16);
+    for (color *p = buf, *e = buf + rw * (ry1 - ry0); p < e; p++)
+#ifdef __TICE__
+      *p = (color)(*p >> 1 & 0x7BEF); /* (what its mixing makes of half black: each colour halved) */
+#else
+      *p = mix(0, *p, 16);
+#endif
   overlay();
 }
 
