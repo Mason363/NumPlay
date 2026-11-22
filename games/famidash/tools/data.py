@@ -214,6 +214,10 @@ levels = []
 for name in order:
     m = re.search(r"level_data_%s:\n\t; Header\n((?:\t\t\.byte [^\n]*\n){14})" % name, asm)
     hdr = [ev(line.split(".byte", 1)[1].split(";")[0]) & 0xFF for line in m.group(1).strip().split("\n")[3:]]
+    if name == "thetower":
+        # the HUGE set scrolls The Tower to 0x280, which puts the cube two rows into the floor (the level is the
+        # same in every set): its own set A scrolls to 0x260, the cube standing on the floor
+        hdr[3] = 0x60
     lz = open(os.path.join(LVL, "EXPORTS", "level", name + ".lz.bin"), "rb").read()
     rle = lz_unpack(lz)
     height = hdr[10]
