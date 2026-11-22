@@ -117,9 +117,13 @@ static uint16_t nent;
 static uint8_t hint[64];            /* sprite & 63 -> an entry to try first */
 static uint32_t top, tick;
 
+/* an entry's place (off4) is 16 bits of 4-byte units: the cache stops at 256 KB. The TI-Nspire's arena is 1 MB,
+ * and past 256 KB the entries pointed into other sprites (garbled sprites and menus, then endless runs) */
+#define CACHE_MAX (0xFFFFu * 4)
+
 void spr_setup(uint8_t *m, uint32_t size) {
   mem = m;
-  cache_bytes = size;
+  cache_bytes = size < CACHE_MAX ? size : CACHE_MAX;
   nent = 0;
   top = 0;
 }
