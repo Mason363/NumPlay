@@ -96,12 +96,21 @@ static void cubic(int t, int32_t *w) {
 #endif
 /* n letters of s, s256/256 times the font's size, from x on the baseline: each pixel the font's coverage
  * between its pixels (bicubic), sharpened as much as the letters grow */
+#ifdef __TICE__
+static void big_run(const char *s, int n, int x, int base, int s256, color_t c);
+static void big_call(const int *a) { big_run((const char *)a[0], a[1], a[2], a[3], a[4], (color_t)a[5]); }
+#endif
 static void big_run(const char *s, int n, int x, int base, int s256, color_t c) {
 #ifdef __TICE__
-  if (gfx_listing) { /* (what it depends on, in the strips' lists) */
-    const int v[] = {n, x, base, s256, c};
-    gfx_list(v, sizeof v);
-    gfx_list(s, (unsigned)n);
+  if (gfx_listing) { /* (what it depends on, in the strips' lists: the strips it covers when the scene is listed
+                        once for all of them, and a call drawing it then) */
+    const int v[] = {n, x, base, s256, c}, a[6] = {(int)s, n, x, base, s256, c};
+    int y0 = gfx_y0, y1 = gfx_y1, top = base - (BIG->ascent + 2) * s256 / 256 - 2;
+    int bottom = base + (BIG->descent + 2) * s256 / 256 + 2;
+    if (gfx_pure) gfx_y0 = top > y0 ? top : y0, gfx_y1 = bottom < y1 ? bottom : y1;
+    if (gfx_y0 < gfx_y1) gfx_list(v, sizeof v), gfx_list(s, (unsigned)n);
+    gfx_y0 = y0, gfx_y1 = y1;
+    if (gfx_pure) gfx_call(big_call, a, 6, 0, top, SCREEN_W, bottom - top);
     return;
   }
 #endif
@@ -263,6 +272,9 @@ static void open_dialog(int d, int sel) {
 void app_init(uint32_t now) {
   memset(&u, 0, sizeof u);
   gfx_buf = strip;
+#ifdef __TICE__
+  gfx_pure = true; /* (the scene listed once for every strip: it draws with gfx_* and big_call) */
+#endif
   rnd_seed(plat_random() ^ now * 2654435761u);
   game_load();
   u.now = now;
