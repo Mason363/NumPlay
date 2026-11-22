@@ -2,8 +2,9 @@
  * from the game's own files (tools/data.py, gamesrc/rider/spec).
  *
  * One button: OK (or EXE, or Up) held rides on, held in the air turns the bike backwards for a flip; let go to
- * land on both wheels. The endless run counts landed flips; the 48 levels give stars for their time, every flip
- * taking half a second off. Gems win bikes; runs, best scores, stars and challenges open the special ones.
+ * land on both wheels. The endless run counts landed flips (twice, both wheels down together); the 48 levels
+ * give stars for their time, every flip taking half a second off. Gems win bikes; runs, best scores, stars and
+ * challenges open the special ones.
  * Back pauses (Resume, How to play, Quit game, asked first), Home saves and quits.
  *
  * The ride runs at the game's 60 steps a second whatever the calculator manages to draw. */
@@ -465,6 +466,22 @@ static void hud_ride(void) {
     snprintf(buf, sizeof buf, "Level %d", r->level % 8 + 1);
     gfx_text(&np_font_small, 6, 14, group_name[r->level / 8], DIM(), 256);
     gfx_text(&np_font_small, 6, 26, buf, DIM(), 256);
+    /* levelTimerWidget: on a level done before, the time of its next star on a star with that number,
+     * or the best time once it has all three */
+    int l = r->level, st = sv.stars[l];
+    if (st == 3) {
+      fmt_time(buf, sizeof buf, (float)sv.best_ms[l]);
+      char b2[24];
+      snprintf(b2, sizeof b2, "Best: %s", buf);
+      gfx_text_right(&np_font_small, 314, 38, b2, DIM(), 256);
+    } else if (st > 0) {
+      fmt_time(buf, sizeof buf, (st == 1 ? star2[l] : star3[l]) * 10.0f);
+      gfx_text_right(&np_font_small, 314, 38, buf, W(), 256);
+      int sx = 314 - gfx_text_width(&np_font_small, buf) - 15;
+      char d[2] = {(char)('1' + st), 0};
+      hud_star(sx, 34, 12, pal[C_GEM_HALO]), hud_star(sx, 34, 11, pal[C_GEM]);
+      gfx_text_center(&np_font_small, sx, 38, d, HEX(0x000000), 256);
+    }
   }
   snprintf(buf, sizeof buf, "%u", (unsigned)(sv.gems + (uint32_t)r->gems));
   gfx_text_right(&np_font_body, 302, 18, buf, W(), 256);
@@ -699,9 +716,9 @@ static const char *help_lines[] = {
     "Red saws break it too.",
     "",
     "Endless run: each landed flip is a point,",
-    "both wheels down together a perfect flip.",
+    "two if both wheels touch down together.",
     "Levels: reach the end fast for 3 stars.",
-    "Each flip takes half a second off.",
+    "Each landed flip takes half a second off.",
     "",
     "Gems win bikes. Runs, scores, stars and",
     "challenges open the special ones.",

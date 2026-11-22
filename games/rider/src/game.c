@@ -44,6 +44,7 @@
 #define BOOST_VMAX 1050                 /* maxAdditionalBoosterForwardVelocityValue */
 #define FIRST_FLIP 270                  /* firstFlipDegreesAmount */
 #define PERFECT_MS 30                   /* gameCharacterPerfectLandingErrorMargin */
+#define PERFECT_FX_MS (30 * 16)         /* GameCharacter.perfectFlip: the body's colour back in 30 steps of 16 ms */
 #define BODY_LAND_MS 1000               /* flipTimeToLandOnWheelsAfterBodyTouch */
 #define MAX_LANDINGS 3                  /* maxPlatformLandingAmount */
 #define MAX_FORCE 10000                 /* maxRealImpactForce */
@@ -287,17 +288,20 @@ static bool two_wheels_landed(const rd_run *r) {
 /* ---------------------------------------------------------------- texts and the score */
 static void say(rd_run *r, const char *t, const char *t2) { r->text = t, r->text2 = t2, r->text_ms = 1500; }
 
-/* GameController.flipMade: a point waiting for the landing (levels: half a second off the time) */
+/* GameController.flipMade: a point waiting for the landing */
 static void flip_made(rd_run *r, int n) {
   rd_bikestate *b = &r->b;
   b->air_flips += n, r->flips += n;
   if (r->mode == RUN_ENDLESS) r->pending += n;
 }
-/* Board.characterLanded's end: the texts, the flips counted (a perfect landing or not) */
+/* Board.characterLanded's end: the texts, the flips counted (a perfect landing or not). GameController.perfectFlip
+   counts the flips landed perfectly; mergeHudBonusScore takes half a second off a level's time for each flip
+   (fixedLevelFlipTimeDeductValue) or, in the endless run, adds the jump's points to the score: twice as many when it
+   landed perfectly (Hud.mergeBonusScore's landedPerfectlyBonus) */
 static void landed_texts(rd_run *r, bool perfect) {
   rd_bikestate *b = &r->b;
   int n = b->air_flips;
-  if (perfect) r->perfect++;
+  if (perfect) r->perfect += n;
   if (n >= 2) {
     int k = n > 6 ? 6 : n, kind = perfect ? 0 : 1, m = flip_ntexts[(k - 2) * 2 + kind];
     say(r, flip_texts[k - 2][kind][rd_rand(&r->seed) % m], 0);
@@ -313,7 +317,11 @@ static void landed_texts(rd_run *r, bool perfect) {
     say(r, air_texts[k], r->text);
   }
   if (n > r->best_flips_jump) r->best_flips_jump = n;
-  if (n && r->mode == RUN_ENDLESS) r->landed_flips += n, r->pending_ms = 500;
+  if (n && r->mode == RUN_ENDLESS) {
+    int got = perfect ? 2 * n : n;
+    r->pending += got - n, r->landed_flips += got, r->pending_ms = 500;
+  }
+  if (r->mode == RUN_LEVEL) r->level_flips += n;
   b->air_flips = 0, b->front_flip = false;
   b->in_air_ms = -1;
 }
@@ -321,6 +329,7 @@ static void landing_check(rd_run *r) { /* waitForLandingOrDelay: checkPerfectLan
   rd_bikestate *b = &r->b;
   bool perfect = two_wheels_landed(r) && b->in_air_ms >= 0 && fabsf(b->landing_ms[0] - b->landing_ms[1]) < PERFECT_MS &&
                  b->air_flips > 0;
+  if (perfect) r->perfect_fx = PERFECT_FX_MS; /* GameCharacter.perfectFlip */
   landed_texts(r, perfect);
 }
 static void lose_bonus(rd_run *r) { /* hudResetBonusScore */
@@ -770,6 +779,7 @@ static void endless_more(rd_run *r) {
 #define RESERVE 20000      /* arena bytes kept free in Box2D's blocks and the arena's end */
 #define TAIL 14000         /* the arena's untouched end kept: new chunks, the step past its stack, the picture */
 #define EMERGENCY 6000     /* short of memory: what is right round the bike still comes in above this */
+#define POLY_ROOM 24       /* or while Box2D holds this many free blocks for polygons (theirs, and their contacts') */
 #define PROXY_BUDGET 140   /* fixtures in the physics world, at most (the tree holds B2_TREE_NODES / 2) */
 /* the bike goes 18 pixels a frame at most: what is this near comes in some frames before it can touch it; short of
  * memory (many falling platforms and their contacts), only what is right round the bike stays */
@@ -840,7 +850,8 @@ static void stream(rd_run *r, bool all) {
       if (all) pin = pkeep;
       uint64_t bit = (uint64_t)1 << k;
       if (!(r->pmask[i] & bit) && pin) {
-        if (ph_proxies() >= PROXY_BUDGET || (tight ? ph_tail() < EMERGENCY : ph_free() < RESERVE)) continue;
+        if (ph_proxies() >= PROXY_BUDGET || (tight ? ph_tail() < EMERGENCY && ph_poly_room() < POLY_ROOM : ph_free() < RESERVE))
+          continue;
         static_in(r, i, k, xy, n);
         r->pmask[i] |= bit;
       } else if ((r->pmask[i] & bit) && !pkeep) {
@@ -1087,6 +1098,7 @@ static void step_world(rd_run *r, bool held) {
   rd_bikestate *b = &r->b;
   ph_listen(&listener);
   if (r->text_ms > 0) r->text_ms -= DT_MS;
+  if (r->perfect_fx > 0) r->perfect_fx -= DT_MS;
   /* the touch */
   bool was_held = b->held;
   b->held = held;
@@ -1158,6 +1170,7 @@ static void step_world(rd_run *r, bool held) {
     for (int q = 0; q < 3; q++)
       if (d->an[q].on) anim_frame(r, d->live, q);
     if (d->touch) ph_touch_set(d->touch, d->tx, d->ty);
+    else if (!d->body) d->x = d->tx, d->y = d->ty; /* (out of the physics world: it goes on moving where it is drawn) */
   }
   if (!r->ended) {
     /* stopBikeRotation's listener: the turn eases out (outCirc) in a second, contacts can't turn it */
@@ -1232,6 +1245,6 @@ static void step_world(rd_run *r, bool held) {
 }
 
 float run_level_time(const rd_run *r) {
-  float t = r->ms - r->flips * 500.0f;
+  float t = r->ms - r->level_flips * 500.0f;
   return t < 0 ? 0 : t;
 }

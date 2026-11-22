@@ -16,8 +16,8 @@
 /* the strip and the frame's draw commands: on main's stack (gfx_set_memory), the calculator gives apps 32 KB
  * of it apart from their RAM, and some calculator software gives apps less RAM than 23.2's 148928 bytes */
 #ifdef HOST
-static uint16_t strip_mem[VIEW_W * STRIP_H];
-uint16_t *g_strip = strip_mem;
+static uint32_t gfx_mem[(GFX_STRIP_BYTES + GFX_CMD_BYTES) / 4];   /* (side by side, as main.c has them) */
+uint16_t *g_strip = (uint16_t *)(void *)gfx_mem;
 #else
 uint16_t *g_strip;
 #endif
@@ -49,14 +49,20 @@ typedef struct {
 typedef struct { StripFn fn; void *ctx; } Custom;
 
 #ifdef HOST
-static Cmd cmds_mem[MAX_CMDS];
-static Cmd *cmds = cmds_mem;
+static Cmd *cmds = (Cmd *)(void *)(gfx_mem + GFX_STRIP_BYTES / 4);
 #else
 static Cmd *cmds;
 #endif
 _Static_assert(VIEW_W * STRIP_H * sizeof(uint16_t) == GFX_STRIP_BYTES && MAX_CMDS * sizeof(Cmd) == GFX_CMD_BYTES,
                "celeste.h's GFX_STRIP_BYTES, GFX_CMD_BYTES");
 void gfx_set_memory(void *strip, void *cmd) { g_strip = strip, cmds = cmd; }
+/* the strip and the draw commands between two frames (not while drawing, nor while textures load: they use the strip):
+ * both when they are side by side */
+uint8_t *gfx_idle_memory(uint32_t *size) {
+  bool joined = (uint8_t *)cmds == (uint8_t *)g_strip + GFX_STRIP_BYTES;
+  *size = g_res_drawing ? 0 : joined ? GFX_STRIP_BYTES + GFX_CMD_BYTES : GFX_STRIP_BYTES;
+  return (uint8_t *)g_strip;
+}
 static int ncmds;
 static Affine affs[MAX_AFFINE];
 static int naffs;
@@ -285,7 +291,12 @@ static inline void span_run(uint16_t *d, int n, int step, uint8_t v) {
     for (; n > 0; n--, d += step) *d = add565(*d, c);
   } else {
     int a = alpha_of(v);
-    if (a >= 256)
+    if (a >= 256 && step > 0 && n > 3) {   /* two pixels a word (the solid runs of pictures see-through elsewhere) */
+      if ((uintptr_t)d & 2) *d++ = c, n--;
+      uint32_t cc = c | (uint32_t)c << 16;
+      for (; n >= 2; n -= 2, d += 2) memcpy(d, &cc, 4);
+      if (n) *d = c;
+    } else if (a >= 256)
       for (; n--; d += step) *d = c;
     else
       for (; n--; d += step) *d = blend565_in(*d, c, a);

@@ -119,8 +119,10 @@ static void number(int x, int y, int32_t v, int kind) {
   nums[best].x = (int16_t)x, nums[best].y = (int16_t)y, nums[best].v = v, nums[best].t = 60, nums[best].kind = (uint8_t)kind;
 }
 
-static void sparks(int x, int y) {
-  for (int k = 0; k < 3; k++) {
+static void sparks(int x, int y) {   /* (they leave the last effects free for the attacks: these are only for show) */
+  int free = 0;
+  for (int i = 0; i < NFX; i++) free += !B.fx[i].kind;
+  for (int k = 0; k < 3 && free - k > 12; k++) {
     Fx *f = fx_new(1, AN_SPARK, x + rnd_n(60) - 30, y + rnd_n(50) - 40);
     if (f) f->vy = (int16_t)(16 + rnd_n(32)), f->img = (uint8_t)rnd_n(4);
   }
@@ -344,7 +346,8 @@ static int attack_frame(int a) {
 static void do_attack(int a) {
   int power = B.cur_level * B.multiplier;   /* 587: "current attack power" */
   int level = B.cur_level;
-  int att_x = B.pm[B.att_slot - 1].x, att_y = B.pm[B.att_slot - 1].y;
+  int who = B.att_slot ? B.att_slot : B.mimic_slot ? B.mimic_slot : 1;   /* (the mimic's turn: no one attacks) */
+  int att_x = B.pm[who - 1].x, att_y = B.pm[who - 1].y;
   int t;
   Fx *f;
   switch (a) {
@@ -552,9 +555,11 @@ static void fx_step(void) {
     }
     f->t++;
     switch (f->kind) {
-      case FX_SPARK:   /* "Active 5": falls, gone at its end (493-494) */
+      case FX_SPARK:   /* "Active 5": falls, gone at its end (493-494) or out of the field (its pictures loop: Fusion
+                          takes the objects far out of the frame away; kept, they filled the effects and the attacks
+                          after them had no room) */
         f->y += f->vy / 16;
-        if (end) f->kind = 0;
+        if (end || f->y > VIEW_Y + FIELD_H * 5 / 2 + 60) f->kind = 0;
         break;
       case FX_SHOW: case FX_NOTE: case FX_HIT:
         f->y += f->vy / 16;
@@ -1095,7 +1100,7 @@ void battle_step(void) {
     if (B.att_img != prev && B.att_img == attack_frame(B.used) && !B.att_frame_done) {
       B.att_frame_done = 1;
       do_attack(B.used);
-      if (B.mimic > 0 && B.used != 49 && B.used != B.mimic_attack) B.mimic_attack = B.used;   /* 889-890 */
+      if (B.mimic > 0 && B.used != 49 && B.used != B.mimic_attack) B.mimic_attack = B.used, B.mimic_slot = B.att_slot;   /* 889-890 */
     }
     if (end) {
       if (!B.att_frame_done) do_attack(B.used);

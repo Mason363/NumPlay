@@ -130,10 +130,12 @@ static void files_step(void) {
 
 static void button_pic(int pic, int cx, int y, bool sel) {
   pic_draw(pic, cx, y);
-  if (sel) {
-    int w = pic_w(pic), h = pic_h(pic), x0 = cx - pic_hx(pic), y0 = y - pic_hy(pic);
-    gfx_frame_rect(x0 - 2, y0 - 2, w + 4, h + 2, HILITE);
-    gfx_frame_rect(x0 - 3, y0 - 3, w + 6, h + 4, HILITE);
+  if (sel) { /* round what shows of it (the picture is in squares of 16 pixels) */
+    int bx0, by0, bx1, by1;
+    pic_bounds(pic, &bx0, &by0, &bx1, &by1);
+    int w = bx1 - bx0, h = by1 - by0, x0 = cx - pic_hx(pic) + bx0, y0 = y - pic_hy(pic) + by0;
+    gfx_frame_rect(x0 - 2, y0 - 2, w + 4, h + 4, HILITE);
+    gfx_frame_rect(x0 - 3, y0 - 3, w + 6, h + 6, HILITE);
   }
 }
 

@@ -243,6 +243,37 @@ int pic_h(int id) { return 16 * section(SEC_PICS)[16 * id + 1]; }
 int pic_hx(int id) { return (int)rds16(section(SEC_PICS) + 16 * id + 4); }
 int pic_hy(int id) { return (int)rds16(section(SEC_PICS) + 16 * id + 6); }
 
+/* what of a picture shows (its mask's pixels not clear), from its top left corner; the last one asked kept */
+void pic_bounds(int id, int *x0, int *y0, int *x1, int *y1) {
+  static int last = -1, b[4];
+  if (id != last) {
+    Info in = info(id);
+    int W = in.mw * 16, H = in.mh * 16;
+    b[0] = 0, b[1] = 0, b[2] = W, b[3] = H;
+    if (in.mask) {
+      b[0] = W, b[1] = H, b[2] = 0, b[3] = 0;
+      for (int r = 0; r < H; r++) {
+        const uint8_t *m = in.mask + rd16(in.mask + 2 * (r >> 4));
+        for (int k = r & ~15; k < r; k++)
+          for (int c = 0; c < W; c += (*m++ & 63) + 1) {}
+        for (int c = 0; c < W;) {
+          int v = *m >> 6, n = (*m++ & 63) + 1;
+          if (v) {
+            if (c < b[0]) b[0] = c;
+            if (c + n > b[2]) b[2] = c + n;
+            if (r < b[1]) b[1] = r;
+            if (r + 1 > b[3]) b[3] = r + 1;
+          }
+          c += n;
+        }
+      }
+      if (b[2] <= b[0]) b[0] = 0, b[1] = 0, b[2] = W, b[3] = H;
+    }
+    last = id;
+  }
+  *x0 = b[0], *y0 = b[1], *x1 = b[2], *y1 = b[3];
+}
+
 /* the mask's rows in this band, as levels 0 to 3, a byte a pixel */
 static uint8_t alpha[BAND_H][SCREEN_W];
 

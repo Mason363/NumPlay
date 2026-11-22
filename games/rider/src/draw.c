@@ -222,6 +222,7 @@ static uint32_t mix888(uint32_t a, uint32_t b, float t) {
 static uint32_t scale888(uint32_t a, float t) { return mix888(0, a, t); }
 static color_t c565(uint32_t c) { return RGB((c >> 16) & 255, (c >> 8) & 255, c & 255); }
 
+static uint32_t theme_body; /* (the body's colour, for the flash) */
 void draw_theme(int theme) {
   const uint32_t *t = themes[theme];
   uint32_t bg = scale888(t[3], 0.31f), ground = scale888(t[3], 0.49f), red = 0xFF5959;
@@ -235,6 +236,8 @@ void draw_theme(int theme) {
   c[C_SPARK] = 0xFFD46A, c[C_SHADE] = 0x000000;
   for (int i = 0; i < 8; i++) c[C_TRAIL + i] = mix888(t[4], bg, i / 8.0f);
   for (int i = 0; i < C_TRAIL + 8; i++) pal[i] = c565(c[i]);
+  for (int i = 0; i < 4; i++) pal[C_RING + i] = c565(mix888(0xFFFFFF, bg, i / 4.0f));
+  theme_body = t[0], pal[C_FLASH] = pal[C_BODY];
 }
 
 /* the polygon grown (d > 0) or shrunk (d < 0) by d pixels; with long_only, only its long sides move (a strip's
@@ -313,7 +316,7 @@ void draw_wheels_at(float x0, float y0, float x1, float y1, float z, int front) 
   disc(x0, y0, WHEEL_R * z, C_WHITE), disc(x0, y0, WHEEL_R * z * 0.35f, C_WHEEL_HUB);
   disc(x1, y1, WHEEL_R * z, C_WHITE), disc(x1, y1, WHEEL_R * z * 0.35f, C_WHEEL_HUB);
 }
-static void bike_body_at(int bike, float x, float y, float a, float z, int glow) {
+static void bike_body_at(int bike, float x, float y, float a, float z, int glow, uint8_t col) {
   float xy[96], g[96];
   int n = bike_shape(bike, x, y, a, z, xy);
   if (glow) { /* the white edge: the shape drawn one pixel bigger in white first */
@@ -323,7 +326,35 @@ static void bike_body_at(int bike, float x, float y, float a, float z, int glow)
       fill_poly(g, n, C_WHITE);
     }
   }
-  fill_poly(xy, n, C_BODY);
+  fill_poly(xy, n, col);
+}
+/* GameCharacter.perfectFlip: the body turns white and gets its colour back in 30 steps of 16 ms; at each wheel a
+   ring (motor_wheel_outline, 68 pixels to the wheel's 36) grows from nothing to 1.5 times its size and fades out in
+   gameCharacterPerfectLandingAnimationTime (250 ms, evenly: the game misspells its easing), and a second one 100 ms
+   later (perfectLandingAnimationDelayBtwinRepeat) */
+static uint8_t perfect_flash(const rd_run *r) {
+  if (r->perfect_fx <= 0) return C_BODY;
+  int k = (int)((30 * 16 - r->perfect_fx) / 16);
+  pal[C_FLASH] = c565(mix888(0xFFFFFF, theme_body, k >= 30 ? 1 : k / 30.0f));
+  return C_FLASH;
+}
+static void perfect_rings(const rd_run *r, float x0, float y0, float x1, float y1) {
+  if (r->perfect_fx <= 0) return;
+  float e = 30 * 16 - r->perfect_fx;
+  for (int k = 0; k < 2; k++) {
+    float t = (e - k * 100) / 250;
+    if (t < 0 || t >= 1) continue;
+    float rad = WHEEL_R * 68 / 36 * ZOOM * (0.0025f + 1.4975f * t);
+    uint8_t c = (uint8_t)(C_RING + (int)(t * 4));
+    for (int w = 0; w < 2; w++) {
+      float cx = w ? x1 : x0, cy = w ? y1 : y0, px = cx + rad, py = cy;
+      for (int i = 1; i <= 16; i++) {
+        float a = i * 0.39269908f, qx = cx + cosf(a) * rad, qy = cy + sinf(a) * rad;
+        line(px, py, qx, qy, c, 1);
+        px = qx, py = qy;
+      }
+    }
+  }
 }
 /* the bike as it stands (menus): wheels where GameCharacter puts them, x0.7 (x0.49 down) from the body's centre */
 static void stand_wheels(float x, float y, float a, float z, float *w) {
@@ -338,7 +369,7 @@ void draw_bike_at(int bike, float x, float y, float a, float z, int glow) {
   stand_wheels(x, y, a, z, w);
   bool front = rd_bikes[bike].front;
   if (!front) draw_wheels_at(w[0], w[1], w[2], w[3], z, 0);
-  bike_body_at(bike, x, y, a, z, glow);
+  bike_body_at(bike, x, y, a, z, glow, C_BODY);
   if (front) draw_wheels_at(w[0], w[1], w[2], w[3], z, 1);
 }
 void draw_bike_shape(int bike, float x, float y, float a, float z, uint8_t c) {
@@ -428,8 +459,9 @@ void draw_run(const rd_run *r) {
     float w0x = (b->wx[0] - cx) * ZOOM, w0y = (b->wy[0] - cy) * ZOOM, w1x = (b->wx[1] - cx) * ZOOM, w1y = (b->wy[1] - cy) * ZOOM;
     bool front = rd_bikes[r->bike].front;
     if (!front) draw_wheels_at(w0x, w0y, w1x, w1y, ZOOM, 0);
-    bike_body_at(r->bike, (b->x - cx) * ZOOM, (b->y - cy) * ZOOM, b->a, ZOOM, 1);
+    bike_body_at(r->bike, (b->x - cx) * ZOOM, (b->y - cy) * ZOOM, b->a, ZOOM, 1, perfect_flash(r));
     if (front) draw_wheels_at(w0x, w0y, w1x, w1y, ZOOM, 1);
+    perfect_rings(r, w0x, w0y, w1x, w1y);
   } else {
     for (int i = 0; i < r->nbits; i++) {
       const rd_bit *p = &r->bits[i];

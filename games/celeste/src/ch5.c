@@ -1732,7 +1732,10 @@ static bool line_solid(V2 f, V2 t) {
 }
 
 /* ---------------------------------------------------------------- Pathfinder (Level.Pathfinder.Find) */
-/* the map lives in free texture-cache RAM while it runs (res_scratch): cost (28 bits), solid, parent direction */
+/* the map lives, while it runs, in the strip and the draw commands (free between frames), or in a big room in free
+ * texture-cache RAM (res_scratch): cost (28 bits), solid, parent direction. A search from and to the same tiles over
+ * the same solids finds the same path: the last one is kept (a seeker that sees you asks again each time you move,
+ * and each search in the cache made the textures drawn reload) */
 #define PF_INF 0x0FFFFFFFu
 static const int8_t PF_DIR[4][2] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
 #define SEEKER_TAB 6
@@ -1742,6 +1745,9 @@ typedef struct {
   Ent *owner;
   uint8_t node0, nnodes, npath, used;
   int16_t path[SEEKER_PATH][2];
+  uint8_t key_ok, key_found;   /* the last search: its tiles and room, the solids' sum, what it found */
+  int16_t key[5];
+  uint64_t key_solids;
 } SeekerTab;
 enum { OFF_seeker_tab = ((END_edges + 7) & ~7), END_seeker_tab = OFF_seeker_tab + (int)sizeof(SeekerTab[SEEKER_TAB]) };
 #define seeker_tab (*(SeekerTab(*)[SEEKER_TAB])(void *)(g_chram[5] + OFF_seeker_tab))
@@ -1749,17 +1755,43 @@ enum { OFF_seeker_nodes = ((END_seeker_tab + 7) & ~7), END_seeker_nodes = OFF_se
 #define seeker_nodes (*(int16_t(*)[SEEKER_NODES][2])(void *)(g_chram[5] + OFF_seeker_nodes))
 static int nseeker_nodes;
 
+static int pf_search(SeekerTab *tab, V2 from, V2 to);
 static int pf_find(SeekerTab *tab, V2 from, V2 to) {
+  Room *rm = g_level.room;
+  int ox = rm->x / 8, oy = rm->y / 8;
+  int16_t key[5] = {(int16_t)((int)floorf(from.x / 8) - ox), (int16_t)((int)floorf(from.y / 8) - oy),
+                    (int16_t)((int)floorf(to.x / 8) - ox), (int16_t)((int)floorf(to.y / 8) - oy), (int16_t)rm->index};
+  uint64_t sum = 14695981039346656037ull;   /* (FNV-1a of the solid entities' cells, as the map takes them) */
+  for (int k = 0; k < g_nents; k++) {
+    Ent *o = &g_ents[k];
+    if (!(o->kind & KIND_SOLID) || !o->cls || o->dead == 1 || !o->collidable || o->ctype != COL_BOX) continue;
+    int c[4] = {(int)floorf(e_left(o) / 8), (int)ceilf(e_right(o) / 8), (int)floorf(e_top(o) / 8), (int)ceilf(e_bottom(o) / 8)};
+    for (int q = 0; q < 4; q++) sum = (sum ^ (uint32_t)c[q]) * 1099511628211ull;
+  }
+  if (tab->key_ok && !memcmp(tab->key, key, sizeof key) && tab->key_solids == sum) return tab->key_found;
+  tab->key_ok = 0;
+  int r = pf_search(tab, from, to);
+  if (r >= 0) tab->key_ok = 1, tab->key_found = (uint8_t)r, memcpy(tab->key, key, sizeof key), tab->key_solids = sum;
+  return r > 0;
+}
+/* 1 found, 0 not, -1 no room for it */
+static int pf_search(SeekerTab *tab, V2 from, V2 to) {
   Room *rm = g_level.room;
   int ox = rm->x / 8, oy = rm->y / 8, w = rm->w / 8, h = rm->h / 8;
   uint32_t cap, need = (uint32_t)(w * h) * 4;
-  uint8_t *mem = res_scratch(need + 2048, &cap);   /* textures not drawn last frame make way */
-  if (need + 256 > cap) return 0;   /* the open list takes what is left */
+  uint8_t *mem = gfx_idle_memory(&cap);
+  if (need + 2048 > cap) mem = res_scratch(need + 2048, &cap);   /* textures not drawn last frame make way */
+  if (need + 256 > cap) return -1;   /* the open list takes what is left */
   uint32_t *map = (uint32_t *)(void *)mem;
   uint16_t *active = (uint16_t *)(void *)(mem + need);
   int maxact = (int)((cap - need) / 2);
   for (int j = 0; j < h; j++)
-    for (int i = 0; i < w; i++) map[j * w + i] = PF_INF | (tile_at(ox + i, oy + j) ? 1u << 28 : 0);
+    for (int i0 = 0; i0 < w; i0 += 64) {   /* (a row of tiles at a time) */
+      char row[64];
+      int n = w - i0 < 64 ? w - i0 : 64;
+      level_tile_row(0, ox + i0, oy + j, n, row);
+      for (int i = 0; i < n; i++) map[j * w + i0 + i] = PF_INF | (row[i] != '0' ? 1u << 28 : 0);
+    }
   for (int k = 0; k < g_nents; k++) {
     Ent *o = &g_ents[k];
     if (!(o->kind & KIND_SOLID) || !o->cls || o->dead == 1 || !o->collidable || o->ctype != COL_BOX) continue;
@@ -1817,7 +1849,7 @@ static int pf_find(SeekerTab *tab, V2 from, V2 to) {
           else hi = mid - 1;
         }
         if (at < 0) at = lo;
-        if (na >= maxact) return 0;
+        if (na >= maxact) return -1;
         memmove(active + at + 1, active + at, (size_t)(na - at) * 2);
         active[at] = (uint16_t)ni;
         na++;

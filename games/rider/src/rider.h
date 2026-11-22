@@ -182,7 +182,9 @@ typedef struct {
   int score, pending;   /* flips counted, flips not counted yet (in the air, or landed less than 500 ms ago) */
   int landed_flips;
   float pending_ms;
-  int flips, perfect, doubles, gems;
+  int flips, perfect, doubles, gems; /* (perfect: the flips landed perfectly) */
+  int level_flips;      /* flips landed in a level: half a second off its time each */
+  float perfect_fx;     /* ms left of a perfect landing's flash and its rings round the wheels */
   int best_flips_jump;
   int ended;            /* END_ */
   bool broken;          /* (out of memory: the physics world is given up) */
@@ -225,4 +227,6 @@ enum {
   C_BG, C_GROUND, C_HALO, C_GLOW, C_CORE, C_EN_HALO, C_EN, C_BODY, C_BODY_DARK, C_WHITE, C_WHEEL_HUB, C_GEM_HALO,
   C_GEM, C_BOOST, C_BOOST_DIM, C_FINISH, C_SPARK, C_SHADE, C_TRAIL /* .. C_TRAIL + 7 */
 };
+#define C_RING (C_TRAIL + 8)   /* a perfect landing's rings, fading: .. C_RING + 3 */
+#define C_FLASH (C_TRAIL + 12) /* its flash on the body, set each frame */
 #endif
