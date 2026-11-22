@@ -71,6 +71,18 @@ extern const uint32_t np_roms_size;
 #else
 #define HAS_MD 1
 #endif
+#if !HAS_MD /* (stand-ins, before any use: never called) */
+#define md_load(d, n) ((void)(d), (void)(n), RG_ERR_MEMORY)
+#define md_state_chunks(c) ((void)(c), 0)
+#define md_state_loaded() ((void)0)
+#define md_redraw() ((void)0)
+#define md_reset(h) ((void)(h))
+#define md_view(x, y, w, h) (*(x) = *(y) = 0, *(w) = 320, *(h) = 224)
+#define md_frame_us() 16667u
+#define md_set_pad(p) ((void)(p))
+#define md_set_z80(z) ((void)(z))
+#define md_run_frame(d) ((void)(d))
+#endif
 #define WHITE 0xFFFF
 #define BLACK 0x0000
 
@@ -822,18 +834,6 @@ static uint32_t autosave_at;         /* when the battery save is due, 0 none */
 /* the emulators: gnuboy, nofrendo, the Master System's (for the Game Gear, the SG-1000 and the
    ColecoVision too) and LCD-Game-Emulator */
 enum { CORE_GB, CORE_NES, CORE_SMS, CORE_GW, CORE_MD };
-#if !HAS_MD /* (stand-ins: never called) */
-#define md_load(d, n) ((void)(d), (void)(n), RG_ERR_MEMORY)
-#define md_state_chunks(c) ((void)(c), 0)
-#define md_state_loaded() ((void)0)
-#define md_redraw() ((void)0)
-#define md_reset(h) ((void)(h))
-#define md_view(x, y, w, h) (*(x) = *(y) = 0, *(w) = 320, *(h) = 224)
-#define md_frame_us() 16667u
-#define md_set_pad(p) ((void)(p))
-#define md_set_z80(z) ((void)(z))
-#define md_run_frame(d) ((void)(d))
-#endif
 static int core;
 static bool is_gb(void) { return core == CORE_GB; }
 

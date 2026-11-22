@@ -31,6 +31,10 @@ jobs:
       - name: Build
         run: python3 tools/build.py -j 4 && make kit-langs NWLINK=nwlink
 
+      # every game of the kit links in NumPlay Studio: none needs what nothing in a NumPlay gives
+      - name: Kit links
+        run: python3 tests/test_kit.py --only links
+
       - uses: actions/upload-artifact@v4
         with:
           name: nwa

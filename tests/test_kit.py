@@ -159,6 +159,24 @@ def report(tag, problems, extra=""):
     return bool(problems)
 
 
+def unresolved(kit):
+    """what each game's object needs that neither NumPlay's own objects, its linker script, the calculator nor
+    Retro-Go's table of games gives: the website's link would stop on it"""
+    def syms(path, flag):
+        out = subprocess.run(["arm-none-eabi-nm", flag, path], capture_output=True, text=True, check=True).stdout
+        return {line.split()[-1] for line in out.splitlines() if line.strip()}
+    have = set()
+    for rel in ("base.o", "arena.o", "variants/NumPlay-name.o", "variants/NumPlay-icon.o"):
+        have |= syms(kit.obj(rel), "--defined-only")
+    bad = {}
+    for i in kit.games:
+        need = {s for s in syms(kit.obj(f"games/{i}.o"), "-u") - have
+                if not s.startswith(("eadk_", "_", f"np_{i}_")) and s not in ("np_roms", "np_retrogo_end")}
+        if need:
+            bad[i] = sorted(need)
+    return bad
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--kit", default=os.path.join(ROOT, "build", "data", "site-kit"))
@@ -178,6 +196,9 @@ def main():
     xl = [i for i in XL if not a.game or i == a.game]
     print(f"kit {k['version']}: NumPlay's own flash {k['base']} bytes, its own RAM {k['launcherRam']} bytes, "
           f"app space {k['appSpace']} ({k['xlAppSpace']} with Enlarged Extra Apps)")
+    for i, need in unresolved(kit).items():
+        print(f"{i}: needs {', '.join(need[:6])}, which nothing in a NumPlay gives")
+        failed = True
 
     if "alone" in only:
         for i in xl:
