@@ -239,6 +239,10 @@ static void hockey_start(void) { /* the puck to the one who was scored on */
 }
 /* the puck off something round at (x, y) moving at (vx, vy) */
 static void knock(float x, float y, float vx, float vy, float r) {
+#if NP_SOFT_FLOAT /* (float done in software: no square root while they're apart) */
+  float ex = qx - x, ey = qy - y;
+  if (ex * ex + ey * ey >= (r + QR) * (r + QR)) return;
+#endif
   float dx = qx - x, dy = qy - y, d = len(dx, dy), R = r + QR;
   if (d >= R || d < 0.01f) return;
   dx /= d, dy /= d;
@@ -297,7 +301,11 @@ static void hockey_step(void) {
       return;
     }
     for (int p = 0; p < 2; p++) { /* and a mallet pressing it into a corner gives way */
-      float dx = mx[p] - qx, dy = my[p] - qy, d = len(dx, dy) + .01f;
+      float dx = mx[p] - qx, dy = my[p] - qy;
+#if NP_SOFT_FLOAT
+      if (dx * dx + dy * dy >= (MR + QR) * (MR + QR)) continue;
+#endif
+      float d = len(dx, dy) + .01f;
       if (d < MR + QR) mx[p] = qx + dx / d * (MR + QR), my[p] = qy + dy / d * (MR + QR);
     }
   }
@@ -516,7 +524,10 @@ static void quad(int x, int y, int a, int l0, int l1, int w, color_t col) {
     int l = i == 1 || i == 2 ? l1 : l0, e = i < 2 ? -w : w;
     vx[i] = 4 * x + (c * l + s * e) / 127, vy[i] = 4 * y + (s * l - c * e) / 127;
   }
-  for (int row = gfx_y0; row < gfx_y1; row++) {
+  int y0 = vy[0], y1 = vy[0]; /* (only its own rows) */
+  for (int i = 1; i < 4; i++) y0 = vy[i] < y0 ? vy[i] : y0, y1 = vy[i] > y1 ? vy[i] : y1;
+  y0 = (y0 >> 2) - 1, y1 = (y1 >> 2) + 2;
+  for (int row = y0 > gfx_y0 ? y0 : gfx_y0, end = y1 < gfx_y1 ? y1 : gfx_y1; row < end; row++) {
     int yc = 4 * row + 2, lo = 1 << 20, hi = -lo;
     for (int i = 0; i < 4; i++) {
       int j = (i + 1) & 3;
@@ -616,22 +627,21 @@ static void cycles_step(void) {
     }
   /* a step every 70 ms, down to 42 as the round goes on */
   uint32_t period = 70 - (ago(round_t) < 28000 ? ago(round_t) / 1000 : 28);
-  if (phase || ago(tick_t) < period) return;
-  tick_t = ago(tick_t) > 100 ? now : tick_t + period;
-  int nx[2], ny[2];
-  for (int p = 0; p < 2; p++) {
-    if (is_cpu(p)) hd[p] = cycles_cpu();
-    else if (nturns[p]) hd[p] = turns[p][0], turns[p][0] = turns[p][1], nturns[p]--;
-    nx[p] = hx[p] + DX[hd[p]], ny[p] = hy[p] + DY[hd[p]], crashed[p] = !free_at(nx[p], ny[p]);
+  for (int n = 0; n < 3 && !phase && ago(tick_t) >= period; n++) { /* (the steps owed: a slow frame catches up) */
+    tick_t = ago(tick_t) > 3 * period ? now : tick_t + period;
+    int nx[2], ny[2];
+    for (int p = 0; p < 2; p++) {
+      if (is_cpu(p)) hd[p] = cycles_cpu();
+      else if (nturns[p]) hd[p] = turns[p][0], turns[p][0] = turns[p][1], nturns[p]--;
+      nx[p] = hx[p] + DX[hd[p]], ny[p] = hy[p] + DY[hd[p]], crashed[p] = !free_at(nx[p], ny[p]);
+    }
+    if (nx[0] == nx[1] && ny[0] == ny[1]) crashed[0] = crashed[1] = true;
+    for (int p = 0; p < 2; p++)
+      if (!crashed[p]) hx[p] = nx[p], hy[p] = ny[p], cell[hy[p]][hx[p]] = (uint8_t)(p + 1);
+    if (crashed[0] || crashed[1]) point(crashed[0] && crashed[1] ? 2 : crashed[0]);
   }
-  if (nx[0] == nx[1] && ny[0] == ny[1]) crashed[0] = crashed[1] = true;
-  for (int p = 0; p < 2; p++)
-    if (!crashed[p]) hx[p] = nx[p], hy[p] = ny[p], cell[hy[p]][hx[p]] = (uint8_t)(p + 1);
-  if (crashed[0] || crashed[1]) point(crashed[0] && crashed[1] ? 2 : crashed[0]);
 }
-static void cycles_paint(void) {
-  gfx_fill(0, 22, SCREEN_W, SCREEN_H - 22, HEX(0x060A18));
-  for (int i = 0; i < SCREEN_W; i += 16) gfx_fill(i, CY0, 1, SCREEN_H, HEX(0x111B36)), gfx_fill(0, CY0 + i, SCREEN_W, 1, HEX(0x111B36));
+static void cycles_cells(const int *a) { /* the trails' cells over the rows being drawn */
   for (int r = clampi((gfx_y0 - CY0) / 4, 0, CH); r < clampi((gfx_y1 - CY0) / 4 + 1, 0, CH); r++)
     for (int c = 0; c < CW; c++) {
       int v = cell[r][c];
@@ -640,6 +650,36 @@ static void cycles_paint(void) {
       gfx_fill(c * 4, CY0 + r * 4, 4, 4, team[v - 1]);
       gfx_fill(c * 4 + 1 - 2 * l, CY0 + r * 4 + 1 - 2 * u, 2 + 2 * l, 2 + 2 * u, light[v - 1]);
     }
+}
+static void cycles_grid(const int *a) { /* the night and its grid */
+  gfx_fill(0, 22, SCREEN_W, SCREEN_H - 22, HEX(0x060A18));
+  for (int i = 0; i < SCREEN_W; i += 16) gfx_fill(i, CY0, 1, SCREEN_H, HEX(0x111B36)), gfx_fill(0, CY0 + i, SCREEN_W, 1, HEX(0x111B36));
+}
+static void cycles_paint(void) {
+#ifdef __TICE__
+  static const int none[1];
+  gfx_call(cycles_grid, none, 0, 0, 22, SCREEN_W, SCREEN_H - 22); /* (one call in each strip's list) */
+#else
+  cycles_grid(0);
+#endif
+#ifdef __TICE__ /* (the TI-84 Plus CE: each strip's list holds its cells as they are and one call drawing them, not two
+                   fills a cell: a strip is drawn again only when its cells changed) */
+  if (gfx_listing) {
+    int y0 = gfx_y0, y1 = gfx_y1;
+    for (int y = y0 & ~15; y < y1; y += 16) {
+      int a = clampi((y - CY0) / 4 - 1, 0, CH), b = clampi((y + 16 - CY0 + 3) / 4, 0, CH); /* (and the row above) */
+      if (a >= b) continue;
+      gfx_y0 = y < y0 ? y0 : y, gfx_y1 = y + 16 > y1 ? y1 : y + 16;
+      gfx_list(cell[a], (unsigned)(b - a) * CW);
+    }
+    gfx_y0 = y0, gfx_y1 = y1;
+    gfx_call(cycles_cells, none, 0, 0, CY0, SCREEN_W, CH * 4);
+  } else {
+    cycles_cells(0);
+  }
+#else
+  cycles_cells(0);
+#endif
   for (int p = 0; p < 2; p++) {
     int x = hx[p] * 4 + 2, y = CY0 + hy[p] * 4 + 2;
     int32_t t = (int32_t)ago(phase_t);
@@ -937,6 +977,7 @@ int main(void) {
   uint64_t held = eadk_keyboard_scan(), stale = held; /* keys still down from the launcher wait to be let go */
   for (bool quit = false; !quit;) {
     uint32_t t = (uint32_t)eadk_timing_millis();
+    int owed = t - last < 120 ? (int)(t - last) - 40 : 80; /* (a slow frame's time past 40 ms: steps of its own) */
     ms = t - last < 40 ? (int)(t - last) : 40, last = t, dt = ms * .001f;
     if (screen == S_PLAY) now += (uint32_t)ms;
     uint64_t k = eadk_keyboard_scan();
@@ -970,6 +1011,14 @@ int main(void) {
           break;
         }
         play();
+#if NP_SOFT_FLOAT
+        if (game == HOCKEY) owed = 0; /* (there its puck's float steps would cost more than they make up) */
+#endif
+        for (; owed > 0 && screen == S_PLAY; owed -= 40) { /* the game keeps its pace however slow the frames */
+          ms = owed < 40 ? owed : 40, dt = ms * .001f, now += (uint32_t)ms;
+          tap[0] = tap[1] = 0;
+          play();
+        }
         break;
       default: /* the cards: Paused, the match over, Quit game? */
         sel = (sel + dy) & (screen == S_PAUSE ? 3 : 1);
