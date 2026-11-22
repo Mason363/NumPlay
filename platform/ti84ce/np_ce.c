@@ -18,6 +18,7 @@
 #include <time.h>
 #include <wchar.h>
 #include "np_port.h"
+#include "../common/np_keys_drawn.h"
 
 #ifndef NP_APP_ID
 #define NP_APP_ID "numplay"
@@ -32,6 +33,8 @@ static uint16_t *const lcd = (uint16_t *)lcd_Ram;
  * drew there */
 uint8_t np_ce_rows[LCD_HEIGHT];
 
+void np_ce_drawn(void); /* (the keys, read while drawing: below) */
+
 /* the part of r on the screen: its width and height (0: none) */
 static unsigned clip(eadk_rect_t r, unsigned *h) {
   if (r.x >= LCD_WIDTH || r.y >= LCD_HEIGHT) return *h = 0;
@@ -45,6 +48,7 @@ void eadk_display_push_rect(eadk_rect_t r, const eadk_color_t *px) {
   uint16_t *row = lcd + r.y * LCD_WIDTH + r.x;
   if (w == LCD_WIDTH && r.width == LCD_WIDTH) w *= h, h = 1; /* rows of the screen's width: one copy */
   for (; w && h; h--, row += LCD_WIDTH, px += r.width) memcpy(row, px, w * 2);
+  np_ce_drawn();
 }
 void eadk_display_push_rect_uniform(eadk_rect_t r, eadk_color_t c) {
   unsigned h, w = clip(r, &h);
@@ -57,6 +61,7 @@ void eadk_display_push_rect_uniform(eadk_rect_t r, eadk_color_t c) {
   }
   wmemset((wchar_t *)row, (wchar_t)c, w); /* the first row, then copies of it */
   for (uint16_t *p = row + LCD_WIDTH; --h; p += LCD_WIDTH) memcpy(p, row, w * 2);
+  np_ce_drawn();
 }
 void eadk_display_pull_rect(eadk_rect_t r, eadk_color_t *px) {
   unsigned h, w = clip(r, &h);
@@ -96,13 +101,26 @@ static const struct {
   K(5, kb_Tan, eadk_key_tangent), K(5, kb_Chs, eadk_key_ans), /* (ans is 2nd (-) on the CE) */
 };
 
-eadk_keyboard_state_t eadk_keyboard_scan(void) {
+static eadk_keyboard_state_t keys_now(void) {
   kb_Scan();
   eadk_keyboard_state_t s = 0;
   for (unsigned i = 0; i < sizeof KEYS / sizeof KEYS[0]; i++)
     if (kb_Data[KEYS[i].group] & KEYS[i].bit) s |= (eadk_keyboard_state_t)1 << KEYS[i].key;
   if (kb_On) s |= (eadk_keyboard_state_t)1 << eadk_key_home | (eadk_keyboard_state_t)1 << eadk_key_on_off, kb_ClearOnLatch();
   return s;
+}
+/* The keys pressed while a frame is drawn (platform/common/np_keys_drawn.h, as on the TI-Nspire): a game reads the
+ * keyboard once a frame, and in a frame of a tenth of a second or more a tap came and went between two reads (the
+ * menus of Ultimate Tic-Tac-Toe and Chess missed them). Drawing reads them when 30 ms have gone by since the last read
+ * (983 ticks of the 32768 Hz clock): a game reading the keys every 30 ms or sooner is never read in between. */
+static uint32_t keys_at;
+void np_ce_drawn(void) {
+  uint32_t t = (uint32_t)clock();
+  if (t - keys_at >= 983) np_keys_drawing(keys_now()), keys_at = t;
+}
+eadk_keyboard_state_t eadk_keyboard_scan(void) {
+  keys_at = (uint32_t)clock();
+  return np_keys_scan(keys_now());
 }
 
 /* key presses as events: each key pressed once, in turn; an arrow or ⌫ held repeats, as on the NumWorks */

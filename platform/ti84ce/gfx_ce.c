@@ -14,6 +14,7 @@
 #include "ce_draw.h"
 
 extern uint8_t np_ce_rows[SCREEN_H];
+void np_ce_drawn(void); /* (np_ce.c: the keys pressed meanwhile, read now and then while drawing) */
 
 /* ------------------------------------------------------------ colours */
 /* (a * (32 - t) + b * t) / 32 for each of red, green and blue, t = 0..32: gfx_mix's own result */
@@ -248,6 +249,7 @@ static void end(gfx_scene_t scene, void *ctx, int s, int y, int h) {
          q += SCREEN_W, b += SCREEN_W)
       memcpy(q, b, (size_t)(x1 - x0) * 2); /* (as np_push would, a row at a time) */
   memset(np_ce_rows + y, k->whole ? s + 1 : 0, (size_t)h);
+  np_ce_drawn();
 }
 
 /* a strip's list didn't fit: the room shared again by what each needs, when there's enough */
