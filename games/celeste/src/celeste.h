@@ -234,6 +234,7 @@ void gfx_hud(bool on);                          /* following draws ignore the ca
 #define GFX_STRIP_BYTES 9600   /* the strip, on main's stack on the calculator (gfx_set_memory) */
 #define GFX_CMD_BYTES 7200     /* a frame's draw commands, likewise */
 void gfx_set_memory(void *strip, void *cmd);
+uint8_t *gfx_idle_memory(uint32_t *size);       /* free between frames (the path searches of the seekers) */
 void gfx_present_all(void);                     /* letterbox and full redraw next frame */
 void gfx_top_label(const char *s);              /* a line of text in the top bar ("": none) */
 static inline uint16_t rgb(uint32_t c) { return (uint16_t)(((c >> 8) & 0xF800) | ((c >> 5) & 0x7E0) | ((c >> 3) & 0x1F)); }

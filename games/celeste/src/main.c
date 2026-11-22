@@ -21,8 +21,9 @@ uint32_t perf_frames __attribute__((used));   /* read by tools/emu.py */
 uint32_t perf_updates __attribute__((used));
 
 int main(void) {
-  uint32_t strip[GFX_STRIP_BYTES / 4], cmds[GFX_CMD_BYTES / 4];   /* (gfx.c: here, out of the RAM apps get) */
-  gfx_set_memory(strip, cmds);
+  /* (gfx.c: here, out of the RAM apps get; side by side, they make the seekers' path search room between frames) */
+  uint32_t mem[(GFX_STRIP_BYTES + GFX_CMD_BYTES) / 4];
+  gfx_set_memory(mem, mem + GFX_STRIP_BYTES / 4);
   plat_begin();
   cel_bin = cel_data;
   game_init();
