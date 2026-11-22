@@ -2,6 +2,33 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.20: Fixes on every calculator
+
+- **NumPlay:** opening Calculation after NumPlay or one of its games no longer resets the calculator on Epsilon 23 and 24.
+- **NumPlay Studio:** Retro-Go with your Game Boy or NES games downloads again. A game that goes on its own greys out beside your games, and Hollow Knight: Fungal Wastes shows its icon.
+- **Hollow Knight:** a save in one part keeps the other part's broken walls, opened gates and won battles, so the way back up from the Fungal Wastes stays open.
+- **Level Devil:** Flappy 3's door can be reached, gravity turns round in the air as in the game, and saws hurt only within their circle.
+- **Moto X3M:** the TNT under the boat at the end of level 2 throws you to the finish.
+- **Cookie Clicker:** golden cookies keep coming after quitting while one showed.
+- **Rider:** perfect landings flash the bike, ring its wheels and count their flips twice. In the levels, landed flips take half a second off and the next star's time shows. Moving parts keep moving, and bikes no longer fall through the track after the big jumps.
+- **Celeste:** the Mirror Temple's seekers no longer slow the game, and busy rooms like the Oshiro chase draw faster.
+- **FNaF World:** attacks keep showing however long a battle lasts, the Mimic Ball's repeats start from the party, and the menus' outline fits its button.
+- **NumBlocks:** flint and steel lights a portal from any side inside its frame, and a block thrown close to you draws far faster.
+- **Snow Rider 3D:** Quit game leaves the game, and roots, stumps and rocks on the path show as far as the fog.
+- **Angry Birds:** the pigs are in view at the start of every level, and Shift shows them.
+- **Buckshot Roulette:** items stay in their own slot, near beers stand on the table, the selection box fits the item, and the dealer's last charge flickers too when you both have one.
+- **Clash Royale:** the deck's cards are spaced so the chosen card's frame stays off its neighbours.
+- **The Final Earth 2:** the workers' window works however many kinds of work buildings there are.
+- **Famidash:** The Tower starts on its floor, the skin button is whole, the Settings' last line is all white, and How to play counts the levels there are.
+- **Mr Bullet:** Up held past straight up turns him round once, not back and forth.
+- **Invaders:** no invader's explosion stays on the screen.
+- **Universal Paperclips:** the clips page shows your funds and unsold clips.
+- **Dune:** the trail goes under the dunes, as in the original.
+- **Chess:** picking and moving a piece redraw only the squares that change.
+- **TI-84 Plus CE:** Balatro starts every time, Space Invaders' cannon moves with the arrows, and quick taps count in slow frames. Block Breaker, Connect Four, Imposter, Air Hockey, Tanks, Light Cycles, Ultimate Tic-Tac-Toe, Chess and Solitaire run up to six times faster.
+- **TI-Nspire:** Champion Island's Tanooki City no longer garbles the screen or freezes, and quick taps count in slow games like Temple Run.
+- **Casio fx-CG50:** NumDrive starts its levels instead of showing a red screen, and Crossy Road's picture is no longer scrambled.
+
 ## 1.24.19: Undertale and NumPlay Studio fixes
 
 - **Undertale:** the chain on the stairs in Asgore's home opens when you check it with both keys.
