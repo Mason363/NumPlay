@@ -96,6 +96,17 @@ def icon_of(gid):
         f = os.path.join(ROOT, "games", gid, p)
         if os.path.exists(f):
             return f
+    # (a game built from another's files, as Hollow Knight: Fungal Wastes: the icon its Makefile names, PORT_ICON)
+    mk = os.path.join(ROOT, "games", gid, "Makefile")
+    if os.path.exists(mk):
+        text = open(mk).read()
+        var = dict(re.findall(r"^(\w+)\s*=\s*(\S+)\s*$", text, re.M))
+        icon = var.get("PORT_ICON")
+        if icon:
+            icon = re.sub(r"\$\((\w+)\)", lambda m: var.get(m.group(1), ""), icon)
+            f = os.path.normpath(os.path.join(ROOT, "games", gid, icon))
+            if os.path.exists(f):
+                return f
     return None
 
 
