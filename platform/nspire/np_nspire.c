@@ -15,6 +15,7 @@
 #include <string.h>
 #include <eadk.h>
 #include "np_port.h"
+#include "../common/np_keys_drawn.h"
 
 #ifndef NP_APP_ID
 #define NP_APP_ID "numplay"
@@ -31,11 +32,10 @@ static uint16_t fb[EADK_SCREEN_WIDTH * EADK_SCREEN_HEIGHT];
 static bool started, dirty, timer_ok;
 static uint64_t fallback_ms;
 static uint32_t last_blit;
-/* the keys seen down while a frame is drawn (push_rect reads them when 30 ms have gone by since the last read), kept
-   till the game's next scan: a game reads the keyboard once a frame, and at a few frames a second a tap came and went
+/* the keys pressed while a frame is drawn (platform/common/np_keys_drawn.h): push_rect reads them when 30 ms have gone
+   by since the last read. A game reads the keyboard once a frame, and at a few frames a second a tap came and went
    between two reads (Temple Run's turns, Mason363/NumPlay#446). A game reading the keys every 30 ms or sooner (over
    33 frames a second) is never read in between. */
-static eadk_keyboard_state_t keys_seen;
 static uint32_t keys_read;
 static eadk_keyboard_state_t keys_now(void);
 
@@ -104,7 +104,7 @@ void eadk_display_push_rect(eadk_rect_t r, const eadk_color_t *px) {
   dirty = true;
   uint32_t now = (uint32_t)eadk_timing_millis();
   if (now - last_blit >= 16) blit();
-  if (now - keys_read >= 30) keys_seen |= keys_now(), keys_read = now;
+  if (now - keys_read >= 30) np_keys_drawing(keys_now()), keys_read = now;
 }
 void eadk_display_push_rect_uniform(eadk_rect_t r, eadk_color_t c) {
   start();
@@ -179,9 +179,8 @@ eadk_keyboard_state_t eadk_keyboard_scan(void) {
      drawing nothing more, shows its last lines too */
   uint32_t now = (uint32_t)eadk_timing_millis();
   if (dirty && now - last_blit >= 16) blit();
-  eadk_keyboard_state_t s = keys_now() | keys_seen;
-  keys_seen = 0, keys_read = now;
-  return s;
+  keys_read = now;
+  return np_keys_scan(keys_now());
 }
 eadk_event_t eadk_event_get(int32_t *timeout) {
   static eadk_keyboard_state_t before = ~(eadk_keyboard_state_t)0;
