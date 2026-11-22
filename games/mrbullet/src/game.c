@@ -274,6 +274,10 @@ static bool build_obj(int oi) {
   return true;
 }
 
+/* the way the gun turns while Up or Down stays held, fixed as the key goes down: past straight up he turns round and
+ * the gun goes on down his other side, instead of turning him back and forth */
+static int8_t aim_sense;
+
 bool game_load(int level, uint8_t *buf) {
   game_end();
   memset(&g, 0, sizeof g);
@@ -433,6 +437,7 @@ bool game_load(int level, uint8_t *buf) {
   }
   /* the shooter aims straight ahead */
   if (g.hero >= 0) g.aim = g.ch[g.hero].left ? PI : 0;
+  aim_sense = 0;
   g.power = 0.55f;
   g.state = ST_PLAY;
   return g.hero >= 0;
@@ -457,11 +462,14 @@ static float wrap(float a) {
   return a;
 }
 
+void game_aim_release(void) { aim_sense = 0; }
+
 void game_aim_by(float d) {
   if (g.hero < 0) return;
   Char *c = &g.ch[g.hero];
   /* up turns the gun up on the side he faces; past straight up he turns round */
-  g.aim = wrap(g.aim + (c->left ? d : -d));
+  if (!aim_sense) aim_sense = c->left ? 1 : -1;
+  g.aim = wrap(g.aim + aim_sense * d);
   bool left = cosf(g.aim) < 0;
   if (fabsf(cosf(g.aim)) > 0.02f && left != (c->left != 0)) c->left = left;
 }
@@ -472,6 +480,7 @@ void game_turn(bool left) {
   if ((c->left != 0) == left) return;
   c->left = left;
   g.aim = wrap(PI - g.aim);
+  aim_sense = 0;
 }
 
 bool game_can_fire(void) {

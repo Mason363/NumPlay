@@ -144,6 +144,20 @@ static void physics(void) {
   game_step();
   CHECK(finite_world(), "the world stays finite");
   game_end();
+
+  /* Up held from straight ahead: the gun goes over his head and down his other side, him turning round once */
+  CHECK(game_load(0, (uint8_t *)level_mem), "level 1 loads again");
+  bool was_left = g.ch[g.hero].left;
+  int turns = 0;
+  game_aim_release();
+  for (int i = 0; i < 80; i++) {   /* (4 radians: up is toward -PI/2, the screen's y going down) */
+    bool l = g.ch[g.hero].left;
+    game_aim_by(0.05f);
+    turns += (g.ch[g.hero].left != 0) != l;
+  }
+  CHECK(turns == 1 && (g.ch[g.hero].left != 0) != was_left && sinf(g.aim) > 0.5f,
+        "Up held turns him round once, the gun down his other side (%d turns, aim %.2f)", turns, g.aim);
+  game_end();
 }
 
 /* the bot: every angle by half a degree (and a few powers for grenades) until one shot clears the level */

@@ -114,6 +114,7 @@ void game_step(void);
 bool game_can_fire(void);
 void game_fire(void);
 void game_aim_by(float d);                    /* raise (d > 0) or lower the aim */
+void game_aim_release(void);                  /* Up and Down let go: the next press turns the gun from his side */
 void game_turn(bool left);
 int game_stars(void);                         /* for the shots so far */
 /* the shooter's shoulder, hand and muzzle */

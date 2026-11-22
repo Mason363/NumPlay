@@ -102,6 +102,7 @@ static void play_keys(uint32_t dt) {
   uint32_t aim = held & (KB_UP | KB_DOWN);
   if (aim) hold_ms += dt;
   else hold_ms = 0;
+  if (!aim || pressed(KB_UP | KB_DOWN)) game_aim_release();
   float rate = hold_ms < 350 ? 0.35f : hold_ms < 900 ? 1.0f : 2.0f;   /* radians a second */
   if (pressed(KB_UP)) game_aim_by(0.0175f), dirty = true;
   else if (held & KB_UP) game_aim_by(rate * dt / 1000.0f), dirty = true;
