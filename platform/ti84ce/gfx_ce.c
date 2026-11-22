@@ -450,7 +450,7 @@ static int corner_row(int j, int h, int r) { return j < r ? j : j >= h - r ? h -
 
 void gfx_rrect(int x, int y, int w, int h, int r, color_t c, int a) {
   LIST(y, y + h, L_RRECT, (unsigned)x, (unsigned)y, (unsigned)w, (unsigned)h, (unsigned)r, c, (unsigned)a);
-  if (w <= 0 || h <= 0 || x >= gx1 || x + w <= gx0) return;
+  if (w <= 0 || h <= 0 || x >= gx1 || x + w <= gx0 || a < 4) return; /* (a < 4: nothing to see) */
   if (2 * r > w) r = w / 2;
   if (2 * r > h) r = h / 2;
   int ya = NP_MAX(y, gfx_y0), yb = NP_MIN(y + h, gfx_y1);
