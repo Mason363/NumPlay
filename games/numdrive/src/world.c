@@ -529,8 +529,17 @@ static Prog *load_prog(int rec) {
     /* records read in place from flash carry their node offset and output slot tables */
     p->nslots = rd16(q);
     q += 2 + ((q + 2 - d) & 1);
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__ || defined(ND_TABLES_COPIED)
+    { /* (a big-endian calculator, the fx-CG50: the tables are little-endian, so read into RAM) */
+      uint16_t *off = arena_alloc(2 * p->nnodes + 2), *slot = arena_alloc(2 * p->nnodes + 2);
+      if (!off || !slot) return 0;
+      for (int i = 0; i < p->nnodes; i++) off[i] = rd16(q + 2 * i), slot[i] = rd16(q + 2 * (p->nnodes + i));
+      p->off = off, p->slot = slot;
+    }
+#else
     p->off = (const uint16_t *)q;
     p->slot = (const uint16_t *)(q + 2 * p->nnodes);
+#endif
     p->data = q + 4 * p->nnodes;
     return load_children(p) ? p : 0;
   }
