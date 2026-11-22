@@ -353,8 +353,9 @@ static void enter_title(void) {
   ppu_set_palette(all_levels_complete == 0xFC ? pal_splashMenu2 : pal_splashMenu, pal_paletteDefaultSP);
   pal_col(0x1D, icon_colors[2]), pal_col(0x1E, icon_colors[0]), pal_col(0x1F, icon_colors[1]);
   nt_load(nt_title);
-  /* the sound test's button: no sound on the calculator, so it goes (its tiles become the backdrop's) */
-  for (int y = 15; y <= 19; y++)
+  /* the sound test's button: no sound on the calculator, so it goes (its tiles become the backdrop's; from row 16:
+     row 15 is the bottom of the skin button over it) */
+  for (int y = 16; y <= 19; y++)
     for (int x = 7; x <= 12; x++) nt_put(2, x, y, NT(0, 3, 15));
   if (all_levels_complete != 0xFC) nt_put(2, 27, 2, 0x19), nt_put(2, 28, 2, 0x1A), nt_put(2, 27, 3, 0x2D), nt_put(2, 28, 3, 0x4D);
   else nt_put(2, 27, 2, 0x1B), nt_put(2, 28, 2, 0x1C), nt_put(2, 27, 3, 0x1D), nt_put(2, 28, 3, 0x1E);
