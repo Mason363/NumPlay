@@ -125,6 +125,29 @@ static void battles(void) {
     bad += full > 1;
   }
   CHECK(!bad, "one full charge at a time (%d)", bad);
+  /* the effects: the sparks of the hits go once out of the field, the attacks always find room (#446: after a few
+   * turns they had none, and showed nothing) */
+  int fullest = 0, attacks = 0, shown = 0;
+  for (int n = 0; n < 6; n++) {
+    g.w.area = (uint8_t)(n * 3);
+    battle_start(n == 5 ? 2 : 0);
+    g.scene = SC_BATTLE;
+    int was = 0;
+    for (int i = 0; i < 60 * 90 && g.scene == SC_BATTLE; i++) {
+      step(B.ready && i % 9 == 4 ? K_OK : 0);
+      int used = 0;
+      for (int k = 0; k < NFX; k++) used += B.fx[k].kind != 0;
+      if (used > fullest) fullest = used;
+      if (B.att_slot && B.att_frame_done && !was) {
+        attacks++;
+        for (int k = 0; k < NFX; k++) shown += B.fx[k].kind > 2 && B.fx[k].t <= 1;
+      }
+      was = B.att_slot && B.att_frame_done;
+    }
+    g.scene = SC_WORLD;
+  }
+  CHECK(fullest < NFX, "room for the attacks' effects (%d of %d used at most)", fullest, NFX);
+  CHECK(attacks > 20 && shown > attacks / 2, "the attacks show (%d effects for %d attacks)", shown, attacks);
   /* a boss */
   g.scene = SC_WORLD;
   for (int c = 1; c <= 8; c++) g.f.lv[c] = 20;
