@@ -42,12 +42,13 @@ static const color THEME[2][4] = {
 };
 
 #ifdef __TICE__ /* the TI-84 Plus CE: its own mixing (the same colours) */
+#include <string.h>
 #include "../../../platform/ti84ce/ce_draw.h"
 __attribute__((naked)) static color ce_mix(color a, color b, unsigned t) { __asm__(CE_MIX_ASM); }
 #endif
 static color mix(color f, color b, int a) { /* f over b, a from 0 to 32 */
 #ifdef __TICE__
-  return ce_mix(b, f, (unsigned)a);
+  return a >= 32 ? f : a <= 0 ? b : ce_mix(b, f, (unsigned)a); /* (its ends: no call) */
 #else
   uint32_t x = (f | (uint32_t)f << 16) & 0x07E0F81F, y = (b | (uint32_t)b << 16) & 0x07E0F81F;
   y = (y + ((x - y) * (uint32_t)a >> 5)) & 0x07E0F81F;
@@ -110,8 +111,17 @@ typedef uint64_t bb;
    bottom); the 7th bit of each column stays empty so that lines never wrap. */
 static bb disc[4]; /* each player's discs, then all of them (the search plays on them too) */
 static uint8_t height[8];
+#ifdef __TICE__ /* (the TI-84 Plus CE: a byte's bit, not a 64-bit shift done a bit at a time) */
+__attribute__((noinline)) static bb bit(int i) {
+  bb v = 0;
+  ((uint8_t *)&v)[i >> 3] = (uint8_t)(1 << (i & 7));
+  return v;
+}
+__attribute__((noinline)) static int get(bb x, int i) { return ((const uint8_t *)&x)[i >> 3] >> (i & 7) & 1; }
+#else
 __attribute__((noinline)) static bb bit(int i) { return (bb)1 << i; }
 __attribute__((noinline)) static int get(bb x, int i) { return (int)(x >> i) & 1; }
+#endif
 static uint8_t hist[48];   /* the columns played */
 static int nh, first, cur, winner, hov[3];
 static int np = 2, NC = 7, C = 30, R = 12, rr = 24, BX, BY, HY; /* layout */
@@ -216,6 +226,12 @@ static color over_disc(color bg, int dx, int dy, int r, int p, int lit) {
 static int8_t cshade[30 * 30];
 static uint8_t chole[30 * 30];
 static color cdisc[3][30 * 30];
+#ifdef __TICE__
+/* The TI-84 Plus CE: each pixel of a cell that doesn't show the background, for each kind of cell (empty, then
+   each player's disc): the plastic, or a disc's middle (row_game's colours, made once). */
+__attribute__((section(".data"))) static color cfix[4][30 * 30]; /* (with the program: the 60 KB are full) */
+static color plastic(int s);
+#endif
 static void cell_setup(void) {
   int o2 = (rr + 7) * (rr + 7), rr2 = rr * rr;
   for (int k = 0; k < C * C; k++) {
@@ -223,6 +239,13 @@ static void cell_setup(void) {
     cshade[k] = (int8_t)clamp(d2 < o2 ? (dx + dy) * (o2 - d2) * 14 / rr / (o2 - rr2) : 0, -32, 32); /* the hole's bevel */
     chole[k] = (uint8_t)(clamp(8 * e / rr + 16, 0, 32) | (sx * sx + sy * sy > rr2) << 6 | (d2 > (rr - 5) * (rr - 5)) << 7);
     for (int p = 0; p < 3; p++) cdisc[p][k] = shade(dx, dy, rr, p);
+#ifdef __TICE__
+    for (int q = 0; q < 4; q++) {
+      color c = q ? cdisc[q - 1][k] : 0;
+      if (chole[k] & 64) c = mix(0, c, 9);
+      cfix[q][k] = chole[k] & 63 ? c : plastic(cshade[k]);
+    }
+#endif
   }
 }
 
@@ -233,12 +256,29 @@ static color plastic(int s) { return pl[clamp(s, -32, 32) + 32]; }
 /* A row of the game screen, from x0 to x1. What only depends on the row is
    worked out first: the frame's edges, which disc shows through each hole
    (the drain moves them all down), whether the moving disc crosses it. */
+#ifdef __TICE__
+static void md_row(int dy);             /* the moving disc's row dy (half pixels from its centre), for md_px */
+static color md_px(color bg, int dx); /* over_disc's moving disc, worked out once (below) */
+__attribute__((noinline)) /* (on its own, its locals within reach of ix) */
+#endif
+#ifdef __TICE__
+static void row_ce(color *p, int y, int x0, int x1);
+#endif
 static void row_game(color *p, int y, int x0, int x1) {
+#ifdef __TICE__
+  if (!drain) {
+    row_ce(p, y, x0, x1);
+    return;
+  }
+#endif
   int fx0 = BX - F, fx1 = BX + NC * C + F, fy0 = BY - F, fy1 = BY + 6 * C + F;
   int ey = y < fy0 + 8 ? fy0 + 8 - y : y > fy1 - 9 ? y - (fy1 - 9) : 0, ey2 = y >= fy0 && y < fy1 ? ey * ey : 999;
   int sy = y < fy0 + 2 ? 16 : y >= fy1 - 2 ? -18 : 0, rt = grow[y], g = y - drain, gr = g >= 0 ? grow[g] : -1;
   int md = 2 * y + 1 - my2, ky = gdy[y] * C, kd = gr >= 0 ? gdy[g] * C : 0;
   bool mrow = mv && md > -rr - 2 && md < rr + 2;
+#ifdef __TICE__
+  if (mrow) md_row(md);
+#endif
   int8_t who[8], lit[8];
   for (int c = 0; c < NC; c++) {
     int i = c * 7 + 5 - gr;
@@ -247,11 +287,15 @@ static void row_game(color *p, int y, int x0, int x1) {
       if (get(disc[q], i)) who[c] = (int8_t)q, lit[c] = (int8_t)(!wmask ? 0 : get(wmask, i) ? glow : -1);
   }
   for (int x = x0; x < x1; x++) {
-    color c = rb[(x ^ y) & 1];
+    color c = rb[((uint8_t)x ^ (uint8_t)y) & 1];
     int ex = x < fx0 + 8 ? fx0 + 8 - x : x > fx1 - 9 ? x - (fx1 - 9) : 0;
-    if (x < fx0 || x >= fx1 || ex * ex + ey2 > 70) {
+    if (x < fx0 || x >= fx1 || ((ex || ey2) && ex * ex + ey2 > 70)) {
       if ((x >= fx1 || y >= fy1) && x >= fx0 + 6 && x < fx1 + 6 && y >= fy0 + 6 && y < fy1 + 4) c = mix(0, c, 3); /* the board's shadow */
+#ifdef __TICE__
+      if (mrow) c = md_px(c, 2 * x + 1 - mx2);
+#else
       if (mrow) c = over_disc(c, 2 * x + 1 - mx2, md, rr, cur, 0);
+#endif
     } else {
       int s = sy + (x < fx0 + 2 ? 10 : x >= fx1 - 2 ? -12 : 0), col = gcol[x];
       if (col >= 0 && rt >= 0) {
@@ -262,7 +306,11 @@ static void row_game(color *p, int y, int x0, int x1) {
             int q = kd + kx, h = chole[q];
             c = mix(light(cdisc[who[col]][q], c, lit[col], h >> 7), c, h & 63);
           }
+#ifdef __TICE__
+          if (mrow && col == mcol) c = md_px(c, 2 * kx + 1 - C);
+#else
           if (mrow && col == mcol) c = over_disc(c, 2 * kx + 1 - C, md, rr, cur, 0);
+#endif
           if (chole[k] & 64) c = mix(0, c, 9); /* the plastic's shadow */
           *p++ = a < 32 ? mix(c, plastic(s), a) : c;
           continue;
@@ -273,6 +321,122 @@ static void row_game(color *p, int y, int x0, int x1) {
     *p++ = c;
   }
 }
+
+#ifdef __TICE__
+/* The TI-84 Plus CE (while no discs drain out): row_game's colours, with little worked out a pixel at a time. The
+   background goes in runs, the frame from where its corners allow, and each cell's row is copied from a row made once
+   for this screen row and the cell's kind; a pixel at a time only where the moving disc is, or a winning disc glows.
+   What only depends on the row is kept in these (no locals beyond reach of ix). */
+static int8_t bwho[6][8], blit[6][8]; /* each cell's disc (-1 none) and glow, from the bitboards (board_cache) */
+static void board_cache(void) {
+  for (int r = 0; r < 6; r++)
+    for (int c = 0; c < NC; c++) {
+      int i = c * 7 + 5 - r;
+      bwho[r][c] = -1, blit[r][c] = 0;
+      for (int q = 0; q < np; q++)
+        if (get(disc[q], i)) bwho[r][c] = (int8_t)q, blit[r][c] = (int8_t)(!wmask ? 0 : get(wmask, i) ? glow : -1);
+    }
+}
+static color r_bg[2], r_sh3[2], r_sh9[2], r_tmpl[4][30];
+static uint8_t r_made[4];
+static int r_y, r_ky, r_fx0, r_fx1, r_sy, r_md0, r_md1;
+static bool r_mrow;
+/* n pixels of the background from x, the board's shadow from sx0 to sx1, the moving disc over them */
+__attribute__((noinline)) static color *bg_run(color *p, int x, int n, int sx0, int sx1) {
+  color *q = p;
+  for (int e = x + n; x < e; x++) {
+    uint8_t par = ((uint8_t)x ^ (uint8_t)r_y) & 1;
+    *q++ = x >= sx0 && x < sx1 ? r_sh3[par] : r_bg[par];
+  }
+  if (r_mrow) /* (only where it reaches) */
+    for (int i = r_md0 > x - n ? r_md0 : x - n, e = r_md1 < x ? r_md1 : x; i < e; i++) p[i - (x - n)] = md_px(p[i - (x - n)], 2 * i + 1 - mx2);
+  return q;
+}
+/* a cell's row, n pixels from kx, a pixel at a time: a disc q (0: none) that may glow (lit), the moving disc maybe */
+__attribute__((noinline)) static color *cell_px(color *p, int x, int kx, int n, int q, int lit, bool moving) {
+  const uint8_t *ch = chole + r_ky + kx;
+  const int8_t *cs = cshade + r_ky + kx;
+  const color *fx = cfix[q] + r_ky + kx, *dc = cdisc[q ? q - 1 : 0] + r_ky + kx;
+  uint8_t par = ((uint8_t)x ^ (uint8_t)r_y) & 1;
+  for (int e = kx + n; kx < e; kx++, par ^= 1, ch++, cs++, fx++, dc++) {
+    uint8_t h = *ch, a = h & 63;
+    color c = *fx;
+    if (a && (a < 32 || !q || lit || moving)) {
+      c = r_bg[par];
+      if (q) c = mix(light(*dc, c, lit, h >> 7), c, a);
+      if (moving) c = md_px(c, 2 * kx + 1 - C);
+      if (h & 64) c = mix(0, c, 9);
+      if (a < 32) c = mix(c, plastic(*cs), a);
+    }
+    *p++ = c;
+  }
+  return p;
+}
+/* the row of a cell of kind q (0 empty, then each player's disc), from its left */
+__attribute__((noinline)) static const color *cell_row(int q) {
+  if (!r_made[q]) {
+    r_made[q] = 1;
+    uint8_t pr = ((uint8_t)BX ^ (uint8_t)r_y) & 1;
+    const uint8_t *ch = chole + r_ky;
+    const int8_t *cs = cshade + r_ky;
+    const color *fx = cfix[q] + r_ky, *dc = cdisc[q ? q - 1 : 0] + r_ky;
+    color *t = r_tmpl[q];
+    for (int u = 0; u < C; u++, pr ^= 1) {
+      uint8_t h = ch[u], a = h & 63;
+      color c = fx[u];
+      if (a && (a < 32 || !q)) {
+        c = r_bg[pr];
+        if (q) c = mix(dc[u], c, a);
+        if (h & 64) c = a == 32 && !q ? r_sh9[pr] : mix(0, c, 9);
+        if (a < 32) c = mix(c, plastic(cs[u]), a);
+      }
+      t[u] = c;
+    }
+  }
+  return r_tmpl[q];
+}
+static void row_ce(color *p, int y, int x0, int x1) {
+  int fx0 = BX - F, fx1 = BX + NC * C + F, fy0 = BY - F, fy1 = BY + 6 * C + F, rt = grow[y], md = 2 * y + 1 - my2;
+  int ey = y < fy0 + 8 ? fy0 + 8 - y : y > fy1 - 9 ? y - (fy1 - 9) : 0, ey2 = ey * ey;
+  r_y = y, r_ky = gdy[y] * C, r_fx0 = fx0, r_fx1 = fx1, r_sy = y < fy0 + 2 ? 16 : y >= fy1 - 2 ? -18 : 0;
+  r_bg[0] = rb[0], r_bg[1] = rb[1], r_made[0] = r_made[1] = r_made[2] = r_made[3] = 0;
+  r_sh3[0] = mix(0, rb[0], 3), r_sh3[1] = mix(0, rb[1], 3), r_sh9[0] = mix(0, rb[0], 9), r_sh9[1] = mix(0, rb[1], 9);
+  r_mrow = mv && md > -rr - 2 && md < rr + 2;
+  if (r_mrow) md_row(md), r_md0 = (mx2 - rr - 2) / 2, r_md1 = (mx2 + rr + 2) / 2 + 1;
+  int fa = fx1, fb = fx1; /* the frame on this row, its corners rounded */
+  if (y >= fy0 && y < fy1) {
+    fa = fx0, fb = fx1;
+    while (fa < fx0 + 8 && (fx0 + 8 - fa) * (fx0 + 8 - fa) + ey2 > 70) fa++;
+    while (fb > fx1 - 8 && (fb - 1 - (fx1 - 9)) * (fb - 1 - (fx1 - 9)) + ey2 > 70) fb--;
+  }
+  int sx0 = 999, sx1 = 999; /* the board's shadow */
+  if (y >= fy0 + 6 && y < fy1 + 4) sx0 = y >= fy1 ? fx0 + 6 : fx1, sx1 = fx1 + 6;
+  for (int x = x0; x < x1;) {
+    if (x < fa || x >= fb) { /* the background */
+      int n = (x < fa && fa < x1 ? fa : x1) - x;
+      p = bg_run(p, x, n, sx0, sx1), x += n;
+      continue;
+    }
+    int col = gcol[x];
+    if (col < 0 || rt < 0) { /* the frame round the holes */
+      *p++ = plastic(r_sy + (x < fx0 + 2 ? 10 : x >= fx1 - 2 ? -12 : 0));
+      x++;
+      continue;
+    }
+    int kx = gdx[x], n = C - kx, q = bwho[rt][col] + 1, lit = blit[rt][col];
+    if (n > fb - x) n = fb - x;
+    if (n > x1 - x) n = x1 - x;
+    bool moving = r_mrow && col == mcol;
+    if (lit || moving) {
+      p = cell_px(p, x, kx, n, q, lit, moving);
+    } else {
+      memcpy(p, cell_row(q) + kx, (size_t)n * sizeof(color));
+      p += n;
+    }
+    x += n;
+  }
+}
+#endif
 
 /* The title's background: a close-up of the board, some discs in it. */
 static color pix_title(int x, int y) {
@@ -304,6 +468,40 @@ __attribute__((naked)) static void ce_blend(color *p, unsigned n, const uint8_t 
 __attribute__((section(".data"))) static uint8_t tab_mem[CE_TABLES + 255];
 __attribute__((section(".data"))) static color tcell[3][48 * 48]; /* (with the program: the 60 KB are full) */
 static bool tmade[3];
+/* The moving disc (the one above the board or falling): for each offset from its centre in half pixels, -rr - 1 to
+   rr + 1 each way, its colour for each of two players and how much of it shows (over_disc with lit 0), in the
+   title's room while a game is on. */
+static int md_rr = -1, md_n;
+static int8_t md_who[2];
+static uint8_t md_last;
+static const color *md_c;
+static const uint8_t *md_a;
+static void md_row(int dy) {
+  uint8_t *a = (uint8_t *)tcell;
+  if (md_rr != rr) { /* how much shows, for this size */
+    md_rr = rr, md_n = 2 * rr + 3, md_who[0] = md_who[1] = -1;
+    tmade[0] = tmade[1] = tmade[2] = false;
+    for (int v = 0, i = 0; v < md_n; v++)
+      for (int u = 0; u < md_n; u++, i++) {
+        int dx = u - rr - 1, dy2 = v - rr - 1, e = rr * rr - dx * dx - dy2 * dy2;
+        a[i] = (uint8_t)(e <= -2 * rr ? 0 : e < 2 * rr ? 8 * e / rr + 16 : 32);
+      }
+  }
+  int k = md_who[0] == cur ? 0 : md_who[1] == cur ? 1 : md_last ^ 1;
+  color *c = (color *)(a + md_n * md_n) + k * md_n * md_n;
+  if (md_who[k] != cur) {
+    md_who[k] = (int8_t)cur;
+    for (int v = 0, i = 0; v < md_n; v++)
+      for (int u = 0; u < md_n; u++, i++) c[i] = a[i] ? shade(u - rr - 1, v - rr - 1, rr, cur) : 0;
+  }
+  md_last = (uint8_t)k;
+  unsigned v = (unsigned)(dy + rr + 1);
+  md_c = v < (unsigned)md_n ? c + v * md_n : 0, md_a = a + v * md_n;
+}
+static color md_px(color bg, int dx) {
+  unsigned u = (unsigned)(dx + rr + 1);
+  return md_c && u < (unsigned)md_n ? mix(md_c[u], bg, md_a[u]) : bg;
+}
 static color title_raw(int px, int py, char q) { /* pix_title's colour before the dimming, (px, py) in its cell */
   const int P = 48, r = 38;
   int dx = 2 * px + 1 - P, dy = 2 * py + 1 - P, d2 = dx * dx + dy * dy, e = r * r - d2;
@@ -331,6 +529,7 @@ static void title_row(color *p, int j, int x0, int x1) {
     int k = q == ' ' ? 0 : q == 'R' ? 1 : 2;
     if (!tmade[k]) {
       tmade[k] = true;
+      md_rr = -1; /* (the moving disc's tables shared this room) */
       for (int v = 0, n = 0; v < P; v++)
         for (int u = 0; u < P; u++, n++) tcell[k][n] = title_raw(u, v, q);
     }
@@ -633,6 +832,9 @@ static void paint(int x, int y, int w, int h) {
   }
 }
 static void flush(void) {
+#ifdef __TICE__
+  if (nd) board_cache();
+#endif
   for (int i = 0; i < nd; i++)
     if (dr[i][2] > dr[i][0]) paint(dr[i][0], dr[i][1], dr[i][2] - dr[i][0], dr[i][3] - dr[i][1]);
   nd = 0;
@@ -1051,7 +1253,10 @@ static void step(int ticks) {
       }
       my2 = fy / 8;
       int y0 = (old < my2 ? old : my2) / 2 - R - 2, y1 = (old > my2 ? old : my2) / 2 + R + 3;
-      dirty(BX + mcol * C, y0, C, y1 - y0);
+      if (y1 - y0 > 4 * R + 10) /* (far apart: where it was, and where it is, not what is between) */
+        dirty(BX + mcol * C, old / 2 - R - 2, C, 2 * R + 5), dirty(BX + mcol * C, my2 / 2 - R - 2, C, 2 * R + 5);
+      else
+        dirty(BX + mcol * C, y0, C, y1 - y0);
       if (back) pend_pause = true;
       if (fy == ty && !vy) landed();
       break;
