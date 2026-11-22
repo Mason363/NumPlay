@@ -191,7 +191,7 @@ static void hud(void) {
   }
 }
 static void screen(void) { /* a clean picture: the scores and the credits */
-  for (uint8_t *p = vram[0]; p < vram[0] + sizeof vram; p++) *p = 0;
+  for (uint8_t *p = (uint8_t *)vram, *e = p + sizeof vram; p < e; p++) *p = 0;
   text(8, 8, "SCORE<1> HI-SCORE SCORE<2>", 26), text(168, 24, "0000", 4), text(136, LY, "CREDIT 00", 9);
   dirty = ALL;
   hud();
@@ -504,7 +504,9 @@ static void tick(uint32_t keys) {
   int dx = !!(keys & (KEY(eadk_key_right) | KEY(eadk_key_six))) - !!(keys & (KEY(eadk_key_left) | KEY(eadk_key_four)));
   if (dx && px + dx >= 16 && px + dx <= 192) wipe(px, PY), px += dx, put(A_CANNON, px, PY);
   int fire = !!(keys & (KEY(eadk_key_ok) | KEY(eadk_key_exe) | KEY(eadk_key_up) | KEY(eadk_key_eight)));
-  if (fire && !fire_held && !fire_y && !pb_t) fire_x = px + 8, fire_y = PY, shots++; /* a new press each shot */
+  /* (a new press each shot; none while a burst or an invader's explosion shows, as in the arcade, where they are
+   * the shot's: another hit would leave the explosion before it on screen) */
+  if (fire && !fire_held && !fire_y && !pb_t && !boom_t) fire_x = px + 8, fire_y = PY, shots++;
   fire_held = fire;
   shoot();
   if (boom_t) {
