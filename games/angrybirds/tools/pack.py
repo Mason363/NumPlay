@@ -302,9 +302,10 @@ for li, (key, ei) in enumerate(campaign):
     packed = zlib.compress(bytes(raw), 9)[2:-4]   # raw deflate
     cams = {c["id"]: c for c in d.get("camera", [])}
     cam = []
-    for cid in ("Slingshot", "Castle"):
+    for cid in ("Slingshot", "Castle"):  # (a view of its size round its x and y: MFb)
         c = cams.get(cid, cams.get("Slingshot"))
-        cam += [c["left"], c["top"], c["right"], c["bottom"]]
+        w, h = c["right"] - c["left"], c["bottom"] - c["top"]
+        cam += [c["x"] - w / 2, c["y"] - h / 2, c["x"] + w / 2, c["y"] + h / 2]
     silver, gold, eagle = star_limits[key.lower()]
     level_header += struct.pack("<IHHIIIBBBB8f", len(level_streams), len(packed), len(raw), silver, gold, eagle,
                                 theme_of(key, d, episode_rows[ei]), ei, len(birds), 0, *cam)
