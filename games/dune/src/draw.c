@@ -880,8 +880,8 @@ static void world(void) {
   int land = R->land;
   sky(land);
   layers(land);
+  trail();   /* (under the dunes and the ball: the game adds it to its scene's group first) */
   dunes(land);
-  trail();
   float bs = 56 * zoom * S;
   raw_turned(art_balls[R->ball], sx_of(R->x), sy_of(R->y), bs, R->rotates ? R->angle : 0, 256);
   if (!R->guide) {   /* the line: a 20-point bar at y 200, at alpha 0.7 */
