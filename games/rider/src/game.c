@@ -288,15 +288,16 @@ static bool two_wheels_landed(const rd_run *r) {
 /* ---------------------------------------------------------------- texts and the score */
 static void say(rd_run *r, const char *t, const char *t2) { r->text = t, r->text2 = t2, r->text_ms = 1500; }
 
-/* GameController.flipMade: a point waiting for the landing (levels: half a second off the time) */
+/* GameController.flipMade: a point waiting for the landing */
 static void flip_made(rd_run *r, int n) {
   rd_bikestate *b = &r->b;
   b->air_flips += n, r->flips += n;
   if (r->mode == RUN_ENDLESS) r->pending += n;
 }
 /* Board.characterLanded's end: the texts, the flips counted (a perfect landing or not). GameController.perfectFlip
-   counts the flips landed perfectly; in the endless run mergeHudBonusScore adds the jump's points to the score:
-   twice as many when it landed perfectly (Hud.mergeBonusScore's landedPerfectlyBonus) */
+   counts the flips landed perfectly; mergeHudBonusScore takes half a second off a level's time for each flip
+   (fixedLevelFlipTimeDeductValue) or, in the endless run, adds the jump's points to the score: twice as many when it
+   landed perfectly (Hud.mergeBonusScore's landedPerfectlyBonus) */
 static void landed_texts(rd_run *r, bool perfect) {
   rd_bikestate *b = &r->b;
   int n = b->air_flips;
@@ -320,6 +321,7 @@ static void landed_texts(rd_run *r, bool perfect) {
     int got = perfect ? 2 * n : n;
     r->pending += got - n, r->landed_flips += got, r->pending_ms = 500;
   }
+  if (r->mode == RUN_LEVEL) r->level_flips += n;
   b->air_flips = 0, b->front_flip = false;
   b->in_air_ms = -1;
 }
@@ -1240,6 +1242,6 @@ static void step_world(rd_run *r, bool held) {
 }
 
 float run_level_time(const rd_run *r) {
-  float t = r->ms - r->flips * 500.0f;
+  float t = r->ms - r->level_flips * 500.0f;
   return t < 0 ? 0 : t;
 }

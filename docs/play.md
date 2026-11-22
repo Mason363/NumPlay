@@ -687,7 +687,7 @@ Sans attacks and you dodge. Keep your heart away from everything in the box: whi
 | **Back** | Pause (with Resume, How to play and Quit game) |
 | **Home** | Save and quit |
 
-Hold the button and the bike speeds up. In the air, holding it turns the bike backwards: a flip. Let go so that it lands on both wheels, or it breaks. In the endless run each landed flip is a point (two when both wheels touch down together) and gems win new bikes. In the 48 levels, reach the end fast for three stars: each flip takes half a second off.
+Hold the button and the bike speeds up. In the air, holding it turns the bike backwards: a flip. Let go so that it lands on both wheels, or it breaks. In the endless run each landed flip is a point (two when both wheels touch down together) and gems win new bikes. In the 48 levels, reach the end fast for three stars (the next star's time shows at the top right): each landed flip takes half a second off.
 ## Snow Rider 3D
 
 <img src="../games/snowrider/docs/shot.png" width="320" align="right" alt="Snow Rider 3D">

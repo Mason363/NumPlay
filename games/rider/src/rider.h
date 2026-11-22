@@ -183,6 +183,7 @@ typedef struct {
   int landed_flips;
   float pending_ms;
   int flips, perfect, doubles, gems; /* (perfect: the flips landed perfectly) */
+  int level_flips;      /* flips landed in a level: half a second off its time each */
   float perfect_fx;     /* ms left of a perfect landing's flash and its rings round the wheels */
   int best_flips_jump;
   int ended;            /* END_ */
