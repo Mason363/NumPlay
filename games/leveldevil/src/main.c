@@ -645,7 +645,7 @@ static void hero(int in) {
   ground = blocked(hx >> 8, (hy >> 8) + down, down > 0 ? (hy >> 8) + hh - 1 : -1) != 0;
   if (ground) coyote = 0, jumping &= vy * down < 0;
   else coyote++;
-  if (frame == 30) started = 1;
+  if (frame == 30 && !(modes & R_FLAPPY)) started = 1; /* (the flier waits for a key, as the game's does) */
   (void)b;
   contacts();
 }
