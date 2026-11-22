@@ -1525,7 +1525,16 @@ static bool item_hit(const Draw *dr, const float *d, float *best_t, uint16_t *co
   int id = e->item.id;
   float age = e->age + tick_frac;
   bool tnt = e->type == E_TNT;
-  float bob = tnt ? 0 : sinf(age / 10.0f + e->yaw) * 0.1f + 0.1f;
+  /* (its bob and turn, the same for every pixel: worked out once a frame, not a pixel, which slowed an item close
+   * to the eye, as a block just thrown, to a stop) */
+  static const Entity *k_e;
+  static float k_age, k_yaw, k_bob, k_ca = 1, k_sa;
+  if (e != k_e || age != k_age || e->yaw != k_yaw) {
+    float a = age / 20.0f + e->yaw;
+    k_e = e, k_age = age, k_yaw = e->yaw;
+    k_bob = sinf(age / 10.0f + e->yaw) * 0.1f + 0.1f, k_ca = cosf(a), k_sa = sinf(a);
+  }
+  float bob = tnt ? 0 : k_bob;
   bool cube = id < 256 && (blk_model[id] == M_CUBE || blk_model[id] == M_LEAVES || blk_model[id] == M_GLASS ||
                            blk_model[id] == M_SLAB);
   float hs = tnt ? 0.49f : 0.125f;
@@ -1533,7 +1542,7 @@ static bool item_hit(const Draw *dr, const float *d, float *best_t, uint16_t *co
   if (e->type == E_BOBBER) cy = dr->ey + 0.3f - 0.125f, cube = false;   /* RenderFish: centred where it is */
   if (cube) {
     /* EntityItem render: a quarter block, turning (lit TNT: a whole block, still) */
-    float a = tnt ? 0 : age / 20.0f + e->yaw, ca = cosf(a), sa = sinf(a);
+    float ca = tnt ? 1 : k_ca, sa = tnt ? 0 : k_sa;
     float rel[3] = {ox - cx, oy - cy, oz - cz};
     float o[3] = {ca * rel[0] + sa * rel[2], rel[1], -sa * rel[0] + ca * rel[2]};
     float dl[3] = {ca * d[0] + sa * d[2], d[1], -sa * d[0] + ca * d[2]};
