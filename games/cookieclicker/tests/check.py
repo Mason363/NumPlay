@@ -111,6 +111,13 @@ try:
     s = play(saves, "20:shift,40:shift", 60, "golden", ["--preset", "golden"])
     if s:
         check(s["golden"] >= 1, f"the golden cookie was not clicked: {s}")
+    # quit while a golden cookie shows: next time they still come (within 15 minutes, the longest wait)
+    goldens = tempfile.mkdtemp(prefix="cc_golden_")
+    play(goldens, "10:home", 20, "home on a golden cookie", ["--preset", "golden"])
+    s = play(goldens, presses(30, "shift", 2700, 10), 27100, "golden cookies after a save with one showing")
+    if s:
+        check(s["golden"] >= 1, f"no golden cookie came back after the save: {s}")
+    shutil.rmtree(goldens, ignore_errors=True)
     play(saves, "20:shift,40:shift", 60, "wrath", ["--preset", "wrath"])
     s = play(saves, presses(20, "var", 30, 2), 200, "wrinklers", ["--preset", "wrinklers"])
     # the Grimoire: every spell cast, the lump refill

@@ -304,9 +304,10 @@ void shimmers_update(void) {
     S.golden_time++;
     double k = (double)(S.golden_time - S.golden_min) / (S.golden_max - S.golden_min);
     if (k < 0) k = 0;
-    if (rnd() < pow(k, 5)) {
-      Shimmer *m = shimmer_new(SHIMMER_GOLDEN, GC_NONE, false);
-      if (m) m->spawn_lead = 1;
+    Shimmer *m;
+    if (rnd() < pow(k, 5) && (m = shimmer_new(SHIMMER_GOLDEN, GC_NONE, false))) { /* (no room, as in a cookie
+                                                                                     storm: it tries again) */
+      m->spawn_lead = 1;
       if (has(U_DISTILLED_ESSENCE_OF_REDOUBLED_LUCK) && rnd() < 0.01) shimmer_new(SHIMMER_GOLDEN, GC_NONE, false);
       S.golden_spawned = 1;
     }
@@ -315,11 +316,8 @@ void shimmers_update(void) {
     S.reindeer_time++;
     double k = (double)(S.reindeer_time - S.reindeer_min) / (S.reindeer_max - S.reindeer_min);
     if (k < 0) k = 0;
-    if (rnd() < pow(k, 5)) {
-      Shimmer *m = shimmer_new(SHIMMER_REINDEER, GC_NONE, false);
-      if (m) m->spawn_lead = 1;
-      S.reindeer_spawned = 1;
-    }
+    Shimmer *m;
+    if (rnd() < pow(k, 5) && (m = shimmer_new(SHIMMER_REINDEER, GC_NONE, false))) m->spawn_lead = 1, S.reindeer_spawned = 1;
   }
 }
 
