@@ -1168,6 +1168,7 @@ static void step_world(rd_run *r, bool held) {
     for (int q = 0; q < 3; q++)
       if (d->an[q].on) anim_frame(r, d->live, q);
     if (d->touch) ph_touch_set(d->touch, d->tx, d->ty);
+    else if (!d->body) d->x = d->tx, d->y = d->ty; /* (out of the physics world: it goes on moving where it is drawn) */
   }
   if (!r->ended) {
     /* stopBikeRotation's listener: the turn eases out (outCirc) in a second, contacts can't turn it */
