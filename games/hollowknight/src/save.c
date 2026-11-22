@@ -37,6 +37,7 @@ static const uint8_t *phash(uint32_t *n) {
 }
 
 static void save_copy(void);
+static const uint8_t *whole(const uint8_t *p, uint32_t len, uint32_t *count, uint32_t *pd_size);
 
 bool save_game(void) {
   /* (built in the decoders' scratch memory: no decoding goes on meanwhile) */
@@ -55,6 +56,23 @@ bool save_game(void) {
     if (at + 4 > cap) return false;
     memcpy(buf + at, names + 4 * i, 4);
     at += 4, count++;
+  }
+  /* the states of the other part of Hallownest's objects (the other app's: names this one hasn't), as the slot
+   * has them, so that a save here keeps its broken walls, opened gates and won battles */
+  {
+    char name[8];
+    uint32_t len, old_count, pd;
+    slot_name(cur_slot, name);
+    const uint8_t *old = whole(plat_load(name, &len), len, &old_count, &pd);
+    for (uint32_t k = 0; old && k < old_count; k++) {
+      const uint8_t *q = old + pd + 4 + 4 * k;
+      uint32_t i = 0, want = rd32(q);
+      while (i < nbits && i < MAX_PERSIST && rd32(names + 4 * i) != want) i++;
+      if (i < nbits && i < MAX_PERSIST) continue;
+      if (at + 4 > cap) return false;
+      memcpy(buf + at, q, 4);
+      at += 4, count++;
+    }
   }
   memcpy(buf + count_at, &count, 4);
   h.size = at - sizeof h;

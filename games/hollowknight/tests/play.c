@@ -376,6 +376,48 @@ static void station_new(int stag_at) {
 
 /* every way into another part of Hallownest (another app): the Knight through it, the game saved with the way he went
  * (its room among all, its gate) and loaded again with it */
+/* a state of the other part's objects (a name this build hasn't) in the slot: a save here keeps it */
+static uint32_t keep_crc(const uint8_t *p, uint32_t n) {
+  uint32_t c = 0xFFFFFFFFu;
+  while (n--) {
+    c ^= *p++;
+    for (int k = 0; k < 8; k++) c = (c >> 1) ^ (0xEDB88320u & (0u - (c & 1)));
+  }
+  return ~c;
+}
+static int keep_test(void) {
+  extern void host_save_dir(const char *d);
+  if (getenv("HKSAVES")) host_save_dir(getenv("HKSAVES"));
+  const uint32_t other = 0xA5C3E1F7u;   /* (no name of this build's: checked below) */
+  uint32_t nbits;
+  const uint8_t *names = section(SEC_PHASH);
+  nbits = rd32(names), names += 4;
+  for (uint32_t i = 0; i < nbits; i++)
+    if (rd32(names + 4 * i) == other) return printf("FAIL the other part's name is one of this build's\n"), 1;
+  game_new();
+  save_select(0);
+  if (!save_game()) return printf("FAIL not saved\n"), 1;
+  uint32_t len, count;
+  const uint8_t *f = plat_load("hk1.sav", &len);
+  static uint8_t b[65536];
+  if (!f || len + 4 > sizeof b) return printf("FAIL no save\n"), 1;
+  memcpy(b, f, len);
+  memcpy(&count, b + 16 + PD_SAVED, 4), count++;
+  memcpy(b + 16 + PD_SAVED, &count, 4);
+  memcpy(b + len, &other, 4), len += 4;
+  uint32_t size = len - 16, crc = keep_crc(b + 16, size);
+  memcpy(b + 8, &size, 4), memcpy(b + 12, &crc, 4);
+  plat_save("hk1.sav", b, len);
+  memset(&g_pd, 0, sizeof g_pd);
+  if (!save_load(0)) return printf("FAIL the slot with the other part's state not loaded\n"), 1;
+  if (!save_game()) return printf("FAIL not saved again\n"), 1;
+  f = plat_load("hk1.sav", &len);
+  bool kept = false;
+  for (uint32_t k = 0; f && 16 + PD_SAVED + 4 + 4 * k + 4 <= len; k++) kept |= rd32(f + 16 + PD_SAVED + 4 + 4 * k) == other;
+  printf("%s the other part's states kept by a save here\n", kept ? "ok  " : "FAIL");
+  return kept ? 0 : 1;
+}
+
 static int cross_test(void) {
   extern void host_save_dir(const char *d);
   if (getenv("HKSAVES")) host_save_dir(getenv("HKSAVES"));
@@ -1376,6 +1418,7 @@ static int gates_test(const char *which) {
   if (!strcmp(which, "markers")) return markers_test();
   if (!strcmp(which, "arenas")) return arenas_test();
   if (!strcmp(which, "cross")) return cross_test();
+  if (!strcmp(which, "keep")) return keep_test();
   if (!strncmp(which, "wander:", 7)) {   /* (wander:ROOM|all:seed:ticks) */
     char room[64];
     int seed = 1, ticks = 6000;

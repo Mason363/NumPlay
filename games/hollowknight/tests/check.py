@@ -106,6 +106,9 @@ def main():
             else:
                 out += "\n   loaded in the other part: in %s" % room
     results.append(report("the ways into the other part, saved and loaded there", rc, out, ("FAIL",)))
+    with tempfile.TemporaryDirectory() as saves:
+        rc, out = play("--gates", "keep", env={"HKSAVES": saves})
+    results.append(report("the other part's broken walls, gates and battles kept by a save here", rc, out, ("FAIL",)))
     if PART == 2:
         return finish(results)
     # (HKFLAGS: a charm had, Gathering Swarm; HKPD: the bools on at the end, 77 its equipped one, 0 atBench)
