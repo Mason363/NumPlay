@@ -500,6 +500,49 @@ static int ring(int qa, int qb, int r, int ri, int shift, int t, int *d_in) {
 static void ring_px(color_t *p, int sx, color_t c, int k) {
   if (k > 0 && sx >= gx0 && sx < gx1) p[sx] = k >= 32 ? c : ce_mix(p[sx], c, (unsigned)k);
 }
+/* The last two outlines' shapes, a row at a time as they're drawn: for each row from the top or bottom edge, the
+ * first and the last pixel from the side (up to the inside, or to the middle) the ring covers at all (lo > hi: none),
+ * and the levels of those between (from at, while there's room). A row is then drawn there and on the other side,
+ * not measured pixel by pixel from the side to the inside each time (Air Hockey's three circles took half its
+ * frames). Rows near the top or bottom of a box wider than its corners are drawn as before. */
+#define RING_ROWS 120
+#define RING_LEVELS 512
+#define RING_UNSEEN 254
+typedef struct {
+  int w, h, r, th, t;
+  unsigned used;
+  uint8_t lo[RING_ROWS], hi[RING_ROWS];
+  uint16_t at[RING_ROWS]; /* 0xFFFF: no room for its levels */
+  uint8_t k[RING_LEVELS];
+} ring_rows_t;
+static ring_rows_t *rings[2];
+static uint8_t ring_next;
+static ring_rows_t *ring_rows(int w, int h, int r, int th, int t) {
+  for (int i = 0; i < 2; i++) {
+    ring_rows_t *g = rings[i];
+    if (g && g->w == w && g->h == h && g->r == r && g->th == th && g->t == t) return g;
+  }
+  if (w > 2 * 250 || (h + 1) / 2 > RING_ROWS) return 0;
+  ring_rows_t *g = rings[ring_next];
+  if (!g && !(g = rings[ring_next] = malloc(sizeof *g))) return 0;
+  ring_next ^= 1;
+  g->w = w, g->h = h, g->r = r, g->th = th, g->t = t, g->used = 0;
+  memset(g->lo, RING_UNSEEN, sizeof g->lo);
+  return g;
+}
+static void ring_row(ring_rows_t *g, int jj, int ri, int shift, int m0) {
+  int r = g->r, w = g->w, qb = 2 * (r - jj) - 1, lo = 255, hi = 0, d_in;
+  unsigned at = g->used, room = RING_LEVELS - at;
+  if (!(jj <= r && w > 2 * m0))
+    for (int i = 0, m = (w + 1) / 2; i < m; i++) {
+      int v = ring(2 * (r - i) - 1, qb, r, ri, shift, 256, &d_in); /* (its coverage: any level at all) */
+      if (d_in < -128) break;
+      if (v > 0) lo = lo == 255 ? i : lo, hi = i;
+      if (lo != 255 && (unsigned)(i - lo) < room) g->k[at + i - lo] = (uint8_t)(((unsigned)v * (unsigned)g->t + 128) >> 8);
+    }
+  g->lo[jj] = (uint8_t)lo, g->hi[jj] = (uint8_t)hi, g->at[jj] = 0xFFFF;
+  if (lo <= hi && (unsigned)(hi - lo) < room) g->at[jj] = (uint16_t)at, g->used += (unsigned)(hi - lo + 1);
+}
 
 void gfx_rrect_outline(int x, int y, int w, int h, int r, int th, color_t c, int a) {
   LIST(y, y + h, L_OUTLINE, (unsigned)x, (unsigned)y, (unsigned)w, (unsigned)h, (unsigned)r, (unsigned)th, c,
@@ -509,12 +552,14 @@ void gfx_rrect_outline(int x, int y, int w, int h, int r, int th, color_t c, int
   int t = (a + 4) >> 3, d_in;
   int ri = r > th ? r - th : 0, shift = r > th ? 0 : 2 * (th - r); /* the inner box's corner, from the outer's */
   int m0 = r > th ? r : th; /* from there to its mirror, a row near the top or bottom is the same all along */
+  ring_rows_t *g = ring_rows(w, h, r, th, t);
   for (int row = ya; row < yb; row++) {
     int j = row - y, jj = j < h - 1 - j ? j : h - 1 - j;
     int qb = 2 * (r - jj) - 1;
     color_t *p = px_at(0, row);
     if (jj <= r && w > 2 * m0) {
       for (int i = 0; i < m0; i++) {
+        if ((x + i < gx0 || x + i >= gx1) && (x + w - 1 - i < gx0 || x + w - 1 - i >= gx1)) continue; /* (not drawn) */
         int k = ring(2 * (r - i) - 1, qb, r, ri, shift, t, &d_in);
         ring_px(p, x + i, c, k);
         ring_px(p, x + w - 1 - i, c, k);
@@ -524,7 +569,21 @@ void gfx_rrect_outline(int x, int y, int w, int h, int r, int th, color_t c, int
       if (k > 0 && s1 > s0) span_alpha(p + s0, s1 - s0, c, k);
       continue;
     }
-    for (int i = 0; i < w; i++) {
+    if (g) {
+      if (g->lo[jj] == RING_UNSEEN) ring_row(g, jj, ri, shift, m0);
+      int lo = g->lo[jj];
+      const uint8_t *lv = g->at[jj] != 0xFFFF ? g->k + g->at[jj] : 0;
+      for (int i = lo, e = g->hi[jj]; i <= e; i++) {
+        int xl = x + i, xr = x + w - 1 - i;
+        if ((xl < gx0 || xl >= gx1) && (xr < gx0 || xr >= gx1)) continue; /* (not drawn) */
+        int k = lv ? lv[i - lo] : ring(2 * (r - i) - 1, qb, r, ri, shift, t, &d_in);
+        ring_px(p, xl, c, k);
+        if (xr != xl) ring_px(p, xr, c, k);
+      }
+      continue;
+    }
+    /* only the columns drawn (when only some changed, the others are left as they are) */
+    for (int i = NP_MAX(gx0 - x, 0), e = NP_MIN(gx1 - x, w); i < e; i++) {
       int ii = i < w - 1 - i ? i : w - 1 - i;
       int k = ring(2 * (r - ii) - 1, qb, r, ri, shift, t, &d_in);
       if (d_in < -128) {
