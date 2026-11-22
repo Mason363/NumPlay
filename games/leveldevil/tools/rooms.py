@@ -822,6 +822,8 @@ r.on(2, vel(s2, -7, 0))
 r.on(3, vel(f3 + [s3], 7, 0))
 
 # ================================================================ 12. Flappy (the runner flies: it keeps going, Up flaps)
+# (The flier's own init runs after the scene's and sets it off to the right at 7: what a scene's init
+# sets on it at once is lost, so Flappy 3 starts to the right, into its Trigger_1, and Flappy 5 at 7.)
 r = room("Flappy_1")
 r.on(1, steps([r.one(598), r.one(600)], 0, -1, 48, 100))
 
@@ -837,7 +839,7 @@ r.on(4, hero(H_DIR, -1))
 
 r = room("Flappy_3")
 walls = r.all(609) + r.all(645)
-r.init(hero(H_DIR, -1), grow(r.one(600), 3, 1), grow(r.all(645), 35, 11))
+r.init(grow(r.one(600), 3, 1), grow(r.all(645), 35, 11))
 r.on(1, hero(H_DIR, -1), at(1000, grow(r.one(600), 1, 1, 1)))
 r.on(2, hero(H_DIR, 1),
      at(1000, run(6), jump(20), vel([w for w in walls if w.y < 120], 0, .6), vel([w for w in walls if w.y > 120], 0, -.6)),
@@ -853,7 +855,7 @@ r.on(2, hero(H_DIR, -1), steps(r.all(609), 1, 0, 15, 100))
 
 r = room("Flappy_5")
 f2, f5, f6 = r.one(645), r.one(651), r.one(653)
-r.init(run(9), grow(f6, 1, 3))
+r.init(grow(f6, 1, 3))
 b2, t2, t3 = r.make(661, 64, 144, angle=90), r.make(604, 112, 144, 1, 7), r.make(615, 56, 144)
 b4, t4, t5 = r.make(661, 448, 64, angle=270), r.make(617, 368, 96, 1, 9), r.make(665, 456, 112)
 b6, t6 = r.make(661, 64, 96, angle=90), r.make(667, 56, 96)

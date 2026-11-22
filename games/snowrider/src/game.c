@@ -506,8 +506,12 @@ void game_step(uint32_t keys, uint32_t hit) {
       else if (sel == 1) go_main(), go_play();
       else screen = S_ASK, sel = 0;
     } else if (screen == S_ASK && (ok || back)) {
-      if (ok && sel == 1) go_main();
-      else screen = S_PAUSE, sel = 2;
+      if (ok && sel == 1) { /* (out of the game, as Home) */
+        game_running = false;
+        save();
+        return;
+      }
+      screen = S_PAUSE, sel = 2;
     }
     return;   /* (the game waits) */
   }

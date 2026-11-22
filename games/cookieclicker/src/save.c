@@ -103,6 +103,10 @@ bool game_load(void) {
   memcpy(&m, d, 4);
   if (m != MAGIC) return false;
   memcpy(&S, d, sizeof(SaveState));
+  /* no golden cookie or reindeer comes back with the save: one that was on the screen is gone, so their timers
+     start again (or they would wait for it to go forever, as a save made while one showed did) */
+  if (S.golden_spawned) S.golden_spawned = 0, S.golden_time = 0;
+  if (S.reindeer_spawned) S.reindeer_spawned = 0, S.reindeer_time = 0;
   game_recount();
   if (S.on_ascend) {   /* (quit while ascending: back to the heavens) */
     extern void earn_heavenly_chips(double forfeited, bool silent);

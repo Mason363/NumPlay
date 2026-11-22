@@ -123,7 +123,7 @@ static void preset(const char *name) {
     game_recount();
     if (!strcmp(name, "golden")) {   /* (as one comes by itself) */
       Shimmer *m = shimmer_new(SHIMMER_GOLDEN, GC_NONE, false);
-      if (m) m->spawn_lead = 1;
+      if (m) m->spawn_lead = 1, S.golden_spawned = 1;
     }
     if (!strcmp(name, "wrath")) {
       Shimmer *m = shimmer_new(SHIMMER_GOLDEN, GC_NONE, false);

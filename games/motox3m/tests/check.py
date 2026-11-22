@@ -39,6 +39,11 @@ for n in range(1, 51):
         check(int(m.group(9)) == 0, "level %d: contacts ran out" % n)
         check(float(m.group(7)) < 5000, "level %d: fell through the world (y %s)" % (n, m.group(7)))
         check(int(m.group(1)) in (3, 5), "level %d: did not start" % n)
+# the end of level 2: the TNT under the boat goes off and throws the rider up to the finish (driven from a little
+# before the wooden tanks; the blast is chaotic, so one of four runs must finish)
+ends = [run(["--level", "2", "--at", "%d,450" % x, "--auto", "--frames", "1200"], "%s/end%d" % (TMP, x))
+        for x in (17600, 17720, 17760, 17800)]
+check(any(m and m.group(5) == "1" for m in ends), "level 2: the TNT under the boat does not throw the rider to the finish")
 # a finished level: stars and best time kept, the next level open (level 3, by the test driver)
 m = run(["--level", "3", "--auto", "--frames", "1500"], TMP + "/fin")
 check(m is not None and m.group(5) == "1", "level 3 not finished by the test driver")

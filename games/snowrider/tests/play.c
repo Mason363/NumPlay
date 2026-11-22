@@ -153,6 +153,25 @@ static void test_jump(const char *dir) {
   CHECK(sled.grounded, "landed");
 }
 
+/* the pause's Quit game asks first: No goes back to the pause, Yes leaves the game, saved */
+static void test_quit(const char *dir) {
+  char p[512];
+  snprintf(p, sizeof p, "%s/snowrider.sav", dir);
+  remove(p);
+  restart(dir);
+  play_from_menu();
+  steps(60, 0);
+  press(SK_BACK), press(SK_DOWN), press(SK_DOWN), press(SK_OK);
+  CHECK(screen == S_ASK && sel == 0, "Quit game asks: screen %d sel %d", screen, sel);
+  press(SK_OK);
+  CHECK(screen == S_PAUSE && game_running, "No: back to the pause: screen %d", screen);
+  press(SK_OK), press(SK_DOWN), press(SK_OK);
+  CHECK(!game_running, "Yes: out of the game");
+  FILE *f = fopen(p, "rb");
+  CHECK(f != NULL, "saved on the way out");
+  if (f) fclose(f);
+}
+
 static void test_saves(const char *dir) {
   char p[512], q[512];
   snprintf(p, sizeof p, "%s/snowrider.sav", dir), snprintf(q, sizeof q, "%s/snowrider_saves.py", dir);
@@ -201,7 +220,7 @@ static void test_random(const char *dir) {
     for (int i = 0; i < 60 * 12 && game_running; i++) {
       seed ^= seed << 13, seed ^= seed >> 17, seed ^= seed << 5;
       uint32_t k = seed % 7 == 0 ? (1u << (seed >> 8) % 6) : prev & ~(seed % 11 == 0 ? SK_BACK | SK_OK : 0);
-      if (mode == M_MAIN && sel == 2 && screen == S_NONE) k &= ~SK_OK;   /* (not Quit: the session goes on) */
+      if ((mode == M_MAIN && sel == 2 && screen == S_NONE) || screen == S_ASK) k &= ~SK_OK;   /* (not Quit: the session goes on) */
       step(k & ~SK_HOME);
       if (i % 97 == 0) draw_frame();
     }
@@ -215,6 +234,7 @@ static int test(const char *dir) {
   test_walls(dir);
   test_sides();
   test_jump(dir);
+  test_quit(dir);
   test_saves(dir);
   test_random(dir);
   printf(failed ? "%d tests failed\n" : "tests passed\n", failed);
