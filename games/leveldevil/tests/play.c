@@ -133,7 +133,7 @@ static struct {
   V(ob), V(st), V(rule), V(no), V(ns), V(nr), V(gcol), V(cnt), V(at_), V(hx), V(hy), V(vx), V(vy), V(hw), V(hh),
   V(hsx), V(hsy), V(tsx), V(tsy), V(hgl), V(shape), V(run), V(jumpv), V(maxup), V(maxdown), V(back), V(downjump), V(dir),
   V(slide), V(pushx), V(gx), V(gy), V(keyev), V(face), V(ground), V(coyote), V(jumping), V(anim), V(dead), V(won),
-  V(frozen), V(born), V(started), V(flapped), V(held_in), V(frame), V(shake), V(shake_n), V(modes), V(waiting),
+  V(frozen), V(born), V(started), V(flapped), V(held_in), V(frame), V(shake), V(shake_n), V(modes), V(waiting), V(gtouch), V(gclear),
 };
 #define NV (int)(sizeof vars / sizeof vars[0])
 static size_t snap_size(void) {

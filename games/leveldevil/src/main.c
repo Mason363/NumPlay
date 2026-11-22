@@ -128,7 +128,7 @@ static uint16_t at_[EVENTS];
 static int32_t hx, hy, vx, vy;
 static int hw, hh, hsx, hsy, tsx, tsy, hgl, shape;
 static int run, jumpv, maxup, maxdown, back, downjump, dir, slide, pushx, gx, gy, keyev;
-static int face, ground, coyote, jumping, anim, dead, won, frozen, born, started, flapped, held_in, waiting;
+static int face, ground, coyote, jumping, anim, dead, won, frozen, born, started, flapped, held_in, waiting, gtouch, gclear;
 static uint32_t seed, now;
 static color_t bg, fg;
 static struct {
@@ -378,7 +378,7 @@ static void reset(void) { /* the room as it starts */
   int fl = modes & R_FLAPPY;
   run = PS(fl ? 70 : 80), jumpv = PS(fl ? 251 : 188), maxup = PS(fl ? 9999 : 300), maxdown = PS(fl ? 300 : 200);
   gx = 0, gy = PS2(fl ? 1200 : 800), back = downjump = slide = pushx = 0, dir = 1, keyev = -1;
-  face = 1, ground = coyote = jumping = dead = won = frozen = started = flapped = waiting = 0, born = 18;
+  face = 1, ground = coyote = jumping = dead = won = frozen = started = flapped = waiting = gtouch = gclear = 0, born = 18;
   frame = 0, shake = 0;
   for (int i = 0; i < 8; i++) { /* the game's eight pieces, from up to 40 pixels away */
     bits[i].x = hx + hw * 128 + ((int)(rnd() % 81) - 40) * 256, bits[i].y = hy + hh * 128 + ((int)(rnd() % 81) - 40) * 256;
@@ -620,8 +620,11 @@ static void hero(int in) {
     } else if (!slide) {
       vx = iabs(vx) > PS(10) ? vx * 4 / 5 : 0;
     }
-    if (modes & R_GRAVITY) {
-      if (in & I_UP & ~held_in && started && (ground || blocked(hx >> 8, (hy >> 8) - down, -1))) gy = -gy, ground = 0;
+    if (modes & R_GRAVITY) { /* Up turns gravity round once the runner has touched a floor or a ceiling since it last
+                                did (and for 100 ms after), as the game's runner does: off a ledge too */
+      if (ground || blocked(hx >> 8, (hy >> 8) - down, -1)) gtouch = 1;
+      if (gclear && !--gclear) gtouch = 0;
+      if (in & I_UP & ~held_in && started && gtouch) gy = -gy, ground = 0, gclear = gclear ? gclear : 6;
     } else if (jump && (ground || (coyote < 5 && !jumping))) {
       vy = -down * jumpv, jumping = 1;
     }
