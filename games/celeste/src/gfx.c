@@ -269,6 +269,16 @@ static inline void plot(uint16_t *d, uint8_t idx) {
   *d = a >= 256 ? EC[idx] : blend565_in(*d, EC[idx], a);
 }
 
+#if NP_SOFT_FLOAT
+/* (the TI-Nspire's ARM9 has no unaligned word access, so the memcpys below were calls, a fifth of a frame: d is a
+   word's start there, which this says) */
+typedef uint32_t __attribute__((may_alias, aligned(4))) word_t;
+#define WORD_GET(p, d) ((p) = *(const word_t *)(const void *)(d))
+#define WORD_PUT(d, p) (*(word_t *)(void *)(d) = (p))
+#else
+#define WORD_GET(p, d) memcpy(&(p), (d), 4)
+#define WORD_PUT(d, p) memcpy((d), &(p), 4)
+#endif
 /* n pixels from d on, one step (+1 or -1) apart: one index (run) or n indices (literals) */
 static inline void span_run(uint16_t *d, int n, int step, uint8_t v) {
   uint16_t c = EC[v];
@@ -283,9 +293,9 @@ static inline void span_run(uint16_t *d, int n, int step, uint8_t v) {
       uint32_t qa = (c | (uint32_t)c << 16) & 0x07E0F81Fu, qb = ((c | (uint32_t)c << 16) >> 1) & 0x7C0F83F0u;
       for (; n >= 2; n -= 2, d += 2) {   /* (memcpy: an aligned word, read and written as such) */
         uint32_t p;
-        memcpy(&p, d, 4);
+        WORD_GET(p, d);
         p = add565x2(p, qa, qb);
-        memcpy(d, &p, 4);
+        WORD_PUT(d, p);
       }
     }
     for (; n > 0; n--, d += step) *d = add565(*d, c);
@@ -294,7 +304,7 @@ static inline void span_run(uint16_t *d, int n, int step, uint8_t v) {
     if (a >= 256 && step > 0 && n > 3) {   /* two pixels a word (the solid runs of pictures see-through elsewhere) */
       if ((uintptr_t)d & 2) *d++ = c, n--;
       uint32_t cc = c | (uint32_t)c << 16;
-      for (; n >= 2; n -= 2, d += 2) memcpy(d, &cc, 4);
+      for (; n >= 2; n -= 2, d += 2) WORD_PUT(d, cc);
       if (n) *d = c;
     } else if (a >= 256)
       for (; n--; d += step) *d = c;
@@ -764,7 +774,13 @@ static void blit_scaled(uint16_t *strip, int sy0, int sy1, const Tex *t, int x, 
 }
 
 static void blit_affine(uint16_t *strip, int sy0, int sy1, const Tex *t, const Affine *a, uint16_t tint, uint8_t alpha, uint8_t flags) {
+#if NP_SOFT_FLOAT
+  static float at_rot = 0, at_cs = 1, at_sn = 0;   /* (no FPU: the last turn's, not worked out again each strip) */
+  if (a->rot != at_rot) at_rot = a->rot, at_cs = cosf(a->rot), at_sn = sinf(a->rot);
+  float cs = at_cs, sn = at_sn;
+#else
   float cs = cosf(a->rot), sn = sinf(a->rot);
+#endif
   if (a->sx == 0 || a->sy == 0) return;
   float isx = 1.f / a->sx, isy = 1.f / a->sy;
   /* bounds of the transformed stored rect */
@@ -791,6 +807,53 @@ static void blit_affine(uint16_t *strip, int sy0, int sy1, const Tex *t, const A
   if (x0 >= x1 || y0 >= y1) return;
   prep(t->pal, tint, alpha, flags);   /* (only for what is drawn: the colors cost more than the bounds) */
   int cached = -1;
+#if NP_SOFT_FLOAT
+  if (sn == 0 && cs == 1) {   /* (no FPU, not turned: each column's u and each row's v once, the same floats) */
+    int16_t us[VIEW_W];
+    float dy0 = y0 + 0.5f - a->py;
+    for (int X = x0; X < x1; X++) {
+      float dx = X + 0.5f - a->px, lx = (dx * cs + dy0 * sn) * isx + a->ox;
+      int u = lx < a->cx0 || lx >= a->cx1 ? -1 : (int)floorf(lx) - t->ox;
+      us[X] = (int16_t)((unsigned)u >= t->w ? -1 : u);
+    }
+    float dx0 = x0 + 0.5f - a->px;
+    for (int Y = y0; Y < y1; Y++) {
+      float dy = Y + 0.5f - a->py, ly = (-dx0 * sn + dy * cs) * isy + a->oy;
+      if (ly < a->cy0 || ly >= a->cy1) continue;
+      int v = (int)floorf(ly) - t->oy;
+      if ((unsigned)v >= t->h) continue;
+      uint16_t *row = strip + (Y - sy0) * VIEW_W;
+      for (int X = x0; X < x1; X++) {
+        int u = us[X];
+        if (u < 0) continue;
+        if (v != cached) {
+          turned_src = NULL, tex_row(t, v, rowbuf);
+          cached = v;
+        }
+        if (rowbuf[u]) plot(row + X, rowbuf[u]);
+      }
+    }
+    return;
+  }
+  /* (no FPU, turned: the frame's point worked out at each row's start, then stepped along it, in 65536ths) */
+  int32_t dlx = (int32_t)(cs * isx * 65536), dly = (int32_t)(-sn * isy * 65536);
+  int32_t cx0 = a->cx0 * 65536, cx1 = a->cx1 * 65536, cy0 = a->cy0 * 65536, cy1 = a->cy1 * 65536;
+  for (int Y = y0; Y < y1; Y++) {
+    uint16_t *row = strip + (Y - sy0) * VIEW_W;
+    float dx = x0 + 0.5f - a->px, dy = Y + 0.5f - a->py;
+    int32_t lx = (int32_t)(((dx * cs + dy * sn) * isx + a->ox) * 65536), ly = (int32_t)(((-dx * sn + dy * cs) * isy + a->oy) * 65536);
+    for (int X = x0; X < x1; X++, lx += dlx, ly += dly) {
+      if (lx < cx0 || lx >= cx1 || ly < cy0 || ly >= cy1) continue;
+      int u = (lx >> 16) - t->ox, v = (ly >> 16) - t->oy;
+      if ((unsigned)u >= t->w || (unsigned)v >= t->h) continue;
+      if (v != cached) {
+        turned_src = NULL, tex_row(t, v, rowbuf);
+        cached = v;
+      }
+      if (rowbuf[u]) plot(row + X, rowbuf[u]);
+    }
+  }
+#else
   for (int Y = y0; Y < y1; Y++) {
     uint16_t *row = strip + (Y - sy0) * VIEW_W;
     for (int X = x0; X < x1; X++) {
@@ -806,6 +869,7 @@ static void blit_affine(uint16_t *strip, int sy0, int sy1, const Tex *t, const A
       if (rowbuf[u]) plot(row + X, rowbuf[u]);
     }
   }
+#endif
 }
 
 static void fill(uint16_t *strip, int sy0, int sy1, int x, int y, int w, int h, uint16_t c, uint8_t alpha) {
@@ -1151,10 +1215,20 @@ void gfx_zoom(float z, float fx, float fy) { zoom = z, zoom_fx = fx, zoom_fy = f
 static void zoom_strip(int y0, int y1, int sa) {
   float inv = 1 / zoom;
   int n = y1 - y0;
+#if NP_SOFT_FLOAT
+  /* (no FPU: the columns worked out once for a zoom, not again each strip) */
+  static int16_t src_x[VIEW_W];
+  static float at_zoom, at_fx;
+  if (zoom != at_zoom || zoom_fx != at_fx) {
+    at_zoom = zoom, at_fx = zoom_fx;
+#else
   int16_t src_x[VIEW_W];
-  for (int x = 0; x < VIEW_W; x++) {
-    int sx = (int)floorf(zoom_fx + (x + 0.5f - zoom_fx) * inv);
-    src_x[x] = (int16_t)(sx < 0 ? 0 : sx >= VIEW_W ? VIEW_W - 1 : sx);
+  {
+#endif
+    for (int x = 0; x < VIEW_W; x++) {
+      int sx = (int)floorf(zoom_fx + (x + 0.5f - zoom_fx) * inv);
+      src_x[x] = (int16_t)(sx < 0 ? 0 : sx >= VIEW_W ? VIEW_W - 1 : sx);
+    }
   }
   int fx = (int)zoom_fx;
   if (fx < 0) fx = 0;

@@ -26,6 +26,29 @@ void scene_background(color_t bg, float bg_x, float cam_y) {
     color_t gap = c_scale(bg, gi), sq = c_scale(bg, gi * 216 / 256), sh = c_scale(bg, gi * 182 / 256);
     gfx_fill(0, y, GFX_W, 1, gap);
     int ity = (int)ty;
+#if NP_SOFT_FLOAT
+    /* (no FPU: each square's columns worked out once a strip, not once a row: the same) */
+    static int16_t ca[3][BG_RECTS], cb[3][BG_RECTS];
+    static int ntiles;
+    if (y == y0) {
+      ntiles = 0;
+      for (float base = -off; base < GFX_W && ntiles < 3; base += tile, ntiles++)
+        for (int k = 0; k < BG_RECTS; k++) {
+          const uint16_t *r = bg_rects[k];
+          ca[ntiles][k] = (int16_t)floorf(base + r[0] * tex + .5f), cb[ntiles][k] = (int16_t)floorf(base + (r[0] + r[2]) * tex + .5f);
+        }
+    }
+    for (int t = 0; t < ntiles; t++)
+      for (int k = 0; k < BG_RECTS; k++) {
+        const uint16_t *r = bg_rects[k];
+        if (ity < r[1] || ity >= r[1] + r[3]) continue;
+        int a = ca[t][k], b = cb[t][k];
+        if (b <= 0 || a >= GFX_W) continue;
+        gfx_fill(a, y, b - a - 1, 1, sq);
+        gfx_fill(b - 1, y, 1, 1, sh);
+      }
+    continue;
+#endif
     for (float base = -off; base < GFX_W; base += tile) {
       for (int k = 0; k < BG_RECTS; k++) {
         const uint16_t *r = bg_rects[k];
@@ -405,6 +428,33 @@ static void prepare_items(void) {
         if (!prog_culled(it, s * STRIP_H, s * STRIP_H + STRIP_H)) { first[k] = (uint8_t)s; break; }
       ProgXf m;
       prog_xform(it, &m);
+#if NP_SOFT_FLOAT
+      /* (no FPU: as draw_prog, the corners' rows in 256ths of a pixel) */
+      const int32_t cy = it->y * 64, m10 = (int32_t)(m.m10 * 65536), m11 = (int32_t)(m.m11 * 65536);
+      int32_t lo8 = INT32_MAX, hi8 = INT32_MIN;
+      for (const uint8_t *p = tile_prog_data + tile_prog_off[it->spr]; *p;) {
+        int op = p[0] & 0x7f, k4 = (p[0] & TOP_BIG) ? 4 : 1, n = 4;
+        int32_t q[16];
+        if (op == TOP_POLY) {
+          n = p[1];
+          for (int k = 0; k < n * 2; k++) q[k] = (int8_t)p[2 + k] * k4;
+          p += 4 + n * 2;
+        } else {
+          for (int k = 0; k < 4; k++) q[k] = (int8_t)p[1 + k] * k4;
+          p += op == TOP_VGRAD ? 8 : 7;
+        }
+        for (int k = 0; k < n; k++) {
+          int32_t lx = op == TOP_POLY ? q[2 * k] : q[(k & 1) ? 2 : 0], ly = op == TOP_POLY ? q[2 * k + 1] : q[(k & 2) ? 3 : 1];
+          int32_t y = cy + (int32_t)(((int64_t)m10 * lx + (int64_t)m11 * ly) >> 8);
+          lo8 = y < lo8 ? y : lo8, hi8 = y > hi8 ? y : hi8;
+        }
+      }
+      lo8 -= 3 * 256, hi8 += 3 * 256;
+      if (lo8 < -1000 * 256) lo8 = -1000 * 256;
+      if (hi8 > 1000 * 256) hi8 = 1000 * 256;
+      r0 = lo8 >> 8;
+      r1 = ((hi8 + 255) >> 8) + 1;
+#else
       float lo = 1e9f, hi = -1e9f;
       for (const uint8_t *p = tile_prog_data + tile_prog_off[it->spr]; *p;) {
         ProgOp o;
@@ -418,6 +468,7 @@ static void prepare_items(void) {
       if (!(hi <= 1000)) hi = 1000;
       r0 = (int)floorf(lo);
       r1 = (int)ceilf(hi) + 1;
+#endif
     } else if (kind == K_SPRITE) {
       gfx_sprite_rows(it->spr, (it->y + 2) >> 2, it->xf, &r0, &r1);
     } else if (kind != K_PLAYER) {
@@ -691,6 +742,79 @@ void scene_draw_player_icon(int mode, float cx, float cy, float rot, float scale
 
 /* Draws the ops of a tile program that reach the current strip. Colour
    types BASE and DETAIL are the object's. */
+#if NP_SOFT_FLOAT
+/* No FPU (the TI-Nspire and Casio calculators): the same with the turn in 65536ths and the points in 256ths of a
+   pixel (an op's corners came out of floats on every strip: a third of a frame of the last levels) */
+static void draw_prog(const Item *it) {
+  if (prog_culled(it, gfx_y0, gfx_y1)) return;
+  ProgXf m;
+  prog_xform(it, &m);
+  const int32_t cx = it->x * 64, cy = it->y * 64;   /* (1/4 px to 1/256) */
+  const int32_t m00 = (int32_t)(m.m00 * 65536), m01 = (int32_t)(m.m01 * 65536), m10 = (int32_t)(m.m10 * 65536),
+                m11 = (int32_t)(m.m11 * 65536);
+  bool add = (it->kind & K_ADD) != 0;
+  for (const uint8_t *p = tile_prog_data + tile_prog_off[it->spr]; *p;) {
+    /* the op (prog_op): its points in local units, whole numbers */
+    int op = p[0] & 0x7f, k4 = (p[0] & TOP_BIG) ? 4 : 1, n = 4, ct;
+    int32_t q[16];
+    unsigned a0, a1;
+    if (op == TOP_POLY) {
+      n = p[1];
+      for (int k = 0; k < n * 2; k++) q[k] = (int8_t)p[2 + k] * k4;
+      p += 2 + n * 2;
+      ct = p[0], a0 = a1 = p[1];
+      p += 2;
+    } else {
+      for (int k = 0; k < 4; k++) q[k] = (int8_t)p[1 + k] * k4;
+      ct = p[5], a0 = p[6], a1 = op == TOP_VGRAD ? p[7] : a0;
+      p += op == TOP_VGRAD ? 8 : 7;
+    }
+    /* its rows (prog_op_rows), three to spare */
+    int32_t mn = INT32_MAX, mx = INT32_MIN;
+    for (int k = 0; k < n; k++) {
+      int32_t lx = op == TOP_POLY ? q[2 * k] : q[(k & 1) ? 2 : 0], ly = op == TOP_POLY ? q[2 * k + 1] : q[(k & 2) ? 3 : 1];
+      int32_t y = cy + (int32_t)(((int64_t)m10 * lx + (int64_t)m11 * ly) >> 8);
+      mn = y < mn ? y : mn, mx = y > mx ? y : mx;
+    }
+    if (mx + 3 * 256 < gfx_y0 * 256 || mn - 3 * 256 > gfx_y1 * 256) continue;   /* its shade was taken in prepare_items */
+    int e = prog_pal(it, ct);
+    color_t c;
+    int mode;
+    unsigned pa;
+    pal_for(e, add || ct == CT_GLOW, &c, &mode, &pa);
+    unsigned al = (it->alpha + 1) * pa / 255;
+    if (!al) continue;
+    int32_t X[8], Y[8];
+    if (op == TOP_POLY) {
+      for (int k = 0; k < n; k++) {
+        X[k] = cx + (int32_t)(((int64_t)m00 * q[2 * k] + (int64_t)m01 * q[2 * k + 1]) >> 8);
+        Y[k] = cy + (int32_t)(((int64_t)m10 * q[2 * k] + (int64_t)m11 * q[2 * k + 1]) >> 8);
+      }
+      gfx_poly_q8(X, Y, n, c, a0 * al >> 8, mode);
+      continue;
+    }
+    int bands = a0 == a1 ? 1 : 6;
+    for (int b = 0; b < bands; b++) {
+      /* band b of the rectangle along its local y (top first), in 256ths of a unit */
+      int32_t yt = q[3] * 256 + (q[1] - q[3]) * 256 * b / bands, yb = q[3] * 256 + (q[1] - q[3]) * 256 * (b + 1) / bands;
+      unsigned ab = bands == 1 ? a0 : (unsigned)(((int)a0 * 2 * bands + ((int)a1 - (int)a0) * (2 * b + 1)) / (2 * bands));
+      int32_t lx[4] = {q[0] * 256, q[2] * 256, q[2] * 256, q[0] * 256}, ly[4] = {yt, yt, yb, yb};
+      for (int k = 0; k < 4; k++) {
+        X[k] = cx + (int32_t)(((int64_t)m00 * lx[k] + (int64_t)m01 * ly[k]) >> 16);
+        Y[k] = cy + (int32_t)(((int64_t)m10 * lx[k] + (int64_t)m11 * ly[k]) >> 16);
+      }
+      if (m.aligned) {
+        int32_t x0 = X[0] < X[1] ? X[0] : X[1], x1 = X[0] < X[1] ? X[1] : X[0];
+        int32_t y0 = Y[0] < Y[1] ? Y[0] : Y[1], y1 = Y[0] < Y[1] ? Y[1] : Y[0];
+        x0 = X[2] < x0 ? X[2] : x0, x1 = X[2] > x1 ? X[2] : x1, y0 = Y[2] < y0 ? Y[2] : y0, y1 = Y[2] > y1 ? Y[2] : y1;
+        gfx_rectf_q8(x0, y0, x1, y1, c, ab * al >> 8, mode);
+      } else {
+        gfx_poly_q8(X, Y, 4, c, ab * al >> 8, mode);
+      }
+    }
+  }
+}
+#else
 static void draw_prog(const Item *it) {
   if (prog_culled(it, gfx_y0, gfx_y1)) return;
   ProgXf m;
@@ -742,6 +866,7 @@ static void draw_prog(const Item *it) {
     }
   }
 }
+#endif
 
 static void draw_body(const Player *p, float sx, float sy, bool swap) {
   icon_phase = p->x * (3.14159265f / 30);

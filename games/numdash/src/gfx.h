@@ -89,4 +89,9 @@ void gfx_layer_draw(int cx, int cy, int scale256, color_t top, color_t bottom, u
 void gfx_layer_line_color(int line, color_t top, color_t bottom);
 /* Anti-aliased convex polygon, up to 8 vertices (x, y pairs in pixels). */
 void gfx_poly(const float *xy, int n, color_t c, unsigned alpha, int mode);
+#if NP_SOFT_FLOAT
+/* (no FPU: the same from points in 256ths of a pixel) */
+void gfx_poly_q8(const int32_t *x, const int32_t *y, int n, color_t c, unsigned alpha, int mode);
+void gfx_rectf_q8(int32_t x0, int32_t y0, int32_t x1, int32_t y1, color_t c, unsigned alpha256, int mode);
+#endif
 #endif

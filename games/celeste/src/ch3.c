@@ -1668,6 +1668,44 @@ static void water_column(uint16_t *strip, int sy0, int sy1, int X, float y0, flo
   if (Y1 > sy1) Y1 = sy1;
   for (uint16_t *d = strip + (Y0 - sy0) * VIEW_W + X; Y0 < Y1; Y0++, d += VIEW_W) *d = water_blend(*d, pc, ia);
 }
+#if NP_SOFT_FLOAT
+/* No FPU (the TI-Nspire): each light ray worked out once a frame, not once a strip (the same rays; the lake of
+   chapter 6 spent a sixth of its frames on them) */
+typedef struct {
+  float depth, a, top;
+  int32_t al0, al1, sk;   /* in 65536ths, at row d's middle t = d + 1/2: alpha al0 - al1 t, edges x9, x10 - sk t */
+  int64_t x9, x10;
+} WRay;
+#define WRAYS 320
+static const WRay *water_rays(const Ent *e, const Water *w, int k, float base, float out, int nrays) {
+  static struct { const Ent *e; uint32_t frame; WRay r[WRAYS]; } cache[2][2];   /* two waters, top and bottom */
+  int slot = cache[0][k].e == e ? 0 : cache[1][k].e == e ? 1 : cache[0][k].frame == g_frame ? 1 : 0;
+  if (cache[slot][k].e == e && cache[slot][k].frame == g_frame) return cache[slot][k].r;
+  cache[slot][k].e = e, cache[slot][k].frame = g_frame;
+  float W = e->cw, H = e->ch;
+  for (int r = 0; r < nrays; r++) {
+    WRay *o = &cache[slot][k].r[r];
+    uint32_t h = hash32(w->ray_seed + (uint32_t)r * 2654435761u);
+    float duration = 2 + hashf(h) * 6;
+    float t = w->timer[k] / duration + hashf(h + 1);
+    uint32_t cycle = (uint32_t)floorf(t);
+    float pct = t - cycle;
+    uint32_t hc = hash32(h + cycle * 7919u);
+    float rpos = hashf(hc) * W, rw = (float)(2 + hash32(hc + 1) % 14), len = 8 + hashf(hc + 2) * 120;
+    float a = pct < 0.1f ? clamped_map(pct, 0, 0.1f, 0, 1) : pct > 0.9f ? clamped_map(pct, 0.9f, 1, 1, 0) : 1;
+    float n9 = fmaxf(0, rpos - rw / 2), n10 = fminf(W, rpos + rw / 2);
+    float depth = fminf(H, 0.7f * len), skew = 0.3f * len;
+    o->a = n10 <= n9 || depth <= 0 || a <= 0 ? 0 : a;   /* (0: not drawn) */
+    if (!o->a) continue;
+    o->depth = depth, o->top = base + out * water_surface_height(e, w, k, (n9 + n10) / 2);
+    float A = 0.6f * a * 256 * 65536;
+    o->al0 = (int32_t)A, o->al1 = (int32_t)(A / depth);
+    o->x9 = (int64_t)((e->x + n9 + 0.5f) * 65536), o->x10 = (int64_t)((e->x + n10 + 0.5f) * 65536);
+    o->sk = (int32_t)(skew / depth * 65536);
+  }
+  return cache[slot][k].r;
+}
+#endif
 /* the fill, the light rays and the surfaces, like the surfaces' meshes. A strip draws only what crosses its rows, and
  * the surfaces' heights at the mesh's points in view once */
 static void water_layer(uint16_t *strip, int sy0, int sy1, void *ctx) {
@@ -1691,9 +1729,23 @@ static void water_layer(uint16_t *strip, int sy0, int sy1, void *ctx) {
     /* a surface is 1 to 24 px from its base (water_surface_height: 6, +-4 of ripples, +12 of tension, +-1 of wave) */
     if (xa < xb && bv + 26 >= sy0 && bv - 26 < sy1) {
       /* surface heights at the mesh's points, every 4 px (point m at min(4 m, W)) */
+#if NP_SOFT_FLOAT
+      int m0 = xa / 4, m1 = (xb - 1) / 4 + 1;
+      /* (no FPU: the heights worked out once a frame, for the strips the surface crosses) */
+      static float hps[2][2][VIEW_W / 4 + 3];
+      static struct { const Ent *e; uint32_t frame; int m0, m1; } at[2][2];
+      int slot = at[0][k].e == e && at[0][k].frame == g_frame ? 0 : at[1][k].e == e && at[1][k].frame == g_frame ? 1
+                 : at[0][k].frame == g_frame ? 1 : 0;
+      float *hp = hps[slot][k];
+      if (at[slot][k].e != e || at[slot][k].frame != g_frame || at[slot][k].m0 != m0 || at[slot][k].m1 != m1) {
+        at[slot][k].e = e, at[slot][k].frame = g_frame, at[slot][k].m0 = m0, at[slot][k].m1 = m1;
+        for (int m = m0; m <= m1; m++) hp[m - m0] = water_surface_height(e, w, k, (float)(4 * m < iw ? 4 * m : iw));
+      }
+#else
       float hp[VIEW_W / 4 + 3];
       int m0 = xa / 4, m1 = (xb - 1) / 4 + 1;
       for (int m = m0; m <= m1; m++) hp[m - m0] = water_surface_height(e, w, k, (float)(4 * m < iw ? 4 * m : iw));
+#endif
       for (int x = xa; x < xb; x++) {
         int x0 = x / 4 * 4, x1 = x0 + 4 < iw ? x0 + 4 : iw;
         float h0 = hp[x / 4 - m0], h1 = hp[x / 4 + 1 - m0];
@@ -1706,6 +1758,29 @@ static void water_layer(uint16_t *strip, int sy0, int sy1, void *ctx) {
     }
     /* the rays (Surface.Rays, from hashes: each its own cycle) */
     int nrays = (int)(W * 0.2f);
+#if NP_SOFT_FLOAT
+    if (nrays <= WRAYS) {
+      const WRay *ray = water_rays(e, w, k, base, out, nrays);
+      for (int r = 0; r < nrays; r++, ray++) {
+        if (ray->a <= 0) continue;
+        /* row d is vy(top - out (d + 0.5) - 0.5) = yt - out d (out is 1 or -1): the strip's rows alone */
+        int nd = (int)ray->depth, yt = (int)floorf(ray->top - out * 0.5f) - g_camy, d0, d1;
+        if (out < 0) d0 = sy0 - yt, d1 = sy1 - yt;
+        else d0 = yt - sy1 + 1, d1 = yt - sy0 + 1;
+        if (d0 < 0) d0 = 0;
+        if (d1 > nd) d1 = nd;
+        for (int d = d0; d < d1; d++) {
+          int Y = yt - (out < 0 ? -d : d);
+          int64_t t2 = 2 * d + 1;   /* (2 t) */
+          int32_t alpha = (int32_t)((ray->al0 - ((ray->al1 * t2) >> 1)) >> 16);
+          if (alpha <= 0) continue;
+          int64_t sk = (ray->sk * t2) >> 1;
+          water_span(strip, sy0, sy1, Y, (int)((ray->x9 - sk) >> 16) - g_camx, (int)((ray->x10 - sk) >> 16) - g_camx, sky, alpha);
+        }
+      }
+      continue;
+    }
+#endif
     for (int r = 0; r < nrays; r++) {
       uint32_t h = hash32(w->ray_seed + (uint32_t)r * 2654435761u);
       float duration = 2 + hashf(h) * 6;
