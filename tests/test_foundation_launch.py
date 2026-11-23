@@ -23,7 +23,10 @@ def check(nwa, index, game):
     if not calc.exited or calc.locks or not calc.app_ram_clean() or calc.violations:
         raise AssertionError(f"{game}: exit={calc.exited} locks={calc.locks} "
                              f"RAM clean={calc.app_ram_clean()} violations={calc.violations[:3]}")
-    print(f"PASS {game}: menu launch, Home exit and RAM cleanup", flush=True)
+    stack = calc.stack_used()
+    if stack > 30 * 1024:
+        raise AssertionError(f"{game}: observed stack {stack} exceeds upstream guard")
+    print(f"PASS {game}: menu launch, Home exit and RAM cleanup; stack {stack} bytes", flush=True)
 
 
 if __name__ == "__main__":

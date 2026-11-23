@@ -34,10 +34,8 @@ def check(out):
             raise ValueError(f"unexpected linked game sections: {list(blocks)}")
         allocated = {s.name: s.data_size for s in sections if s["sh_flags"] & 2
                      and s["sh_type"] != "SHT_NOBITS" and s.name != ".rodata.eadk_api_level"}
-        ram = sum(s.data_size for s in sections if s["sh_flags"] & 3 == 3)
     extra = int((out / "gen/arena_extra").read_text())
-    print(f"Static writable sections: {ram} bytes; additional arena: {extra} bytes; "
-          f"section-based RAM requirement: {ram + extra} bytes")
+
     for name, flash in blocks.items():
         info = json.loads((out / "modules" / f"{name}.json").read_text())
         with (out / "kit" / "games" / f"{name}.o").open("rb") as stream:
@@ -46,6 +44,19 @@ def check(out):
         print(f"{name:14} previews {shots:7}  flash with previews {flash:8}  data {info['data']:6}  bss {info['bss']:6}")
     nwlink = shlex.split(os.environ.get("NWLINK", "nwlink"))
     start, end = 0x90180000, 0x903F0000
+    ram_start = 0x20000000
+    elf = out / "TwiliPlay.elf"
+    subprocess.run([*nwlink, "nwa-elf", str(app), str(elf), "--flash-start", hex(start),
+                    "--flash-length", str(end - start), "--ram-start", hex(ram_start),
+                    "--ram-length", str(148928 - extra)], check=True)
+    with elf.open("rb") as stream:
+        linked = ELFFile(stream)
+        arena = linked.get_section_by_name(".symtab").get_symbol_by_name("np_arena")[0]["st_value"]
+        static_end = max(s["sh_addr"] + s.data_size for s in linked.iter_sections()
+                         if s.data_size and s["sh_flags"] & 2
+                         and ram_start <= s["sh_addr"] < ram_start + 148928)
+    print(f"Installed static RAM {static_end - ram_start}; prefix before arena {arena - ram_start}; "
+          f"additional game RAM {extra}; budgeted total {static_end - ram_start + extra}")
     for limit in (148928, 153676, 133652):
         binary = out / "TwiliPlay.bin"
         subprocess.run([*nwlink, "nwa-bin", "--flash-start", hex(start),
