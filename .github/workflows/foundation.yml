@@ -35,12 +35,14 @@ jobs:
       - name: Selected host tests
         if: ${{ !cancelled() }}
         run: |
+          make -C games/numdash test
           for g in numblocks numdrive towerblock suika doodlejump coreball crossyroad; do
             make -C games/$g host test
           done
       - name: Emulator progress and RAM tests
         run: |
-          python3 tests/test_progress.py build/foundation/TwiliPlay.nwa
+          python3 tests/test_progress.py build/foundation/TwiliPlay.nwa --catalog build/foundation-games.json
+          python3 tests/test_uninstall.py build/foundation/TwiliPlay.nwa --game numdrive
           python3 tests/test_small_ram.py build/foundation/TwiliPlay.nwa
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
