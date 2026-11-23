@@ -3,7 +3,8 @@
  * Played like the phone apps: the number keys write a digit in the cell picked with the arrows,
  * OK switches to notes (small pencil digits), 0 erases, the backspace undoes, shift gives a hint.
  * The row, column and box of the cell light up, and so does every cell with its digit; a digit
- * placed takes its notes off the cells it sees. Wrong digits turn red and count as mistakes.
+ * placed takes its notes off the cells it sees. Wrong digits turn red and count as mistakes, unless Auto-check
+ * is turned off in the pause menu, as the phone apps allow.
  *
  * Every puzzle is made on the calculator: a full grid solved at random, then clues taken out in
  * pairs facing each other (the grid stays symmetric) as long as one solution is left. Easy and
@@ -57,7 +58,7 @@ static const uint8_t digit_key[9] = {19, 20, 21, 13, 14, 15, 30, 31, 9}; /* the 
 
 /* sudoku.sav: the game in progress and the best times */
 static struct {
-  uint8_t magic, version, flags, diff; /* flags: 1 a game to continue, 2 the guide was read */
+  uint8_t magic, version, flags, diff; /* flags: 1 a game to continue, 2 the guide was read, 4 no auto-check */
   uint8_t sel, mistakes, pad[2];
   uint32_t secs, best[4];               /* seconds played; the best time of each level, 0 for none */
   uint8_t sol[81];                      /* the solution */
@@ -227,7 +228,7 @@ static void set(int c, int v, int nt, int first) {
 static void write(int c, int d) {
   if (sv.val[c] > 15 || sv.val[c] == d) return;
   set(c, d, 0, 1);
-  sv.mistakes += d != sv.sol[c];
+  if (!(sv.flags & 4)) sv.mistakes += d != sv.sol[c]; /* (auto-check off: mistakes neither shown nor counted) */
   int right = 0;
   for (int k = 0; k < 81; k++) {
     if (k != c && sees(c, k) && sv.notes[k] >> d & 1) set(k, sv.val[k], sv.notes[k] ^ 1 << d, 0);
@@ -285,17 +286,18 @@ static void say_digit(const np_font_t *f, int x, int y, int d, color_t c) {
 enum { OV_NONE, OV_MENU, OV_LEVEL, OV_HELP, OV_WON };
 /* each card: its title, then its buttons; what each button leads to (QUIT, NEW: a new game, made in
    a fraction of a second) */
-static const char *const cards[5][5] = {
+static const char *const cards[5][6] = {
   {0},
-  {T("Paused"), T("Resume"), T("New game"), T("How to play"), T("Quit game")},
+  {T("Paused"), T("Resume"), T("New game"), T("Auto-check on"), T("How to play"), T("Quit game")},
   {T("New game"), T("Easy"), T("Medium"), T("Hard"), T("Expert")},
   {T("How to play"), T("Play")},
   {T("Solved!"), T("New game"), T("Quit game")},
 };
 #define QUIT 6
 #define NEW 7
-static const uint8_t buttons[5] = {0, 4, 4, 1, 2}, leads[5][4] = {
-  {0}, {OV_NONE, OV_LEVEL, OV_HELP, QUIT}, {NEW, NEW, NEW, NEW}, {OV_NONE}, {OV_LEVEL, QUIT}};
+#define CHECK 8
+static const uint8_t buttons[5] = {0, 5, 4, 1, 2}, leads[5][5] = {
+  {0}, {OV_NONE, OV_LEVEL, CHECK, OV_HELP, QUIT}, {NEW, NEW, NEW, NEW}, {OV_NONE}, {OV_LEVEL, QUIT}};
 #define LEVEL(i) cards[OV_LEVEL][1 + (i)]
 
 static void overlay(void) {
@@ -320,7 +322,10 @@ static void overlay(void) {
     color_t c = menu == i ? WHITE : NAVY;
     gfx_fill(77, y, 166, 31, menu == i ? PICK : WHITE);
     c = NAVY;
-    say(&np_font_body, 160, y + 18, ov == OV_MENU && i == 3 && quit_ok ? T("OK again to quit") : cards[ov][i + 1], c);
+    const char *t = cards[ov][i + 1];
+    if (ov == OV_MENU && i == 4 && quit_ok) t = T("OK again to quit");
+    if (ov == OV_MENU && i == 2 && (sv.flags & 4)) t = T("Auto-check off");
+    say(&np_font_body, 160, y + 18, t, c);
     if (ov == OV_LEVEL && sv.best[i]) gfx_text_right(&np_font_small, 232, y + 17, clock_text(s, sv.best[i]), c, 256);
   }
 }
@@ -337,7 +342,7 @@ static void scene(void *ctx) {
     int x = cell_at(c % 9), y = cell_at(c / 9), v = sv.val[c] & 15;
     placed[v]++;
     gfx_fill(x, y, 24, 24, c == sel ? PICK : pick && v == pick ? SAME : sees(c, sel) ? PALE : WHITE);
-    if (v) say_digit(&np_font_title, x + 12, y + 20, v, sv.val[c] > 15 ? NAVY : v != sv.sol[c] ? RED : BLUE);
+    if (v) say_digit(&np_font_title, x + 12, y + 20, v, sv.val[c] > 15 ? NAVY : v != sv.sol[c] && !(sv.flags & 4) ? RED : BLUE);
     for (int d = 0; d < 9; d++)
       if (sv.notes[c] >> (d + 1) & 1) say_digit(&np_font_small, x + 4 + d % 3 * 8, y + 8 + d / 3 * 8, d + 1, GREY);
   }
@@ -348,7 +353,7 @@ static void scene(void *ctx) {
   char *e = s;
   for (const char *m = T("Mistakes: "); *m;) *e++ = *m++;
   num(e, sv.mistakes);
-  say(&np_font_small, PC, 56, s, sv.mistakes ? RED : GREY);
+  if (!(sv.flags & 4)) say(&np_font_small, PC, 56, s, sv.mistakes ? RED : GREY);
   for (int d = 0; d < 9; d++) {
     int x = 242 + d % 3 * 26, y = 124 - d / 3 * 28, on = d + 1 == pick;
     gfx_rrect(x, y, 24, 24, 5, on ? BLUE : TILE, 256);
@@ -401,7 +406,7 @@ int main(void) {
     int dy = !!(hit & KEY(eadk_key_down)) - !!(hit & KEY(eadk_key_up));
     ok = hit & (KEY(eadk_key_ok) | KEY(eadk_key_exe));
     if (ov) {
-      int i = menu = (menu + dy) & (buttons[ov] - 1), to = ok ? leads[ov][i] : ov; /* (1, 2 or 4 buttons) */
+      int n = buttons[ov], i = menu = (menu + dy + n) % n, to = ok ? leads[ov][i] : ov;
       if (dy) quit_ok = 0;
       if (hit & KEY(eadk_key_back)) {
         if (ov == OV_LEVEL && !(sv.flags & 1)) break; /* nothing to go back to */
@@ -409,6 +414,7 @@ int main(void) {
       }
       if (to == QUIT && (ov == OV_WON || quit_ok)) break;
       if (to == QUIT) to = OV_MENU, quit_ok = 1; /* Quit game asks first */
+      if (to == CHECK) to = OV_MENU, sv.flags ^= 4; /* (Auto-check: wrong digits shown red and counted, or not) */
       if (to != ov) menu = to == OV_LEVEL ? sv.diff : 0;
       if (to == NEW) {
         sv.diff = (uint8_t)i, sv.secs = sv.mistakes = 0, sv.flags |= 1, ucount = 0, sel = 40;

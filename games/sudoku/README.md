@@ -8,7 +8,7 @@ Fill the grid so every row, column and 3×3 box holds the digits 1 to 9 once. Su
   - **Easy** and **Medium** can be solved with singles alone (a cell with one digit left, or a digit with one place left in a row, column or box), Medium with fewer clues;
   - **Hard** needs pointing: a digit that, in a box, can only go in one of its rows or columns, so it goes nowhere else in that row or column (or the other way round);
   - **Expert** needs more than that.
-- **The usual highlights:** the row, column and box of the cell picked, and every cell with the same digit. Wrong digits turn red and count as mistakes.
+- **The usual highlights:** the row, column and box of the cell picked, and every cell with the same digit. Wrong digits turn red and count as mistakes, or not, with Auto-check off in the pause menu.
 - **Notes:** OK switches to pencil marks, small digits in the corners of a cell. Writing a digit takes its note off every cell it sees.
 - **Undo** every move (notes included), **erase**, and **hints** that fill the cell picked, or the next one that isn't right yet.
 - The digits on the right are laid out as on the keypad; the ones placed nine times fade.

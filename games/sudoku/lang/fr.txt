@@ -19,3 +19,5 @@ OK  notes	OK  notes
 DEL  undo	DEL  annuler
 shift  hint	shift  indice
 Back  menu	Back  menu
+Auto-check on	Correction : oui
+Auto-check off	Correction : non

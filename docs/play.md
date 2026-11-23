@@ -1251,9 +1251,9 @@ The arcade's game, pixel for pixel, under the Midway cabinet's red and green fil
 | **0** | Erase the cell |
 | **⌫** | Undo |
 | **shift** | Hint |
-| **Back** | Pause (Resume, New game, How to play, Quit game) |
+| **Back** | Pause (Resume, New game, Auto-check, How to play, Quit game) |
 
-Fill the grid so every row, column and 3×3 box holds 1 to 9 once. The row, column and box of the cell you pick light up, and so does every cell with its digit; wrong digits turn red and count as mistakes. Notes are small pencil digits, and a digit you write takes its note off the cells it sees. Easy and Medium need only singles, Hard needs pointing, Expert more; every puzzle is made on the calculator, and each level keeps its best time.
+Fill the grid so every row, column and 3×3 box holds 1 to 9 once. The row, column and box of the cell you pick light up, and so does every cell with its digit; wrong digits turn red and count as mistakes, unless you turn Auto-check off in the pause menu. Notes are small pencil digits, and a digit you write takes its note off the cells it sees. Easy and Medium need only singles, Hard needs pointing, Expert more; every puzzle is made on the calculator, and each level keeps its best time.
 
 <br clear="right">
 

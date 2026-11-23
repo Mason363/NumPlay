@@ -19,3 +19,5 @@ OK  notes	OK  笔记
 DEL  undo	DEL  撤销
 shift  hint	shift  提示
 Back  menu	Back  菜单
+Auto-check on	自动检查：开
+Auto-check off	自动检查：关
