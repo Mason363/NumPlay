@@ -2,6 +2,7 @@ name: Foundation
 on:
   push:
     branches: [foundation/v0.1.0]
+    paths-ignore: ['docs/**']
   workflow_dispatch:
 permissions:
   contents: read
@@ -44,6 +45,7 @@ jobs:
           python3 tests/test_progress.py build/foundation/TwiliPlay.nwa --catalog build/foundation-games.json
           python3 tests/test_uninstall.py build/foundation/TwiliPlay.nwa --game numdrive
           python3 tests/test_small_ram.py build/foundation/TwiliPlay.nwa
+          python3 tests/test_foundation_launch.py build/foundation/TwiliPlay.nwa
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:

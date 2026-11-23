@@ -32,12 +32,18 @@ def check(out):
                   if s.name.startswith(".rodata.np.")}
         if list(blocks) != GAMES:
             raise ValueError(f"unexpected linked game sections: {list(blocks)}")
+        allocated = {s.name: s.data_size for s in sections if s["sh_flags"] & 2
+                     and s["sh_type"] != "SHT_NOBITS" and s.name != ".rodata.eadk_api_level"}
         ram = sum(s.data_size for s in sections if s["sh_flags"] & 3 == 3)
     extra = int((out / "gen/arena_extra").read_text())
-    print(f"Static writable sections: {ram} bytes; additional arena: {extra} bytes")
+    print(f"Static writable sections: {ram} bytes; additional arena: {extra} bytes; "
+          f"section-based RAM requirement: {ram + extra} bytes")
     for name, flash in blocks.items():
         info = json.loads((out / "modules" / f"{name}.json").read_text())
-        print(f"{name:14} flash with previews {flash:8}  data {info['data']:6}  bss {info['bss']:6}")
+        with (out / "kit" / "games" / f"{name}.o").open("rb") as stream:
+            shots = sum(s.data_size for s in ELFFile(stream).iter_sections()
+                        if s.name.endswith(".shots") and s["sh_flags"] & 2)
+        print(f"{name:14} previews {shots:7}  flash with previews {flash:8}  data {info['data']:6}  bss {info['bss']:6}")
     nwlink = shlex.split(os.environ.get("NWLINK", "nwlink"))
     start, end = 0x90180000, 0x903F0000
     for limit in (148928, 153676, 133652):
@@ -48,6 +54,10 @@ def check(out):
         installed = binary.stat().st_size
         print(f"RAM limit {limit}: passed; installed {installed}; "
               f"non-game flash {installed - sum(blocks.values())}; free {end-start-installed}")
+        print(f"Game table {allocated['.rodata.np_games']}; "
+              f"installer overhead including alignment {installed - sum(allocated.values())}")
+        if installed - sum(blocks.values()) > 102400:
+            raise ValueError("combined launcher, shared libraries and installer overhead exceed 100 KiB")
         if installed > end - start:
             raise ValueError("installed package exceeds N0120 Epsilon 26.4 app region")
 
