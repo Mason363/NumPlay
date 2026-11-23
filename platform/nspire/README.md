@@ -24,6 +24,9 @@ make port TARGET=nspire        (in a game's folder): build/nspire/<game>.tns
 | 0 to 9, + − × ÷ . , ( ) ^ x² π tan EE (−) | the same, (−) is Ans |
 | e^x | e^x |
 | A to Z, space, ?! | the NumWorks key with that letter (alpha's): A e^x, B ln, C log, D i, E , F ^, G sin, H cos, I tan, J π, K √, L x², M to O 7 to 9, P (, Q ), R to T 4 to 6, U ×, V ÷, W to Y 1 to 3, Z +, space −, ?! 0 |
+| doc, cat, =, trig, templates, flag, scratchpad, 10^x, θ, " ' : \| > < ? | nothing |
+
+A text file `numplay_keys.tns`, next to the game or in `/documents/ndless`, changes them for every game: lines `nspire key = numworks key` (`del = back`, `click = none`), read when the game starts ([docs/calculators/ti-nspire.md](../../docs/calculators/ti-nspire.md#your-own-keys) has the names). The game's folder comes from `main`'s `argv[0]`: `port.mk` links `main` through `__wrap_main` in `np_nspire.c`.
 
 Saves: `/documents/ndless/numplay_<game>.sav.tns`.
 

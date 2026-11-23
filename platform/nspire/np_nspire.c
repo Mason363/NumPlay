@@ -80,11 +80,13 @@ static void pause_ms(uint32_t ms) {
   else spin(ms * spin_ms), fallback_ms += ms;
 }
 
+static void keys_load(void);
 static void start(void) {
   if (started) return;
   started = true;
   lcd_init(SCR_320x240_565);
   timer_start();
+  keys_load();
 }
 
 /* ---- the screen ---- */
@@ -129,48 +131,153 @@ bool eadk_display_wait_for_vblank(void) {
   return true;
 }
 
-/* ---- the keys: the NumWorks keypad on the Nspire's ---- */
-#define K(n, k) {&KEY_NSPIRE_##n, k}
-static const struct {
+/* ---- the keys: the NumWorks keypad on the Nspire's, as numplay_keys.tns may change it ---- */
+/* Each Nspire key and the NumWorks key it gives (NONE: nothing), named as on the Nspire's keypad for
+ * numplay_keys.tns (docs/calculators/ti-nspire.md has the table). The letters give the NumWorks key that types each
+ * one with alpha (a e^x, b ln, c log, d i, g sin, h cos, k √...), space its minus and ?! its 0, as the NumWorks types
+ * them. On a CX, sin and cos are only there, as g and h. The keys at the end give nothing unless the file says. */
+#define NONE 0xFF
+typedef struct {
+  const char *name;
   const t_key *key;
-  eadk_key_t to;
-} KEYS[] = {
-  K(ENTER, eadk_key_ok), K(RET, eadk_key_exe), K(ESC, eadk_key_back),
-  K(HOME, eadk_key_home), K(DEL, eadk_key_backspace), K(SHIFT, eadk_key_shift), K(CTRL, eadk_key_alpha),
-  K(MENU, eadk_key_toolbox), K(VAR, eadk_key_var), K(TAB, eadk_key_xnt), K(0, eadk_key_zero), K(1, eadk_key_one),
-  K(2, eadk_key_two), K(3, eadk_key_three), K(4, eadk_key_four), K(5, eadk_key_five), K(6, eadk_key_six),
-  K(7, eadk_key_seven), K(8, eadk_key_eight), K(9, eadk_key_nine), K(PLUS, eadk_key_plus), K(MINUS, eadk_key_minus),
-  K(MULTIPLY, eadk_key_multiplication), K(DIVIDE, eadk_key_division), K(PERIOD, eadk_key_dot),
-  K(COMMA, eadk_key_comma), K(LP, eadk_key_left_parenthesis), K(RP, eadk_key_right_parenthesis),
-  K(EXP, eadk_key_power), K(SQU, eadk_key_square), K(PI, eadk_key_pi), K(SIN, eadk_key_sine), K(COS, eadk_key_cosine),
-  K(TAN, eadk_key_tangent), K(EE, eadk_key_ee), K(NEGATIVE, eadk_key_ans), K(eEXP, eadk_key_exp),
-  /* the letters: the NumWorks key that types each one with alpha (a e^x, b ln, c log, d i, g sin, h cos, k √...),
-     space its minus and ?! its 0, as the NumWorks types them. On a CX, sin and cos are only there, as g and h. */
-  K(A, eadk_key_exp), K(B, eadk_key_ln), K(C, eadk_key_log), K(D, eadk_key_imaginary), K(E, eadk_key_comma),
-  K(F, eadk_key_power), K(G, eadk_key_sine), K(H, eadk_key_cosine), K(I, eadk_key_tangent), K(J, eadk_key_pi),
-  K(K, eadk_key_sqrt), K(L, eadk_key_square), K(M, eadk_key_seven), K(N, eadk_key_eight), K(O, eadk_key_nine),
-  K(P, eadk_key_left_parenthesis), K(Q, eadk_key_right_parenthesis), K(R, eadk_key_four), K(S, eadk_key_five),
-  K(T, eadk_key_six), K(U, eadk_key_multiplication), K(V, eadk_key_division), K(W, eadk_key_one), K(X, eadk_key_two),
-  K(Y, eadk_key_three), K(Z, eadk_key_plus), K(SPACE, eadk_key_minus), K(QUESEXCL, eadk_key_zero),
+  uint8_t to;
+} nkey_t;
+#define K(s, n, k) {s, &KEY_NSPIRE_##n, k}
+static nkey_t KEYS[] = {
+  K("enter", ENTER, eadk_key_ok), K("return", RET, eadk_key_exe), K("esc", ESC, eadk_key_back),
+  K("home", HOME, eadk_key_home), K("del", DEL, eadk_key_backspace), K("shift", SHIFT, eadk_key_shift),
+  K("ctrl", CTRL, eadk_key_alpha), K("menu", MENU, eadk_key_toolbox), K("var", VAR, eadk_key_var),
+  K("tab", TAB, eadk_key_xnt), K("0", 0, eadk_key_zero), K("1", 1, eadk_key_one), K("2", 2, eadk_key_two),
+  K("3", 3, eadk_key_three), K("4", 4, eadk_key_four), K("5", 5, eadk_key_five), K("6", 6, eadk_key_six),
+  K("7", 7, eadk_key_seven), K("8", 8, eadk_key_eight), K("9", 9, eadk_key_nine), K("+", PLUS, eadk_key_plus),
+  K("-", MINUS, eadk_key_minus), K("*", MULTIPLY, eadk_key_multiplication), K("/", DIVIDE, eadk_key_division),
+  K(".", PERIOD, eadk_key_dot), K(",", COMMA, eadk_key_comma), K("(", LP, eadk_key_left_parenthesis),
+  K(")", RP, eadk_key_right_parenthesis), K("^", EXP, eadk_key_power), K("x2", SQU, eadk_key_square),
+  K("pi", PI, eadk_key_pi), K("sin", SIN, eadk_key_sine), K("cos", COS, eadk_key_cosine), K("tan", TAN, eadk_key_tangent),
+  K("ee", EE, eadk_key_ee), K("(-)", NEGATIVE, eadk_key_ans), K("e^x", eEXP, eadk_key_exp),
+  K("a", A, eadk_key_exp), K("b", B, eadk_key_ln), K("c", C, eadk_key_log), K("d", D, eadk_key_imaginary),
+  K("e", E, eadk_key_comma), K("f", F, eadk_key_power), K("g", G, eadk_key_sine), K("h", H, eadk_key_cosine),
+  K("i", I, eadk_key_tangent), K("j", J, eadk_key_pi), K("k", K, eadk_key_sqrt), K("l", L, eadk_key_square),
+  K("m", M, eadk_key_seven), K("n", N, eadk_key_eight), K("o", O, eadk_key_nine), K("p", P, eadk_key_left_parenthesis),
+  K("q", Q, eadk_key_right_parenthesis), K("r", R, eadk_key_four), K("s", S, eadk_key_five), K("t", T, eadk_key_six),
+  K("u", U, eadk_key_multiplication), K("v", V, eadk_key_division), K("w", W, eadk_key_one), K("x", X, eadk_key_two),
+  K("y", Y, eadk_key_three), K("z", Z, eadk_key_plus), K("space", SPACE, eadk_key_minus),
+  K("?!", QUESEXCL, eadk_key_zero),
+  K("doc", DOC, NONE), K("cat", CAT, NONE), K("=", EQU, NONE), K("trig", TRIG, NONE), K("templates", FRAC, NONE),
+  K("flag", FLAG, NONE), K("scratchpad", SCRATCHPAD, NONE), K("10^x", TENX, NONE), K("theta", THETA, NONE),
+  K("\"", QUOTE, NONE), K("'", APOSTROPHE, NONE), K(":", COLON, NONE), K("|", BAR, NONE), K(">", GTHAN, NONE),
+  K("<", LTHAN, NONE), K("?", QUES, NONE),
 };
-/* the arrows: the touchpad's regions (tpad_arrow_t, the corners two arrows, the middle OK), or the clickpad's keys */
-#define A(k) (1ull << eadk_key_##k)
-static const eadk_keyboard_state_t PAD[] = {0, A(up), A(up) | A(right), A(right), A(right) | A(down), A(down),
-                                           A(down) | A(left), A(left), A(left) | A(up), A(ok)};
+/* the arrows: the touchpad's regions (tpad_arrow_t: the corners two arrows, the middle the click), or the clickpad's
+ * keys; what each gives: up, right, down, left, the click */
+static uint8_t PAD_TO[5] = {eadk_key_up, eadk_key_right, eadk_key_down, eadk_key_left, eadk_key_ok};
+static const char *const PAD_NAMES[5] = {"up", "right", "down", "left", "click"};
+static eadk_keyboard_state_t PAD[10];
 static const t_key *const PAD_KEYS[] = {NULL, &KEY_NSPIRE_UP, &KEY_NSPIRE_UPRIGHT, &KEY_NSPIRE_RIGHT,
                                         &KEY_NSPIRE_RIGHTDOWN, &KEY_NSPIRE_DOWN, &KEY_NSPIRE_DOWNLEFT,
                                         &KEY_NSPIRE_LEFT, &KEY_NSPIRE_LEFTUP, &KEY_NSPIRE_CLICK};
+static eadk_keyboard_state_t pad_bit(int d) { return PAD_TO[d] == NONE ? 0 : (eadk_keyboard_state_t)1 << PAD_TO[d]; }
+static void pad_masks(void) {
+  static const int8_t DIRS[10][2] = {{-1, -1}, {0, -1}, {0, 1}, {1, -1}, {1, 2}, {2, -1}, {2, 3}, {3, -1}, {3, 0}, {4, -1}};
+  for (int i = 0; i < 10; i++) PAD[i] = (DIRS[i][0] < 0 ? 0 : pad_bit(DIRS[i][0])) | (DIRS[i][1] < 0 ? 0 : pad_bit(DIRS[i][1]));
+}
+
+/* The NumWorks keys by name, for numplay_keys.tns (with the digits' and the operators' signs) */
+static const struct {
+  const char *name;
+  uint8_t key;
+} NW[] = {
+  {"left", eadk_key_left}, {"up", eadk_key_up}, {"down", eadk_key_down}, {"right", eadk_key_right},
+  {"ok", eadk_key_ok}, {"back", eadk_key_back}, {"home", eadk_key_home}, {"onoff", eadk_key_on_off},
+  {"shift", eadk_key_shift}, {"alpha", eadk_key_alpha}, {"xnt", eadk_key_xnt}, {"x,n,t", eadk_key_xnt},
+  {"var", eadk_key_var}, {"toolbox", eadk_key_toolbox}, {"backspace", eadk_key_backspace}, {"exp", eadk_key_exp},
+  {"e^x", eadk_key_exp}, {"ln", eadk_key_ln}, {"log", eadk_key_log}, {"i", eadk_key_imaginary},
+  {"comma", eadk_key_comma}, {",", eadk_key_comma}, {"power", eadk_key_power}, {"^", eadk_key_power},
+  {"sin", eadk_key_sine}, {"cos", eadk_key_cosine}, {"tan", eadk_key_tangent}, {"pi", eadk_key_pi},
+  {"sqrt", eadk_key_sqrt}, {"square", eadk_key_square}, {"x2", eadk_key_square}, {"(", eadk_key_left_parenthesis},
+  {")", eadk_key_right_parenthesis}, {"*", eadk_key_multiplication}, {"/", eadk_key_division}, {"+", eadk_key_plus},
+  {"-", eadk_key_minus}, {"0", eadk_key_zero}, {"1", eadk_key_one}, {"2", eadk_key_two}, {"3", eadk_key_three},
+  {"4", eadk_key_four}, {"5", eadk_key_five}, {"6", eadk_key_six}, {"7", eadk_key_seven}, {"8", eadk_key_eight},
+  {"9", eadk_key_nine}, {".", eadk_key_dot}, {"ee", eadk_key_ee}, {"ans", eadk_key_ans}, {"exe", eadk_key_exe},
+  {"none", NONE},
+};
+
+/* numplay_keys.tns: lines "nspire key = numworks key" (# starts a note), as text, next to the game or in
+ * /documents/ndless; for every game. "del = back", "up = 8", "click = none"... */
+static const char *program; /* the game's file (main's argv[0]: port.mk links main through __wrap_main) */
+int __real_main(int argc, char **argv);
+int __wrap_main(int argc, char **argv) {
+  program = argc > 0 ? argv[0] : NULL;
+  return __real_main(argc, argv);
+}
+static char *trim(char *s) {
+  while (*s == ' ' || *s == '\t') s++;
+  char *e = s + strlen(s);
+  while (e > s && (e[-1] == ' ' || e[-1] == '\t')) *--e = 0;
+  for (char *p = s; *p; p++)
+    if (*p >= 'A' && *p <= 'Z') *p = (char)(*p - 'A' + 'a');
+  return s;
+}
+/* other names the keys go by (the signs as printed, as typed on a computer) */
+static const char *const ALIASES[][2] = {
+  {"ret", "return"}, {"x\xc2\xb2", "x2"}, {"\xc3\x97", "*"}, {"\xc3\xb7", "/"}, {"\xcf\x80", "pi"}, {"\xce\xb8", "theta"},
+  {"negative", "(-)"}, {"centre", "click"}, {"center", "click"}, {"multiply", "*"}, {"divide", "/"}, {"plus", "+"},
+  {"minus", "-"}, {"\xe2\x88\x9a", "sqrt"}, {"\xe2\x8c\xab", "backspace"},
+};
+static const char *alias(const char *s) {
+  for (unsigned i = 0; i < sizeof ALIASES / sizeof ALIASES[0]; i++)
+    if (!strcmp(s, ALIASES[i][0])) return ALIASES[i][1];
+  return s;
+}
+static void keys_line(char *line) {
+  char *a = trim(line), *eq = *a ? strchr(a + 1, '=') : NULL; /* (the key "=" itself: "= = ok") */
+  if (!eq) return;
+  *eq = 0;
+  const char *from = alias(trim(a)), *name = alias(trim(eq + 1));
+  int to = -1;
+  for (unsigned i = 0; i < sizeof NW / sizeof NW[0]; i++)
+    if (!strcmp(name, NW[i].name)) to = NW[i].key;
+  if (to < 0) return;
+  for (unsigned i = 0; i < sizeof KEYS / sizeof KEYS[0]; i++)
+    if (!strcmp(from, KEYS[i].name)) KEYS[i].to = (uint8_t)to;
+  for (int d = 0; d < 5; d++)
+    if (!strcmp(from, PAD_NAMES[d])) PAD_TO[d] = (uint8_t)to;
+}
+static void keys_load(void) {
+  char path[256] = "", text[4096];
+  if (program && strlen(program) < sizeof path - 20) {
+    strcpy(path, program);
+    char *slash = strrchr(path, '/');
+    if (slash) strcpy(slash + 1, "numplay_keys.tns");
+    else path[0] = 0;
+  }
+  NUC_FILE *f = path[0] ? nuc_fopen(path, "rb") : NULL;
+  if (!f) f = nuc_fopen("/documents/ndless/numplay_keys.tns", "rb");
+  if (f) {
+    size_t n = nuc_fread(text, 1, sizeof text - 1, f);
+    nuc_fclose(f);
+    text[n] = 0;
+    for (char *line = text, *next; *line; line = next) {
+      next = line + strcspn(line, "\r\n");
+      if (*next) *next++ = 0;
+      char *hash = strchr(line, '#');
+      if (hash) *hash = 0;
+      keys_line(line);
+    }
+  }
+  pad_masks();
+}
 static eadk_keyboard_state_t keys_now(void) {
   eadk_keyboard_state_t s = 0;
   for (unsigned i = 0; i < sizeof KEYS / sizeof KEYS[0]; i++)
-    if (isKeyPressed(*KEYS[i].key)) s |= (eadk_keyboard_state_t)1 << KEYS[i].to;
+    if (KEYS[i].to != NONE && isKeyPressed(*KEYS[i].key)) s |= (eadk_keyboard_state_t)1 << KEYS[i].to;
   if (is_touchpad) { /* read once: isKeyPressed reads it over I2C for each arrow */
     touchpad_report_t r;
     if (!touchpad_scan(&r) && r.pressed && r.arrow < sizeof PAD / sizeof PAD[0]) s |= PAD[r.arrow];
   } else
     for (unsigned i = 1; i < sizeof PAD / sizeof PAD[0]; i++)
       if (isKeyPressed(*PAD_KEYS[i])) s |= PAD[i];
-  if (on_key_pressed()) s |= A(home) | A(on_off);
+  if (on_key_pressed()) s |= (eadk_keyboard_state_t)1 << eadk_key_home | (eadk_keyboard_state_t)1 << eadk_key_on_off;
   return s;
 }
 eadk_keyboard_state_t eadk_keyboard_scan(void) {
