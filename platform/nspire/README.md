@@ -28,6 +28,8 @@ make port TARGET=nspire        (in a game's folder): build/nspire/<game>.tns
 
 A text file `numplay_keys.tns`, next to the game or in `/documents/ndless`, changes them for every game: lines `nspire key = numworks key` (`del = back`, `click = none`), read when the game starts ([docs/calculators/ti-nspire.md](../../docs/calculators/ti-nspire.md#your-own-keys) has the names). The game's folder comes from `main`'s `argv[0]`: `port.mk` links `main` through `__wrap_main` in `np_nspire.c`.
 
+The screen: a game draws into a buffer, shown whole where a frame ends: where the game waits (`eadk_display_wait_for_vblank`, `eadk_timing_msleep`, `eadk_event_get`) or, in a game that doesn't wait between frames, where it reads the keys. A frame drawn for long with neither (a loading screen) is shown as it goes, after twice the time between the last two frames (300 ms to 1 s). A game reading the keys while it draws, and waiting only sometimes, marks its frames' end with `eadk_timing_msleep(0)` (NumDash).
+
 Saves: `/documents/ndless/numplay_<game>.sav.tns`.
 
 Time: the second fast timer counts at 32768 Hz while a game runs and is put back after. Waits read it: never Ndless's `msleep`, which waits for the timer's interrupt with every other one masked, ON's too, and on real calculators hung for good in the games that call it hundreds of times a second. `tools/nspire_emu.py` reports a call to it.

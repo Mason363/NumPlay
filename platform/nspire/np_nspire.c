@@ -31,7 +31,7 @@ __asm__(".section .bss\n.balign 16\n.globl _heap_start\n_heap_start:\n.space 104
 static uint16_t fb[EADK_SCREEN_WIDTH * EADK_SCREEN_HEIGHT];
 static bool started, dirty, timer_ok;
 static uint64_t fallback_ms;
-static uint32_t last_blit;
+static uint32_t last_blit, drawn_at, waited_at, frame_ms;
 /* the keys pressed while a frame is drawn (platform/common/np_keys_drawn.h): push_rect reads them when 30 ms have gone
    by since the last read. A game reads the keyboard once a frame, and at a few frames a second a tap came and went
    between two reads (Temple Run's turns, Mason363/NumPlay#446). A game reading the keys every 30 ms or sooner (over
@@ -90,12 +90,30 @@ static void start(void) {
 }
 
 /* ---- the screen ---- */
+/* What the game draws goes to fb, and fb to the screen whole where a frame ends: where the game waits
+ * (wait_for_vblank, msleep, event_get) or, in a game that doesn't wait between its frames, where it reads the keys.
+ * Shown from push_rect every 16 ms, as it was, a frame came out split, the old one under the new (NumDash's
+ * levels, Dune's selection outline, Mason363/NumPlay#446). A frame drawn for long with neither (a loading screen)
+ * is shown as it goes: after twice the time between the last two frames, from 300 ms to 1 s. */
+static uint32_t clamp_ms(uint32_t ms, uint32_t lo, uint32_t hi) { return ms < lo ? lo : ms > hi ? hi : ms; }
 static void blit(void) {
   if (!dirty) return;
   dirty = false;
   lcd_blit(fb, SCR_320x240_565);
   if (!timer_ok) fallback_ms += 16;
-  last_blit = (uint32_t)eadk_timing_millis(); /* (a game showing its frames: none half drawn from push_rect) */
+  uint32_t now = (uint32_t)eadk_timing_millis();
+  frame_ms = now - last_blit, last_blit = now;
+}
+/* the game waits: its frame is drawn */
+static void waits(void) {
+  blit();
+  waited_at = (uint32_t)eadk_timing_millis();
+}
+static void drawn(void) {
+  uint32_t now = (uint32_t)eadk_timing_millis();
+  if (!dirty) dirty = true, drawn_at = now;
+  else if (now - drawn_at >= clamp_ms(2 * frame_ms, 300, 1000)) blit();
+  if (now - keys_read >= 30) np_keys_drawing(keys_now()), keys_read = now;
 }
 void eadk_display_push_rect(eadk_rect_t r, const eadk_color_t *px) {
   start();
@@ -103,16 +121,13 @@ void eadk_display_push_rect(eadk_rect_t r, const eadk_color_t *px) {
     int w = r.x + r.width > EADK_SCREEN_WIDTH ? EADK_SCREEN_WIDTH - r.x : r.width;
     if (w > 0) memcpy(&fb[(r.y + y) * EADK_SCREEN_WIDTH + r.x], px + y * r.width, (size_t)w * 2);
   }
-  dirty = true;
-  uint32_t now = (uint32_t)eadk_timing_millis();
-  if (now - last_blit >= 16) blit();
-  if (now - keys_read >= 30) np_keys_drawing(keys_now()), keys_read = now;
+  drawn();
 }
 void eadk_display_push_rect_uniform(eadk_rect_t r, eadk_color_t c) {
   start();
   for (int y = r.y; y < r.y + r.height && y < EADK_SCREEN_HEIGHT; y++)
     for (int x = r.x; x < r.x + r.width && x < EADK_SCREEN_WIDTH; x++) fb[y * EADK_SCREEN_WIDTH + x] = c;
-  dirty = true;
+  if (!dirty) dirty = true, drawn_at = (uint32_t)eadk_timing_millis(); /* (games fill a pixel a call: no more here) */
 }
 void eadk_display_pull_rect(eadk_rect_t r, eadk_color_t *px) {
   for (int y = 0; y < r.height; y++)
@@ -123,7 +138,7 @@ void eadk_display_pull_rect(eadk_rect_t r, eadk_color_t *px) {
 }
 bool eadk_display_wait_for_vblank(void) {
   start();
-  blit();
+  waits();
   if (timer_ok) { /* as the NumWorks's: till the screen's next refresh, 60 a second (games pace themselves by it) */
     uint64_t now = ticks(), next = (now * 60 / 32768 + 1) * 32768 / 60;
     np_nspire_pause((uint32_t)(next - now));
@@ -307,17 +322,17 @@ static eadk_keyboard_state_t keys_now(void) {
 }
 eadk_keyboard_state_t eadk_keyboard_scan(void) {
   start();
-  /* what was drawn and isn't shown yet, once 16 ms have gone by: a game waiting for a key in a loop of its own,
-     drawing nothing more, shows its last lines too */
+  /* the frame's end in a game that doesn't wait between frames (60 a second at most): not in one that waited
+     lately, whose keys may be read while it draws (NumDash reads them between its strips) */
   uint32_t now = (uint32_t)eadk_timing_millis();
-  if (dirty && now - last_blit >= 16) blit();
+  if (dirty && now - last_blit >= 16 && now - waited_at >= clamp_ms(2 * frame_ms, 100, 1000)) blit();
   keys_read = now;
   return np_keys_scan(keys_now());
 }
 eadk_event_t eadk_event_get(int32_t *timeout) {
   static eadk_keyboard_state_t before = ~(eadk_keyboard_state_t)0;
   uint64_t until = eadk_timing_millis() + (uint64_t)(timeout && *timeout > 0 ? *timeout : 0);
-  blit(); /* (what was drawn is shown while the key is awaited) */
+  waits(); /* (what was drawn is shown while the key is awaited) */
   do {
     eadk_keyboard_state_t now = eadk_keyboard_scan(), hit = now & ~before;
     before = now;
@@ -336,7 +351,7 @@ uint64_t eadk_timing_millis(void) {
 }
 void eadk_timing_msleep(uint32_t ms) {
   start();
-  blit();
+  waits();
   pause_ms(ms);
 }
 void eadk_timing_usleep(uint32_t us) { eadk_timing_msleep((us + 999) / 1000); }
