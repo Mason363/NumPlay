@@ -11,7 +11,7 @@ void np_push(int x, int y, int w, int h, const color_t *px) { plat_push(x, y, w,
 /* ------------------------------------------------------------------------------------------------ RAM */
 /* the bold letters (kept), then a song's or the menus' pictures */
 #define POOL (FNF_BOLD_BYTES + FNF_CAST_MAX + FNF_HUD_MAX + 2 * FNF_ICON_MAX + FNF_TRANSIENT_MAX + 1024)
-static uint8_t bg_px[FNF_BG_BYTES];
+static uint8_t bg_px[FNF_BG_BYTES] __attribute__((aligned(4)));   /* (the game over's frames are XORed in words) */
 static uint8_t pool[POOL];
 static uint32_t used, base;
 static color_t *strip;   /* (on main's stack: draw_strip_buffer) */
@@ -327,7 +327,24 @@ typedef struct {
   bool down;
   int32_t since;
   float cam, hud;
+  int fade;                       /* coming up from black after a game over (play_fade) */
+  bool fade_tenths;
 } scene_t;
+
+/* subtracting tenths of white (RetroCameraFade's), or mixing with black (FlxCamera.fade's) */
+void strip_darken(int v, bool tenths) {
+  if (v <= 0) return;
+  if (!tenths) {
+    gfx_fill_alpha(0, gfx_y0, SCREEN_W, gfx_y1 - gfx_y0, 0, v > 256 ? 256 : v);
+    return;
+  }
+  int dr = v * 31 / 10, dg = v * 63 / 10;
+  color_t *p = gfx_buf, *end = gfx_buf + (gfx_y1 - gfx_y0) * SCREEN_W;
+  for (; p < end; p++) {
+    int c = *p, r = (c >> 11) - dr, g = (c >> 5 & 63) - dg, b = (c & 31) - dr;
+    *p = (color_t)((r < 0 ? 0 : r) << 11 | (g < 0 ? 0 : g) << 5 | (b < 0 ? 0 : b));
+  }
+}
 
 static void strip_scene(const scene_t *sc) {
   const fnf_game_t *g = sc->g;
@@ -362,6 +379,8 @@ static void strip_scene(const scene_t *sc) {
     if (dark) blit_tinted(&S.actor[i], fx + S.actor[i].x, fy + S.actor[i].y, 0, dark * 32 / 1000);
     else blit(&S.actor[i], fx + S.actor[i].x, fy + S.actor[i].y, 32, false);
   }
+  /* (the game's camera fading in; the HUD's camera doesn't) */
+  strip_darken(sc->fade, sc->fade_tenths);
   /* ---- the HUD */
   float h = sc->hud;
   bool down = sc->down;
@@ -531,10 +550,119 @@ void play_prepare(const fnf_game_t *g, bool downscroll, int32_t since_start) {
 
 void play_strip(void) { strip_scene(&scene); }
 
-/* one character alone, on black (the game over) */
+void play_fade(int v, bool tenths) { scene.fade = v, scene.fade_tenths = tenths; }
+
+/* one character alone, on black (a game over without death animations) */
 void play_actor_strip(const fnf_game_t *g, int i) {
   gfx_fill(0, gfx_y0, SCREEN_W, gfx_y1 - gfx_y0, 0);
   const fnf_actor_t *a = &g->actor[i];
   if (a->chr != 255 && S.actor[i].px && S.actor[i].id != FNF_NONE)
     blit(&S.actor[i], a->x + S.actor[i].x, a->y + S.actor[i].y, 32, false);
+}
+
+/* ------------------------------------------------------------------------------------------------ the game over */
+/* an animation's frame, unpacked: frame 0, then each next one XORed in */
+typedef struct {
+  const fnf_death_anim_t *an;
+  int k;                          /* the frame in pic (-1 none) */
+  uint32_t at;                    /* the next frame's place in fnf_blob */
+  pic_t pic;
+  uint8_t *tmp;                   /* (a frame's XOR, unpacked) */
+} death_pic_t;
+
+static struct {
+  const fnf_game_t *g;
+  const fnf_death_t *d;
+  death_pic_t body, knife;
+  bool body_on, knife_on;
+  int bx, by, kx, ky;             /* where they're drawn */
+} O;
+
+const fnf_death_t *over_death(const fnf_game_t *g) {
+  const fnf_actor_t *a = &g->actor[ROLE_PLAYER];
+  return a->chr == 255 || fnf_char[a->chr].death == 255 ? 0 : &fnf_death[fnf_char[a->chr].death];
+}
+
+static uint32_t raw_size(const fnf_death_anim_t *an) { return ((an->w + 1u) / 2 * an->h + 3) & ~3u; }
+
+bool over_begin(const fnf_game_t *g) {
+  memset(&O, 0, sizeof O);
+  O.g = g;
+  O.d = over_death(g);
+  if (!O.d || O.d->anim == FNF_NONE) return false;
+  /* the background isn't drawn: its RAM holds the frames (play_load and the menus unpack it again) */
+  uint32_t cap = 0;
+  for (int i = 0; i < 3; i++)
+    if (raw_size(&fnf_death_anim[O.d->anim + i]) > cap) cap = raw_size(&fnf_death_anim[O.d->anim + i]);
+  uint8_t *p = bg_px;
+  O.body.pic.px = p, O.body.tmp = p + cap, O.body.k = -1;
+  if (O.d->knife != FNF_NONE) {
+    uint32_t n = raw_size(&fnf_death_anim[O.d->knife]);
+    O.knife.pic.px = p + 2 * cap, O.knife.tmp = p + 2 * cap + n, O.knife.k = -1;
+  }
+  return true;
+}
+
+static bool death_seek(death_pic_t *p, const fnf_death_anim_t *an, int k) {
+  uint32_t n = (an->w + 1u) / 2 * an->h;
+  if (p->an != an || p->k < 0 || k < p->k) {   /* (from frame 0) */
+    p->an = an, p->k = -1;
+    uint8_t *px = p->pic.px;
+    p->pic = (pic_t){FNF_NONE, an->w, an->h, (uint16_t)((an->w + 1) / 2), an->x, an->y, fnf_palette[an->pal], px};
+    if (fnf_inflate(fnf_blob + an->at, fnf_death_size[an->frame], px, n) != (int32_t)n) return false;
+    p->k = 0, p->at = an->at + fnf_death_size[an->frame];
+  }
+  while (p->k < k) {
+    uint16_t size = fnf_death_size[an->frame + p->k + 1];
+    if (size) {
+      if (fnf_inflate(fnf_blob + p->at, size, p->tmp, n) != (int32_t)n) return p->k = -1, false;
+      uint32_t *d = (uint32_t *)p->pic.px;
+      const uint32_t *s = (const uint32_t *)p->tmp;
+      for (uint32_t i = 0; i < (n + 3) / 4; i++) d[i] ^= s[i];   /* (a word past the frame's end is its room's) */
+    }
+    p->at += size, p->k++;
+  }
+  return true;
+}
+
+/* the frame shown ms into an animation (a loop starts again) */
+static int death_frame(const fnf_death_anim_t *an, uint32_t ms, bool loop) {
+  uint32_t f = (uint32_t)((uint64_t)ms * an->fps / 1000);
+  if (loop) f %= an->len ? an->len : 1;
+  f /= an->step;
+  return f >= an->n ? an->n - 1 : (int)f;
+}
+
+void over_prepare(const fnf_game_t *g, int anim, uint32_t anim_ms, uint32_t since_ms) {
+  O.body_on = O.knife_on = false;
+  if (!O.d || O.d->anim == FNF_NONE || O.g != g) return;
+  /* the camera follows the death's focus from the stage's view: 2% of the way each 1/60 s
+     (FlxCamera.follow at Constants.DEFAULT_CAMERA_FOLLOW_RATE / 2) */
+  const fnf_actor_t *a = &g->actor[ROLE_PLAYER];
+  float k = 1 - powf(0.98f, since_ms * 0.06f);
+  int ox = (int)lroundf((a->x + O.d->cam[0] - SCREEN_W / 2) * k);
+  int oy = (int)lroundf((a->y + O.d->cam[1] - SCREEN_H / 2) * k);
+  const fnf_death_anim_t *an = &fnf_death_anim[O.d->anim + anim];
+  O.body_on = death_seek(&O.body, an, death_frame(an, anim_ms, anim == 1));
+  O.bx = a->x + an->x - ox, O.by = a->y + an->y - oy;
+  /* Nene's knife toss, once, from Girlfriend's place */
+  const fnf_actor_t *gf = &g->actor[ROLE_GF];
+  if (O.d->knife != FNF_NONE && gf->chr != 255) {
+    const fnf_death_anim_t *kn = &fnf_death_anim[O.d->knife];
+    if ((uint64_t)since_ms * kn->fps / 1000 < kn->len) {
+      O.knife_on = death_seek(&O.knife, kn, death_frame(kn, since_ms, false));
+      O.kx = gf->x + fnf_char[gf->chr].top[0] + O.d->knife_at[0] + kn->x - ox;
+      O.ky = gf->y + fnf_char[gf->chr].top[1] + O.d->knife_at[1] + kn->y - oy;
+    }
+  }
+}
+
+void over_strip(void) {
+  if (O.g && (!O.d || O.d->anim == FNF_NONE)) {
+    play_actor_strip(O.g, ROLE_PLAYER);
+    return;
+  }
+  gfx_fill(0, gfx_y0, SCREEN_W, gfx_y1 - gfx_y0, 0);
+  if (O.knife_on) blit(&O.knife.pic, O.kx, O.ky, 32, false);   /* (behind Pico) */
+  if (O.body_on) blit(&O.body.pic, O.bx, O.by, 32, false);
 }

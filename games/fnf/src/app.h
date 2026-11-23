@@ -27,6 +27,10 @@ typedef struct {
   uint32_t clock;                 /* ms, for the menus' beat */
   uint32_t menu_at;               /* when the screen came up */
   uint32_t play_t0;               /* when the song's screen came up (its arrows fade in) */
+  uint32_t over_at, over_anim_at; /* the game over: when it came up, and when its animation started */
+  uint8_t over_anim;              /* 0 firstDeath, 1 deathLoop, 2 deathConfirm (OK pressed: then it fades out) */
+  uint8_t fade_steps;             /* (the fades go in ten steps) */
+  uint32_t fade_at;               /* a song started again from the game over comes up from black (0: not) */
   fnf_progress_t *p;
   fnf_game_t *g;
 } app_t;

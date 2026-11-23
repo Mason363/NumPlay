@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Friday Night Funkin' for the calculator, from the game's own files: its charts, characters, stages, notes and
-menus, packed into C tables (data.c and ids.h in OUT). The pictures and charts are the Funkin' Crew's and are not
-in this repository: tools/fetch.py brings the files this reads (tools/ref.txt) from their funkin.assets repository.
+"""Friday Night Funkin' for the calculator, from the game's own files: its charts, characters, stages, notes,
+menus and the players' deaths, packed into C tables (data.c and ids.h in OUT). The pictures and charts are the
+Funkin' Crew's and are not in this repository: tools/fetch.py brings the files this reads (tools/ref.txt) from their
+funkin.assets repository.
 
   python3 -I tools/data.py REF OUT        REF: funkin.assets at the pinned commit (tools/fetch.py)
       [--list FILE]                       also write the files read, with their git blob hashes (tools/ref.txt)
@@ -261,6 +262,7 @@ class Characters:
         self.name_ids = {}
         self.stage_scale = stage_scale
         self.world = {}
+        self.info = {}   # what the game over needs of each character (Deaths)
         for n in names:
             self.convert(n, wanted_anims.get(n, set()))
 
@@ -268,6 +270,12 @@ class Characters:
         if name not in self.name_ids:
             self.name_ids[name] = len(self.name_ids)
         return self.name_ids[name]
+
+    def hitbox(self, path, spec):
+        leaves, _ = self.ref.frames(path, spec, [0])
+        if Path(path).with_suffix(".xml").exists():
+            return self.ref.boxes[0]
+        return bounds(leaves[0])
 
     def icon(self, ident):
         """A health icon (its frames: normal, losing, winning), by its id."""
@@ -343,6 +351,14 @@ class Characters:
         # where the game puts them from there (the character's own global offsets only move them all together)
         iox, ioy = picked[idle][3]
         k = scale * CHAR_SCALE
+        # the box the game measures the character by (its hitbox: a Sparrow frame's whole size, an atlas' drawing):
+        # the camera looks at its middle, and Nene's knife comes from its top left
+        ispec = anims[idle]
+        hb = self.hitbox(self.ref.path(ispec["assetPath"]) if ispec.get("assetPath") else base, ispec)
+        if flip:
+            hb = (2 * cx - hb[2], hb[1], 2 * cx - hb[0], hb[3])
+        self.info[name] = dict(cfg=cfg, anims=anims, base=base, scale=scale, flip=flip, cx=cx, foot=foot,
+                               io=(iox, ioy), hit=hb, pixel=bool(cfg.get("isPixel", False)))
         images = []
         for a, (picks, leaves, length, (ox, oy), fps, loop) in picked.items():
             for lv in leaves:
@@ -381,7 +397,8 @@ class Characters:
         owner |= 16 if hi.get("flipX", False) else 0   # (its health icon faces the other way)
         self.rows.append(dict(name=name, owner=owner, anim=first, count=len(self.anims) - first, dance=round(dance * 4),
                               sing=min(255, round(sing)), alternate=alternate, slot=slot, icon=icon,
-                              pixel=bool(cfg.get("isPixel", False))))
+                              pixel=bool(cfg.get("isPixel", False)), death=255,
+                              top=[round((hb[0] - cx) * k), round((hb[1] - foot) * k)]))
         self.world[name] = (box[2] - box[0]) * scale, (box[3] - box[1]) * scale
         print(f"  {name}: {len(picked)} animations, {len(images)} frames, {self.pics.bytes.get('characters', 0)} bytes so far",
               file=sys.stderr)
@@ -400,6 +417,157 @@ class Characters:
                 if all(a == 255 for a in anims):
                     continue
                 self.kinds.append((ci, ki, anims))
+
+
+# ------------------------------------------------------------------------------------------------- the game over
+# GameOverSubState: the player's firstDeath, then deathLoop until a key, then deathConfirm. Each animation keeps every
+# frame it shows (every DEATH_STEP-th: 1, the original's 24 a second), in one box round all of them: frame 0 whole,
+# each next one XORed with the one before (most of it stays the same), DEFLATE-packed, one after the other in the
+# blob (0 bytes: no change).
+DEATH_ANIMS = ["firstDeath", "deathLoop", "deathConfirm"]
+DEATH_STEP = 1
+# the players whose deaths are packed; the others (Pico in his Week 5 and 6 remixes and in Stress's) would cost 57,
+# 28 and 132 KB more, with Nene's knife besides, and keep their last frame on black
+DEATHS = {"bf", "bf-car", "bf-dark", "bf-christmas", "bf-holding-gf", "bf-pixel", "pico-playable", "pico-dark",
+          "pico-blazin", "sserafim-sakura"}
+# the game over's music, as the characters' scripts set GameOverSubState.musicSuffix; the screen fades a seventh of
+# its end music's length after a retry (gameOverEnd<suffix>.ogg, measured: ms)
+DEATH_MUSIC = {"bf-pixel": "-pixel", "pico-pixel": "-pixel-pico", "pico-playable": "-pico", "pico-dark": "-pico",
+               "pico-christmas": "-pico", "pico-blazin": "-pico", "pico-holding-nene": "-pico"}
+GAMEOVER_END_MS = {"": 7210, "-pico": 2703, "-pixel": 4800, "-pixel-pico": 2667}
+# deathLoop before firstDeath ends: at its frame 35, as Pico's script does (PicoPlayerBaseCharacter.onAnimationFrame),
+# and after 1.25 s in Blazin' (pico-blazin.hxc)
+DEATH_LOOP_AT = {"pico-playable": 35, "pico-dark": 35, "pico-christmas": 35, "pico-blazin": 30}
+# Nene throwing her knife as Pico dies: a sprite from Girlfriend's top left + (120, 0) (createDeathSprites)
+DEATH_KNIFE = {"pico-playable": ("characters/NeneKnifeToss", "knife toss0", 120, 0),
+               "pico-dark": ("characters/NeneKnifeToss", "knife toss0", 120, 0)}
+# the camera ends on the hitbox's middle + the death's cameraOffsets; these two atlases' hitboxes can't be worked
+# out from their files (it would look far off the body), so it ends on the deathLoop's middle
+DEATH_CAMERA_ON_LOOP = {"pico-blazin", "sserafim-sakura"}
+# LE SSERAFIM's Sakura dies as Boyfriend does, his frames at his size: at her camera's 1.5 zoom they'd cost 29 KB more
+DEATH_UNZOOMED = {"sserafim-sakura"}
+DF_PIXEL = 1   # the fades go in ten steps (RetroCameraFade, for the "-pixel" music)
+
+
+class Deaths:
+    """Each player's game over (fnf_death), its animations (fnf_death_anim) and their frames' sizes."""
+
+    def __init__(self, ref, pics, chars):
+        self.ref, self.pics, self.chars = ref, pics, chars
+        self.rows, self.anims, self.sizes = [], [], []
+        self.sets = {}
+        self.ram = 0
+        for name in sorted(chars.players):
+            self.convert(name)
+
+    def render(self, path, spec, k, flip, pixel, seen=None):
+        """An animation's frames (every DEATH_STEP-th, of the first `seen`) at scale k, in the sheet's units scaled:
+        [(image, x, y)]; and its length."""
+        _, length = self.ref.frames(path, spec, [0])
+        picks = list(range(0, min(length, seen or length), DEATH_STEP))
+        leaves, _ = self.ref.frames(path, spec, picks)
+        out = []
+        for lv in leaves:
+            if flip:
+                lv = [(im, multiply((-1, 0, 0, 1, 0, 0), m), al) for im, m, al in lv]
+            out.append(flatten(lv, k, resample=Image.Resampling.NEAREST if pixel else Image.Resampling.BICUBIC))
+        return out, length
+
+    def pack(self, frames_by_anim):
+        """One palette for them all; each animation's frames delta-packed into the blob. [(x, y, w, h, pal, at,
+        first size, n)]"""
+        colours, idx = quantize([im for frames in frames_by_anim for im, _, _ in frames])
+        pal = self.pics.palette(colours)
+        it = iter(idx)
+        out = []
+        for frames in frames_by_anim:
+            x0, y0 = min(x for _, x, _ in frames), min(y for _, _, y in frames)
+            w = max(x + im.width for im, x, _ in frames) - x0
+            h = max(y + im.height for im, _, y in frames) - y0
+            row = (w + 1) // 2
+            at, first, prev = len(self.pics.blob.data), len(self.sizes), None
+            for im, x, y in frames:
+                full = np.zeros((h, row * 2), np.uint8)
+                full[y - y0:y - y0 + im.height, x - x0:x - x0 + im.width] = \
+                    np.frombuffer(next(it), np.uint8).reshape(im.height, im.width)
+                packed = (full[:, 0::2] | full[:, 1::2] << 4).astype(np.uint8)
+                if prev is None:
+                    z = deflate(packed.tobytes())
+                elif (packed == prev).all():
+                    z = b""
+                else:
+                    z = deflate((packed ^ prev).tobytes())
+                prev = packed
+                self.pics.blob.data += z   # (in a row, not shared: each frame's place is the one before's end)
+                self.pics.bytes["deaths"] = self.pics.bytes.get("deaths", 0) + len(z)
+                self.sizes.append(len(z))
+            out.append((x0, y0, w, h, pal, at, first, len(frames)))
+        return out
+
+    def convert(self, name):
+        info = self.chars.info[name]
+        cfg, anims = info["cfg"], info["anims"]
+        music = DEATH_MUSIC.get(name, "")
+        flags = DF_PIXEL if "-pixel" in music else 0
+        row = dict(anim=0xFFFF, knife=0xFFFF, cam=[0, 0], knife_at=[0, 0], fade=round(GAMEOVER_END_MS[music] / 7),
+                   loop_at=DEATH_LOOP_AT.get(name, 0), flags=flags)
+        self.chars.rows[self.chars.index[name]]["death"] = len(self.rows)
+        self.rows.append(row)
+        if name not in DEATHS or any(a not in anims for a in DEATH_ANIMS):
+            return
+        # the camera zooms to the death's cameraZoom (from the song's): drawn that much bigger, round the feet
+        death = cfg.get("death") or {}
+        zoom = 1.0 if name in DEATH_UNZOOMED else float(death.get("cameraZoom", 1))
+        k = info["scale"] * CHAR_SCALE * zoom
+        cx, foot, (iox, ioy) = info["cx"], info["foot"], info["io"]
+        specs = [anims[a] for a in DEATH_ANIMS]
+        paths = [self.ref.path(s["assetPath"]) if s.get("assetPath") else info["base"] for s in specs]
+        # the frames ever seen: firstDeath's until deathLoop takes over, deathConfirm's until the song starts again
+        fps = [int(s.get("frameRate", 24)) for s in specs]
+        seen = [row["loop_at"] or None, None, (row["fade"] + 2000) * fps[2] // 1000 + 1]
+        what = tuple(json.dumps([s.get(x) for x in ("prefix", "frameIndices", "animType")]) for s in specs)
+        key = (tuple(str(p) for p in paths), what, k, info["flip"], info["pixel"], tuple(seen))
+        if key not in self.sets:   # (Boyfriend's, in Week 4, Erect's and LE SSERAFIM's, share one)
+            rendered = [self.render(p, s, k, info["flip"], info["pixel"], n) for p, s, n in zip(paths, specs, seen)]
+            self.sets[key] = (self.pack([f for f, _ in rendered]), [ln for _, ln in rendered])
+        packed, lengths = self.sets[key]
+        # each animation where the game draws it from the idle frame (its offsets), from the feet
+        row["anim"] = len(self.anims)
+        raw = 0
+        for (x0, y0, w, h, pal, at, first, n), length, s, f in zip(packed, lengths, specs, fps):
+            ox, oy = s.get("offsets", [0, 0])
+            dx = ((cx if info["flip"] else -cx) - (ox - iox)) * k
+            dy = (-foot - (oy - ioy)) * k
+            self.anims.append([x0 + round(dx), y0 + round(dy), w, h, pal, n, DEATH_STEP, min(255, length), f, first,
+                               at])
+            raw = max(raw, ((w + 1) // 2 * h + 3) & ~3)
+        offsets = [v * zoom for v in death.get("cameraOffsets", [0, 0])]
+        if name in DEATH_CAMERA_ON_LOOP:
+            x, y, w, h = self.anims[row["anim"] + 1][:4]
+            row["cam"] = [x + w // 2, y + h // 2]
+        else:
+            hb = info["hit"]
+            row["cam"] = [round(((hb[0] + hb[2]) / 2 - cx) * k + offsets[0] * CHAR_SCALE),
+                          round(((hb[1] + hb[3]) / 2 - foot) * k + offsets[1] * CHAR_SCALE)]
+        ram = 2 * raw   # (draw.c: each frame unpacked, and the next one's XOR, in words)
+        if name in DEATH_KNIFE:
+            sheet, prefix, kx, ky = DEATH_KNIFE[name]
+            path = self.ref.path(sheet)
+            # (flixel plays a prefix's frames in the order of their numbers, not the file's)
+            names = [f[0] for f in self.ref.sparrow(path) if f[0].startswith(prefix)]
+            order = sorted(range(len(names)), key=lambda i: int(re.sub(r"\D", "", names[i][len(prefix):]) or 0))
+            key = (str(path), prefix)
+            if key not in self.sets:
+                frames, length = self.render(path, dict(prefix=prefix, frameIndices=order), CHAR_SCALE, False, False)
+                self.sets[key] = (self.pack([frames]), [length])
+            (x0, y0, w, h, pal, at, first, n), = self.sets[key][0]
+            row["knife"] = len(self.anims)
+            self.anims.append([x0, y0, w, h, pal, n, DEATH_STEP, self.sets[key][1][0], 24, first, at])
+            row["knife_at"] = [round(kx * CHAR_SCALE), round(ky * CHAR_SCALE)]
+            ram += 2 * (((w + 1) // 2 * h + 3) & ~3)
+        self.ram = max(self.ram, ram)
+        print(f"  {name}: {sum(self.anims[row['anim'] + i][5] for i in range(3))} frames, "
+              f"{self.pics.bytes.get('deaths', 0)} bytes so far", file=sys.stderr)
 
 
 def crop_idx(idx, w, h, b):
@@ -930,6 +1098,12 @@ def main():
                 im.alpha_composite(pim, (max(0, fx + x), max(0, fy + y)))
             im.save(DEBUG / f"scene-{st['name']}.png")
     chars.kind_rows(charts.kinds)
+    print("game over", file=sys.stderr)
+    deaths = Deaths(ref, pics, chars)
+    if deaths.ram > SCREEN_W * SCREEN_H // 2:
+        die(f"a death needs {deaths.ram} bytes unpacked, more than the background's")
+    if any(a[5] > 255 for a in deaths.anims):
+        die("a death animation has more than 255 frames")
     # ---- write
     h = ["/* Made by tools/data.py from the game's own files (see tools/ref.txt). */", "#ifndef FNF_IDS_H",
          "#define FNF_IDS_H"]
@@ -938,6 +1112,8 @@ def main():
                   ICONS=len(chars.icon_rows), STAGES=len(stages.rows), TEMPOS=len(charts.tempos),
                   EVENTS=len(charts.events), CHARTS=len(charts.charts), VARS=len(charts.vars),
                   SONGS=len(charts.rows), LEVELS=len(songs.levels), BLOB=len(blob.data),
+                  DEATHS=len(deaths.rows), DEATH_ANIMS=max(1, len(deaths.anims)),
+                  DEATH_FRAMES=max(1, len(deaths.sizes)), DEATH_RAM=deaths.ram,
                   CHART_RAW_MAX=charts.max_raw, CHART_NOTES_MAX=charts.max_notes)
     # RAM: what a song needs unpacked (tools/data.py works it out; draw.c lays it out)
     def raw(i):
@@ -989,7 +1165,11 @@ def main():
     c += c_array("fnf_char_t", "fnf_char", [[r["anim"], r["count"], r["dance"], r["sing"],
                                               (1 if r["alternate"] else 0) | (2 if r["pixel"] else 0) | r["owner"],
                                               r["icon"],
-                                              r["slot"], r["frame_max"]] for r in chars.rows])
+                                              r["slot"], r["death"], r["frame_max"], r["top"]] for r in chars.rows])
+    c += c_array("fnf_death_t", "fnf_death", [[r["anim"], r["knife"], r["cam"], r["knife_at"], r["fade"],
+                                               r["loop_at"], r["flags"]] for r in deaths.rows])
+    c += c_array("fnf_death_anim_t", "fnf_death_anim", deaths.anims or [[0] * 11])
+    c += c_array("uint16_t", "fnf_death_size", deaths.sizes or [0])
     c += c_array("fnf_kind_t", "fnf_kind", [[ci, ki, an] for ci, ki, an in chars.kinds] or [[255, 255, [255] * 4]])
     c += c_array("uint16_t", "fnf_icon", chars.icon_rows, "[3]")
     order_ix = {"bf": 0, "dad": 1, "gf": 2}
