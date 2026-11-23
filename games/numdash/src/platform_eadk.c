@@ -52,6 +52,11 @@ void platform_frame_begin(bool vsync) {
   if (vsync) eadk_display_wait_for_vblank();
 }
 void platform_strip(int y, int h, const uint16_t *pixels) {
+#ifdef NP_PORT
+  /* (the other targets copy a strip to memory: quicker than its hash, a twentieth of a TI-Nspire's frame) */
+  (void)strip_hash;
+  eadk_display_push_rect((eadk_rect_t){0, (uint16_t)y, 320, (uint16_t)h}, pixels);
+#else
   const uint32_t *w = (const uint32_t *)pixels;
   uint32_t hash = 2166136261u;
   for (int i = 0, n = 320 * h / 2; i < n; i++) hash = (hash ^ w[i]) * 16777619u;
@@ -60,9 +65,16 @@ void platform_strip(int y, int h, const uint16_t *pixels) {
     strip_hash[slot] = hash;
     eadk_display_push_rect((eadk_rect_t){0, (uint16_t)y, 320, (uint16_t)h}, pixels);
   }
+#endif
   capture_keys();
 }
-void platform_frame_end(void) { capture_keys(); }
+void platform_frame_end(void) {
+  capture_keys();
+#ifdef NP_PORT
+  eadk_timing_msleep(0); /* the frame is whole: shown now (the TI-Nspire shows a frame where the game waits, not where
+                            it reads the keys between strips) */
+#endif
+}
 
 /* Epsilon's record buffer, found through the userland header of the
  * software running this app (see games/common/epsilon_app.h). */

@@ -330,10 +330,50 @@ static void sim(int dir) { /* a step of the game: the cloud, then the fruit */
 
 /* ------------------------------------------------------------ drawing */
 static void put(color_t *p, color_t c, int t) { *p = t >= 32 ? c : gfx_mix(*p, c, t); }
+#if NP_SOFT_FLOAT
+static uint32_t isqrt(uint32_t v) { /* (the square root, rounded down) */
+  uint32_t r = 0, b = 1u << 30;
+  while (b > v) b >>= 2;
+  for (; b; b >>= 2)
+    if (v >= r + b) v -= r + b, r = (r >> 1) + b;
+    else r >>= 1;
+  return r;
+}
+#endif
 /* a line with round ends, ro thick on either side (a disc when it has no length), hollow within ri; t of 32 */
 static void seg(float x0, float y0, float x1, float y1, float ro, float ri, color_t c, int t) {
   int ya = (int)fmaxf_(fminf_(y0, y1) - ro, gfx_y0), yb = (int)fminf_(fmaxf_(y0, y1) + ro + 1, gfx_y1);
   int xa = (int)fmaxf_(fminf_(x0, x1) - ro, 0), xb = (int)fminf_(fmaxf_(x0, x1) + ro + 1, SCREEN_W);
+#if NP_SOFT_FLOAT
+  /* no FPU (the TI and Casio calculators): the same in 64ths of a pixel, with a square root only where a pixel is
+     partly covered (the floats took two thirds of the time) */
+  int32_t X0 = (int32_t)(x0 * 64), Y0 = (int32_t)(y0 * 64), DX = (int32_t)(x1 * 64) - X0, DY = (int32_t)(y1 * 64) - Y0;
+  int32_t L2 = DX * DX + DY * DY, OUT = (int32_t)((ro + 0.5f) * 64), IN = (int32_t)((ri - 0.5f) * 64);
+  uint64_t inv = L2 ? ((uint64_t)1 << 48) / (uint32_t)L2 : 0;
+  uint32_t out2 = (uint32_t)(OUT * OUT), full2 = OUT > 64 ? (uint32_t)((OUT - 64) * (OUT - 64)) : 0;
+  uint32_t open2 = IN + 64 > 0 ? (uint32_t)((IN + 64) * (IN + 64)) : 0; /* (the hole's edge ends there) */
+  for (int y = ya; y < yb; y++)
+    for (int x = xa; x < xb; x++) {
+      int32_t qx = x * 64 + 32 - X0, qy = y * 64 + 32 - Y0;
+      if (L2) {
+        int32_t dot = qx * DX + qy * DY;
+        if (dot >= L2) qx -= DX, qy -= DY;
+        else if (dot > 0) {
+          int32_t u = (int32_t)(((uint64_t)(uint32_t)dot * inv) >> 32); /* (65536ths) */
+          qx -= (int32_t)(((int64_t)u * DX) >> 16), qy -= (int32_t)(((int64_t)u * DY) >> 16);
+        }
+      }
+      uint32_t d2 = (uint32_t)(qx * qx + qy * qy);
+      if (d2 >= out2) continue;
+      int32_t d = -1, cov = 64;
+      if (d2 > full2) d = (int32_t)isqrt(d2), cov = OUT - d < 64 ? OUT - d : 64;
+      if (ri > 0 && d2 < open2) {
+        int32_t hole = (d < 0 ? (int32_t)isqrt(d2) : d) - IN;
+        if (hole < cov) cov = hole < 0 ? 0 : hole;
+      }
+      if (cov > 0) put(gfx_buf + (y - gfx_y0) * SCREEN_W + x, c, (cov * t) >> 6);
+    }
+#else
   float dx = x1 - x0, dy = y1 - y0, l2 = dx * dx + dy * dy;
   for (int y = ya; y < yb; y++)
     for (int x = xa; x < xb; x++) {
@@ -343,6 +383,7 @@ static void seg(float x0, float y0, float x1, float y1, float ro, float ri, colo
       if (ri > 0 && hole < cov) cov = hole;
       if (cov > 0) put(gfx_buf + (y - gfx_y0) * SCREEN_W + x, c, (int)(cov * t));
     }
+#endif
 }
 #define DISC(x, y, r, c, t) seg(x, y, x, y, r, 0, c, t)
 
@@ -429,6 +470,40 @@ static void fruit(int k, float cx, float cy, float r, float c, float s) {
     float bx = cx + 27 * s * q, by = cy - 27 * c * q; /* the dekopon's bump */
     if (k == 4) DISC(bx, by, 10 * q + ow * 0.5f, lc, 32);
     int ya = (int)fmaxf_(cy - r, gfx_y0), yb = (int)fminf_(cy + r + 1, gfx_y1), xa = (int)fmaxf_(cx - r, 0), xb = (int)fminf_(cx + r + 1, SCREEN_W);
+#if NP_SOFT_FLOAT
+    /* (no FPU: as below, in 64ths of a pixel; the lines across in 65536ths) */
+    int32_t CX = (int32_t)(cx * 64), CY = (int32_t)(cy * 64), R = (int32_t)(r * 64), OW = (int32_t)(ow * 64);
+    int32_t LX = (int32_t)(0.12f * r * 64), LY = (int32_t)(0.14f * r * 64), C16 = (int32_t)(c * 65536), S16 = (int32_t)(s * 65536);
+    uint32_t edge2 = (uint32_t)((R + 32) * (R + 32)), solid2 = R > 32 ? (uint32_t)((R - 32) * (R - 32)) : 0;
+    uint32_t line2 = R > OW ? (uint32_t)((R - OW) * (R - OW)) : 0, lit2 = (uint32_t)(0.88f * r * r * 4096);
+    int64_t inv_r = ((int64_t)1 << 32) / (R > 0 ? R : 1);
+    for (int y = ya; y < yb; y++)
+      for (int x = xa; x < xb; x++) {
+        int32_t dx = x * 64 + 32 - CX, dy = y * 64 + 32 - CY, lx = dx + LX, ly = dy + LY;
+        uint32_t d2 = (uint32_t)(dx * dx + dy * dy);
+        if (d2 >= edge2) continue;
+        bool rim = d2 > line2 || R <= OW;
+        color_t col = rim ? lc : (uint32_t)(lx * lx + ly * ly) < lit2 ? fc : shade;
+        if (k >= 9 && !rim) {
+          static const int8_t pat[3][8] = {{23, 23, 0, 23, -23, 9, 0, 14}, {33, 8, 0, -8, 33, 16, 6, 24}, {0, 18, 4, 0, 0, 34, 0, 24}};
+          static const color_t pc[3] = {HEX(0xD9A80C), HEX(0xDCF290), HEX(0x0C6A08)};
+          const int8_t *t = pat[k - 9];
+          int32_t u = (int32_t)(((int64_t)dx * C16 + (int64_t)dy * S16) * inv_r >> 32); /* (65536ths of r) */
+          int32_t v = (int32_t)(((int64_t)dy * C16 - (int64_t)dx * S16) * inv_r >> 32), w = t[5] * 65536 / 100;
+          int32_t a = (int32_t)(((int64_t)(t[0] * u + t[1] * v) + ((int64_t)t[2] * u * u >> 16)) * 6554 >> 16) + 9 * 65536 + 16384;
+          int32_t b = (int32_t)((int64_t)(t[3] * u + t[4] * v) * 6554 >> 16) + 9 * 65536;
+          bool on = a < 0 || (a & 0xFFFF) < w || (t[3] && (b < 0 || (b & 0xFFFF) < w));
+          int32_t from = t[6] * R / 10;
+          if (on && d2 > (uint32_t)(from * from)) col = gfx_mix(col, pc[k - 9], t[7]);
+        }
+        int cov = 32;
+        if (d2 > solid2) {
+          int32_t e = R + 32 - (int32_t)isqrt(d2);
+          cov = e >= 64 ? 32 : e > 0 ? e >> 1 : 0;
+        }
+        put(gfx_buf + (y - gfx_y0) * SCREEN_W + x, col, cov);
+      }
+#else
     for (int y = ya; y < yb; y++)
       for (int x = xa; x < xb; x++) {
         float dx = x + 0.5f - cx, dy = y + 0.5f - cy, d = sqrt_(dx * dx + dy * dy), lx = dx + 0.12f * r, ly = dy + 0.14f * r;
@@ -444,6 +519,7 @@ static void fruit(int k, float cx, float cy, float r, float c, float s) {
         }
         put(gfx_buf + (y - gfx_y0) * SCREEN_W + x, col, (int)(clampf(r + 0.5f - d, 0, 1) * 32));
       }
+#endif
     if (k == 4) DISC(bx, by, 10 * q - ow * 0.5f, fc, 32);
   }
   decor(k, cx, cy, r, c, s);

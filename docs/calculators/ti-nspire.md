@@ -22,24 +22,72 @@ Retro-Go plays the games in a folder named **retrogo** in My Documents: Game Boy
 
 ## Keys
 
-| Key | What it does |
+The games are made for the NumWorks keypad. Each Nspire key gives a NumWorks key, so when a game says "alpha" or "EXE", this is the key to press:
+
+| Nspire key | NumWorks key |
 | --- | --- |
-| Arrows (the touchpad or clickpad) | move |
-| enter, the touchpad's middle | OK |
-| return | EXE |
+| Arrows (the touchpad or the clickpad) | the arrows |
+| enter, the pad's middle (click) | OK |
+| return (↵) | EXE |
 | esc | Back |
 | home, on | Home (save and quit) |
-| del | ⌫ |
+| del | ⌫ (backspace) |
 | shift | shift |
 | ctrl | alpha |
 | menu | toolbox |
 | var | var |
 | tab | x,n,t |
-| 0 to 9, + − × ÷ . , ( ) ^ x² | the same |
-| e^x | e^x |
-| A to Z, space, ?! | the NumWorks key that types the same letter: A is e^x, B ln, C log, D i, G sin, H cos, K √, M 7, Z + |
+| 0 to 9 | 0 to 9 |
+| + − × ÷ . , ( ) | the same |
+| ^ | xʸ (power) |
+| x² | x² |
+| π, sin, cos, tan, EE | the same |
+| (−) | Ans |
+| eˣ | eˣ |
+| A, B, C, D, E, F | eˣ, ln, log, i, the comma, xʸ |
+| G, H, I, J, K, L | sin, cos, tan, π, √, x² |
+| M, N, O | 7, 8, 9 |
+| P, Q | ( and ) |
+| R, S, T | 4, 5, 6 |
+| U, V | × and ÷ |
+| W, X, Y | 1, 2, 3 |
+| Z | + |
+| space | − |
+| ?! | 0 |
+| doc, cat, =, trig, templates, flag, scratchpad, 10ˣ, θ, " ' : \| > < ? | nothing (unless you set them, below) |
 
-Games save by themselves, and when you leave with Home.
+The letters give the NumWorks key that types the same letter with alpha, so a game asking for a name types the letters you press.
+
+The pad's middle gives OK only when pressed on its own: pressed with an arrow, or less than 0.15 s after one, it gives nothing till you let go (and a press sliding from an arrow to the middle keeps its arrow), so walking with the pad doesn't open menus. enter always gives OK.
+
+Games save by themselves, and when you leave with Home. Every game's saves are in one file, **numplay.sav.tns** in the **ndless** folder (the saves of an older NumPlay, one file a game, are moved into it as each game starts): keep a copy of it to keep your saves.
+
+### Your own keys
+
+Any key but **on** can give another NumWorks key, in every game, from a text file named **numplay_keys.tns**:
+
+1. Write a text file on a computer, one key a line: the Nspire key, `=`, the NumWorks key. A line starting with `#` is a note.
+2. Name it `numplay_keys.tns` and send it with TI-Nspire Link or the TI-Nspire computer software to the folder your games are in (or to **ndless** in My Documents, which every game checks after its own folder).
+3. Start a game: the keys are read as it starts.
+
+```
+# Celeste: dash (Back, on esc) on del, and climb (toolbox, on menu) on shift
+del = back
+shift = toolbox
+# no OK from the pad's middle at all, only from enter
+click = none
+# the arrows on the number keys, as on the NumWorks
+8 = up
+4 = left
+6 = right
+2 = down
+```
+
+The Nspire keys are named as in the table: `enter`, `return` (or `ret`), `esc`, `home`, `del`, `shift`, `ctrl`, `menu`, `var`, `tab`, `0` to `9`, `+`, `-`, `*`, `/`, `.`, `,`, `(`, `)`, `^`, `x2`, `pi`, `sin`, `cos`, `tan`, `ee`, `(-)`, `e^x`, `a` to `z`, `space`, `?!`, `doc`, `cat`, `=`, `trig`, `templates`, `flag`, `scratchpad`, `10^x`, `theta`, `"`, `'`, `:`, `|`, `>`, `<`, `?`, and the pad's `up`, `down`, `left`, `right` and `click`.
+
+The NumWorks keys: `left`, `up`, `down`, `right`, `ok`, `back`, `home`, `onoff`, `shift`, `alpha`, `xnt`, `var`, `toolbox`, `backspace`, `exp` (eˣ), `ln`, `log`, `i`, `comma`, `power` (xʸ), `sin`, `cos`, `tan`, `pi`, `sqrt`, `square` (x²), `0` to `9`, `(`, `)`, `*`, `/`, `+`, `-`, `.`, `ee`, `ans`, `exe`, and `none` (the key gives nothing). Capitals or not, either way.
+
+A key you set gives only the new key: `del = back` takes ⌫ off del. Two Nspire keys can give the same NumWorks key.
 
 ## The 78 games
 

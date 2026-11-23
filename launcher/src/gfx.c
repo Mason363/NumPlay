@@ -157,6 +157,44 @@ static float box_dist(float px, float py, float hw, float hh, float r) {
   return __builtin_sqrtf(mx * mx + my * my) + (in < 0 ? in : 0) - r;
 }
 
+#if NP_SOFT_FLOAT
+/* No FPU (the TI-Nspire and Casio calculators): the outline below in 64ths of a pixel, a square root only by the
+   corners (in floats, Coreball's outlines took a third of its time) */
+static uint32_t isqrt(uint32_t v) {
+  uint32_t r = 0, b = 1u << 30;
+  while (b > v) b >>= 2;
+  for (; b; b >>= 2)
+    if (v >= r + b) v -= r + b, r = (r >> 1) + b;
+    else r >>= 1;
+  return r;
+}
+static int32_t box_dist_q(int32_t px, int32_t py, int32_t hw, int32_t hh, int32_t r) {
+  int32_t qx = (px < 0 ? -px : px) - (hw - r), qy = (py < 0 ? -py : py) - (hh - r);
+  int32_t mx = qx > 0 ? qx : 0, my = qy > 0 ? qy : 0, in = qx > qy ? qx : qy;
+  int32_t len = !mx ? my : !my ? mx : (int32_t)isqrt((uint32_t)(mx * mx + my * my));
+  return len + (in < 0 ? in : 0) - r;
+}
+void gfx_rrect_outline(int x, int y, int w, int h, int r, int th, color_t c, int a) {
+  if (w <= 0 || h <= 0) return;
+  int ya = NP_MAX(y, gfx_y0), yb = NP_MIN(y + h, gfx_y1);
+  int t = (a + 4) >> 3;
+  int32_t hw = w * 32, hh = h * 32, ri = (r > th ? r - th : 0) * 64, R = r * 64, TH = th * 64;
+  for (int row = ya; row < yb; row++) {
+    int32_t py = (row - y) * 64 + 32 - hh;
+    for (int i = 0; i < w; i++) {
+      int32_t px = i * 64 + 32 - hw, d_in = box_dist_q(px, py, hw - TH, hh - TH, ri);
+      if (d_in < -32) {
+        if (i < w / 2) i = w - 1 - i - 1; /* the rest up to the mirror pixel is inside */
+        continue;
+      }
+      int32_t co = 32 - box_dist_q(px, py, hw, hh, R), ci = 32 - d_in;
+      co = co < 0 ? 0 : co > 64 ? 64 : co, ci = ci < 0 ? 0 : ci > 64 ? 64 : ci;
+      int k = ((co - ci) * t + 32) >> 6, sx = x + i;
+      if (k > 0 && sx >= 0 && sx < SCREEN_W) span_alpha(px_at(sx, row), 1, c, k);
+    }
+  }
+}
+#else
 void gfx_rrect_outline(int x, int y, int w, int h, int r, int th, color_t c, int a) {
   if (w <= 0 || h <= 0) return;
   int ya = NP_MAX(y, gfx_y0), yb = NP_MIN(y + h, gfx_y1);
@@ -178,6 +216,7 @@ void gfx_rrect_outline(int x, int y, int w, int h, int r, int th, color_t c, int
     }
   }
 }
+#endif
 
 void gfx_shadow(int x, int y, int w, int h, int r, int blur, int a) {
   int ya = NP_MAX(y - blur, gfx_y0), yb = NP_MIN(y + h + blur, gfx_y1);

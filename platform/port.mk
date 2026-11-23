@@ -87,12 +87,14 @@ NS_OPT ?= -O2
 NS_SRC = $(PORT_SRC) $(NP_PLATFORM)/nspire/np_nspire.c $(PORT_COMMON)
 NP_CXX = PATH="$(NS_PATH):$$PATH" nspire-g++ $(NS_OPT) -marm -ffunction-sections -fdata-sections
 port: $(PORT_OUT)/$(PORT_ID).tns
-$(PORT_OUT)/$(PORT_ID).tns: $(PORT_DEPS) $(NS_SRC) $(PORT_ASM) $(PORT_CXX_OBJ) $(wildcard $(NP_PLATFORM)/include/*.h)
+$(PORT_OUT)/$(PORT_ID).tns: $(PORT_DEPS) $(NS_SRC) $(PORT_ASM) $(PORT_CXX_OBJ) $(wildcard $(NP_PLATFORM)/include/*.h) \
+  $(wildcard $(NP_PLATFORM)/common/*.h)
 	@rm -rf $(NS_DIR) && mkdir -p $(NS_DIR)
 	$(Q) n=0; for f in $(NS_SRC) $(PORT_ASM); do n=$$((n+1)); \
 	  PATH="$(NS_PATH):$$PATH" nspire-gcc $(PORT_CFLAGS) $(NS_OPT) -marm -ffunction-sections -fdata-sections \
 	    -c $$f -o $(NS_DIR)/f$$n.o || exit 1; done
-	$(Q) PATH="$(NS_PATH):$$PATH" nspire-ld $(NS_DIR)/*.o $(PORT_CXX_OBJ) -Wl,--gc-sections -lm -o $(NS_DIR)/$(PORT_ID).elf
+	$(Q) PATH="$(NS_PATH):$$PATH" nspire-ld $(NS_DIR)/*.o $(PORT_CXX_OBJ) -Wl,--gc-sections -Wl,--wrap=main -lm \
+	  -o $(NS_DIR)/$(PORT_ID).elf
 	$(Q) PATH="$(NS_PATH):$$PATH" genzehn --input $(NS_DIR)/$(PORT_ID).elf --output $(NS_DIR)/$(PORT_ID).zehn \
 	  --name "$(PORT_NAME)" --240x320-support true --uses-lcd-blit true
 	$(Q) PATH="$(NS_PATH):$$PATH" make-prg $(NS_DIR)/$(PORT_ID).zehn $@
