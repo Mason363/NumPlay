@@ -247,6 +247,32 @@ void gfx_round_rect(int x, int y, int w, int h, int r, color_t c, unsigned alpha
     }
   }
 }
+#if NP_SOFT_FLOAT
+/* (no FPU: the same in 256ths of a pixel) */
+void gfx_rectf_q8(int32_t x0, int32_t y0, int32_t x1, int32_t y1, color_t c, unsigned alpha, int mode) {
+  if (x1 <= x0 || y1 <= y0 || !alpha) return;
+  int ix0 = x0 >> 8, iy0 = y0 >> 8, ix1 = (x1 + 255) >> 8, iy1 = (y1 + 255) >> 8;
+  int x = ix0, y = iy0, w = ix1 - ix0, h = iy1 - iy0;
+  if (!clip_rect(&x, &y, &w, &h)) return;
+  /* columns: a partial pixel on each side, full coverage in between */
+  int cx0 = (x0 + 255) >> 8, fx0 = cx0, fx1 = x1 >> 8;
+  int32_t lcov = fx0 * 256 > x1 ? x1 - x0 : fx0 * 256 - x0, rcov = x1 - fx1 * 256;
+  if (fx0 < x) fx0 = x;
+  if (fx1 > x + w) fx1 = x + w;
+  for (int j = y; j < y + h; j++) {
+    int32_t cy = (y1 < (j + 1) * 256 ? y1 : (j + 1) * 256) - (y0 > j * 256 ? y0 : j * 256);
+    if (cy <= 0) continue;
+    unsigned ra = cy >= 256 ? alpha : (unsigned)cy * alpha >> 8, a = a32_of(ra);
+    uint16_t *p = pix(0, j);
+    if (ix0 >= x && ix0 < x + w && lcov > 0 && ix0 < cx0) put(p + ix0, c, a32_of((unsigned)lcov * ra >> 8), mode);
+    if (fx1 >= x && fx1 < x + w && rcov > 0 && fx1 >= fx0) put(p + fx1, c, a32_of((unsigned)rcov * ra >> 8), mode);
+    if (!a) continue;
+    if (mode == BLEND_NORMAL && a >= 32) fill_span(p + fx0, fx1 - fx0, c);
+    else if (mode == BLEND_ADD) for (int i = fx0; i < fx1; i++) p[i] = px_add(p[i], c, a);
+    else for (int i = fx0; i < fx1; i++) p[i] = px_mix(p[i], c, a);
+  }
+}
+#endif
 void gfx_rectf(float x0, float y0, float x1, float y1, color_t c, unsigned alpha, int mode) {
   if (x1 <= x0 || y1 <= y0 || !alpha) return;
   int ix0 = (int)floorf(x0), iy0 = (int)floorf(y0), ix1 = (int)ceilf(x1), iy1 = (int)ceilf(y1);
@@ -945,6 +971,111 @@ void gfx_layer_draw(int cx, int cy, int scale256, color_t top, color_t bottom, u
 /* ------------------------------------------------------------ polygons */
 
 /* Anti-aliased convex polygon (vertices in pixels, either winding). */
+#if NP_SOFT_FLOAT
+/* No FPU (the TI-Nspire and Casio calculators): the same in fixed point. The vertices in 256ths of a pixel, the edges'
+   unit normals and the distances to them in 65536ths, each edge's crossings with the rows stepped from row to row
+   (the floats took a fifth of a frame of NumDash's last levels). */
+static int64_t q16_div(int64_t a, int64_t b) { return b ? a * 65536 / b : 0; }
+void gfx_poly_q8(const int32_t *X, const int32_t *Y, int n, color_t c, unsigned alpha, int mode) {
+  if (n < 3 || n > 8 || !alpha) return;
+  int32_t ylo = Y[0], yhi = Y[0];
+  for (int k = 1; k < n; k++) ylo = Y[k] < ylo ? Y[k] : ylo, yhi = Y[k] > yhi ? Y[k] : yhi;
+  int cy0 = clip_y0 > gfx_y0 ? clip_y0 : gfx_y0, cy1 = clip_y1 < gfx_y1 ? clip_y1 : gfx_y1;
+  if (yhi <= (cy0 - 2) * 256 || ylo >= (cy1 + 1) * 256) return;
+  int64_t area = 0;
+  for (int k = 0; k < n; k++) {
+    int b = (k + 1) % n;
+    area += (int64_t)X[k] * Y[b] - (int64_t)X[b] * Y[k];
+  }
+  if (area == 0) return;
+  int32_t nx[8], ny[8], mnx = INT32_MAX, mny = INT32_MAX, mxx = INT32_MIN, mxy = INT32_MIN;
+  int64_t nc[8];
+  for (int k = 0; k < n; k++) {
+    int b = (k + 1) % n;
+    int32_t ex = X[b] - X[k], ey = Y[b] - Y[k];
+    uint64_t l2 = (uint64_t)((int64_t)ex * ex + (int64_t)ey * ey);
+    /* |e|, in 256ths: the square root of l2 (whole: 2^-8 from the root, a fraction of a 65536th of the normal) */
+    uint64_t L = 0, bit = (uint64_t)1 << 62;
+    while (bit > l2) bit >>= 2;
+    for (; bit; bit >>= 2)
+      if (l2 >= L + bit) l2 -= L + bit, L = (L >> 1) + bit;
+      else L >>= 1;
+    if (L < 1) { nx[k] = ny[k] = 0; nc[k] = (int64_t)1 << 40; continue; }
+    int sg = area > 0 ? 1 : -1;
+    nx[k] = (int32_t)q16_div(-(int64_t)ey * sg, (int64_t)L), ny[k] = (int32_t)q16_div((int64_t)ex * sg, (int64_t)L);
+    nc[k] = -(((int64_t)nx[k] * X[k] + (int64_t)ny[k] * Y[k]) >> 8);   /* (65536ths of a pixel) */
+    mnx = X[k] < mnx ? X[k] : mnx, mxx = X[k] > mxx ? X[k] : mxx;
+    mny = Y[k] < mny ? Y[k] : mny, mxy = Y[k] > mxy ? Y[k] : mxy;
+  }
+  int x = (mnx >> 8) - 1, y = (mny >> 8) - 1, w = ((mxx + 255) >> 8) - x + 2, h = ((mxy + 255) >> 8) - y + 2;
+  if (!clip_rect(&x, &y, &w, &h)) return;
+  const unsigned full = a32_of(alpha);
+  /* each edge at row y's middle: the distance's part from y (dd), and where it is -1/2 and +1/2 (t, u) and their
+     steps a row down */
+  int64_t dd[8], t[8], u[8], dt[8], du[8];
+  for (int k = 0; k < n; k++) {
+    dd[k] = (((int64_t)ny[k] * (y * 256 + 128)) >> 8) + nc[k];
+    if (nx[k]) {
+      t[k] = q16_div(-32768 - dd[k], nx[k]), u[k] = q16_div(32768 - dd[k], nx[k]);
+      dt[k] = du[k] = q16_div(-(int64_t)ny[k], nx[k]);
+    }
+  }
+  for (int j = y; j < y + h; j++) {
+    uint16_t *p = pix(x, j);
+    /* [lo, hi): every edge distance > -1/2 (touched); [flo, fhi): > 1/2 (fully covered); in 65536ths */
+    int64_t lo = (int64_t)x << 16, hi = (int64_t)(x + w) << 16, flo = lo, fhi = hi;
+    bool empty = false;
+    for (int k = 0; k < n && !empty; k++) {
+      if (nx[k] > 0) {
+        if (t[k] > lo) lo = t[k];
+        if (u[k] > flo) flo = u[k];
+      } else if (nx[k] < 0) {
+        if (t[k] < hi) hi = t[k];
+        if (u[k] < fhi) fhi = u[k];
+      } else {
+        if (dd[k] <= -32768) empty = true;
+        if (dd[k] < 32768) fhi = flo - 65536;
+      }
+    }
+    for (int k = 0; k < n; k++) dd[k] += ny[k], t[k] += dt[k], u[k] += du[k];
+    if (empty || hi <= lo) continue;
+    int i0 = (int)((lo - 32768) >> 16) - x, i1 = (int)((hi + 32768 + 65535) >> 16) - x;
+    int f0 = (int)((flo - 32768 + 65535) >> 16) - x, f1 = (int)((fhi - 32768) >> 16) - x + 1;
+    if (i0 < 0) i0 = 0;
+    if (i1 > w) i1 = w;
+    if (f0 < i0) f0 = i0;
+    if (f1 > i1) f1 = i1;
+    if (f1 < f0) f1 = f0;
+    int64_t d0[8];   /* each edge's distance at pixel i0's middle */
+    for (int k = 0; k < n; k++) d0[k] = (((int64_t)nx[k] * ((x + i0) * 256 + 128)) >> 8) + dd[k] - ny[k];
+    for (int i = i0; i < i1; i++) {
+      if (i == f0 && f1 > f0) {
+        for (; i < f1; i++) put(p + i, c, full, mode);
+        if (i >= i1) break;
+      }
+      int64_t m = INT64_MAX;
+      for (int k = 0; k < n; k++) {
+        int64_t d = d0[k] + (int64_t)nx[k] * (i - i0);
+        if (d < m) m = d;
+      }
+      int64_t cov = m + 32768;
+      if (cov <= 0) continue;
+      if (cov > 65536) cov = 65536;
+      put(p + i, c, a32_of((unsigned)((cov * alpha) >> 16)), mode);
+    }
+  }
+}
+void gfx_poly(const float *xy, int n, color_t c, unsigned alpha, int mode) {
+  if (n < 3 || n > 8 || !alpha) return;
+  int32_t X[8], Y[8];   /* (far points kept within 2^20 pixels) */
+  for (int k = 0; k < n; k++) {
+    float x = xy[2 * k], y = xy[2 * k + 1];
+    X[k] = (int32_t)((x < -1048576 ? -1048576 : x > 1048576 ? 1048576 : x) * 256);
+    Y[k] = (int32_t)((y < -1048576 ? -1048576 : y > 1048576 ? 1048576 : y) * 256);
+  }
+  gfx_poly_q8(X, Y, n, c, alpha, mode);
+}
+#else
 void gfx_poly(const float *xy, int n, color_t c, unsigned alpha, int mode) {
   if (n < 3 || n > 8 || !alpha) return;
   {
@@ -1021,3 +1152,4 @@ void gfx_poly(const float *xy, int n, color_t c, unsigned alpha, int mode) {
     }
   }
 }
+#endif
