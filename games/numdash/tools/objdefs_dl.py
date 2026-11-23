@@ -12,6 +12,7 @@ import math
 
 NONE, SOLID, HAZARD, SPECIAL = range(4)
 F_PULSE, F_RANDOM3, F_COIN, F_ANIM, F_QUAD, F_HALF = 1, 2, 4, 8, 16, 32
+F_TERRAIN = 64   # decoration that is a level's ground and walls (Dash's pixel art): low detail keeps it
 # GD default z layers -> NumDash draw layers
 B2, B1, T1, GL = 'RODS', 'DETAIL', 'BLOCK', 'BLOCK_GLOW'
 

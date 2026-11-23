@@ -11,7 +11,7 @@ shades. The designs are NumDash's own, after the originals' general shapes
 stone pattern in their colours.
 """
 import zlib
-from objdefs_dl import R, P, VG, seg, prog, radial, outline, outline_glow, glow_band, NONE, SOLID, HAZARD, SPECIAL, F_PULSE, F_QUAD, \
+from objdefs_dl import R, P, VG, seg, prog, radial, outline, outline_glow, glow_band, NONE, SOLID, HAZARD, SPECIAL, F_PULSE, F_QUAD, F_TERRAIN, \
     B2, B1, T1, GL
 
 OBJS = []
@@ -57,13 +57,13 @@ def pix_ops(rows, cell=2.0):
 
 
 def pix(name, ids, rows, layer=B1, **kw):
-    obj(name, ids, NONE, 0, 0, [(prog('px_' + name.lower(), pix_ops(rows)), 0, 0, layer, 'BASE', 0)], base=1, detail=2, **kw)
+    obj(name, ids, NONE, 0, 0, [(prog('px_' + name.lower(), pix_ops(rows)), 0, 0, layer, 'BASE', F_TERRAIN)], base=1, detail=2, **kw)
 
 
 # bricks and stone blocks
 pix('PX_LAVA_BRICK', [2467], ['DbbbDbbb', 'bdbbDbdb', 'DDDDDDDD', 'bbDbbbbD', 'bdDbbdbD', 'DDDDDDDD', 'bbbDbbbb', 'dbbDbbdb'])
 pix('PX_SOLID', [2466], ['bbbbbbbb'] * 8)
-obj('PX_UNIT', [3092, 3097, 2695, 2549], NONE, 0, 0, [(prog('px_unit', [R(-.5, -.5, .5, .5)]), 0, 0, B1, 'BASE', 0)], base=1)
+obj('PX_UNIT', [3092, 3097, 2695, 2549], NONE, 0, 0, [(prog('px_unit', [R(-.5, -.5, .5, .5)]), 0, 0, B1, 'BASE', F_TERRAIN)], base=1)
 pix('PX_BRICK_TOP', [2465, 2463, 2462, 2464], ['LLLLLLLL', 'bdbbbdbb', 'DDDDDDDD', 'bbbDbbbb', 'bdbDbbdb', 'DDDDDDDD', 'bDbbbbDb', 'bDbbdbDb'])
 pix('PX_BRICK', [2468, 2491, 2572, 2412, 2550, 2548, 2540, 4001, 4003, 4008, 4009, 2490, 2476, 2470, 2471, 2472, 2475, 2480],
     ['bbbDbbbb', 'bdbDbbdb', 'DDDDDDDD', 'bDbbbbDb', 'bDbdbbDb', 'DDDDDDDD', 'bbbDbbbb', 'dbbDbbbd'])
