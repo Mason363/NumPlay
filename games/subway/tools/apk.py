@@ -155,10 +155,13 @@ DOG_RIG = ["", "dog_gameSkeleton", "root", "IkLeg__A_L", "IkLeg__B_L", "IkLeg__C
            "IkLeg__C_R", "spine", "chest", "neck_A", "head_ctrl", "Lower_Jaw", "shoulderBlade_B_L", "arm_L", "elbow_L",
            "shoulderBlade_B_R", "arm_R", "elbow_R"]
 
-# the clips each rig plays: (the game's clip, the name here, loops)
+# the clips each rig plays: (the game's clip, the name here, loops). The runner's are the ones its
+# Character_Animator_Default plays (its Run, Jump, Fall, Landing, Roll and LaneChange states' first clips); the
+# capitalised Run, Roll, Dodge_L and Dodge_R are the ChaseTarget_Animator_Default's, and Jump, Hangtime and Landing
+# no controller's
 RUNNER_CLIPS = [
-    ("Run", "run", 1), ("Jump", "jump", 0), ("Hangtime", "hang", 1), ("Landing", "land", 0), ("Roll", "roll", 0),
-    ("Dodge_L", "dodge_l", 0), ("Dodge_R", "dodge_r", 0), ("stumbleSideLeft", "stumble_l", 0),
+    ("run", "run", 1), ("jump", "jump", 0), ("hangtime", "hang", 1), ("landing", "land", 0), ("roll", "roll", 0),
+    ("dodgeLeft", "dodge_l", 0), ("dodgeRight", "dodge_r", 0), ("stumbleSideLeft", "stumble_l", 0),
     ("stumbleSideRight", "stumble_r", 0), ("stumble_low", "stumble", 0), ("death_bounce", "death", 0),
     ("death_movingTrain", "death_train", 0), ("h_run", "board", 1), ("h_jump", "board_jump", 0),
     ("h_hangtime", "board_hang", 1), ("h_landing", "board_land", 0), ("h_roll", "board_roll", 0),
