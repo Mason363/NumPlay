@@ -376,7 +376,7 @@ static void tutorial_draw(void) {
     if (workers_open && !prio && win_action_rect(200 + CLS_StoneMine, r)) help_arrow(r, HA_LEFT, NULL);
     if (prio && (!nwins || workers_open) && city_panel_rect(PR_MAT0 + M_WOOD, r)) help_arrow(r, HA_DOWN_HINT, L_great_gather_stone);
     if (second) {
-      extern int priority_jobs[64];
+      extern int priority_jobs[CLS_COUNT];
       bool on_stone = priority_jobs[CLS_StoneMine] >= 3;
       if (!workers_open && city_panel_rect(PR_WORK, r)) help_arrow(r, HA_DOWN, L_you_have_enough_stone);
       if (workers_open && on_stone && win_action_rect(300 + CLS_StoneMine, r)) help_arrow(r, HA_LEFT, L_reduce_stone_mining_priority);

@@ -4,6 +4,7 @@
 #include "sim.h"
 #include "bld.h"
 #include "scratch.h"
+#include "classes.h"
 #define prio (scratch->prio)
 #define seen (scratch->seen)
 
@@ -292,18 +293,20 @@ void assign_houses(void) {
 }
 
 /* ---------------------------------------------------------------- jobs */
-int priority_jobs[64];   /* per class: workers wanted first (1000000: all of them); set by the worker distribution window */
-static bool max_prio(int cls) { return cls < 64 && priority_jobs[cls] == 1000000; }
+/* per class: workers wanted first (1000000: all of them); set by the worker distribution window. Every class: the
+ * unique buildings come after the first 64 (the city's file keeps the rest after those, from version 2 on) */
+int priority_jobs[CLS_COUNT];
+static bool max_prio(int cls) { return cls < CLS_COUNT && priority_jobs[cls] == 1000000; }
 
 void assign_jobs(void) {
   if (story_is("cityofthekey")) {
     int c = pcls_find("SecretSocietyHouse");
-    if (c >= 0 && c < 64) priority_jobs[c] = 8;
+    if (c >= 0 && c < CLS_COUNT) priority_jobs[c] = 8;
   }
   if (!(sim_flags & SIM_JOBS_CHANGED)) return;
   int16_t *short_by = scratch->u.assign.short_by;
   memset(short_by, 0, sizeof scratch->u.assign.short_by);
-  for (int k = 0; k < 64 && k < npcls; k++) short_by[k] = max_prio(k) ? 0 : priority_jobs[k];
+  for (int k = 0; k < CLS_COUNT && k < npcls; k++) short_by[k] = max_prio(k) ? 0 : priority_jobs[k];
   uint16_t *with_job = scratch->u.assign.list;
   int nwj = 0;
   for (int i = 1; i < MAX_PERMS; i++) {

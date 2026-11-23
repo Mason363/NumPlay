@@ -458,7 +458,7 @@ void info_houses_action(Win *wn, int a) {
 }
 
 /* ---------------------------------------------------------------- workers */
-extern int priority_jobs[64];
+extern int priority_jobs[CLS_COUNT];
 
 void info_workers(WinOut *w) {
   char t[96];
@@ -498,7 +498,7 @@ void info_workers(WinOut *w) {
     int y0 = w->y;
     type_row(w, c, n, num_col, t);
     /* NumberSelectControl: the priority jobs (a button: the current workers), then up and down (spr_minibutton) */
-    int prio = c < 64 ? priority_jobs[c] : 0;
+    int prio = c < CLS_COUNT ? priority_jobs[c] : 0;
     char num[16];
     if (prio == 1000000) num[0] = 0, str_cat(num, sizeof num, L_max);
     else fmt_int(num, sizeof num, prio);
@@ -531,7 +531,7 @@ void info_workers(WinOut *w) {
 void info_workers_action(Win *wn, int a) {
   (void)wn;
   int c = a % 100, op = a / 100;
-  if (c >= 64) return;
+  if (c >= CLS_COUNT) return;
   int jobs = 0, filled = 0;
   for (int k = 1; k < MAX_PERMS; k++) {
     Perm *p = &perms[k];

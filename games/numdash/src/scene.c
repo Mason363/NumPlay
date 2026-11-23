@@ -503,7 +503,9 @@ void scene_prepare(const Game *g, const SceneOpts *o) {
     }
     if (obx < cam_x - 90 || obx >= cam_x + VIEW_W + 90) continue;
     if ((d->special == SP_COIN || d->special == SP_KEY) && game_used(g, ob, i)) continue;
-    if (o->low_detail && d->hit == HIT_NONE && !o->editor) continue;
+    /* low detail: no decoration, but for the pixel art Dash is built of (Geometry Dash's own low detail mode only
+     * leaves out objects marked High Detail, and its main levels have none) */
+    if (o->low_detail && d->hit == HIT_NONE && !o->editor && !(d->nparts && (OBJ_PART(d, 0)->flags & PF_TERRAIN))) continue;
     int xf = obj_xf(ob);
     float angle = 0;   /* degrees on top of the quarter turns in xf */
     if (xf < 0) { angle = obj_rot(ob) * (360.f / 1024); xf = (int)(obj_flips(ob) << 2); }

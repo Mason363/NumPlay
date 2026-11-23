@@ -14,6 +14,7 @@
 #include "../../common/np_lz.h"
 #include "save.h"
 #include "scratch.h"
+#include "classes.h"
 #include "story.h"
 #include "unlocks.h"
 #include "view.h"
@@ -22,7 +23,8 @@ SavedView saved_view;
 
 #define SAVE_NAME "finalearth2.sav"
 #define SAVE_MAGIC 0x53324546u   /* "FE2S" */
-#define SAVE_VERSION 1
+#define SAVE_VERSION 2   /* (2: every class's job priority; 1, the first 64 only, still loads) */
+static int load_version = SAVE_VERSION;   /* the version of the file being read */
 #define CHUNK 4096
 
 /* ---------------------------------------------------------------- the stream */
@@ -271,8 +273,8 @@ static void write_city(SaveIO *io) {
   save_bytes(io, &policies, sizeof policies);
   save_bytes(io, &upgrades, sizeof upgrades);
   save_bytes(io, &operating_cost, sizeof operating_cost);
-  extern int priority_jobs[64];
-  save_bytes(io, priority_jobs, sizeof(int) * 64);
+  extern int priority_jobs[CLS_COUNT];
+  save_bytes(io, priority_jobs, sizeof(int) * CLS_COUNT);
   /* the worlds and their columns */
   save_u8(io, (uint8_t)nworlds);
   for (int w = 0; w < nworlds; w++) {
@@ -310,8 +312,9 @@ static bool read_city(SaveIO *io) {
   load_bytes(io, &policies, sizeof policies);
   load_bytes(io, &upgrades, sizeof upgrades);
   load_bytes(io, &operating_cost, sizeof operating_cost);
-  extern int priority_jobs[64];
-  load_bytes(io, priority_jobs, sizeof(int) * 64);
+  extern int priority_jobs[CLS_COUNT];
+  memset(priority_jobs, 0, sizeof priority_jobs);
+  load_bytes(io, priority_jobs, sizeof(int) * (load_version >= 2 ? CLS_COUNT : 64));
   int nw = load_u8(io);
   if (nw > MAX_WORLDS) return false;
   for (int w = 0; w < nw; w++) {
@@ -367,7 +370,7 @@ bool save_exists(void) {
   uint32_t head[4];
   if (!d || len < 16) return false;
   memcpy(head, d, 16);
-  return head[0] == SAVE_MAGIC && head[1] == SAVE_VERSION;
+  return head[0] == SAVE_MAGIC && (head[1] == 1 || head[1] == SAVE_VERSION);
 }
 
 bool load_game(void) {
@@ -376,7 +379,8 @@ bool load_game(void) {
   uint32_t head[4];
   if (!d || len < 16) return false;
   memcpy(head, d, 16);
-  if (head[0] != SAVE_MAGIC || head[1] != SAVE_VERSION) return false;
+  if (head[0] != SAVE_MAGIC || (head[1] != 1 && head[1] != SAVE_VERSION)) return false;
+  load_version = (int)head[1];
   SaveIO io = {0};
   io.in = d + 16;
   io.inlen = len - 16;
