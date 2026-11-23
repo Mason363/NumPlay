@@ -1,4 +1,6 @@
 """Launch each Foundation menu item on an emulated N0120, then exit with Home."""
+import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -31,13 +33,30 @@ def check(nwa, index, game):
 
 
 if __name__ == "__main__":
-    emu.configure("n0120", "epsilon", 148928, apps_start=0x90180000)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("nwa")
+    parser.add_argument("--shard", default="1/1", help="K/N, as in tests/test_games.py")
+    args = parser.parse_args()
+    part, count = map(int, args.shard.split("/"))
+    if not 1 <= part <= count <= len(GAMES):
+        parser.error("expected 1 <= K <= N <= 18")
+    with Path("games/games.json").open(encoding="utf-8") as manifest:
+        records = {g["id"]: g["records"] for g in json.load(manifest)}
+    errors = []
     for index, game in enumerate(GAMES):
-        check(sys.argv[1], index, game)
-        if game in COPIES:
-            out = Path("build/foundation-save-tests")
-            out.mkdir(parents=True, exist_ok=True)
-            problems, stack, _ = play(game, sys.argv[1], str(out), index, copy=COPIES[game])
-            if problems:
-                raise AssertionError(f"{game}: {problems}")
-            print(f"PASS {game}: native save script and restore after reinstall; stack {stack} bytes")
+        if index % count != part - 1:
+            continue
+        emu.configure("n0120", "epsilon", 148928, apps_start=0x90180000)
+        try:
+            check(args.nwa, index, game)
+            if game in COPIES and COPIES[game] in records[game]:
+                out = Path("build/foundation-save-tests") / game
+                out.mkdir(parents=True, exist_ok=True)
+                problems, stack, _ = play(game, args.nwa, str(out), index, copy=COPIES[game])
+                if problems:
+                    raise AssertionError(str(problems))
+                print(f"PASS {game}: native save script and restore after reinstall; stack {stack} bytes")
+        except AssertionError as exc:
+            errors.append(f"{game}: {exc}")
+    if errors:
+        raise SystemExit("\n".join(errors))

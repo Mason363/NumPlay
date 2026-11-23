@@ -40,6 +40,25 @@ jobs:
         with:
           name: TwiliPlay-N0120
           path: build/foundation/TwiliPlay.nwa
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: foundation-diagnostics
+          path: build/foundation/TwiliPlay.nwa.map
+
+  regression:
+    needs: n0120
+    runs-on: ubuntu-24.04
+    env:
+      NWLINK: nwlink
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v4
+        with:
+          name: TwiliPlay-N0120
+          path: build/foundation
+      - run: python3 tools/foundation.py catalog build/foundation-games.json
       - name: Selected host tests
         if: ${{ !cancelled() }}
         run: |
@@ -52,9 +71,19 @@ jobs:
           python3 tests/test_progress.py build/foundation/TwiliPlay.nwa --catalog build/foundation-games.json
           python3 tests/test_uninstall.py build/foundation/TwiliPlay.nwa --game numdrive
           python3 tests/test_small_ram.py build/foundation/TwiliPlay.nwa
-          python3 tests/test_foundation_launch.py build/foundation/TwiliPlay.nwa
-      - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+
+  launch:
+    needs: n0120
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v4
         with:
-          name: foundation-diagnostics
-          path: build/foundation/TwiliPlay.nwa.map
+          name: TwiliPlay-N0120
+          path: build/foundation
+      - run: python3 tests/test_foundation_launch.py build/foundation/TwiliPlay.nwa --shard ${{ matrix.shard }}/3
