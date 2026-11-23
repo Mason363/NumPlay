@@ -107,6 +107,90 @@ static int paint(float sx, float sy) {
   return v < 0 ? 0 : v > 255 ? 255 : v;
 }
 
+#if NP_SOFT_FLOAT
+/* No FPU (the TI and Casio calculators): the same in fixed point, in 65536ths, the angles in turns of 2^32 and fsin
+ * from a table of it (floats took 85% of the title's time). What changes only once a frame is worked out there. */
+static int32_t sin_tab[1025]; /* fsin over a turn, 65536ths */
+static struct {
+  int32_t ux0, d1, k0;   /* ux's shift, the turn's change with len (65536ths of a radian), r's scale */
+  uint32_t d0, p1, p2;   /* turns: the turn at the middle, and the two the time moves */
+} fx;
+static uint32_t turn_of(float rad) { /* (a float angle in turns of 2^32) */
+  float t = rad * (1.f / (2 * PI));
+  t -= (float)(int)t;
+  if (t < 0) t += 1;
+  return (uint32_t)(int64_t)(t * 4294967296.f);
+}
+static uint32_t turn_q(int32_t rad) { return (uint32_t)(((int64_t)rad * 683565276) >> 16); } /* (2^32 / 2 pi) */
+static int32_t isin(uint32_t t) {
+  int32_t a = sin_tab[t >> 22], b = sin_tab[(t >> 22) + 1];
+  return a + (int32_t)(((int64_t)(b - a) * ((t >> 6) & 0xFFFF)) >> 16);
+}
+static int32_t icos(uint32_t t) { return isin(t + 0x40000000u); }
+static uint32_t isqrt(uint32_t v) {
+  uint32_t r = 0, b = 1u << 30;
+  while (b > v) b >>= 2;
+  for (; b; b >>= 2)
+    if (v >= r + b) v -= r + b, r = (r >> 1) + b;
+    else r >>= 1;
+  return r;
+}
+static int32_t q16(float v) { return (int32_t)(v * 65536.f); }
+static void fx_frame(void) {
+  if (!sin_tab[256])
+    for (int i = 0; i <= 1024; i++) sin_tab[i] = q16(fsin((float)i * (2 * PI / 1024)));
+  float speed;
+  if (mode == 0) {
+    fx.ux0 = q16(-0.12f), fx.d1 = q16(-10.f * spin);
+    fx.d0 = turn_of(t_spin * 0.5f * 0.2f + 302.2f - 10.f * (1.f - spin));
+    fx.k0 = q16(0.035f * (0.25f * contrast + 0.5f * spin + 1.2f));
+    speed = t_real * 2.f;
+  } else {
+    float s = t_real * 0.4f, ms = fminf_(6.f, s);
+    fx.ux0 = 0, fx.d1 = q16(2.2f + 0.4f * ms), fx.d0 = turn_of(-1.f - s * 0.05f - ms * s * 0.02f), fx.k0 = 0;
+    speed = t_real * 6.f * 0.4f + 1033.f;
+  }
+  fx.p1 = turn_of(5.1123314f + speed * 0.131121f), fx.p2 = turn_of(-0.113f * speed);
+}
+static int paint_q(int sx, int sy) {
+  int32_t ux = (int32_t)(((int64_t)(sx - 160) * 10737418) >> 16) + fx.ux0; /* (/ 400) */
+  int32_t uy = (int32_t)(((int64_t)(sy - 120) * 10737418) >> 16);
+  int32_t len = (int32_t)isqrt((uint32_t)(ux * ux) + (uint32_t)(uy * uy));
+  uint32_t d = fx.d0 + turn_q((int32_t)(((int64_t)fx.d1 * len) >> 16));
+  int32_t c = icos(d), s = isin(d);
+  /* len cos(atan2(uy, ux) + d) = ux cos d - uy sin d */
+  int32_t vx = (int32_t)((((int64_t)ux * c - (int64_t)uy * s) >> 16) * 30);
+  int32_t vy = (int32_t)((((int64_t)uy * c + (int64_t)ux * s) >> 16) * 30);
+  int32_t u2x = vx + vy, u2y = vx + vy;
+  for (int i = 0; i < 5; i++) {
+    int32_t m = isin(turn_q(vx > vy ? vx : vy));
+    u2x += m + vx, u2y += m + vy;
+    vx += icos(fx.p1 + turn_q((int32_t)(((int64_t)u2y * 23134) >> 16))) >> 1; /* (0.353) */
+    vy += isin(fx.p2 + turn_q(u2x)) >> 1;
+    int32_t e = icos(turn_q(vx + vy)) - isin(turn_q((int32_t)(((int64_t)vx * 46596) >> 16) - vy)); /* (0.711) */
+    vx -= e, vy -= e;
+  }
+  int32_t ax = vx >> 8, ay = vy >> 8; /* (256ths: the squares fit) */
+  int32_t l = (int32_t)isqrt((uint32_t)(ax * ax) + (uint32_t)(ay * ay)) << 8, r;
+  if (mode == 0) {
+    r = (int32_t)(((int64_t)l * fx.k0) >> 16);
+    r = r < 0 ? 0 : r > 2 * 65536 ? 2 * 65536 : r;
+  } else {
+    r = q16(1.5f - 1.7f) + (int32_t)(((int64_t)l * 7864) >> 16); /* (0.12) */
+    r = r < -2 * 65536 ? -2 * 65536 : r > 2 * 65536 ? 2 * 65536 : r;
+    if (r < 13107) r = (int32_t)(((int64_t)(r - 13107) * 39322) >> 16) + 13107; /* (0.2, 0.6) */
+    r = (r + 2 * 65536) >> 1;
+  }
+  int v = (int)(((int64_t)r * 255 + 65536) >> 17); /* (r 127.5 + 0.5) */
+  return v < 0 ? 0 : v > 255 ? 255 : v;
+}
+#define PAINT(x, y) paint_q((int)(x), (int)(y))
+#define FRAME() fx_frame()
+#else
+#define PAINT(x, y) paint((float)(x), (float)(y))
+#define FRAME() ((void)0)
+#endif
+
 static void make_lut(void) {
   for (int i = 0; i < 256; i++) {
     float r = i / 127.5f, out[3];
@@ -182,7 +266,7 @@ static C cell_colour(int gx, int gy) {
   static const int8_t o[4][2] = {{-1, -1}, {1, 1}, {1, -1}, {-1, 1}};
   unsigned r = 2, g = 2, b = 2;
   for (int k = 0; k < 4; k++) {
-    C c = lut[paint((float)(gx * BG_CELL + o[k][0]), (float)(gy * BG_CELL + o[k][1]))];
+    C c = lut[PAINT(gx * BG_CELL + o[k][0], gy * BG_CELL + o[k][1])];
     r += c >> 11, g += (c >> 5) & 63, b += c & 31;
   }
   return (C)((r >> 2) << 11 | (g >> 2) << 5 | (b >> 2));
@@ -192,10 +276,11 @@ void bg_reset(void) {
   next_row = 0;
   if (mode == 1 && t_real < 20) t_real = 20; /* the title's steady state */
   if (lut_dirty) make_lut();
+  FRAME();
   for (int y = 0; y < GH; y++)
     for (int x = 0; x < GW; x++) {
       if (mode == 1) cgrid[y][x] = cell_colour(x, y);
-      else grid[y][x] = (uint8_t)paint((float)(x * BG_CELL), (float)(y * BG_CELL));
+      else grid[y][x] = (uint8_t)PAINT(x * BG_CELL, y * BG_CELL);
     }
   drow_y = -1;
 }
@@ -222,6 +307,7 @@ void bg_update(float dt, int rows) {
   if (moving) lut_dirty = 1;
   static const int8_t jit[4][2] = {{-1, -1}, {1, 1}, {1, -1}, {-1, 1}};
   int did = rows > 0;
+  if (did) FRAME();
   while (rows-- > 0) {
     float jx = jit[pass & 3][0], jy = jit[pass & 3][1];
     if (mode == 1) {
@@ -232,7 +318,7 @@ void bg_update(float dt, int rows) {
     } else {
       uint8_t *row = grid[next_row];
       for (int x = 0; x < GW; x++) {
-        int v = paint(x * BG_CELL + jx, next_row * BG_CELL + jy);
+        int v = PAINT(x * BG_CELL + jx, next_row * BG_CELL + jy);
         row[x] = (uint8_t)((row[x] * 3 + v + 2) >> 2);
       }
     }
