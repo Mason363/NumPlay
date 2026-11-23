@@ -73,7 +73,7 @@ static void fresh_app(void) {
 
 static void test_levels(void) {
   static Level L;
-  static const uint16_t counts[LEVEL_COUNT] = {2272, 1530, 1509, 1402, 2126, 1691, 2767, 3563, 3852, 7506, 19006, 16771};
+  static const uint16_t counts[LEVEL_COUNT] = {2272, 1530, 1509, 1402, 2126, 1691, 2767, 3563, 3852, 7506, 19006, 16771, 15645, 9538, 8819, 8080, 7306, 7520};
   for (unsigned i = 0; i < LEVEL_COUNT; i++) {
     assert(level_load_builtin(&L, i));
     assert(L.count == counts[i]);

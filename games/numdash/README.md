@@ -4,7 +4,7 @@
 
 **Geometry Dash on your NumWorks calculator.**
 
-NumDash is a fan-made version of Geometry Dash that runs right on a NumWorks graphing calculator. Jump over spikes, fly the ship, flip the ball, collect secret coins and try to beat twelve levels of the real game, from Stereo Madness to Clubstep, Deadlocked and Dash, all with the calculator's keys.
+NumDash is a fan-made version of Geometry Dash that runs right on a NumWorks graphing calculator. Jump over spikes, fly the ship, flip the ball, collect secret coins and try to beat eighteen levels of the real game, from Stereo Madness through Dash and the Geometry Dash Subzero and Meltdown levels, all with the calculator's keys.
 
 ### [⬇ Download NumDash.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumDash.nwa)
 
@@ -28,6 +28,10 @@ That's it. Your progress is saved on the calculator, so you can close the game a
 ### The real levels
 
 Stereo Madness, Back on Track, Polargeist, Dry Out, Base After Base, Can't Let Go, Jumper, Time Machine and Cycles, with the same obstacles, colour changes and 3 hidden coins in each one.
+
+### Subzero and Meltdown
+
+Press Start, Nock Em, Power Trip, The Seven Seas, Viking Arena and Airborne Robots are included after the twelve original main-game levels.
 
 <img src="docs/screenshots/level-select.png" width="320" alt="Picking a level"> <img src="docs/screenshots/gameplay.png" width="320" alt="Jumping through Stereo Madness">
 
