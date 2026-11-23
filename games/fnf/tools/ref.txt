@@ -262,6 +262,10 @@ f43639e7086f9cadbd83028669266c00df1404e4 preload/images/ui/popup/pixel/num7.png
 46f415ebd6060bb22159189ffc0fa71fd7a64ba3 preload/images/ui/popup/pixel/shit.png
 3d7de62442b2e90a0c0820495c9b21dae79fd494 preload/images/ui/popup/pixel/sick.png
 98e6a4b2f0d7d607e06e6a68312d6f4a96c23ea6 shared/images/NOTE_hold_assets.png
+9877e1dba083f1b5a89cd55a369588c48ea4f655 shared/images/characters/BOYFRIEND.png
+74b5c87d4a3b9d6118dcdaf4f324342eb327e557 shared/images/characters/BOYFRIEND.xml
+a1b547c755a7f21f5928566a1c7ee4432e723a55 shared/images/characters/NeneKnifeToss.png
+5d4331c8c27276563930b9b0822d05d9198d8720 shared/images/characters/NeneKnifeToss.xml
 0b4db7f5c453014ee16ca2059e43bf3670c0e92f shared/images/characters/Pico_Censored.png
 e8b39d63caab5bdffa6b788fe2fd79125b4c3ae0 shared/images/characters/Pico_Censored.xml
 732a72cd78c4ee834252726b69c2b048cbdf9589 shared/images/characters/SpookyKids.png
@@ -272,6 +276,9 @@ f9fd0eb038e4ac6129f4d7692f4b24c95b014286 shared/images/characters/bf-car/spritem
 259d2464d42f5ddd8a10865e80b63f29a2eb5073 shared/images/characters/bf-dark/Animation.json
 61565d1169616ff8836fe9749d6ec76a767bebf9 shared/images/characters/bf-dark/spritemap1.json
 cbf86aaeda834ee4970c06995101814dc733193b shared/images/characters/bf-dark/spritemap1.png
+382f7c23d3c1555a2e6e91c47fde73aa4e5d650e shared/images/characters/bf-death/Animation.json
+aa3c0dc62fd72f9decd5db4a02d4e2bffd80292e shared/images/characters/bf-death/spritemap1.json
+3b095961b019b4142f68d9ab6bf82259447c467e shared/images/characters/bf-death/spritemap1.png
 590c0488b6dcf50018c6b2b292eb4f3cf4bb8070 shared/images/characters/bf/Animation.json
 bfbc40cf468a51259e2a94a6f38cfdd74212c734 shared/images/characters/bf/spritemap1.json
 556d44cccd43028815eac3245c441027b0c73939 shared/images/characters/bf/spritemap1.png
@@ -281,8 +288,12 @@ bfbc40cf468a51259e2a94a6f38cfdd74212c734 shared/images/characters/bf/spritemap1.
 edcf83f8240d1b45542e24db7a98033b1f1ea210 shared/images/characters/bfChristmas.xml
 0e9e2ebcc085fe4c107b91ec979a5a4e28d7990a shared/images/characters/bfChristmas_Censored.png
 9609f53578310b317bb2e7898533936054b9e4d1 shared/images/characters/bfChristmas_Censored.xml
+1d6f3844fc3152ba23e857fc22764577afe44360 shared/images/characters/bfHoldingGF-DEAD.png
+e4df2794d8c907a5a17854a199edae632276fce5 shared/images/characters/bfHoldingGF-DEAD.xml
 c3cbeb3734c7a15b0bf871cfbb8d85aee9eae65f shared/images/characters/bfPixel.png
 244779a685916b405ac4240a6d505451837d31b5 shared/images/characters/bfPixel.xml
+ddb688a2e7fd0f22e6668503a3bb7f8487cbaa81 shared/images/characters/bfPixelsDEAD.png
+fbc622125212f1c1f1ca7a968d813942827b68a1 shared/images/characters/bfPixelsDEAD.xml
 8cf41ce0bb9abd2a8a73508e6a83a24111bbdf11 shared/images/characters/dad/Animation.json
 0874415f302fb8b15191a9df211209eea92d7bac shared/images/characters/dad/spritemap1.json
 9f75de7aa2d23275e05d3df6ce416d47de4eea76 shared/images/characters/dad/spritemap1.png
@@ -346,6 +357,9 @@ cd02b83ad0cbcc742c6243be64c2eab27e77d38d shared/images/characters/pico-holding-n
 69caab3dd6e465a3b784f746808ff06f8519bfcb shared/images/characters/pico/basic-animations/Animation.json
 530a548ec538bf7782839133210ec57bd16d33a3 shared/images/characters/pico/basic-animations/spritemap1.json
 808d80e8dac71f3e4f191fca02ef134dc3bdafd4 shared/images/characters/pico/basic-animations/spritemap1.png
+75ae0a96a1648dd5b11e5f85caf11c79f54ece83 shared/images/characters/pico/death/Animation.json
+7c578270c394026f3f170e75b6d97f5e3d7de3bd shared/images/characters/pico/death/spritemap1.json
+6162aca2341bb39fc02f069077117273a373c6dc shared/images/characters/pico/death/spritemap1.png
 18abb77d1b62674da1c9e9974e497d2c7a30cde7 shared/images/characters/pico/playable-animations/Animation.json
 591d4af09f7aeb17c23eb1aaff759f5fa0f701a1 shared/images/characters/pico/playable-animations/spritemap1.json
 4d2de37e50f329d7612345149da7d598b5bd4206 shared/images/characters/pico/playable-animations/spritemap1.png

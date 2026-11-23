@@ -29,13 +29,38 @@ enum { FNF_SLOT_DANCE_L, FNF_SLOT_DANCE_R, FNF_SLOT_SING, FNF_SLOT_MISS = FNF_SL
 enum { FNF_CHAR_ALTERNATE = 1, FNF_CHAR_PIXEL = 2, FNF_CHAR_BF = 4, FNF_CHAR_PICO = 8, FNF_CHAR_ICON_FLIP = 16 };
 /* A character: its animations fnf_anim[anim .. anim + count - 1] (their names: fnf_anim_name), which of them dance,
  * sing and miss (slot: an animation of its own, 255 none); it dances every `dance` steps and stops singing after
- * `sing` steps. */
+ * `sing` steps. death: a player's game over (fnf_death, 255 none); top: its hitbox's top left from its feet. */
 typedef struct {
   uint16_t anim;
   uint8_t count, dance, sing, flags, icon;
   uint8_t slot[FNF_SLOTS];
+  uint8_t death;
   uint16_t frame_max;   /* its biggest frame, unpacked (bytes) */
+  int16_t top[2];
 } fnf_char_t;
+
+/* A game over animation: n frames (the original's every step-th, of len, at fps) in a w x h box at (x, y) from the
+ * character's feet. Frame 0 is whole, each next one XORed with the one before; each DEFLATE-packed, one after the
+ * other from fnf_blob + at, their sizes from fnf_death_size[frame] (0: the same as the one before). */
+typedef struct {
+  int16_t x, y;
+  uint16_t w, h, pal;
+  uint8_t n, step, len, fps;
+  uint16_t frame;
+  uint32_t at;
+} fnf_death_anim_t;
+
+/* A player's game over (GameOverSubState): firstDeath, deathLoop and deathConfirm (fnf_death_anim[anim..], FNF_NONE:
+ * none), the camera ending on cam from its feet; firstDeath gives way to deathLoop at its frame loop_at (0: at its
+ * end); after a retry the screen fades `fade` ms later; knife: Nene's knife toss (FNF_NONE: none), from Girlfriend's
+ * top left + knife_at. */
+enum { FNF_DF_PIXEL = 1 };   /* the fades go in ten steps */
+typedef struct {
+  uint16_t anim, knife;
+  int16_t cam[2], knife_at[2];
+  uint16_t fade;
+  uint8_t loop_at, flags;
+} fnf_death_t;
 
 /* A note kind a character sings its own way: the animation for each direction (255: the usual one, 254: none). */
 typedef struct {
@@ -112,6 +137,9 @@ extern const fnf_sprite_t fnf_sprite[FNF_SPRITES];
 extern const fnf_anim_t fnf_anim[FNF_ANIMS];
 extern const uint8_t fnf_anim_name[FNF_ANIMS];
 extern const fnf_char_t fnf_char[FNF_CHARS];
+extern const fnf_death_t fnf_death[FNF_DEATHS];
+extern const fnf_death_anim_t fnf_death_anim[FNF_DEATH_ANIMS];
+extern const uint16_t fnf_death_size[FNF_DEATH_FRAMES];
 extern const fnf_kind_t fnf_kind[FNF_KINDS];
 extern const uint16_t fnf_icon[FNF_ICONS][3];
 extern const fnf_stage_t fnf_stage[FNF_STAGES];

@@ -375,15 +375,37 @@ static bool in_song(const app_t *a) {
          ((v == V_HELP || v == V_OPTIONS) && a->under == V_PAUSE);
 }
 
+/* the game over's fade to black after a retry: FlxCamera.fade over 2 s, or RetroCameraFade's ten steps (a tenth more
+   white taken away every 0.2 s, from the second) */
+static int over_fade(const app_t *a) {
+  const fnf_death_t *d = over_death(a->g);
+  int32_t t = (int32_t)(a->clock - a->over_anim_at) - (d ? d->fade : 0);
+  if (a->over_anim < 2 || t <= 0) return 0;
+  if (a->fade_steps) return t / 200 - 1 < 0 ? 0 : t / 200 - 1 > 9 ? 9 : t / 200 - 1;
+  return t >= 2000 ? 256 : t * 256 / 2000;
+}
+
+/* the song started again comes up from black: over 1 s, or in ten steps of 0.1 s (after a first one) */
+static int song_fade(const app_t *a) {
+  if (!a->fade_at) return 0;
+  int32_t t = (int32_t)(a->clock - a->fade_at);
+  if (a->fade_steps) return 11 - t / 100 < 0 ? 0 : 11 - t / 100 > 10 ? 10 : 11 - t / 100;
+  return t >= 1000 ? 0 : 256 - t * 256 / 1000;
+}
+
+static void over_cb(void *ctx) {
+  app_t *a = ((ctx_t *)ctx)->a;
+  const fnf_death_t *d = over_death(a->g);
+  over_strip();
+  if (!d || d->anim == FNF_NONE) bold_c(160, 30, "GAME OVER", 32, 256);
+  if (a->over_anim < 2) keyline("OK|retry|Back|menu");
+  strip_darken(over_fade(a), a->fade_steps);
+}
+
 static void song_strip(void *ctx) {
   app_t *a = ((ctx_t *)ctx)->a;
   switch (a->view) {
     case V_PLAY: play_strip(); break;
-    case V_GAMEOVER:
-      play_actor_strip(a->g, ROLE_PLAYER);
-      bold_c(160, 30, "GAME OVER", 32, 256);
-      keyline("OK|retry|Back|menu");
-      break;
     default:
       play_strip();
       dim(150);
@@ -426,7 +448,13 @@ void screens_draw(app_t *a) {
     if (!was_in_song) M.view = -1;
     was_in_song = true;
     const fnf_game_t *g = a->g;
+    if (a->view == V_GAMEOVER) {
+      over_prepare(g, a->over_anim, a->clock - a->over_anim_at, a->clock - a->over_at);
+      draw_frame(over_cb, &c);
+      return;
+    }
     play_prepare(g, a->p->downscroll, (int32_t)((a->clock - a->play_t0) * 1000));
+    play_fade(song_fade(a), a->fade_steps);
     draw_frame(song_strip, &c);
     return;
   }

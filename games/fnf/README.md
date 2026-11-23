@@ -27,6 +27,7 @@
 * **The game's own scoring:** points for how close each hit is, Sick, Good, Bad and Shit, the health bar, combos, long notes, misses, and the ranks from Loss to Perfect.
 * **The beat, without the music:** the characters bop and sing, the camera and the health icons bump on the beat, and Ready, Set, Go counts you in.
 * **The game's look:** its own characters, stages, notes, ratings and letters, with Week 6 in pixels.
+* **The game over:** Boyfriend's skeleton, in pixels in Week 6, and Pico's fall with Nene's knife in Weekend 1, every frame, as the camera finds them.
 * **Saved as you go:** Home saves and quits. Your scores are also copied into `fnf_saves.py`, so installing the app again doesn't erase them.
 
 <table>
@@ -56,7 +57,7 @@
 
 The notes scroll up to the arrows at the top of the screen. Press each note's key as it reaches its arrow: **Left**, **Down**, **Up** or **Right**, or **7**, **8**, **(** and **)**. Keep the key down to the end of a long note. The closer to the beat, the better: Sick, Good, Bad or Shit, and Sick and Good keep your combo going.
 
-A missed note, or a key pressed with no note to hit, costs health: when the green side of the bar runs out, it's game over. The singer on the left sings first, then it's your turn: watch them, and the characters bopping, to keep the beat.
+A missed note, or a key pressed with no note to hit, costs health: when the green side of the bar runs out, it's game over. **OK** tries the song again, **Back** goes back to the menu. The singer on the left sings first, then it's your turn: watch them, and the characters bopping, to keep the beat.
 
 ## Controls
 
@@ -74,7 +75,7 @@ A missed note, or a key pressed with no note to hit, costs health: when the gree
 
 * **On its own:** Friday Night Funkin' is too big to fit next to NumPlay. Installing it from the NumWorks website swaps out NumPlay and the other apps, and installing NumPlay again swaps it back out.
 * **Without sound:** the calculator has no speaker. The notes still come at the songs' exact times, and the countdown, the characters and the camera keep the beat. If your hits come out early or late, change the note offset in Options.
-* **Made to fit:** the camera shows the whole stage instead of following the singer, the stages are still pictures, the characters have fewer frames, and the cutscenes, the dialogue and the freeplay DJ are left out.
+* **Made to fit:** the camera shows the whole stage instead of following the singer, the stages are still pictures, the characters have fewer frames, and the cutscenes, the dialogue, the freeplay DJ and Pico's deaths in his Week 5 and 6 remixes and in Stress are left out (his last frame stays on the game over).
 
 ## Credits
 

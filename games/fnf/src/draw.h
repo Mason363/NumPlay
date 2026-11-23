@@ -46,4 +46,15 @@ void play_prepare(const fnf_game_t *g, bool downscroll, int32_t since_start);
 void play_strip(void);
 void play_actor_strip(const fnf_game_t *g, int i);
 void play_icons(const fnf_game_t *g);                   /* (after a SetHealthIcon) */
+/* the song's stage and characters darkened (the HUD isn't): v 0-256, or (tenths) v tenths of white taken away */
+void play_fade(int v, bool tenths);
+void strip_darken(int v, bool tenths);                  /* the whole strip */
+
+/* the game over (GameOverSubState): the player's death, unpacked into the background's RAM, on black; the camera
+ * moves from the stage's view to the death's. over_death: the player's (0: none) */
+const fnf_death_t *over_death(const fnf_game_t *g);
+bool over_begin(const fnf_game_t *g);                   /* false: no death animations (its last frame stays) */
+/* anim 0-2 (firstDeath, deathLoop, deathConfirm), ms into it, ms since the death */
+void over_prepare(const fnf_game_t *g, int anim, uint32_t anim_ms, uint32_t since_ms);
+void over_strip(void);
 #endif

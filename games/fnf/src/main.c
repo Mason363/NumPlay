@@ -95,6 +95,7 @@ static void start_song(bool fresh) {
   origin = last_poll = plat_millis();   /* (the time unpacking took isn't a gap in the keys' reading) */
   if (fresh) A.play_t0 = origin;
   else A.play_t0 = origin - 5000;   /* (a restart: the arrows are there already) */
+  A.fade_at = 0;
   start_us = G.now;
   q_len = 0;
   stale_lanes = lanes_of(keys_now);
@@ -160,6 +161,38 @@ static void song_won(void) {
   A.result_new = !had || score > before;
   save();
   results(&G, false);
+}
+
+/* ------------------------------------------------------------------------------------------------ the game over */
+/* GameOverSubState: firstDeath, then deathLoop until OK (deathConfirm, then the screen fades out and the song starts
+   again, fading in) or Back (the menu) */
+static void game_over(void) {
+  const fnf_death_t *d = over_death(&G);
+  A.sel = 0, A.over_anim = 0;
+  A.over_at = A.over_anim_at = A.clock;
+  A.fade_steps = d && (d->flags & FNF_DF_PIXEL);
+  over_begin(&G);
+  go(V_GAMEOVER);
+}
+
+/* when firstDeath gives way to deathLoop (ms; 0: never, no death animations) */
+static uint32_t first_death_ms(const fnf_death_t *d) {
+  if (!d || d->anim == FNF_NONE) return 0;
+  const fnf_death_anim_t *an = &fnf_death_anim[d->anim];
+  return (d->loop_at ? d->loop_at : an->len) * 1000u / an->fps;
+}
+
+static void over_keys(uint32_t hit, uint32_t now) {
+  const fnf_death_t *d = over_death(&G);
+  uint32_t first = first_death_ms(d);
+  if (A.over_anim == 0 && first && now - A.over_anim_at >= first) A.over_anim = 1, A.over_anim_at += first;
+  if (A.over_anim < 2) {
+    if (hit & FK_OK) A.over_anim = 2, A.over_anim_at = now;
+    else if (hit & FK_BACK) menu_back();
+  } else if (now - A.over_anim_at >= (d ? d->fade : 0) + 2000u) {
+    start_song(false);
+    if (A.view == V_PLAY) A.fade_at = plat_millis();
+  }
 }
 
 static void resume(void) {
@@ -332,8 +365,9 @@ int main(void) {
         }
         fnf_advance(&G, song_time(plat_millis()));
         if (G.over == FNF_WON) song_won();
-        else if (G.over == FNF_DIED) A.sel = 0, go(V_GAMEOVER);
+        else if (G.over == FNF_DIED) game_over();
         else play_keys(hit);
+        if (A.fade_at && (int32_t)(now - A.fade_at) > 1100) A.fade_at = 0;
         break;
       }
       case V_PAUSE:
@@ -360,8 +394,7 @@ int main(void) {
         if (hit & (FK_OK | FK_BACK)) menu_back();
         break;
       case V_GAMEOVER:
-        if (hit & FK_OK) start_song(false);
-        else if (hit & FK_BACK) menu_back();
+        over_keys(hit, now);
         break;
       default:
         if (hit & (FK_OK | FK_BACK)) A.story = 0, go(V_MAIN);

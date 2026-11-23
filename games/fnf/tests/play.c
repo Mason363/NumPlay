@@ -4,9 +4,12 @@
  *                    holds and their drops, misses, ghost misses, the note offset, ranks); every chart unpacked and
  *                    read; a bot playing every chart on time to a full combo (and the same scores on every
  *                    computer: a hash of them); bots hitting late and missing; a few hundred sessions of the whole
- *                    app with random keys; saves written and read back, damaged, and back from their copy
+ *                    app with random keys; saves written and read back, damaged, and back from their copy; the
+ *                    game over of the players through the app (deathLoop, OK, the fade, the song again, Back)
  *   play shots DIR   pictures of the screens (DIR/<name>.ppm)
  *   play film DIR CHART MS   MS milliseconds of a chart, a bot playing (DIR/<frame>_<ms>.raw, for tools/record.py)
+ *   play gameover DIR CHARACTER [SONG]   a song of that player (fnf_char) with no key pressed: the game over, OK,
+ *                    the song again (DIR/<frame>_<ms since the death>.raw)
  */
 #define main fnf_app_main
 #include "../src/main.c"
@@ -529,6 +532,155 @@ static void sessions(void) {
   CHECK(d && fnf_file_ok((const fnf_file_t *)d) && ((const fnf_file_t *)d)->p.guide == 1, "the guide seen, saved");
 }
 
+/* ---------------------------------------------------------------- the game over, through the app */
+/* Freeplay, a song of the player chr with no key pressed: it dies; deathLoop; OK: deathConfirm, the fade, the song
+   again; it dies again; Back: freeplay. (Each key is pressed for 60 ms.) */
+static struct {
+  int chr, song, list;
+  int deaths;
+  uint32_t key, key_at;           /* the key being pressed, since */
+  uint32_t over_at, ok_at, restart_at, back_at;
+  uint8_t anim_at_ok, fade_steps;
+  int box[4];                     /* what's drawn on black when OK is pressed (x0, y0, x1, y1) */
+  bool fade_seen;                 /* the song again, coming up from black */
+  const char *dir;                /* frames saved here (play gameover) */
+  int frame;
+} GO;
+
+static uint32_t tap(uint32_t k) {
+  if (!GO.key && clock_ms - GO.key_at >= 60) GO.key = k, GO.key_at = clock_ms;
+  return 0;
+}
+
+static void drawn_box(int *b) {
+  b[0] = 320, b[1] = 240, b[2] = b[3] = -1;
+  for (int y = 0; y < 226; y++)   /* (above the key line) */
+    for (int x = 0; x < 320; x++)
+      if (fb[y][x]) {
+        if (x < b[0]) b[0] = x;
+        if (x > b[2]) b[2] = x;
+        if (y < b[1]) b[1] = y;
+        if (y > b[3]) b[3] = y;
+      }
+}
+
+static uint32_t over_script(uint32_t ms) {
+  (void)ms;
+  if (GO.key) {   /* down for 60 ms, then up */
+    if (clock_ms - GO.key_at < 60) return GO.key;
+    GO.key = 0, GO.key_at = clock_ms;
+    return 0;
+  }
+  if (clock_ms - GO.key_at < 60) return 0;
+  switch (A.view) {
+    case V_TITLE: return tap(FK_OK);
+    case V_MAIN: return tap(A.sel == MAIN_FREEPLAY ? FK_OK : FK_DOWN);
+    case V_HELP: return tap(FK_BACK);
+    case V_FREEPLAY:
+      if (GO.deaths >= 2) {
+        if (!GO.back_at) GO.back_at = clock_ms, quit_at = clock_ms + 200;
+        return 0;
+      }
+      if (P.list != GO.list) return tap(FK_SHIFT);
+      return tap(A.list[P.song] == GO.song ? FK_OK : FK_DOWN);
+    case V_PLAY:
+      if (GO.ok_at && !GO.restart_at) GO.restart_at = clock_ms, GO.fade_seen = A.fade_at != 0;
+      return 0;
+    case V_GAMEOVER:
+      if (!GO.over_at || (GO.restart_at && GO.deaths < 2)) GO.over_at = clock_ms, GO.deaths++;
+      if (GO.deaths == 1 && !GO.ok_at && clock_ms - GO.over_at >= 4000) {
+        GO.ok_at = clock_ms, GO.anim_at_ok = A.over_anim, GO.fade_steps = A.fade_steps;
+        drawn_box(GO.box);
+        return tap(FK_OK);
+      }
+      if (GO.deaths == 2 && clock_ms - GO.over_at >= 1000) return tap(FK_BACK);
+      return 0;
+    default: return 0;
+  }
+}
+
+static void over_frame(int y, int h) {
+  if (!GO.dir || y + h != 240 || !GO.over_at || GO.deaths > 1) return;
+  if (GO.restart_at && clock_ms - GO.restart_at > 1500) return;
+  char path[512];
+  snprintf(path, sizeof path, "%s/%06d_%06d.raw", GO.dir, GO.frame++, (int)(clock_ms - GO.over_at));
+  FILE *f = fopen(path, "wb");
+  if (!f) exit(2);
+  fwrite(fb, 2, 320 * 240, f);
+  fclose(f);
+}
+
+/* the song (and list) where chr plays (that song, if named), or false */
+static bool song_of(int chr, const char *name) {
+  for (int list = 0; list < 2; list++) {
+    P.list = (uint8_t)list;
+    app_build_list(&A);
+    for (int i = 0; i < A.list_n; i++)
+      for (int d = 0; d < FNF_DIFFS; d++) {
+        int c = app_chart(A.list[i], list, d);
+        if (c >= 0 && fnf_var[fnf_chart[c].var].chr[ROLE_PLAYER] == chr &&
+            (!name || !strcmp(fnf_song[A.list[i]].name, name))) {
+          GO.song = A.list[i], GO.list = list;
+          return true;
+        }
+      }
+  }
+  return false;
+}
+
+static void game_over_run(int chr, const char *dir, const char *song) {
+  memset(files, 0, sizeof files);
+  memset(&GO, 0, sizeof GO);
+  GO.chr = chr, GO.dir = dir;
+  A.p = &P, A.g = &G;
+  fnf_fresh(&P);
+  if (!song_of(chr, song)) {
+    CHECK(0, "a song where character %d plays", chr);
+    return;
+  }
+  P.list = 0;
+  on_push = over_frame;
+  app_session(400000, over_script);
+  on_push = 0;
+}
+
+static void game_overs(void) {
+  static const int CHR[] = {FNF_CHR_BF, FNF_CHR_BF_PIXEL, FNF_CHR_PICO_PLAYABLE, FNF_CHR_BF_CHRISTMAS,
+                            FNF_CHR_BF_HOLDING_GF, FNF_CHR_PICO_BLAZIN, FNF_CHR_PICO_PIXEL};
+  for (unsigned i = 0; i < sizeof CHR / sizeof CHR[0]; i++) {
+    int chr = CHR[i];
+    game_over_run(chr, 0, 0);
+    const fnf_death_t *d = &fnf_death[fnf_char[chr].death];
+    bool anims = d->anim != FNF_NONE;
+    CHECK(GO.deaths == 2, "character %d: died twice (%d)", chr, GO.deaths);
+    CHECK(GO.ok_at && GO.anim_at_ok == (anims ? 1 : 0), "character %d: deathLoop before OK (%d)", chr, GO.anim_at_ok);
+    /* the song again after the fade: fade + 2 s (frames are 24 ms here) */
+    int32_t wait = (int32_t)(GO.restart_at - GO.ok_at), want = d->fade + 2000;
+    CHECK(wait >= want && wait < want + 100, "character %d: the song again %d ms after OK (%d)", chr, wait, want);
+    CHECK(GO.fade_seen && GO.fade_steps == ((d->flags & FNF_DF_PIXEL) != 0), "character %d: it fades in", chr);
+    CHECK(GO.back_at && A.view == V_FREEPLAY, "character %d: Back goes to freeplay (%d)", chr, A.view);
+    /* the death on screen, the camera on it */
+    int cx = (GO.box[0] + GO.box[2]) / 2, cy = (GO.box[1] + GO.box[3]) / 2;
+    CHECK(GO.box[2] > GO.box[0] && (!anims || (cx > 100 && cx < 220 && cy > 50 && cy < 190)),
+          "character %d: its death in the middle (%d, %d)", chr, cx, cy);
+    mix((uint32_t)wait), mix((uint32_t)cx), mix((uint32_t)cy);
+  }
+  /* every death animation's frames unpack */
+  for (int i = 0; i < FNF_DEATH_ANIMS; i++) {
+    const fnf_death_anim_t *an = &fnf_death_anim[i];
+    uint32_t n = (an->w + 1u) / 2 * an->h, at = an->at;
+    static uint8_t px[FNF_BG_BYTES], tmp[FNF_BG_BYTES];
+    CHECK(n <= sizeof px && fnf_inflate(fnf_blob + at, fnf_death_size[an->frame], px, n) == (int32_t)n,
+          "death animation %d: frame 0", i);
+    at += fnf_death_size[an->frame];
+    for (int k = 1; k < an->n; k++) {
+      uint16_t s = fnf_death_size[an->frame + k];
+      CHECK(!s || fnf_inflate(fnf_blob + at, s, tmp, n) == (int32_t)n, "death animation %d: frame %d", i, k);
+      at += s;
+    }
+  }
+}
+
 /* ---------------------------------------------------------------- saves */
 static void saves(void) {
   memset(files, 0, sizeof files);
@@ -770,8 +922,12 @@ int main(int argc, char **argv) {
     film(argv[2], (unsigned)atoi(argv[3]), atoi(argv[4]));
     return 0;
   }
+  if (argc >= 4 && !strcmp(argv[1], "gameover")) {   /* a death to the song again: DIR/<frame>_<ms>.raw */
+    game_over_run(atoi(argv[3]), argv[2], argc >= 5 ? argv[4] : 0);
+    return fails != 0;
+  }
   if (argc < 3 || strcmp(argv[1], "test")) {
-    printf("play test DIR | shots DIR | film DIR CHART MS\n");
+    printf("play test DIR | shots DIR | film DIR CHART MS | gameover DIR CHARACTER [SONG]\n");
     return 1;
   }
   judgements_and_points();
@@ -784,6 +940,7 @@ int main(int argc, char **argv) {
   late_and_missing();
   saves();
   sessions();
+  game_overs();
   fuzz();
   printf("hash %08x (the same on every computer)\n", hash);
   printf(fails ? "%d FAILED\n" : "all good\n", fails);
