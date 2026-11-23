@@ -1,0 +1,29 @@
+name: Foundation footprint
+on:
+  push:
+    branches: [foundation/footprint]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  attribute:
+    runs-on: ubuntu-24.04
+    env:
+      NWLINK: nwlink
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 45280933094
+          name: TwiliPlay-N0120
+          path: reference
+      - name: Generate both maps for the same executable
+        run: |
+          sed -i 's|-Wl,-T,tools/kit_base.ld|-Wl,-Map,$@.map -Wl,-T,tools/kit_base.ld|' Makefile
+          make -j2 foundation
+          cmp reference/TwiliPlay.nwa build/foundation/TwiliPlay.nwa
+          sha256sum build/foundation/TwiliPlay.nwa
+          wc -c build/foundation/TwiliPlay.nwa
+          python3 docs/foundation_footprint.py build/foundation
