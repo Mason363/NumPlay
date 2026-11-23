@@ -1,8 +1,11 @@
 /* The home screen: a carousel of game cards. The selected card is large,
  * its neighbours peek in from the sides, and the card cycles through the
- * game's screenshots. The last card opens the settings. */
+ * game's screenshots. The last card opens the settings.
+ * TwiliPlay look: the colours come from the current theme (theme.c), Up and
+ * Down change it. */
 #include "ui.h"
 #include "live.h"
+#include "theme.h"
 #include "../../games/common/np_text.h"
 
 #define CARD_W 200
@@ -13,10 +16,11 @@
 #define FRAME 4
 #define SHOT_MS 2600
 #define SLIDE_MS 520
+#define TOAST_MS 1400
+#define STAR_COUNT 24
 
 #define SETTINGS_TOP 0x4A5163
 #define SETTINGS_BOTTOM 0x1C1F27
-#define SETTINGS_ACCENT 0x6C7A96
 
 typedef struct {
   int n;
@@ -29,15 +33,10 @@ typedef struct {
   float badge;          /* play badge, 0..1 */
   float zoom;           /* launch animation, 0..1 */
   float intro;
+  uint16_t toast;       /* ms left showing the theme's name */
 } home_t;
 
 static bool first_open = true;
-
-static uint32_t item_color(int game, int which) {
-  if (game < 0) return which == 0 ? SETTINGS_TOP : which == 1 ? SETTINGS_BOTTOM : SETTINGS_ACCENT;
-  const np_game_t *g = &np_games[game];
-  return which == 0 ? g->top : which == 1 ? g->bottom : g->accent;
-}
 
 static const char *item_title(int game) { return game < 0 ? T("Settings") : np_games[game].title; }
 /* under the name, the tagline; or, when the calculator's software gives apps too little RAM for the
@@ -68,6 +67,31 @@ static void draw_settings_art(int x, int y, int w, int h, int dim) {
   if (w > gear->w + 8) gfx_icon(gear, x + (w - gear->w) / 2, y + (h - gear->h) / 2 - 2, 0xFFFF, 200 - dim / 2);
 }
 
+/* TwiliPlay look: procedural stars and logo, no bitmaps */
+static void draw_stars(const np_theme_t *th) {
+  color_t ca = gfx_rgb(th->star_a), cb = gfx_rgb(th->star_b);
+  for (uint32_t i = 0; i < STAR_COUNT; i++) {
+    uint32_t h1 = (i + 1) * 2654435761u, h2 = (i + 17) * 2246822519u;
+    int x = (int)((h1 >> 16) % SCREEN_W), y = (int)((h2 >> 16) % SCREEN_H);
+    if (y + 2 < gfx_y0 || y - 1 >= gfx_y1) continue;
+    int a = 50 + (int)((h1 >> 8) & 63) * 2;
+    color_t c = (i & 1) ? ca : cb;
+    if (i % 6 == 0) {
+      gfx_fill_alpha(x - 1, y, 3, 1, c, a);
+      gfx_fill_alpha(x, y - 1, 1, 3, c, a);
+    } else {
+      int s = 1 + (int)(i & 1);
+      gfx_fill_alpha(x, y, s, s, c, a);
+    }
+  }
+}
+static void draw_star(int cx, int cy, int r, color_t c, int a) {
+  for (int dy = -r; dy <= r; dy++) {
+    int t = r - (dy < 0 ? -dy : dy), hw = (t * t + r / 2) / r;
+    gfx_fill_alpha(cx - hw, cy + dy, 2 * hw + 1, 1, c, a);
+  }
+}
+
 static void draw_card(home_t *h, int k, float d) {
   int game = h->item[k];
   float ad = absf(d);
@@ -88,7 +112,8 @@ static void draw_card(home_t *h, int k, float d) {
   int x = (int)(cx - w / 2), y = (int)(cy - hh / 2), iw = (int)w, ih = (int)hh;
   if (x >= SCREEN_W || x + iw <= 0) return;
   if (ad < 0.6f && z == 0) gfx_shadow(x, y + 5, iw, ih, (int)radius, 12, 120);
-  color_t frame_color = gfx_mix(0xFFFF, 0, dim >> 3);
+  const np_theme_t *th = np_theme();
+  color_t frame_color = gfx_mix(gfx_rgb(ad < 0.5f ? th->accent : th->panel), gfx_rgb(th->bg), dim >> 3);
   gfx_rrect(x, y, iw, ih, (int)radius, frame_color, 256);
   int fx = (int)frame, ir = NP_MAX((int)(radius - frame + 1), 0);
   int ix = x + fx, iy = y + fx, iiw = iw - 2 * fx, iih = ih - 2 * fx;
@@ -120,51 +145,41 @@ static void draw_card(home_t *h, int k, float d) {
     int r = (int)(15 * b);
     int bx = x + iw - 14, by = y + ih - 14;
     gfx_circle(bx, by + 2, r + 2, 0, 60);
-    gfx_circle(bx, by, r + 2, 0xFFFF, 256);
-    gfx_circle(bx, by, r, gfx_rgb(item_color(game, 2)), 256);
-    if (b > 0.8f) gfx_icon(&np_icon_play, bx - 4, by - 6, 0xFFFF, (int)(256 * (b - 0.8f) * 5));
+    gfx_circle(bx, by, r + 2, gfx_rgb(th->text), 256);
+    gfx_circle(bx, by, r, gfx_rgb(th->accent), 256);
+    if (b > 0.8f) gfx_icon(&np_icon_play, bx - 4, by - 6, gfx_rgb(th->bg), (int)(256 * (b - 0.8f) * 5));
   }
 }
 
 static void scene(void *ctx) {
   home_t *h = ctx;
-  /* background: the theme of the card in front, blended while scrolling */
-  int a = (int)h->pos;
-  if (a < 0) a = 0;
-  if (a > h->n - 1) a = h->n - 1;
-  int b = NP_MIN(a + 1, h->n - 1);
-  int t = (int)((h->pos - a) * 256);
-  t = NP_CLAMP(t, 0, 256);
-  uint32_t top = gfx_lerp888(item_color(h->item[a], 0), item_color(h->item[b], 0), t);
-  uint32_t bottom = gfx_lerp888(item_color(h->item[a], 1), item_color(h->item[b], 1), t);
-  if (live_active()) { /* a moving background (Backspace), Gabriel's port of NumVisuals' */
+  const np_theme_t *th = np_theme();
+  bool live = live_active();
+  color_t tx = live ? 0xFFFF : gfx_rgb(th->text);
+  if (live) {
     live_strip();
   } else {
-    gfx_vgrad(0, 0, SCREEN_W, SCREEN_H, top, bottom);
-    /* a faint dot grid gives the background some texture */
-    for (int y = (gfx_y0 + 15) / 16 * 16 + 8 - 16; y < gfx_y1; y += 16) {
-      if (y < gfx_y0) continue;
-      for (int x = 8; x < SCREEN_W; x += 16) gfx_fill_alpha(x, y, 2, 1, 0xFFFF, 22);
-    }
+    gfx_vgrad(0, 0, SCREEN_W, SCREEN_H, th->bg, th->bg2);
+    draw_stars(th);
   }
-
   float z = ui_ease_in_out(h->zoom);
   int ui_alpha = (int)(256 * (1 - z));
-  /* header */
-  if (gfx_y0 < 26 && ui_alpha > 0) {
-    gfx_icon(&np_icon_logo, 12, 6, 0xFFFF, ui_alpha);
-    gfx_text(&np_font_body, 40, 18, "NumPlay", 0xFFFF, ui_alpha);
-    /* where we are in the carousel; with many cards the dots get closer */
+  if (gfx_y0 < 28 && ui_alpha > 0) {
+    draw_star(21, 14, 9, gfx_rgb(th->accent), ui_alpha);
+    draw_star(32, 6, 3, gfx_rgb(th->star_b), ui_alpha);
+    gfx_text(&np_font_body, 38, 14, "TwiliPlay", tx, ui_alpha);
+    gfx_text(&np_font_small, 39, 25, "STARLIGHT EDITION", tx, ui_alpha * 170 / 256);
     int pitch = NP_MIN(10, 190 / (h->n + 1));
     int dx = SCREEN_W - 10 - (h->n + 1) * pitch;
     for (int i = 0; i < h->n; i++) {
       float near = 1 - NP_MIN(absf(i - h->pos), 1.f);
       int w = pitch - 4 + (int)(pitch * near);
-      gfx_rrect(dx, 11, w, 6, NP_MIN(3, w / 2), 0xFFFF, (int)((90 + 166 * near) * ui_alpha / 256));
+      color_t dc = near > 0.5f ? gfx_rgb(th->accent) : tx;
+      gfx_rrect(dx, 11, w, 6, NP_MIN(3, w / 2), dc, (int)((90 + 166 * near) * ui_alpha / 256));
       dx += w + 4;
     }
+    if (h->toast) gfx_text_right(&np_font_small, SCREEN_W - 10, 25, th->name, tx, ui_alpha);
   }
-  /* cards, far ones first */
   int lo = NP_MAX((int)h->pos - 2, 0), hi = NP_MIN((int)h->pos + 2, h->n - 1);
   for (int pass = 3; pass >= 0; pass--)
     for (int k = lo; k <= hi; k++) {
@@ -173,9 +188,7 @@ static void scene(void *ctx) {
       if (ring == pass && (k == h->sel || z < 1)) draw_card(h, k, d);
     }
   if (ui_alpha <= 0) return;
-  /* screenshot progress under the card */
-  int front = (int)(h->pos + 0.5f);
-  front = NP_CLAMP(front, 0, h->n - 1);
+  int front = NP_CLAMP((int)(h->pos + 0.5f), 0, h->n - 1);
   float away = absf(h->pos - front);
   int text_alpha = (int)(ui_alpha * NP_CLAMP(1 - away * 2.2f, 0.f, 1.f));
   int game = h->item[front];
@@ -186,16 +199,15 @@ static void scene(void *ctx) {
       float progress = front == h->sel ? (h->slide > 0 ? 1.f : NP_MIN(h->shot_time / (float)SHOT_MS, 1.f)) : 0;
       for (int i = 0; i < n; i++) {
         int x = x0 + i * (seg + gap);
-        gfx_rrect(x, 185, seg, 4, 2, 0xFFFF, text_alpha * 70 / 256);
+        gfx_rrect(x, 185, seg, 4, 2, tx, text_alpha * 70 / 256);
         int fill = i < h->shot ? seg : i == h->shot ? (int)(seg * progress) : 0;
-        if (fill >= 4) gfx_rrect(x, 185, fill, 4, 2, 0xFFFF, text_alpha * 230 / 256);
+        if (fill >= 4) gfx_rrect(x, 185, fill, 4, 2, tx, text_alpha * 230 / 256);
       }
     }
-    /* who made the game, when it isn't ours: under the card */
     if (game >= 0 && np_games[game].credit && np_games[game].nshots <= 1)
-      gfx_text_center(&np_font_small, CARD_CX, 193, np_games[game].credit, 0xFFFF, text_alpha * 150 / 256);
-    gfx_text_center(&np_font_title, CARD_CX, 213, item_title(game), 0xFFFF, text_alpha);
-    gfx_text_center(&np_font_body, CARD_CX, 231, item_tagline(game), 0xFFFF, text_alpha * 190 / 256);
+      gfx_text_center(&np_font_small, CARD_CX, 193, np_games[game].credit, tx, text_alpha * 150 / 256);
+    gfx_text_center(&np_font_title, CARD_CX, 213, item_title(game), tx, text_alpha);
+    gfx_text_center(&np_font_body, CARD_CX, 231, item_tagline(game), tx, text_alpha * 190 / 256);
   }
 }
 
@@ -254,6 +266,11 @@ int np_home(int *selected, bool returning) {
         h.badge = 0;
       }
       if ((pressed & K_OK) && (h.item[h.sel] < 0 || !np_game_ram_missing(h.item[h.sel]))) result = h.item[h.sel];
+      if (pressed & (K_UP | K_DOWN)) {
+        np_theme_step((pressed & K_DOWN) ? -1 : 1);
+        h.toast = TOAST_MS;
+        dirty = true;
+      }
       if (pressed & K_BACKSPACE) { /* the next background, then none */
         live_next();
         np_bg_save(live_mode());
@@ -310,6 +327,10 @@ int np_home(int *selected, bool returning) {
           return result;
         }
       }
+    }
+    if (h.toast) {
+      h.toast = elapsed >= h.toast ? 0 : (uint16_t)(h.toast - elapsed);
+      if (!h.toast) dirty = true;
     }
     if (live_active()) dirty = true; /* the background moves: every frame */
     if (dirty) {
