@@ -79,7 +79,7 @@ void np_config_load(np_config_t *c) {
 #endif
   uint32_t len = 0;
   const uint8_t *d = ef_read(CONFIG_NAME, &len);
-  if (!d || d[0] != CONFIG_MAGIC) return;
+  if (!d || !len || d[0] != CONFIG_MAGIC) return;
   if (len == 4 && d[1] == 1) { /* settings saved before themes */
     c->disguise = d[2] & 1;
     c->hint = !(d[2] & 2);
