@@ -208,6 +208,9 @@ class Songs:
         names |= set(SSERAFIM_EXTRA)
         return sorted(names)
 
+    def players(self):
+        return {v["meta"]["playData"]["characters"].get("player") for s in self.songs for v in s["variations"]} - {None}
+
     def stages(self):
         return sorted({v["meta"]["playData"]["stage"] for s in self.songs for v in s["variations"]})
 
@@ -248,8 +251,9 @@ def kind_anims(kind):
 
 # ------------------------------------------------------------------------------------------------- characters
 class Characters:
-    def __init__(self, ref, pics, names, wanted_anims, stage_scale):
+    def __init__(self, ref, pics, names, wanted_anims, stage_scale, players):
         self.ref, self.pics = ref, pics
+        self.players = players
         self.rows, self.anims, self.anim_names, self.kinds = [], [], [], []
         self.index = {n: i for i, n in enumerate(names)}
         self.icons, self.icon_rows = {}, []
@@ -301,7 +305,9 @@ class Characters:
     def convert(self, name, wanted):
         cfg = self.ref.json(f"preload/data/characters/{name}.json")
         scale = float(cfg.get("scale", 1)) * self.stage_scale.get(name, 1.0)
-        flip = bool(cfg.get("flipX", False))
+        # mirrored as the stage puts it: the player the other way from its data (Stage.addCharacter), so Boyfriend
+        # and Pico face their opponent
+        flip = bool(cfg.get("flipX", False)) != (name in self.players)
         base = self.ref.path(cfg["assetPath"])
         anims = {a["name"]: a for a in cfg["animations"]}
         alternate = "danceLeft" in anims
@@ -897,7 +903,7 @@ def main():
     for who in ("bf", "pico"):
         OWNED[who] = set(ref.json(f"preload/data/players/{who}.json").get("ownedChars", []))
     print("characters", file=sys.stderr)
-    chars = Characters(ref, pics, songs.characters(), wanted, stage_scale)
+    chars = Characters(ref, pics, songs.characters(), wanted, stage_scale, songs.players())
     print("stages", file=sys.stderr)
     stage_names = songs.stages()
     stages = Stages(ref, pics, stage_names, chars, cast)
