@@ -339,6 +339,9 @@ typedef struct {
   float fa[6], fb[6], fc[6], fd[6], fia[6], fic[6]; /* per face: (s,t) per screen unit, for 1 voxel quads */
   uint8_t ident;                                  /* unrotated: shared colour cache */
   float hx, hy; /* half the width and height of a cell on screen, plus a pixel */
+#if NP_SOFT_FLOAT
+  int32_t iox, ioy, ibx[3], iby[3], ihx, ihy; /* (no FPU: ox... in 256ths of a pixel, for the strips' tests) */
+#endif
 } ObjXf;
 
 static ObjXf xf;
@@ -359,6 +362,14 @@ static void setup_xf(const Obj *o) {
   xf.oz = vdot(d, cam.fwd);
   xf.hx = 0.5f * (fabsf(xf.bx[0]) + fabsf(xf.bx[1]) + fabsf(xf.bx[2])) + 1;
   xf.hy = 0.5f * (fabsf(xf.by[0]) + fabsf(xf.by[1]) + fabsf(xf.by[2])) + 1;
+#if NP_SOFT_FLOAT
+  { /* (far off the screen stays far off: kept within a million pixels; a pixel more for the rounding) */
+#define Q8(v) ((int32_t)(fminf(fmaxf((v), -1e6f), 1e6f) * 256))
+    xf.iox = Q8(xf.ox), xf.ioy = Q8(xf.oy), xf.ihx = Q8(xf.hx) + 256, xf.ihy = Q8(xf.hy) + 256;
+    for (int k = 0; k < 3; k++) xf.ibx[k] = Q8(xf.bx[k]), xf.iby[k] = Q8(xf.by[k]);
+#undef Q8
+  }
+#endif
   {
     vec3 lo = vsub(s->bmin, s->origin), hi = vsub(s->bmax, s->origin);
     vec3 m = v3(fmaxf(-lo.x, hi.x), fmaxf(-lo.y, hi.y), fmaxf(-lo.z, hi.z));
@@ -423,11 +434,21 @@ static void draw_part(const Shape *s, int pi) {
   const Block *b = blocks[s->blk[pi]];
   int cx = PK_X(k) * 8, cy = PK_Y(k) * 8, cz = PK_Z(k) * 8, comp = PK_C(k);
   /* quick strip reject using the cell's centre and size on screen (rows first) */
+#if NP_SOFT_FLOAT
+  { /* (no FPU: in 256ths of a pixel; the centre is 2v / 2) */
+    int32_t vx = (int32_t)PK_X(k) * 2 + 1, vy = (int32_t)PK_Y(k) * 2 + 1, vz = (int32_t)PK_Z(k) * 2 + 1;
+    int32_t sy = xf.ioy + ((xf.iby[0] * vx + xf.iby[1] * vy + xf.iby[2] * vz) >> 1);
+    if (sy + xf.ihy < strip_y0 * 256 || sy - xf.ihy > strip_y1 * 256) return;
+    int32_t sx = xf.iox + ((xf.ibx[0] * vx + xf.ibx[1] * vy + xf.ibx[2] * vz) >> 1);
+    if (sx + xf.ihx < clip_x0 * 256 || sx - xf.ihx > clip_x1 * 256) return;
+  }
+#else
   float vx = (cx + 4) * 0.125f, vy = (cy + 4) * 0.125f, vz = (cz + 4) * 0.125f;
   float sy = xf.oy + xf.by[0] * vx + xf.by[1] * vy + xf.by[2] * vz;
   if (sy + xf.hy < strip_y0 || sy - xf.hy > strip_y1) return;
   float sx = xf.ox + xf.bx[0] * vx + xf.bx[1] * vy + xf.bx[2] * vz;
   if (sx + xf.hx < clip_x0 || sx - xf.hx > clip_x1) return;
+#endif
   uint8_t occ = s->occ ? s->occ[pi] : 0;
   for (int f = 0; f < 6; f++) {
     if (!(xf.vis & (1 << f)) || !b->nq[f]) continue;
@@ -482,12 +503,22 @@ static void draw_object(Obj *ob, RObj *o) {
   const Shape *s = ob->shape;
   if (o->pcache == 0xFFFF && pc_used + s->np <= pc_avail && pc_used + s->np < 0xFFFF) {
     uint8_t *pc = pc_base + pc_used;
+#if !NP_SOFT_FLOAT
     float r = xf.hy;
+#endif
     for (int i = 0; i < s->np; i++) {
       uint32_t k = s->key[i];
+#if NP_SOFT_FLOAT
+      /* (no FPU: in 256ths of a pixel, a pixel wider; >> rounds down) */
+      int32_t vx = (int32_t)PK_X(k) * 2 + 1, vy = (int32_t)PK_Y(k) * 2 + 1, vz = (int32_t)PK_Z(k) * 2 + 1;
+      int32_t sy = xf.ioy + ((xf.iby[0] * vx + xf.iby[1] * vy + xf.iby[2] * vz) >> 1);
+      int a = (int)(((int64_t)(sy - xf.ihy) * (int64_t)(4294967296.0 / (256 * STRIP_H))) >> 32);
+      int b = (int)(((int64_t)(sy + xf.ihy) * (int64_t)(4294967296.0 / (256 * STRIP_H))) >> 32);
+#else
       float vy = PK_Y(k) + 0.5f, vx = PK_X(k) + 0.5f, vz = PK_Z(k) + 0.5f;
       float sy = xf.oy + xf.by[0] * vx + xf.by[1] * vy + xf.by[2] * vz;
       int a = (int)floorf((sy - r) * (1.0f / STRIP_H)), b = (int)floorf((sy + r) * (1.0f / STRIP_H));
+#endif
       if (b < 0 || a > SCREEN_H / STRIP_H - 1) {
         pc[i] = 0xF0;
         continue;
