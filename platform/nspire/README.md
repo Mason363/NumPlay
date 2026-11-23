@@ -11,7 +11,7 @@ make port TARGET=nspire        (in a game's folder): build/nspire/<game>.tns
 | Key | NumWorks key |
 | --- | --- |
 | Arrows (touchpad or clickpad) | Arrows |
-| enter, the touchpad's middle | OK |
+| enter, the touchpad's middle (on its own: not with an arrow of the pad, nor within 150 ms of one) | OK |
 | return (↵) | EXE |
 | esc | Back |
 | home, on | Home (save and quit) |

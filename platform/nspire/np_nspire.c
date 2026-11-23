@@ -267,16 +267,41 @@ static void keys_load(void) {
   }
   pad_masks();
 }
-static eadk_keyboard_state_t keys_now(void) {
+/* The pad: its arrows, and its middle (the click) only on its own. A click with an arrow of the pad, or begun within
+ * 150 ms of one, gives nothing till it's let go: a thumb on an arrow slipping to the middle, or pressing it with the
+ * arrow, opened Monkey Mart's menu while walking (Mason363/NumPlay#446). On the touchpad, a press going on from an
+ * arrow to the middle keeps its arrow. enter always gives OK. */
+#define CLICK_AFTER_ARROW_MS 150
+static eadk_keyboard_state_t pad_now(void) {
+  static uint32_t arrow_until; /* till when a click is taken for a slip off an arrow */
+  static int pressed_arrow;    /* the touchpad's arrow in the press going on (0: none) */
+  static bool click_off;
   eadk_keyboard_state_t s = 0;
-  for (unsigned i = 0; i < sizeof KEYS / sizeof KEYS[0]; i++)
-    if (KEYS[i].to != NONE && isKeyPressed(*KEYS[i].key)) s |= (eadk_keyboard_state_t)1 << KEYS[i].to;
+  int arrow = 0;
+  bool click = false;
   if (is_touchpad) { /* read once: isKeyPressed reads it over I2C for each arrow */
     touchpad_report_t r;
-    if (!touchpad_scan(&r) && r.pressed && r.arrow < sizeof PAD / sizeof PAD[0]) s |= PAD[r.arrow];
-  } else
-    for (unsigned i = 1; i < sizeof PAD / sizeof PAD[0]; i++)
-      if (isKeyPressed(*PAD_KEYS[i])) s |= PAD[i];
+    if (!touchpad_scan(&r) && r.pressed && r.arrow < sizeof PAD / sizeof PAD[0]) {
+      if (r.arrow == TPAD_ARROW_CLICK) click = true, arrow = pressed_arrow;
+      else if (r.arrow != TPAD_ARROW_NONE) arrow = pressed_arrow = r.arrow;
+    } else
+      pressed_arrow = 0;
+  } else {
+    for (int i = 1; i < 9; i++)
+      if (isKeyPressed(*PAD_KEYS[i])) s |= PAD[i], arrow = i;
+    click = isKeyPressed(KEY_NSPIRE_CLICK);
+  }
+  uint32_t now = (uint32_t)eadk_timing_millis();
+  if (arrow) s |= PAD[arrow], arrow_until = now + CLICK_AFTER_ARROW_MS;
+  if (!click) click_off = false;
+  else if (arrow || (int32_t)(arrow_until - now) > 0) click_off = true;
+  if (click && !click_off) s |= PAD[TPAD_ARROW_CLICK];
+  return s;
+}
+static eadk_keyboard_state_t keys_now(void) {
+  eadk_keyboard_state_t s = pad_now();
+  for (unsigned i = 0; i < sizeof KEYS / sizeof KEYS[0]; i++)
+    if (KEYS[i].to != NONE && isKeyPressed(*KEYS[i].key)) s |= (eadk_keyboard_state_t)1 << KEYS[i].to;
   if (on_key_pressed()) s |= (eadk_keyboard_state_t)1 << eadk_key_home | (eadk_keyboard_state_t)1 << eadk_key_on_off;
   return s;
 }

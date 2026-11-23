@@ -58,6 +58,8 @@ The games are made for the NumWorks keypad. Each Nspire key gives a NumWorks key
 
 The letters give the NumWorks key that types the same letter with alpha, so a game asking for a name types the letters you press.
 
+The pad's middle gives OK only when pressed on its own: pressed with an arrow, or less than 0.15 s after one, it gives nothing till you let go (and a press sliding from an arrow to the middle keeps its arrow), so walking with the pad doesn't open menus. enter always gives OK.
+
 Games save by themselves, and when you leave with Home.
 
 ### Your own keys
@@ -72,7 +74,7 @@ Any key but **on** can give another NumWorks key, in every game, from a text fil
 # Celeste: dash (Back, on esc) on del, and climb (toolbox, on menu) on shift
 del = back
 shift = toolbox
-# Monkey Mart: no OK from the pad's middle, only from enter
+# no OK from the pad's middle at all, only from enter
 click = none
 # the arrows on the number keys, as on the NumWorks
 8 = up
