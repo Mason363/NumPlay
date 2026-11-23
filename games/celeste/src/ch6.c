@@ -3619,6 +3619,47 @@ static float fmodp(float x, float m) { return fmodf(fmodf(x, m) + m, m); }
 /* the fill: Color.Lerp(Black, LightSkyBlue, 0.3), then 100 rays (a3ffff * 0.25), in every star block crossing the
  * rows: one layer for them all (a frame has 16) */
 #define SJ_RECTS 24
+#if NP_SOFT_FLOAT
+/* the rays of a frame, below as fixed point: each edge of the ray's parallelogram (256ths of a pixel; slope in
+   65536ths), the rows it covers, its alpha */
+#define SJ_RAYS 100
+typedef struct { int32_t px, py, oy, slope; } SJEdge;
+typedef struct { SJEdge e[4]; int16_t y0, y1; uint8_t a; } SJRay;
+static const SJRay *sj_rays(float t) {
+  static SJRay rays[SJ_RAYS];
+  static float at_t = -1, at_x, at_y;
+  if (t == at_t && g_level.cam.x == at_x && g_level.cam.y == at_y) return rays;
+  at_t = t, at_x = g_level.cam.x, at_y = g_level.cam.y;
+  const float vx = -0.09983342f, vy = -0.99500417f;   /* AngleToVector(-1.6707964) */
+  for (int i = 0; i < SJ_RAYS; i++) {
+    SJRay *ray = &rays[i];
+    float dur = 4 + hash01(666, (uint32_t)i * 8) * 8, c = t / dur + hash01(666, (uint32_t)i * 8 + 1);
+    uint32_t cyc = (uint32_t)c, h = (uint32_t)i * 8 + cyc * 1024;
+    float pct = c - cyc, e = ease_cube_inout(yoyo(pct));
+    int a = (int)(0.25f * e * 256);
+    ray->a = (uint8_t)(a > 0 ? a : 0);
+    if (a <= 0) continue;
+    float w = 8 + floorf(hash01(667, h) * 72), len = 20 + floorf(hash01(668, h) * 180);
+    float rx = hash01(669, h) * 320, ry = hash01(670, h) * 580 + 8 * pct * dur;
+    float px = floorf(fmodp(rx - g_level.cam.x * 0.9f, 320)), py = floorf(-200 + fmodp(ry - g_level.cam.y * 0.7f, 580));
+    V2 q[4] = {v2(px + vy * w, py - vx * w), v2(px + vy * w - vx * len, py - vx * w - vy * len), v2(px - vy * w, py + vx * w),
+               v2(px - vy * w + vx * len, py + vx * w + vy * len)};
+    float lo = 1e9f, hi = -1e9f;
+    for (int k = 0; k < 4; k++) {
+      V2 p = q[k], o = q[(k + 1) & 3];
+      SJEdge *ed = &ray->e[k];
+      ed->px = (int32_t)floorf(p.x * 256 + 0.5f), ed->py = (int32_t)floorf(p.y * 256 + 0.5f);
+      ed->oy = (int32_t)floorf(o.y * 256 + 0.5f);
+      ed->slope = o.y != p.y ? (int32_t)((o.x - p.x) / (o.y - p.y) * 65536) : 0;
+      lo = fminf(lo, p.y), hi = fmaxf(hi, p.y);
+    }
+    /* (the rows whose centres it may cross, a row more each side) */
+    int y0 = (int)floorf(lo) - 1, y1 = (int)ceilf(hi) + 1;
+    ray->y0 = (int16_t)(y0 < -1000 ? -1000 : y0 > 1000 ? 1000 : y0), ray->y1 = (int16_t)(y1 < -1000 ? -1000 : y1 > 1000 ? 1000 : y1);
+  }
+  return rays;
+}
+#endif
 static void sjfill_strip(uint16_t *strip, int y0, int y1, void *ctx) {
   const Ent *ce = ctx;
   int16_t r[SJ_RECTS][4];
@@ -3637,6 +3678,34 @@ static void sjfill_strip(uint16_t *strip, int y0, int y1, void *ctx) {
     if (q[3] > yb) yb = q[3];
     nr++;
   }
+#if NP_SOFT_FLOAT
+  /* No FPU (the TI-Nspire and Casio calculators): the rays worked out once a frame, not once a strip, and filled
+     in fixed point (in floats, the fill took a sixth of a frame of chapter 6) */
+  if (!nr) return;
+  const SJRay *ray = sj_rays(ST(ce, SJCtrl)->t);
+  for (int i = 0; i < SJ_RAYS; i++, ray++) {
+    if (!ray->a || ray->y1 <= ya || ray->y0 >= yb) continue;
+    int ra = ray->y0 > ya ? ray->y0 : ya, rb = ray->y1 < yb ? ray->y1 : yb;
+    uint16_t pc = scale565(rgb(0xA3FFFF), ray->a);
+    for (int y = ra; y < rb; y++) {
+      int32_t yc = y * 256 + 128, xl = INT32_MAX, xr = INT32_MIN;
+      for (int k = 0; k < 4; k++) {
+        const SJEdge *e = &ray->e[k];
+        if ((e->py <= yc) == (e->oy <= yc)) continue;
+        int32_t x = e->px + (int32_t)(((int64_t)(yc - e->py) * e->slope) >> 16);
+        if (x < xl) xl = x;
+        if (x > xr) xr = x;
+      }
+      if (xl > xr) continue;
+      int x0 = (xl - 128 + 255) >> 8, x1 = (xr - 128 + 255) >> 8; /* (ceil(x - 0.5)) */
+      for (int k = 0; k < nr; k++) {
+        if (y < r[k][1] || y >= r[k][3]) continue;
+        uint16_t *d = strip + (y - y0) * VIEW_W;
+        for (int x = x0 > r[k][0] ? x0 : r[k][0]; x < x1 && x < r[k][2]; x++) d[x] = blend565(d[x], pc, ray->a);
+      }
+    }
+  }
+#else
   float t = ST(ce, SJCtrl)->t;
   const float vx = -0.09983342f, vy = -0.99500417f;   /* AngleToVector(-1.6707964) */
   for (int i = 0; i < 100 && nr; i++) {
@@ -3667,6 +3736,7 @@ static void sjfill_strip(uint16_t *strip, int y0, int y1, void *ctx) {
       }
     }
   }
+#endif
 }
 
 /* drawn just behind the blocks (depth -9999), before their edges */

@@ -28,6 +28,41 @@ static void quad(float x0, float y0, float x1, float y1, float x2, float y2, flo
   tri(x0, y0, x2, y2, x3, y3);
 }
 
+#if NP_SOFT_FLOAT
+/* No FPU (the TI-Nspire): the same in quarter pixels, each edge's crossing stepped down the rows in 2^32ths */
+static void fill_tri(uint16_t *strip, int sy0, int sy1, const Tri *q) {
+  int ymin = q->y[0], ymax = q->y[0];
+  for (int i = 1; i < 3; i++) ymin = q->y[i] < ymin ? q->y[i] : ymin, ymax = q->y[i] > ymax ? q->y[i] : ymax;
+  /* (rows whose centre y + 1/2 is in [ymin, ymax): ceil(v / 4 - 1/2)) */
+  int r0 = (ymin - 2 + 3) >> 2, r1 = (ymax - 2 + 3) >> 2;
+  if (r0 < sy0) r0 = sy0;
+  if (r1 > sy1) r1 = sy1;
+  if (r0 >= r1) return;
+  int64_t slope[3];
+  for (int i = 0; i < 3; i++) {
+    int j = (i + 1) % 3, dy = q->y[j] - q->y[i];
+    slope[i] = dy ? (int64_t)(q->x[j] - q->x[i]) * 4294967296 / dy : 0;
+  }
+  for (int y = r0; y < r1; y++) {
+    int py = 4 * y + 2;
+    int64_t xl = INT64_MAX, xr = INT64_MIN;
+    for (int i = 0; i < 3; i++) {   /* the row's crossing with each edge */
+      int ay = q->y[i], by = q->y[(i + 1) % 3];
+      if ((ay <= py && by > py) || (by <= py && ay > py)) {
+        int64_t x = (int64_t)q->x[i] * 4294967296 + (py - ay) * slope[i];
+        xl = x < xl ? x : xl, xr = x > xr ? x : xr;
+      }
+    }
+    if (xl > xr) continue;
+    /* (ceil(x / 4 - 1/2), x in quarter pixels and 2^32ths) */
+    int64_t a = (xl + ((int64_t)2 << 32) - 1) >> 34, b = (xr + ((int64_t)2 << 32) - 1) >> 34;
+    if (a < 0) a = 0;
+    if (b > VIEW_W) b = VIEW_W;
+    uint16_t *row = strip + (y - sy0) * VIEW_W;
+    for (int x = (int)a; x < b; x++) row[x] = 0;
+  }
+}
+#else
 static void fill_tri(uint16_t *strip, int sy0, int sy1, const Tri *q) {
   struct { float x[3], y[3]; } tt, *t = &tt;
   for (int i = 0; i < 3; i++) t->x[i] = q->x[i] / 4.f, t->y[i] = q->y[i] / 4.f;
@@ -51,6 +86,7 @@ static void fill_tri(uint16_t *strip, int sy0, int sy1, const Tri *q) {
     for (int x = a; x < b; x++) row[x] = 0;
   }
 }
+#endif
 
 static void wipe_strip(uint16_t *strip, int sy0, int sy1, void *ctx) {
   (void)ctx;

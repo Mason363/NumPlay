@@ -103,6 +103,19 @@ static void draw_spinner(uint16_t *strip, int sy0, int sy1, const Sp *s, const L
   for (int row = s->row; row < s->row + 4 && row < rm->spin_rows; row++)
     for (int j = row == s->row ? s->i + 1 : rm->spin_first[row]; j < rm->spin_first[row + 1]; j++) {
       if (gone(rm, j)) continue;
+#if NP_SOFT_FLOAT
+      /* (no FPU: their places are whole pixels, so the same in integers) */
+      int sx = (int)s->x, sy = (int)s->y, ox, oy;
+      {
+        uint16_t v = rm->spin[j];
+        ox = rm->x + ((v & 1023) - SPIN_X0) * 8 + ((v >> 10) & 7), oy = rm->y + (row + rm->spin_row0) * 8 + (v >> 13);
+      }
+      int ddx = ox - sx, ddy = oy - sy;
+      if (ddx * ddx + ddy * ddy >= 24 * 24) continue;
+      uint32_t k = hash2(sx + ox, (sy + oy) * 7 + 3);
+      int bi = (int)(k % (uint32_t)lk->nb), q = (int)((k >> 8) & 3);
+      int mx = ((sx + ox + 1) >> 1) - g_camx, my = ((sy + oy + 1) >> 1) - g_camy;
+#else
       Sp o;
       at(rm, j, row, &o);
       float ddx = o.x - s->x, ddy = o.y - s->y;
@@ -110,6 +123,7 @@ static void draw_spinner(uint16_t *strip, int sy0, int sy1, const Sp *s, const L
       uint32_t k = hash2((int)(s->x + o.x), (int)(s->y + o.y) * 7 + 3);
       int bi = (int)(k % (uint32_t)lk->nb), q = (int)((k >> 8) & 3);
       int mx = (int)floorf((s->x + o.x) / 2 + 0.5f) - g_camx, my = (int)floorf((s->y + o.y) / 2 + 0.5f) - g_camy;
+#endif
       if (my + 14 < sy0 || my - 14 >= sy1) continue;
       if (pass == 0 && lk->borders) blit_centered(strip, sy0, sy1, &lk->bgb[bi], mx, my, q, 0, 0xFFFF);
       else
