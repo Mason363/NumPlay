@@ -20,6 +20,7 @@
 
 typedef struct {
   int n;
+  uint8_t theme;
   int8_t item[NP_MAX_GAMES + 1]; /* game index, or -1 for the settings card */
   int sel;
   float pos;            /* scroll position, in cards */
@@ -76,6 +77,8 @@ static void draw_card(home_t *h, int k, float d) {
   float cx = CARD_CX + d * SPACING, cy = CARD_CY;
   float w = CARD_W * s, hh = CARD_H * s;
   float frame = FRAME * s, radius = 12 * s;
+  if (h->theme == NP_THEME_SWITCH) radius = 15 * s;
+  if (h->theme == NP_THEME_PLAYSTATION) radius = 4 * s, frame = 2 * s;
   int dim = (int)(130 * NP_MIN(ad, 1.f));
   if (k == h->sel && z > 0) {  /* launching: grow to the whole screen */
     float e = ui_ease_in_out(z);
@@ -88,7 +91,7 @@ static void draw_card(home_t *h, int k, float d) {
   int x = (int)(cx - w / 2), y = (int)(cy - hh / 2), iw = (int)w, ih = (int)hh;
   if (x >= SCREEN_W || x + iw <= 0) return;
   if (ad < 0.6f && z == 0) gfx_shadow(x, y + 5, iw, ih, (int)radius, 12, 120);
-  color_t frame_color = gfx_mix(0xFFFF, 0, dim >> 3);
+  color_t frame_color = h->theme == NP_THEME_PLAYSTATION ? gfx_rgb(0x8DB8FF) : gfx_mix(0xFFFF, 0, dim >> 3);
   gfx_rrect(x, y, iw, ih, (int)radius, frame_color, 256);
   int fx = (int)frame, ir = NP_MAX((int)(radius - frame + 1), 0);
   int ix = x + fx, iy = y + fx, iiw = iw - 2 * fx, iih = ih - 2 * fx;
@@ -126,8 +129,71 @@ static void draw_card(home_t *h, int k, float d) {
   }
 }
 
+static void scene_grid(home_t *h) {
+  uint32_t top = 0x101820, bottom = 0x05090E, accent = 0x107C10;
+  uint32_t ink = 0xFFFF;
+  if (h->theme == NP_THEME_WII) top = 0x245A78, bottom = 0x102B40, accent = 0x55C9EE;
+  if (h->theme == NP_THEME_WII_U) top = 0x174C7B, bottom = 0x071A31, accent = 0x00A8E0;
+  gfx_vgrad(0, 0, SCREEN_W, SCREEN_H, top, bottom);
+  const char *heading = h->theme == NP_THEME_XBOX ? "Home" : h->theme == NP_THEME_WII ? "Channels" : "Menu";
+  gfx_text(&np_font_title, 12, 24, heading, ink, 256);
+  gfx_fill(0, 31, SCREEN_W, 2, gfx_rgb(accent));
+  int page = h->sel / 8, first = page * 8;
+  for (int slot = 0; slot < 8; slot++) {
+    int k = first + slot;
+    if (k >= h->n) break;
+    int game = h->item[k], col = slot % 4, row = slot / 4;
+    int x = 8 + col * 78, y = 43 + row * 86;
+    int w = h->theme == NP_THEME_XBOX ? 70 : 62;
+    int hh = h->theme == NP_THEME_XBOX ? 48 : 54;
+    bool selected = k == h->sel;
+    float z = selected ? ui_ease_in_out(h->zoom) : 0;
+    float pop = selected && z == 0 ? 1.f + 0.045f * h->badge : 1.f;
+    float cx = x + w / 2.f, cy = y + hh / 2.f;
+    float ww = w * pop, hhh = hh * pop;
+    if (z > 0) {
+      cx += (160 - cx) * z;
+      cy += (120 - cy) * z;
+      ww += (SCREEN_W + 8 - ww) * z;
+      hhh += (SCREEN_H + 8 - hhh) * z;
+    }
+    int tx = (int)(cx - ww / 2), ty = (int)(cy - hhh / 2);
+    int tw = (int)ww, th = (int)hhh;
+    int radius = h->theme == NP_THEME_WII ? 9 : h->theme == NP_THEME_WII_U ? 4 : 2;
+    if (selected) gfx_rrect(tx - 3, ty - 3, tw + 6, th + 6, radius + 2, gfx_rgb(accent), 256);
+    else gfx_rrect(tx - 1, ty - 1, tw + 2, th + 2, radius + 1, 0xFFFF, 70);
+    if (game >= 0) {
+      const np_game_t *g = &np_games[game];
+      const uint8_t *px = ui_shot(game, 0);
+      if (px) gfx_image(px, g->shots[0].palette, g->shots[0].ncolors, SHOT_W, SHOT_H,
+                        tx, ty, tw, th, radius, selected ? 0 : 35);
+      else gfx_fill(tx, ty, tw, th, gfx_rgb(g->bottom));
+    } else {
+      draw_settings_art(tx, ty, tw, th, 0);
+    }
+    if (z < 0.55f) {
+      gfx_text_center(&np_font_small, x + w / 2, y + hh + 13, item_title(game), ink,
+                      selected ? 256 : 190);
+    }
+  }
+  if (h->n > 8) {
+    char page_text[16];
+    int n = 0, p = page + 1, total = (h->n + 7) / 8;
+    page_text[n++] = (char)('0' + p / 10);
+    if (page_text[0] == '0') n = 0;
+    page_text[n++] = (char)('0' + p % 10);
+    page_text[n++] = '/';
+    page_text[n++] = (char)('0' + total / 10);
+    if (page_text[n - 1] == '0') n--;
+    page_text[n++] = (char)('0' + total % 10);
+    page_text[n] = 0;
+    gfx_text_right(&np_font_small, SCREEN_W - 10, 24, page_text, ink, 180);
+  }
+}
+
 static void scene(void *ctx) {
   home_t *h = ctx;
+  if (h->theme >= NP_THEME_XBOX) { scene_grid(h); return; }
   /* background: the theme of the card in front, blended while scrolling */
   int a = (int)h->pos;
   if (a < 0) a = 0;
@@ -137,11 +203,17 @@ static void scene(void *ctx) {
   t = NP_CLAMP(t, 0, 256);
   uint32_t top = gfx_lerp888(item_color(h->item[a], 0), item_color(h->item[b], 0), t);
   uint32_t bottom = gfx_lerp888(item_color(h->item[a], 1), item_color(h->item[b], 1), t);
-  if (live_active()) { /* a moving background (Backspace), Gabriel's port of NumVisuals' */
+  if (h->theme == NP_THEME_SWITCH) {
+    gfx_vgrad(0, 0, SCREEN_W, SCREEN_H, 0x242424, 0x080808);
+    gfx_fill(0, 29, SCREEN_W / 2, 2, gfx_rgb(0xE60012));
+    gfx_fill(SCREEN_W / 2, 29, SCREEN_W / 2, 2, gfx_rgb(0x00A7E1));
+  } else if (h->theme == NP_THEME_PLAYSTATION) {
+    gfx_vgrad(0, 0, SCREEN_W, SCREEN_H, 0x24365F, 0x080E1D);
+    gfx_fill(0, 29, SCREEN_W, 2, gfx_rgb(0x4B8DFF));
+  } else if (live_active()) { /* the NumPlay live background */
     live_strip();
   } else {
     gfx_vgrad(0, 0, SCREEN_W, SCREEN_H, top, bottom);
-    /* a faint dot grid gives the background some texture */
     for (int y = (gfx_y0 + 15) / 16 * 16 + 8 - 16; y < gfx_y1; y += 16) {
       if (y < gfx_y0) continue;
       for (int x = 8; x < SCREEN_W; x += 16) gfx_fill_alpha(x, y, 2, 1, 0xFFFF, 22);
@@ -152,8 +224,9 @@ static void scene(void *ctx) {
   int ui_alpha = (int)(256 * (1 - z));
   /* header */
   if (gfx_y0 < 26 && ui_alpha > 0) {
-    gfx_icon(&np_icon_logo, 12, 6, 0xFFFF, ui_alpha);
-    gfx_text(&np_font_body, 40, 18, "NumPlay", 0xFFFF, ui_alpha);
+    if (h->theme == NP_THEME_NUMPLAY) gfx_icon(&np_icon_logo, 12, 6, 0xFFFF, ui_alpha);
+    const char *label = h->theme == NP_THEME_SWITCH ? "HOME" : h->theme == NP_THEME_PLAYSTATION ? "Games" : "NumPlay";
+    gfx_text(&np_font_body, h->theme == NP_THEME_NUMPLAY ? 40 : 12, 18, label, 0xFFFF, ui_alpha);
     /* where we are in the carousel; with many cards the dots get closer */
     int pitch = NP_MIN(10, 190 / (h->n + 1));
     int dx = SCREEN_W - 10 - (h->n + 1) * pitch;
@@ -218,6 +291,9 @@ int np_home(int *selected, bool returning) {
     if (np_bg_load(&m)) live_set(m);
   }
   home_t h = {0};
+  np_config_t cfg;
+  np_config_load(&cfg);
+  h.theme = cfg.theme < NP_THEME_COUNT ? cfg.theme : NP_THEME_NUMPLAY;
   build_items(&h);
   /* the game played last, or else the first game there is: never Settings,
    * unless it was just open or no game is left */
