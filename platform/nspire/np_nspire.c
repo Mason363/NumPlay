@@ -1,5 +1,5 @@
 /* NumPlay on the TI-Nspire CX and CX II (Ndless): the 320 x 240 screen through lcd_blit, the keys from the keypad
- * (platform/nspire/README.md), the files in /documents/ndless/numplay_<game>.sav.tns.
+ * (platform/nspire/README.md), every game's files in /documents/ndless/numplay.sav.tns.
  *
  * Time: Ndless's clock counts whole seconds, so the second of the fast timers (0x900D0020) runs free at 32768 Hz
  * while the game runs, as the Nspire's SDL does, and is put back as it was at the end. If it doesn't count, time
@@ -11,8 +11,10 @@
  *
  * Build defines: NP_APP_ID (the game's id). */
 #include <libndls.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <eadk.h>
 #include "np_port.h"
 #include "../common/np_keys_drawn.h"
@@ -371,33 +373,213 @@ const char *eadk_external_data = NULL;
 size_t eadk_external_data_size = 0;
 
 /* ---- the files (the OS's own calls: newlib's fopen leaves its FILE pool on the OS's heap till a restart) ---- */
+/* Every game's records are in one file, /documents/ndless/numplay.sav.tns: the Nspire's file browser slows down with
+ * each file there is, and each game made one more (Mason363/NumPlay#446). The file is a log: "NPS1", then entries,
+ * [the id's length (1 byte)][the game's files id][the records' size (4)][their check (4)][the records], a game's
+ * records its last entry.
+ *
+ * A save adds an entry at the end: as quick as a game's own file was, and an entry cut short (the calculator reset
+ * while it was written) ends the log there, the one before it kept. When the log would be over twice what the last
+ * entries take (and over 64 KB), or after an entry cut short, it's written again with the last entries alone, into
+ * numplay.sav.new.tns, which then takes its name (reset in between, the new file is found at the next start).
+ * A game's own file, from an older NumPlay (numplay_<id>.sav.tns) or written when the log couldn't be, is newer: it's
+ * read instead, added to the log and removed. */
 #define STORAGE_SIZE (64 * 1024)
 static uint8_t storage[STORAGE_SIZE + 64];
 static bool loaded;
-#define SAVE_PATH "/documents/ndless/numplay_" NP_FILES_ID ".sav.tns"
+#define DOCS "/documents/ndless/"
+#define LOG_PATH DOCS "numplay.sav.tns"
+#define NEW_PATH DOCS "numplay.sav.new.tns"
+#define OWN_PATH DOCS "numplay_" NP_FILES_ID ".sav.tns"
+#define ID_MAX 31
+#define GAMES_MAX 256
+static struct {
+  char id[ID_MAX + 1];
+  uint32_t at, size; /* the game's last entry: where, and its records' size */
+} games[GAMES_MAX];
+static unsigned n_games;
+static uint32_t log_end; /* where the log's whole entries end */
+/* the log is there; an entry cut short at log_end; more games than games[] holds (the log only grows); the log
+   can't be written this time (renaming failed: the next start finds the new file); the game's own file is there */
+static bool log_there, log_cut, log_full, log_off, own_file;
+
 static uint32_t storage_end(void) {
   uint32_t at = 0;
   while (at + 2 <= STORAGE_SIZE && (storage[at] | storage[at + 1] << 8)) at += storage[at] | storage[at + 1] << 8;
   return at;
 }
+static uint32_t check(const uint8_t *p, uint32_t n) {
+  uint32_t h = 2166136261u ^ n;
+  while (n--) h = (h ^ *p++) * 16777619u;
+  return h;
+}
+static uint32_t get32(const uint8_t *p) { return p[0] | p[1] << 8 | p[2] << 16 | (uint32_t)p[3] << 24; }
+static void put32(uint8_t *p, uint32_t v) {
+  p[0] = (uint8_t)v, p[1] = (uint8_t)(v >> 8), p[2] = (uint8_t)(v >> 16), p[3] = (uint8_t)(v >> 24);
+}
+static unsigned game_slot(const char *id) { /* (GAMES_MAX: no room) */
+  for (unsigned i = 0; i < n_games; i++)
+    if (!strcmp(games[i].id, id)) return i;
+  if (n_games == GAMES_MAX) return log_full = true, GAMES_MAX;
+  strcpy(games[n_games].id, id), games[n_games].at = games[n_games].size = 0;
+  return n_games++;
+}
+static uint32_t entry_size(const char *id, uint32_t size) { return 1 + (uint32_t)strlen(id) + 8 + size; }
+static uint32_t entry_head(uint8_t *h, const uint8_t *data, uint32_t size) {
+  uint32_t len = (uint32_t)strlen(NP_FILES_ID);
+  h[0] = (uint8_t)len, memcpy(h + 1, NP_FILES_ID, len), put32(h + 1 + len, size), put32(h + 5 + len, check(data, size));
+  return 1 + len + 8;
+}
+
+/* the log, read a block at a time */
+static NUC_FILE *rf;
+static uint8_t blk[4096];
+static uint32_t blk_at, blk_n;
+static bool log_read(uint32_t at, void *to, uint32_t n) {
+  uint8_t *d = to;
+  while (n) {
+    if (at < blk_at || at >= blk_at + blk_n) {
+      blk_at = at & ~(uint32_t)(sizeof blk - 1), blk_n = 0;
+      if (nuc_fseek(rf, (long)blk_at, SEEK_SET)) return false;
+      blk_n = (uint32_t)nuc_fread(blk, 1, sizeof blk, rf);
+      if (at >= blk_at + blk_n) return false;
+    }
+    uint32_t k = blk_at + blk_n - at < n ? blk_at + blk_n - at : n;
+    memcpy(d, blk + (at - blk_at), k), d += k, at += k, n -= k;
+  }
+  return true;
+}
+
+/* each game's last entry, and the game's own records into storage */
+static void log_scan(void) {
+  n_games = 0, log_end = 0, log_there = log_cut = log_full = false;
+  if (!(rf = nuc_fopen(LOG_PATH, "rb"))) {
+    if (!(rf = nuc_fopen(NEW_PATH, "rb"))) return;
+    nuc_fclose(rf); /* (written again, and the calculator reset before it was renamed) */
+    if (rename(NEW_PATH, LOG_PATH) || !(rf = nuc_fopen(LOG_PATH, "rb"))) return (void)(log_off = true);
+  }
+  log_there = true, blk_at = blk_n = 0;
+  uint8_t h[ID_MAX + 9];
+  uint32_t at = 4, good = 0, good_size = 0;
+  bool found = false, last_good = false;
+  if (!log_read(0, h, 4) || memcmp(h, "NPS1", 4)) at = 0, log_cut = true; /* (not a log: written again) */
+  else
+    for (;;) {
+      if (!log_read(at, h, 1)) break; /* (the end) */
+      uint32_t len = h[0], data = at + 1 + len + 8, size = 0;
+      uint8_t last;
+      if (!len || len > ID_MAX || !log_read(at + 1, h + 1, len + 8) || (size = get32(h + 1 + len)) > STORAGE_SIZE ||
+          (size && !log_read(data + size - 1, &last, 1))) {
+        log_cut = true; /* (cut short) */
+        break;
+      }
+      char id[ID_MAX + 1];
+      memcpy(id, h + 1, len), id[len] = 0;
+      if (!strcmp(id, NP_FILES_ID)) { /* (one of the game's spoilt: the one before it) */
+        last_good = log_read(data, storage, size) && check(storage, size) == get32(h + 5 + len);
+        if (last_good) good = at, good_size = size, found = true;
+      } else {
+        unsigned i = game_slot(id);
+        if (i < GAMES_MAX) games[i].at = at, games[i].size = size;
+      }
+      at = data + size;
+    }
+  log_end = at;
+  if (found) {
+    unsigned i = game_slot(NP_FILES_ID);
+    if (i < GAMES_MAX) games[i].at = good, games[i].size = good_size;
+    if (!last_good) log_read(good + entry_size(NP_FILES_ID, 0), storage, good_size);
+  } else
+    good_size = 0;
+  memset(storage + good_size, 0, sizeof storage - good_size);
+  nuc_fclose(rf);
+}
+
+/* the game's records at the log's end */
+static bool log_add(uint32_t size) {
+  NUC_FILE *f = nuc_fopen(LOG_PATH, "ab");
+  if (!f) return false;
+  uint8_t h[ID_MAX + 9];
+  uint32_t hl = entry_head(h, storage, size);
+  bool ok = nuc_fwrite(h, 1, hl, f) == hl && nuc_fwrite(storage, 1, size, f) == size;
+  if (nuc_fclose(f)) ok = false;
+  if (!ok) return log_cut = true, false;
+  unsigned i = game_slot(NP_FILES_ID);
+  if (i < GAMES_MAX) games[i].at = log_end, games[i].size = size;
+  log_end += hl + size;
+  return true;
+}
+/* the log written again: each other game's last entry, then the game's records */
+static bool log_write_all(uint32_t size) {
+  NUC_FILE *out = nuc_fopen(NEW_PATH, "wb");
+  if (!out) return false;
+  rf = log_there ? nuc_fopen(LOG_PATH, "rb") : NULL, blk_at = blk_n = 0;
+  bool ok = nuc_fwrite("NPS1", 1, 4, out) == 4 && (rf || !log_there);
+  unsigned ours = game_slot(NP_FILES_ID);
+  for (unsigned i = 0; ok && rf && i < n_games; i++) {
+    if (i == ours) continue;
+    uint8_t buf[512];
+    for (uint32_t from = games[i].at, n = entry_size(games[i].id, games[i].size); ok && n;) {
+      uint32_t k = n < sizeof buf ? n : sizeof buf;
+      ok = log_read(from, buf, k) && nuc_fwrite(buf, 1, k, out) == k;
+      from += k, n -= k;
+    }
+  }
+  if (rf) nuc_fclose(rf);
+  uint8_t h[ID_MAX + 9];
+  uint32_t hl = entry_head(h, storage, size);
+  ok = ok && nuc_fwrite(h, 1, hl, out) == hl && nuc_fwrite(storage, 1, size, out) == size;
+  if (nuc_fclose(out)) ok = false;
+  if (!ok || (log_there && unlink(LOG_PATH))) { /* (Nucleus's rename doesn't replace a file) */
+    unlink(NEW_PATH);
+    return false;
+  }
+  if (rename(NEW_PATH, LOG_PATH)) return log_off = true, false;
+  uint32_t at = 4;
+  for (unsigned i = 0; i < n_games; i++)
+    if (i != ours) games[i].at = at, at += entry_size(games[i].id, games[i].size);
+  if (ours < GAMES_MAX) games[ours].at = at, games[ours].size = size;
+  log_end = at + hl + size, log_there = true, log_cut = false;
+  return true;
+}
+
 uint8_t *np_storage(uint32_t *size) {
   if (!loaded) {
     loaded = true;
-    NUC_FILE *f = nuc_fopen(SAVE_PATH, "rb");
+    log_scan();
+    NUC_FILE *f = nuc_fopen(OWN_PATH, "rb");
     if (f) {
+      memset(storage, 0, sizeof storage);
       size_t n = nuc_fread(storage, 1, STORAGE_SIZE, f);
       nuc_fclose(f);
       if (storage_end() + 2 > n) memset(storage, 0, sizeof storage);
+      own_file = true;
+      np_storage_changed();
     }
   }
   *size = STORAGE_SIZE;
   return storage;
 }
 void np_storage_changed(void) {
-  NUC_FILE *f = nuc_fopen(SAVE_PATH, "wb");
+  uint32_t size = storage_end() + 2, add = entry_size(NP_FILES_ID, size), live = add;
+  for (unsigned i = 0; i < n_games; i++)
+    if (strcmp(games[i].id, NP_FILES_ID)) live += entry_size(games[i].id, games[i].size);
+  bool ok = false;
+  if (!log_off) {
+    if (log_there && !log_cut && (log_full || log_end + add <= 2 * live || log_end + add <= 64 * 1024))
+      ok = log_add(size);
+    else if (!log_full)
+      ok = log_write_all(size);
+  }
+  if (ok) {
+    if (own_file && !unlink(OWN_PATH)) own_file = false;
+    return;
+  }
+  NUC_FILE *f = nuc_fopen(OWN_PATH, "wb"); /* (the log can't be written: the game's own file, as before) */
   if (!f) return;
-  nuc_fwrite(storage, 1, storage_end() + 2, f);
+  nuc_fwrite(storage, 1, size, f);
   nuc_fclose(f);
+  own_file = true;
 }
 
 bool np_slow(void) { return false; }

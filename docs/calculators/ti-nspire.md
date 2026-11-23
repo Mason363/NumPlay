@@ -60,7 +60,7 @@ The letters give the NumWorks key that types the same letter with alpha, so a ga
 
 The pad's middle gives OK only when pressed on its own: pressed with an arrow, or less than 0.15 s after one, it gives nothing till you let go (and a press sliding from an arrow to the middle keeps its arrow), so walking with the pad doesn't open menus. enter always gives OK.
 
-Games save by themselves, and when you leave with Home.
+Games save by themselves, and when you leave with Home. Every game's saves are in one file, **numplay.sav.tns** in the **ndless** folder (the saves of an older NumPlay, one file a game, are moved into it as each game starts): keep a copy of it to keep your saves.
 
 ### Your own keys
 
