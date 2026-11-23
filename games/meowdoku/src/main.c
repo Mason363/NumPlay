@@ -4,7 +4,7 @@
  * (EXE does too). A cat in the right place stays; a wrong one turns into an X and costs a fish, and with
  * the third fish gone the level starts over. OK held while moving marks X's along the way. The lamp
  * (shift) shows the next step a player can reason out and does it on OK; the winking cat (alpha) finds
- * one cat. The backspace takes back X's.
+ * one cat. The backspace takes back X's. In the pause menu, OK twice can be made to mark only, EXE placing the cats.
  *
  * The puzzles are the game's own (levels.h, from its level banks), dealt the way the game deals them:
  * the board size set by the level number, special picture levels at fixed numbers, a hard level every
@@ -67,7 +67,7 @@ enum { EMPTY, MARK, CAT };
 
 /* meowdoku.sav: the level being played and how the game deals the next ones */
 static struct {
-  uint8_t magic, version, flags, lives;   /* flags: 1 the guide was read, 2 a level in play */
+  uint8_t magic, version, flags, lives;   /* flags: 1 the guide was read, 2 a level in play, 4 OK twice doesn't place */
   uint16_t level, wins;
   uint8_t strat, clean, fails, pend;      /* the difficulty: its strategy, clean wins and fails in a row, a drop due */
   uint8_t retried, dirty, rlevels, rstrat; /* the level was failed once; a helper was used; retried levels in a row */
@@ -652,15 +652,16 @@ static void panel(void) {
 #define QUIT 6
 #define NEXT 7
 #define RETRY 8
-static const char *const cards[5][4] = {
+#define DOUBLE 9
+static const char *const cards[5][5] = {
   {0},
-  {T("Paused"), T("Resume"), T("How to play"), T("Quit game")},
+  {T("Paused"), T("Resume"), T("OK OK: cat"), T("How to play"), T("Quit game")},
   {T("How to play"), T("Play")},
   {T("Clear!"), T("Next level"), T("Quit game")},
   {T("Out of fish"), T("Try again"), T("Quit game")},
 };
-static const uint8_t buttons[5] = {0, 3, 1, 2, 2}, leads[5][3] = {
-  {0}, {OV_NONE, OV_HELP, QUIT}, {OV_NONE}, {NEXT, QUIT}, {RETRY, QUIT}};
+static const uint8_t buttons[5] = {0, 4, 1, 2, 2}, leads[5][4] = {
+  {0}, {OV_NONE, DOUBLE, OV_HELP, QUIT}, {OV_NONE}, {NEXT, QUIT}, {RETRY, QUIT}};
 
 static void overlay(void) {
   char s[32];
@@ -685,8 +686,10 @@ static void overlay(void) {
   for (int i = 0; i < nb; i++, y += 30) {
     bool on = menu == i;
     gfx_rrect(70, y, 180, 26, 13, on ? ORANGE : HEX(0xF3E6D3), 256);
-    say(&np_font_body, 160, y + 18, ov == OV_MENU && i == 2 && quit_ok ? T("OK again to quit") : cards[ov][i + 1],
-        on ? WHITE : TEXT);
+    const char *t = cards[ov][i + 1];
+    if (ov == OV_MENU && i == 3 && quit_ok) t = T("OK again to quit");
+    if (ov == OV_MENU && i == 1 && (sv.flags & 4)) t = T("OK OK: X only");
+    say(&np_font_body, 160, y + 18, t, on ? WHITE : TEXT);
   }
 }
 
@@ -694,7 +697,9 @@ static void scene(void *ctx) {
   gfx_vgrad(0, 0, SCREEN_W, SCREEN_H, 0xFAE4BA, 0xFAF7ED);
   board();
   panel();
-  if (!hint.kind) say(&np_font_small, 160, 236, T("OK  X      OK OK  cat      DEL  undo      Back  menu"), SOFT);
+  if (!hint.kind)
+    say(&np_font_small, 160, 236, sv.flags & 4 ? T("OK  X      EXE  cat      DEL  undo      Back  menu")
+                                               : T("OK  X      OK OK  cat      DEL  undo      Back  menu"), SOFT);
   if (ov) overlay();
 }
 
@@ -765,6 +770,7 @@ int main(void) {
         break;
       }
       if (to == QUIT) to = OV_MENU, quit_ok = 1; /* Quit game asks first */
+      if (to == DOUBLE) to = OV_MENU, sv.flags ^= 4; /* (off: only EXE places a cat, OK twice marks and unmarks) */
       if (to != ov) menu = 0;
       if (to == NEXT || to == RETRY) {
         start_level();
@@ -781,7 +787,8 @@ int main(void) {
       int i = (cr = NP_MAX(0, NP_MIN(n - 1, cr + dy))) * n + (cc = NP_MAX(0, NP_MIN(n - 1, cc + dx)));
       if ((dx || dy) && stroke >= 0 && k & K(eadk_key_ok)) set_mark(i, stroke, 0); /* OK held: a swipe */
       if (exe) place(i);
-      else if (ok && now - last_ok < 400 && ok_at == (uint32_t)i) place(i), last_ok = 0, stroke = -1; /* the double tap */
+      else if (ok && !(sv.flags & 4) && now - last_ok < 400 && ok_at == (uint32_t)i)
+        place(i), last_ok = 0, stroke = -1; /* the double tap */
       else if (ok) {
         stroke = sv.cell[i] == EMPTY ? MARK : sv.cell[i] == MARK ? EMPTY : -1;
         if (stroke >= 0) set_mark(i, stroke, 1);

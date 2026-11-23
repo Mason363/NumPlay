@@ -31,3 +31,6 @@ alpha	alpha
 find	找猫
 hint	提示
 shift	shift
+OK OK: cat	OK OK：放猫
+OK OK: X only	OK OK：只标 X
+OK  X      EXE  cat      DEL  undo      Back  menu	OK  X      EXE  放猫      DEL  撤销      Back  菜单

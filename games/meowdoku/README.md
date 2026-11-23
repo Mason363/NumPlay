@@ -16,11 +16,11 @@ Put one cat in every row, every column and every color, and never two cats side 
 | --- | --- |
 | Arrows | Move on the board |
 | OK | Put an X, or take it off; hold OK and move to put X's along the way |
-| OK twice, or EXE | Place a cat |
+| OK twice, or EXE | Place a cat (OK twice can be turned off in the menu: OK OK, X only) |
 | shift | Hint (the lamp) |
 | alpha | Find a cat (the winking cat) |
 | ⌫ | Take back X's |
-| Back | Menu: Resume, How to play, Quit game |
+| Back | Menu: Resume, OK OK, How to play, Quit game |
 
 ## Good to know
 

@@ -31,3 +31,6 @@ alpha	alpha
 find	trouver
 hint	indice
 shift	shift
+OK OK: cat	OK OK : chat
+OK OK: X only	OK OK : X seul
+OK  X      EXE  cat      DEL  undo      Back  menu	OK  X      EXE  chat      DEL  annuler      Back  menu

@@ -1298,7 +1298,7 @@ Push every crate onto a goal: the keeper pushes one at a time and can't pull, so
 | **shift** | Hint: shows the next step, OK does it |
 | **alpha** | Find a cat |
 | **⌫** | Take back X's |
-| **Back** | Pause: Resume, How to play, Quit game |
+| **Back** | Pause: Resume, OK OK (cat, or X only), How to play, Quit game |
 
 Put one cat in every row, every column and every color, and never two cats touching, not even at a corner. A cat in the wrong cell turns into an X and costs a fish; with all three fish gone the level starts over. The boards grow from 4×4 to 10×10, every tenth level is hard, and the game gets harder while you win without hints or mistakes. Add it in NumPlay Studio, or get Meowdoku.nwa.
 
