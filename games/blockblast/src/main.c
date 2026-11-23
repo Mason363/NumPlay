@@ -377,7 +377,7 @@ static void scene(void *ctx) {
     gfx_circle(TX + 11, y0 + 11, 7, on ? GOLD : HEX(0x2B3E8E), 256);
     s[0] = (char)('1' + k), s[1] = 0;
     gfx_text_center(&np_font_small, TX + 11, y0 + 15, s, on ? NAVY : WHITE, 256);
-    if (q < 0) continue;
+    if (q < 0 || on) continue; /* (the block in hand has left the tray, as one picked up in the game) */
     int z = ago(tray_t) < 160 ? TS * (int)ago(tray_t) / 160 : TS; /* new blocks grow in */
     measure(q);
     EACH(q) block(TX + 50 + (2 * c - w) * z / 2, y0 + 34 + (2 * r - h) * z / 2, z - 1, can[k] ? sv.tcol[k] : 8);
