@@ -533,19 +533,35 @@ static void heart_tick(world_t *w, uint32_t keys, uint32_t pressed) {
   w->moving = w->hvx != 0 || w->hvy != 0;
 }
 
+/* the heart's hitbox: the original's PlayerHitbox, a 4 x 4 box kept on the heart's centre (Battle.xml's PlayerDamage:
+ * "PlayerHitbox is overlapping", its test of the centre point alone turned off) */
+#define HIT_HALF 2.0f
 bool sim_heart_in(const world_t *w, float x, float y, float rw, float rh) {
-  return w->hx >= x && w->hx <= x + rw && w->hy >= y && w->hy <= y + rh;
+  return w->hx + HIT_HALF > x && w->hx - HIT_HALF < x + rw && w->hy + HIT_HALF > y && w->hy - HIT_HALF < y + rh;
 }
-/* the heart's centre inside the convex quad (corners in order) */
+/* the hitbox against a convex quad (corners in order): separated along neither axis nor any side's normal */
 static bool heart_in_quad(const world_t *w, const float qx[4], const float qy[4]) {
-  int pos = 0, neg = 0;
+  float x0 = qx[0], x1 = qx[0], y0 = qy[0], y1 = qy[0];
+  for (int i = 1; i < 4; i++) {
+    if (qx[i] < x0) x0 = qx[i];
+    if (qx[i] > x1) x1 = qx[i];
+    if (qy[i] < y0) y0 = qy[i];
+    if (qy[i] > y1) y1 = qy[i];
+  }
+  if (w->hx + HIT_HALF <= x0 || w->hx - HIT_HALF >= x1 || w->hy + HIT_HALF <= y0 || w->hy - HIT_HALF >= y1) return false;
   for (int i = 0; i < 4; i++) {
     int j = (i + 1) & 3;
-    float c = (qx[j] - qx[i]) * (w->hy - qy[i]) - (qy[j] - qy[i]) * (w->hx - qx[i]);
-    if (c > 0) pos++;
-    else if (c < 0) neg++;
+    float nx = qy[j] - qy[i], ny = qx[i] - qx[j];   /* (a side's normal, unscaled) */
+    float q0 = 1e30f, q1 = -1e30f;
+    for (int k = 0; k < 4; k++) {
+      float v = nx * qx[k] + ny * qy[k];
+      if (v < q0) q0 = v;
+      if (v > q1) q1 = v;
+    }
+    float c = nx * w->hx + ny * w->hy, r = HIT_HALF * ((nx < 0 ? -nx : nx) + (ny < 0 ? -ny : ny));
+    if (c + r <= q0 || c - r >= q1) return false;
   }
-  return !(pos && neg);
+  return true;
 }
 
 /* ---------------------------------------------------------------- damage and KR */
