@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include "objdefs.h"
 
-#define LEVEL_COUNT 12
+#define LEVEL_COUNT 18
 #define THEME_COUNT 9          /* editor themes: the colours of the first nine levels */
-#define WIN_CAP 2160           /* objects resident at once (leveldata.c checks it) */
+#define WIN_CAP 2304           /* objects resident at once (leveldata.c checks it) */
 #define WIN_CHUNKS 24
 #define MAX_LEVEL_OBJS 20480   /* objects in the biggest level */
 #define CUSTOM_MAX 800

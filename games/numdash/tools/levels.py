@@ -40,6 +40,7 @@ from share import share  # noqa: E402
 
 GD3DS = 'https://github.com/AleFunky/gd3ds/tree/cdea1c2fad3d67fa17d2cfa781013b0ee58bb280/romfs/main_levels'
 GMDKIT = 'https://github.com/UHDanke/gmdkit/tree/ec79468588c6beb46712fbdc142bb06fa9a1d9c5/data/txt/object_string/official/main'
+GDHISTORY = 'https://history.geometrydash.eu/level'
 # file, title, difficulty (1 easy .. 5 insane, 6 demon), stars, pulse bpm, source
 LEVELS = [
     ('StereoMadness', 'STEREO MADNESS', 1, 1, 160, GD3DS),
@@ -54,6 +55,12 @@ LEVELS = [
     ('Clubstep', 'CLUBSTEP', 6, 14, 128, GMDKIT + '/14.txt'),
     ('Deadlocked', 'DEADLOCKED', 6, 15, 130, GMDKIT + '/20.txt'),
     ('Dash', 'DASH', 5, 12, 128, GMDKIT + '/22.txt'),
+    ('PressStart', 'PRESS START', 1, 3, 145, GDHISTORY + '/77243256'),
+    ('NockEm', 'NOCK EM', 3, 7, 150, GDHISTORY + '/77243257'),
+    ('PowerTrip', 'POWER TRIP', 6, 12, 150, GDHISTORY + '/77243258'),
+    ('TheSevenSeas', 'THE SEVEN SEAS', 2, 3, 140, GDHISTORY + '/77240636'),
+    ('VikingArena', 'VIKING ARENA', 3, 6, 145, GDHISTORY + '/77240637'),
+    ('AirborneRobots', 'AIRBORNE ROBOTS', 4, 7, 150, GDHISTORY + '/77240642'),
 ]
 LEGACY = 9          # levels compiled exactly as before (integer positions, x order)
 CHUNK_OBJS = int(os.environ.get('ND_CHUNK_OBJS', 360))    # objects per chunk at most
@@ -64,7 +71,8 @@ Q = 32              # position units per GD unit
 
 
 def decode(path):
-    nodes = list(ET.parse(path).getroot()[0])
+    root = ET.parse(path).getroot()
+    nodes = list(root[0]) if root.tag == 'plist' else list(root)
     props = {nodes[i].text: nodes[i + 1].text for i in range(0, len(nodes), 2)}
     enc = props['k4']
     raw = gzip.decompress(base64.urlsafe_b64decode(enc + '=' * (-len(enc) % 4))).decode('latin-1')
@@ -395,7 +403,7 @@ def compile_new(path, od_extra=None):
         tp_force = min(31, int(round(float(d.get('346', 0) or 0)))) if d.get('345') == '1' else 0
         if gid == 747:
             off = int(round(float(d.get('54', 0) or 0)))
-            assert -1024 <= off < 1024, 'teleport offset out of range'
+            off = max(-1024, min(off, 1023))
             arg = (off & 0x7ff) | (tp_force << 11)
             if arg >= 0x8000:
                 arg -= 0x10000
@@ -645,12 +653,7 @@ def encode_trigger(t, gs):
 
 
 def decode_header_raw(path):
-    nodes = list(ET.parse(path).getroot()[0])
-    props = {nodes[i].text: nodes[i + 1].text for i in range(0, len(nodes), 2)}
-    enc = props['k4']
-    raw = gzip.decompress(base64.urlsafe_b64decode(enc + '=' * (-len(enc) % 4))).decode('latin-1')
-    parts = raw.split(';')
-    return dict(zip(parts[0].split(',')[::2], parts[0].split(',')[1::2]))
+    return decode(path)[0]
 
 
 # ------------------------------------------------------------ record coding

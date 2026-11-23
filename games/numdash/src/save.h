@@ -29,7 +29,7 @@ typedef struct {
 
 void progress_defaults(Progress *p);
 /* Serialised progress record: fixed size so it never moves other records. */
-#define PROGRESS_BYTES 192
+#define PROGRESS_BYTES 256
 void progress_encode(const Progress *p, uint8_t out[PROGRESS_BYTES]);
 bool progress_decode(Progress *p, const uint8_t *in, size_t len);
 /* Custom level record; returns bytes written or 0. */
