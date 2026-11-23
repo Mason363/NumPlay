@@ -346,6 +346,100 @@ eadk_event_t eadk_event_get(int32_t *timeout) {
   return eadk_event_none;
 }
 
+/* ---- float functions: no FPU here, and newlib's C ones went bit by bit ---- */
+/* sqrtf, fminf and fmaxf, giving what newlib's do (sqrtf checked on every float; NaNs and -0 as newlib's
+ * fminf/fmaxf), in a fraction of the time: Suika spent a fifth of its time in sqrtf. */
+static uint32_t fbits(float x) {
+  union {
+    float f;
+    uint32_t u;
+  } v = {x};
+  return v.u;
+}
+static float bitsf(uint32_t u) {
+  union {
+    uint32_t u;
+    float f;
+  } v = {u};
+  return v.f;
+}
+/* 1/sqrt(f), Q30, for f = (i + 1/2) / 256 in [0.25, 1), i from 64 */
+static const uint32_t RSQRT_SEED[192] = {
+  2139143874u, 2122751726u, 2106730729u, 2091067086u, 2075747707u, 2060760163u,
+  2046092644u, 2031733922u, 2017673311u, 2003900636u, 1990406202u, 1977180765u,
+  1964215505u, 1951502003u, 1939032214u, 1926798450u, 1914793358u, 1903009903u,
+  1891441346u, 1880081235u, 1868923385u, 1857961863u, 1847190978u, 1836605270u,
+  1826199490u, 1815968600u, 1805907755u, 1796012296u, 1786277740u, 1776699774u,
+  1767274245u, 1757997150u, 1748864636u, 1739872984u, 1731018611u, 1722298059u,
+  1713707990u, 1705245183u, 1696906526u, 1688689013u, 1680589738u, 1672605894u,
+  1664734763u, 1656973720u, 1649320221u, 1641771805u, 1634326089u, 1626980766u,
+  1619733600u, 1612582423u, 1605525136u, 1598559701u, 1591684144u, 1584896547u,
+  1578195052u, 1571577853u, 1565043197u, 1558589383u, 1552214758u, 1545917715u,
+  1539696693u, 1533550174u, 1527476684u, 1521474788u, 1515543090u, 1509680232u,
+  1503884893u, 1498155787u, 1492491662u, 1486891298u, 1481353508u, 1475877137u,
+  1470461055u, 1465104167u, 1459805400u, 1454563712u, 1449378085u, 1444247527u,
+  1439171070u, 1434147770u, 1429176706u, 1424256978u, 1419387709u, 1414568043u,
+  1409797142u, 1405074190u, 1400398389u, 1395768961u, 1391185142u, 1386646190u,
+  1382151377u, 1377699992u, 1373291341u, 1368924744u, 1364599536u, 1360315069u,
+  1356070705u, 1351865825u, 1347699819u, 1343572091u, 1339482060u, 1335429155u,
+  1331412818u, 1327432501u, 1323487671u, 1319577802u, 1315702382u, 1311860907u,
+  1308052885u, 1304277832u, 1300535277u, 1296824755u, 1293145812u, 1289498003u,
+  1285880891u, 1282294047u, 1278737053u, 1275209495u, 1271710972u, 1268241085u,
+  1264799448u, 1261385678u, 1257999402u, 1254640252u, 1251307868u, 1248001897u,
+  1244721991u, 1241467811u, 1238239020u, 1235035292u, 1231856302u, 1228701736u,
+  1225571280u, 1222464631u, 1219381487u, 1216321553u, 1213284541u, 1210270165u,
+  1207278145u, 1204308207u, 1201360079u, 1198433497u, 1195528200u, 1192643930u,
+  1189780435u, 1186937467u, 1184114781u, 1181312139u, 1178529303u, 1175766042u,
+  1173022127u, 1170297333u, 1167591440u, 1164904229u, 1162235487u, 1159585004u,
+  1156952571u, 1154337986u, 1151741047u, 1149161556u, 1146599320u, 1144054146u,
+  1141525847u, 1139014236u, 1136519130u, 1134040351u, 1131577719u, 1129131062u,
+  1126700207u, 1124284984u, 1121885226u, 1119500771u, 1117131454u, 1114777118u,
+  1112437604u, 1110112758u, 1107802427u, 1105506461u, 1103224711u, 1100957032u,
+  1098703280u, 1096463311u, 1094236988u, 1092024170u, 1089824724u, 1087638513u,
+  1085465407u, 1083305275u, 1081157988u, 1079023419u, 1076901444u, 1074791939u,
+};
+float sqrtf(float x) {
+  uint32_t u = fbits(x);
+  if (u - 1 >= 0x7F7FFFFF) { /* 0, below 0, infinity, NaN */
+    if (!(u & 0x7FFFFFFF)) return x;
+    if (u < 0x80000000 || (u & 0x7FFFFFFF) > 0x7F800000) return x + x; /* (infinity, NaN) */
+    return (x - x) / (x - x);
+  }
+  int e = (int)(u >> 23);
+  uint32_t m = u & 0x7FFFFF;
+  if (!e) { /* (subnormal) */
+    int s = __builtin_clz(m) - 8;
+    m <<= s, e = 1 - s;
+  } else
+    m |= 0x800000;
+  int k = e - 150, s = (k - 23) & 1 ? 24 : 23; /* x = m 2^k, m in [2^23, 2^24), and M = m 2^s in [2^46, 2^48) */
+  uint64_t M = (uint64_t)m << s;
+  uint32_t a = (uint32_t)(M >> 16), y = RSQRT_SEED[(a >> 24) - 64], t;
+  for (int i = 0; i < 2; i++) { /* Newton: 1/sqrt(a / 2^32), Q30 */
+    t = (uint32_t)(((uint64_t)y * y) >> 30);
+    t = (3u << 30) - (uint32_t)(((uint64_t)a * t) >> 32);
+    y = (uint32_t)(((uint64_t)y * t) >> 31);
+  }
+  uint32_t r = (uint32_t)(((uint64_t)a * y) >> 38); /* sqrt(M), within a unit or so */
+  while ((uint64_t)r * r > M) r--;
+  while ((uint64_t)(r + 1) * (r + 1) <= M) r++;
+  if (M - (uint64_t)r * r > r) r++; /* (the nearest: never halfway) */
+  return bitsf(((uint32_t)((k - s) / 2 + 149) << 23) + r);
+}
+static int32_t forder(uint32_t u) { return u >> 31 ? -(int32_t)(u & 0x7FFFFFFF) : (int32_t)u; } /* (-0 is 0) */
+float fminf(float a, float b) {
+  uint32_t ua = fbits(a), ub = fbits(b);
+  if ((ua & 0x7FFFFFFF) > 0x7F800000) return b;
+  if ((ub & 0x7FFFFFFF) > 0x7F800000) return a;
+  return forder(ua) < forder(ub) ? a : b;
+}
+float fmaxf(float a, float b) {
+  uint32_t ua = fbits(a), ub = fbits(b);
+  if ((ua & 0x7FFFFFFF) > 0x7F800000) return b;
+  if ((ub & 0x7FFFFFFF) > 0x7F800000) return a;
+  return forder(ua) > forder(ub) ? a : b;
+}
+
 /* ---- time, chance, the rest ---- */
 uint64_t eadk_timing_millis(void) {
   start();
