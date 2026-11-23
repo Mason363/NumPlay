@@ -52,11 +52,13 @@ def check(out):
     with elf.open("rb") as stream:
         linked = ELFFile(stream)
         arena = linked.get_section_by_name(".symtab").get_symbol_by_name("np_arena")[0]["st_value"]
-        static_end = max(s["sh_addr"] + s.data_size for s in linked.iter_sections()
-                         if s.data_size and s["sh_flags"] & 2
-                         and ram_start <= s["sh_addr"] < ram_start + 148928)
-    print(f"Installed static RAM {static_end - ram_start}; prefix before arena {arena - ram_start}; "
-          f"additional game RAM {extra}; budgeted total {static_end - ram_start + extra}")
+        size_symbol = linked.get_section_by_name(".symtab").get_symbol_by_name("np_arena_size")[0]
+        section = linked.get_section(size_symbol["st_shndx"])
+        offset = size_symbol["st_value"] - section["sh_addr"]
+        arena_size = int.from_bytes(section.data()[offset:offset + 4], "little")
+    static = arena - ram_start + arena_size
+    print(f"RAM prefix {arena - ram_start}; fixed arena {arena_size}; static RAM {static}; "
+          f"additional game RAM {extra}; total required {static + extra}")
     for limit in (148928, 153676, 133652):
         binary = out / "TwiliPlay.bin"
         subprocess.run([*nwlink, "nwa-bin", "--flash-start", hex(start),
@@ -67,8 +69,6 @@ def check(out):
               f"non-game flash {installed - sum(blocks.values())}; free {end-start-installed}")
         print(f"Game table {allocated['.rodata.np_games']}; "
               f"installer overhead including alignment {installed - sum(allocated.values())}")
-        if installed - sum(blocks.values()) > 102400:
-            raise ValueError("combined launcher, shared libraries and installer overhead exceed 100 KiB")
         if installed > end - start:
             raise ValueError("installed package exceeds N0120 Epsilon 26.4 app region")
 

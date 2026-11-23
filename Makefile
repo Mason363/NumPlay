@@ -193,7 +193,7 @@ KIT_API = numplay_launcher np_keyboard_scan np_event_get np_display_draw_string 
 KIT_SMALL = $(foreach g,$(GAMES) $(OPTIONAL_GAMES),$(KIT)/games/$(g).o)
 $(KIT)/base.o: $(LAUNCHER_OBJS) $(KIT_SMALL) tools/kit_base.ld
 	$(ARM_CC) $(ARM_CFLAGS) -nostartfiles --specs=nano.specs -Wl,--relocatable -Wl,--unique -Wl,--gc-sections \
-	  -Wl,-e,main -Wl,-u,eadk_api_level -Wl,-T,tools/kit_base.ld -flinker-output=nolto-rel $(LAUNCHER_OBJS) \
+	  -Wl,-e,main -Wl,-u,eadk_api_level $(BASE_MAP_FLAG) -Wl,-T,tools/kit_base.ld -flinker-output=nolto-rel $(LAUNCHER_OBJS) \
 	  $(foreach s,$(KIT_API),-Wl,-u,$(s)) \
 	  $$(arm-none-eabi-nm -u $(KIT_SMALL) | awk '$$1 == "U" || $$1 == "w" {print "-Wl,-u," $$2}' | sort -u) -lm -lgcc -o $@
 
@@ -208,7 +208,7 @@ $(B)/variant/%-icon.o: $$(ICON_$$*) | $(B)
 
 # ------------------------------------------------------------------ NumPlay.nwa
 $(B)/%.nwa: $(KIT)/base.o $(B)/arm/arena.o $(NP_GAMES) $(B)/variant/%-name.o $(B)/variant/%-icon.o
-	$(ARM_LD) $(KIT_LINK) -Map=$@.map -T $(B)/gen/numplay.ld $(KIT)/base.o $(B)/arm/arena.o \
+	$(ARM_LD) $(KIT_LINK) $(FINAL_MAP_FLAG) -T $(B)/gen/numplay.ld $(KIT)/base.o $(B)/arm/arena.o \
 	  $(B)/variant/$*-name.o $(B)/variant/$*-icon.o $(NP_GAMES) -o $@
 	arm-none-eabi-strip --strip-unneeded $@
 	@if [ "$*" = NumPlay ]; then $(PY) tools/sizes.py $@ $(B)/modules; fi
@@ -587,5 +587,6 @@ clean:
 .PHONY: foundation
 foundation:
 	$(PY) tools/foundation.py catalog build/foundation-games.json
-	$(MAKE) B=build/foundation CATALOG=build/foundation-games.json VERSION=0.1.0 VARIANTS=TwiliPlay NAME_TwiliPlay='"TwiliPlay"' ICON_TwiliPlay=launcher/assets/icon.png build/foundation/TwiliPlay.nwa
+	$(MAKE) B=build/foundation BASE_MAP_FLAG='-Wl,-Map,build/foundation/kit/base.o.map' FINAL_MAP_FLAG='-Map=build/foundation/TwiliPlay.nwa.map' CATALOG=build/foundation-games.json VERSION=0.1.0 VARIANTS=TwiliPlay NAME_TwiliPlay='"TwiliPlay"' ICON_TwiliPlay=launcher/assets/icon.png build/foundation/TwiliPlay.nwa
 	$(PY) tools/foundation.py check build/foundation
+	$(PY) tools/foundation_footprint.py build/foundation
