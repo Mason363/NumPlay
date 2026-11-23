@@ -11,4 +11,7 @@ const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = N
 #ifndef NP_START_SECRET
 #define NP_START_SECRET 0
 #endif
-const unsigned char np_defaults[4] __attribute__((section(".rodata.np_defaults"))) = {'D', 1, NP_START_FLAGS, NP_START_SECRET};
+#ifndef NP_START_THEME
+#define NP_START_THEME 0
+#endif
+const unsigned char np_defaults[5] __attribute__((section(".rodata.np_defaults"))) = {'D', 1, NP_START_FLAGS, NP_START_SECRET, NP_START_THEME};
