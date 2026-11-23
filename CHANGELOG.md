@@ -2,6 +2,19 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.22: The beta testers' fixes
+
+- **TI-Nspire:** numplay_keys.tns sets your own keys for every game, del and the letters included, and the TI-Nspire page lists what alpha, toolbox, x,n,t, EXE and Back are on its keypad. The pad's middle no longer gives OK when pressed with an arrow or just after one. Whole frames go on screen, so nothing tears. Every game's saves are in one file, numplay.sav.tns, so the file browser opens faster.
+- **TI-Nspire:** Celeste's chapter 6 runs two to three times faster, which was likely the freeze reported there. NumDash's last levels, Suika and Balatro's background run several times faster, and NumDrive, Coreball and the other games' rounded panels faster too.
+- **Friday Night Funkin':** the game over plays the game's own death, Boyfriend's skeleton (in pixels in Week 6) and Pico's fall with Nene's knife, and OK tries again with the original's fade. Boyfriend and Pico face the singer they rap against, instead of turning their backs.
+- **Bad Time Simulator:** the heart's hitbox is the original's, no longer more forgiving.
+- **Subway Surfers:** Jake runs, jumps, rolls and dodges with the game's own moves.
+- **The Final Earth 2:** unique buildings can be given workers in the workers' window.
+- **NumDash:** in low detail, Dash keeps its ground and walls.
+- **Sudoku:** Auto-check in the pause menu, to play without wrong digits shown.
+- **Meowdoku:** OK twice can be set to mark only, EXE placing the cats.
+- **Block Blast:** the block in hand leaves the tray, as one picked up in the game.
+
 ## 1.24.21: The TI and Casio downloads
 
 - **TI-84 Plus CE, TI-Nspire and Casio fx-CG50:** NumPlay-TI84CE.zip, NumPlay-Nspire.zip and NumPlay-CasioCG.zip with 1.24.20's fixes. Hollow Knight fits the Casio fx-CG50 again.
