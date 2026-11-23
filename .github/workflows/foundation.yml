@@ -1,0 +1,53 @@
+name: Foundation
+on:
+  push:
+    branches: [foundation/v0.1.0]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  n0120:
+    runs-on: ubuntu-24.04
+    env:
+      NWLINK: nwlink
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Tool versions
+        run: |
+          arm-none-eabi-gcc --version
+          node --version
+          npm list -g nwlink
+          python3 --version
+          python3 -m pip show Pillow
+          rustc --version
+          cargo --version
+      - name: Unmodified baseline
+        run: |
+          git fetch --depth=1 https://github.com/Mason363/NumPlay.git 56b7f4bb4dfe8dafdcd83b3f82ffd32cfbd647f2
+          git worktree add --detach "$RUNNER_TEMP/numplay" FETCH_HEAD
+          cd "$RUNNER_TEMP/numplay"
+          make -j2 build/data/NumPlay.nwa
+          nwlink nwa-bin --ram-length "$((148928 - $(cat build/data/gen/arena_extra)))" build/data/NumPlay.nwa build/data/NumPlay.bin
+          wc -c build/data/NumPlay.bin
+      - name: Selected games and N0120 budgets
+        run: make -j2 foundation
+      - name: Selected host tests
+        if: ${{ !cancelled() }}
+        run: |
+          for g in numblocks numdrive towerblock suika doodlejump coreball crossyroad; do
+            make -C games/$g host test
+          done
+      - name: Emulator progress and RAM tests
+        run: |
+          python3 tests/test_progress.py build/foundation/TwiliPlay.nwa
+          python3 tests/test_small_ram.py build/foundation/TwiliPlay.nwa
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: foundation-diagnostics
+          path: build/foundation/TwiliPlay.nwa.map
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TwiliPlay-N0120
+          path: build/foundation/TwiliPlay.nwa
