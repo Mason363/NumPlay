@@ -6,6 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import emu
 from foundation import GAMES
 from test_progress import presses
+from test_games import COPIES, play
 
 
 def check(nwa, index, game):
@@ -33,3 +34,10 @@ if __name__ == "__main__":
     emu.configure("n0120", "epsilon", 148928, apps_start=0x90180000)
     for index, game in enumerate(GAMES):
         check(sys.argv[1], index, game)
+        if game in COPIES:
+            out = Path("build/foundation-save-tests")
+            out.mkdir(parents=True, exist_ok=True)
+            problems, stack, _ = play(game, sys.argv[1], str(out), index, copy=COPIES[game])
+            if problems:
+                raise AssertionError(f"{game}: {problems}")
+            print(f"PASS {game}: native save script and restore after reinstall; stack {stack} bytes")

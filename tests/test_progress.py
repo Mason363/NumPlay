@@ -148,6 +148,9 @@ def main():
     # a save for every file the games write (binary, zeros included), and NumPlay's settings
     saves = {"numplay.set": bytes([ord("N"), 1, 0, 0])}
     for g in games:
+        # Games with their own recovery script restore on launch (storage.c: own_copy).
+        if any(name.endswith(".py") for name in g["records"]):
+            continue
         for r in g["records"]:
             # a name ending with "*" stands for records starting with the rest (NumBlocks' regions: "nb1r-1_2.nbe")
             for n in ([r[:-1] + "0_0.nbe", r[:-1] + "-1_2.nbe"] if r.endswith("*") else [r]):

@@ -33,6 +33,10 @@ jobs:
           wc -c build/data/NumPlay.bin
       - name: Selected games and N0120 budgets
         run: make -j2 foundation
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TwiliPlay-N0120
+          path: build/foundation/TwiliPlay.nwa
       - name: Selected host tests
         if: ${{ !cancelled() }}
         run: |
@@ -51,7 +55,3 @@ jobs:
         with:
           name: foundation-diagnostics
           path: build/foundation/TwiliPlay.nwa.map
-      - uses: actions/upload-artifact@v4
-        with:
-          name: TwiliPlay-N0120
-          path: build/foundation/TwiliPlay.nwa
