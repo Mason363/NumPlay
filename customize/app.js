@@ -85,7 +85,7 @@
   const byId = {};
   const st = {
     picked: new Set(), order: [], roms: [], apps: [], carts: [], cap: 'std', lang: 'en',
-    app: { icon: 'NumPlay', name: 'NumPlay', open: 'numplay', secret: 0, hint: true },
+    app: { icon: 'NumPlay', name: 'NumPlay', open: 'numplay', secret: 0, hint: true, theme: 0 },
     calc: 'numworks', port: {},  // (the games picked for each other calculator)
   };
   let custom = null;       // an icon of your own: { url, obj }
@@ -735,6 +735,7 @@
     if (a.icon !== 'NumPlay') p.set('icon', a.icon);
     if (a.name !== (PRESETS[a.icon] || [0, 'NumPlay'])[1]) p.set('name', a.name);
     if (a.open === 'matrices') p.set('open', 'matrices' + (a.secret ? '-' + a.secret : '') + (a.hint ? '' : '-nohint'));
+    if (a.theme) p.set('theme', String(a.theme));
     const h = p.toString();
     try { history.replaceState(null, '', '#' + h); } catch (e) { /* (a file:// page) */ }
     store('numplay-studio2', h);  // (2: since the games are ranked)
@@ -759,6 +760,7 @@
     st.app.open = open[0] === 'matrices' ? 'matrices' : 'numplay';
     st.app.secret = Math.min(SECRETS.length - 1, Math.max(0, parseInt(open[1], 10) || 0));
     st.app.hint = !open.includes('nohint');
+    st.app.theme = Math.max(0, Math.min(5, parseInt(p.get('theme') || '0', 10) || 0));
     if (solo()) st.picked = new Set([solo()]);
     // a pick that no longer fits the calculator (the kit grew): drop the biggest games until it does
     const big = ordered().sort((a, b) => flash(a) - flash(b));
@@ -874,13 +876,13 @@
     return d;
   }
   const romObject = (table) => elfObject([{ name: '.rodata.np_roms', sym: 'np_roms', data: table, align: 4 }]);
-  // The app's name, and how it starts (launcher/app_name.c): 'D', 1, flags (1 Matrices, 2 no hint), the secret
+  // The app's name and startup defaults (launcher/app_name.c): 'D', 1, flags, secret, theme
   function appObject() {
     const a = st.app, name = new TextEncoder().encode((a.name || ' ').slice(0, 20));
     const nz = new Uint8Array(name.length + 1); nz.set(name);
     const flags = (a.open === 'matrices' ? 1 : 0) | (a.hint ? 0 : 2);
     return elfObject([{ name: '.rodata.eadk_app_name', sym: 'eadk_app_name', data: nz },
-                      { name: '.rodata.np_defaults', sym: 'np_defaults', data: new Uint8Array([0x44, 1, flags, a.secret]) }]);
+                      { name: '.rodata.np_defaults', sym: 'np_defaults', data: new Uint8Array([0x44, 1, flags, a.secret, a.theme]) }]);
   }
 
   // An icon of your own: 55x56 pixels in RGB565, LZ4 compressed, as nwlink's png-icon-o makes them
@@ -1118,6 +1120,8 @@
     $('#secret-row').hidden = st.app.open !== 'matrices';
     $('#secret').value = String(st.app.secret);
     $('#hint').checked = st.app.hint;
+    $('#theme').value = String(st.app.theme);
+    $('#theme-row').hidden = other();
     const langs = $('#langs');
     langs.textContent = '';
     for (const l of kit.langs) {
@@ -2253,6 +2257,7 @@
     SECRETS.forEach((s, i) => { const o = el('option', '', { value: String(i) }); o.textContent = s; sec.appendChild(o); });
     sec.addEventListener('change', () => { st.app.secret = +sec.value; render(); });
     $('#hint').addEventListener('change', (e) => { st.app.hint = e.target.checked; render(); });
+    $('#theme').addEventListener('change', (e) => { st.app.theme = Math.max(0, Math.min(5, +e.target.value || 0)); render(); });
     $('#app-name').addEventListener('input', (e) => { st.app.name = e.target.value.slice(0, 20); render(); });
     for (const b of document.querySelectorAll('[data-open]'))
       b.addEventListener('click', () => { st.app.open = b.dataset.open; renderApp(); render(); });
