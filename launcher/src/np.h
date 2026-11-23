@@ -97,10 +97,12 @@ bool np_reset_game(int game);
 
 /* NumPlay's own settings, in the file numplay.set */
 enum { NP_SECRET_XNT, NP_SECRET_VAR, NP_SECRET_TOOLBOX, NP_SECRET_PI, NP_SECRET_SQRT, NP_SECRET_MENU, NP_SECRET_KONAMI, NP_SECRET_COUNT };
+enum { NP_THEME_NUMPLAY, NP_THEME_SWITCH, NP_THEME_PLAYSTATION, NP_THEME_XBOX, NP_THEME_WII, NP_THEME_WII_U, NP_THEME_COUNT };
 typedef struct {
   bool disguise;  /* start as Matrices, a calculator app; NumPlay opens through the secret */
   uint8_t secret; /* NP_SECRET_* */
   bool hint;      /* Matrices names the secret in light gray, bottom left */
+  uint8_t theme;  /* NP_THEME_*: the launcher's visual theme */
 } np_config_t;
 void np_config_load(np_config_t *c);
 bool np_config_save(const np_config_t *c);
