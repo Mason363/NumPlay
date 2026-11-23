@@ -30,10 +30,10 @@ static char *fmt_kb(char *out, uint32_t bytes) {
 }
 
 /* ---------------------------------------------------------------- list */
-enum { ROW_GAME, ROW_RESET_ALL, ROW_DISGUISE, ROW_SECRET, ROW_HINT };
+enum { ROW_GAME, ROW_RESET_ALL, ROW_DISGUISE, ROW_SECRET, ROW_HINT, ROW_THEME };
 typedef struct {
   int n, sel, top, action; /* action: on a game, 0 Reset, 1 Uninstall */
-  int8_t kind[NP_MAX_GAMES + 4], game[NP_MAX_GAMES + 4];
+  int8_t kind[NP_MAX_GAMES + 5], game[NP_MAX_GAMES + 5];
   int ngames;
   np_config_t cfg;
   float cursor;       /* animated selection */
@@ -42,6 +42,7 @@ typedef struct {
 static const char *const secret_names[NP_SECRET_COUNT] = {T("x,n,t key"), T("var key"), T("Toolbox key"), T("Pi key"),
                                                           T("Square root key"), T("Menu: Examples"),
                                                           T("Konami code")};
+static const char *const theme_names[NP_THEME_COUNT] = {T("NumPlay"), T("Switch"), T("PlayStation"), T("Xbox"), T("Wii"), T("Wii U")};
 
 static void build_rows(list_t *l) {
   l->n = l->ngames = 0;
@@ -51,6 +52,7 @@ static void build_rows(list_t *l) {
   l->kind[l->n++] = ROW_DISGUISE;
   l->kind[l->n++] = ROW_SECRET;
   l->kind[l->n++] = ROW_HINT;
+  l->kind[l->n++] = ROW_THEME;
   l->sel = NP_MIN(l->sel, l->n - 1);
 }
 
@@ -87,7 +89,16 @@ static void toggle(int y, bool on, int a) {
 
 static void list_scene(void *ctx) {
   list_t *l = ctx;
-  gfx_vgrad(0, 0, SCREEN_W, SCREEN_H, BG_TOP, BG_BOTTOM);
+  uint32_t top = BG_TOP, bottom = BG_BOTTOM, accent = ACCENT;
+  switch (l->cfg.theme) {
+    case NP_THEME_SWITCH: top = 0x252525; bottom = 0x090909; accent = 0xE60012; break;
+    case NP_THEME_PLAYSTATION: top = 0x24365F; bottom = 0x080E1D; accent = 0x4B8DFF; break;
+    case NP_THEME_XBOX: top = 0x183A27; bottom = 0x07170D; accent = 0x107C10; break;
+    case NP_THEME_WII: top = 0x24516A; bottom = 0x0C2638; accent = 0x53C8F0; break;
+    case NP_THEME_WII_U: top = 0x174C7B; bottom = 0x071A31; accent = 0x00A8E0; break;
+    default: break;
+  }
+  gfx_vgrad(0, 0, SCREEN_W, SCREEN_H, top, bottom);
   if (gfx_y0 < 44) {
     gfx_icon(&np_icon_back, 14, 17, 0xFFFF, 200);
     gfx_text(&np_font_title, 36, 30, T("Settings"), 0xFFFF, 256);
@@ -101,7 +112,7 @@ static void list_scene(void *ctx) {
   }
   /* selection highlight slides between rows */
   float cy = ROWS_Y + (l->cursor - l->top) * (ROW_H + 4);
-  gfx_rrect(10, (int)cy, SCREEN_W - 20, ROW_H, 10, 0xFFFF, 46);
+  gfx_rrect(10, (int)cy, SCREEN_W - 20, ROW_H, 10, gfx_rgb(accent), 78);
   for (int r = 0; r < 5; r++) {
     int i = l->top + r, y = ROWS_Y + r * (ROW_H + 4);
     if (y >= gfx_y1 || y + (i >= l->n ? 60 : ROW_H + 4) <= gfx_y0) continue; /* the credits are taller */
@@ -145,6 +156,17 @@ static void list_scene(void *ctx) {
         int a = l->cfg.disguise ? 256 : 130;
         row_text(y, T("Show a hint"), T("Matrices names the secret, small and gray"), a);
         toggle(y, l->cfg.hint, a);
+        break;
+      }
+      case ROW_THEME: {
+        row_text(y, T("Home theme"), T("Change the console-inspired style"), 256);
+        const char *v = theme_names[l->cfg.theme < NP_THEME_COUNT ? l->cfg.theme : NP_THEME_NUMPLAY];
+        int w = gfx_text_width(&np_font_small, v);
+        gfx_text_right(&np_font_small, SCREEN_W - 32, y + 21, v, 0xFFFF, 256);
+        if (on) {
+          gfx_icon(&np_icon_left, SCREEN_W - 44 - w, y + 10, 0xFFFF, 256);
+          gfx_icon(&np_icon_right, SCREEN_W - 26, y + 10, 0xFFFF, 256);
+        }
         break;
       }
       case ROW_SECRET: {
@@ -398,6 +420,11 @@ void np_settings(void) {
     if (p & K_UP) l.sel = NP_MAX(l.sel - 1, 0), l.action = 0;
     if (p & K_DOWN) l.sel = NP_MIN(l.sel + 1, l.n - 1), l.action = 0;
     if (kind == ROW_GAME && (p & (K_LEFT | K_RIGHT))) l.action = (p & K_RIGHT) != 0;
+    if (kind == ROW_THEME && (p & (K_LEFT | K_RIGHT | K_OK))) {
+      int step = (p & K_LEFT) ? NP_THEME_COUNT - 1 : 1;
+      l.cfg.theme = (uint8_t)((l.cfg.theme + step) % NP_THEME_COUNT);
+      np_config_save(&l.cfg);
+    }
     if (kind == ROW_SECRET && (p & (K_LEFT | K_RIGHT | K_OK))) {
       l.cfg.secret = (uint8_t)((l.cfg.secret + ((p & K_LEFT) ? NP_SECRET_COUNT - 1 : 1)) % NP_SECRET_COUNT);
       np_config_save(&l.cfg);
