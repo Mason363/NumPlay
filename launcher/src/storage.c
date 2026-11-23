@@ -61,30 +61,40 @@ bool np_reset_game(int game) {
 #define CONFIG_MAGIC 0x4E /* 'N' */
 
 #if !NP_SIMULATOR
-extern const uint8_t np_defaults[4];  /* how this NumPlay starts: launcher/app_name.c, or the website */
+extern const uint8_t np_defaults[5];  /* how this NumPlay starts: launcher/app_name.c, or the website */
 #endif
 
 void np_config_load(np_config_t *c) {
   c->disguise = false;
   c->secret = NP_SECRET_XNT;
   c->hint = true;
+  c->theme = NP_THEME_NUMPLAY;
 #if !NP_SIMULATOR
   if (np_defaults[0] == 'D' && np_defaults[1] == 1) {
     c->disguise = np_defaults[2] & 1;
     c->hint = !(np_defaults[2] & 2);
     if (np_defaults[3] < NP_SECRET_COUNT) c->secret = np_defaults[3];
+    if (np_defaults[4] < NP_THEME_COUNT) c->theme = np_defaults[4];
   }
 #endif
   uint32_t len = 0;
   const uint8_t *d = ef_read(CONFIG_NAME, &len);
-  if (!d || len != 4 || d[0] != CONFIG_MAGIC || d[1] != 1) return;
+  if (!d || d[0] != CONFIG_MAGIC) return;
+  if (len == 4 && d[1] == 1) { /* settings saved before themes */
+    c->disguise = d[2] & 1;
+    c->hint = !(d[2] & 2);
+    if (d[3] < NP_SECRET_COUNT) c->secret = d[3];
+    return;
+  }
+  if (len != 5 || d[1] != 2) return;
   c->disguise = d[2] & 1;
-  c->hint = !(d[2] & 2); /* a flag for "no hint": older files keep the hint on */
+  c->hint = !(d[2] & 2);
   if (d[3] < NP_SECRET_COUNT) c->secret = d[3];
+  if (d[4] < NP_THEME_COUNT) c->theme = d[4];
 }
 
 bool np_config_save(const np_config_t *c) {
-  uint8_t d[4] = {CONFIG_MAGIC, 1, (uint8_t)(c->disguise | (c->hint ? 0 : 2)), c->secret};
+  uint8_t d[5] = {CONFIG_MAGIC, 2, (uint8_t)(c->disguise | (c->hint ? 0 : 2)), c->secret, c->theme};
   return ef_write(CONFIG_NAME, d, sizeof d);
 }
 
