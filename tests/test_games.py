@@ -595,8 +595,8 @@ CHECKS = {
     "celeste": (lambda v: v[:4] == b"SLEC" and v[1072] == 1 and struct.unpack_from("<I", v, 1096)[0] > 0,
                 lambda v: v[:4] == b"SLEC" and v[1072] == 1 and struct.unpack_from("<I", v, 1096)[0] > 60),
     "chess": (lambda v: v == SEEDS["chess"],) * 2,  # read back and kept
-    # a city saved ("FE2S", version 1); after the reinstall, from the copy, it goes on and is saved again
-    "finalearth2": (lambda v: v[:4] == b"FE2S" and v[4] == 1,) * 2,
+    # a city saved ("FE2S", version 2); after the reinstall, from the copy, it goes on and is saved again
+    "finalearth2": (lambda v: v[:4] == b"FE2S" and v[4] == 2,) * 2,
     # the moment kept ("UT01", the frames played at 52); after the reinstall, from the copy, it goes on
     "undertale": (lambda v: v[:4] == b"UT01" and struct.unpack_from("<I", v, 52)[0] > 0,
                   lambda v: v[:4] == b"UT01" and struct.unpack_from("<I", v, 52)[0] > 60),
