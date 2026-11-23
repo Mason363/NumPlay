@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
   gfx_strip = strip;
 #endif
   if (!platform_init()) return 1;
-#if PLATFORM_DEVICE
+#if PLATFORM_DEVICE || defined(NP_PORT) /* (the other calculators: their screen and clock put back at the end) */
   platform_begin();
 #endif
   app_init();
@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
 #endif
   }
   platform_close();
-#if PLATFORM_DEVICE
+#if PLATFORM_DEVICE || defined(NP_PORT)
   return platform_end();
 #else
   return 0;
