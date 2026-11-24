@@ -587,6 +587,6 @@ clean:
 .PHONY: foundation
 foundation:
 	$(PY) tools/foundation.py catalog build/foundation-games.json
-	$(MAKE) B=build/foundation BASE_MAP_FLAG='-Wl,-Map,build/foundation/kit/base.o.map' FINAL_MAP_FLAG='-Map=build/foundation/TwiliPlay.nwa.map' CATALOG=build/foundation-games.json VERSION=0.1.0 VARIANTS=TwiliPlay NAME_TwiliPlay='"TwiliPlay"' ICON_TwiliPlay=launcher/assets/icon.png build/foundation/TwiliPlay.nwa
+	$(MAKE) B=build/foundation BASE_MAP_FLAG='-Wl,-Map,build/foundation/kit/base.o.map' FINAL_MAP_FLAG='-Map=build/foundation/TwiliPlay.nwa.map' CATALOG=build/foundation-games.json VERSION=0.2.0 VARIANTS=TwiliPlay NAME_TwiliPlay='"TwiliPlay"' ICON_TwiliPlay=launcher/assets/icon.png build/foundation/TwiliPlay.nwa
 	$(PY) tools/foundation.py check build/foundation
 	$(PY) tools/foundation_footprint.py build/foundation
