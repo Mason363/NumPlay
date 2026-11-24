@@ -1,0 +1,34 @@
+name: Publish Starlight 0.2.0
+on:
+  push:
+    branches: [release/starlight-0.2.0]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      TARGET: 608005d48808af822c9c399477ed42ea439048c9
+      BUILT: 7b88d961c45e0e006a6f2d7f04295ce1e9dcb6b8
+      RUN: 45492326640
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET }}
+          fetch-depth: 2
+      - name: Verify release source and N0120 checks
+        run: |
+          test "$(git rev-parse HEAD^)" = "$BUILT"
+          test "$(git diff --name-only HEAD^ HEAD)" = docs/CHANGELOG.md
+          test "$(gh run view "$RUN" --repo "$REPO" --json headSha --jq .headSha)" = "$BUILT"
+          gh run watch "$RUN" --repo "$REPO" --exit-status --interval 30
+          gh run download "$RUN" --repo "$REPO" -n TwiliPlay-N0120 -D dist
+          echo "d94a55ff1fc5f9442f5617aa955dad7baf3cb62db19eccfaf397ecf8e5a5e225  dist/TwiliPlay.nwa" | sha256sum -c
+          strings dist/TwiliPlay.nwa | grep -Fx '0.2.0' >/dev/null || strings dist/TwiliPlay.nwa | grep -F '0.2.0' >/dev/null
+      - name: Publish verified calculator app
+        run: |
+          sed -n '/^## 0.2.0/,/^## 0.1.0/{ /^## /d; p; }' docs/CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          gh release create v0.2.0 dist/TwiliPlay.nwa --repo "$REPO" --target "$TARGET" --title "TwiliPlay v0.2.0 — Starlight Edition" --notes-file "$RUNNER_TEMP/notes.md"
