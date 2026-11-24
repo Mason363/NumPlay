@@ -2,6 +2,10 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.25: Hollow Knight on the Casio
+
+- **Casio fx-CG50:** Hollow Knight and Hollow Knight: Fungal Wastes start, instead of stopping on a black screen with a System ERROR.
+
 ## 1.24.24: NumVisuals' new look
 
 - **NumVisuals:** all 11 backgrounds drawn again from scratch, in smooth colour with soft light and glows, and the clock and your words in Nunito, sharp at any size. Still 30 frames a second.
