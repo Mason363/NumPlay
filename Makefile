@@ -195,7 +195,7 @@ $(KIT)/base.o: $(LAUNCHER_OBJS) $(KIT_SMALL) tools/kit_base.ld
 	$(ARM_CC) $(ARM_CFLAGS) -nostartfiles --specs=nano.specs -Wl,--relocatable -Wl,--unique -Wl,--gc-sections \
 	  -Wl,-e,main -Wl,-u,eadk_api_level $(BASE_MAP_FLAG) -Wl,-T,tools/kit_base.ld -flinker-output=nolto-rel $(LAUNCHER_OBJS) \
 	  $(foreach s,$(KIT_API),-Wl,-u,$(s)) \
-	  $$(arm-none-eabi-nm -u $(KIT_SMALL) | awk '$$1 == "U" || $$1 == "w" {print "-Wl,-u," $$2}' | sort -u) -lm -lgcc -o $@
+	  $$(arm-none-eabi-nm -u $(KIT_SMALL) | awk '$$1 == "U" || $$1 == "w" {print "-Wl,-u," $$2}' | sort -u) -lm -lgcc -lnosys -o $@
 
 .SECONDARY: $(foreach v,$(VARIANTS),$(B)/variant/$(v)-name.o $(B)/variant/$(v)-icon.o) \
   $(foreach g,$(KIT_ALL),$(B)/arm/shots_$(g).o $(B)/arm/entry_$(g).o $(B)/arm/marks_$(g).o)
@@ -207,9 +207,14 @@ $(B)/variant/%-icon.o: $$(ICON_$$*) | $(B)
 	$(NWLINK) png-icon-o $< $@
 
 # ------------------------------------------------------------------ NumPlay.nwa
+# TwiliPlay embeds the upstream empty cartridge table (no third-party carts).
+$(B)/twili-carts.o: games/numpico/tools/p8cart.py | $(B)
+	$(PY) -I $< -o $@
+$(B)/TwiliPlay.nwa: $(B)/twili-carts.o
+
 $(B)/%.nwa: $(KIT)/base.o $(B)/arm/arena.o $(NP_GAMES) $(B)/variant/%-name.o $(B)/variant/%-icon.o
 	$(ARM_LD) $(KIT_LINK) $(FINAL_MAP_FLAG) -T $(B)/gen/numplay.ld $(KIT)/base.o $(B)/arm/arena.o \
-	  $(B)/variant/$*-name.o $(B)/variant/$*-icon.o $(NP_GAMES) -o $@
+	  $(B)/variant/$*-name.o $(B)/variant/$*-icon.o $(NP_GAMES) $(if $(filter TwiliPlay,$*),$(B)/twili-carts.o) -o $@
 	arm-none-eabi-strip --strip-unneeded $@
 	@if [ "$*" = NumPlay ]; then $(PY) tools/sizes.py $@ $(B)/modules; fi
 
