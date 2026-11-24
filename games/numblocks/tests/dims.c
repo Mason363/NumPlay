@@ -7,7 +7,8 @@
  *   and the egg; the exit portal: the End poem, then the Overworld's spawn; saved in the Nether and
  *   loaded again.
  *
- * Then it leaves the world saved in the Nether in build/dims-saves for np_load.c (NumPlay's NumBlocks). */
+ * Then it leaves the world saved in the Nether in build/dims-saves for np_load.c (NumPlay's NumBlocks), with the other
+ * woods' fences, gates, doors and stairs by the Overworld's place and in the inventory. */
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -351,6 +352,16 @@ int main(void) {
   SAY("back at %.1f %.1f %.1f", pl.x, pl.y, pl.z);
 
   printf("saved in the Nether, loaded again\n");
+  /* (for np_load.c: the other woods' things by the Overworld's place, and in the inventory) */
+  {
+    int x = (int)floorf(pl.x), y = (int)floorf(pl.y) + 3, z = (int)floorf(pl.z) + 2;
+    for (int k = -1; k <= 5; k++) world_set(x + k, y - 1, z, B_COBBLESTONE);
+    world_set(x, y, z, B_FENCE_JUNGLE), world_set(x + 1, y, z, B_FENCE_GATE_BIRCH_N), world_set(x + 2, y, z, B_FENCE_GATE_OAK_S_OPEN);
+    world_set(x + 3, y, z, B_DOOR_ACACIA_LOWER_W), world_set(x + 3, y + 1, z, B_DOOR_ACACIA_UPPER);
+    world_set(x + 4, y, z, B_SPRUCE_STAIRS_S);
+  }
+  pl.inv[2] = (Stack){I_FENCE_SPRUCE, 10}, pl.inv[3] = (Stack){I_FENCE_GATE_ACACIA, 2}, pl.inv[4] = (Stack){I_BIRCH_DOOR, 3};
+  pl.inv[5] = (Stack){I_DARK_OAK_STAIRS, 7}, pl.inv[6] = (Stack){I_NETHERBRICK, 5};
   dims_go(DIM_NETHER);
   CHECK(dim == DIM_NETHER);
   pl.mode = 0;
@@ -362,6 +373,8 @@ int main(void) {
   CHECK(load_world(1));
   CHECK(dim == DIM_NETHER && fabsf(pl.x - sx) < 0.01f && fabsf(pl.y - sy) < 0.01f && fabsf(pl.z - sz) < 0.01f);
   CHECK(pl.inv[pl.slot].id == I_BLAZE_ROD);
+  CHECK(pl.inv[2].id == I_FENCE_SPRUCE && pl.inv[3].id == I_FENCE_GATE_ACACIA && pl.inv[4].id == I_BIRCH_DOOR &&
+        pl.inv[5].id == I_DARK_OAK_STAIRS && pl.inv[6].id == I_NETHERBRICK);   /* (its own, kept) */
   FILE *o = fopen("build/dims-saves/expect.txt", "w");
   if (o) fprintf(o, "%f %f %f\n", dst.ow_x, dst.ow_y, dst.ow_z), fclose(o);
   CHECK(save_world());

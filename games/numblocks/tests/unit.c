@@ -18,6 +18,200 @@ static int craft(const int *ids, int w) {
   return r < 0 ? 0 : recipes[r].out * 100 + recipes[r].n;
 }
 
+#if NB_DIMS
+/* (issue #450) NumBlocks.nwa's fence gates and the other woods' fences, doors and stairs, as 1.8.8's: their recipes,
+ * names, places in the creative inventory, placing, joining, opening, collisions, drops, and what NumPlay's NumBlocks
+ * sees of them */
+static int tab_pos(int tab, int id) {   /* where id is in a creative tab, -1 not there */
+  for (int i = tab_start[tab]; i < tab_start[tab + 1]; i++)
+    if (tab_items[i] == id) return i - tab_start[tab];
+  return -1;
+}
+static int dropped(int id) {   /* how many of the item lie about */
+  int n = 0;
+  for (int i = 0; i < N_ENT; i++)
+    if (ents[i].type == E_ITEM && ents[i].item.id == id) n += ents[i].item.aux;
+  return n;
+}
+static void use_at(int id, float yaw, int x, int y, int z, int f) {   /* holding id, looking that way, on that face */
+  pl.inv[pl.slot] = (Stack){(uint16_t)id, (uint16_t)(id ? 1 : 0)}, pl.yaw = yaw, pl.sneaking = false;
+  player_use_on(x, y, z, f);
+}
+static void woods(void) {
+  static const int planks[6] = {B_PLANKS_OAK, B_PLANKS_SPRUCE, B_PLANKS_BIRCH, B_PLANKS_JUNGLE, B_PLANKS_DARK_OAK,
+                                B_PLANKS_ACACIA};
+  /* RecipesFences, RecipesFurniture: 3 fences, a gate, 3 doors, 4 stairs, each wood's from its planks */
+  for (int w = 0; w < 6; w++) {
+    int P = planks[w], S = I_STICK;
+    int fence[9] = {P, S, P, P, S, P, 0, 0, 0}, gate[9] = {S, P, S, S, P, S, 0, 0, 0};
+    int door[9] = {P, P, 0, P, P, 0, P, P, 0}, stairs[9] = {P, 0, 0, P, P, 0, P, P, P};
+    CHECK(craft(fence, 3) == (w ? I_FENCE_SPRUCE + w - 1 : B_FENCE_OAK) * 100 + 3);
+    CHECK(craft(gate, 3) == (I_FENCE_GATE_OAK + w) * 100 + 1);
+    CHECK(craft(door, 3) == (w ? I_SPRUCE_DOOR + w - 1 : I_WOODEN_DOOR) * 100 + 3);
+    CHECK(craft(stairs, 3) == (w ? I_SPRUCE_STAIRS + w - 1 : B_OAK_STAIRS) * 100 + 4);
+  }
+  int mixed[9] = {B_PLANKS_SPRUCE, I_STICK, B_PLANKS_BIRCH, B_PLANKS_SPRUCE, I_STICK, B_PLANKS_SPRUCE, 0, 0, 0};
+  CHECK(craft(mixed, 3) == 0);
+  /* their names (en_US.lang), fuel (300 ticks but a door), creative tabs in Minecraft's order */
+  CHECK(!strcmp(item_label(I_FENCE_GATE_OAK), "Oak Fence Gate") && !strcmp(item_label(I_FENCE_DARK_OAK), "Dark Oak Fence") &&
+        !strcmp(item_label(I_ACACIA_DOOR), "Acacia Door") && !strcmp(item_label(I_JUNGLE_STAIRS), "Jungle Wood Stairs"));
+  CHECK(item_fuel(I_FENCE_SPRUCE) == 300 && item_fuel(I_FENCE_GATE_ACACIA) == 300 && item_fuel(I_BIRCH_STAIRS) == 300 &&
+        item_fuel(I_SPRUCE_DOOR) == 0);
+  CHECK(tab_pos(1, B_FENCE_OAK) < tab_pos(1, I_NETHER_BRICK_FENCE) &&
+        tab_pos(1, I_NETHER_BRICK_FENCE) < tab_pos(1, I_FENCE_SPRUCE));
+  for (int w = 0; w < 4; w++) CHECK(tab_pos(1, I_FENCE_SPRUCE + w) + 1 == tab_pos(1, I_FENCE_SPRUCE + w + 1));
+  CHECK(tab_pos(2, I_STONE_BUTTON) + 1 == tab_pos(2, I_FENCE_GATE_OAK) &&
+        tab_pos(2, I_FENCE_GATE_ACACIA) + 1 == tab_pos(2, I_WOODEN_DOOR) && tab_pos(2, I_WOODEN_DOOR) + 1 == tab_pos(2, I_IRON_DOOR));
+  /* (doors by id: spruce 427, birch, jungle, acacia, dark oak 431) */
+  CHECK(tab_pos(2, I_IRON_DOOR) + 1 == tab_pos(2, I_SPRUCE_DOOR) && tab_pos(2, I_JUNGLE_DOOR) + 1 == tab_pos(2, I_ACACIA_DOOR) &&
+        tab_pos(2, I_ACACIA_DOOR) + 1 == tab_pos(2, I_DARK_OAK_DOOR));
+  CHECK(tab_pos(0, B_OAK_STAIRS) < tab_pos(0, I_SPRUCE_STAIRS) && tab_pos(0, I_JUNGLE_STAIRS) < tab_pos(0, I_ACACIA_STAIRS) &&
+        tab_pos(0, I_ACACIA_STAIRS) + 1 == tab_pos(0, I_DARK_OAK_STAIRS));
+  /* drops: a door's lower half its door, its upper nothing; gates and stairs themselves */
+  Stack out[2];
+  CHECK(block_drops(B_DOOR_BIRCH_LOWER_W_OPEN, 0, out) == 1 && out[0].id == I_BIRCH_DOOR && out[0].aux == 1);
+  CHECK(block_drops(B_DOOR_BIRCH_UPPER, 0, out) == 0 && block_drops(B_IRON_DOOR_UPPER, I_IRON_PICKAXE, out) == 0);
+  CHECK(block_drops(B_FENCE_GATE_JUNGLE_E_OPEN, 0, out) == 1 && out[0].id == I_FENCE_GATE_JUNGLE);
+  CHECK(block_drops(B_DARK_OAK_STAIRS_N, 0, out) == 1 && out[0].id == I_DARK_OAK_STAIRS);
+  CHECK(blk_item[B_DOOR_SPRUCE_UPPER] == I_SPRUCE_DOOR && blk_item[B_IRON_DOOR_UPPER] == I_IRON_DOOR);   /* (Pick Block) */
+
+  /* a stone floor at y 69, air above */
+  world_new(0, "ut13");
+  world_follow(8, 70, 8);
+  while (world_pending()) world_follow(8, 70, 8);
+  for (int z = -4; z < 20; z++)
+    for (int x = -4; x < 20; x++)
+      for (int y = 68; y < 76; y++) world_set(x, y, z, y < 70 ? B_STONE : B_AIR);
+  memset(ents, 0, sizeof ents);
+  memset(&pl, 0, sizeof pl);
+  pl.x = 8.5f, pl.y = 70, pl.z = 0.5f, pl.health = 20, pl.food = 20, pl.mode = 0, pl.on_ground = true;
+  game_rules = GR_DEFAULT;
+  /* a gate faces the way the player looks (on the floor's top); none on air or a snow layer, one on a cobweb */
+  use_at(I_FENCE_GATE_SPRUCE, 0, 4, 69, 4, 1);
+  CHECK(world_get(4, 70, 4) == B_FENCE_GATE_SPRUCE_S && !pl.inv[pl.slot].id);
+  use_at(I_FENCE_GATE_SPRUCE, 90, 6, 69, 4, 1);
+  CHECK(world_get(6, 70, 4) == B_FENCE_GATE_SPRUCE_W);
+  world_set(10, 70, 5, B_STONE), world_set(10, 69, 4, B_AIR);
+  use_at(I_FENCE_GATE_OAK, 0, 10, 70, 5, 2);
+  CHECK(world_get(10, 70, 4) == B_AIR);
+  world_set(10, 69, 4, B_SNOW_LAYER);
+  use_at(I_FENCE_GATE_OAK, 0, 10, 70, 5, 2);
+  CHECK(world_get(10, 70, 4) == B_AIR);
+  world_set(10, 69, 4, B_COBWEB);
+  use_at(I_FENCE_GATE_OAK, 0, 10, 70, 5, 2);
+  CHECK(world_get(10, 70, 4) == B_FENCE_GATE_OAK_S);
+  world_set(10, 70, 4, B_AIR), world_set(10, 69, 4, B_STONE), world_set(10, 70, 5, B_AIR);
+  /* BlockFence.canConnectTo: wooden fences join one another and gates (any side), not nether brick fences, walls or
+   * pumpkins; walls join gates */
+  int8_t bx[5][6];
+  world_set(2, 71, 10, B_FENCE_BIRCH), world_set(3, 71, 10, B_FENCE_ACACIA);
+  world_set(4, 71, 10, B_FENCE_OAK), world_set(3, 71, 11, B_FENCE_GATE_DARK_OAK_S), world_set(3, 71, 9, B_PUMPKIN);
+  CHECK(block_boxes(B_FENCE_ACACIA, 3, 71, 10, bx) == 4);   /* (post, west, east, the gate to the south) */
+  world_set(4, 71, 10, B_NETHER_BRICK_FENCE), world_set(2, 71, 10, B_COBBLESTONE_WALL);
+  CHECK(block_boxes(B_FENCE_ACACIA, 3, 71, 10, bx) == 2);
+  world_set(3, 71, 10, B_COBBLESTONE_WALL);
+  CHECK(block_boxes(B_COBBLESTONE_WALL, 3, 71, 10, bx) == 3);   /* (the wall to the west, the gate) */
+  for (int x = 2; x <= 4; x++)
+    for (int z = 9; z <= 11; z++) world_set(x, 71, z, B_AIR);
+  /* BlockFenceGate: shut, a box 1.5 high and 1/4 thick; open, none; its outline the same */
+  float b[6];
+  CHECK(block_box(4, 70, 4, b) && b[1] == 70 && b[4] == 71.5f && b[0] == 4 && b[3] == 5 && b[2] == 4.375f && b[5] == 4.625f);
+  float over[6] = {4.2f, 71.2f, 4.2f, 4.8f, 71.4f, 4.8f};
+  CHECK(!phys_free(over));
+  /* opening: away from the player; looking at it from the side it swings to, it turns round first */
+  pl.z = 6.5f;
+  use_at(B_DIRT, 180, 4, 70, 4, 3);   /* (from the south, looking north) */
+  CHECK(world_get(4, 70, 4) == B_FENCE_GATE_SPRUCE_N_OPEN && pl.inv[pl.slot].id == B_DIRT);
+  CHECK(!block_box(4, 70, 4, b) && phys_free(over));
+  use_at(0, 180, 4, 70, 4, 3);
+  CHECK(world_get(4, 70, 4) == B_FENCE_GATE_SPRUCE_N);
+  use_at(0, 90, 4, 70, 4, 5);   /* (looking west: it does not face east, so it keeps its way) */
+  CHECK(world_get(4, 70, 4) == B_FENCE_GATE_SPRUCE_N_OPEN);
+  use_at(0, 0, 4, 70, 4, 2);
+  CHECK(world_get(4, 70, 4) == B_FENCE_GATE_SPRUCE_N);
+  use_at(0, 0, 4, 70, 4, 2);   /* (looking south at a gate facing north: it turns south) */
+  CHECK(world_get(4, 70, 4) == B_FENCE_GATE_SPRUCE_S_OPEN);
+  /* doors: the lower half facing the way the player looks, the upper over it; opened and shut from either half */
+  pl.z = 0.5f;
+  use_at(I_JUNGLE_DOOR, 0, 8, 69, 8, 1);
+  CHECK(world_get(8, 70, 8) == B_DOOR_JUNGLE_LOWER_S && world_get(8, 71, 8) == B_DOOR_JUNGLE_UPPER);
+  use_at(0, 0, 8, 71, 8, 2);
+  CHECK(world_get(8, 70, 8) == B_DOOR_JUNGLE_LOWER_S_OPEN && world_get(8, 71, 8) == B_DOOR_JUNGLE_UPPER);
+  CHECK(block_boxes(B_DOOR_JUNGLE_UPPER, 8, 71, 8, bx) == 1 && bx[0][0] == 13 && bx[0][5] == 16);   /* (hinged left) */
+  use_at(0, 0, 8, 70, 8, 2);
+  CHECK(world_get(8, 70, 8) == B_DOOR_JUNGLE_LOWER_S);
+  /* an iron door: not by hand, the click spent (nothing placed against it) */
+  use_at(I_IRON_DOOR, 90, 11, 69, 8, 1);
+  CHECK(world_get(11, 70, 8) == B_IRON_DOOR_LOWER_W);
+  use_at(B_DIRT, 90, 11, 70, 8, 5);
+  CHECK(world_get(11, 70, 8) == B_IRON_DOOR_LOWER_W && world_get(12, 70, 8) == B_AIR);
+  /* a button opens doors and gates by it for 20 ticks */
+  world_set(13, 70, 10, B_STONE), world_set(12, 70, 10, B_STONE_BUTTON_W);
+  world_set(12, 70, 11, B_FENCE_GATE_BIRCH_E), world_set(12, 70, 9, B_DOOR_DARK_OAK_LOWER_N), world_set(12, 71, 9, B_DOOR_DARK_OAK_UPPER);
+  use_at(0, 270, 12, 70, 10, 4);
+  CHECK(world_get(12, 70, 11) == B_FENCE_GATE_BIRCH_E_OPEN && world_get(12, 70, 9) == B_DOOR_DARK_OAK_LOWER_N_OPEN);
+  for (int t = 0; t < 21; t++) player_tick(0, 0);
+  CHECK(world_get(12, 70, 11) == B_FENCE_GATE_BIRCH_E && world_get(12, 70, 9) == B_DOOR_DARK_OAK_LOWER_N);
+  /* stairs rise the way the player looks */
+  use_at(I_ACACIA_STAIRS, 90, 2, 69, 14, 1);
+  CHECK(world_get(2, 70, 14) == B_ACACIA_STAIRS_W);
+  /* breaking a door's upper half: both halves go, one door drops */
+  memset(ents, 0, sizeof ents);
+  break_block_at(8, 71, 8, true);
+  CHECK(world_get(8, 70, 8) == B_AIR && world_get(8, 71, 8) == B_AIR && dropped(I_JUNGLE_DOOR) == 1);
+  memset(ents, 0, sizeof ents);
+  break_block_at(12, 70, 9, true);
+  CHECK(world_get(12, 71, 9) == B_AIR && dropped(I_DARK_OAK_DOOR) == 1);
+
+  /* NumPlay's NumBlocks: in the records, each comes with the oak block it sees there instead (an open gate, nothing);
+   * NumBlocks.nwa sees its own back, but where NumPlay's changed that block */
+  world_set(5, 72, 16, B_FENCE_SPRUCE), world_set(6, 72, 16, B_FENCE_GATE_ACACIA_W_OPEN), world_set(7, 72, 16, B_FENCE_GATE_OAK_E);
+  world_set(8, 72, 16, B_DOOR_BIRCH_LOWER_E_OPEN), world_set(8, 73, 16, B_DOOR_BIRCH_UPPER), world_set(9, 72, 16, B_DARK_OAK_STAIRS_N);
+  world_set(10, 72, 16, B_NETHER_BRICK);
+  CHECK(edits_flush());
+  world_new(0, "ut13");
+  world_follow(8, 70, 8);
+  while (world_pending()) world_follow(8, 70, 8);
+  CHECK(world_get(5, 72, 16) == B_FENCE_SPRUCE && world_get(6, 72, 16) == B_FENCE_GATE_ACACIA_W_OPEN &&
+        world_get(7, 72, 16) == B_FENCE_GATE_OAK_E && world_get(8, 72, 16) == B_DOOR_BIRCH_LOWER_E_OPEN &&
+        world_get(8, 73, 16) == B_DOOR_BIRCH_UPPER && world_get(9, 72, 16) == B_DARK_OAK_STAIRS_N &&
+        world_get(10, 72, 16) == B_NETHER_BRICK);
+  uint32_t len = 0;
+  const uint8_t *r = plat_load("ut13r0_0.nbe", &len);
+  static const int want[7][3] = {{5, 72, B_FENCE_OAK}, {6, 72, B_AIR}, {7, 72, B_FENCE_OAK}, {8, 72, B_DOOR_OAK_LOWER_E_OPEN},
+                                 {8, 73, B_DOOR_OAK_UPPER}, {9, 72, B_OAK_STAIRS_N}, {10, 72, -1}};
+  for (int k = 0; k < 7; k++) {
+    /* the entry NumPlay's NumBlocks reads there (chunk 0, x, z 16: chunk 4 of the region) */
+    uint32_t key = (uint32_t)(4 << 15 | ((want[k][0] & 15) | 0 << 4) << 7 | want[k][1]), got = 0xFFFF;
+    for (uint32_t i = 0; r && i < len / 4; i++) {
+      uint32_t e;
+      memcpy(&e, r + 4 * i, 4);
+      if ((e & 0xFFFFFF) == key) got = e >> 24;
+    }
+    CHECK(want[k][2] < 0 ? got == 0xFFFF : got == (uint32_t)want[k][2]);
+  }
+  /* (NumPlay's NumBlocks puts stone where the oak fence is: its entry changes, the other stays) */
+  {
+    static uint8_t copy[65536];
+    uint32_t key = (uint32_t)(4 << 15 | 5 << 7 | 72);
+    CHECK(r && len <= sizeof copy);
+    memcpy(copy, r, len);
+    for (uint32_t i = 0; i < len / 4; i++) {
+      uint32_t e;
+      memcpy(&e, copy + 4 * i, 4);
+      if ((e & 0xFFFFFF) == key) e = key | (uint32_t)B_STONE << 24, memcpy(copy + 4 * i, &e, 4);
+    }
+    CHECK(plat_save("ut13r0_0.nbe", copy, len));
+    world_new(0, "ut13");
+    world_follow(8, 70, 8);
+    while (world_pending()) world_follow(8, 70, 8);
+    CHECK(world_get(5, 72, 16) == B_STONE && world_get(6, 72, 16) == B_FENCE_GATE_ACACIA_W_OPEN);
+  }
+  plat_remove_prefix("ut13");
+  printf("the woods' fences, gates, doors and stairs: crafted, placed, opened, kept, oak's to NumPlay's NumBlocks\n");
+}
+#endif
+
 int main(void) {
   /* planks from a log, anywhere in the grid */
   int a[4] = {0, B_LOG_BIRCH, 0, 0};
@@ -805,6 +999,7 @@ int main(void) {
     printf("strongholds: %d of %d portal rooms whole\n", whole, rooms);
     CHECK(rooms == 12 * 3 * 3 && whole == rooms);
   }
+  woods();
 #endif
   printf("%s (%d recipes)\n", fails ? "FAILED" : "all good", N_RECIPES);
   return fails != 0;

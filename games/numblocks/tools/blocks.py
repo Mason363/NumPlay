@@ -247,9 +247,10 @@ FIRST_DIMS = 257
 D = []
 
 
-def bd(name, id, meta=0, model='cube', tex=None, light=0, hard=1.0, tool=None, level=0, box=None):
+def bd(name, id, meta=0, model='cube', tex=None, light=0, hard=1.0, tool=None, level=0, box=None, np=None):
+    """np: the state NumPlay's NumBlocks shows instead (its blocks only; None: what the world had there)"""
     D.append(dict(name=name, id=id, meta=meta, model=model, tex=tex, tint=None, light=light, hard=hard, tool=tool,
-                  level=level, box=box))
+                  level=level, box=box, np=np))
 
 
 bd('NETHERRACK', 87, tex='netherrack', hard=0.4, tool='pickaxe')
@@ -311,8 +312,30 @@ for v, d in [(0, 'E'), (1, 'W'), (2, 'S'), (3, 'N')]:
        hard=0.8, tool='pickaxe')
 # mineshafts' rails running east to west
 bd('RAIL_X', 66, 1, model='flat', tex='@rail_x', hard=0.7, tool='pickaxe')
+# fence gates (BlockFenceGate: facing 0 south 1 west 2 north 3 east, the way the player looked, + 4 open), and the
+# other woods' fences, doors and stairs (as oak's): name, planks, door texture, ids of the fence, gate, door, stairs.
+# NumPlay's NumBlocks shows them as oak's (an open gate as nothing)
+WOODS = [('SPRUCE', 'spruce', 'spruce', 188, 183, 193, 134), ('BIRCH', 'birch', 'birch', 189, 184, 194, 135),
+         ('JUNGLE', 'jungle', 'jungle', 190, 185, 195, 136), ('DARK_OAK', 'big_oak', 'dark_oak', 191, 186, 197, 164),
+         ('ACACIA', 'acacia', 'acacia', 192, 187, 196, 163)]
+for n, t, gid in [('OAK', 'oak', 107)] + [(n, t, g) for n, t, _, _, g, _, _ in WOODS]:
+    for v, d in enumerate(['S', 'W', 'N', 'E', 'S_OPEN', 'W_OPEN', 'N_OPEN', 'E_OPEN']):
+        # (its box: the outline, BlockFenceGate.setBlockBoundsBasedOnState; its look and collision: phys.c)
+        bd(f'FENCE_GATE_{n}_{d}', gid, v, model='gate', tex=f'planks_{t}', hard=2.0, tool='axe',
+           box=[(0, 0, 6, 16, 16, 10) if v % 2 == 0 else (6, 0, 0, 10, 16, 16)], np='AIR' if v >= 4 else 'FENCE_OAK')
+for n, t, dt, fid, _, did, sid in WOODS:
+    bd(f'FENCE_{n}', fid, model='fence', tex=f'planks_{t}', hard=2.0, tool='axe', np='FENCE_OAK')
+for n, t, dt, fid, _, did, sid in WOODS:
+    for v, d in enumerate(['E', 'S', 'W', 'N', 'E_OPEN', 'S_OPEN', 'W_OPEN', 'N_OPEN']):
+        bd(f'DOOR_{n}_LOWER_{d}', did, v, model='door', tex=f'door_{dt}_lower', hard=3.0, tool='axe',
+           np='DOOR_OAK_LOWER' + ('' if d == 'E' else '_' + d))
+    bd(f'DOOR_{n}_UPPER', did, 8, model='door', tex=f'door_{dt}_upper', hard=3.0, tool='axe', np='DOOR_OAK_UPPER')
+for n, t, dt, fid, _, did, sid in WOODS:
+    for v, d in enumerate('EWSN'):
+        bd(f'{n}_STAIRS_{d}', sid, v, model='stairs', tex=f'planks_{t}', hard=2.0, tool='axe',
+           np='OAK_STAIRS' + ('' if d == 'E' else '_' + d))
 
-MODELS_DIMS = MODELS + ['portal', 'frame', 'endportal', 'egg', 'button']
+MODELS_DIMS = MODELS + ['portal', 'frame', 'endportal', 'egg', 'button', 'gate']
 # every state of NumBlocks.nwa, by number: S, unused numbers (never a block), then D
 S_ALL = S + [dict(S[0], name=f'UNUSED_{i}') for i in range(len(S), FIRST_DIMS)] + D
 

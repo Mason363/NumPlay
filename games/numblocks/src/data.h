@@ -5,7 +5,7 @@
 #include "blocks.h"
 
 #if NB_DIMS
-#define NTEX 249
+#define NTEX 259
 #else
 #define NTEX 217
 #endif
@@ -323,7 +323,7 @@ extern const uint8_t it_place[N_ITEMS];   /* the block it places (255: none) */
 #endif
 typedef struct { uint16_t out; uint8_t n, w, h; uint16_t in[9]; } Recipe;   /* w 0: shapeless, h of them */
 #if NB_DIMS
-#define N_RECIPES 208
+#define N_RECIPES 229
 #else
 #define N_RECIPES 187
 #endif
@@ -380,18 +380,37 @@ extern const uint16_t img_row0[], img_pal[][16];
 #define TX_DOOR_IRON_LOWER 238
 #define TX_DOOR_IRON_UPPER 239
 #define TX_RAIL_X 240
-#define TX_PORTAL_4 241
-#define TX_PORTAL_8 242
-#define TX_PORTAL_12 243
-#define TX_PORTAL_16 244
-#define TX_PORTAL_20 245
-#define TX_PORTAL_24 246
-#define TX_PORTAL_28 247
-#define TX_END_SKY 248
-#define SP_BOSS_BG 502
-#define SP_BOSS 503
+#define TX_DOOR_SPRUCE_LOWER 241
+#define TX_DOOR_SPRUCE_UPPER 242
+#define TX_DOOR_BIRCH_LOWER 243
+#define TX_DOOR_BIRCH_UPPER 244
+#define TX_DOOR_JUNGLE_LOWER 245
+#define TX_DOOR_JUNGLE_UPPER 246
+#define TX_DOOR_DARK_OAK_LOWER 247
+#define TX_DOOR_DARK_OAK_UPPER 248
+#define TX_DOOR_ACACIA_LOWER 249
+#define TX_DOOR_ACACIA_UPPER 250
+#define TX_PORTAL_4 251
+#define TX_PORTAL_8 252
+#define TX_PORTAL_12 253
+#define TX_PORTAL_16 254
+#define TX_PORTAL_20 255
+#define TX_PORTAL_24 256
+#define TX_PORTAL_28 257
+#define TX_END_SKY 258
+#define SP_BOSS_BG 625
+#define SP_BOSS 626
 enum { SKIN_ZOMBIE_PIGMAN = 9, SKIN_GHAST = 10, SKIN_GHAST_SHOOTING = 11, SKIN_BLAZE = 12, SKIN_MAGMACUBE = 13, SKIN_ENDERMAN = 14, SKIN_WITHER_SKELETON = 15 };
 extern const char end_text[];   /* the End poem, then the credits */
+extern const uint8_t blk_liquid[B_N];   /* 1 water, 2 lava */
+/* what joins it at its side: a wooden fence 1, a nether brick fence 2, a wall 4, a pane or bars 8 */
+extern const uint8_t blk_join[B_N];
+extern const uint8_t blk_shape_top[B_N];   /* the top of its shape, sixteenths (16: whole or shaped by its place) */
+/* what NumPlay's NumBlocks shows instead of a state from FIRST_DIMS on (255: what the world had there), and has
+ * instead of an item from I_END on (0: nothing) */
+#define FIRST_DIMS 257
+extern const uint8_t blk_np[B_N - FIRST_DIMS];
+extern const uint16_t it_np[IT_N - N_ITEMS];
 extern const uint8_t skin_crystal_px[];   /* endercrystal/endercrystal.png, 4 bits a texel */
 extern const uint16_t skin_crystal_pal[16];
 extern const uint8_t skin_dragon_px[];   /* enderdragon/dragon.png, 4 bits a texel */

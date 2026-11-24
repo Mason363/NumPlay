@@ -187,9 +187,10 @@ BOX = {'slab': [(0, 0, 0, 16, 8, 16)], 'layer': [(0, 0, 0, 16, 2, 16)], 'torch':
        'pane': [(7, 0, 7, 9, 16, 9)], 'ladder': [(0, 0, 14, 16, 16, 16)], 'vine': [(0, 0, 15, 16, 16, 16)],
        'bed': [(0, 0, 0, 16, 9, 16)], 'chest': [(1, 0, 1, 15, 14, 15)], 'liquid': [(0, 0, 0, 16, 14, 16)]}
 STAIR_TOP = [(8, 8, 0, 16, 16, 16), (0, 8, 0, 8, 16, 16), (0, 8, 8, 16, 16, 16), (0, 8, 0, 16, 16, 8)]
-# BlockDoor's bounds: facing east, south, west, north; closed, then open
+# BlockDoor's bounds: facing east, south, west, north; closed, then open (its hinge on the left, as ItemDoor
+# puts it on a door with nothing beside it)
 DOOR = [(0, 0, 0, 3, 16, 16), (0, 0, 0, 16, 16, 3), (13, 0, 0, 16, 16, 16), (0, 0, 13, 16, 16, 16),
-        (0, 0, 13, 16, 16, 16), (0, 0, 0, 3, 16, 16), (0, 0, 0, 16, 16, 3), (13, 0, 0, 16, 16, 16)]
+        (0, 0, 0, 16, 16, 3), (13, 0, 0, 16, 16, 16), (0, 0, 13, 16, 16, 16), (0, 0, 0, 3, 16, 16)]
 WALL_TORCH = {'TORCH_E': (1, 3, 7, 3, 14, 9), 'TORCH_W': (13, 3, 7, 15, 14, 9), 'TORCH_S': (7, 3, 1, 9, 14, 3),
               'TORCH_N': (7, 3, 13, 9, 14, 15)}
 
@@ -349,6 +350,56 @@ def iso_icon(jar, s, names_px):
     return out
 
 
+# NumBlocks.nwa's fences and fence gates in the inventory: their item models (block/fence_inventory turned by its
+# gui display, a quarter turn; block/fence_gate_closed), boxes in sixteenths
+FENCE_ICON = [(0, 0, 6, 4, 16, 10), (12, 0, 6, 16, 16, 10), (-2, 13, 7, 18, 15, 9), (-2, 5, 7, 18, 7, 9)]
+GATE_ICON = [(0, 5, 7, 2, 16, 9), (14, 5, 7, 16, 16, 9), (6, 6, 7, 10, 15, 9), (2, 6, 7, 6, 9, 9), (2, 12, 7, 6, 15, 9),
+             (10, 6, 7, 14, 9, 9), (10, 12, 7, 14, 15, 9)]
+
+
+def model_icon(jar, tex, boxes):
+    """Boxes of one texture as the inventory shows a block's model (RenderItem.setupGuiTransform: turned 210 degrees
+    about x, -135 about y): the top lit, the east face on the left (0.8), the north face on the right (0.6), the
+    whole block 16 wide as iso_icon draws it; textures as the world's faces have them."""
+    im = tex_image(jar, tex)
+    out = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    for y in range(16):
+        for x in range(16):
+            sx, sy = x + 0.5, y + 0.5
+            best = None
+            # screen: sx = 16 - X/2 - Z/2, sy = 12 + X/4 - Z/4 - Y/2; the nearest point is the greatest X + Y - Z
+            for x0, y0, z0, x1, y1, z1 in boxes:
+                # the top (Y = y1), the east face (X = x1), the north face (Z = z0)
+                a, b = 2 * (16 - sx), 4 * (sy - 12 + y1 / 2)
+                X, Z = (a + b) / 2, (a - b) / 2
+                hits = [(X + y1 - Z, 1.0, X, Z)] if x0 <= X < x1 and z0 <= Z < z1 else []
+                Z = 2 * (16 - sx) - x1
+                Y = 2 * (12 + x1 / 4 - Z / 4 - sy)
+                if z0 <= Z < z1 and y0 <= Y < y1:
+                    hits.append((x1 + Y - Z, 0.8, 16 - Z, 16 - Y))
+                X = 2 * (16 - sx) - z0
+                Y = 2 * (12 + X / 4 - z0 / 4 - sy)
+                if x0 <= X < x1 and y0 <= Y < y1:
+                    hits.append((X + Y - z0, 0.6, 16 - X, 16 - Y))
+                for h in hits:
+                    if best is None or h[0] > best[0]:
+                        best = h
+            if best:
+                r, g, b_, a = im.getpixel((int(best[2]) % 16, min(15, int(best[3]))))
+                if a >= 128:
+                    out.putpixel((x, y), (int(r * best[1]), int(g * best[1]), int(b_ * best[1]), 255))
+    return out
+
+
+def block_icon(jar, s, dims):
+    """a block state's icon: NumBlocks.nwa draws fences and fence gates as their models"""
+    if dims and s['model'] == 'gate':
+        return model_icon(jar, s['tex'], GATE_ICON)
+    if dims and s['model'] == 'fence' and s['name'] != 'COBBLESTONE_WALL':
+        return model_icon(jar, s['tex'], FENCE_ICON)
+    return iso_icon(jar, s, None)
+
+
 def pack_sprite(im):
     idx, pal, alpha = quantize(im, 16)
     if not alpha:   # keep index 0 free: a sprite is always drawn with 0 as see-through
@@ -366,6 +417,20 @@ def pack_sprite(im):
 
 
 import items  # noqa: E402
+import names  # noqa: E402
+
+
+def mc_order(iid):
+    """an item of NumBlocks.nwa as Minecraft numbers it: (id, data value)"""
+    if iid < 256:
+        s = blocks.S[iid]
+        return s['id'], 0 if s['id'] in names.FACING_ONLY else s['meta'] & 15
+    it = items.I_ALL[iid - 256]
+    if it['kind'] == 'dblock':
+        s = blocks.S_ALL[items.place_dims(it['place'])]
+        return s['id'], 0 if s['model'] in ('stairs', 'gate', 'button') else s['meta'] & 15
+    n, data = names.RENAME.get(it['name'], (it['name'].lower(), 0))
+    return 256 + names.ITEM.index(n), data
 
 
 def rle_image(im):
@@ -565,7 +630,7 @@ def generate(jar, dims):
         if s['model'] in ('cube',):
             f |= BF_OPAQUE
         if s['model'] in ('cube', 'leaves', 'glass', 'slab', 'cactus', 'fence', 'pane', 'door', 'layer', 'stairs',
-                          'chest', 'bed', 'frame', 'egg'):
+                          'chest', 'bed', 'frame', 'egg', 'gate'):
             f |= BF_SOLID
         fl.append(f)
     out.append(f'const uint8_t blk_flags[{NB}] = {{' + ','.join(str(v) for v in fl) + '};')
@@ -578,6 +643,26 @@ def generate(jar, dims):
                         for s in S) + '};')
     out.append(f'const uint8_t blk_id[{NB}] = {{' + ','.join(str(s['id']) for s in S) + '};')
     out.append(f'const uint8_t blk_meta[{NB}] = {{' + ','.join(str(s['meta']) for s in S) + '};')
+    if dims:
+        # (NumBlocks.nwa: what render.c works out for NumPlay at the start, here, its RAM being full) the liquid a
+        # state is (1 water, 2 lava), the top of its shape (16: whole, or shaped by its place)
+        liq = [0 if s['model'] != 'liquid' else 1 if 'water' in s['tex'] else 2 for s in S]
+        top = [max(b[4] for b in boxes_of(s)) if boxes_of(s) and s['model'] not in
+               ('liquid', 'ladder', 'vine', 'fence', 'pane', 'door', 'gate') else 16 for s in S]
+        out.append(f'const uint8_t blk_liquid[{NB}] = {{' + ','.join(str(v) for v in liq) + '};')
+        out.append(f'const uint8_t blk_shape_top[{NB}] = {{' + ','.join(str(v) for v in top) + '};')
+        # what a wooden fence (1), a nether brick fence (2), a wall (4), a pane or bars (8) join at their sides
+        # (BlockFence.canConnectTo, BlockWall's: their own kind, fence gates, whole blocks of an opaque material but
+        # gourds; NumPlay's panes: panes and what is opaque)
+        whole = [s['model'] == 'cube' and s['name'] not in ('PUMPKIN', 'JACK_O_LANTERN', 'MELON', 'GLOWSTONE', 'TNT',
+                                                            'FARMLAND', 'FARMLAND_WET') for s in S]
+        join = [(7 if s['model'] == 'gate' or w else 0) | (8 if s['model'] in ('pane', 'cube') else 0) |
+                ({'COBBLESTONE_WALL': 4, 'NETHER_BRICK_FENCE': 2}.get(s['name'], 1) if s['model'] == 'fence' else 0)
+                for s, w in zip(S, whole)]
+        out.append(f'const uint8_t blk_join[{NB}] = {{' + ','.join(str(v) for v in join) + '};')
+        # what NumPlay's NumBlocks shows instead of each of NumBlocks.nwa's states (255: what the world had there)
+        np_of = [255 if not s.get('np') else items.BNAMES.index(s['np']) for s in blocks.D]
+        out.append(f'const uint8_t blk_np[{len(np_of)}] = {{' + ','.join(str(v) for v in np_of) + '};')
     # GUI sprites and block icons: 4 bits a pixel, a palette each; index 0 see-through
     sprites = [(n, jar.image(f).crop((x, y, x + w, y + h))) for n, f, x, y, w, h in SPRITES]
     # the moon's faintest halo left out: cut to its middle, it would show as a square
@@ -588,7 +673,7 @@ def generate(jar, dims):
             sprites[k] = (n, im)
     for st in blocks.S:
         if st['tex'] is not None:
-            sprites.append(('icon_' + st['name'].lower(), iso_icon(jar, st, None)))
+            sprites.append(('icon_' + st['name'].lower(), block_icon(jar, st, dims)))
     first_item = len(sprites)
     for it in items.I:
         sprites.append(('item_' + it['name'].lower(), item_icon(jar, it)))
@@ -611,7 +696,7 @@ def generate(jar, dims):
         for st in blocks.D:
             if st['tex'] is not None and st['model'] not in ('portal', 'endportal'):
                 icon_d[st['name']] = len(sprites)
-                sprites.append(('icon_' + st['name'].lower(), iso_icon(jar, st, None)))
+                sprites.append(('icon_' + st['name'].lower(), block_icon(jar, st, dims)))
         for it in items.ID:
             if not it['icon_block']:
                 sprites.append(('item_' + it['name'].lower(), item_icon(jar, it)))
@@ -701,6 +786,10 @@ def generate(jar, dims):
         out.append('const uint8_t it_place[N_ITEMS] = {' +
                    ','.join(str(items.BNAMES.index(it['place']) if it['place'] else 255) for it in I) + '};')
     out.append(f'const uint16_t it_fuel[{NI}] = {{' + ','.join(str(it['fuel']) for it in I) + '};')
+    if dims:
+        # what each of NumBlocks.nwa's items counts as in NumPlay's NumBlocks (0: nothing)
+        out.append(f'const uint16_t it_np[{len(items.ID)}] = {{' +
+                   ','.join(str(items.resolve(it['np']) if it['np'] else 0) for it in items.ID) + '};')
     # crafting: out, count, width (0: shapeless), height (shapeless: how many), ingredients
     rec = []
     for o, n, rows, keys in items.R + (items.RD if dims else []):
@@ -752,13 +841,17 @@ def generate(jar, dims):
                 bits[i >> 3] |= 1 << (i & 7)
         cr.append(bits)
     out.append('const uint8_t cracks[10][32] = {' + ','.join('{' + ','.join(str(v) for v in b) + '}' for b in cr) + '};')
-    # the creative inventory: each tab's items, in id order (blocks, then items)
+    # the creative inventory: each tab's items, in id order (blocks, then items); NumBlocks.nwa's in Minecraft's
+    # (Item.itemRegistry's, each item's kinds by data value: CreativeTabs.displayAllReleventItems)
     tab_lists = [[] for _ in items.TABS]
     for iid in list(range(len(blocks.S))) + [256 + k for k in range(len(I))]:
         t = items.tab_of_dims(iid) if dims else items.tab_of(iid)
         if t is not None:
             tab_lists[t].append(iid)
             tab_lists[5].append(iid)   # Search Items: everything
+    if dims:
+        for L in tab_lists:
+            L.sort(key=mc_order)
     flat, starts = [], []
     for L in tab_lists:
         starts.append(len(flat))
@@ -972,6 +1065,14 @@ def main():
     h.append('enum { ' + ', '.join(f'SKIN_{n.split("/")[-1].upper()} = {len(SKINS) + k}'
                                    for k, n in enumerate(SKINS_DIMS)) + ' };')
     h.append('extern const char end_text[];   /* the End poem, then the credits */')
+    h += ['extern const uint8_t blk_liquid[B_N];   /* 1 water, 2 lava */',
+          '/* what joins it at its side: a wooden fence 1, a nether brick fence 2, a wall 4, a pane or bars 8 */',
+          'extern const uint8_t blk_join[B_N];',
+          'extern const uint8_t blk_shape_top[B_N];   /* the top of its shape, sixteenths (16: whole or shaped by its place) */',
+          '/* what NumPlay\'s NumBlocks shows instead of a state from FIRST_DIMS on (255: what the world had there), and has',
+          ' * instead of an item from I_END on (0: nothing) */',
+          f'#define FIRST_DIMS {blocks.FIRST_DIMS}',
+          'extern const uint8_t blk_np[B_N - FIRST_DIMS];', 'extern const uint16_t it_np[IT_N - N_ITEMS];']
     for n, f in BIG_SKINS:
         h.append(f'extern const uint8_t skin_{n}_px[];   /* {f}.png, 4 bits a texel */')
         h.append(f'extern const uint16_t skin_{n}_pal[16];')

@@ -266,6 +266,9 @@ int block_drops(int b, int held, Stack *out) {
   }
   if (b == B_BED_HEAD) return 0;   /* the foot drops the bed */
   if (b == B_DOOR_OAK_UPPER) return 0;
+#if NB_DIMS
+  if (door_kind(b) > 0 && b == door_upper(door_kind(b))) return 0;
+#endif
   int it = blk_item[b];
   if (it != 0xFFFF) DROP(it, 1);
   return n;

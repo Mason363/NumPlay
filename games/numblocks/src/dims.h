@@ -70,5 +70,28 @@ void mob_villager(int x, int y, int z, int prof);   /* (mob.c) a house's village
 void dims_credits(void);
 void credits_open(void);   /* (gui.c) GuiWinGame */
 void player_use_on(int x, int y, int z, int f);   /* (player.c, tests) the held item used on that block */
-static inline bool is_iron_door(int b) { return b >= B_IRON_DOOR_LOWER_E && b <= B_IRON_DOOR_LOWER_N_OPEN; }   /* (lower) */
+
+/* Doors (BlockDoor), all alike: a lower half faces 0 east 1 south 2 west 3 north, + 4 open (its state), the upper half
+ * takes its shape from it. Their kinds: 0 oak, 1 iron, then the other woods' (spruce, birch, jungle, dark oak,
+ * acacia), each a lower half's 8 states then the upper half's (oak's are where they were first) */
+static inline int door_kind(int b) {   /* -1: not a door */
+  if (b >= B_IRON_DOOR_LOWER_E && b <= B_IRON_DOOR_UPPER) return 1;
+  if (b >= B_DOOR_SPRUCE_LOWER_E && b <= B_DOOR_ACACIA_UPPER) return 2 + (b - B_DOOR_SPRUCE_LOWER_E) / 9;
+  return b == B_DOOR_OAK_LOWER || b == B_DOOR_OAK_UPPER || (b >= B_DOOR_OAK_LOWER_S && b <= B_DOOR_OAK_LOWER_N_OPEN) ? 0
+                                                                                                                  : -1;
+}
+static inline int door_first(int k) { return k == 1 ? B_IRON_DOOR_LOWER_E : B_DOOR_SPRUCE_LOWER_E + 9 * (k - 2); }
+static inline int door_upper(int k) { return k ? door_first(k) + 8 : B_DOOR_OAK_UPPER; }
+static inline int door_lower(int k, int st) {   /* the lower half of kind k in state st */
+  return k ? door_first(k) + st : st ? B_DOOR_OAK_LOWER_S + st - 1 : B_DOOR_OAK_LOWER;
+}
+static inline int door_state(int b) {   /* a lower half's state; -1: not one */
+  int k = door_kind(b);
+  if (k < 0 || b == door_upper(k)) return -1;
+  return k ? b - door_first(k) : b == B_DOOR_OAK_LOWER ? 0 : b - B_DOOR_OAK_LOWER_S + 1;
+}
+/* Fence gates (BlockFenceGate): 8 states a wood, facing 0 south 1 west 2 north 3 east + 4 open */
+static inline bool is_gate(int b) { return b >= B_FENCE_GATE_OAK_S && b <= B_FENCE_GATE_ACACIA_E_OPEN; }
+static inline bool open_gate(int b) { return is_gate(b) && ((b - B_FENCE_GATE_OAK_S) & 4); }
+int gate_boxes(int b, int x, int y, int z, int8_t (*o)[6]);   /* (phys.c) its look: up to 8 boxes */
 #endif

@@ -10,8 +10,10 @@
  * NumBlocks.nwa's blocks are 9 bits: one past 255 is kept with its ninth bit in bit 23 of the entry
  * (outside every key NumPlay's NumBlocks looks up, which so never sees those blocks), its low byte
  * on top; records stay sorted by the 24 bits. If a spot has both kinds of entry (NumPlay's
- * NumBlocks changed it after), the other kind wins. Each dimension has its own records: the
- * Nether's "nb1rn-3_12.nbe", the End's "nb1re...". */
+ * NumBlocks changed it after), the other kind wins; but the other woods' fences, gates, doors and
+ * stairs come with an entry of oak's (blk_np), which NumPlay's NumBlocks shows, and which wins only
+ * once it is something else. Each dimension has its own records: the Nether's "nb1rn-3_12.nbe", the
+ * End's "nb1re...". */
 #include "edits.h"
 #include "nb.h"
 #pragma GCC optimize("Os")   /* (not where the time goes: small) */
@@ -191,19 +193,33 @@ bool edits_flush(void) {
   return ok;
 }
 
+#if NB_DIMS
+static bool entry_put(int rx, int rz, uint32_t key, int b);
+#endif
 bool edits_put(int x, int y, int z, int b) {
   int rx = floordiv(x, 64), rz = floordiv(z, 64);
   uint32_t key = entry_key(x, y, z);
 #if NB_DIMS
   {
-    /* the spot's entry of the other kind goes: this one replaces it */
-    int o = jlower(rx, rz, key ^ HI);
-    if (o < nj && jcmp(rx, rz, key ^ HI, &jn[o]) == 0) {
-      memmove(&jn[o], &jn[o + 1], (size_t)(nj - o - 1) * sizeof jn[0]);
-      nj--;
+    int np = b > 256 && !dim_tag ? blk_np[b - FIRST_DIMS] : 255;
+    if (np != 255) {
+      /* (in the Overworld, a block NumPlay's NumBlocks shows as another: that one is the spot's other entry, the two
+       * kept together, so a merge never parts them) */
+      if (nj + 2 > J_MAX && (edits_flush(), nj + 2 > J_MAX)) return false;
+      entry_put(rx, rz, key, np);
+    } else {
+      /* the spot's entry of the other kind goes: this one replaces it */
+      int o = jlower(rx, rz, key ^ HI);
+      if (o < nj && jcmp(rx, rz, key ^ HI, &jn[o]) == 0) {
+        memmove(&jn[o], &jn[o + 1], (size_t)(nj - o - 1) * sizeof jn[0]);
+        nj--;
+      }
     }
     key |= (uint32_t)(b >> 8 & 1) << 23;
   }
+  return entry_put(rx, rz, key, b);
+}
+static bool entry_put(int rx, int rz, uint32_t key, int b) {
 #endif
   int i = jlower(rx, rz, key);
   if (i < nj && jcmp(rx, rz, key, &jn[i]) == 0) {
@@ -240,7 +256,7 @@ void edits_apply(int cx, int cz, int y0, int h, uint8_t *slab) {
 
 #if NB_DIMS
 /* edits_apply, the ninth bits in hb (a bit a cell of the slab): first the record's entries of each kind
- * (the low ones last: they win), then the journal's */
+ * (the low ones last: they win, but where one stands for the other), then the journal's */
 static void apply_range(const uint8_t *r, int n, uint32_t k0, uint32_t k1, int y0, int h, uint8_t *slab, uint8_t *hb,
                         bool hi) {
   for (int i = rlower(r, n, k0); i < n && KEY(R(i)) < k1; i++) {
@@ -248,6 +264,8 @@ static void apply_range(const uint8_t *r, int n, uint32_t k0, uint32_t k1, int y
     int y = (int)(e & 127) - y0, xz = (int)(e >> 7) & 255;
     if (y < 0 || y >= h) continue;
     int c = (y * 16 + (xz >> 4)) * 16 + (xz & 15);
+    /* (a block past 255 there, and this what NumPlay's NumBlocks shows instead of it: it stays) */
+    if (!hi && (hb[c >> 3] >> (c & 7) & 1) && blk_np[slab[c] + 256 - FIRST_DIMS] == (uint8_t)(e >> 24)) continue;
     slab[c] = (uint8_t)(e >> 24);
     hb[c >> 3] = (uint8_t)((hb[c >> 3] & ~(1 << (c & 7))) | hi << (c & 7));
   }
