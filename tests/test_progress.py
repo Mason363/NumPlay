@@ -147,9 +147,8 @@ def main():
     script = ("pi.py", b"\x01print(3.14159)\n\x00")
     # a save for every file the games write (binary, zeros included), and NumPlay's settings
     saves = {"numplay.set": bytes([ord("N"), 1, 0, 0])}
-    twili = os.path.basename(a.nwa) == "TwiliPlay.nwa"
-    if twili:
-        saves["twili.set"] = b"T\x01\x00"
+    # All launcher variants in this fork share the Starlight settings.
+    saves["twili.set"] = b"T\x01\x00"
     for g in games:
         # Games with their own recovery script restore on launch (storage.c: own_copy).
         if any(name.endswith(".py") for name in g["records"]):
@@ -190,10 +189,9 @@ def main():
         n = len(games)
         lead = [(1200 + 300 * i, "right") for i in range(n)] + [(1500 + 300 * n, "ok")]
         t = 2600 + 300 * n
-        if twili:
-            # Appearance, Background and System information precede game rows.
-            lead += [(t + 300 * i, "down") for i in range(3)]
-            t += 900
+        # Appearance, Background and System information precede game rows.
+        lead += [(t + 300 * i, "down") for i in range(3)]
+        t += 900
         lead += [(t, "ok"), (t + 800, "right")]
         t += 1300
         # 3. a short press only shows "Hold OK": nothing is reset
