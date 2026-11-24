@@ -148,6 +148,7 @@ def main():
     # a save for every file the games write (binary, zeros included), and NumPlay's settings
     saves = {"numplay.set": bytes([ord("N"), 1, 0, 0])}
     # All launcher variants in this fork share the Starlight settings.
+    saves["twili_anim.set"] = b"\x01\x00"
     saves["twili.set"] = b"T\x01\x00"
     for g in games:
         # Games with their own recovery script restore on launch (storage.c: own_copy).

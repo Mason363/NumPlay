@@ -27,6 +27,7 @@ typedef struct {
   int8_t item[NP_MAX_GAMES + 1]; /* game index, or -1 for the settings card */
   int sel;
   bool library;
+  bool motion;
   float pos;            /* scroll position, in cards */
   int shot;             /* screenshot shown on the selected card */
   float slide;          /* 0..1 while sliding to the next screenshot */
@@ -154,7 +155,7 @@ static void draw_card(home_t *h, int k, float d) {
 static void scene(void *ctx) {
   home_t *h = ctx;
   const np_theme_t *th = np_theme();
-  bool live = live_active();
+  bool live = h->motion && live_active();
   color_t tx = live ? 0xFFFF : gfx_rgb(th->text);
   if (live) {
     live_strip();
@@ -240,6 +241,15 @@ static int build_items(home_t *h) {
 
 static bool bg_loaded;
 
+static void splash(void *ctx) {
+  (void)ctx;
+  const np_theme_t *t = np_theme();
+  gfx_fill(0, 0, SCREEN_W, SCREEN_H, gfx_rgb(t->bg));
+  gfx_fill(159, 66, 2, 18, gfx_rgb(t->accent));
+  gfx_fill(151, 74, 18, 2, gfx_rgb(t->accent));
+  gfx_text_center(&np_font_body, 160, 117, "TwiliPlay", gfx_rgb(t->text), 256);
+  gfx_text_center(&np_font_small, 160, 139, "STARLIGHT EDITION", gfx_rgb(t->accent), 256);
+}
 int np_home(int *selected, bool returning) {
   ui_init();
   if (!bg_loaded) { /* once per run: the background chosen last time */
@@ -248,6 +258,7 @@ int np_home(int *selected, bool returning) {
     if (np_bg_load(&m)) live_set(m);
   }
   home_t h = {0};
+  h.motion = np_motion_load();
   build_items(&h);
   /* the game played last, or else the first game there is: never Settings,
    * unless it was just open or no game is left */
@@ -258,10 +269,20 @@ int np_home(int *selected, bool returning) {
   if (h.n == 1) h.sel = 0;
   h.pos = h.sel;
   if (first_open) {
-    h.pos = h.sel + 1.2f;
+    if (h.motion) {
+      ui_frame(splash, NULL);
+      uint32_t start = np_millis();
+      while (np_millis() - start < 360) {
+        uint32_t key = np_keys();
+        if (key & K_HOME) return -2;
+        if (key) { np_wait_release(); break; }
+        np_sleep(8);
+      }
+      h.pos = h.sel + 1.2f;
+    }
     first_open = false;
   }
-  bool unzooming = returning && h.item[h.sel] == *selected && *selected >= 0;
+  bool unzooming = h.motion && returning && h.item[h.sel] == *selected && *selected >= 0;
   if (unzooming) h.zoom = 1;
   ui_keys_t keys = {np_keys(), 0, 0};  /* ignore keys still held from before */
   uint32_t last = np_millis();
@@ -289,7 +310,7 @@ int np_home(int *selected, bool returning) {
           return *selected;
         }
         if (h.sel != before) dirty = true;
-        if (dirty) { live_frame(now); ui_frame(scene, &h); dirty = false; }
+        if (dirty) { if (h.motion) live_frame(now); ui_frame(scene, &h); dirty = false; }
         else np_sleep(16);
         continue;
       }
@@ -327,7 +348,7 @@ int np_home(int *selected, bool returning) {
       if (pressed & (K_HOME | K_BACK)) return -2;
     }
     /* motion */
-    float pos = ui_approach(h.pos, (float)h.sel, dt, 0.075f);
+    float pos = h.motion ? ui_approach(h.pos, (float)h.sel, dt, 0.075f) : h.sel;
     bool moving = pos != h.pos;
     if (moving) dirty = true;
     h.pos = pos;
@@ -335,10 +356,10 @@ int np_home(int *selected, bool returning) {
     bool settled = !moving;
     if (settled && game >= 0 && result == -3) {
       if (h.badge < 1) {
-        h.badge = NP_MIN(h.badge + dt / 0.22f, 1.f);
+        h.badge = h.motion ? NP_MIN(h.badge + dt / 0.22f, 1.f) : 1.f;
         dirty = true;
       }
-      if (np_games[game].nshots > 1) {
+      if (h.motion && np_games[game].nshots > 1) {
         if (h.slide > 0) {
           h.slide += elapsed / (float)SLIDE_MS;
           if (h.slide >= 1) {
@@ -367,7 +388,7 @@ int np_home(int *selected, bool returning) {
           return -1;
         }
       } else {
-        h.zoom = NP_MIN(h.zoom + dt / 0.24f, 1.f);
+        h.zoom = h.motion ? NP_MIN(h.zoom + dt / 0.24f, 1.f) : 1.f;
         dirty = true;
         if (h.zoom >= 1) {
           ui_frame(scene, &h);
@@ -380,9 +401,9 @@ int np_home(int *selected, bool returning) {
       h.toast = elapsed >= h.toast ? 0 : (uint16_t)(h.toast - elapsed);
       if (!h.toast) dirty = true;
     }
-    if (live_active()) dirty = true; /* the background moves: every frame */
+    if (h.motion && live_active()) dirty = true; /* the background moves: every frame */
     if (dirty) {
-      live_frame(now);
+      if (h.motion) live_frame(now);
       ui_frame(scene, &h);
       dirty = bar_dirty = false;
     } else if (bar_dirty) {

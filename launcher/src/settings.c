@@ -32,12 +32,13 @@ static char *fmt_kb(char *out, uint32_t bytes) {
 }
 
 /* ---------------------------------------------------------------- list */
-enum { ROW_GAME, ROW_RESET_ALL, ROW_DISGUISE, ROW_SECRET, ROW_HINT, ROW_THEME, ROW_BG, ROW_INFO };
+enum { ROW_GAME, ROW_RESET_ALL, ROW_DISGUISE, ROW_SECRET, ROW_HINT, ROW_THEME, ROW_BG, ROW_INFO, ROW_MOTION };
 typedef struct {
   int n, sel, top, action; /* action: on a game, 0 Reset, 1 Uninstall */
-  int8_t kind[NP_MAX_GAMES + 4], game[NP_MAX_GAMES + 4];
+  int8_t kind[NP_MAX_GAMES + 5], game[NP_MAX_GAMES + 5];
   int ngames;
   np_config_t cfg;
+  bool motion;
   float cursor;       /* animated selection */
 } list_t;
 
@@ -52,6 +53,7 @@ static void build_rows(list_t *l) {
   l->kind[l->n++] = ROW_INFO;
   for (int i = 0; i < np_game_count; i++)
     if (np_game_installed(i)) l->kind[l->n] = ROW_GAME, l->game[l->n++] = (int8_t)i, l->ngames++;
+  l->kind[l->n++] = ROW_MOTION;
   l->kind[l->n++] = ROW_RESET_ALL;
   l->sel = NP_MIN(l->sel, l->n - 1);
 }
@@ -124,6 +126,10 @@ static void list_scene(void *ctx) {
     bool on = i == l->sel;
     char kb[16];
     switch (l->kind[i]) {
+      case ROW_MOTION:
+        gfx_text(&np_font_body, 18, y + 15, "Animations", tx, 256);
+        gfx_text_right(&np_font_small, 300, y + 15, l->motion ? "On" : "Off", tx, 256);
+        break;
       case ROW_THEME:
         gfx_text(&np_font_body, 18, y + 15, "Appearance", tx, 256);
         gfx_text(&np_font_small, 18, y + 28, "Left/Right or OK: Theme", tx, 200);
@@ -425,6 +431,7 @@ static void info_scene(void *ctx) {
 void np_settings(void) {
   ui_init();
   list_t l = {0};
+  l.motion = np_motion_load();
   np_config_load(&l.cfg);
   build_rows(&l);
   ui_keys_t k = {np_keys(), 0, 0};
@@ -454,6 +461,7 @@ void np_settings(void) {
       k.held = np_keys();
       dirty = true;
     }
+    if (kind == ROW_MOTION && (p & (K_LEFT | K_RIGHT | K_OK)) && np_motion_save(!l.motion)) l.motion = !l.motion;
     if (kind == ROW_THEME && (p & (K_LEFT | K_RIGHT | K_OK))) np_theme_step((p & K_LEFT) ? -1 : 1);
     if (kind == ROW_GAME && (p & (K_LEFT | K_RIGHT))) l.action = (p & K_RIGHT) != 0;
     if (kind == ROW_SECRET && (p & (K_LEFT | K_RIGHT | K_OK))) {
@@ -475,7 +483,7 @@ void np_settings(void) {
     }
     scroll(&l);
     if (p) dirty = true;
-    float c = ui_approach(l.cursor, (float)l.sel, dt, 0.05f);
+    float c = l.motion ? ui_approach(l.cursor, (float)l.sel, dt, 0.05f) : l.sel;
     if (c != l.cursor) dirty = true;
     l.cursor = c;
     if (dirty) {
