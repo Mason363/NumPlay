@@ -190,11 +190,13 @@ $(KIT)/games/%.o: $(B)/modules/%.o $(B)/arm/entry_%.o $(B)/arm/shots_%.o $(B)/ar
 # The big games bring their libraries along: they only call the launcher (KIT_API, which tools/kit.py
 # checks), so base.o is the same without them.
 KIT_API = numplay_launcher np_keyboard_scan np_event_get np_display_draw_string np_sbrk
+# Root the bare-metal abort dependencies before the relocatable LTO link;
+# the final section-GC link will discard unused runtime functions.
 KIT_SMALL = $(foreach g,$(GAMES) $(OPTIONAL_GAMES),$(KIT)/games/$(g).o)
 $(KIT)/base.o: $(LAUNCHER_OBJS) $(KIT_SMALL) tools/kit_base.ld
 	$(ARM_CC) $(ARM_CFLAGS) -nostartfiles --specs=nano.specs -Wl,--relocatable -Wl,--unique -Wl,--gc-sections \
 	  -Wl,-e,main -Wl,-u,eadk_api_level $(BASE_MAP_FLAG) -Wl,-T,tools/kit_base.ld -flinker-output=nolto-rel $(LAUNCHER_OBJS) \
-	  $(foreach s,$(KIT_API),-Wl,-u,$(s)) \
+	  $(foreach s,$(KIT_API) _exit _kill _getpid,-Wl,-u,$(s)) \
 	  $$(arm-none-eabi-nm -u $(KIT_SMALL) | awk '$$1 == "U" || $$1 == "w" {print "-Wl,-u," $$2}' | sort -u) -lm -lgcc -lnosys -o $@
 
 .SECONDARY: $(foreach v,$(VARIANTS),$(B)/variant/$(v)-name.o $(B)/variant/$(v)-icon.o) \
