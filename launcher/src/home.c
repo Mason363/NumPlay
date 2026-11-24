@@ -211,12 +211,12 @@ static int build_items(home_t *h) {
 static bool bg_loaded;
 
 int np_home(int *selected, bool returning) {
-  ui_init();
-  if (!bg_loaded) { /* once per run: the background chosen last time */
+  if (!bg_loaded) { /* once per run: the background chosen last time (before ui_init, which makes its tables) */
     bg_loaded = true;
     int m;
     if (np_bg_load(&m)) live_set(m);
   }
+  ui_init();
   home_t h = {0};
   build_items(&h);
   /* the game played last, or else the first game there is: never Settings,
@@ -257,6 +257,7 @@ int np_home(int *selected, bool returning) {
       if (pressed & K_BACKSPACE) { /* the next background, then none */
         live_next();
         np_bg_save(live_mode());
+        if (!live_ready()) ui_init(); /* Tunnel's and Fire's bigger tables */
         dirty = true;
       }
       if (pressed & (K_HOME | K_BACK)) return -2;

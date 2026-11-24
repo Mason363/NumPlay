@@ -6,15 +6,15 @@
 #define NP_LIVE_H
 #include "gfx.h"
 
-#define LIVE_COUNT 6 /* Aurora, Sunset Drive, Plasma, Pastel, Lava Lamp, Ocean */
+/* Aurora, Sunset Drive, Plasma, Pastel, Lava Lamp, Warp, Tunnel, Fire, Ocean, Bokeh, Code Rain */
+#define LIVE_COUNT 11
 
-void live_init(void);              /* after ui_init has taken its buffers */
-bool live_ready(void);             /* the tables could be allocated */
+void live_init(void);              /* after ui_init has taken its buffers, the tables of the background chosen */
+bool live_ready(void);             /* the tables are there: false after live_set to one that needs more (ui_init) */
 bool live_active(void);            /* ready, and a background is chosen */
 int live_mode(void);               /* 0..LIVE_COUNT-1, or LIVE_COUNT for "none" */
 void live_set(int mode);
 void live_next(void);              /* the next background, then none, then the first again */
-const char *live_name(int mode);
 void live_frame(uint32_t now_ms);  /* once per frame, before rendering */
 void live_strip(void);             /* fills the current strip (gfx_y0..gfx_y1) */
 #endif

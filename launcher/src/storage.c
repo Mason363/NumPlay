@@ -93,13 +93,14 @@ bool np_config_save(const np_config_t *c) {
 bool np_bg_load(int *mode) {
   uint32_t len = 0;
   const uint8_t *d = ef_read(BG_NAME, &len);
-  if (!d || len != 3 || d[0] != 'B' || d[1] != 1) return false;
-  *mode = d[2];
+  if (!d || len != 3 || d[0] != 'B' || d[1] < 1 || d[1] > 2) return false;
+  /* (version 1 had six: Ocean was 5 and none 6) */
+  *mode = d[1] == 2 || d[2] < 5 ? d[2] : d[2] == 5 ? 8 : 11;
   return true;
 }
 
 bool np_bg_save(int mode) {
-  uint8_t d[3] = {'B', 1, (uint8_t)mode};
+  uint8_t d[3] = {'B', 2, (uint8_t)mode};
   return ef_write(BG_NAME, d, sizeof d);
 }
 
