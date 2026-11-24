@@ -7,15 +7,15 @@ import os
 from pathlib import Path
 
 GAMES = (
-    "numdash crossyroad numblocks numdrive suika tetris dinorun doodlejump chess "
-    "flappybird towerblock coreball pacman snake connectfour g2048 minesweeper breakout"
+    "numdash crossyroad numblocks numdrive suika doodlejump chess flappybird towerblock coreball minesweeper breakout "
+    "badtime rider uttt sudoku invaders sokoban blockblast meowdoku mahjong uno numpico twoplayer paperclips"
 ).split()
 
 
 def catalog(target):
     rows = json.loads(Path("games/games.json").read_text(encoding="utf-8"))
     by_id = {game["id"]: game for game in rows}
-    if len(by_id) != len(rows) or len(set(GAMES)) != 18:
+    if len(by_id) != len(rows) or len(set(GAMES)) != 25:
         raise ValueError("expected unique game IDs")
     selected = [dict(by_id[name], default=True) for name in GAMES]
     target.parent.mkdir(parents=True, exist_ok=True)
