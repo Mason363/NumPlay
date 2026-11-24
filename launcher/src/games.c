@@ -58,6 +58,17 @@ void *np_sbrk(ptrdiff_t incr) {
   return old;
 }
 
+#if !NP_SIMULATOR
+/* Newlib's own internal allocation calls are not renamed by module objcopy.
+ * Do not let libnosys install an unbounded heap based on the linker symbol end.
+ * Games that allocate explicitly use np_sbrk; NumPico uses its own Lua heap.
+ */
+void *_sbrk(ptrdiff_t incr) {
+  (void)incr;
+  return (void *)-1;
+}
+#endif
+
 void np_game_run(int i) {
   const np_game_t *g = &np_games[i];
   if (np_game_ram_missing(i)) return; /* (the home screen says so and doesn't start it) */
