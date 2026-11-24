@@ -18,7 +18,7 @@
 
 Or pick just the games you want in [NumPlay Studio](https://mason363.github.io/NumPlay/customize/?calc=nspire).
 
-Retro-Go plays the games in a folder named **retrogo** in My Documents: Game Boy, Game Boy Color, NES, Master System, Game Gear, SG-1000 and ColecoVision files (`.gb` `.gbc` `.nes` `.sms` `.gg` `.sg` `.col`). Not Game Boy Advance.
+Retro-Go plays the games in a folder named **retrogo** in My Documents: Game Boy, Game Boy Color, NES, Master System, Game Gear, SG-1000, ColecoVision, Game & Watch and Mega Drive files (`.gb` `.gbc` `.nes` `.sms` `.gg` `.sg` `.col` `.gw` `.md` `.gen` `.bin` `.smd`). Not Game Boy Advance.
 
 ## Keys
 

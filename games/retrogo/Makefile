@@ -3,7 +3,7 @@
 #   make ROMS="a.gb b.nes"   the same with those games in it, to try them (or ROMS_LIST=file:
 #                            one a line, for names with spaces)
 #   make check    link the app like the calculator does (output/retrogo.bin)
-#   make test     the emulators and the ROM table on this computer
+#   make test     the emulators and the ROM tables on this computer
 #
 # The games are in a table in flash, np_roms (section .rodata.np_roms, made by
 # ../../tools/romtable.py), that the customizer website fills; the emulators read them in place.
@@ -135,13 +135,18 @@ $(BUILD_DIR)/host/romtable: tests/host_romtable.c src/romtable.c src/romtable.h
 $(BUILD_DIR)/host/pack: tests/host_pack.c src/pack.c src/pack.h
 	@mkdir -p $(BUILD_DIR)/host
 	$(Q) $(HOST_CC) $(HOST_CFLAGS) tests/host_pack.c src/pack.c -o $@
+# (the other targets' table, made from a folder of files)
+$(BUILD_DIR)/host/port_roms: tests/host_port_roms.c src/roms_port.c src/romtable.h
+	@mkdir -p $(BUILD_DIR)/host
+	$(Q) $(HOST_CC) $(HOST_CFLAGS) -DNP_PORT=1 -I../../platform/include tests/host_port_roms.c src/roms_port.c -o $@
 # (the Z80 at full speed: zexall runs 46.7 billion clocks)
 $(BUILD_DIR)/host/z80: tests/host_z80.c src/sms/z80.c src/sms/z80.h
 	@mkdir -p $(BUILD_DIR)/host
 	$(Q) $(HOST_CC) -std=gnu11 -O2 -Wall -Wextra tests/host_z80.c src/sms/z80.c -o $@
-test: $(BUILD_DIR)/host/core $(BUILD_DIR)/host/romtable $(BUILD_DIR)/host/pack $(BUILD_DIR)/host/z80
+test: $(BUILD_DIR)/host/core $(BUILD_DIR)/host/romtable $(BUILD_DIR)/host/pack $(BUILD_DIR)/host/z80 $(BUILD_DIR)/host/port_roms
 	$(Q) $(BUILD_DIR)/host/pack
 	$(Q) $(PY) tests/test_romtable.py $(BUILD_DIR)/host/romtable
+	$(Q) $(PY) tests/test_port_roms.py $(BUILD_DIR)/host/port_roms
 	$(Q) $(PY) tests/test_cores.py $(BUILD_DIR)/host/core $(TEST_ROMS) $(BUILD_DIR)/host/z80
 	$(Q) NWLINK="$(NWLINK)" $(PY) tests/test_app.py
 
