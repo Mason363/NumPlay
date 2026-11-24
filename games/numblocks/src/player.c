@@ -220,6 +220,13 @@ static bool replaceable(int b) {
          b == B_FIRE;
 }
 static bool solid_top(int b) { return (blk_flags[b] & BF_OPAQUE) != 0 || b == B_GLASS || b == B_LEAVES_OAK; }
+#if NB_DIMS
+/* Material.isSolid: what has a box but snow layers, and cobwebs and pressure plates */
+static bool mat_solid(int b) {
+  return ((blk_flags[b] & BF_SOLID) && b != B_SNOW_LAYER) || b == B_COBWEB || b == B_WOODEN_PRESSURE_PLATE ||
+         b == B_STONE_PRESSURE_PLATE;
+}
+#endif
 static bool soil(int b) { return b == B_GRASS || b == B_DIRT || b == B_PODZOL || b == B_COARSE_DIRT || b == B_FARMLAND || b == B_FARMLAND_WET; }
 static bool is_plant(int b) { return blk_model[b] == M_CROSS && b != B_COBWEB && b != B_FIRE; }
 static bool near_water(int x, int y, int z) {
@@ -402,7 +409,11 @@ int ray_world(const float *r, float reach, bool solid, int *h, float *t_out) {
   float t = 0;
   while (t <= reach) {
     int b = world_get(x, y, z);
+#if NB_DIMS
+    if (solid ? (blk_flags[b] & BF_SOLID) && !open_gate(b) : b != B_AIR && blk_model[b] != M_LIQUID && b != B_FIRE) {
+#else
     if (solid ? blk_flags[b] & BF_SOLID : b != B_AIR && blk_model[b] != M_LIQUID && b != B_FIRE) {
+#endif
       float bt;
       int bf;
       if (ray_block(r, b, x, y, z, &bt, &bf)) {
@@ -477,6 +488,10 @@ static bool place(int b) {
     if (f == 0) return false;
     b = tf[f];
   }
+#if NB_DIMS
+  /* BlockFenceGate.canPlaceBlockAt: on a block of a solid material */
+  if (is_gate(b) && !mat_solid(world_get(x, y - 1, z))) return false;
+#endif
   /* the way the player looks: 0 south, 1 west, 2 north, 3 east */
   int way = (int)floorf(pl.yaw / 90 + 0.5f) & 3;
   if (b == B_OAK_STAIRS || b == B_COBBLESTONE_STAIRS) {

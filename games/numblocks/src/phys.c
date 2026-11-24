@@ -4,6 +4,39 @@
 
 static inline int ifloor(float v) { int i = (int)v; return v < (float)i ? i - 1 : i; }
 
+#if NB_DIMS
+/* a fence gate's look (block/fence_gate_closed, fence_gate_open; 3 lower between walls: wall_gate_*), turned the way
+ * it faces as its blockstates turn it, a quarter turn clockwise a step from south: 5 boxes shut, 8 open */
+int gate_boxes(int b, int x, int y, int z, int8_t (*o)[6]) {
+  /* (the posts, the bars and the middle of the gate's two halves; open, each half's bars and middle at its post) */
+  static const int8_t shut[5][6] = {{0, 5, 7, 2, 16, 9}, {14, 5, 7, 16, 16, 9}, {2, 6, 7, 14, 9, 9},
+                                    {2, 12, 7, 14, 15, 9}, {6, 9, 7, 10, 12, 9}};
+  static const int8_t open[8][6] = {{0, 5, 7, 2, 16, 9}, {14, 5, 7, 16, 16, 9}, {0, 6, 9, 2, 9, 15},
+                                    {0, 12, 9, 2, 15, 15}, {0, 9, 13, 2, 12, 15}, {14, 6, 9, 16, 9, 15},
+                                    {14, 12, 9, 16, 15, 15}, {14, 9, 13, 16, 12, 15}};
+  int st = (b - B_FENCE_GATE_OAK_S) & 7, f = st & 3, n = st & 4 ? 8 : 5;
+  const int8_t (*m)[6] = st & 4 ? open : shut;
+  /* BlockFenceGate.getActualState: in a wall, with walls at its ends */
+  int w = f & 1 ? world_get(x, y, z - 1) == B_COBBLESTONE_WALL || world_get(x, y, z + 1) == B_COBBLESTONE_WALL
+                : world_get(x - 1, y, z) == B_COBBLESTONE_WALL || world_get(x + 1, y, z) == B_COBBLESTONE_WALL;
+  for (int k = 0; k < n; k++) {
+    const int8_t *s = m[k];
+    int8_t *q = o[k];
+    int x0 = s[0], x1 = s[3], z0 = s[2], z1 = s[5];
+    switch (f) {
+      case 1: q[0] = (int8_t)(16 - z1), q[3] = (int8_t)(16 - z0), q[2] = (int8_t)x0, q[5] = (int8_t)x1; break;
+      case 2:
+        q[0] = (int8_t)(16 - x1), q[3] = (int8_t)(16 - x0), q[2] = (int8_t)(16 - z1), q[5] = (int8_t)(16 - z0);
+        break;
+      case 3: q[0] = (int8_t)z0, q[3] = (int8_t)z1, q[2] = (int8_t)(16 - x1), q[5] = (int8_t)(16 - x0); break;
+      default: q[0] = (int8_t)x0, q[3] = (int8_t)x1, q[2] = (int8_t)z0, q[5] = (int8_t)z1;
+    }
+    q[1] = (int8_t)(s[1] - 3 * w), q[4] = (int8_t)(s[4] - 3 * w);
+  }
+  return n;
+}
+#endif
+
 /* the boxes (sixteenths) block b at (x, y, z) is made of: its own (blocks.py),
  * or for ladders and vines the side they hang on, for fences, walls and panes
  * their post and an arm to each neighbour they join, for a door's upper half
@@ -28,6 +61,11 @@ int block_boxes(int b, int x, int y, int z, int8_t (*o)[6]) {
   }
   if (m == M_FENCE || m == M_PANE) {
     bool wall = b == B_COBBLESTONE_WALL;
+#if NB_DIMS
+    /* (BlockFence.canConnectTo, BlockWall's: a fence joins fences of its material, a wall walls, both fence gates
+     * and whole blocks of an opaque material but gourds; panes and bars as NumPlay's: tools/pack.py's blk_join) */
+    int jm = m == M_PANE ? 8 : wall ? 4 : b == B_NETHER_BRICK_FENCE ? 2 : 1;
+#endif
     int p0 = m == M_PANE ? 7 : wall ? 4 : 6, p1 = 16 - p0, a0 = m == M_PANE ? 7 : wall ? 5 : 7, a1 = 16 - a0;
     int ay0 = m == M_PANE ? 0 : 6, ay1 = m == M_PANE ? 16 : wall ? 13 : 15;
     int n = 0;
@@ -36,7 +74,11 @@ int block_boxes(int b, int x, int y, int z, int8_t (*o)[6]) {
     static const int8_t dir[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
     for (int k = 0; k < 4; k++) {
       int nb = world_get(x + dir[k][0], y, z + dir[k][1]);
+#if NB_DIMS
+      if (!(blk_join[nb] & jm)) continue;
+#else
       if (!(blk_model[nb] == m || (blk_flags[nb] & BF_OPAQUE))) continue;
+#endif
       q = o[n++];
       q[1] = (int8_t)ay0, q[4] = (int8_t)ay1;
       if (dir[k][0]) q[0] = (int8_t)(dir[k][0] > 0 ? p1 : 0), q[3] = (int8_t)(dir[k][0] > 0 ? 16 : p0), q[2] = (int8_t)a0,
@@ -51,7 +93,10 @@ int block_boxes(int b, int x, int y, int z, int8_t (*o)[6]) {
     if (blk_model[lo] == M_DOOR && lo != B_DOOR_OAK_UPPER) b = lo;
   }
 #if NB_DIMS
-  if (b == B_IRON_DOOR_UPPER && is_iron_door(world_get(x, y - 1, z))) b = world_get(x, y - 1, z);
+  {
+    int k = door_kind(b), lo;
+    if (k > 0 && b == door_upper(k) && door_kind(lo = world_get(x, y - 1, z)) == k && lo != b) b = lo;
+  }
 #endif
   int n = blk_nbox[b];
   memcpy(o, blk_box[b], (size_t)n * 6);
@@ -91,6 +136,13 @@ static int block_cboxes(int x, int y, int z, float *b) {
 #if NB_DIMS
   if (s == B_SOUL_SAND) {   /* (BlockSoulSand.getCollisionBoundingBox) */
     b[0] = (float)x, b[1] = (float)y, b[2] = (float)z, b[3] = x + 1.0f, b[4] = y + 0.875f, b[5] = z + 1.0f;
+    return 1;
+  }
+  if (is_gate(s)) {   /* (BlockFenceGate.getCollisionBoundingBox: none open; shut, its outline 1.5 high) */
+    if (open_gate(s)) return 0;
+    const int8_t *q = blk_box[s][0];
+    b[0] = x + q[0] / 16.0f, b[1] = (float)y, b[2] = z + q[2] / 16.0f, b[3] = x + q[3] / 16.0f, b[4] = y + 1.5f,
+    b[5] = z + q[5] / 16.0f;
     return 1;
   }
 #endif

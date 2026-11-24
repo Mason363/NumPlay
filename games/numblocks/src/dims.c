@@ -114,16 +114,17 @@ int dims_can_stay(int b, int x, int y, int z) {
     return 1;   /* (gone already, or staying) */
   }
   if (b >= B_NETHER_WART_0 && b <= B_NETHER_WART_3) return world_get(x, y - 1, z) == B_SOUL_SAND;
-  /* BlockDoor (iron): a half needs the other, the lower one ground under it */
-  if (b == B_IRON_DOOR_UPPER) return is_iron_door(world_get(x, y - 1, z));
-  if (is_iron_door(b)) {
+  /* BlockDoor (each kind): a half needs the other, the lower one ground under it (as player.c's oak doors) */
+  int k = door_kind(b);
+  if (k >= 0) {
     int u = world_get(x, y - 1, z);
-    return world_get(x, y + 1, z) == B_IRON_DOOR_UPPER && ((blk_flags[u] & BF_OPAQUE) || u == B_GLASS);
+    if (b == door_upper(k)) return door_kind(u) == k && u != b;
+    return world_get(x, y + 1, z) == door_upper(k) && ((blk_flags[u] & BF_OPAQUE) || u == B_GLASS || u == B_LEAVES_OAK);
   }
   /* BlockBasePressurePlate: on a solid top, or a fence (the villages' tables) */
   if (b == B_WOODEN_PRESSURE_PLATE || b == B_STONE_PRESSURE_PLATE) {
     int u = world_get(x, y - 1, z);
-    return (blk_flags[u] & BF_OPAQUE) || u == B_FENCE_OAK || u == B_NETHER_BRICK_FENCE;
+    return (blk_flags[u] & BF_OPAQUE) || (blk_model[u] == M_FENCE && u != B_COBBLESTONE_WALL);
   }
   /* BlockButton: on a whole block behind it */
   if (b >= B_STONE_BUTTON_E && b <= B_STONE_BUTTON_N) {

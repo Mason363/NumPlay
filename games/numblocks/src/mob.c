@@ -751,7 +751,16 @@ static bool sees(const Entity *e) {
 }
 /* where a mob as tall as h can stand, going from height y onto the column (x, z): up a step, level,
  * or down up to three (PathFinder.getSafePoint); -1: nowhere */
+#if NB_DIMS
+/* (fence gates: WalkNodeProcessor, an open one is passed through, none stood on, as fences) */
+static bool clear(int b) {
+  return (!(blk_flags[b] & BF_SOLID) || open_gate(b)) && !is_lava(b) && b != B_FIRE && b != B_CACTUS;
+}
+#define fence_like(b) (blk_model[b] == M_FENCE || is_gate(b))
+#else
 static bool clear(int b) { return !(blk_flags[b] & BF_SOLID) && !is_lava(b) && b != B_FIRE && b != B_CACTUS; }
+#define fence_like(b) (blk_model[b] == M_FENCE)
+#endif
 static int stand_at(int x, int y, int z, int tall) {
   for (int k = 0; k < 5; k++) {
     int ny = k == 0 ? y + 1 : y - k + 1;
@@ -762,7 +771,7 @@ static int stand_at(int x, int y, int z, int tall) {
       continue;
     }
     if (k == 0 && !clear(world_get(x, y + 1 + tall, z))) continue;   /* (no room over its head to step up) */
-    if (water || ((blk_flags[below] & BF_SOLID) && blk_model[below] != M_FENCE && !is_lava(below) && below != B_CACTUS))
+    if (water || ((blk_flags[below] & BF_SOLID) && !fence_like(below) && !is_lava(below) && below != B_CACTUS))
       return ny;
   }
   return -1;

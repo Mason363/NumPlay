@@ -705,9 +705,9 @@ void tiles_removed(int x, int y, int z) {
 
 #if NB_DIMS
 /* the tiles as NumPlay's NumBlocks gets them (in t, a copy): the Overworld's, without what it does not know */
-static void stack_known(Stack *s, int n) {
+static void stack_known(Stack *s, int n) {   /* (what it does not know: what stands for it there, or nothing) */
   for (int i = 0; i < n; i++)
-    if (s[i].id >= I_END) s[i].id = 0, s[i].aux = 0;
+    if (s[i].id >= I_END && !(s[i].id = it_np[s[i].id - I_END])) s[i].aux = 0;
 }
 void tiles_for_numplay(void *t) {
   Chest *c = (Chest *)t;

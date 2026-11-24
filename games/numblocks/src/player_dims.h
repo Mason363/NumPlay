@@ -54,21 +54,21 @@ static void end_ring(int x, int y, int z) {
   }
 }
 
-/* ItemDoor (iron): its lower half where the player looks from, facing away, the upper over it */
-static bool place_iron_door(void) {
+/* ItemDoor (iron, and the woods' but oak's): its lower half where the player looks from, facing away, the upper over
+ * it */
+static bool place_door(int k) {
   int f = pl.hit_face, x = pl.hit_x, y = pl.hit_y, z = pl.hit_z, at = world_get(x, y, z);
   if (!(replaceable(at) && at != B_AIR)) x += NX[f], y += NY[f], z += NZ[f];
   if (y < 1 || y + 1 >= WORLD_H || !world_loaded(x, y, z) || !replaceable(world_get(x, y, z)) ||
       !replaceable(world_get(x, y + 1, z)) || !solid_top(world_get(x, y - 1, z)) || !box_free(x, y, z) || !box_free(x, y + 1, z))
     return false;
-  static const uint16_t door[4] = {B_IRON_DOOR_LOWER_S, B_IRON_DOOR_LOWER_W, B_IRON_DOOR_LOWER_N, B_IRON_DOOR_LOWER_E};
-  world_set(x, y + 1, z, B_IRON_DOOR_UPPER);
-  set_block(x, y, z, door[(int)floorf(pl.yaw / 90 + 0.5f) & 3]);
+  world_set(x, y + 1, z, door_upper(k));
+  set_block(x, y, z, door_lower(k, ((int)floorf(pl.yaw / 90 + 0.5f) + 1) & 3));   /* (looking south: facing south) */
   return true;
 }
 
-/* BlockButton: pressed, it powers the block behind it and its neighbours; the doors there open
- * (BlockDoor.onNeighborBlockChange) until it lets go, 20 ticks on */
+/* BlockButton: pressed, it powers the block behind it and its neighbours; the doors and fence gates there open
+ * (BlockDoor.onNeighborBlockChange, BlockFenceGate's) until it lets go, 20 ticks on */
 static struct {
   int16_t x, z;
   uint8_t y, t;
@@ -79,13 +79,15 @@ static void doors_powered(int x, int y, int z, int b, bool open) {
   for (int p = 0; p < 2; p++)
     for (int f = 0; f < 6; f++) {
       int dx = at[p][0] + NX[f], dy = at[p][1] + NY[f], dz = at[p][2] + NZ[f], d = world_get(dx, dy, dz);
-      if (d == B_IRON_DOOR_UPPER || d == B_DOOR_OAK_UPPER) d = world_get(dx, --dy, dz);
-      int st = is_iron_door(d) ? d - B_IRON_DOOR_LOWER_E
-               : d == B_DOOR_OAK_LOWER ? 0 : is_door_lower(d) ? d - B_DOOR_OAK_LOWER_S + 1 : -1;
+      int dk = door_kind(d);
+      if (is_gate(d)) {
+        if (open_gate(d) != open) world_set(dx, dy, dz, d + (open ? 4 : -4));
+        continue;
+      }
+      if (dk >= 0 && d == door_upper(dk)) d = world_get(dx, --dy, dz);
+      int st = door_kind(d) == dk ? door_state(d) : -1;
       if (st < 0 || (st >= 4) == open) continue;
-      st = open ? st | 4 : st & 3;
-      if (is_iron_door(d)) world_set(dx, dy, dz, B_IRON_DOOR_LOWER_E + st);
-      else world_set(dx, dy, dz, st == 0 ? B_DOOR_OAK_LOWER : B_DOOR_OAK_LOWER_S + st - 1);
+      world_set(dx, dy, dz, door_lower(dk, open ? st | 4 : st & 3));
     }
 }
 static void button_press(int x, int y, int z, int b) {
@@ -124,9 +126,27 @@ static void plates_tick(void) {
     }
 }
 
-/* using an item of the Nether or the End (true: done) */
+/* using an item of the Nether or the End, or a door or fence gate of NumBlocks.nwa's (true: done) */
 static bool dims_use(int k, bool on_block, int x, int y, int z, int b) {
   Stack *h = held();
+  int dk = door_kind(b);
+  if (on_block && !pl.sneaking && dk > 0) {
+    /* BlockDoor.onBlockActivated: open or close (the lower half keeps it); iron ones only by redstone */
+    int ly = b == door_upper(dk) ? y - 1 : y, lb = world_get(x, ly, z), st = door_state(lb);
+    if (dk > 1 && door_kind(lb) == dk && st >= 0) set_block(x, ly, z, door_lower(dk, st ^ 4));
+    player_swing();
+    return true;
+  }
+  if (on_block && !pl.sneaking && is_gate(b)) {
+    /* BlockFenceGate.onBlockActivated: shut, or open away from the player (turned to face their way if it faced
+     * them) */
+    int st = (b - B_FENCE_GATE_OAK_S) & 7, way = (int)floorf(pl.yaw / 90 + 0.5f) & 3;
+    if (st & 4) st &= 3;
+    else st = (st == ((way + 2) & 3) ? way : st) | 4;
+    set_block(x, y, z, b - ((b - B_FENCE_GATE_OAK_S) & 7) + st);
+    player_swing();
+    return true;
+  }
   if (on_block && b == B_DRAGON_EGG && !pl.sneaking) {
     egg_teleport(x, y, z);
     player_swing();
@@ -156,8 +176,8 @@ static bool dims_use(int k, bool on_block, int x, int y, int z, int b) {
     player_swing();
     return true;
   }
-  if (k == IK_PLACER && it_place[h->id - 256] == B_IRON_DOOR_LOWER_E) {
-    if (on_block && place_iron_door()) use_up(), player_swing();
+  if (k == IK_PLACER && door_kind(it_place[h->id - 256]) > 0) {
+    if (on_block && place_door(door_kind(it_place[h->id - 256]))) use_up(), player_swing();
     return true;
   }
   switch (k) {
@@ -166,7 +186,8 @@ static bool dims_use(int k, bool on_block, int x, int y, int z, int b) {
       int pb = it_place[h->id - 256];
       int way = (int)floorf(pl.yaw / 90 + 0.5f) & 3;
       static const int8_t st[4] = {2, 1, 3, 0};
-      if (pb == B_NETHER_BRICK_STAIRS_E || pb == B_QUARTZ_STAIRS_E || pb == B_SANDSTONE_STAIRS_E) pb += st[way];
+      if (blk_model[pb] == M_STAIRS) pb += st[way];
+      if (is_gate(pb)) pb += way;   /* (BlockFenceGate.onBlockPlaced: facing the way the player looks) */
       if (pb == B_STONE_BUTTON_E) {   /* (on a side: 1.8.8's on floors and ceilings are not here) */
         static const uint16_t bt[6] = {0, 0, B_STONE_BUTTON_N, B_STONE_BUTTON_S, B_STONE_BUTTON_W, B_STONE_BUTTON_E};
         if (pl.hit_face < 2 || world_get(x, y, z) == B_AIR) return true;

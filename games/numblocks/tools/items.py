@@ -456,9 +456,9 @@ KINDS_DIMS = KINDS + ['dblock', 'ender_pearl', 'ender_eye', 'fire_charge']
 ID = []
 
 
-def ditem(name, label, tex, kind='none', stack=64, place=None, fuel=0, icon_block=None):
+def ditem(name, label, tex, kind='none', stack=64, place=None, fuel=0, icon_block=None, np=None):
     ID.append(dict(name=name, label=label, tex=tex, kind=kind, stack=stack, dur=0, tier=0, a=0, b=0, place=place,
-                   fuel=fuel, icon_block=icon_block))
+                   fuel=fuel, icon_block=icon_block, np=np))
 
 
 # the blocks: name, label (en_US), the state it places (its icon)
@@ -494,6 +494,21 @@ for n, lab, st in [('WOODEN_PRESSURE_PLATE', 'Wooden Pressure Plate', 'WOODEN_PR
                    ('STONE_PRESSURE_PLATE', 'Stone Pressure Plate', 'STONE_PRESSURE_PLATE'),
                    ('SANDSTONE_STAIRS', 'Sandstone Stairs', 'SANDSTONE_STAIRS_E')]:
     ditem(n, lab, None, 'dblock', place=st, icon_block=st)
+# (fence gates, the other woods' fences, doors and stairs: wood burns 300 ticks, but a door; np: what they count as in
+# NumPlay's NumBlocks)
+WOOD_LABELS = [('SPRUCE', 'Spruce'), ('BIRCH', 'Birch'), ('JUNGLE', 'Jungle'), ('DARK_OAK', 'Dark Oak'),
+               ('ACACIA', 'Acacia')]
+for n, lab in [('OAK', 'Oak')] + WOOD_LABELS:
+    ditem(f'FENCE_GATE_{n}', f'{lab} Fence Gate', None, 'dblock', place=f'FENCE_GATE_{n}_S', fuel=300,
+          icon_block=f'FENCE_GATE_{n}_S', np='FENCE_OAK')
+for n, lab in WOOD_LABELS:
+    ditem(f'FENCE_{n}', f'{lab} Fence', None, 'dblock', place=f'FENCE_{n}', fuel=300, icon_block=f'FENCE_{n}',
+          np='FENCE_OAK')
+for n, lab in WOOD_LABELS:
+    ditem(f'{n}_DOOR', f'{lab} Door', 'door_' + n.lower(), 'placer', place=f'DOOR_{n}_LOWER_E', np='I:WOODEN_DOOR')
+for n, lab in WOOD_LABELS:
+    ditem(f'{n}_STAIRS', f'{lab} Wood Stairs', None, 'dblock', place=f'{n}_STAIRS_E', fuel=300,
+          icon_block=f'{n}_STAIRS_E', np='OAK_STAIRS')
 IDNAMES = [x['name'] for x in ID]
 I_ALL = I + ID
 DBNAMES = [s['name'] for s in blocks.D]
@@ -513,7 +528,17 @@ for d in ['E', 'S', 'W', 'N', 'E_OPEN', 'S_OPEN', 'W_OPEN', 'N_OPEN']:
 for d in 'EWSN':
     DITEM_OF[f'SANDSTONE_STAIRS_{d}'] = 'SANDSTONE_STAIRS'
 DITEM_OF['RAIL_X'] = 'RAIL'
-DITEM_OF['IRON_DOOR_UPPER'] = None
+# (a door's upper half is its door too, to Pick Block: it drops nothing, inv.c)
+DITEM_OF['IRON_DOOR_UPPER'] = 'IRON_DOOR'
+for n, lab in [('OAK', 'Oak')] + WOOD_LABELS:
+    for d in ['S', 'W', 'N', 'E', 'S_OPEN', 'W_OPEN', 'N_OPEN', 'E_OPEN']:
+        DITEM_OF[f'FENCE_GATE_{n}_{d}'] = f'FENCE_GATE_{n}'
+for n, lab in WOOD_LABELS:
+    for d in ['E', 'S', 'W', 'N', 'E_OPEN', 'S_OPEN', 'W_OPEN', 'N_OPEN']:
+        DITEM_OF[f'DOOR_{n}_LOWER_{d}'] = f'{n}_DOOR'
+    DITEM_OF[f'DOOR_{n}_UPPER'] = f'{n}_DOOR'
+    for d in 'EWSN':
+        DITEM_OF[f'{n}_STAIRS_{d}'] = f'{n}_STAIRS'
 for lv in (1, 3, 5, 7):
     DITEM_OF[f'FLOWING_LAVA_{lv}'] = None
 
@@ -566,11 +591,22 @@ RD.append(('STONE_BUTTON', 1, None, ['STONE']))
 RD.append(('WOODEN_PRESSURE_PLATE', 1, ['##'], {'#': 'G_PLANKS'}))
 RD.append(('STONE_PRESSURE_PLATE', 1, ['##'], {'#': 'STONE'}))
 RD.append(('SANDSTONE_STAIRS', 4, ['#  ', '## ', '###'], {'#': 'SANDSTONE'}))
+# (CraftingManager: each wood's from its planks)
+for n, lab in [('OAK', 'Oak')] + WOOD_LABELS:
+    RD.append((f'FENCE_GATE_{n}', 1, ['#W#', '#W#'], {'#': 'STICK', 'W': f'PLANKS_{n}'}))
+for n, lab in WOOD_LABELS:
+    RD.append((f'FENCE_{n}', 3, ['W#W', 'W#W'], {'#': 'STICK', 'W': f'PLANKS_{n}'}))
+    RD.append((f'{n}_DOOR', 3, ['##', '##', '##'], {'#': f'PLANKS_{n}'}))
+    RD.append((f'{n}_STAIRS', 4, ['#  ', '## ', '###'], {'#': f'PLANKS_{n}'}))
 # the creative tabs: building blocks, decoration, materials, brewing, miscellaneous
 TAB_D = {'NETHER_BRICK_FENCE': 1, 'END_PORTAL_FRAME': 1, 'DRAGON_EGG': 1, 'NETHERBRICK': 10, 'QUARTZ': 10,
          'BLAZE_ROD': 10, 'NETHER_WART': 9, 'BLAZE_POWDER': 9, 'GHAST_TEAR': 9, 'MAGMA_CREAM': 9, 'ENDER_PEARL': 4,
          'ENDER_EYE': 4, 'FIRE_CHARGE': 4, 'IRON_BARS': 1, 'IRON_DOOR': 2, 'STONE_BUTTON': 2,
          'WOODEN_PRESSURE_PLATE': 2, 'STONE_PRESSURE_PLATE': 2}
+for n, lab in [('OAK', 'Oak')] + WOOD_LABELS:
+    TAB_D[f'FENCE_GATE_{n}'] = 2
+for n, lab in WOOD_LABELS:
+    TAB_D[f'FENCE_{n}'], TAB_D[f'{n}_DOOR'] = 1, 2
 
 
 def tab_of_dims(iid):

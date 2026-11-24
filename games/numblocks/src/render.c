@@ -419,7 +419,12 @@ typedef struct {
   int wr, wg, wb, wa, inside;
 } Ray;
 
+#if NB_DIMS
+#define liquid blk_liquid   /* (NumBlocks.nwa: tools/pack.py's tables, in flash, its RAM being full) */
+#define shape_top blk_shape_top
+#else
 static uint8_t liquid[B_N];   /* 1 water, 2 lava (a ray in one goes through more of it) */
+#endif
 /* BlockLiquid: (8 - level) / 9 high (sixteenths), full when falling or under the same liquid */
 static int liquid_top(int b, int i, int y) {
   static const int8_t LIQH[9] = {14, 12, 11, 9, 7, 5, 4, 2, 16};
@@ -435,6 +440,12 @@ typedef struct {
   int8_t n, s[5][6];
 } BoxMemo;
 static BoxMemo box_memo[8];
+#if NB_DIMS
+static struct {
+  int i;
+  int8_t n, s[8][6];
+} gate_memo;   /* (a fence gate's: up to 8 boxes) */
+#endif
 
 /* what the ray meets in cell i (x, y, z) of block b, entered at t through `face`, with tl to go
  * to the cell's far side: its colour, or -1 to go on (kept out of the trace's loop, whose
@@ -495,6 +506,12 @@ static __attribute__((noinline)) int cell_hit(Ray *R, int b, int i, int x, int y
       BoxMemo *k = &box_memo[i & 7];
       if (k->i != i) k->i = i, k->n = (int8_t)block_boxes(b, x + vc_x0, y + vc_y0, z + vc_z0, k->s);
       nbx = k->n, bxs = (const int8_t (*)[6])k->s;
+#if NB_DIMS
+    } else if (m == M_GATE) {
+      if (gate_memo.i != i)
+        gate_memo.i = i, gate_memo.n = (int8_t)gate_boxes(b, x + vc_x0, y + vc_y0, z + vc_z0, gate_memo.s);
+      nbx = gate_memo.n, bxs = (const int8_t (*)[6])gate_memo.s;
+#endif
     } else nbx = blk_nbox[b], bxs = blk_box[b];
     Hit h = {0}, hk;
     h.t = 1e9f;
@@ -543,6 +560,7 @@ static __attribute__((noinline)) int cell_hit(Ray *R, int b, int i, int x, int y
 
 /* the top of each block's shape, sixteenths (16: whole, or shaped by its place): a ray going
  * over a lower one (a snow layer, a slab) has nothing to meet in its cell */
+#if !NB_DIMS
 static uint8_t shape_top[B_N];
 static void shape_tops(void) {
   for (int b = 0; b < B_N; b++) {
@@ -556,6 +574,7 @@ static void shape_tops(void) {
     shape_top[b] = (uint8_t)top;
   }
 }
+#endif
 
 /* how far rays go: the view's end, or where the fog hides all, if what is past it (the sky) is the
  * fog's colour too (the Nether) */
@@ -2377,6 +2396,9 @@ void render_frame(const Camera *c, uint32_t tod) {
   cloud_off = (tod % 24000) * 0.03f;
 
   for (int k = 0; k < 8; k++) box_memo[k].i = -1;
+#if NB_DIMS
+  gate_memo.i = -1;
+#endif
   /* the block being broken */
   brk_i = -1;
   if (pl.breaking > 0 && pl.hit_face >= 0 && world_loaded(pl.hit_x, pl.hit_y, pl.hit_z)) {
@@ -2393,8 +2415,10 @@ void render_frame(const Camera *c, uint32_t tod) {
    * and middle met the same thing (a face, the sky, a plant) is drawn from them; any other is
    * cut in four of 2 x 2, the points between traced as needed (once, for both sides) */
   for (int px = 0; px <= RW; px++) col_su[px] = (2 * (px + 0.5f) / RW - 1) * TAN_H;
+#if !NB_DIMS
   static bool tops;
   if (!tops) shape_tops(), tops = true;
+#endif
   cam_liq = liquid[cam_b] ? liquid[cam_b] : 255;
   bool fast_sky = sky_fast();
   for (int k = 0; k <= 128; k++) {

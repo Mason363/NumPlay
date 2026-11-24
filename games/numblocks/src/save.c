@@ -132,9 +132,10 @@ void world_unique_name(const char *base, char *out) {
 
 #if NB_DIMS
 /* NumBlocks.nwa: NumPlay's NumBlocks reads the same world record, so the record holds what it knows: the
- * player in the Overworld (where they last were there), with none of the Nether's and the End's items,
- * the Overworld's chests and furnaces. The rest is in "nb3rdim.nbx" by it: the dimension the player is
- * in, the player as they are, every chest and furnace, the dimensions' state. If NumPlay's NumBlocks
+ * player in the Overworld (where they last were there), with none of the Nether's and the End's items (the
+ * other woods' fences, gates, doors and stairs as oak's), the Overworld's chests and furnaces. The rest is in
+ * "nb3rdim.nbx" by it: the dimension the player is in, the player as they are, every chest and furnace, the
+ * dimensions' state. If NumPlay's NumBlocks
  * saved the world after (the record is not the one the copy goes with), the record wins, the player in
  * the Overworld, and the Nether's and the End's chests and the dimensions' state come back from the copy */
 #define NOLD 8
@@ -153,9 +154,9 @@ static void side_of(int s, char *out) {
   prefix_of(s, out);
   memcpy(out + 3, "rdim.nbx", 9);
 }
-static void known(Stack *s, int n) {
+static void known(Stack *s, int n) {   /* (what it does not know: what stands for it there, or nothing) */
   for (int i = 0; i < n; i++)
-    if (s[i].id >= I_END) s[i].id = 0, s[i].aux = 0;
+    if (s[i].id >= I_END && !(s[i].id = it_np[s[i].id - I_END])) s[i].aux = 0;
 }
 void tiles_for_numplay(void *t);
 void tiles_merge(const void *t);

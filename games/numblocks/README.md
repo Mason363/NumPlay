@@ -33,6 +33,7 @@ Minecraft 1.8.8 on your NumWorks calculator. NumBlocks isn't a look-alike: it fo
 - **Desert temples:** the hidden room under the floor, its four chests and the TNT trap under the pressure plate.
 - **Mineshafts:** the room, corridors, crossings and stairs, with their supports, rails, cobwebs, torches and cave spider spawners.
 - **Dungeons:** their spawners make skeletons, zombies or spiders, and their chests have their loot.
+- **Every wood:** spruce, birch, jungle, dark oak and acacia fences, doors and stairs, and fence gates of all six woods that swing open away from you. NumPlay's NumBlocks shows them as oak's, and an open gate as air.
 - **Old worlds:** a world made before keeps its look where you had been. New places get the villages and the rest.
 - **Saved:** each dimension keeps its own changes, and you come back where you left. Open a world saved in the Nether or the End in NumPlay's NumBlocks and you are in the Overworld where you last stood there, without the items it doesn't have.
 - **Not in:** brewing (nether wart grows, but there are no potions), silverfish (the strongholds' stone bricks are plain ones), trading with villagers, jungle temples, witch huts, ocean monuments, the mineshafts' chest minecarts, and redstone. Cave spider spawners make spiders.
