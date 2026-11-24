@@ -80,6 +80,7 @@ unsigned char *M68K_RAM=(void *)(uint32_t)(0); // 68K RAM
 
 unsigned char *ROM_DATA; // 68K Main Program (uncompressed)
 unsigned int md_rom_mask;  // (NumPlay: the ROM's size rounded up to a power of two, less one)
+unsigned int md_rom_wmask; // (and its words': a word read at an odd address, which only a broken game makes, stays inside)
 #endif
 
 
@@ -125,6 +126,7 @@ void load_cartridge(unsigned char *buffer, size_t size)
     md_rom_mask = 1;
     while (md_rom_mask < size) md_rom_mask <<= 1;
     md_rom_mask--;
+    md_rom_wmask = md_rom_mask & ~1u;
     set_region();
 }
 

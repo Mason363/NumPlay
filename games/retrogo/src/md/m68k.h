@@ -163,9 +163,9 @@
 #endif
 
 /* (NumPlay: nothing read past the ROM's size rounded up to a power of two) */
-extern unsigned int md_rom_mask;
+extern unsigned int md_rom_mask, md_rom_wmask;
 #define FETCH8ROM(A) ((ROM_DATA[((A) ^ 1) & md_rom_mask]))
-#define FETCH16ROM(A) ((*(unsigned short *)&ROM_DATA[(A) & md_rom_mask]))
+#define FETCH16ROM(A) ((*(unsigned short *)&ROM_DATA[(A) & md_rom_wmask])) /* (an odd address: its word, inside) */
 #define FETCH32ROM(A) (((unsigned int)FETCH16ROM(A) << 16) | FETCH16ROM((A) + 2)) /* (each word inside the ROM) */
 
 #if GNW_TARGET_MARIO !=0 || GNW_TARGET_ZELDA!=0
