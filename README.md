@@ -561,7 +561,7 @@ NumPlay is licensed under the [GNU General Public License v3.0](LICENSE). Copyri
     <td align="center"><img src="docs/media/gallery/breakout.gif" alt="Block Breaker: the ball breaks bricks"><br><a href="games/breakout/README.md"><b>Block Breaker</b></a></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/media/gallery/numvisuals.gif" alt="NumVisuals: moving backgrounds, from northern lights to a lava lamp"><br><a href="games/numvisuals/README.md"><b>NumVisuals</b></a></td>
+    <td align="center"><img src="docs/media/gallery/numvisuals.gif" alt="NumVisuals: moving backgrounds, from northern lights and a sunset drive to falling code"><br><a href="games/numvisuals/README.md"><b>NumVisuals</b></a></td>
     <td align="center"><img src="docs/media/gallery/numpowder.gif" alt="NumPowder: water floods the sand, then lava pours in and boils it"><br><a href="games/numpowder/README.md"><b>NumPowder</b></a></td>
     <td align="center"><img src="docs/media/gallery/finalearth2.gif" alt="The Final Earth 2: building a house in a city on a floating island"><br><a href="games/finalearth2/README.md"><b>The Final Earth 2</b></a></td>
   </tr>
