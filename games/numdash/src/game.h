@@ -141,6 +141,12 @@ typedef struct {
   bool trail, dead, complete, ending, hold_prev, hold_prev2, pressed_prev, dual, dual_swap;
   float dual_y;
   bool menu_camera;   /* fixed camera, ground scrolling on its own (main menu) */
+#if ND_EXTRA_LEVELS
+  /* Meltdown's and SubZero's: the mirror portals' flip (0 normal .. 1
+     mirrored, eased) and the controls an options trigger turned off */
+  float mirror_t;
+  bool mirror, no_input;
+#endif
   float used_below;   /* objects left of this x count as used (practice) */
   uint8_t used[MAX_LEVEL_OBJS / 8];
   FxEvent fx[24];
@@ -161,6 +167,9 @@ typedef struct {
   bool dual;
   uint8_t p2_mode, p2_flags;
   float dual_y, p2_y, p2_vy, p2_rot, dist;
+#if ND_EXTRA_LEVELS
+  bool mirror;
+#endif
 } Checkpoint;
 
 void game_start(Game *g, const Level *L, bool first_attempt);

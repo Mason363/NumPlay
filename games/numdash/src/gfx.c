@@ -645,6 +645,45 @@ static const Sprite *x_glyph(const Font *f, int acc, const Sprite *b, uint32_t c
 }
 #endif
 
+#if ND_EXTRA_LEVELS
+void gfx_text_ex(int font, float cx, float cy, const char *s, int scale256, int ang16, color_t c, unsigned alpha) {
+  const Font *f = &fonts[font];
+  int w = 0;
+  for (const char *q = s; *q; q++) {
+    int g = glyph_of(font, (unsigned char)*q);
+    w += g < 0 ? f->cap / 2 : f->advance[g];
+  }
+  float sc = scale256 / 256.f, a = ang16 * (0.017453293f / 16), cs = cosf(a), sn = sinf(a);
+  /* the pen along the text's direction, the baseline half a capital below the centre */
+  float px = -w / 2.f, py = f->cap / 2.f;
+  static const int8_t ring[5][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {0, 0}};
+  for (const char *q = s; *q; q++) {
+    int g = glyph_of(font, (unsigned char)*q);
+    if (g >= 0 && *q != ' ') {
+      float x = cx + (px * cs - py * sn) * sc, y = cy + (px * sn + py * cs) * sc;
+      for (int k = 0; k < 5; k++)
+        gfx_sprite_ex(f->base + g, (int)((x + ring[k][0]) * 16), (int)((y + ring[k][1]) * 16), ang16, scale256, 0, k < 4 ? 0 : c,
+                      k < 4 ? alpha * 3 / 4 : alpha, BLEND_NORMAL);
+    }
+    px += g < 0 ? f->cap / 2 : f->advance[g];
+  }
+}
+
+void gfx_hscale_rows(float s, color_t fill) {
+  uint16_t row[GFX_W];
+  int32_t step = (int32_t)(65536 / s), x0 = (int32_t)(GFX_W / 2 * 65536) - step * (GFX_W / 2) + step / 2;
+  for (int y = gfx_y0; y < gfx_y1; y++) {
+    uint16_t *p = pix(0, y);
+    memcpy(row, p, sizeof row);
+    int32_t u = x0;
+    for (int x = 0; x < GFX_W; x++, u += step) {
+      int32_t k = u >> 16;
+      p[x] = u >= 0 && k < GFX_W ? row[k] : fill;
+    }
+  }
+}
+#endif
+
 int gfx_text_width(int font, const char *s) {
   const Font *f = &fonts[font];
   int w = 0;

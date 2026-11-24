@@ -5,7 +5,14 @@
 #include <stdint.h>
 #include "objdefs.h"
 
+/* NumDash.nwa adds Meltdown's and SubZero's levels (ND_EXTRA_LEVELS) to the
+ * twelve NumPlay's NumDash has (LEVEL_BASE, whose stats stay in numdash.nds) */
+#define LEVEL_BASE 12
+#if ND_EXTRA_LEVELS
+#define LEVEL_COUNT 16
+#else
 #define LEVEL_COUNT 12
+#endif
 #define THEME_COUNT 9          /* editor themes: the colours of the first nine levels */
 #define WIN_CAP 2160           /* objects resident at once (leveldata.c checks it) */
 #define WIN_CHUNKS 24
@@ -57,6 +64,7 @@ static inline unsigned st_zlayer(const LStyle *s) { return s->cz >> 20 & 15; }
 static inline unsigned st_flags(const LStyle *s) { return s->cz >> 24; }
 enum { STF_DONT_FADE = 1, STF_DONT_ENTER = 2, STF_HIDE = 4, STF_NOTOUCH = 8, STF_FREE = 16 };
 #define STF_TPGRAV(f) ((f) >> 5 & 3)   /* a teleport's gravity mode: 1 normal, 2 flipped, 3 toggle */
+#define STF_TPWIDE 128                  /* a linked teleport whose arg is all offset (no force) */
 typedef struct {
   const LChan *chans;
   const LStyle *styles;
@@ -75,10 +83,18 @@ typedef struct {
   uint8_t bg, ground;             /* GD background and ground styles */
   uint8_t lflags;                 /* LF_* (GD's level compatibility flags) */
   uint32_t end_dist;              /* turned levels: the distance travelled to the end (0: use x) */
+#if ND_EXTRA_LEVELS
+  const char *const *texts;       /* text objects' strings (their style arg) */
+  uint16_t ntexts;
+#endif
 } LevelExt;
-enum { LF_FIX_RADIUS = 1 };      /* kA39: round hazards by centre distance */
+enum { LF_FIX_RADIUS = 1,        /* kA39: round hazards by centre distance */
+       LF_TPAXIS = 4 };           /* (ND_EXTRA_LEVELS) linked teleports move the player along their turned axis */
 enum { TR_COLOR = 1, TR_MOVE, TR_ALPHA, TR_TOGGLE, TR_PULSE, TR_FADE, TR_TRAIL, TR_SPAWN, TR_STOP, TR_ROTATE, TR_FOLLOW, TR_COUNT,
-       TR_PICKUP, TR_COMPARE, TR_COLLISION, TR_TAP, TR_GROT, TR_END, TR_TIMEWARP, TR_SHAKE, TR_CAMERA };
+       TR_PICKUP, TR_COMPARE, TR_COLLISION, TR_TAP, TR_GROT, TR_END, TR_TIMEWARP, TR_SHAKE, TR_CAMERA,
+       /* Meltdown's and SubZero's levels (ND_EXTRA_LEVELS) */
+       TR_OPTIONS };
+enum { FADE_NONE = 12 };         /* (ND_EXTRA_LEVELS) objects come in at the edges without fading */
 enum { CAM_STATIC, CAM_ZOOM, CAM_OFFSET };
 
 /* A chunk of a built-in level: one DEFLATE stream of objects whose x and y

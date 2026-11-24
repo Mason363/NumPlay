@@ -18,7 +18,12 @@ static color_t page_color(int i) {
 static int wrap(int v, int n) { v %= n; return v < 0 ? v + n : v; }
 /* GD colours a level's page by its place among all the official levels */
 static color_t level_color(int i) {
+#if ND_EXTRA_LEVELS
+  /* (Meltdown's and SubZero's by their place in their own game) */
+  static const uint8_t gd_index[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 19, 21, 0, 1, 2, 1};
+#else
   static const uint8_t gd_index[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 19, 21};
+#endif
   return page_color(i < (int)sizeof(gd_index) ? gd_index[i] : i);
 }
 
