@@ -4,6 +4,9 @@
 #include <math.h>
 #include "draw.h"
 #include "gfx.h"
+#if NP_SOFT_FLOAT
+#include "np_fixed.h"
+#endif
 
 #define PX 12.0f   /* screen pixels a world unit */
 #define BALL_SX 96 /* the ball's column */
@@ -51,6 +54,47 @@ void dr_blit(const fd_img_t *im, float sx, float sy, float m00, float m01, float
   int w = im->w, h = im->h;
   const uint16_t *C = im->c;
   const uint8_t *A = im->a;
+#if NP_SOFT_FLOAT
+  /* (calculators without a floating-point unit: u and v in 16.16, stepped along the row, the four samples' offsets
+   * worked out once) */
+  static uint32_t rcp[4 * 255 + 1]; /* 2^26 / a, rounded up */
+  if (!rcp[1])
+    for (int a = 1; a <= 4 * 255; a++) rcp[a] = (((uint32_t)1 << 26) + (uint32_t)a - 1) / (uint32_t)a;
+  int32_t du = (int32_t)fx_from_float(i00, 16), dv = (int32_t)fx_from_float(i10, 16), ou[4], ov[4];
+  for (int s = 0; s < 4; s++) {
+    float a = s & 1 ? 0.25f : -0.25f, b = s & 2 ? 0.25f : -0.25f;
+    ou[s] = (int32_t)fx_from_float(i00 * a + i01 * b, 16), ov[s] = (int32_t)fx_from_float(i10 * a + i11 * b, 16);
+  }
+  for (int y = Y0; y < Y1; y++) {
+    color_t *row = gfx_buf + (y - gfx_y0) * SCREEN_W;
+    float dy = (float)y + 0.5f - sy, dx = (float)X0 + 0.5f - sx;
+    int32_t u = (int32_t)fx_from_float(pu + i00 * dx + i01 * dy, 16), v = (int32_t)fx_from_float(pv + i10 * dx + i11 * dy, 16);
+    for (int x = X0; x < X1; x++, u += du, v += dv) {
+      if (!ss) {
+        int iu = u >> 16, iv = v >> 16;
+        if ((unsigned)iu >= (unsigned)w || (unsigned)iv >= (unsigned)h) continue;
+        int k = iv * w + iu, a = A[k];
+        if (!a) continue;
+        row[x] = blend(row[x], tint ? tc : C[k], a * a256 >> 8);
+        continue;
+      }
+      int a = 0, r = 0, g = 0, b = 0;
+      for (int s = 0; s < 4; s++) {
+        int iu = (u + ou[s]) >> 16, iv = (v + ov[s]) >> 16;
+        if ((unsigned)iu >= (unsigned)w || (unsigned)iv >= (unsigned)h) continue;
+        int k = iv * w + iu, al = A[k];
+        if (!al) continue;
+        color_t c = C[k];
+        a += al, r += (c >> 11) * al, g += (c >> 5 & 63) * al, b += (c & 31) * al;
+      }
+      if (!a) continue;
+      uint64_t q = rcp[a]; /* (x / a, exactly: x is at most 63 a) */
+      color_t c = tint ? tc : (color_t)((r * q >> 26) << 11 | (g * q >> 26) << 5 | (b * q >> 26));
+      row[x] = blend(row[x], c, (a >> 2) * a256 >> 8);
+    }
+  }
+  return;
+#endif
   for (int y = Y0; y < Y1; y++) {
     color_t *row = gfx_buf + (y - gfx_y0) * SCREEN_W;
     float dy = (float)y + 0.5f - sy, dx = (float)X0 + 0.5f - sx;
@@ -160,8 +204,16 @@ static void track(const hoop_t *h) {
   float x0 = dr_sx(h->x - dx * L), y0 = dr_sy(h->y - dy * L), x1 = dr_sx(h->x + dx * L), y1 = dr_sy(h->y + dy * L);
   float n = fabsf(x1 - x0) > fabsf(y1 - y0) ? fabsf(x1 - x0) : fabsf(y1 - y0);
   if ((y0 < gfx_y0 - 2 && y1 < gfx_y0 - 2) || (y0 > gfx_y1 + 2 && y1 > gfx_y1 + 2)) return;
+#if NP_SOFT_FLOAT
+  /* (no FPU: the points stepped in 16.16) */
+  int32_t fx = (int32_t)fx_from_float(x0, 16), fy = (int32_t)fx_from_float(y0, 16);
+  int32_t sx = (int32_t)fx_from_float((x1 - x0) / (n + 0.01f), 16), sy = (int32_t)fx_from_float((y1 - y0) / (n + 0.01f), 16);
+  for (int i = 0; i <= (int)n; i++, fx += sx, fy += sy) {
+    int x = (fx < 0 ? -(-fx >> 16) : fx >> 16), y = (fy < 0 ? -(-fy >> 16) : fy >> 16); /* (toward zero, as (int)) */
+#else
   for (int i = 0; i <= (int)n; i++) {
     int x = (int)(x0 + (x1 - x0) * (float)i / (n + 0.01f)), y = (int)(y0 + (y1 - y0) * (float)i / (n + 0.01f));
+#endif
     for (int o = 0; o < 2; o++) {
       int yy = y + o;
       if (yy >= gfx_y0 && yy < gfx_y1 && x >= 0 && x + 1 < SCREEN_W) {
@@ -187,12 +239,22 @@ static void ring(float x, float y, float r, color_t col, int a256) {
   float cx = dr_sx(x), cy = dr_sy(y);
   int R = (int)r;
   if (cy + R + 2 < gfx_y0 || cy - R - 2 > gfx_y1) return;
+#if NP_SOFT_FLOAT
+  /* (no FPU: the distance's square against the band's, in 1/16 pixels) */
+  int32_t CX = (int32_t)fx_from_float(cx, 4), CY = (int32_t)fx_from_float(cy, 4);
+  int32_t lo = r > 2 ? (int32_t)fx_from_float(r - 2, 4) : 0, hi = (int32_t)fx_from_float(r + 1, 4);
+#endif
   for (int yy = (int)cy - R - 2; yy <= (int)cy + R + 2; yy++) {
     if (yy < gfx_y0 || yy >= gfx_y1) continue;
     for (int xx = (int)cx - R - 2; xx <= (int)cx + R + 2; xx++) {
       if (xx < 0 || xx >= SCREEN_W) continue;
+#if NP_SOFT_FLOAT
+      int32_t ex = xx * 16 - CX, ey = yy * 16 - CY, d2 = ex * ex + ey * ey;
+      if (d2 < lo * lo || d2 > hi * hi) continue;
+#else
       float d = sqrtf((xx - cx) * (xx - cx) + (yy - cy) * (yy - cy)) - r;
       if (d < -2 || d > 1) continue;
+#endif
       color_t *p = gfx_buf + (yy - gfx_y0) * SCREEN_W + xx;
       *p = blend(*p, col, a256 * 255 >> 8);
     }
