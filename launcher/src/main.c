@@ -32,10 +32,7 @@ int main(void) {
   /* just updated? the saves come back from their copy, then the copy is refreshed */
   np_progress_restore();
   np_progress_backup();
-  /* started as Matrices (Settings): NumPlay opens only through its secret */
-  np_config_t cfg;
-  np_config_load(&cfg);
-  if (cfg.disguise && !np_matrices(&cfg)) return np_session_end();
+  /* TwiliPlay always opens its normal launcher, even with older saved settings. */
   np_wait_release();
   int selected = np_game_count ? 0 : -1;
   bool returning = false;
