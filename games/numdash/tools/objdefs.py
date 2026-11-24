@@ -14,7 +14,7 @@ SP = ['NONE', 'PAD_Y', 'PAD_P', 'PAD_B', 'ORB_Y', 'ORB_P', 'ORB_B', 'GRAV_N', 'G
       'PORTAL_WAVE', 'PORTAL_ROBOT', 'SPEED_0', 'SPEED_1', 'SPEED_2', 'SPEED_3', 'DUAL_ON', 'DUAL_OFF',
       'TELEPORT', 'ORB_G', 'KEY', 'TOUCH', 'PORTAL_SPIDER', 'PORTAL_SWING', 'ORB_DASH', 'ORB_DASH_G', 'ORB_SPIDER',
       'ORB_R', 'PAD_R', 'ORB_T', 'TELEPORT2', 'ITEM', 'FORCE', 'FORCE_CIRCLE', 'STOP_DASH',
-      'ARM_HEAD', 'ARM_SLIDE', 'ARM_FLIP', 'ARM_NOAUTO']
+      'ARM_HEAD', 'ARM_SLIDE', 'ARM_FLIP', 'ARM_NOAUTO', 'MIRROR_ON', 'MIRROR_OFF']
 # Colour types for draw parts
 CT = ['OBJ', 'BLACK', 'WHITE', 'P1ADD', 'P2ADD', 'LBG', 'GLOW', 'GLOW_Y', 'GLOW_B', 'GLOW_P', 'BASE', 'DETAIL', 'BASE_D',
       'BASE_L', 'DETAIL_D', 'RAIN0', 'RAIN1', 'RAIN2', 'RAIN3', 'RAIN4', 'RAIN5']
@@ -174,6 +174,13 @@ assert LOBJ_TYPES <= 256
 OBJECTS += objdefs_dl.OBJS
 import objdefs_dash  # noqa: E402  (Dash's)
 OBJECTS += objdefs_dash.OBJS
+# Meltdown's and SubZero's, only in NumDash.nwa (ND_EXTRA_LEVELS): types from
+# EXTRA_FIRST on; the other levels are compiled without their GD ids (EXTRA_IDS)
+N_PROGS_BASE = len(objdefs_dl.PROGS)
+import objdefs_ms  # noqa: E402
+EXTRA_FIRST = len(OBJECTS) + 1
+OBJECTS += objdefs_ms.OBJS
+EXTRA_IDS = {gid for o in objdefs_ms.OBJS for gid in o[1]}
 
 INDEX = {o[0]: i + 1 for i, o in enumerate(OBJECTS)}     # type 0 = none
 BY_ID = {}
@@ -308,13 +315,14 @@ TILE_PROGS = {
 TILE_PROGS.update(objdefs_dl.PROGS)
 RADIUS.update({INDEX[n]: r for n, r in objdefs_dl.RADIUS.items()})
 RADIUS.update({INDEX[n]: r for n, r in objdefs_dash.RADIUS.items()})
+RADIUS.update({INDEX[n]: r for n, r in objdefs_ms.RADIUS.items()})
 
 
-def _auto_radius():
-    """Dash's objects drawn only by tile programs reach as far as their
-    corners (scaled pixel squares must not look bigger than they are)."""
-    first = len(OBJECTS) - len(objdefs_dash.OBJS)
-    for k, o in enumerate(OBJECTS[first:], first + 1):
+def _auto_radius(first, last):
+    """Dash's objects (and Meltdown's and SubZero's) drawn only by tile
+    programs reach as far as their corners (scaled pixel squares must not
+    look bigger than they are)."""
+    for k, o in enumerate(OBJECTS[first:last], first + 1):
         if k in RADIUS:
             continue
         parts, r = o[7], math.hypot(o[3], o[4]) / 2
@@ -328,4 +336,5 @@ def _auto_radius():
         RADIUS[k] = max(1, int(math.ceil(r)))
 
 
-_auto_radius()
+_auto_radius(EXTRA_FIRST - 1 - len(objdefs_dash.OBJS), EXTRA_FIRST - 1)
+_auto_radius(EXTRA_FIRST - 1, len(OBJECTS))

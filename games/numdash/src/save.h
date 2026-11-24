@@ -32,6 +32,12 @@ void progress_defaults(Progress *p);
 #define PROGRESS_BYTES 192
 void progress_encode(const Progress *p, uint8_t out[PROGRESS_BYTES]);
 bool progress_decode(Progress *p, const uint8_t *in, size_t len);
+#if ND_EXTRA_LEVELS
+/* The other levels' stats (numdash.ndx, fixed size), read after numdash.nds. */
+#define EXTRA_BYTES 128
+void extra_encode(const Progress *p, uint8_t out[EXTRA_BYTES]);
+bool extra_decode(Progress *p, const uint8_t *in, size_t len);
+#endif
 /* Custom level record; returns bytes written or 0. */
 size_t custom_encode(const LObj *objs, unsigned count, const CustomMeta *m, uint8_t *out, size_t cap);
 bool custom_decode(const uint8_t *in, size_t len, LObj *objs, unsigned cap, CustomMeta *m);

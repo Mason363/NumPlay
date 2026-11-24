@@ -73,7 +73,11 @@ static void fresh_app(void) {
 
 static void test_levels(void) {
   static Level L;
-  static const uint16_t counts[LEVEL_COUNT] = {2272, 1530, 1509, 1402, 2126, 1691, 2767, 3563, 3852, 7506, 19006, 16771};
+  static const uint16_t counts[LEVEL_COUNT] = {2272, 1530, 1509, 1402, 2126, 1691, 2767, 3563, 3852, 7506, 19006, 16771,
+#if ND_EXTRA_LEVELS
+                                               9092, 10094, 14581, 16540
+#endif
+  };
   for (unsigned i = 0; i < LEVEL_COUNT; i++) {
     assert(level_load_builtin(&L, i));
     assert(L.count == counts[i]);
@@ -287,6 +291,73 @@ static void test_legacy(void) {
 }
 
 /* ------------------------------------------------------------ app flow */
+
+#if ND_EXTRA_LEVELS
+/* NumDash.nwa and NumPlay's NumDash share numdash.nds: a save of the twelve levels comes back
+   whole, the other levels' stats go to numdash.ndx, and numdash.nds stays as the twelve-level
+   build writes it. */
+static void test_extra_saves(void) {
+  memset(store, 0, sizeof(store));
+  /* a save of NumPlay's NumDash (layout 2, twelve levels, three custom slots) */
+  uint8_t nds[PROGRESS_BYTES];
+  memset(nds, 0, sizeof(nds));
+  memcpy(nds, "NDS1", 4);
+  nds[8] = 2; nds[9] = 12; nds[10] = CUSTOM_SLOTS;
+  uint8_t *q = nds + 12;
+  for (int i = 0; i < 12 + CUSTOM_SLOTS; i++, q += 11) {
+    q[0] = (uint8_t)(i * 7 % 101); q[1] = (uint8_t)(i * 13 % 101); q[2] = (uint8_t)(i % 8);
+    q[3] = (uint8_t)(i + 1); q[7] = (uint8_t)(2 * i + 1);
+  }
+  q[0] = 77; q[4] = 88; q[8] = 5; q[9] = 9; q[10] = OPT_BAR | OPT_FPS; q[11] = 13;   /* last played: custom slot 2 */
+  uint32_t sum = nd_crc32(nds + 8, PROGRESS_BYTES - 8);
+  for (int k = 0; k < 4; k++) nds[4 + k] = (uint8_t)(sum >> (8 * k));
+  assert(storage_put(store, sizeof(store), "numdash.nds", nds, sizeof(nds), 1));
+  static LObj objs[3] = {{30, 0, OT_BLOCK, 0}, {60, 0, OT_SPIKE, 0}, {90, 30, OT_PAD_Y, 0}};
+  CustomMeta m = {3, 400, 2, 0, true};
+  assert(save_write_custom(1, objs, 3, &m));
+  Progress p;
+  CustomMeta metas[CUSTOM_SLOTS];
+  assert(save_load_all(&p, metas));
+  for (int i = 0; i < 12 + CUSTOM_SLOTS; i++) {
+    const LevelStat *s = &p.lv[i < 12 ? i : i - 12 + LEVEL_COUNT];
+    assert(s->normal == i * 7 % 101 && s->practice == i * 13 % 101 && s->coins == i % 8 && s->attempts == (uint32_t)i + 1 &&
+           s->jumps == (uint32_t)(2 * i + 1));
+  }
+  for (int i = 12; i < LEVEL_COUNT; i++) assert(!p.lv[i].normal && !p.lv[i].attempts);
+  assert(p.attempts == 77 && p.jumps == 88 && p.color1 == 5 && p.color2 == 9 && p.last_level == LEVEL_COUNT + 1);
+  assert(metas[1].exists && metas[1].count == 3 && !metas[0].exists);
+  /* written back: numdash.nds byte for byte as it was, the new levels in numdash.ndx */
+  p.lv[LEVEL_BASE + 2].normal = 64;
+  p.lv[LEVEL_BASE + 2].coins = 5;
+  p.lv[LEVEL_COUNT - 1].attempts = 4242;
+  assert(save_write_progress(&p));
+  size_t len;
+  const uint8_t *d = storage_read(store, sizeof(store), "numdash.nds", &len);
+  assert(d && len == PROGRESS_BYTES && !memcmp(d, nds, PROGRESS_BYTES));
+  assert(storage_read(store, sizeof(store), "numdash.ndx", &len) && len == EXTRA_BYTES);
+  assert(save_load_all(&p, metas) && p.lv[LEVEL_BASE + 2].normal == 64 && p.lv[LEVEL_BASE + 2].coins == 5 &&
+         p.lv[LEVEL_COUNT - 1].attempts == 4242 && p.last_level == LEVEL_COUNT + 1 && metas[1].exists);
+  /* the last level played is one of the new ones: numdash.nds says level 1 */
+  p.last_level = LEVEL_COUNT - 1;
+  assert(save_write_progress(&p));
+  d = storage_read(store, sizeof(store), "numdash.nds", &len);
+  assert(d[12 + (12 + CUSTOM_SLOTS) * 11 + 11] == 0);
+  Progress r;
+  assert(save_load_all(&r, metas) && r.last_level == LEVEL_COUNT - 1);
+  /* NumPlay's NumDash played another level since: it wins */
+  Progress b;
+  assert(progress_decode(&b, d, len));
+  b.last_level = 3;
+  uint8_t nds2[PROGRESS_BYTES];
+  progress_encode(&b, nds2);
+  assert(storage_put(store, sizeof(store), "numdash.nds", nds2, sizeof(nds2), 1));
+  assert(save_load_all(&r, metas) && r.last_level == 3 && r.lv[LEVEL_BASE + 2].normal == 64);
+  /* a broken numdash.ndx is left out, the rest loads */
+  uint8_t *x = (uint8_t *)(uintptr_t)storage_read(store, sizeof(store), "numdash.ndx", &len);
+  x[20] ^= 1;
+  assert(save_load_all(&r, metas) && r.lv[LEVEL_BASE + 2].normal == 0 && r.lv[1].attempts == 2);
+}
+#endif
 
 static void test_app(void) {
   fresh_app();
@@ -604,6 +675,9 @@ int main(int argc, char **argv) {
   test_storage();
   test_custom();
   test_legacy();
+#if ND_EXTRA_LEVELS
+  test_extra_saves();
+#endif
   test_app();
   test_editor();
   puts("PASS: levels, physics, checkpoints, storage safety, saves, legacy migration, menus, gameplay, editor");

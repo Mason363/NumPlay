@@ -166,6 +166,57 @@
         "3608": 2,
         "3662": 3
       }
+    },
+    {
+      "name": "THE SEVEN SEAS",
+      "file": "levels/reference/SevenSeas.gmd",
+      "source": "https://github.com/UHDanke/gmdkit/tree/ec79468588c6beb46712fbdc142bb06fa9a1d9c5/data/txt/object_string/official/meltdown/1001.txt",
+      "sha256": "7fd91fcc23e202baf75ffe81558660de822a13bef079e1f84a28922b82a05024",
+      "objects": 9092,
+      "events": 0,
+      "compressed_bytes": 23313,
+      "skipped_ids": {}
+    },
+    {
+      "name": "VIKING ARENA",
+      "file": "levels/reference/VikingArena.gmd",
+      "source": "https://github.com/UHDanke/gmdkit/tree/ec79468588c6beb46712fbdc142bb06fa9a1d9c5/data/txt/object_string/official/meltdown/1002.txt",
+      "sha256": "307032cdb5028af552bb0f9ddf1355cf24cdd011bdd2c1da66c96a994232e0c2",
+      "objects": 10094,
+      "events": 0,
+      "compressed_bytes": 23340,
+      "skipped_ids": {
+        "1006": 1
+      }
+    },
+    {
+      "name": "AIRBORNE ROBOTS",
+      "file": "levels/reference/AirborneRobots.gmd",
+      "source": "https://github.com/UHDanke/gmdkit/tree/ec79468588c6beb46712fbdc142bb06fa9a1d9c5/data/txt/object_string/official/meltdown/1003.txt",
+      "sha256": "09fd2c6ed79a92da0ba53a2380677c2daf9577d5f985169d10ec839941db275d",
+      "objects": 14581,
+      "events": 0,
+      "compressed_bytes": 28337,
+      "skipped_ids": {}
+    },
+    {
+      "name": "NOCK EM",
+      "file": "levels/reference/NockEm.gmd",
+      "source": "https://github.com/UHDanke/gmdkit/tree/ec79468588c6beb46712fbdc142bb06fa9a1d9c5/data/txt/object_string/official/subzero/4002.txt",
+      "sha256": "cc63fa0aad2691f1c72d3303bfba0a489998dc8a1f9f4815e6dfd3a408bb2602",
+      "objects": 16540,
+      "events": 0,
+      "compressed_bytes": 32660,
+      "skipped_ids": {
+        "1700": 97,
+        "1932": 74,
+        "2065": 3,
+        "3006": 1,
+        "3007": 1,
+        "3011": 1,
+        "3012": 1,
+        "3801": 1
+      }
     }
   ]
 }

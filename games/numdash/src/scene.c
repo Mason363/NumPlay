@@ -123,7 +123,7 @@ typedef struct {
 /* sprite at a whole pixel; rotated / scaled sprite; four mirrored quarters
    of a round object; a block drawn from rectangles; the player. K_ADD:
    blend additively whatever the colour's own blending. */
-enum { K_SPRITE, K_SCALED, K_QUAD, K_PROG, K_PLAYER, K_ADD = 0x80 };
+enum { K_SPRITE, K_SCALED, K_QUAD, K_PROG, K_PLAYER, K_TEXT /* (ND_EXTRA_LEVELS) a text object: spr is its string */, K_ADD = 0x80 };
 
 /* Colours of the frame: one entry per colour channel of the level (copies,
    HSV, player colours and pulses resolved), then a few made per object
@@ -469,6 +469,12 @@ static void prepare_items(void) {
       r0 = (int)floorf(lo);
       r1 = (int)ceilf(hi) + 1;
 #endif
+#if ND_EXTRA_LEVELS
+    } else if (kind == K_TEXT) {
+      int ext = (int)(strlen(G->L->ext->texts[it->spr]) * 6 + 8) * it->scale / 256;
+      r0 = (it->y >> 2) - ext;
+      r1 = (it->y >> 2) + ext;
+#endif
     } else if (kind == K_SPRITE) {
       gfx_sprite_rows(it->spr, (it->y + 2) >> 2, it->xf, &r0, &r1);
     } else if (kind != K_PLAYER) {
@@ -562,6 +568,9 @@ void scene_prepare(const Game *g, const SceneOpts *o) {
     if (xf < 0) { angle = obj_rot(ob) * (360.f / 1024); xf = (int)(obj_flips(ob) << 2); }
     float rel = obx - cam_x;
     float fade = o->editor || (st_flags(st) & STF_DONT_FADE) ? 1 : rel < 0 || rel > VIEW_W ? 0 : rel < FADE_W ? rel / FADE_W : rel > VIEW_W - FADE_W ? (VIEW_W - rel) / FADE_W : 1;
+#if ND_EXTRA_LEVELS
+    if (X && g->fade_effect == FADE_NONE && fade > 0) fade = 1;   /* no enter effect, no fading */
+#endif
     if (fade <= 0) continue;
     float offx = 0, offy = 0, sc = 1;
     if (fade < 1 && !(st_flags(st) & STF_DONT_ENTER)) {
@@ -606,6 +615,15 @@ void scene_prepare(const Game *g, const SceneOpts *o) {
       if (!(pu->flags & 4)) base = pal_dyn(g, base, DYN_PULSE + gpulse);
       if (!(pu->flags & 2)) detail = pal_dyn(g, detail, DYN_PULSE + gpulse);
     }
+#if ND_EXTRA_LEVELS
+    if (ob->type == OT_TEXT) {
+      /* GD's big font is about 20 units high at scale 1, as ours is at 13 px */
+      if (X && X->texts && (unsigned)st->arg < X->ntexts)
+        push((wx - cam_x) * PX, 240 - (GROUND_OFFSET + wy - g->cam_y) * PX, st->arg, xf, base, detail, alpha * pal[base].a / 255,
+             st_zlayer(st) ? ZMAP[st_zlayer(st)] : LAYER_DETAIL, K_TEXT, (int)(sc * osc * 256), (int)(angle * 16));
+      continue;
+    }
+#endif
     for (int k = 0; k < d->nparts; k++) {
       const ObjPart *pt = OBJ_PART(d, k);
       if (o->low_detail && pt->ctype >= CT_GLOW && pt->ctype <= CT_GLOW_P) continue;
@@ -970,6 +988,16 @@ void scene_draw(void) {
     int kind = it->kind & 0x7f;
     if (kind == K_PLAYER) { draw_player(); continue; }
     if (kind == K_PROG) { draw_prog(it); continue; }
+#if ND_EXTRA_LEVELS
+    if (kind == K_TEXT) {
+      color_t c;
+      int mode;
+      unsigned pa;
+      pal_for(it->ct, false, &c, &mode, &pa);
+      gfx_text_ex(FONT_BIG, it->x * .25f, it->y * .25f, G->L->ext->texts[it->spr], it->scale, (it->xf & 3) * 90 * 16 + it->angle, c, it->alpha + 1u);
+      continue;
+    }
+#endif
     const Sprite *s = sprite_def(it->spr);
     int ext = (s->w > s->h ? s->w : s->h) * (it->scale > 256 ? it->scale : 256) / 256 + 2;
     if (kind == K_QUAD) ext *= 2;
@@ -1003,6 +1031,13 @@ void scene_draw(void) {
     scene_ground(g1_col, line_col, G->ground_x, ceil_bottom, true, true);
   }
   fx_draw();
+#if ND_EXTRA_LEVELS
+  /* a mirror portal's flip: the view turns over about its centre (the hud stays) */
+  if (G->mirror_t > 0 && !O.editor) {
+    float hs = cosf(G->mirror_t * 3.14159265f);
+    gfx_hscale_rows(fabsf(hs) < .01f ? (hs < 0 ? -.01f : .01f) : hs, bg_col);
+  }
+#endif
   draw_hud();
   if (O.fade > 0) gfx_scale_rect(0, 0, GFX_W, GFX_H, (unsigned)((1 - O.fade) * 256));
 }

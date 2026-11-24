@@ -938,10 +938,25 @@ static void special(Game *g, unsigned i, const RObj *o, bool hold, float ox, flo
       const LStyle *st = obj_style(g->L, o);
       int off = st->arg & 0x7ff;   /* the offset: 11 bits, signed */
       if (off & 0x400) off -= 0x800;
+      unsigned force = ((unsigned)(uint16_t)st->arg >> 11) & 31;
+#if ND_EXTRA_LEVELS
+      if (st_flags(st) & STF_TPWIDE) { off = st->arg; force = 0; }
+      if (g->L->ext->lflags & LF_TPAXIS) {
+        /* the exit is the offset along the portal's own up (turned clockwise, flipped): a level
+           portal sets the height to the exit's, a turned one moves the player along its axis */
+        float a = obj_rot(o) * (6.2831853f / 1024), fo = (obj_flips(o) & 2) ? -(float)off : (float)off;
+        float dxw = fo * sinf(a), dyw = fo * cosf(a), X, Y, oX, oY;
+        to_world(g, p->x, p->y, &X, &Y);
+        to_world(g, ox, oy, &oX, &oY);
+        if (fabsf(dxw) < .5f) Y = oY + dyw;
+        else { X += dxw; Y += dyw; }
+        to_local(g, X, Y, &p->x, &p->y);
+      } else
+#endif
       p->y = oy + (float)off;
       p->has_snap = false;
       p->left_ground = true;
-      teleported(g, st, ((unsigned)(uint16_t)st->arg >> 11) & 31);
+      teleported(g, st, force);
       fx(g, FX_PORTAL, 8, (int)i, ox, oy);
       break;
     }
@@ -1033,6 +1048,14 @@ static void special(Game *g, unsigned i, const RObj *o, bool hold, float ox, flo
     case SP_STOP_DASH:
       p->dash = false;
       break;
+#if ND_EXTRA_LEVELS
+    case SP_MIRROR_ON: case SP_MIRROR_OFF:
+      if (used) break;
+      set_used(g, i);
+      if (g->mirror != (d->special == SP_MIRROR_ON)) fx(g, FX_PORTAL, 0, (int)i, ox, oy);
+      g->mirror = d->special == SP_MIRROR_ON;
+      break;
+#endif
     case SP_ARM_HEAD: p->arm_head = 2; break;
     case SP_ARM_FLIP: p->arm_flip = 2; break;
     case SP_ARM_NOAUTO: p->arm_noauto = 2; break;
@@ -1870,6 +1893,12 @@ static bool reads_late(const Player *p) { (void)p; return false; }
 
 void game_step(Game *g, bool hold) {
   if (g->dead || g->complete) return;
+#if ND_EXTRA_LEVELS
+  if (g->no_input) hold = false;
+  /* the mirror flips over half a second */
+  float mt = g->mirror ? 1 : 0;
+  if (g->mirror_t != mt) g->mirror_t = g->mirror_t < mt ? fminf(mt, g->mirror_t + ND_DT * 2) : fmaxf(mt, g->mirror_t - ND_DT * 2);
+#endif
   bool pressed = hold && !g->hold_prev, pressed_late = g->hold_prev && !g->hold_prev2;
   float x0 = g->p.x;
   g->tick++;
@@ -1924,6 +1953,9 @@ void game_save_checkpoint(const Game *g, Checkpoint *c) {
   c->p2_mode = q->mode;
   c->p2_flags = (uint8_t)(q->upside | q->mini << 1 | q->on_ground << 2 | q->on_ceiling << 3 | q->second << 4);
   c->p2_y = q->y; c->p2_vy = q->vy; c->p2_rot = q->rot;
+#if ND_EXTRA_LEVELS
+  c->mirror = g->mirror;
+#endif
 }
 
 /* Replays a 2.0 level's triggers for the first `ticks` ticks of the run,
@@ -1990,6 +2022,10 @@ void game_load_checkpoint(Game *g, const Checkpoint *c) {
   memcpy(g->touch_done, c->touch_done, sizeof(g->touch_done));
   g->coins = coins;
   g->dist = c->dist;
+#if ND_EXTRA_LEVELS
+  g->mirror = c->mirror;
+  g->mirror_t = c->mirror ? 1 : 0;
+#endif
   /* Objects behind the checkpoint can no longer be reached; they count as
    * used so coins and pads there do not fire again (in world x, so only
    * when the travel has not turned). */

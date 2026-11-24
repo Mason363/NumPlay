@@ -235,6 +235,9 @@ void trig_start(Game *g) {
   g->cam_static = 0;
   g->cam_off_x = g->cam_off_y = 0;
   g->end_trig = false;
+#if ND_EXTRA_LEVELS
+  g->no_input = false;
+#endif
   for (unsigned c = 0; c < TRIG_CHANNELS; c++) chan_rewind(g, c);
 }
 
@@ -465,6 +468,9 @@ static void fire(Game *g, unsigned kind, bool apply, unsigned src) {
       break;
     }
     case TR_END: if (apply) g->end_trig = true; break;
+#if ND_EXTRA_LEVELS
+    case TR_OPTIONS: { unsigned v = *rp++; if (apply && v) g->no_input = v == 1; break; }   /* (controls off or back on) */
+#endif
     case TR_TIMEWARP: { unsigned m = *rp++; if (apply) g->time_mod = m / 100.f; break; }
     case TR_SHAKE: {
       unsigned st = *rp++, dur = rv();

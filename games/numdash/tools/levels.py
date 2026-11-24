@@ -39,7 +39,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'tools'))
 from share import share  # noqa: E402
 
 GD3DS = 'https://github.com/AleFunky/gd3ds/tree/cdea1c2fad3d67fa17d2cfa781013b0ee58bb280/romfs/main_levels'
-GMDKIT = 'https://github.com/UHDanke/gmdkit/tree/ec79468588c6beb46712fbdc142bb06fa9a1d9c5/data/txt/object_string/official/main'
+GMDKIT_OFF = 'https://github.com/UHDanke/gmdkit/tree/ec79468588c6beb46712fbdc142bb06fa9a1d9c5/data/txt/object_string/official'
+GMDKIT = GMDKIT_OFF + '/main'
 # file, title, difficulty (1 easy .. 5 insane, 6 demon), stars, pulse bpm, source
 LEVELS = [
     ('StereoMadness', 'STEREO MADNESS', 1, 1, 160, GD3DS),
@@ -54,7 +55,15 @@ LEVELS = [
     ('Clubstep', 'CLUBSTEP', 6, 14, 128, GMDKIT + '/14.txt'),
     ('Deadlocked', 'DEADLOCKED', 6, 15, 130, GMDKIT + '/20.txt'),
     ('Dash', 'DASH', 5, 12, 128, GMDKIT + '/22.txt'),
+    # Geometry Dash Meltdown and SubZero: only in NumDash.nwa (ND_EXTRA_LEVELS). (SubZero's Press
+    # Start and Power Trip turn the travel back with arrow, touch and channel triggers NumDash
+    # can't follow: no route gets past their turns.)
+    ('SevenSeas', 'THE SEVEN SEAS', 1, 1, 140, GMDKIT_OFF + '/meltdown/1001.txt'),
+    ('VikingArena', 'VIKING ARENA', 2, 2, 135, GMDKIT_OFF + '/meltdown/1002.txt'),
+    ('AirborneRobots', 'AIRBORNE ROBOTS', 3, 3, 100, GMDKIT_OFF + '/meltdown/1003.txt'),
+    ('NockEm', 'NOCK EM', 3, 6, 125, GMDKIT_OFF + '/subzero/4002.txt'),
 ]
+BASE = 12           # the levels NumPlay's NumDash has; the others only build with ND_EXTRA_LEVELS
 LEGACY = 9          # levels compiled exactly as before (integer positions, x order)
 CHUNK_OBJS = int(os.environ.get('ND_CHUNK_OBJS', 360))    # objects per chunk at most
 CHUNK_LEGACY = 1000 # objects per legacy chunk
@@ -107,7 +116,7 @@ def compile_legacy(path):
             events.append((x, y, od.EV_TRAIL, od.TRAIL_TRIGGERS[gid], 0, 0, 0, 0, 0, order))
             continue
         t = od.BY_ID.get(gid)
-        if not t:
+        if not t or gid in od.EXTRA_IDS:
             skipped[gid] += 1
             continue
         rot = int(round(float(d.get('6', 0)) / 90)) % 4
@@ -128,7 +137,12 @@ TRIG_IDS = {899, 901, 1006, 1007, 1049, 1268, 1616, 1346, 1347, 1611, 1817, 3620
             1914, 1913, 1916} | set(LEGACY_CH)
 # trigger stream kinds (level.h)
 (TR_COLOR, TR_MOVE, TR_ALPHA, TR_TOGGLE, TR_PULSE, TR_FADE, TR_TRAIL, TR_SPAWN, TR_STOP, TR_ROTATE, TR_FOLLOW, TR_COUNT,
- TR_PICKUP, TR_COMPARE, TR_COLLISION, TR_TAP, TR_GROT, TR_END, TR_TIMEWARP, TR_SHAKE, TR_CAMERA) = range(1, 22)
+ TR_PICKUP, TR_COMPARE, TR_COLLISION, TR_TAP, TR_GROT, TR_END, TR_TIMEWARP, TR_SHAKE, TR_CAMERA,
+ TR_OPTIONS) = range(1, 23)
+# Meltdown's and SubZero's levels only (ND_EXTRA_LEVELS): the options trigger
+# (controls off) and the no-fade enter effect
+EXTRA_TRIG = {2899, 1915}
+FADE_NONE = 12
 CAM_STATIC, CAM_ZOOM, CAM_OFFSET = range(3)
 NCHANNELS = 16
 # Levels whose travel turns: how far the player goes (forward, in units) from
@@ -177,6 +191,12 @@ class Level2:
         self.gset_data = [0]
         self.groups = {}                        # GD group id -> dense
         self.scales = {(1000, 1000): 0}
+        self.texts = []
+
+    def text(self, s):
+        if s not in self.texts:
+            self.texts.append(s)
+        return self.texts.index(s)
 
     def preseed(self, raw):
         """Channels that colour triggers change come first (after the fixed
@@ -287,9 +307,10 @@ class Level2:
         return rows
 
 
-def compile_new(path, od_extra=None):
-    """Levels 10-12: exact positions (1/32 unit), any rotation, 2.0 features:
-    colour channels, groups and group triggers."""
+def compile_new(path, is_extra=False):
+    """Levels 10-12 (and with `extra` Meltdown's and SubZero's): exact
+    positions (1/32 unit), any rotation, 2.0 features: colour channels,
+    groups and group triggers."""
     header, colors, raw = decode(path)
     L2 = Level2(decode_header_raw(path))
     L2.preseed(raw)
@@ -350,8 +371,8 @@ def compile_new(path, od_extra=None):
         groups = [g for g in groups if g in used_groups]
         gs = L2.gset([L2.group(g) for g in groups]) if groups else 0
         touch = d.get('11') == '1'
-        if gid in TRIG_IDS or gid in od.FADE_TRIGGERS or gid in od.TRAIL_TRIGGERS:
-            t = compile_trigger(L2, gid, d)
+        if gid in TRIG_IDS or gid in od.FADE_TRIGGERS or gid in od.TRAIL_TRIGGERS or (is_extra and gid in EXTRA_TRIG):
+            t = compile_trigger(L2, gid, d, is_extra)
             if t is None:
                 skipped[gid] += 1
                 continue
@@ -365,11 +386,17 @@ def compile_new(path, od_extra=None):
             if touch:
                 # the trigger fires when the player touches its 30 x 30 box
                 st = L2.style(-1, -1, 0, 0, gs, len(otrig) - 1)
+                # (Meltdown's and SubZero's: a scaled trigger's box is scaled too, as in GD)
+                tsc = 0
+                if is_extra:
+                    sc0 = float(d.get('32', 1) or 1)
+                    tsx, tsy = sc0 * float(d.get('128', 1) or 1), sc0 * float(d.get('129', 1) or 1)
+                    tsc = L2.scale(tsx, tsy) if (tsx, tsy) != (1, 1) else 0
                 objects.append(dict(x=int(round(x * Q)), y=int(round(y * Q)), t=od.INDEX['TOUCH'], rot=0, flips=0,
-                                    scale=0, paint=st, order=order, ext=0))
+                                    scale=tsc, paint=st, order=order, ext=0, sx=max(abs(tsx), abs(tsy)) if tsc else 1.0))
             continue
         t = od.BY_ID.get(gid)
-        if not t:
+        if not t or (not is_extra and gid in od.EXTRA_IDS):
             skipped[gid] += 1
             continue
         info = od.OBJECTS[t - 1]
@@ -395,10 +422,15 @@ def compile_new(path, od_extra=None):
         tp_force = min(31, int(round(float(d.get('346', 0) or 0)))) if d.get('345') == '1' else 0
         if gid == 747:
             off = int(round(float(d.get('54', 0) or 0)))
-            assert -1024 <= off < 1024, 'teleport offset out of range'
-            arg = (off & 0x7ff) | (tp_force << 11)
-            if arg >= 0x8000:
-                arg -= 0x10000
+            if -1024 <= off < 1024:
+                arg = (off & 0x7ff) | (tp_force << 11)
+                if arg >= 0x8000:
+                    arg -= 0x10000
+            else:
+                # (Meltdown's and SubZero's) a longer jump, no force: the whole arg (style flag 128)
+                assert not tp_force and -32768 <= off < 32768, 'teleport offset out of range'
+                arg = off
+                flags |= 128
         elif gid in (1594, 2902) and I(d, '51') in used_groups:
             # toggle ring: the group, bit 14 = switch it on; teleport: its exit
             arg = L2.group(I(d, '51')) | (0x4000 if d.get('56') == '1' and gid == 1594 else 0)
@@ -409,6 +441,10 @@ def compile_new(path, od_extra=None):
             arg = min(4095, int(round(float(d.get('149', 1) or 1) * 100))) | (min(7, I(d, '530')) << 12)
         elif gid == 1816:
             arg = I(d, '80')
+        elif gid == 914:
+            # a text object: its string (base64) in the level's text table
+            txt = base64.urlsafe_b64decode(d.get('31', '') + '=' * (-len(d.get('31', '')) % 4)).decode('latin-1')
+            arg = L2.text(''.join(ch if 32 <= ord(ch) < 127 else '?' for ch in txt))
         if d.get('121') == '1':
             flags |= 8   # no touch
         if gid in (747, 2902):
@@ -483,13 +519,15 @@ def compile_new(path, od_extra=None):
     return header, colors, objects, events, skipped, L2, bytes(stream), touch_offs, npos + len(strig), trig_info
 
 
-def compile_trigger(L2, gid, d):
+def compile_trigger(L2, gid, d, extra=False):
     """-> dict describing one trigger, or None when NumDash drops it."""
     f = lambda k, dv=0.0: float(d.get(k, dv) or dv)
     i = lambda k, dv=0: int(float(d.get(k, dv) or dv))
     ms = lambda k: max(0, int(round(f(k) * 1000)))
     if gid in od.FADE_TRIGGERS:
         return dict(kind=TR_FADE, arg=od.FADE_TRIGGERS[gid])
+    if extra and gid == 1915:
+        return dict(kind=TR_FADE, arg=FADE_NONE)
     if gid in od.TRAIL_TRIGGERS:
         return dict(kind=TR_TRAIL, arg=od.TRAIL_TRIGGERS[gid])
     if gid in LEGACY_CH or gid == 899:
@@ -547,6 +585,9 @@ def compile_trigger(L2, gid, d):
         return dict(kind=TR_GROT, travel=i('167'), gravity=i('166'), flags=fl, chan=i('173'), vmod=int(round(f('583') * 100)))
     if gid == 3600:
         return dict(kind=TR_END)
+    if extra and gid == 2899:
+        v = i('165') or i('199')
+        return dict(kind=TR_OPTIONS, arg=1 if v > 0 else 2 if v < 0 else 0)
     if gid == 1935:
         return dict(kind=TR_TIMEWARP, mod=max(1, min(255, int(round(f('120', 1) * 100)))))
     if gid == 1520:
@@ -633,6 +674,8 @@ def encode_trigger(t, gs):
         out.append(t['strength']); varint(t['dur'], out)
     elif k == TR_CAMERA:
         out.append(t['cam']); svarint(t['a'], out); svarint(t['b'], out); out.append(t['c']); varint(t['dur'], out)
+    elif k == TR_OPTIONS:
+        out.append(t['arg'])
     elif k == TR_PULSE:
         varint(t['target'], out)
         out += bytes([*t['rgb'], t['flags']])
@@ -865,7 +908,11 @@ def emit_objdefs():
          '#include <stdint.h>', 'enum {', '  OT_NONE = 0,']
     for i, o in enumerate(od.OBJECTS):
         h.append('  OT_%s = %d,' % (o[0], i + 1))
+    h.append('#if ND_EXTRA_LEVELS')
     h.append('  OT_COUNT = %d,' % (len(od.OBJECTS) + 1))
+    h.append('#else')
+    h.append('  OT_COUNT = %d,' % od.EXTRA_FIRST)
+    h.append('#endif')
     h.append('  OT_LOBJ = %d    /* types an 8-bit LObj (custom level) can hold */' % od.LOBJ_TYPES)
     h.append('};')
     h.append('enum { HIT_NONE, HIT_SOLID, HIT_HAZARD, HIT_SPECIAL };')
@@ -901,13 +948,22 @@ def emit_objdefs():
     for pname, ops in od.TILE_PROGS.items():
         prog_index[pname] = len(progs) + 1
         progs.append(od.encode_prog(ops))
-    prog_bytes, prog_off = share(progs)
-    prog_off = [prog_off[0] if prog_off else 0] + prog_off
-    c.append('const uint8_t tile_prog_data[%d] = {%s};' % (max(1, len(prog_bytes)), ','.join(str(b) for b in prog_bytes) or '0'))
-    c.append('const uint16_t tile_prog_off[%d] = {%s};' % (len(prog_off), ','.join(str(v) for v in prog_off)))
+    # (NumPlay's NumDash leaves out Meltdown's and SubZero's, the last ones)
+    nbase = len(progs) - (len(od.objdefs_dl.PROGS) - od.N_PROGS_BASE)
+    for k, sel in enumerate((progs, progs[:nbase])):
+        c.append(('#if ND_EXTRA_LEVELS', '#else')[k])
+        prog_bytes, prog_off = share(sel)
+        prog_off = [prog_off[0] if prog_off else 0] + prog_off
+        c.append('const uint8_t tile_prog_data[%d] = {%s};' % (max(1, len(prog_bytes)), ','.join(str(b) for b in prog_bytes) or '0'))
+        c.append('const uint16_t tile_prog_off[%d] = {%s};' % (len(prog_off), ','.join(str(v) for v in prog_off)))
+    c.append('#endif')
     c += ['const ObjDef objdefs[OT_COUNT] = {', '  {0,0,0,0,0,0,0,0,0,0,0,0,0},']
     parts_out = []
-    for o in od.OBJECTS:
+    base_parts = 0
+    for t, o in enumerate(od.OBJECTS, 1):
+        if t == od.EXTRA_FIRST:
+            c.append('#if ND_EXTRA_LEVELS')
+            base_parts = len(parts_out)
         name, ids, hit, w, hh, sp, edy, parts = o[:8]
         extra = o[8] if len(o) > 8 else {}
         first = len(parts_out)
@@ -924,10 +980,15 @@ def emit_objdefs():
         c.append('  {%d,%d,SP_%s,%d,%d,%d,%d,%d,SHAPE_%s,%d,%d,%d,%d},' % (
             ids[0] if ids else 0, hit, sp, int(round(w * 10)), int(round(hh * 10)), edy, len(parts), first,
             extra.get('shape', 'BOX'), od.ANIM[extra.get('anim', 'NONE')], dbase, ddetail, int(round(extra.get('hx', 0) * 2))))
+    c.append('#endif')
     c.append('};')
     c.append('const ObjPart objparts[] = {')
-    for i in range(0, len(parts_out), 4):
+    for i in range(0, base_parts, 4):
+        c.append('  ' + ','.join(parts_out[i:min(i + 4, base_parts)]) + ',')
+    c.append('#if ND_EXTRA_LEVELS')
+    for i in range(base_parts, len(parts_out), 4):
         c.append('  ' + ','.join(parts_out[i:i + 4]) + ',')
+    c.append('#endif')
     c.append('};')
     c.append('const uint8_t editor_types[EDITOR_TYPES] = {' + ','.join('OT_' + n for n in od.EDITOR) + '};')
     (ROOT / 'src/objdefs.c').write_text('\n'.join(c) + '\n')
@@ -935,19 +996,23 @@ def emit_objdefs():
 
 def main():
     emit_objdefs()
-    out = ['/* Generated by tools/levels.py from levels/reference. Do not edit. */', '#include "level.h"']
+    out = ['/* Generated by tools/levels.py from levels/reference. Do not edit. */', '#include "level.h"',
+           '#if ND_EXTRA_LEVELS', '#define NO_TEXTS ,NULL,0', '#else', '#define NO_TEXTS', '#endif']
     table, manifest = [], []
     total_z = 0
-    max_window = 0
-    all_chunks = 0
+    max_window = [0, 0]     # NumPlay's levels, all of them
+    all_chunks = [0, 0]
     for i, (fname, title, diff, stars, bpm, source) in enumerate(LEVELS):
+        if i == BASE:
+            out.append('#if ND_EXTRA_LEVELS')
+            table.append('#if ND_EXTRA_LEVELS')
         path = ROOT / 'levels/reference' / (fname + '.gmd')
         legacy = i < LEGACY
         if legacy:
             header, colors, objects, events, skipped = compile_legacy(path)
             L2 = None
         else:
-            header, colors, objects, events, skipped, L2, trig, touch, npos, tinfo = compile_new(path)
+            header, colors, objects, events, skipped, L2, trig, touch, npos, tinfo = compile_new(path, i >= BASE)
             hdr_raw = decode_header_raw(path)
         chunks = cut_chunks(objects, legacy)
         blob = bytearray()
@@ -993,7 +1058,8 @@ def main():
                 if n > need:
                     worst = (cx, cy)
                 need = max(need, n)
-        max_window = max(max_window, need)
+        for k in range(0 if i < BASE else 1, 2):
+            max_window[k] = max(max_window[k], need)
         last_x = max(o['x'] for o in objects) // Q
         assert max(o['x'] for o in objects) * 32 // Q + 2048 * 32 < 1 << 21, 'level too long for RObj x'
         end_x = last_x + 330
@@ -1033,10 +1099,18 @@ def main():
             an = tinfo['anchors'] or [(0, 0)]
             out.append('static const int16_t level%d_anchors[%d][2] = {%s};' % (i, len(an), ','.join('{%d,%d}' % a for a in an)))
             ext2 = ('&(const LevelExt){level%d_chans,level%d_styles,level%d_gsets,level%d_scales,level%d_trig,level%d_touch,'
-                    'level%d_chan_off,level%d_chan_frame,level%d_spawn_first,level%d_spawn_list,level%d_anchors,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%du}') % (
+                    'level%d_chan_off,level%d_chan_frame,level%d_spawn_first,level%d_spawn_list,level%d_anchors,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%du') % (
                 i, i, i, i, i, i, i, i, i, i, i, len(rows_ch), L2.ndyn, len(st), len(L2.groups), len(sc), len(trig), len(touch),
-                int(header.get('kA6', 0) or 0), int(header.get('kA7', 0) or 0), 1 if str(hdr_raw.get('kA39', '0')) == '1' else 0,
+                int(header.get('kA6', 0) or 0), int(header.get('kA7', 0) or 0), (1 if str(hdr_raw.get('kA39', '0')) == '1' else 0) | (4 if i >= BASE else 0),
                 END_DIST.get(title, 0))
+            if L2.texts:
+                out.append('static const char *const level%d_texts[%d] = {%s};' % (i, len(L2.texts), ','.join(
+                    '"%s"' % t.replace('\\', '\\\\').replace('"', '\\"') for t in L2.texts)))
+                ext2 += ',level%d_texts,%d' % (i, len(L2.texts))
+                total_z += sum(len(t) + 5 for t in L2.texts)
+            else:
+                ext2 += ' NO_TEXTS'
+            ext2 += '}'
             print('  %d channels (%d dynamic), %d styles, %d groups, %d scales, %d triggers (%d bytes), %d touch' % (
                 len(rows_ch), L2.ndyn, len(st), len(L2.groups), len(sc), npos + len(touch), len(trig), len(touch)))
             total_z += len(trig) + len(rows_ch) * 14 + len(st) * 8 + len(L2.gset_data) * 2 + len(sc) * 8 + 80 + \
@@ -1062,15 +1136,26 @@ def main():
         if skipped:
             print('%s: skipped ids %s' % (title, dict(skipped)))
         print('%-16s %6d objects in %3d chunks, %6d bytes, window %d (%d chunks)' % (title, base, len(rows), len(blob), need, max_chunks))
-        all_chunks = max(all_chunks, max_chunks)
+        for k in range(0 if i < BASE else 1, 2):
+            all_chunks[k] = max(all_chunks[k], max_chunks)
+    if len(LEVELS) > BASE:
+        out.append('#endif')
+        table.append('#endif')
     out.append('const LevelDef level_defs[LEVEL_COUNT] = {')
     out += table
     out.append('};')
-    out.append('_Static_assert(WIN_CAP >= %d, "WIN_CAP (level.h) is below what the levels need at once");' % max_window)
-    out.append('_Static_assert(WIN_CHUNKS >= %d, "WIN_CHUNKS (level.h) is below what the levels need at once");' % all_chunks)
+    out.append('#if ND_EXTRA_LEVELS')
+    out.append('_Static_assert(LEVEL_COUNT == %d, "LEVEL_COUNT (level.h) is not the number of levels");' % len(LEVELS))
+    out.append('_Static_assert(WIN_CAP >= %d, "WIN_CAP (level.h) is below what the levels need at once");' % max_window[1])
+    out.append('_Static_assert(WIN_CHUNKS >= %d, "WIN_CHUNKS (level.h) is below what the levels need at once");' % all_chunks[1])
+    out.append('#else')
+    out.append('_Static_assert(LEVEL_COUNT == %d, "LEVEL_COUNT (level.h) is not the number of levels");' % BASE)
+    out.append('_Static_assert(WIN_CAP >= %d, "WIN_CAP (level.h) is below what the levels need at once");' % max_window[0])
+    out.append('_Static_assert(WIN_CHUNKS >= %d, "WIN_CHUNKS (level.h) is below what the levels need at once");' % all_chunks[0])
+    out.append('#endif')
     (ROOT / 'src/leveldata.c').write_text('\n'.join(out) + '\n')
     (ROOT / 'levels/manifest.json').write_text(json.dumps({'levels': manifest}, indent=2) + '\n')
-    print('levels: %d objects -> %d bytes, largest window %d objects' % (sum(m['objects'] for m in manifest), total_z, max_window))
+    print('levels: %d objects -> %d bytes, largest window %d objects' % (sum(m['objects'] for m in manifest), total_z, max_window[1]))
 
 
 if __name__ == '__main__':

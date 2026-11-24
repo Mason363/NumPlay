@@ -4,7 +4,7 @@
 
 **Geometry Dash on your NumWorks calculator.**
 
-NumDash is a fan-made version of Geometry Dash that runs right on a NumWorks graphing calculator. Jump over spikes, fly the ship, flip the ball, collect secret coins and try to beat twelve levels of the real game, from Stereo Madness to Clubstep, Deadlocked and Dash, all with the calculator's keys.
+NumDash is a fan-made version of Geometry Dash that runs right on a NumWorks graphing calculator. Jump over spikes, fly the ship, flip the ball, collect secret coins and try to beat sixteen levels of the real games, from Stereo Madness to Dash, plus The Seven Seas, Viking Arena, Airborne Robots and Nock Em from Geometry Dash Meltdown and SubZero, all with the calculator's keys.
 
 ### [⬇ Download NumDash.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumDash.nwa)
 
@@ -38,6 +38,12 @@ The two demons and the newest level come after Cycles, each with its 3 coins. Th
 <img src="docs/screenshots/clubstep.png" width="320" alt="Clubstep"> <img src="docs/screenshots/deadlocked.png" width="320" alt="Deadlocked">
 
 <img src="docs/screenshots/dash.png" width="320" alt="Dash"> <img src="docs/dash.gif" width="320" alt="The start of Dash: fire, pixel art and a turning level">
+
+### Meltdown and SubZero
+
+After Dash come The Seven Seas, Viking Arena and Airborne Robots from Geometry Dash Meltdown, and Nock Em from SubZero, with their coins, mirror portals, teleports and words written into the level.
+
+<img src="docs/screenshots/meltdown.png" width="320" alt="Airborne Robots"> <img src="docs/screenshots/subzero.png" width="320" alt="Nock Em">
 
 ### It plays like the original
 
@@ -78,17 +84,18 @@ The **?** button on the main menu shows these again. For the level editor, **KEY
 
 - **There is no music.** NumWorks calculators have no speaker. Objects still pulse to the beat of each song.
 - **Your old progress is kept.** If you played an older version of NumDash, your progress on the first four levels and your custom levels carry over.
+- **The Meltdown and SubZero levels are only in NumDash.nwa.** NumDash inside NumPlay has the first twelve. Both read the same save.
 - **It won't mess with your other files.** NumDash saves into a few small files of its own and never touches your Python scripts or anything else.
-- NumDash is a free fan project, inspired by Geometry Dash and not affiliated with RobTop Games. All the graphics were redrawn from scratch to look like the game.
+- NumDash is a free fan project, inspired by Geometry Dash, Geometry Dash Meltdown and Geometry Dash SubZero and not affiliated with RobTop Games. All the graphics were redrawn from scratch to look like the game.
 
 ## Thanks
 
-Inspired by Geometry Dash. Not affiliated with RobTop Games.
+Inspired by Geometry Dash, Geometry Dash Meltdown and Geometry Dash SubZero. Not affiliated with RobTop Games.
 
 - **[gd3ds](https://github.com/AleFunky/gd3ds)** by AleFunky and friends, a Geometry Dash remake for the Nintendo 3DS, whose research into how the game works made this possible.
 - **[gdsolver](https://github.com/gdsolver/gdsolver)** (MIT), whose measurements of Geometry Dash 2.2 shaped the newer game modes, triggers and turning levels.
 - **[GDRWeb](https://github.com/iliasHDZ/GDRWeb)** by IliasHDZ (MIT), a Geometry Dash level renderer, used to check the redrawn objects against the originals.
-- **[gmdkit](https://github.com/UHDanke/gmdkit)** by HDanke (MIT), where the level data of Clubstep, Deadlocked and Dash comes from.
+- **[gmdkit](https://github.com/UHDanke/gmdkit)** by HDanke (MIT), where the level data of Clubstep, Deadlocked, Dash and the Meltdown and SubZero levels comes from.
 - The **Rammetto One** and **Nunito** fonts, both free under the SIL Open Font License (see the [LICENSES](LICENSES) folder).
 
 Made by Mason Chen as part of NumPlay.

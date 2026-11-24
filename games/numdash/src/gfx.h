@@ -87,6 +87,14 @@ int gfx_format_uint(char *buf, unsigned long v);
 void gfx_layer_build(int font, const char *s);
 void gfx_layer_draw(int cx, int cy, int scale256, color_t top, color_t bottom, unsigned alpha);
 void gfx_layer_line_color(int line, color_t top, color_t bottom);
+#if ND_EXTRA_LEVELS
+/* Text centred on (cx, cy) px, scaled (1/256) and turned clockwise (1/16
+   degree), outlined in black: a level's text objects. */
+void gfx_text_ex(int font, float cx, float cy, const char *s, int scale256, int ang16, color_t c, unsigned alpha);
+/* Scales the current strip's rows by s about the screen's centre (-1: a
+   mirror image), filling what is left with `fill`. */
+void gfx_hscale_rows(float s, color_t fill);
+#endif
 /* Anti-aliased convex polygon, up to 8 vertices (x, y pairs in pixels). */
 void gfx_poly(const float *xy, int n, color_t c, unsigned alpha, int mode);
 #if NP_SOFT_FLOAT

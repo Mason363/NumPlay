@@ -31,22 +31,40 @@ void progress_defaults(Progress *p) {
 
 /* Layout version 1 used 12 bytes per level; version 2 drops the spare byte
    so that twelve levels and the custom slots fit the same 192 bytes. */
+#if ND_EXTRA_LEVELS
+/* NumDash.nwa's other levels keep their stats in numdash.ndx: numdash.nds
+   stays as NumPlay's NumDash writes it (its twelve levels, then the custom
+   slots), so either reads the other's saves. The last level played, as
+   numdash.nds holds it (0 for one of the other levels). */
+static uint8_t main_last(const Progress *p) {
+  unsigned l = p->last_level;
+  return (uint8_t)(l < LEVEL_BASE ? l : l >= LEVEL_COUNT ? l - LEVEL_COUNT + LEVEL_BASE : 0);
+}
+#endif
 void progress_encode(const Progress *p, uint8_t out[PROGRESS_BYTES]) {
-  _Static_assert(12 + LEVEL_SLOTS * 11 + 12 <= PROGRESS_BYTES, "progress record too small");
+  _Static_assert(12 + (LEVEL_BASE + CUSTOM_SLOTS) * 11 + 12 <= PROGRESS_BYTES, "progress record too small");
   memset(out, 0, PROGRESS_BYTES);
   memcpy(out, "NDS1", 4);
   out[8] = 2;
-  out[9] = LEVEL_COUNT;
+  out[9] = LEVEL_BASE;
   out[10] = CUSTOM_SLOTS;
   uint8_t *q = out + 12;
-  for (int i = 0; i < LEVEL_SLOTS; i++, q += 11) {
+  for (int i = 0; i < LEVEL_BASE + CUSTOM_SLOTS; i++, q += 11) {
+#if ND_EXTRA_LEVELS
+    const LevelStat *s = &p->lv[i < LEVEL_BASE ? i : i - LEVEL_BASE + LEVEL_COUNT];
+#else
     const LevelStat *s = &p->lv[i];
+#endif
     q[0] = s->normal; q[1] = s->practice; q[2] = s->coins;
     wr32(q + 3, s->attempts);
     wr32(q + 7, s->jumps);
   }
   wr32(q, p->attempts); wr32(q + 4, p->jumps);
+#if ND_EXTRA_LEVELS
+  q[8] = p->color1; q[9] = p->color2; q[10] = p->options; q[11] = main_last(p);
+#else
   q[8] = p->color1; q[9] = p->color2; q[10] = p->options; q[11] = p->last_level;
+#endif
   wr32(out + 4, nd_crc32(out + 8, PROGRESS_BYTES - 8));
 }
 
@@ -76,6 +94,48 @@ bool progress_decode(Progress *p, const uint8_t *in, size_t len) {
   p->last_level = q[11] < levels + CUSTOM_SLOTS ? (uint8_t)last : 0;
   return true;
 }
+
+#if ND_EXTRA_LEVELS
+/* numdash.ndx: "NDX1", CRC, version, level count, the last level byte of the
+   numdash.nds written with it and the last level played if it is one of
+   these, then 11 bytes per level as in numdash.nds. */
+void extra_encode(const Progress *p, uint8_t out[EXTRA_BYTES]) {
+  _Static_assert(12 + (LEVEL_COUNT - LEVEL_BASE) * 11 <= EXTRA_BYTES, "extra record too small");
+  memset(out, 0, EXTRA_BYTES);
+  memcpy(out, "NDX1", 4);
+  out[8] = 1;
+  out[9] = LEVEL_COUNT - LEVEL_BASE;
+  out[10] = main_last(p);
+  out[11] = p->last_level >= LEVEL_BASE && p->last_level < LEVEL_COUNT ? p->last_level : 0xff;
+  uint8_t *q = out + 12;
+  for (int i = LEVEL_BASE; i < LEVEL_COUNT; i++, q += 11) {
+    const LevelStat *s = &p->lv[i];
+    q[0] = s->normal; q[1] = s->practice; q[2] = s->coins;
+    wr32(q + 3, s->attempts);
+    wr32(q + 7, s->jumps);
+  }
+  wr32(out + 4, nd_crc32(out + 8, EXTRA_BYTES - 8));
+}
+
+bool extra_decode(Progress *p, const uint8_t *in, size_t len) {
+  if (len < EXTRA_BYTES || memcmp(in, "NDX1", 4) || rd32(in + 4) != nd_crc32(in + 8, EXTRA_BYTES - 8) || in[8] != 1 ||
+      12 + in[9] * 11 > EXTRA_BYTES) return false;
+  int n = in[9] < LEVEL_COUNT - LEVEL_BASE ? in[9] : LEVEL_COUNT - LEVEL_BASE;
+  const uint8_t *q = in + 12;
+  for (int i = 0; i < n; i++, q += 11)
+    if (q[0] > 100 || q[1] > 100 || q[2] > 7) return false;
+  q = in + 12;
+  for (int i = 0; i < n; i++, q += 11) {
+    LevelStat *s = &p->lv[LEVEL_BASE + i];
+    s->normal = q[0]; s->practice = q[1]; s->coins = q[2];
+    s->attempts = rd32(q + 3);
+    s->jumps = rd32(q + 7);
+  }
+  /* the last level played, unless NumPlay's NumDash has played another since */
+  if (in[11] >= LEVEL_BASE && in[11] < LEVEL_BASE + n && in[10] == main_last(p)) p->last_level = in[11];
+  return true;
+}
+#endif
 
 /* ------------------------------------------------------------ custom levels */
 
@@ -291,8 +351,16 @@ bool save_write_progress(const Progress *p) {
   uint8_t buf[PROGRESS_BYTES];
   progress_encode(p, buf);
   if (!a || !storage_put(a, size, "numdash.nds", buf, sizeof(buf), 1)) return false;
+#if ND_EXTRA_LEVELS
+  uint8_t ext[EXTRA_BYTES];
+  extra_encode(p, ext);
+  bool ok = storage_put(a, size, "numdash.ndx", ext, sizeof(ext), 1);
+  platform_storage_commit();
+  return ok;
+#else
   platform_storage_commit();
   return true;
+#endif
 }
 
 
@@ -321,6 +389,10 @@ bool save_load_all(Progress *p, CustomMeta metas[CUSTOM_SLOTS]) {
   const uint8_t *d = storage_read(a, size, "numdash.nds", &len);
   if (d) {
     bool ok = progress_decode(p, d, len);
+#if ND_EXTRA_LEVELS
+    const uint8_t *x = ok ? storage_read(a, size, "numdash.ndx", &len) : NULL;
+    if (x) extra_decode(p, x, len);
+#endif
     for (int s = 0; s < CUSTOM_SLOTS; s++) {
       CustomMeta m;
       if (save_read_custom(s, level_objs, CUSTOM_MAX, &m)) metas[s] = m;
