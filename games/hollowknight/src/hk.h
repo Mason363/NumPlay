@@ -60,6 +60,15 @@ static inline void zero_words(void *d, size_t n) {
   for (; n >= 16; n -= 16, dw += 4) dw[0] = dw[1] = dw[2] = dw[3] = 0;
   for (; n; n -= 4) *dw++ = 0;
 }
+/* (a big-endian calculator, the fx-CG50: a word read from 4 bytes, as a little-endian one has it, bit 8k + j bit j of
+ * byte k; and two 16-bit pixels in one word, the first one first in memory) */
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define LE_WORD(w) __builtin_bswap32(w)
+#define PX_PAIR(a, b) ((a) << 16 | (b))
+#else
+#define LE_WORD(w) (w)
+#define PX_PAIR(a, b) ((a) | (b) << 16)
+#endif
 void lz_decode(const uint8_t *src, uint32_t comp, uint8_t *dst, uint32_t raw);
 /* decoders' working memory (LZMA probabilities or the tile coder's), one at a time; on the calculator, on main's
  * stack (main.c) */

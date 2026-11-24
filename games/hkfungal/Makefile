@@ -18,6 +18,12 @@ PORT_ID = hkfungal
 PORT_NAME = Hollow Knight: Fungal Wastes
 PORT_SRC = $(addprefix $(HK)/,res.c tex.c room.c gfx.c phys.c anim.c hero.c camera.c game.c world.c obj.c enemy.c hud.c spell.c text.c npc.c title.c vm.c msg.c save.c death.c menu.c inv.c shop.c collect.c stag.c map.c lzma/LzmaDec.c plat_eadk.c main.c)
 PORT_ASM = $(HK)/data.S
-PORT_FLAGS = -DDATA_BIN='"$(HK)/data_fw.bin"' -DEPSILON_XL=1 -DHK_FW=1 -DNP_FILES_ID='"hollowknight"'
+# (on the Casio, as Hollow Knight's: the data big-endian)
+PORT_DATA = $(if $(filter casio-cg,$(TARGET)),build/casio-cg/data_fw_be.bin,$(HK)/data_fw.bin)
+PORT_DEPS = $(filter build/%,$(PORT_DATA))
+PORT_FLAGS = -DDATA_BIN='"$(PORT_DATA)"' -DEPSILON_XL=1 -DHK_FW=1 -DNP_FILES_ID='"hollowknight"'
 PORT_ICON = $(HK)/icon_fw.png
 include ../../platform/port.mk
+build/casio-cg/data_fw_be.bin: $(HK)/data_fw.bin ../hollowknight/tools/bigendian.py
+	@mkdir -p $(@D)
+	$(Q) python3 ../hollowknight/tools/bigendian.py $< $@

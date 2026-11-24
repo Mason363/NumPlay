@@ -267,6 +267,7 @@ static uint16_t tile_box(const uint8_t *px) {
   for (int y = 0; y < 16; y++) {
     uint32_t w[2];
     memcpy(w, px + y * 8, 8);
+    w[0] = LE_WORD(w[0]), w[1] = LE_WORD(w[1]);
     if (w[0] | w[1]) {
       if (y0 > y) y0 = y;
       y1 = y + 1, c0 |= w[0], c1 |= w[1];

@@ -201,7 +201,12 @@ static uint16_t rv(Rd *r) {
 static uint8_t rb(Rd *r) { return *r->p++; }
 static float rdf(const uint8_t *p) {
   float x;
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+  uint32_t u = rd32(p);   /* (a big-endian calculator, the fx-CG50: the scripts' floats are little-endian) */
+  memcpy(&x, &u, 4);
+#else
   memcpy(&x, p, 4);
+#endif
   return x;
 }
 

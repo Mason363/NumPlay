@@ -768,6 +768,7 @@ static void run_axis(const Ctx *c, int y, int a, int b, uint16_t *tp, int ty, in
     }
     uint32_t w2[2];
     memcpy(w2, t + vr * 8, 8);
+    w2[0] = LE_WORD(w2[0]), w2[1] = LE_WORD(w2[1]);
     if (!(w2[0] | w2[1])) {   /* (this row of the tile is clear) */
       x = e, p += n, u += du * n;
       continue;
@@ -1471,7 +1472,7 @@ __attribute__((always_inline)) static inline void out4(const Acc *A, uint16_t *O
   uint32_t p0 = to565(A[0].rb, A[0].gt & gm), p1 = to565(A[1].rb, A[1].gt & gm);
   uint32_t p2 = to565(A[2].rb, A[2].gt & gm), p3 = to565(A[3].rb, A[3].gt & gm);
   uint32_t *o = (uint32_t *)(void *)O;
-  o[0] = p0 | p1 << 16, o[1] = p2 | p3 << 16;
+  o[0] = PX_PAIR(p0, p1), o[1] = PX_PAIR(p2, p3);
 }
 
 /* a pixel over the background (bg: 0xRRGGBB) to 16 bits: red and blue in their lanes together */
@@ -1498,7 +1499,7 @@ static void row_out(const Acc *A, uint16_t *O, const uint32_t *bl) {
     uint32_t p0 = bg_px(A, lerp4(b0, b1, 160)), p1 = bg_px(A + 1, lerp4(b0, b1, 224));
     uint32_t p2 = bg_px(A + 2, lerp4(b1, b2, 32)), p3 = bg_px(A + 3, lerp4(b1, b2, 96));
     uint32_t *o = (uint32_t *)(void *)O;
-    o[0] = p0 | p1 << 16, o[1] = p2 | p3 << 16;
+    o[0] = PX_PAIR(p0, p1), o[1] = PX_PAIR(p2, p3);
   }
 }
 

@@ -26,6 +26,19 @@ static int room_variant(int id, uint16_t *lo, uint16_t *hi) {
   return id;
 }
 
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+/* (a big-endian calculator, the fx-CG50: the header and its sectors are packed little-endian; each number turned
+ * around, its size in bytes as the string has it) */
+static uint8_t *turn(uint8_t *p, const char *sizes) {
+  for (; *sizes; p += *sizes++ - '0')
+    for (int i = 0, k = *sizes - '0'; i < k / 2; i++) {
+      uint8_t c = p[i];
+      p[i] = p[k - 1 - i], p[k - 1 - i] = c;
+    }
+  return p;
+}
+#endif
+
 bool room_load(int id) {
   if (id < 0 || id >= NUM_ROOMS) return false;
   uint16_t lo, hi;
@@ -34,11 +47,17 @@ bool room_load(int id) {
   if (raw > sizeof hdr_ram) return false;
   lz_decode(section(SEC_RBLOB) + off, comp, (uint8_t *)hdr_ram, raw);
   RoomHdr *h = (RoomHdr *)hdr_ram;
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+  turn((uint8_t *)h, "22224444444444444422222244");
+#endif
   g_room.id = id;
   g_room.h = h;
   g_room.hide_lo = lo, g_room.hide_hi = hi;
   g_room.tints = (const uint8_t *)hdr_ram + sizeof(RoomHdr);
   g_room.secs = (const SectorRec *)((const uint8_t *)hdr_ram + ((sizeof(RoomHdr) + 4u * h->ntint + 3) & ~3u));
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+  for (int i = 0; i < h->nsec; i++) turn((uint8_t *)&g_room.secs[i], "442244");
+#endif
   g_room.nnear = 0;
   return true;
 }
