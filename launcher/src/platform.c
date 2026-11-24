@@ -1,4 +1,5 @@
 #include <eadk.h>
+#include <stdlib.h>
 #include "np.h"
 
 uint32_t np_keys(void) {
@@ -54,3 +55,35 @@ void *np_alloc(uint32_t size) {
   return p;
 }
 void np_alloc_reset(void) { alloc_pos = 0; }
+
+#if PLATFORM_DEVICE && !NP_SIMULATOR
+/* Report failed assertions without pulling Newlib's stderr/FILE buffers into
+ * the launcher RAM prefix. Assertions remain fatal; only reporting changes.
+ * Keep each message within the 320px screen (small firmware font, 7px/cell).
+ */
+static void assertion_line(const char *s, int y) {
+  char text[43];
+  unsigned n = 0;
+  if (s) {
+    while (n < sizeof(text) - 1 && s[n]) { text[n] = s[n]; n++; }
+  }
+  text[n] = 0;
+  eadk_display_draw_string(text, (eadk_point_t){8, (uint16_t)y}, false, 0xFFFF, 0);
+}
+
+__attribute__((noreturn))
+void __assert_func(const char *file, int line, const char *func, const char *expr) {
+  char number[12];
+  unsigned value = line > 0 ? (unsigned)line : 0;
+  unsigned pos = sizeof(number) - 1;
+  number[pos] = 0;
+  do { number[--pos] = '0' + value % 10; value /= 10; } while (value);
+  np_fill_screen(0, 0, SCREEN_W, SCREEN_H, 0);
+  assertion_line("Assertion failed", 12);
+  assertion_line(expr, 40);
+  assertion_line(file, 68);
+  assertion_line(number + pos, 86);
+  assertion_line(func, 104);
+  abort();
+}
+#endif
