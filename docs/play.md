@@ -7,7 +7,7 @@
 | **Left / Right** (or 4 / 6) | Pick a game |
 | **OK** or **EXE** (or 5) | Play |
 | **Back** | Leave a game's main menu to come back here. On the carousel, quit NumPlay |
-| **⌫** (backspace) | A moving background behind the carousel: Aurora, Sunset Drive, Plasma, Pastel, Lava Lamp, Ocean, then none again. NumPlay remembers it |
+| **⌫** (backspace) | A moving background behind the carousel, one of NumVisuals' 11: Aurora, Sunset Drive, Plasma, Pastel, Lava Lamp, Warp, Tunnel, Fire, Ocean, Bokeh, Code Rain, then none again. NumPlay remembers it |
 | **Home** | Quit, from anywhere |
 
 The last card, **Settings**, can:
