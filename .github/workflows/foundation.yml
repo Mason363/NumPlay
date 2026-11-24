@@ -1,8 +1,10 @@
-name: Foundation
+name: TwiliPlay N0120
 on:
   push:
-    branches: [foundation/v0.1.0]
+    branches: [main, foundation/v0.1.0]
     paths-ignore: ['docs/**']
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
