@@ -52,21 +52,21 @@ Brand: TwiliPlay / STARLIGHT EDITION. Tagline: A little magic in every game. Ori
 | Midnight Library | #101725 | #30354C | #9C91DD | #EEE4FF |
 
 Additional Starlight colors #7952A3 and #CBB4F6. Share rendering code and resources; verify RGB565 contrast. English default, French if budget permits.
-Required screens: fast skippable boot splash; home with selected game preview/title/category/favorite/launch hint/index; scrollable library of 18 games; persistent favorites with empty state; settings for themes, optional animations and supported performance modes/FPS diagnostics; information with version, device, count, credits and measured build size. Only show real storage/battery information if supported, otherwise label build-time figures or omit. Use physical arrows, OK, Back and documented shortcuts. Optional subtle procedural stars, event-driven static menu, bounded animations disabled in performance mode. No touchscreen assumptions.
+Required screens: fast skippable boot splash; home with selected game preview/title/category/launch hint/index; scrollable library of 18 games; settings for themes, optional animations and supported performance modes/FPS diagnostics; information with version, device, count, credits and measured build size. Only show real storage/battery information if supported, otherwise label build-time figures or omit. Use physical arrows, OK, Back and documented shortcuts. Optional subtle procedural stars, event-driven static menu, bounded animations disabled in performance mode. No touchscreen assumptions.
 
 ## Performance and Rust
 Profile first. Prioritize NumBlocks rendering/memory, NumDrive physics/rendering, NumDash responsiveness, Chess search and Suika collisions. Preserve gameplay speed, input, physics, difficulty, visuals and saves. Explore clipping, batching, dirty regions, layout, compiler options and fixed-point math only when justified. Compare identical workloads and output. Avoid blanket fast-math.
 Use no_std Rust, compatible ARM ABI, panic=abort, LTO and appropriate size optimization. Keep unsafe/FFI small and documented; validate alignment, lengths, ownership and pointers. No unwinding across C ABI or duplicate allocators/runtime. Retain EADK ABI and .nwa relocations. Keep C where it performs better. Performance/Balanced/Quality controls only for tested supported options; never promise FPS or battery gains without measurements.
 
 ## Tests and release gates
-Inspect and run applicable upstream make check, simulator/emulator and test targets. Add catalogue filtering, navigation, theme/favorite persistence, bounded memory and module launch/return tests. Use host sanitizers where appropriate. Report revision, toolchain, commands, firmware assumptions, launcher/per-game/total installed flash, RAM and stack/heap assumptions, comparable timings, tests passed/failed/not run, artifact path and blockers. Clearly distinguish emulator from physical results. Owner tests actual N0120: installation, splash, navigation, all 18 games, saves, settings, returning to launcher, stability and FPS. Never claim physical validation until reported. Never require a factory reset.
+Inspect and run applicable upstream make check, simulator/emulator and test targets. Add catalogue filtering, navigation, theme persistence, bounded memory and module launch/return tests. Use host sanitizers where appropriate. Report revision, toolchain, commands, firmware assumptions, launcher/per-game/total installed flash, RAM and stack/heap assumptions, comparable timings, tests passed/failed/not run, artifact path and blockers. Clearly distinguish emulator from physical results. Owner tests actual N0120: installation, splash, navigation, all 18 games, saves, settings, returning to launcher, stability and FPS. Never claim physical validation until reported. Never require a factory reset.
 
 ## GitHub workflow and roadmap
 - v0.1.0 Foundation: baseline, allowlist, reproducible build and size report.
 - v0.2.0 Starlight: new launcher and three themes.
 - v0.3.0 Rust Core: incremental proven integration.
 - v0.4.0 Performance: measured game optimization.
-- v0.5.0 Polish: favorites, effects, diagnostics and documentation.
+- v0.5.0 Polish: effects, diagnostics and documentation.
 - v1.0.0 Release: acceptance criteria and owner hardware validation.
 Use focused commits/branches, changelog, CI build/check/size reporting and downloadable artifacts. Preserve GPL-3.0 and individual game/asset notices, credit Mason363 and contributors, distribute corresponding source and build instructions. No implied affiliation with Hasbro, Team Salvato or NumWorks. Verify rights for new assets. Defer web studio until personal edition stable.
 
