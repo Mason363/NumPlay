@@ -799,10 +799,10 @@ CHECKS = {
     "amongus": (lambda v: v[:4] == b"AUSG" and v[4] == 1,) * 2,
     # "IMPS", version 1: the players and the round; after the reinstall, from the copy, the same
     "imposter": (lambda v: v[:4] == b"IMPS" and v[4] == 1,) * 2,
-    # "FOUR", version 1, its size (188): 4 players (5), Sumo (6), first to 3 (7); after the reinstall, from the copy,
-    # Down chose 2 v 2
-    "fourplayer": (lambda v: len(v) == 188 and v[:4] == b"FOUR" and v[4:8] == bytes([1, 2, 0, 3]),
-                   lambda v: len(v) == 188 and v[:4] == b"FOUR" and v[4:8] == bytes([1, 3, 0, 3])),
+    # "FOUR", version 2, its size (192): 4 players (5), Sumo (6), first to 3 (7), no computer players (188); after the
+    # reinstall, from the copy, Down chose 2 v 2
+    "fourplayer": (lambda v: len(v) == 192 and v[:4] == b"FOUR" and v[4:8] == bytes([2, 2, 0, 3]) and v[188] == 0,
+                   lambda v: len(v) == 192 and v[:4] == b"FOUR" and v[4:8] == bytes([2, 3, 0, 3]) and v[188] == 0),
     # "COOS", version 1, its size (104): levels 1 and 2 open in both modes; after the reinstall, from the copy, the same
     "circloo": (lambda v: len(v) == 112 and v[:8] == b"COOS\x01\x00\x68\x00" and v[8:10] == bytes([2, 2]),) * 2,
     "breakout": (lambda v: len(v) == 12 and v[:2] == b"B\2" and v[4] == 1 and struct.unpack_from("<I", v, 8)[0] >= 10,
