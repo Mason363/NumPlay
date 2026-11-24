@@ -5,6 +5,7 @@
 #include "sys.h"
 #include "ui.h"
 #include "theme.h"
+#include "live.h"
 #include "../../games/common/np_text.h"
 
 #define BG_TOP 0x3B4252
@@ -31,10 +32,10 @@ static char *fmt_kb(char *out, uint32_t bytes) {
 }
 
 /* ---------------------------------------------------------------- list */
-enum { ROW_GAME, ROW_RESET_ALL, ROW_DISGUISE, ROW_SECRET, ROW_HINT, ROW_THEME };
+enum { ROW_GAME, ROW_RESET_ALL, ROW_DISGUISE, ROW_SECRET, ROW_HINT, ROW_THEME, ROW_BG, ROW_INFO };
 typedef struct {
   int n, sel, top, action; /* action: on a game, 0 Reset, 1 Uninstall */
-  int8_t kind[NP_MAX_GAMES + 2], game[NP_MAX_GAMES + 2];
+  int8_t kind[NP_MAX_GAMES + 4], game[NP_MAX_GAMES + 4];
   int ngames;
   np_config_t cfg;
   float cursor;       /* animated selection */
@@ -47,6 +48,8 @@ static const char *const secret_names[NP_SECRET_COUNT] = {T("x,n,t key"), T("var
 static void build_rows(list_t *l) {
   l->n = l->ngames = 0;
   l->kind[l->n++] = ROW_THEME;
+  l->kind[l->n++] = ROW_BG;
+  l->kind[l->n++] = ROW_INFO;
   for (int i = 0; i < np_game_count; i++)
     if (np_game_installed(i)) l->kind[l->n] = ROW_GAME, l->game[l->n++] = (int8_t)i, l->ngames++;
   l->kind[l->n++] = ROW_RESET_ALL;
@@ -93,10 +96,10 @@ static void list_scene(void *ctx) {
     gfx_icon(&np_icon_back, 14, 17, tx, 200);
     gfx_text(&np_font_title, 36, 30, T("Settings"), tx, 256);
     uint32_t total = 0;
-    for (int i = 0; i < l->ngames; i++) total += np_game_size(l->game[i+1]);
+    for (int i = 0; i < l->ngames; i++) total += np_game_size(l->game[i+3]);
     char kb[16];
     if (l->ngames) {
-      gfx_text_right(&np_font_small, SCREEN_W - 14, 20, T("INSTALLED GAMES"), tx, 150);
+      gfx_text_right(&np_font_small, SCREEN_W - 14, 20, T("GAME STORAGE"), tx, 150);
       gfx_text_right(&np_font_body, SCREEN_W - 14, 34, fmt_kb(kb, total), tx, 230);
     }
   }
@@ -125,6 +128,13 @@ static void list_scene(void *ctx) {
         gfx_text(&np_font_body, 18, y + 15, "Appearance", tx, 256);
         gfx_text(&np_font_small, 18, y + 28, "Left/Right or OK: Theme", tx, 200);
         gfx_text_right(&np_font_small, 300, y + 15, th->name, tx, 256);
+        break;
+      case ROW_BG:
+        row_text(y, "Background", "Left/Right or OK: Change", 256);
+        gfx_text_right(&np_font_small, 300, y + 15, live_mode() == LIVE_COUNT ? "Starlight" : live_name(live_mode()), tx, 256);
+        break;
+      case ROW_INFO:
+        row_text(y, "System information", "OK: View details", 256);
         break;
       case ROW_GAME: {
         int game = l->game[i];
@@ -386,6 +396,32 @@ static bool uninstall_flow(int game) {
   return r == NP_UNINSTALL_OK;
 }
 
+static void info_scene(void *ctx) {
+  list_t *l = ctx;
+  const np_theme_t *th = np_theme();
+  color_t tx = gfx_rgb(th->text);
+  gfx_vgrad(0, 0, SCREEN_W, SCREEN_H, th->bg, th->bg2);
+  gfx_text_center(&np_font_title, 160, 30, "TwiliPlay", tx, 256);
+  gfx_text_center(&np_font_small, 160, 45, "STARLIGHT EDITION", tx, 200);
+  gfx_rrect(10, 55, 300, 130, 9, gfx_rgb(th->panel), 256);
+  gfx_text(&np_font_body, 20, 76, "Version", tx, 256);
+  gfx_text_right(&np_font_body, 300, 76, NP_VERSION, tx, 256);
+  gfx_text(&np_font_body, 20, 98, "Target device", tx, 256);
+  gfx_text_right(&np_font_body, 300, 98, "N0120", tx, 256);
+  char count[] = "00";
+  count[0] += l->ngames / 10; count[1] += l->ngames % 10;
+  gfx_text(&np_font_body, 20, 120, "Installed games", tx, 256);
+  gfx_text_right(&np_font_body, 300, 120, count, tx, 256);
+  uint32_t total = 0;
+  for (int i = 0; i < l->n; i++) if (l->kind[i] == ROW_GAME) total += np_game_size(l->game[i]);
+  char kb[16];
+  gfx_text(&np_font_body, 20, 142, "Game storage", tx, 256);
+  gfx_text_right(&np_font_body, 300, 142, fmt_kb(kb, total), tx, 256);
+  gfx_text_center(&np_font_small, 160, 170, "Based on NumPlay by Mason Chen", tx, 256);
+  gfx_text_center(&np_font_small, 160, 205, "github.com/Mason363/NumPlay", tx, 200);
+  gfx_text_center(&np_font_small, 160, 233, "Back: Settings", tx, 256);
+}
+
 void np_settings(void) {
   ui_init();
   list_t l = {0};
@@ -403,6 +439,21 @@ void np_settings(void) {
     int kind = l.kind[l.sel];
     if (p & K_UP) l.sel = NP_MAX(l.sel - 1, 0), l.action = 0;
     if (p & K_DOWN) l.sel = NP_MIN(l.sel + 1, l.n - 1), l.action = 0;
+    if (kind == ROW_BG && (p & (K_LEFT | K_RIGHT | K_OK))) {
+      live_set((live_mode() + ((p & K_LEFT) ? LIVE_COUNT : 1)) % (LIVE_COUNT + 1));
+      np_bg_save(live_mode());
+    }
+    if (kind == ROW_INFO && (p & K_OK)) {
+      ui_frame(info_scene, &l);
+      ui_keys_t info_keys = {np_keys(), 0, 0};
+      for (;;) {
+        uint32_t q = ui_poll(&info_keys);
+        if (q & (K_BACK | K_OK | K_HOME)) break;
+        np_sleep(16);
+      }
+      k.held = np_keys();
+      dirty = true;
+    }
     if (kind == ROW_THEME && (p & (K_LEFT | K_RIGHT | K_OK))) np_theme_step((p & K_LEFT) ? -1 : 1);
     if (kind == ROW_GAME && (p & (K_LEFT | K_RIGHT))) l.action = (p & K_RIGHT) != 0;
     if (kind == ROW_SECRET && (p & (K_LEFT | K_RIGHT | K_OK))) {
