@@ -2,6 +2,17 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.23: NumVisuals' new look
+
+- **NumVisuals:** all 11 backgrounds drawn again from scratch, in smooth colour with soft light and glows, and the clock and your words in Nunito, sharp at any size. Still 30 frames a second.
+- **NumPlay:** ⌫ on the home screen has all 11 of NumVisuals' backgrounds, with Warp, Tunnel, Fire, Bokeh and Code Rain.
+- **NumDash:** NumDash.nwa has The Seven Seas, Viking Arena and Airborne Robots from Geometry Dash Meltdown, and Nock Em from SubZero, after Dash.
+- **NumBlocks:** NumBlocks.nwa has fence gates, and spruce, birch, jungle, dark oak and acacia fences, doors and stairs. Open doors lie where 1.8.8's do.
+- **Among Us:** Quick Chat in meetings. Press toolbox, then OK.
+- **2 3 4 Players:** computer players. Left and Right on the players screen set how many.
+- **Retro-Go:** Mega Drive and Game & Watch games on the TI-Nspire.
+- **TI-Nspire:** Flappy Dunk runs four times faster and Rider two to three times faster.
+
 ## 1.24.22: The beta testers' fixes
 
 - **TI-Nspire:** numplay_keys.tns sets your own keys for every game, del and the letters included, and the TI-Nspire page lists what alpha, toolbox, x,n,t, EXE and Back are on its keypad. The pad's middle no longer gives OK when pressed with an arrow or just after one. Whole frames go on screen, so nothing tears. Every game's saves are in one file, numplay.sav.tns, so the file browser opens faster.
