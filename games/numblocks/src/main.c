@@ -110,6 +110,29 @@ void game_init(void) {
 #if defined(BENCH_DIM) && NB_DIMS
     dims_go(BENCH_DIM);   /* (timing the Nether or the End: through a portal at once) */
 #endif
+#ifdef BENCH_FENCES
+    {
+      /* (timing fences and doors: rows of them ahead on a cleared floor, oak's with walls and panes (1), each wood's
+       * with gates (2)) */
+      int fy = (int)pl.y, x0 = (int)pl.x, z0 = (int)pl.z;
+      for (int z = z0 - 2; z < z0 + 16; z++)
+        for (int x = x0 - 10; x <= x0 + 10; x++)
+          for (int y = fy - 1; y < fy + 6; y++) world_set(x, y, z, y < fy ? B_GRASS : B_AIR);
+      for (int r = 0; r < 6; r++)
+        for (int x = x0 - 8; x <= x0 + 8; x++) {
+          int z = z0 + 3 + 2 * r, k = (x - x0 + 8) % 4, b = r == 4 ? B_COBBLESTONE_WALL : r == 5 ? B_GLASS_PANE : B_FENCE_OAK;
+          int lo = x & 4 ? B_DOOR_OAK_LOWER_N : B_DOOR_OAK_LOWER_N_OPEN, up = B_DOOR_OAK_UPPER;
+#if BENCH_FENCES == 2
+          b = r ? B_FENCE_SPRUCE + r - 1 : B_FENCE_OAK;
+          if (k == 2) b = B_FENCE_GATE_OAK_S + 8 * r + (x & 4);   /* (shut or open) */
+          if (r) up = B_DOOR_SPRUCE_LOWER_E + 9 * (r - 1) + 8, lo = up - 8 + (x & 4 ? 3 : 7);
+#endif
+          if (k == 0 && r < 4) world_set(x, fy, z, lo), world_set(x, fy + 1, z, up);   /* (a door facing north) */
+          else world_set(x, fy, z, b);
+        }
+      pl.yaw = 0, pl.pitch = 15;
+    }
+#endif
     return;
   }
   title();

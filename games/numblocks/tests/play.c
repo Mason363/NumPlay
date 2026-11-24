@@ -4,6 +4,7 @@
  *        [--showcase]   (the hotbar of the README's GIF: TNT, flint and steel, water and lava, blocks)
  *        [--animals]    (a sheep, a cow, a pig and a chicken ahead, on the ground where they stand)
  *        [--bow]        (a bow in the hand, arrows next to it)
+ *        [--woods]      (each wood's fence, fence gate shut and open, door and stairs in rows ahead)
  *
  * Keys: left right up down fwd back sleft sright jump use attack inv sneak sprint pause 1..9. */
 #include <math.h>
@@ -37,7 +38,7 @@ static uint32_t key_bit(const char *s) {
 
 int main(int argc, char **argv) {
   const char *out = "build/play", *shots = "";
-  int give = 0, bow = 0, showcase = 0, title_screen = 0, mobs = 0, animals = 0, start_time = -1, torches = 0, water = 0, creative = 0, build = 0, rain = 0;
+  int give = 0, bow = 0, showcase = 0, title_screen = 0, mobs = 0, animals = 0, start_time = -1, torches = 0, water = 0, creative = 0, build = 0, rain = 0, woods = 0;
   float hurt = 0;
   int frames = 60, mspf = 50, go_dim = 0, portal = 0, at = 0, fortress = 0, hold = -1, credits = 0;
   float at_v[5] = {0};
@@ -56,6 +57,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[i], "--water")) water = 1;
     else if (!strcmp(argv[i], "--creative")) creative = 1;
     else if (!strcmp(argv[i], "--build")) build = 1;
+    else if (!strcmp(argv[i], "--woods")) woods = 1;
     else if (!strcmp(argv[i], "--rain")) rain = 1;
     else if (!strcmp(argv[i], "--nether")) go_dim = 1;
     else if (!strcmp(argv[i], "--end")) go_dim = 2;
@@ -125,6 +127,29 @@ int main(int argc, char **argv) {
     game_time = (uint32_t)start_time;
   }
   if (creative) pl.mode = 1;
+  if (woods) {
+    /* a cleared field; a row a wood, oak to acacia going away: a fence joined to a gate, a gate open, a door shut and
+     * one open, stairs; a gate between two walls in front */
+    int fy = (int)pl.y, px = (int)pl.x, pz = (int)pl.z;
+    for (int z = pz - 3; z < pz + 18; z++)
+      for (int x = px - 9; x < px + 10; x++)
+        for (int y = fy - 1; y < fy + 8; y++) world_set(x, y, z, y == fy - 1 ? B_GRASS : B_AIR);
+    for (int w = 0; w < 6; w++) {
+      int z = pz + 4 + 2 * w;
+      int fence = w ? B_FENCE_SPRUCE + w - 1 : B_FENCE_OAK, gate = B_FENCE_GATE_OAK_S + 8 * w;
+      int dl = w ? B_DOOR_SPRUCE_LOWER_E + 9 * (w - 1) : B_DOOR_OAK_LOWER, du = w ? dl + 8 : B_DOOR_OAK_UPPER;
+      world_set(px - 6, fy, z, fence), world_set(px - 5, fy, z, fence), world_set(px - 4, fy, z, gate);
+      world_set(px - 3, fy, z, fence), world_set(px - 2, fy, z, gate + 4);
+      world_set(px, fy, z, w ? dl + 3 : B_DOOR_OAK_LOWER_N), world_set(px, fy + 1, z, du);
+      world_set(px + 2, fy, z, w ? dl + 7 : B_DOOR_OAK_LOWER_N_OPEN), world_set(px + 2, fy + 1, z, du);
+      world_set(px + 4, fy, z, w ? B_SPRUCE_STAIRS_E + 4 * (w - 1) + 2 : B_OAK_STAIRS_S);
+    }
+    world_set(px - 1, fy, pz + 2, B_COBBLESTONE_WALL), world_set(px, fy, pz + 2, B_FENCE_GATE_OAK_S);
+    world_set(px + 1, fy, pz + 2, B_COBBLESTONE_WALL);
+    printf("woods: the field from %d %d %d\n", px, fy, pz);
+    if (!at) pl.x = px + 0.5f, pl.z = pz + 0.5f, pl.yaw = 0, pl.pitch = 20;   /* (looking south, at them) */
+    camera_reset();
+  }
   if (portal) {
     /* an obsidian frame ahead (along x), lit with flint and steel; the player walks in with --keys */
     int fy = (int)pl.y, px = (int)floorf(pl.x), pz = (int)floorf(pl.z) + 3;
