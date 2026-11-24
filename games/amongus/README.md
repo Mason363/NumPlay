@@ -26,7 +26,7 @@
 * **Every Skeld task:** wires, the card swipe, asteroids, the scan, the sample, fuel, the reactor, garbage, data, the distributor, the course, the O2 filter, manifolds, steering, shields and power, each one made for the keypad.
 * **Bots:** crewmates do their tasks, report bodies and remember who they saw where. Impostors fake tasks, kill when nobody's looking, vent and sabotage. Nobody knows more than they saw.
 * **Sabotage:** reactor meltdown, oxygen, lights, comms and doors, from the Impostor's sabotage map.
-* **Meetings:** report a body or press the emergency button, hear the bots out, vote or skip, then the ejection.
+* **Meetings:** report a body or press the emergency button, hear the bots out, have your say with Quick Chat, vote or skip, then the ejection. The bots weigh what you say as they weigh each other, and the one you accuse answers.
 * **Kills and ghosts:** the kill animation, and dead crewmates finish their tasks as ghosts.
 * **The lobby's settings** with the original's defaults: impostors, kill cooldown and distance, vision, speed, tasks, meetings, votes and more.
 * **Saves:** Home saves and quits mid-round. Your game and settings are also copied into `amongus_saves.py`, so installing the app again doesn't erase them.
@@ -52,7 +52,7 @@
 
 ## How to play
 
-**As a crewmate,** walk to your tasks (the list at the top left, or the yellow marks on the map) and press OK at each one. The crew wins when every task is done or every Impostor is voted out. Find a body? Report it. Suspect someone? Call a meeting with the button in the Cafeteria. In the meeting, the bots say what they saw: vote for the Impostor or skip. If you die, finish your tasks as a ghost.
+**As a crewmate,** walk to your tasks (the list at the top left, or the yellow marks on the map) and press OK at each one. The crew wins when every task is done or every Impostor is voted out. Find a body? Report it. Suspect someone? Call a meeting with the button in the Cafeteria. In the meeting, the bots say what they saw. Open the chat with toolbox and press OK for Quick Chat to say yours, then vote for the Impostor or skip. If you die, finish your tasks as a ghost.
 
 **As the Impostor,** kill the crewmates one by one without being seen, then hide in the vents. Sabotage the ship to split the crew: if nobody fixes the reactor or the oxygen in time, you win. Fake tasks and blend in. You win when there are as many Impostors as crewmates.
 
@@ -63,7 +63,7 @@
 | Arrows | Walk (in a vent, go to the vent the arrow points at) |
 | OK | Use, report, vent, and the tasks' main key |
 | EXE | Kill (Impostors) |
-| Toolbox | Map (the sabotage map for Impostors), the chat in meetings |
+| Toolbox | Map (the sabotage map for Impostors), the chat in meetings (OK there for Quick Chat) |
 | Back | Close, or pause (Resume, How to Play, Quit game) |
 | Home | Save and quit |
 
@@ -72,7 +72,7 @@ A few tasks also take the digit keys: the reactor's buttons, the oxygen code, th
 ## Good to know
 
 * **On its own:** Among Us is too big to fit next to NumPlay. Installing it from the NumWorks website swaps out NumPlay and the other apps, and installing NumPlay again swaps it back out. Your progress in each one is kept.
-* **What's in:** the Skeld from the 2021.3.31 version, against bots made for this version (the original has none). There is no online play, chat, cosmetics, other maps or sound (the calculator has no speaker).
+* **What's in:** the Skeld from the 2021.3.31 version, against bots made for this version (the original has none). There is no online play, free chat (Quick Chat only), cosmetics, other maps or sound (the calculator has no speaker).
 
 ## Credits
 

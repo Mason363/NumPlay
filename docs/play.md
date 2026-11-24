@@ -901,11 +901,11 @@ Ride to the finish as fast as you can. Lean to land on your wheels, and keep lea
 | **Arrows** | Walk |
 | **OK** | Use, report a body, vent |
 | **EXE** | Kill (as the Impostor) |
-| **Toolbox** | The map (the sabotage map as the Impostor) |
+| **Toolbox** | The map (the sabotage map as the Impostor), the chat in meetings (**OK** there for Quick Chat) |
 | **Back** | Pause (Resume, How to play, Quit game) |
 | **Home** | Save and quit |
 
-On the Skeld with up to 9 bots. As a crewmate, do your tasks, report bodies and vote the Impostor out. As the Impostor, kill when nobody's looking, use the vents, sabotage and fake your tasks. Meetings come from a report or the emergency button in the Cafeteria: hear the bots out, then vote or skip.
+On the Skeld with up to 9 bots. As a crewmate, do your tasks, report bodies and vote the Impostor out. As the Impostor, kill when nobody's looking, use the vents, sabotage and fake your tasks. Meetings come from a report or the emergency button in the Cafeteria: hear the bots out, say yours with Quick Chat, then vote or skip.
 
 <br clear="right">
 

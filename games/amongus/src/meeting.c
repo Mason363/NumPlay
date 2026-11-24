@@ -95,6 +95,73 @@ static void after_meeting(void) {
   g.overlay = O_NONE;
 }
 
+/* ---- the quick chat (2021.3.31's): a phrase, then the player and the room it names ---- */
+static const struct {
+  uint8_t kind, who, room;
+  const char *text;
+} QC[] = {
+    {L_SUS, 1, 0, "[player] is sus"},
+    {L_SAW_KILL, 1, 1, "I saw [player] kill in [room]!"},
+    {L_SAW_VENT, 1, 1, "[player] vented in [room]!"},
+    {L_WITH, 1, 1, "I was with [player] in [room]"},
+    {L_SCANNED, 1, 0, "[player] scanned, they're safe"},
+    {L_WAS_IN, 0, 1, "I was in [room] doing tasks"},
+    {L_WHERE, 0, 0, "Where?"},
+    {L_WHO, 0, 0, "Who?"},
+    {L_SKIP, 0, 0, "Skip"},
+    {L_NOT_ME, 0, 0, "Not me"},
+};
+#define N_QC (int)(sizeof QC / sizeof QC[0])
+static uint8_t qc_step, qc_sel, qc_phrase, qc_who; /* step: 0 the chat, 1 the phrase, 2 the player, 3 the room */
+static float qc_wait;                              /* (a line every 2 seconds at most) */
+
+static bool can_talk(void) { return g.p[g.me].alive && g.meet_stage < 2; }
+/* the others the player can name, in plate order */
+static int qc_players(uint8_t *out) {
+  int n = 0;
+  for (int i = 0; i < g.nplayers; i++)
+    if (i != g.me && g.p[i].alive) out[n++] = (uint8_t)i;
+  return n;
+}
+static void qc_say(int room) {
+  int k = QC[qc_phrase].kind;
+  if (k == L_WAS_IN) bot_player_says(k, room, 0);
+  else bot_player_says(k, QC[qc_phrase].who ? qc_who : NONE, QC[qc_phrase].room ? room : 0);
+  qc_step = 0, qc_wait = 2;
+}
+static void qc_tick(uint32_t pressed) {
+  if (qc_wait > 0) qc_wait -= DT;
+  if (!can_talk()) qc_step = 0;
+  if (!qc_step) {
+    if ((pressed & (K_OK | K_EXE)) && can_talk() && qc_wait <= 0) qc_step = 1, qc_sel = 0;
+    else if (pressed & K_BACK) g.line_shown = 0;
+    return;
+  }
+  uint8_t who[MAXP];
+  int n = qc_step == 1 ? N_QC : qc_step == 2 ? qc_players(who) : N_ROOMS, half = (n + 1) / 2;
+  bool two = qc_step == 3; /* (the rooms in two columns) */
+  if (pressed & K_BACK) {
+    qc_step = qc_step == 3 && QC[qc_phrase].who ? 2 : qc_step - 1, qc_sel = 0;
+    return;
+  }
+  if (pressed & K_UP) qc_sel = (uint8_t)(qc_sel > 0 ? qc_sel - 1 : n - 1);
+  if (pressed & K_DOWN) qc_sel = (uint8_t)(qc_sel + 1 < n ? qc_sel + 1 : 0);
+  if (two && (pressed & (K_LEFT | K_RIGHT))) qc_sel = (uint8_t)(qc_sel < half ? (qc_sel + half < n ? qc_sel + half : n - 1) : qc_sel - half);
+  if (!(pressed & (K_OK | K_EXE))) return;
+  if (qc_step == 1) {
+    qc_phrase = qc_sel;
+    if (QC[qc_sel].who) qc_step = 2, qc_sel = 0;
+    else if (QC[qc_sel].room) qc_step = 3, qc_sel = g.p[g.me].room < N_ROOMS ? g.p[g.me].room : 0;
+    else qc_say(0);
+  } else if (qc_step == 2) {
+    if (!n) return;
+    qc_who = who[qc_sel];
+    if (QC[qc_phrase].room) qc_step = 3, qc_sel = g.p[g.me].room < N_ROOMS ? g.p[g.me].room : 0;
+    else qc_say(0);
+  } else
+    qc_say(qc_sel);
+}
+
 /* the plates: two columns, then Skip; the arrows move between them */
 #define PLATE_X(i) (18 + ((i) & 1) * 134)
 #define PLATE_Y(i) (41 + ((i) >> 1) * 27)
@@ -127,13 +194,10 @@ void meeting_tick(uint32_t keys, uint32_t pressed) {
   Player *M = &g.p[g.me];
   if (g.meet_stage == 0 && g.meet_t >= g.opt.discuss) g.meet_stage = 1, g.meet_t = 0;
   if (pressed & K_TOOL) {
-    g.line_shown = g.line_shown ? 0 : 1;
+    g.line_shown = g.line_shown ? 0 : 1, qc_step = 0;
     return;
   }
-  if (g.line_shown && (pressed & K_BACK)) {
-    g.line_shown = 0;
-    return;
-  }
+  if (g.line_shown) qc_tick(pressed), pressed = 0; /* (the chat takes the keys) */
   if (g.meet_stage == 1) {
     bot_votes();
     /* the player's vote: a plate or Skip, then the tick */
@@ -215,6 +279,27 @@ void meeting_draw(void) {
   }
   gfx_text(FONT_MID, 282, SKIP_Y + 12, stage_text(b, sizeof b), 0xFFFF, 0x0000, 1, 2);
   if (g.nlines && !g.line_shown) chat_line(&g.lines[g.nlines - 1], 18, 202, 0xFFFF);
+  if (g.line_shown && qc_step) {
+    /* the quick chat: the phrases, the players or the rooms */
+    gfx_fill(15, 20, 270, 187, rgb565(0x0E1A2B), 236);
+    if (qc_step == 1) gfx_text(FONT_BIG, 150, 36, "Quick Chat", 0xFFFF, 0x0000, 1, 1);
+    else gfx_text(FONT_MID, 150, 36, QC[qc_phrase].text, 0xFFFF, 0x0000, 1, 1);
+    uint8_t who[MAXP];
+    int n = qc_step == 1 ? N_QC : qc_step == 2 ? qc_players(who) : N_ROOMS, half = (n + 1) / 2;
+    for (int k = 0; k < n; k++) {
+      int x = qc_step == 3 ? (k < half ? 30 : 160) : 30, y = 56 + (qc_step == 3 && k >= half ? k - half : k) * 15;
+      uint16_t c = k == qc_sel ? rgb565(0xFFE14D) : 0xDEFB;
+      if (k == qc_sel) gfx_fill(x - 8, y - 11, qc_step == 3 ? 124 : 250, 14, rgb565(0x2B3D57), 256);
+      if (qc_step == 1) gfx_text(FONT_SMALL, x, y, QC[k].text, c, 0x0000, 1, 0);
+      else if (qc_step == 2) {
+        gfx_spr(pic(PIC_VOTE_ICON), x + 5, y - 4, false, color_pal[g.p[who[k]].color], 256);
+        gfx_text(FONT_SMALL, x + 14, y, COLOR_NAMES[g.p[who[k]].color], c, 0x0000, 1, 0);
+      } else
+        gfx_text(FONT_SMALL, x, y, ROOM_NAMES[k], c, 0x0000, 1, 0);
+    }
+    hud_keys("arrows choose   OK say   Back back");
+    return;
+  }
   if (g.line_shown) {
     /* the chat: the last lines said */
     gfx_fill(15, 20, 270, 187, rgb565(0x0E1A2B), 236);
@@ -222,7 +307,7 @@ void meeting_draw(void) {
     int first = g.nlines > 10 ? g.nlines - 10 : 0;
     for (int k = first; k < g.nlines; k++) chat_line(&g.lines[k], 20, 56 + (k - first) * 15, 0xDEFB);
     if (!g.nlines) gfx_text(FONT_MID, 150, 110, "Nobody has said anything yet", 0xBDF7, 0, 0, 1);
-    hud_keys("toolbox or Back close chat");
+    hud_keys(can_talk() ? "OK quick chat   toolbox or Back close" : "toolbox or Back close chat");
     return;
   }
   if (can_vote)

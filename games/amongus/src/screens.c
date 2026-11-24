@@ -190,7 +190,7 @@ static const char *const HOWTO[2][5] = {
      "Fake tasks and don't get caught.", "Win when the crew is as few as you."},
 };
 static const char *const KEYS[][2] = {{"Arrows", "walk"},     {"OK", "use, report, vent"}, {"EXE", "kill"},
-                                      {"Toolbox", "map, sabotage"}, {"Back", "pause"}, {"Home", "save and quit"}};
+                                      {"Toolbox", "map, sabotage, chat"}, {"Back", "pause"}, {"Home", "save and quit"}};
 static void howto_tick(uint32_t pressed) {
   bool out = false;
   if (pressed & (K_RIGHT | K_OK | K_EXE)) {

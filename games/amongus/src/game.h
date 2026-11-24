@@ -186,6 +186,7 @@ void bot_init(int i);
 void bot_tick(int i);
 void bot_meeting_start(void);
 void bot_meeting_tick(void);
+void bot_player_says(int kind, int a, int b); /* (the quick chat) */
 void bot_votes(void);
 void bot_see(int i);
 void bot_saw_kill(int i, int killer);

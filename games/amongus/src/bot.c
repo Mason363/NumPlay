@@ -870,6 +870,29 @@ void bot_meeting_start(void) {
   }
 }
 
+/* what's said moves the listeners: an accusation as much as the speaker is trusted, an alibi or a scan the other way */
+static void hear(int who, int k, int a) {
+  for (int i = 0; i < g.nplayers; i++) {
+    if (i == who || !is_bot(i) || !g.p[i].alive || g.p[i].imp) continue;
+    Bot *B = &g.p[i].bot;
+    int trust = B->sus[who] >= 80 ? 0 : B->sus[who] >= 50 ? 1 : B->sus[who] < -30 ? 4 : 2;
+    if (k == L_SCANNED || k == L_WITH) {
+      suspect(B, a, (k == L_SCANNED ? -20 : -4) * trust);
+      continue;
+    }
+    if (k != L_SAW_KILL && k != L_SAW_VENT && k != L_SUS && k != L_NEAR_BODY && k != L_SAW_WITH) break;
+    /* accused, or accusing one it knows is a crewmate (it saw the scan): the speaker is wrong */
+    if (i == a || B->sus[a] <= -80) {
+      suspect(B, who, 25);
+      continue;
+    }
+    int by = (k == L_SAW_KILL ? 30 : k == L_SAW_VENT ? 25 : k == L_NEAR_BODY ? 10 : k == L_SAW_WITH ? 8 : 6) * trust;
+    /* (hearsay, however often repeated, makes a suspect, not a sure one: only what was seen goes past 40) */
+    if (k != L_SAW_KILL && k != L_SAW_VENT && by > 40 - B->sus[a]) by = 40 - B->sus[a] > 0 ? 40 - B->sus[a] : 0;
+    suspect(B, a, by);
+  }
+}
+
 void bot_meeting_tick(void) {
   /* (the clock goes on from the discussion into the vote) */
   float now = g.meet_t + (g.meet_stage ? g.opt.discuss : 0);
@@ -877,28 +900,32 @@ void bot_meeting_tick(void) {
     int who = queue_who[qnext], k = queue_kind[qnext], a = queue_a[qnext];
     say(who, k, a, queue_b[qnext]);
     qnext++;
-    /* what's said moves the listeners: an accusation as much as the speaker is trusted, an alibi or a scan the other
-     * way */
-    for (int i = 0; i < g.nplayers; i++) {
-      if (i == who || !is_bot(i) || !g.p[i].alive || g.p[i].imp) continue;
-      Bot *B = &g.p[i].bot;
-      int trust = B->sus[who] >= 80 ? 0 : B->sus[who] >= 50 ? 1 : B->sus[who] < -30 ? 4 : 2;
-      if (k == L_SCANNED || k == L_WITH) {
-        suspect(B, a, (k == L_SCANNED ? -20 : -4) * trust);
-        continue;
-      }
-      if (k != L_SAW_KILL && k != L_SAW_VENT && k != L_SUS && k != L_NEAR_BODY && k != L_SAW_WITH) break;
-      /* accused, or accusing one it knows is a crewmate (it saw the scan): the speaker is wrong */
-      if (i == a || B->sus[a] <= -80) {
-        suspect(B, who, 25);
-        continue;
-      }
-      int by = (k == L_SAW_KILL ? 30 : k == L_SAW_VENT ? 25 : k == L_NEAR_BODY ? 10 : k == L_SAW_WITH ? 8 : 6) * trust;
-      /* (hearsay, however often repeated, makes a suspect, not a sure one: only what was seen goes past 40) */
-      if (k != L_SAW_KILL && k != L_SAW_VENT && by > 40 - B->sus[a]) by = 40 - B->sus[a] > 0 ? 40 - B->sus[a] : 0;
-      suspect(B, a, by);
-    }
+    hear(who, k, a);
   }
+}
+
+/* a line the bots say later in this meeting, in its place among those still to come */
+static void queue_later(int who, int kind, int a, int b, float at) {
+  if (nqueue >= 48) return;
+  int k = nqueue++;
+  for (; k > qnext && queue_at[k - 1] > at; k--)
+    queue_who[k] = queue_who[k - 1], queue_kind[k] = queue_kind[k - 1], queue_a[k] = queue_a[k - 1],
+    queue_b[k] = queue_b[k - 1], queue_at[k] = queue_at[k - 1];
+  queue_who[k] = (uint8_t)who, queue_kind[k] = (uint8_t)kind, queue_a[k] = (uint8_t)a, queue_b[k] = (uint8_t)b;
+  queue_at[k] = at;
+}
+
+/* the player's quick chat: said, heard as the bots' lines are, and answered: the one accused denies it, the caller
+ * tells where the body is */
+void bot_player_says(int kind, int a, int b) {
+  say(g.me, kind, a, b);
+  hear(g.me, kind, a);
+  float now = g.meet_t + (g.meet_stage ? g.opt.discuss : 0), at = now + 1.0f + rnd_f();
+  bool accuse = kind == L_SUS || kind == L_SAW_KILL || kind == L_SAW_VENT;
+  if (accuse && a < g.nplayers && is_bot(a) && g.p[a].alive) queue_later(a, L_NOT_ME, 0, 0, at);
+  int c = g.caller, v = g.reported;
+  if ((kind == L_WHERE || kind == L_WHO) && v != NONE && is_bot(c) && g.p[c].alive)
+    queue_later(c, L_BODY_IN, v, g.p[c].imp ? g.p[c].room : g.p[c].bot.body_room, at);
 }
 
 /* the bots' votes, each at its own moment once everything is said (or the time runs short) */
