@@ -321,6 +321,54 @@ static int earned_stars, earned_gems, won_bike;
 static float done_time;
 static float menu_t;
 
+#if NP_SOFT_FLOAT
+/* (calculators without a floating-point unit: the panel's star and gem in eighths of a pixel, only the strip's rows they
+   cover, each crossing in 256ths of a pixel) */
+#include "np_fixed.h"
+static void strip_poly_q(const int32_t *q, int n, color_t c) {
+  int32_t lo = INT32_MAX, hi = INT32_MIN;
+  for (int i = 0; i < n; i++) lo = q[2 * i + 1] < lo ? q[2 * i + 1] : lo, hi = q[2 * i + 1] > hi ? q[2 * i + 1] : hi;
+  int ya = (lo - 4) >> 3, yb = ((hi - 4) >> 3) + 1;
+  if (ya < gfx_y0) ya = gfx_y0;
+  if (yb > gfx_y1 - 1) yb = gfx_y1 - 1;
+  for (int y = ya; y <= yb; y++) {
+    int32_t yc = 8 * y + 4, xs[24];
+    int m = 0;
+    for (int i = 0; i < n && m < 24; i++) {
+      int j = i + 1 == n ? 0 : i + 1;
+      int32_t ax = q[2 * i], ay = q[2 * i + 1], bx = q[2 * j], by = q[2 * j + 1];
+      if ((ay <= yc) != (by <= yc)) xs[m++] = ax * 32 + (yc - ay) * (bx - ax) * 32 / (by - ay);
+    }
+    for (int i = 1; i < m; i++)
+      for (int j = i; j > 0 && xs[j - 1] > xs[j]; j--) { int32_t t = xs[j]; xs[j] = xs[j - 1], xs[j - 1] = t; }
+    for (int i = 0; i + 1 < m; i += 2) {
+      int a = (xs[i] - 128 + 255) >> 8, b = (xs[i + 1] - 128) >> 8;
+      if (a < 0) a = 0;
+      if (b > 319) b = 319;
+      for (int x = a; x <= b; x++) gfx_buf[(y - gfx_y0) * SCREEN_W + x] = c;
+    }
+  }
+}
+static inline int32_t e8(float v) { return (int32_t)((fx_from_float(v, 4) + 1) >> 1); }
+static void hud_star(float x, float y, float rad, color_t c) {
+  static int16_t dir[20]; /* the points' directions (Q14) */
+  static bool dir_set;
+  if (!dir_set)
+    for (int i = 0; i < 10; i++) dir[2 * i] = (int16_t)fx_from_float(cosf(-1.5708f + i * 0.6283f), 14),
+                                 dir[2 * i + 1] = (int16_t)fx_from_float(sinf(-1.5708f + i * 0.6283f), 14), dir_set = true;
+  int32_t X = e8(x), Y = e8(y), R = e8(rad), q[20];
+  for (int i = 0; i < 10; i++) {
+    int32_t rr = i & 1 ? (R * 29491) >> 16 : R; /* (x 0.45) */
+    q[2 * i] = X + ((rr * dir[2 * i] + 8192) >> 14), q[2 * i + 1] = Y + ((rr * dir[2 * i + 1] + 8192) >> 14);
+  }
+  strip_poly_q(q, 10, c);
+}
+static void hud_gem(float x, float y, float h) {
+  int32_t X = e8(x), Y = e8(y), H = e8(h), W = e8(h * 0.75f), G = 12; /* (1.5 pixels) */
+  int32_t o[8] = {X, Y - H - G, X + W + G, Y, X, Y + H + G, X - W - G, Y}, d[8] = {X, Y - H, X + W, Y, X, Y + H, X - W, Y};
+  strip_poly_q(o, 4, pal[C_GEM_HALO]), strip_poly_q(d, 4, pal[C_GEM]);
+}
+#else
 /* a shape drawn straight into the strip on its way to the screen (over the panels) */
 static void strip_poly(const float *xy, int n, color_t c) {
   for (int y = gfx_y0; y < gfx_y1; y++) {
@@ -353,6 +401,7 @@ static void hud_gem(float x, float y, float h) {
   float d[8] = {x, y - h, x + h * 0.75f, y, x, y + h, x - h * 0.75f, y};
   strip_poly(o, 4, pal[C_GEM_HALO]), strip_poly(d, 4, pal[C_GEM]);
 }
+#endif
 static color_t W(void) { return HEX(0xFFFFFF); }
 static color_t DIM(void) { return HEX(0x9AA7AC); }
 static color_t ACC(void) { return HEX(0xFFE14D); }

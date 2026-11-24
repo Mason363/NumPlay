@@ -35,6 +35,45 @@ void draw_clear(uint8_t c) {
   ncmd = npts = 0, bg_col = c;
 }
 
+#if NP_SOFT_FLOAT
+/* (calculators without a floating-point unit: the shapes go in as eighths of a pixel, read from the floats' bits) */
+#include "np_fixed.h"
+static inline int32_t q8i(float v) { return (int32_t)((fx_from_float(v, 4) + 1) >> 1); } /* (to the nearest) */
+static int32_t slope[4000]; /* each edge's x a row (16.16), worked out once a frame; INT32_MIN: too flat for that */
+static void push_q(int type, const int32_t *q, int n, uint8_t col) {
+  if (ncmd == NCMD || npts + n > NPTS || n < 1) return;
+  int32_t y0 = INT32_MAX, y1 = INT32_MIN, x0 = INT32_MAX, x1 = INT32_MIN;
+  for (int i = 0; i < n; i++) {
+    int32_t x = q[2 * i], y = q[2 * i + 1];
+    y0 = y < y0 ? y : y0, y1 = y > y1 ? y : y1, x0 = x < x0 ? x : x0, x1 = x > x1 ? x : x1;
+  }
+  if (y1 < 0 || y0 > 240 * 8 || x1 < 0 || x0 > 320 * 8) return;
+  dcmd *c = &cmds[ncmd++];
+  c->type = (uint8_t)type, c->col = col, c->n = (uint16_t)n, c->at = (uint16_t)npts;
+  c->y0 = (int16_t)((y0 > -8 ? y0 : -8) >> 3), c->y1 = (int16_t)(((y1 < 241 * 8 ? y1 : 241 * 8) + 7) >> 3);
+  for (int i = 0; i < 2 * n; i++) {
+    int32_t v = q[i];
+    pts[2 * npts + i] = (int16_t)(v > 32000 ? 32000 : v < -32000 ? -32000 : v);
+  }
+  if (type == D_CONVEX || type == D_POLY)
+    for (int i = 0; i < n; i++) {
+      const int16_t *a = pts + 2 * (npts + i), *b = pts + 2 * (npts + (i + 1 == n ? 0 : i + 1));
+      int32_t d = b[1] - a[1], sign = d < 0 ? -1 : 1;
+      if (!d) { slope[npts + i] = 0; continue; } /* (never crossed) */
+      uint32_t ad = (uint32_t)(d * sign);
+      int sh = __builtin_clz(ad);
+      int64_t k = (int64_t)(b[0] - a[0]) * sign * fx_rcp(ad << sh) >> (45 - sh);
+      slope[npts + i] = k > INT32_MAX || k <= INT32_MIN ? INT32_MIN : (int32_t)k;
+    }
+  npts += n;
+}
+static void push_shape(int type, const float *xy, int n, uint8_t col) {
+  int32_t q[2 * 64];
+  if (n > 64) n = 64;
+  for (int i = 0; i < 2 * n; i++) q[i] = q8i(xy[i]);
+  push_q(type, q, n, col);
+}
+#else
 static inline int16_t q8(float v) {
   v *= 8;
   if (v > 32000) v = 32000;
@@ -54,6 +93,7 @@ static void push_shape(int type, const float *xy, int n, uint8_t col) {
   c->y0 = (int16_t)floorf(fmaxf(y0, -1)), c->y1 = (int16_t)ceilf(fminf(y1, 241));
   for (int i = 0; i < n; i++) pts[2 * npts] = q8(xy[2 * i]), pts[2 * npts + 1] = q8(xy[2 * i + 1]), npts++;
 }
+#endif
 static void fill_convex(const float *xy, int n, uint8_t col) { push_shape(D_CONVEX, xy, n, col); }
 static void fill_poly(const float *xy, int n, uint8_t col) { push_shape(D_POLY, xy, n, col); }
 static void disc(float cx, float cy, float rad, uint8_t c) {
@@ -74,15 +114,24 @@ void fb_fill(int x, int y, int w, int h, uint8_t c) {
 }
 
 /* ---------------------------------------------------------------- filling a strip */
-#if NP_SOFT_FLOAT
-#include "np_fixed.h"
-#endif
 static color_t *strip;
 static int sy0, sy1;
 static inline void span(int y, int a, int b, color_t c) {
   if (a < 0) a = 0;
   if (b > 319) b = 319;
   color_t *p = strip + (y - sy0) * SCREEN_W;
+#if NP_SOFT_FLOAT
+  if (b - a >= 6) { /* (two pixels a store) */
+    typedef uint32_t __attribute__((may_alias)) word;
+    color_t *e = p + b + 1;
+    p += a;
+    if ((uintptr_t)p & 2) *p++ = c;
+    word w = c | (uint32_t)c << 16;
+    for (; p + 2 <= e; p += 2) *(word *)p = w;
+    if (p < e) *p = c;
+    return;
+  }
+#endif
   for (int x = a; x <= b; x++) p[x] = c;
 }
 static void raster(const dcmd *c) {
@@ -94,8 +143,9 @@ static void raster(const dcmd *c) {
   case D_POLY: {
     int n = c->n;
 #if NP_SOFT_FLOAT
-    /* (calculators without a floating-point unit: each crossing in 16.16 from the corners' 1/8 pixels, its division a
-     * reciprocal) */
+    /* (calculators without a floating-point unit: each crossing in 16.16 from the corners' 1/8 pixels and the edge's
+     * slope, or for an edge too flat for one, its division a reciprocal) */
+    const int32_t *sl = slope + c->at;
     for (int y = r0; y <= r1; y++) {
       int32_t yc = 8 * y + 4, xs[48];
       int m = 0;
@@ -103,11 +153,15 @@ static void raster(const dcmd *c) {
         int j = i + 1 == n ? 0 : i + 1;
         int32_t ax = p[2 * i], ay = p[2 * i + 1], bx = p[2 * j], by = p[2 * j + 1];
         if ((ay <= yc) == (by <= yc)) continue;
+        if (sl[i] != INT32_MIN) {
+          xs[m++] = (int32_t)(((int64_t)ax * 65536 + (int64_t)(yc - ay) * sl[i]) >> 3);
+          continue;
+        }
         int32_t d = by - ay, sign = d < 0 ? -1 : 1;
         uint32_t ad = (uint32_t)(d * sign);
         int sh = __builtin_clz(ad);
         int64_t q = (int64_t)(yc - ay) * (bx - ax) * sign * fx_rcp(ad << sh) >> (45 - sh);   /* 1/8 pixels, 16.16 */
-        xs[m++] = (int32_t)(((int64_t)ax << 16) + q) >> 3;
+        xs[m++] = (int32_t)(((int64_t)ax * 65536 + q) >> 3);
       }
       if (c->type == D_CONVEX) {
         if (m < 2) continue;
@@ -169,6 +223,22 @@ static void raster(const dcmd *c) {
     break;
   }
   case D_LINE: {
+#if NP_SOFT_FLOAT
+    {
+      /* (in 16.16, stepped: n steps of the longer side's pixels) */
+      int32_t dx = p[2] - p[0], dy = p[3] - p[1], ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;
+      int thick = c->n >> 8, n = ((ax > ay ? ax : ay) >> 3) + 1;
+      int32_t x = p[0] * 8192, y = p[1] * 8192, sx = dx * 8192 / n, sy = dy * 8192 / n;
+      for (int i = 0; i <= n; i++, x += sx, y += sy) {
+        int px = x < 0 ? -(-x >> 16) : x >> 16, py = y < 0 ? -(-y >> 16) : y >> 16; /* (toward zero, as (int)) */
+        for (int k = 0; k < (thick > 1 ? 4 : 1); k++) {
+          int xx = px + (k & 1), yy = py + (k >> 1);
+          if (xx >= 0 && xx < 320 && yy >= sy0 && yy < sy1) strip[(yy - sy0) * SCREEN_W + xx] = col;
+        }
+      }
+      break;
+    }
+#endif
     float x0 = p[0] * 0.125f, y0 = p[1] * 0.125f, dx = p[2] * 0.125f - x0, dy = p[3] * 0.125f - y0;
     int thick = c->n >> 8, n = (int)(fmaxf(fabsf(dx), fabsf(dy)) + 1);
     for (int i = 0; i <= n; i++) {
@@ -193,7 +263,11 @@ static void scene(void *ctx) {
   (void)ctx;
   strip = gfx_buf, sy0 = gfx_y0, sy1 = gfx_y1;
   color_t bg = pal[bg_col];
+#if NP_SOFT_FLOAT
+  for (int y = sy0; y < sy1; y++) span(y, 0, 319, bg);
+#else
   for (int i = 0; i < SCREEN_W * (sy1 - sy0); i++) strip[i] = bg;
+#endif
   for (int i = 0; i < ncmd; i++)
     if (cmds[i].y1 >= sy0 && cmds[i].y0 < sy1) raster(&cmds[i]);
   if (hud_fn) hud_fn();
@@ -379,6 +453,153 @@ void draw_bike_shape(int bike, float x, float y, float a, float z, uint8_t c) {
   fill_poly(xy, bike_shape(bike, x, y, a, z, xy), c);
 }
 
+#if NP_SOFT_FLOAT
+/* ---------------------------------------------------------------- (no floating-point unit) the track in integers
+ * Each object is worked out once, the first time it's drawn: its own turn's cosine and sine, and its polygons' halo
+ * and light core as sixteenths of a pixel off their corners, in its own frame, zoomed (growing, shrinking and
+ * squeezing a polygon turn with it). Each frame then only turns and moves the corners, in 64ths of a pixel. */
+#define OC_POOL 49152
+static uint8_t oc_pool[OC_POOL];
+static uint16_t oc_at[NOBJ]; /* where an object is in the pool, plus 1 (0: not worked out) */
+static int oc_used;
+static inline int32_t q14(float v) { return (int32_t)fx_from_float(v, 14); }
+static inline int32_t q16(float v) { return (int32_t)((fx_from_float(v, 5) + 1) >> 1); } /* sixteenths, nearest */
+static inline int8_t d16(float v) {
+  int32_t q = q16(v);
+  return (int8_t)(q > 127 ? 127 : q < -127 ? -127 : q);
+}
+/* polygon k of an object in its own frame, zoomed: as floats (pixels) and as 64ths of a pixel, as tpl_local has it */
+static int oc_local_f(const rd_obj *o, int k, float *xy) {
+  if (o->tpl == 0xFF) {
+    if (k) return 0;
+    float hw = fabsf(o->sx) / 2 * ZOOM, hh = fabsf(o->sy) / 2 * ZOOM, q[8] = {-hw, -hh, hw, -hh, hw, hh, -hw, hh};
+    memcpy(xy, q, sizeof q);
+    return 4;
+  }
+  int p = tpl_poly[o->tpl] + k;
+  if (p >= tpl_poly[o->tpl + 1]) return 0;
+  int v0 = poly_vert[p], n = poly_vert[p + 1] - v0;
+  bool flip = signbit(o->sx) != signbit(o->sy);
+  for (int j = 0; j < n; j++) {
+    int v = v0 + (flip ? n - 1 - j : j);
+    xy[2 * j] = tpl_xy[2 * v] * 0.25f * o->sx * ZOOM, xy[2 * j + 1] = tpl_xy[2 * v + 1] * 0.25f * o->sy * ZOOM;
+  }
+  return n;
+}
+static int oc_local(const rd_obj *o, int k, int32_t *q) {
+  if (o->tpl == 0xFF) {
+    if (k) return 0;
+    int32_t hw = (int32_t)((fx_from_float(fabsf(o->sx), 5) + 1) >> 1), hh = (int32_t)((fx_from_float(fabsf(o->sy), 5) + 1) >> 1);
+    q[0] = -hw, q[1] = -hh, q[2] = hw, q[3] = -hh, q[4] = hw, q[5] = hh, q[6] = -hw, q[7] = hh;
+    return 4;
+  }
+  int p = tpl_poly[o->tpl] + k;
+  if (p >= tpl_poly[o->tpl + 1]) return 0;
+  int v0 = poly_vert[p], n = poly_vert[p + 1] - v0;
+  bool flip = signbit(o->sx) != signbit(o->sy);
+  /* (64ths of a pixel: a template point (quarter pixels) x 0.25 x the object's scale x ZOOM x 64, 8 times its scale;
+     at most 81000 here, so x 2^13 fits an int32_t) */
+  int32_t kx = (int32_t)fx_from_float(o->sx, 16), ky = (int32_t)fx_from_float(o->sy, 16);
+  for (int j = 0; j < n; j++) {
+    int v = v0 + (flip ? n - 1 - j : j);
+    q[2 * j] = (tpl_xy[2 * v] * kx + 4096) >> 13, q[2 * j + 1] = (tpl_xy[2 * v + 1] * ky + 4096) >> 13;
+  }
+  return n;
+}
+static int oc_polys(const rd_obj *o) { return o->tpl == 0xFF ? 1 : tpl_poly[o->tpl + 1] - tpl_poly[o->tpl]; }
+/* an object's cosine and sine (Q14), then (but the ground's) a byte a polygon: 0 no core, 1 a light core, 2 a dark
+   inside; then four bytes a corner: the halo's and the core's offsets */
+static const uint8_t *oc_get(int oi) {
+  if (oc_at[oi]) return oc_pool + oc_at[oi] - 1;
+  const rd_obj *o = &rd_objs[oi];
+  int np = oc_polys(o), nc = 0;
+  bool deco = o->kind != K_GROUND;
+  float xy[16], h[16], c[16];
+  if (deco)
+    for (int k = 0; k < np; k++) nc += oc_local_f(o, k, xy);
+  int need = (4 + (deco ? np + 4 * nc : 0) + 1) & ~1;
+  if (oc_used + need > OC_POOL) memset(oc_at, 0, sizeof oc_at), oc_used = 0; /* (full: all again, as they're drawn) */
+  uint8_t *d = oc_pool + oc_used;
+  oc_at[oi] = (uint16_t)(oc_used + 1), oc_used += need;
+  float a = o->rot * 0.017453292f;
+  int16_t cs[2] = {(int16_t)q14(cosf(a)), (int16_t)q14(sinf(a))};
+  memcpy(d, cs, sizeof cs);
+  if (!deco) return d;
+  uint8_t *mode = d + 4;
+  int8_t *off = (int8_t *)(mode + np);
+  for (int k = 0; k < np; k++) {
+    int n = oc_local_f(o, k, xy);
+    offset_poly(xy, n, o->kind == K_BOOST ? 1.5f : 2, false, h);
+    int m = o->kind == K_ENEMY || o->kind == K_BOOST ? 0 : core_poly(xy, n, c);
+    mode[k] = (uint8_t)(m > 0 ? 1 : m < 0 ? 2 : 0);
+    for (int j = 0; j < n; j++, off += 4) {
+      off[0] = d16(h[2 * j] - xy[2 * j]), off[1] = d16(h[2 * j + 1] - xy[2 * j + 1]);
+      off[2] = m ? d16(c[2 * j] - xy[2 * j]) : 0, off[3] = m ? d16(c[2 * j + 1] - xy[2 * j + 1]) : 0;
+    }
+  }
+  return d;
+}
+/* the corners turned and moved onto the screen (64ths of a pixel in, eighths out), each with its offset (off: 0 none,
+   else the halo's or the core's, sixteenths) */
+static void oc_turn(const int32_t *loc, const int8_t *off, int n, int32_t X, int32_t Y, int32_t C, int32_t S, int32_t *q) {
+  for (int j = 0; j < n; j++) {
+    int64_t lx = loc[2 * j] + (off ? off[4 * j] * 4 : 0), ly = loc[2 * j + 1] + (off ? off[4 * j + 1] * 4 : 0);
+    q[2 * j] = (X + (int32_t)((C * lx - S * ly + 8192) >> 14) + 4) >> 3;
+    q[2 * j + 1] = (Y + (int32_t)((S * lx + C * ly + 8192) >> 14) + 4) >> 3;
+  }
+}
+/* an object's polygons for one pass (0 the ground, 1 the halos, 2 the lines and cores); cam: the camera's top left */
+static void oc_draw(const rd_run *r, int i, int pass, float camx, float camy) {
+  const rd_live *l = &r->live[i];
+  const rd_obj *o = &rd_objs[l->obj];
+  const uint8_t *d = oc_get(l->obj);
+  int32_t X, Y, C, S;
+  if (l->dyn == NO_DYN) {
+    int16_t cs[2];
+    memcpy(cs, d, sizeof cs);
+    /* (its centre on the screen, in 64ths of a pixel: x32 in the world) */
+    X = (int32_t)fx_from_float(o->cx + (float)r->seg[l->seg].x - camx, 5), Y = (int32_t)fx_from_float(o->cy - camy, 5);
+    C = cs[0], S = cs[1];
+  } else {
+    float x, y, a;
+    obj_pose(r, i, &x, &y, &a);
+    X = (int32_t)fx_from_float(x - camx, 5), Y = (int32_t)fx_from_float(y - camy, 5);
+    C = q14(cosf(a)), S = q14(sinf(a));
+  }
+  int kind = o->kind, np = oc_polys(o);
+  bool en = kind == K_ENEMY;
+  const uint8_t *mode = d + 4;
+  const int8_t *off = (const int8_t *)(mode + np);
+  int32_t loc[16], q[16];
+  for (int k = 0; k < np; k++) {
+    int n = oc_local(o, k, loc);
+    if (pass == 0) {
+      oc_turn(loc, 0, n, X, Y, C, S, q), push_q(D_CONVEX, q, n, C_GROUND);
+      continue;
+    }
+    if (pass == 1) oc_turn(loc, off, n, X, Y, C, S, q), push_q(D_CONVEX, q, n, kind == K_BOOST ? C_BOOST_DIM : en ? C_EN_HALO : C_HALO);
+    else {
+      oc_turn(loc, 0, n, X, Y, C, S, q), push_q(D_CONVEX, q, n, kind == K_BOOST ? C_BOOST : en ? C_EN : C_GLOW);
+      if (mode[k]) oc_turn(loc, off + 2, n, X, Y, C, S, q), push_q(D_CONVEX, q, n, mode[k] == 1 ? C_CORE : C_HALO);
+    }
+    off += 4 * n;
+  }
+}
+/* the object is in sight (its box against the window, in integers when it's still) */
+static bool oc_seen(const rd_run *r, int i, float wx0, float wy0, float wx1, float wy1) {
+  const rd_live *l = &r->live[i];
+  if (l->dyn == NO_DYN) {
+    const rd_obj *o = &rd_objs[l->obj];
+    int32_t ox = r->seg[l->seg].x;
+    return !(o->x1 + ox < (int32_t)fx_from_float(wx0, 0) || o->x0 + ox > (int32_t)fx_from_float(wx1, 0) + 1 ||
+             o->y1 < (int32_t)fx_from_float(wy0, 0) || o->y0 > (int32_t)fx_from_float(wy1, 0) + 1);
+  }
+  float bx0, by0, bx1, by1;
+  obj_box(r, i, &bx0, &by0, &bx1, &by1);
+  return !(bx1 < wx0 || bx0 > wx1 || by1 < wy0 || by0 > wy1);
+}
+#endif
+
 /* ---------------------------------------------------------------- the run */
 void draw_run(const rd_run *r) {
   float sh = r->ended == END_CRASH && r->shake > 0 ? r->shake * 20 : 0;
@@ -386,17 +607,31 @@ void draw_run(const rd_run *r) {
   draw_clear(C_BG);
   float wx0 = cx - 8, wx1 = cx + 320 / ZOOM + 8, wy0 = cy - 8, wy1 = cy + 240 / ZOOM + 8;
   float xy[64], o[64];
+#if NP_SOFT_FLOAT
+  (void)xy;
+#endif
   /* three passes: the ground, the glow round the lines, the lines and the rest */
   for (int pass = 0; pass < 3; pass++) {
     for (int i = 0; i < r->nlive; i++) {
       const rd_live *l = &r->live[i];
       if (!(l->st & ST_USED) || (l->st & ST_GONE)) continue;
+#if NP_SOFT_FLOAT
+      const rd_obj *ob = &rd_objs[l->obj];
+      int kind = ob->kind;
+      if ((pass == 0) != (kind == K_GROUND)) continue;
+      if (!oc_seen(r, i, wx0, wy0, wx1, wy1)) continue;
+      if (kind != K_GEM && kind != K_FINISH) {
+        oc_draw(r, i, pass, cx, cy);
+        if (kind != K_BOOST || pass != 2) continue;
+      }
+#else
       float bx0, by0, bx1, by1;
       obj_box(r, i, &bx0, &by0, &bx1, &by1);
       if (bx1 < wx0 || bx0 > wx1 || by1 < wy0 || by0 > wy1) continue;
       const rd_obj *ob = &rd_objs[l->obj];
       int kind = ob->kind;
       if ((pass == 0) != (kind == K_GROUND)) continue;
+#endif
       float px, py, pa;
       obj_pose(r, i, &px, &py, &pa);
       if (kind == K_GEM) {
@@ -415,6 +650,7 @@ void draw_run(const rd_run *r) {
         for (int y = top; y < bot; y += 6) fb_fill(sx - 2, y, 5, bot - y < 6 ? bot - y : 6, ((y - top) / 6) & 1 ? C_WHITE : C_FINISH);
         continue;
       }
+#if !NP_SOFT_FLOAT
       for (int k = 0;; k++) {
         int n = obj_poly(r, i, k, xy);
         if (!n) break;
@@ -436,6 +672,7 @@ void draw_run(const rd_run *r) {
           if (m) fill_convex(o, m > 0 ? m : -m, m > 0 ? C_CORE : C_HALO);
         }
       }
+#endif
       /* speed pads: arrows running along */
       if (kind == K_BOOST && pass == 2) {
         float c = cosf(pa), s = sinf(pa), ph = fmodf(r->ms / 8, 24);
