@@ -14,15 +14,22 @@ from test_games import COPIES, play
 def check(nwa, index, game):
     calc = emu.Calculator(nwa)
     calc.enable_checks(reads=True)
-    begin = calc.symbols[f"np_{game}_begin"]
-    end = calc.symbols[f"np_{game}_end"]
-    start = 2600 + 300 * index
-    navigation = [(1800 + 300 * i, "right") for i in range(index)]
-    calc.keys = presses(*navigation, (start, "ok"), (start + 5000, "home", 800))
-    calc.samples = []
+    entry = calc.symbols[f"np_{game}_main"] & ~1
+    entered = False
+
+    def on_entry(uc, address, size, data):
+        nonlocal entered
+        entered = True
+
+    # Idle puzzle games can spend all the 1 ms profiling samples in firmware
+    # sleep/render routines. Observe the actual entry point instead.
+    calc.uc.hook_add(emu.UC_HOOK_CODE, on_entry, begin=entry, end=entry + 1)
+    start = 3000 + 600 * index
+    navigation = [(1800 + 600 * i, "right", 160) for i in range(index)]
+    calc.keys = presses(*navigation, (start, "ok", 160), (start + 5000, "home", 800))
     calc.run(start + 8500)
-    if not any(begin <= pc < end for pc in calc.samples):
-        raise AssertionError(f"{game}: no execution observed in selected module")
+    if not entered:
+        raise AssertionError(f"{game}: selected module entry point was never executed")
     if not calc.exited or calc.locks or not calc.app_ram_clean() or calc.violations:
         raise AssertionError(f"{game}: exit={calc.exited} locks={calc.locks} "
                              f"RAM clean={calc.app_ram_clean()} violations={calc.violations[:3]}")
