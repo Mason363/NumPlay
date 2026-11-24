@@ -39,7 +39,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     part, count = map(int, args.shard.split("/"))
     if not 1 <= part <= count <= len(GAMES):
-        parser.error("expected 1 <= K <= N <= 18")
+        parser.error(f"expected 1 <= K <= N <= {len(GAMES)}")
     with Path("games/games.json").open(encoding="utf-8") as manifest:
         records = {g["id"]: g["records"] for g in json.load(manifest)}
     errors = []
