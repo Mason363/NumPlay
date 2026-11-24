@@ -187,9 +187,10 @@ BOX = {'slab': [(0, 0, 0, 16, 8, 16)], 'layer': [(0, 0, 0, 16, 2, 16)], 'torch':
        'pane': [(7, 0, 7, 9, 16, 9)], 'ladder': [(0, 0, 14, 16, 16, 16)], 'vine': [(0, 0, 15, 16, 16, 16)],
        'bed': [(0, 0, 0, 16, 9, 16)], 'chest': [(1, 0, 1, 15, 14, 15)], 'liquid': [(0, 0, 0, 16, 14, 16)]}
 STAIR_TOP = [(8, 8, 0, 16, 16, 16), (0, 8, 0, 8, 16, 16), (0, 8, 8, 16, 16, 16), (0, 8, 0, 16, 16, 8)]
-# BlockDoor's bounds: facing east, south, west, north; closed, then open
+# BlockDoor's bounds: facing east, south, west, north; closed, then open (its hinge on the left, as ItemDoor
+# puts it on a door with nothing beside it)
 DOOR = [(0, 0, 0, 3, 16, 16), (0, 0, 0, 16, 16, 3), (13, 0, 0, 16, 16, 16), (0, 0, 13, 16, 16, 16),
-        (0, 0, 13, 16, 16, 16), (0, 0, 0, 3, 16, 16), (0, 0, 0, 16, 16, 3), (13, 0, 0, 16, 16, 16)]
+        (0, 0, 0, 16, 16, 3), (13, 0, 0, 16, 16, 16), (0, 0, 13, 16, 16, 16), (0, 0, 0, 3, 16, 16)]
 WALL_TORCH = {'TORCH_E': (1, 3, 7, 3, 14, 9), 'TORCH_W': (13, 3, 7, 15, 14, 9), 'TORCH_S': (7, 3, 1, 9, 14, 3),
               'TORCH_N': (7, 3, 13, 9, 14, 15)}
 
