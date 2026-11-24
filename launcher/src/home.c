@@ -42,11 +42,10 @@ static bool first_open = true;
 static const char *item_title(int game) { return game < 0 ? T("Settings") : np_games[game].title; }
 /* under the name, the tagline; or, when the calculator's software gives apps too little RAM for the
  * game, how much it lacks */
-static const char *item_tagline(int game) {
+static const char *item_tagline(int game, char line[96]) {
   if (game < 0) return T("Reset, uninstall, more");
   uint32_t missing = np_game_ram_missing(game);
   if (!missing) return np_games[game].tagline;
-  static char line[96];
   char digits[8];
   int n = 0;
   for (uint32_t kb = (missing + 1023) / 1024; kb || !n; kb /= 10) digits[n++] = (char)('0' + kb % 10);
@@ -223,7 +222,8 @@ static void scene(void *ctx) {
     gfx_rrect(210, 122, 90, 35, 7, accent, text_alpha);
     gfx_text_center(&np_font_body, 255, 144, game < 0 ? "OK: Open" : "OK: Play", gfx_rgb(th->bg), text_alpha);
     gfx_text_center(&np_font_title, 160, 198, item_title(game), tx, text_alpha);
-    gfx_text_center(&np_font_small, 160, 214, item_tagline(game), tx, text_alpha);
+    char tagline[96];
+    gfx_text_center(&np_font_small, 160, 214, item_tagline(game, tagline), tx, text_alpha);
     gfx_rrect(10, 221, 300, 17, 5, panel, ui_alpha);
     gfx_text_center(&np_font_small, 160, 233, "Up: Library   Down: Theme   L/R: Browse", tx, ui_alpha);
   }

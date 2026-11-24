@@ -9,7 +9,7 @@ typedef struct {
   uint32_t used;
   uint8_t *px;
 } slot_t;
-static slot_t slots[MAX_SLOTS];
+static slot_t *slots; /* menu-only metadata belongs in the shared arena */
 static int nslots;
 static uint32_t lru_clock;
 static np_inflate_tables_t *tables;
@@ -20,6 +20,9 @@ void ui_init(void) {
   tables = np_alloc(np_inflate_tables_size());
   live_init(); /* its small tables first: the screenshot slots below take all that is left */
   nslots = 0;
+  slots = np_alloc(MAX_SLOTS * sizeof(*slots));
+  lru_clock = 0;
+  if (!slots || !tables) return;
   while (nslots < MAX_SLOTS) {
     uint8_t *p = np_alloc(SHOT_W * SHOT_H);
     if (!p) break;

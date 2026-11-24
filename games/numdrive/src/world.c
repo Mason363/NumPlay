@@ -221,7 +221,9 @@ const char *level_name(int i) {
 
 /* ----------------------------------------------------------------- blocks */
 Block *blocks[256];
-static uint8_t need_blk[256];
+/* Block IDs are bytes; one bit per ID is enough for the level loader. */
+static uint8_t need_blk[32];
+static bool block_needed(unsigned i) { return (need_blk[i >> 3] & (1u << (i & 7))) != 0; }
 
 /* block record: u8 flags, u8 ncomp, per component (u16 voxel count, f32 sums[3], u8 bounds[6]),
  * then the part kept in RAM: u8 nbox, boxes (3 bytes each), u8 full faces, per face u8 count and quads (3 bytes) */
@@ -236,7 +238,7 @@ static bool load_blocks(void) {
   for (int g0 = 0; g0 < nblocklib; g0 += block_group) {
     bool any = false;
     for (int i = g0; i < g0 + block_group && i < nblocklib; i++)
-      if (need_blk[i] && !blocks[i]) any = true;
+      if (block_needed(i) && !blocks[i]) any = true;
     if (!any) continue;
     int rec = block_rec0 + g0 / block_group;
     uint32_t n = pack_rawsize(rec);
@@ -248,7 +250,7 @@ static bool load_blocks(void) {
       int ncomp = p[1];
       const uint8_t *st = p + 2, *t = st + COMP_STATS * ncomp;
       uint32_t tl = block_tail(t);
-      if (need_blk[i] && !blocks[i]) {
+      if (block_needed(i) && !blocks[i]) {
         Block *b = arena_alloc(sizeof(Block));
         uint8_t *keep = arena_alloc(tl);
         if (!b || !keep) FAIL("load_blocks");
@@ -299,7 +301,10 @@ static const uint8_t *scan_objects(const uint8_t *p) {
   p += 2;
   uint32_t total = 0;
   for (int o = 0; o < n; o++) total += rdvar(&p);
-  for (uint32_t i = 0; i < total; i++) need_blk[*p++] = 1;
+  for (uint32_t i = 0; i < total; i++) {
+    unsigned id = *p++;
+    need_blk[id >> 3] |= (uint8_t)(1u << (id & 7));
+  }
   for (uint32_t i = 0; i < total; i++) rdvar(&p);
   return p;
 }

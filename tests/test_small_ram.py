@@ -26,7 +26,9 @@ def changed(a, b):
 
 
 def run(nwa, out, ram, name, keys, shots, ms):
-    emu.configure("n0120", "epsilon", ram)
+    # The curated package targets Epsilon 26.4’s official N0120 app area.
+    apps_start = 0x90180000 if os.path.basename(nwa) == "TwiliPlay.nwa" else None
+    emu.configure("n0120", "epsilon", ram, apps_start=apps_start)
     st = os.path.join(out, f"{name}.bin")
     write_storage(st, [("pi.py", b"\x01print(3.14159)\n\x00")])
     c = emu.Calculator(nwa, storage_file=st)
