@@ -165,7 +165,6 @@ static void icon(int x, int y) {
   }
 }
 
-#ifdef HOST
 static bool clear_shot(float x, float y, float tx, float ty) {
   for (int i = 1; i < 24; i++)
     if (solid(x + (tx - x) * i / 24, y + (ty - y) * i / 24)) return false;
@@ -194,7 +193,6 @@ static int bot(int p) {
   if ((off < 0.2f && best > 140 * 140 && rn(4) == 0) || lost) driving[p] = 1, until[p] = rt + 500 + rn(800);
   return driving[p];
 }
-#endif
 
 const game_t g_tanks = {"Tanks", "Tanks", "Hold  drive    Let go  fire",
                         "Your tank turns on the spot. Hold your key to drive, let go to fire. Shells bounce off the "

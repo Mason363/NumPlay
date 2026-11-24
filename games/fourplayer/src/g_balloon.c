@@ -98,7 +98,6 @@ static void icon(int x, int y) {
   gfx_fill(x + 17, y + 22, 2, 9, HEX(0x5A5466)), gfx_fill(x + 39, y + 22, 2, 9, HEX(0x5A5466));
 }
 
-#ifdef HOST
 static int bot(int p) {
   static int32_t next[NMAX];
   static int goal[NMAX];
@@ -107,7 +106,6 @@ static int bot(int p) {
   next[p] = rt + 120 + rn(80);
   return bot_tap(p, true);
 }
-#endif
 
 const game_t g_balloon = {"Balloons", "Balloons", "Tap  pump",
                           "Tap your key to pump. Each balloon bursts at its own size, and nobody knows which. After 10 "

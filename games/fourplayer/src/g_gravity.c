@@ -110,7 +110,6 @@ static void icon(int x, int y) {
   disc(x + 16, y + 22, 4, col[0]), disc(x + 26, y + 12, 4, col[1]);
 }
 
-#ifdef HOST
 static int bot(int p) {
   static float skip[NMAX]; /* a hole it didn't see coming, until it's past */
   if (bot_fresh(p)) skip[p] = 0;
@@ -125,7 +124,6 @@ static int bot(int p) {
   }
   return bot_tap(p, hole && (other || rn(3) == 0));
 }
-#endif
 
 const game_t g_gravity = {"Gravity Run", "Gravity", "Tap  flip",
                           "You run on your own. Tap your key to flip your gravity, from the floor to the ceiling and "

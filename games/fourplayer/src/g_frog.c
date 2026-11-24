@@ -118,7 +118,6 @@ static void icon(int x, int y) {
   disc(x + 47, y + 17, 3, WHITE);
 }
 
-#ifdef HOST
 static int bot(int p) {
   if (f[p].st != SIT) return 0;
   if (f[p].charge_t < 0) return 1;
@@ -129,7 +128,6 @@ static int bot(int p) {
   float err = (p * 13 % 7 - 3) * 1.8f;
   return f[p].x + jump_len(rt - f[p].charge_t) < target + err;
 }
-#endif
 
 const game_t g_frog = {"Frog Jump", "Frogs", "Hold  gather    Let go  jump",
                        "Hold your key to gather a jump: the ring shows where you'll land. Let go to jump. Miss the "

@@ -157,7 +157,6 @@ static void icon(int x, int y) {
   disc(x + 12, y + 25, 3, GOLD);
 }
 
-#ifdef HOST
 static bool free_cell(int x, int y) { return x >= 0 && y >= 0 && x < GW && y < GH && !grid[y][x]; }
 static int bot(int p) {
   if (s[p].turns) return bot_tap(p, false);
@@ -172,7 +171,6 @@ static int bot(int p) {
     }
   return bot_tap(p, want);
 }
-#endif
 
 const game_t g_snakes = {"Snakes", "Snakes", "Tap  turn right",
                          "Your snake never stops. Tap your key to turn right. Stars make you longer. Hit a wall or a "

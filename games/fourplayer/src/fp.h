@@ -54,10 +54,8 @@ typedef struct {
 } body_t;
 /* two discs closer than r: pushed apart, their speeds changed as masses ma and mb would (e: the bounce) */
 bool collide(body_t *a, body_t *b, float r, float ma, float mb, float e);
-#ifdef HOST
 int bot_tap(int p, bool want); /* a computer player's tap: pressed for one frame, then let go */
 bool bot_fresh(int p);         /* a new round for this computer player (once) */
-#endif
 
 /* ---- drawing (on the strip being drawn) */
 void disc(float x, float y, float r, color_t c);
@@ -87,16 +85,10 @@ typedef struct {
   void (*step)(void);
   void (*draw)(void);
   void (*icon)(int x, int y);    /* its picture in the menu, 56 x 34 */
-#ifdef HOST
-  int (*bot)(int p);             /* tests: whether a computer player holds its key now */
-#endif
+  int (*bot)(int p);             /* whether a computer player holds its key now */
 } game_t;
 
-#ifdef HOST
 #define BOT(f) , f
-#else
-#define BOT(f)
-#endif
 
 enum { G_SUMO, G_RACE, G_TANKS, G_SNAKES, G_SOCCER, G_FISH, G_SKATE, G_ROPE, G_PAINT, G_BALLOON, G_BIRDS, G_GRAVITY,
        G_FROG, G_CLOCK, NG };

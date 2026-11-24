@@ -93,7 +93,6 @@ static void icon(int x0, int y0) {
   disc(x0 + 21, y0 + 13, 1.5f, HEX(0xFF9F1C)), disc(x0 + 29, y0 + 21, 1.5f, HEX(0xFF9F1C));
 }
 
-#ifdef HOST
 static int bot(int p) {
   float target = 131, best = 1e9f; /* the middle of the nearest gap ahead */
   for (int i = 0; i < NCOL; i++)
@@ -101,7 +100,6 @@ static int bot(int p) {
   float noise = (p * 7 % 5) * 1.5f;
   return bot_tap(p, y[p] > target + noise && vy[p] > -40);
 }
-#endif
 
 const game_t g_birds = {"Birds", "Birds", "Tap  flap",
                         "Every tap of your key is a flap. Fly through the gaps: touch a column or the ground and "

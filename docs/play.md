@@ -934,11 +934,11 @@ A party game for 3 to 12 players and one calculator. Add everyone's names and pi
 | --- | --- |
 | **shift**, **⌫**, **0**, **EXE** | The players' keys (and **7**, **)** in 3 v 3) |
 | **Arrows**, **OK** | Choose the players and a game |
-| **Left**, **Right** | On the rules, the rounds to win |
+| **Left**, **Right** | On the players, how many the computer plays; on the rules, the rounds to win |
 | **Back** | Pause |
 | **Home** | Save and quit |
 
-Party games for 2, 3 or 4 players, or teams of 2 or 3, on one calculator. Each player has one key, and every game is played with it alone: tap it, hold it, or let it go at the right time. Before each game its rules show with the keys on a keypad, and it starts when everyone has pressed theirs. Each round won is a point, and the first to 3 takes the match.
+Party games for 2, 3 or 4 players, or teams of 2 or 3, on one calculator. Each player has one key, and every game is played with it alone: tap it, hold it, or let it go at the right time. Fewer of you? The computer can take the last seats. Before each game its rules show with the keys on a keypad, and it starts when everyone has pressed theirs. Each round won is a point, and the first to 3 takes the match.
 
 <br clear="right">
 

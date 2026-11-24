@@ -13,7 +13,7 @@ void app_draw(void);
 #ifdef HOST /* (tests/play.c) */
 enum { S_MODE, S_GAMES, S_RULES, S_PLAY, S_SCORE, S_OVER, S_PAUSE, S_ASK };
 typedef struct {
-  int screen, mode, game, cur, target, round, nsides, winner, matches;
+  int screen, mode, game, cur, target, round, nsides, winner, matches, cpus;
   int score[4];
   bool decided;
   int32_t rt;

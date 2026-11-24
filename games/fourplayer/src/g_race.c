@@ -156,13 +156,11 @@ static void icon(int x, int y) {
   box(x + 32, y + 24, 9, 5, 2, col[1]);
 }
 
-#ifdef HOST
 static int bot(int p) {
   float a = fatan2(c[p].y - MY, c[p].x - MX) - 0.55f, tx = MX + fcos(a) * 134, ty = MY + fsin(a) * 86;
   float want = fatan2(ty - c[p].y, tx - c[p].x);
   return wrap_pi(want - c[p].h) < -0.06f;
 }
-#endif
 
 const game_t g_race = {"Racing", "Racing", "Hold  turn left",
                        "Your car drives itself. Hold your key to turn left: every bend turns left. Grass slows you, oil "

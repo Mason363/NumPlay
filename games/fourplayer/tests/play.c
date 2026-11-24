@@ -10,7 +10,7 @@
  * --raw DIR saves every frame drawn as raw RGB565 (tools/record.py --frames), or with --raw-frames those from A to B,
  * every Kth; --every K draws every Kth frame
  * (the screenshots and --raw draw theirs anyway). --trace prints each screen as it comes (SCREEN ...).
- * At the end: STATE ... */
+ * At the end: STATE ..., then CPU n (the computer players). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -81,6 +81,7 @@ static void print_state(const char *what) {
     printf(" frame %d", frame_now);
   }
   printf("\n");
+  if (!strcmp(what, "STATE")) printf("CPU %d\n", s.cpus);
 }
 
 int main(int argc, char **argv) {

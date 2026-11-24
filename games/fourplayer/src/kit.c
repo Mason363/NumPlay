@@ -52,7 +52,6 @@ bool collide(body_t *a, body_t *b, float r, float ma, float mb, float e) {
   }
   return true;
 }
-#ifdef HOST
 int fp_round_serial; /* (app.c counts the rounds) */
 bool bot_fresh(int p) {
   static int seen[NMAX];
@@ -66,7 +65,6 @@ int bot_tap(int p, bool want) {
   was[p] = (uint8_t)r;
   return r;
 }
-#endif
 
 char *num(char *o, uint32_t v) { /* v in o, then the end of it */
   char t[10];

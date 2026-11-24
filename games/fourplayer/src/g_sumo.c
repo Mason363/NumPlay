@@ -106,7 +106,6 @@ static void icon(int x, int y) {
   disc(x + 35, y + 11, 2, HEX(0x221B33));
 }
 
-#ifdef HOST
 static int bot(int p) {
   float x = w[p].b.x, y = w[p].b.y, want = 99, best = 1e9f;
   if ((x - CX) * (x - CX) + (y - CY) * (y - CY) > (ring - 30) * (ring - 30)) want = fatan2(CY - y, CX - x);
@@ -118,7 +117,6 @@ static int bot(int p) {
   bool aim = want < 50 && fabs_(wrap_pi(w[p].a - want)) < 0.3f && rt - w[p].dash_t >= COOL && rn(3) == 0;
   return bot_tap(p, aim);
 }
-#endif
 
 const game_t g_sumo = {"Sumo", "Sumo", "Tap  dash",
                        "Your arrow spins. Tap your key to dash where it points: the spin turns the other way. Push the "

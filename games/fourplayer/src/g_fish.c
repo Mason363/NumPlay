@@ -148,13 +148,11 @@ static void icon(int x, int y) {
   disc(x + 8, y + 25, 5, col[0]), disc(x + 48, y + 25, 5, col[1]);
 }
 
-#ifdef HOST
 static int bot(int p) {
   bool up = stage == 1 && rt - item_t > react[p];
   bool want = up && (item == FISH || (react[p] % 17 == 0 && rt - item_t > 300));
   return bot_tap(p, want && !dizzy(p));
 }
-#endif
 
 const game_t g_fish = {"Grab the Fish", "Fish", "Tap  swipe",
                        "Things jump out of the pond. Tap your key to swipe: the first paw on a goldfish keeps it. Swipe "

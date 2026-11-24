@@ -93,7 +93,6 @@ static void icon(int x, int y) {
   disc(x + 16, y + 25, 4, col[0]), disc(x + 40, y + 10, 4, col[1]);
 }
 
-#ifdef HOST
 static int bot(int p) {
   if (height(p) > 0 || fabs_(w) < 0.3f) return bot_tap(p, false);
   float a = seat(p), soon = 99;
@@ -105,7 +104,6 @@ static int bot(int p) {
   float when = 0.12f + (p * 37 % 10) * 0.012f + (rn(60) == 0 ? 0.3f : 0);
   return bot_tap(p, soon < when);
 }
-#endif
 
 const game_t g_rope = {"Jump Rope", "Rope", "Tap  jump",
                        "A bar sweeps round the platform. Tap your key to jump over it. Caught on the ground, you're "

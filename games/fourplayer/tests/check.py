@@ -210,6 +210,27 @@ out = run(["--frames", 20], d)
 st = state(out)
 check(st["mode"] == 3 and st["game"] == 4 and st["target"] == 7 and st["wins"][5] == [5, 6, 7, 8, 9, 10],
       "saves: the copy brings everything back when the save is gone")
+# an older version's copy (version 1, before the computer players) still comes back
+import base64  # noqa: E402
+old = save_bytes(4, 9, 2, [[g * 3 + i for i in range(6)] for g in range(NG + 1)])
+d = fresh("copy_v1")
+open(os.path.join(d, "fourplayer_saves.py"), "wb").write(
+    b"\0# 2 3 4 Players' saves: keep this file\n#>fourplayer.sav:" + base64.b64encode(old) + b"\n\0")
+out = run(["--frames", 20], d)
+st = state(out)
+check(st["mode"] == 4 and st["game"] == 9 and st["target"] == 2 and st["wins"][7] == [21, 22, 23, 24, 25, 26],
+      "saves: an older version's copy comes back")
+
+# ---- computer players: 2 players, one of them the computer; it plays a whole match, its win is counted, and the
+# setting comes back
+d = fresh("cpu", save_bytes(0, 0, 1))
+k, f = keys("right ok ok p1")
+out = run(["--frames", f + 6000, "--keys", k, "--trace"], d)
+st = state(out)
+check(st["screen"] == "over" and st["matches"] == 1 and st["wins"][0] == [0, 1, 0, 0, 0, 0],
+      "computer: it plays Sumo against nobody and wins the match")
+out = run(["--frames", 20, "--keys", "5:ok,12:ok", "--trace"], d)
+check("CPU 1" in out, "computer: the setting comes back")
 for name, data in [("empty", b""), ("short", b"FOUR\1\2"), ("version", save_bytes()[:4] + b"\x09" + save_bytes()[5:]),
                    ("garbage", bytes(range(256)) * 2), ("mode", b"FOUR" + bytes([1, 99, 99, 0]) + bytes(180)),
                    ("long", save_bytes() + b"xx")]:
@@ -250,7 +271,7 @@ if "--docs" in sys.argv:
 
     wins = [[0] * 6 for _ in range(NG + 1)]
     wins[0] = [4, 2, 5, 3, 1, 2]
-    shot("players", save_bytes(2, 0, 3, wins), "", 5, bots=False)
+    shot("players", save_bytes(2, 0, 3, wins), "right", 5, bots=False)
     shot("games", save_bytes(2, 0, 3, wins), "ok", 5, bots=False)
     shot("rules", save_bytes(2, 0, 3, wins), "ok ok w10 p1 p3", 5, bots=False)
     for name, mode, game, frames, seed in [("sumo", 2, 0, 230, 5), ("racing", 2, 1, 520, 7), ("tanks", 2, 2, 190, 2),

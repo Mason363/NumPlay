@@ -186,12 +186,10 @@ static void icon(int x, int y) {
   disc(x + 28, y + 9, 3, WHITE);
 }
 
-#ifdef HOST
 static int bot(int p) {
   float want = fatan2(ball.y - pl[p].b.y, ball.x - pl[p].b.x);
   return bot_tap(p, fabs_(wrap_pi(pl[p].a - want)) < 0.25f && rt - pl[p].dash_t >= COOL && rn(2) == 0);
 }
-#endif
 
 const game_t g_soccer = {"Soccer", "Soccer", "Tap  dash",
                          "Your arrow spins. Tap your key to dash where it points and hit the ball. Two sides: the first "

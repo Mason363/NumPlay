@@ -95,12 +95,10 @@ static void icon(int x, int y) {
   disc(x + 10, y + 26, 4, col[0]), disc(x + 46, y + 26, 4, col[1]);
 }
 
-#ifdef HOST
 static int bot(int p) {
   int32_t when = target + (int32_t)((rn(1000) + rn(1000) - 1000) * 0.5f) + p * 7;
   return bot_tap(p, stopped[p] < 0 && rt >= when - 200 && rt <= when + 200 && rn(4) == 0);
 }
-#endif
 
 const game_t g_clock = {"Stop the Clock", "Clock", "Tap  stop",
                         "The stopwatch hides after two seconds. Tap your key when you think it shows the time asked. "

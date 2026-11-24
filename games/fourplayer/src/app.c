@@ -2,6 +2,7 @@
  *
  * Every player has one key, spread around the keypad: shift and backspace at the top corners, 0 and EXE at the
  * bottom ones, 7 and ) on the sides for 3 v 3. Every minigame is played with that key alone. */
+#include <stddef.h>
 #include <string.h>
 #include "app.h"
 #include "fp.h"
@@ -38,12 +39,14 @@ float seat(int p) {
 /* ---- the save: the mode, the game, the target, and the matches each colour won, each game and Mix */
 #define SAVE_NAME "fourplayer.sav"
 #define COPY_NAME "fourplayer_saves.py"
-#define VERSION 1
+#define VERSION 2
 typedef struct {
   char magic[4];                       /* "FOUR" */
   uint8_t version, mode, game, target; /* game: the tile last chosen (NG: Mix); target: first to */
   uint16_t wins[NG + 1][6];            /* red, blue, green, yellow (2 to 4 players), the red and blue teams */
+  uint8_t cpus, pad[3];                /* the computer players (the last seats); (version 1 ended before) */
 } save_t;
+#define V1_SIZE offsetof(save_t, cpus)
 static save_t sv;
 
 static const char copy_head[] = "# 2 3 4 Players' saves: keep this file\n#>" SAVE_NAME ":";
@@ -75,7 +78,27 @@ static int b64_value(uint8_t c) {
     if ((uint8_t)b64[i] == c) return i;
   return -1;
 }
-static bool usable(const uint8_t *d, uint32_t n) { return d && n == sizeof sv && !memcmp(d, "FOUR", 4) && d[4] == VERSION; }
+static bool usable(const uint8_t *d, uint32_t n) {
+  return d && !memcmp(d, "FOUR", 4) && ((n == sizeof sv && d[4] == VERSION) || (n == V1_SIZE && d[4] == 1));
+}
+/* the copy's save of `size` bytes (this version's, or version 1's) into out */
+static bool copy_read(const uint8_t *c, uint32_t n, uint32_t size, save_t *out) {
+  uint32_t head = 1 + sizeof copy_head - 1, len = (size + 2) / 3 * 4;
+  if (!c || n < head + len || memcmp(c + 1, copy_head, sizeof copy_head - 1)) return false;
+  uint8_t *o = (uint8_t *)out;
+  uint32_t k = 0;
+  for (uint32_t i = 0; i < len; i += 4) {
+    int v[4];
+    for (int j = 0; j < 4; j++) {
+      uint8_t q = c[head + i + j];
+      v[j] = q == '=' ? 0 : b64_value(q);
+      if (v[j] < 0) return false;
+    }
+    uint32_t w = (uint32_t)v[0] << 18 | (uint32_t)v[1] << 12 | (uint32_t)v[2] << 6 | (uint32_t)v[3];
+    for (int j = 0; j < 3 && k < size; j++) o[k++] = (uint8_t)(w >> (16 - 8 * j));
+  }
+  return usable(o, size);
+}
 static void load(void) {
   uint32_t n;
   const uint8_t *d = plat_load(SAVE_NAME, &n);
@@ -83,30 +106,17 @@ static void load(void) {
   if (!usable(d, n)) { /* the copy, then */
     d = NULL;
     const uint8_t *c = plat_load(COPY_NAME, &n);
-    uint32_t head = 1 + sizeof copy_head - 1, len = (sizeof(save_t) + 2) / 3 * 4;
-    if (c && n >= head + len && !memcmp(c + 1, copy_head, sizeof copy_head - 1)) {
-      uint8_t *o = (uint8_t *)&from_copy;
-      uint32_t k = 0;
-      bool ok = true;
-      for (uint32_t i = 0; i < len && ok; i += 4) {
-        int v[4];
-        for (int j = 0; j < 4; j++) {
-          uint8_t q = c[head + i + j];
-          v[j] = q == '=' ? 0 : b64_value(q);
-          ok &= v[j] >= 0;
-        }
-        uint32_t w = (uint32_t)(v[0] & 63) << 18 | (uint32_t)(v[1] & 63) << 12 | (uint32_t)(v[2] & 63) << 6 | (uint32_t)(v[3] & 63);
-        for (int j = 0; j < 3 && k < sizeof(save_t); j++) o[k++] = (uint8_t)(w >> (16 - 8 * j));
-      }
-      if (ok && usable((const uint8_t *)&from_copy, sizeof from_copy)) d = (const uint8_t *)&from_copy;
-    }
+    if (copy_read(c, n, sizeof(save_t), &from_copy)) d = (const uint8_t *)&from_copy, n = sizeof(save_t);
+    else if (copy_read(c, n, V1_SIZE, &from_copy)) d = (const uint8_t *)&from_copy, n = V1_SIZE;
   }
-  if (d) memcpy(&sv, d, sizeof sv);
-  else memset(&sv, 0, sizeof sv), sv.mode = 2, sv.target = 3, sv.game = 0;
+  memset(&sv, 0, sizeof sv);
+  if (d) memcpy(&sv, d, n == V1_SIZE ? V1_SIZE : sizeof sv);
+  else sv.mode = 2, sv.target = 3, sv.game = 0;
   /* whatever the file held: settings this game could have written */
   if (sv.mode >= NMODES) sv.mode = 2;
   if (sv.game > NG) sv.game = 0;
   if (sv.target < 1 || sv.target > 9) sv.target = 3;
+  if (sv.cpus >= MODE_N[sv.mode]) sv.cpus = 0;
 }
 
 /* ---- the app */
@@ -131,6 +141,8 @@ static struct {
 } u;
 
 static int nsides(void) { return teams ? 2 : np; }
+static bool cpu(int p) { return p >= np - sv.cpus; } /* (the computer players take the last seats) */
+static uint8_t cpu_mask(void) { return (uint8_t)(((1 << np) - 1) & ~((1 << (np - sv.cpus)) - 1)); }
 static int slot(int s) { return teams ? 4 + s : s; } /* a side's place in the wins */
 static const char *side_name(int s) { return teams ? TEAM_NAME[s] : FFA_NAME[s]; }
 static const game_t *G(void) { return GAMES[u.cur]; }
@@ -174,10 +186,8 @@ static void begin_round(void) {
   rt = -COUNTDOWN;
   G()->start();
   open(S_PLAY);
-#ifdef HOST
   extern int fp_round_serial;
   fp_round_serial++;
-#endif
 }
 static int mix_pick(void) {
   int g;
@@ -236,7 +246,8 @@ static void game_step(const uint8_t *h, const uint8_t *t, const uint8_t *r) {
 static void play(uint32_t ms) {
   uint8_t now_h[NMAX], t_[NMAX], r_[NMAX];
   for (int p = 0; p < np; p++) {
-    now_h[p] = (u.held & KEY(PKEY[p])) != 0;
+    if (cpu(p)) now_h[p] = rt > 0 && !u.decided && u.freeze <= 0 && !gone[p] && G()->bot(p);
+    else now_h[p] = (u.held & KEY(PKEY[p])) != 0;
     t_[p] = now_h[p] && !u.prev_h[p], r_[p] = !now_h[p] && u.prev_h[p];
     u.prev_h[p] = now_h[p];
   }
@@ -324,7 +335,11 @@ static void keypad(int x0, int y0, int n, uint8_t ready) {
   for (int p = 0; p < n; p++) {
     int x, y, w, h;
     key_at(p, x0, y0, &x, &y, &w, &h);
-    if (ready >> p & 1) gfx_rrect(x - 2, y - 2, w + 4, h + 4, 5, WHITE, 256);
+    if (ready >> p & 1 && !cpu(p)) gfx_rrect(x - 2, y - 2, w + 4, h + 4, 5, WHITE, 256);
+    if (cpu(p)) { /* (a computer's: its colour round an empty key) */
+      gfx_rrect_outline(x, y, w, h, 3, 2, col[p], 256);
+      continue;
+    }
     box(x, y, w, h, 3, col[p]);
     gfx_fill_alpha(x + 2, y + 1, w - 4, 2, WHITE, 90);
   }
@@ -334,6 +349,7 @@ static void chip(int x, int w, int s) {
   char t[6];
   box(x, 3, w, 17, 8, col[s]);
   if (teams) gfx_text(&np_font_small, x + 8, 15, TEAM_NAME[s], WHITE, 256);
+  else if (cpu(s)) gfx_text(&np_font_body, x + 8, 16, "CPU", WHITE, 256);
   else keytag(x + 8 + keytag_w(s) / 2, 16, s, WHITE);
   num(t, (uint32_t)u.score[s]);
   gfx_text_right(&np_font_body, x + w - 7, 16, t, WHITE, 256);
@@ -354,10 +370,13 @@ static void key_tags(void) {
     int w = keytag_w(p) + 10, side = u.tag_side[p], tx = (int)u.tag_x[p], ty = (int)u.tag_y[p];
     int x = side ? (side < 0 ? tx - 10 - w : tx + 10) : tx - w / 2, y = side ? ty - 8 : ty - 22;
     x = clampi(x, 2, SCREEN_W - 2 - w), y = clampi(y, TOP + 2, 220);
+    if (cpu(p)) w = gfx_text_width(&np_font_body, "CPU") + 10, x = side ? (side < 0 ? tx - 10 - w : tx + 10) : tx - w / 2,
+                x = clampi(x, 2, SCREEN_W - 2 - w);
     box(x, y, w, 17, 6, col[p]);
     if (side) gfx_fill(side < 0 ? x + w : x - 2, y + 6, 2, 5, col[p]);
     else gfx_fill(x + w / 2 - 3, y + 17, 6, 2, col[p]);
-    keytag(x + w / 2, y + 13, p, WHITE);
+    if (cpu(p)) gfx_text_center(&np_font_body, x + w / 2, y + 13, "CPU", WHITE, 256);
+    else keytag(x + w / 2, y + 13, p, WHITE);
   }
 }
 static void countdown(int32_t left) { /* 3, 2, 1 */
@@ -383,7 +402,8 @@ static void scores(int y0, bool pop) {
     int y = y0 + s * (u.nsides > 3 ? 22 : 26);
     blob(66, y, 8, s, 0);
     int e = gfx_text(&np_font_body, 82, y + 5, side_name(s), s == u.winner ? GOLD : WHITE, 256);
-    if (!teams) keytag(e + 8 + keytag_w(s) / 2, y + 5, s, SOFT);
+    if (!teams && cpu(s)) gfx_text(&np_font_body, e + 8, y + 5, "CPU", SOFT, 256);
+    else if (!teams) keytag(e + 8 + keytag_w(s) / 2, y + 5, s, SOFT);
     pips(176, y, s, pop && s == u.winner);
   }
 }
@@ -445,7 +465,12 @@ static void scene(void *ctx) {
       }
     }
     keypad(194, 44, np, 0);
-    keys_line(233, "OK  choose    Back  quit");
+    char *e = sv.cpus ? num(s, sv.cpus) : s; /* the computer players */
+    for (const char *q = !sv.cpus ? "No computer" : sv.cpus == 1 ? " computer" : " computers"; *q; q++) *e++ = *q;
+    *e = 0;
+    tri(190, 200, 2, SOFT), tri(310, 200, 0, SOFT);
+    gfx_text_center(&np_font_body, 250, 205, s, sv.cpus ? GOLD : WHITE, 256);
+    keys_line(233, "OK  choose    left right  computers    Back  quit");
   } else if (base == S_GAMES) {
     backdrop();
     gfx_text(&np_font_body, 12, 24, "Pick a game", WHITE, 256);
@@ -466,8 +491,12 @@ static void scene(void *ctx) {
       int p = teams ? (i < np / 2 ? 2 * i : 2 * (i - np / 2) + 1) : i, ry = top + 10 + i * gap + (teams && i >= np / 2 ? 4 : 0);
       bool r = u.ready >> p & 1;
       blob(140, ry, 7, p, 0);
-      keytag(170, ry + 4, p, lite[p]);
-      if (r) {
+      if (cpu(p)) gfx_text_center(&np_font_body, 170, ry + 4, "CPU", lite[p], 256);
+      else keytag(170, ry + 4, p, lite[p]);
+      if (cpu(p)) {
+        box(196, ry - 9, 100, 18, 9, dark[p]);
+        gfx_text(&np_font_small, 210, ry + 4, "Computer", WHITE, 256);
+      } else if (r) {
         box(196, ry - 9, 100, 18, 9, col[p]);
         tick_sign(210, ry, WHITE);
         gfx_text(&np_font_small, 222, ry + 4, "Ready", WHITE, 256);
@@ -590,6 +619,8 @@ bool app_step(uint64_t keys, uint32_t now) {
   switch (u.screen) {
     case S_MODE:
       if (dy) sv.mode = (uint8_t)((sv.mode + dy + NMODES) % NMODES), set_mode(sv.mode);
+      if (dx) sv.cpus = (uint8_t)clampi(sv.cpus + dx, 0, np - 1), u.dirty = true;
+      if (sv.cpus > np - 1) sv.cpus = (uint8_t)(np - 1);
       if (ok) save(), open(S_GAMES);
       else if (back) u.under = S_MODE, open(S_ASK);
       break;
@@ -604,7 +635,8 @@ bool app_step(uint64_t keys, uint32_t now) {
     }
     case S_RULES:
       for (int p = 0; p < np; p++)
-        if (hit & KEY(PKEY[p])) u.ready |= (uint8_t)(1 << p), u.dirty = true;
+        if ((hit & KEY(PKEY[p])) && !cpu(p)) u.ready |= (uint8_t)(1 << p), u.dirty = true;
+      u.ready |= cpu_mask();
       if (dx && !u.started) sv.target = (uint8_t)clampi(sv.target + dx, 1, 9), u.dirty = true;
       if (back) {
         if (u.started) u.under = S_RULES, open(S_PAUSE);
@@ -674,7 +706,7 @@ void app_draw(void) {
 void app_state(app_state_t *s) {
   s->screen = u.screen, s->mode = sv.mode, s->game = sv.game, s->cur = u.cur, s->target = sv.target;
   s->round = u.round, s->nsides = u.nsides, s->winner = u.winner, s->decided = u.decided, s->rt = rt;
-  s->matches = u.matches;
+  s->matches = u.matches, s->cpus = sv.cpus;
   memcpy(s->score, u.score, sizeof s->score);
   memcpy(s->wins, sv.wins, sizeof sv.wins);
 }

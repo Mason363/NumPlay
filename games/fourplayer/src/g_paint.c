@@ -106,7 +106,6 @@ static void icon(int x, int y) {
   disc(x + 26, y + 12, 5, col[0]), disc(x + 30, y + 24, 5, col[1]);
 }
 
-#ifdef HOST
 static int bot(int p) {
   static int32_t next[NMAX];
   if (bot_fresh(p)) next[p] = 0;
@@ -116,7 +115,6 @@ static int bot(int p) {
   next[p] = rt + 400 + rn(1200);
   return bot_tap(p, true);
 }
-#endif
 
 const game_t g_paint = {"Paint", "Paint", "Tap  curve the other way",
                         "Your roller never stops and always curves. Tap your key to curve the other way. After 30 "

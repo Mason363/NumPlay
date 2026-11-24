@@ -76,7 +76,6 @@ static void icon(int x0, int y0) {
   gfx_fill(x0 + 44, y0 + 15, 3, 18, WHITE);
 }
 
-#ifdef HOST
 static int bot(int p) {
   static int32_t next[NMAX], every[NMAX];
   if (bot_fresh(p)) next[p] = 0, every[p] = 100 + rn(40);
@@ -84,7 +83,6 @@ static int bot(int p) {
   next[p] = rt + every[p] + rn(50);
   return bot_tap(p, true);
 }
-#endif
 
 const game_t g_skate = {"Skate Race", "Skate", "Tap  kick",
                         "Every tap of your key is a kick. Tap as fast as you can: the first over the line takes the "

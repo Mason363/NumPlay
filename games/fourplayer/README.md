@@ -25,13 +25,14 @@
 * **One key each:** shift, ⌫, 0 and EXE, at the four corners of the keypad, with 7 and ) for 3 v 3. Every game is played with that key alone.
 * **14 minigames:** Sumo, Racing, Tanks, Snakes, Soccer, Grab the Fish, Skate Race, Jump Rope, Paint, Balloons, Birds, Gravity Run, Frog Jump and Stop the Clock. Or Mix, another one every round.
 * **2, 3 or 4 players, or teams:** 2 v 2, or 3 v 3 with six around one calculator.
+* **Computer players:** fewer of you? The computer takes the last seats, as many as you like but one, and plays each game its own way.
 * **Quick rounds:** 10 to 60 seconds each, the scores between them, first to 3 rounds (or anything from 1 to 9).
 * **Before each game:** its rules, and a map of the keypad with each player's key in their colour. Everyone presses theirs, and it starts.
 * **Kept:** the matches each colour has won, for every game. Home saves and quits. It's also copied into `fourplayer_saves.py`, so installing apps again doesn't erase it.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/players.png" width="390" alt="How many play: 2, 3 or 4 players, 2 v 2 or 3 v 3, and the keys on the keypad"><br><sub>How many play, and their keys</sub></td>
+    <td align="center"><img src="docs/players.png" width="390" alt="How many play: 2, 3 or 4 players, 2 v 2 or 3 v 3, the keys on the keypad, and one computer player"><br><sub>How many play, their keys, the computer</sub></td>
     <td align="center"><img src="docs/games.png" width="390" alt="The fourteen minigames and Mix"><br><sub>The minigames</sub></td>
   </tr>
   <tr>
@@ -97,7 +98,7 @@ In teams, a round won by one of you is the team's. In Grab the Fish your goldfis
 | --- | --- |
 | shift, ⌫, 0, EXE | The players' keys, with 7 and ) in 3 v 3 |
 | Arrows, OK | Choose the players and a game |
-| Left and Right | On the rules, the rounds to win |
+| Left and Right | On the players, how many the computer plays; on the rules, the rounds to win |
 | Back | Pause: Resume, Restart, Other games, Quit game |
 | Home | Save and quit |
 
@@ -106,7 +107,7 @@ With two or three players, EXE works as OK too.
 ## Good to know
 
 * **On its own:** NumPlay is full, so 2 3 4 Players is an app of its own.
-* **Together:** there's no single player and no computer to play against, and no shop: every game is there from the start.
+* **No shop:** every game is there from the start.
 
 ## Credits
 
