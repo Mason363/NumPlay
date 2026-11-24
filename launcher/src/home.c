@@ -8,11 +8,11 @@
 #include "theme.h"
 #include "../../games/common/np_text.h"
 
-#define CARD_W 200
-#define CARD_H 152
-#define CARD_CX 160
-#define CARD_CY 103
-#define SPACING 184
+#define CARD_W 176
+#define CARD_H 128
+#define CARD_CX 104
+#define CARD_CY 109
+#define SPACING 340
 #define FRAME 4
 #define SHOT_MS 2600
 #define SLIDE_MS 520
@@ -169,16 +169,8 @@ static void scene(void *ctx) {
     draw_star(32, 6, 3, gfx_rgb(th->star_b), ui_alpha);
     gfx_text(&np_font_body, 38, 14, "TwiliPlay", tx, ui_alpha);
     gfx_text(&np_font_small, 39, 25, "STARLIGHT EDITION", tx, ui_alpha * 170 / 256);
-    int pitch = NP_MIN(10, 190 / (h->n + 1));
-    int dx = SCREEN_W - 10 - (h->n + 1) * pitch;
-    for (int i = 0; i < h->n; i++) {
-      float near = 1 - NP_MIN(absf(i - h->pos), 1.f);
-      int w = pitch - 4 + (int)(pitch * near);
-      color_t dc = near > 0.5f ? gfx_rgb(th->accent) : tx;
-      gfx_rrect(dx, 11, w, 6, NP_MIN(3, w / 2), dc, (int)((90 + 166 * near) * ui_alpha / 256));
-      dx += w + 4;
-    }
-    if (h->toast) gfx_text_right(&np_font_small, SCREEN_W - 10, 25, th->name, tx, ui_alpha);
+    gfx_rrect(230, 5, 80, 24, 7, gfx_rgb(th->panel), ui_alpha);
+    gfx_text_center(&np_font_small, 270, 20, h->toast ? th->name : "HOME", tx, ui_alpha);
   }
   int lo = NP_MAX((int)h->pos - 2, 0), hi = NP_MIN((int)h->pos + 2, h->n - 1);
   for (int pass = 3; pass >= 0; pass--)
@@ -192,22 +184,24 @@ static void scene(void *ctx) {
   float away = absf(h->pos - front);
   int text_alpha = (int)(ui_alpha * NP_CLAMP(1 - away * 2.2f, 0.f, 1.f));
   int game = h->item[front];
-  if (gfx_y1 > 180 && text_alpha > 0) {
-    if (game >= 0 && np_games[game].nshots > 1) {
-      int n = np_games[game].nshots, seg = 22, gap = 5;
-      int x0 = CARD_CX - (n * seg + (n - 1) * gap) / 2;
-      float progress = front == h->sel ? (h->slide > 0 ? 1.f : NP_MIN(h->shot_time / (float)SHOT_MS, 1.f)) : 0;
-      for (int i = 0; i < n; i++) {
-        int x = x0 + i * (seg + gap);
-        gfx_rrect(x, 185, seg, 4, 2, tx, text_alpha * 70 / 256);
-        int fill = i < h->shot ? seg : i == h->shot ? (int)(seg * progress) : 0;
-        if (fill >= 4) gfx_rrect(x, 185, fill, 4, 2, tx, text_alpha * 230 / 256);
-      }
-    }
-    if (game >= 0 && np_games[game].credit && np_games[game].nshots <= 1)
-      gfx_text_center(&np_font_small, CARD_CX, 193, np_games[game].credit, tx, text_alpha * 150 / 256);
-    gfx_text_center(&np_font_title, CARD_CX, 213, item_title(game), tx, text_alpha);
-    gfx_text_center(&np_font_body, CARD_CX, 231, item_tagline(game), tx, text_alpha * 190 / 256);
+  if (text_alpha > 0) {
+    color_t panel = gfx_rgb(th->panel), accent = gfx_rgb(th->accent);
+    gfx_rrect(200, 45, 110, 128, 9, panel, text_alpha);
+    gfx_text_center(&np_font_small, 255, 62, game < 0 ? "SYSTEM" : "SELECTED GAME", tx, text_alpha);
+    char index[] = "00 / 00";
+    index[0] = '0' + (front + 1) / 10;
+    index[1] = '0' + (front + 1) % 10;
+    index[5] = '0' + h->n / 10;
+    index[6] = '0' + h->n % 10;
+    gfx_text_center(&np_font_body, 255, 87, index, tx, text_alpha);
+    gfx_rrect(212, 100, 86, 4, 2, tx, text_alpha / 4);
+    gfx_rrect(212, 100, NP_MAX(4, 86 * (front + 1) / h->n), 4, 2, accent, text_alpha);
+    gfx_rrect(210, 122, 90, 35, 7, accent, text_alpha);
+    gfx_text_center(&np_font_body, 255, 144, game < 0 ? "OK: Open" : "OK: Play", gfx_rgb(th->bg), text_alpha);
+    gfx_text_center(&np_font_title, 160, 198, item_title(game), tx, text_alpha);
+    gfx_text_center(&np_font_small, 160, 214, item_tagline(game), tx, text_alpha);
+    gfx_rrect(10, 221, 300, 17, 5, panel, ui_alpha);
+    gfx_text_center(&np_font_small, 160, 233, "Left/Right: Browse   Up/Down: Theme", tx, ui_alpha);
   }
 }
 
@@ -338,7 +332,7 @@ int np_home(int *selected, bool returning) {
       ui_frame(scene, &h);
       dirty = bar_dirty = false;
     } else if (bar_dirty) {
-      gfx_render(scene, &h, 176, 192);  /* the strip holding the progress bar */
+      /* No screenshot progress bar in the Stage 2 layout. */
       bar_dirty = false;
     } else {
       np_sleep(16);
