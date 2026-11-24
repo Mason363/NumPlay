@@ -2,7 +2,7 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
-## 1.24.23: NumVisuals' new look
+## 1.24.24: NumVisuals' new look
 
 - **NumVisuals:** all 11 backgrounds drawn again from scratch, in smooth colour with soft light and glows, and the clock and your words in Nunito, sharp at any size. Still 30 frames a second.
 - **NumPlay:** ⌫ on the home screen has all 11 of NumVisuals' backgrounds, with Warp, Tunnel, Fire, Bokeh and Code Rain.
