@@ -115,6 +115,9 @@ body.dragging-icon, body.dragging-icon * { cursor: grabbing !important; user-sel
 .cart { display: flex; flex-direction: column; justify-content: flex-end; width: 47px; height: 56px; margin: 0 4px; border-radius: 4px 12px 4px 4px; box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.14); pointer-events: none; }
 .cart span { margin: 0 6px 10px; height: 22px; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 10.5px; font-weight: 900; }
 .app.p8 img { border: 5px solid #1d2b53; border-radius: 22%; background: #1d2b53; }  /* (an icon's corners, as the rest) */
+/* (a picture, PDF, video or book of yours being made into an app: a blank icon that fills from the bottom as it's made) */
+.app.making .mk { position: relative; display: block; width: 55px; height: 56px; border-radius: 22%; overflow: hidden; background: #e7e6e1; pointer-events: none; }
+.app.making .mk::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--p, 0) * 100%); background: var(--ink); transition: height 240ms linear; }
 /* (your own files' way in, under your games, as NumPlay Studio has always drawn it: three cartridges fanned, a Game
    Boy's, an NES's and a Master System's, that lift apart when you point at the box or bring files over the page) */
 .add {
@@ -143,6 +146,16 @@ body.dragging-icon, body.dragging-icon * { cursor: grabbing !important; user-sel
 .add:hover .c1, body.dragging .add .c1 { transform: rotate(-20deg) translate(-3px, -4px); }
 .add:hover .c2, body.dragging .add .c2 { transform: translateY(-9px); }
 .add:hover .c3, body.dragging .add .c3 { transform: rotate(20deg) translate(3px, -4px); }
+/* (your files' way in: a photo, a page and a video's frame, fanned and lifting apart as the cartridges do) */
+.add.files .add-art i { border-radius: 3px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.14); }
+.add.files .add-art i::before, .add.files .add-art i::after { background: none; }
+.add.files .c1 { background: linear-gradient(#8ec5f0, #d3e9f8 58%, #6aa84f 58%, #4b8a36); border: 3px solid #ffffff; box-sizing: border-box; }
+.add.files .add-art .c1::before { left: auto; right: 4px; top: 4px; width: 7px; height: 7px; border-radius: 50%; background: #ffd34e; }
+.add.files .c2 { background: #ffffff; }
+.add.files .add-art .c2::before { left: 6px; right: 14px; top: 7px; height: 3px; background: #3a3a3c; }
+.add.files .add-art .c2::after { left: 6px; right: 6px; top: 14px; bottom: 8px; border-radius: 0; background: repeating-linear-gradient(#cfcec8 0 2px, transparent 2px 5px); }
+.add.files .c3 { background: linear-gradient(#2c2c30, #18181b); }
+.add.files .add-art .c3::after { left: 13px; right: 11px; top: 16px; bottom: 16px; border-radius: 0; background: #ffffff; clip-path: polygon(0 0, 100% 50%, 0 100%); }
 .add-text { font-size: 15px; font-weight: 800; }
 .add-sub { font-size: 12.5px; font-weight: 700; color: var(--mute); }
 /* (a game on its way into the calculator, or out of it) */
@@ -151,7 +164,7 @@ body.dragging-icon, body.dragging-icon * { cursor: grabbing !important; user-sel
 /* (as the page arrives the games go into the calculator in the stage's layer: over the calculator, behind the words) */
 .stage > .flyer { z-index: 1; }
 @media (min-width: 861px) { .s-top, .words, .go { position: relative; z-index: 2; } }
-#own-file { position: absolute; left: -9999px; }
+#own-file, #files-file { position: absolute; left: -9999px; }
 .foot { margin-top: 44px; display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13px; }
 .foot a { color: var(--mute); text-decoration: none; }
 .foot a:hover { color: var(--ink); }
@@ -234,7 +247,7 @@ body.dragging .veil { display: flex; }
 .stage.pale .facts .no { color: #7a4300; }
 /* another calculator: its games only, as files in one zip, so NumPlay's app, the space for apps and your own files
    step aside */
-.other #w-links, .other #download, .other #own-sec, .other #own-sec + .icons, .other .w-icon, .other #in-hint { display: none !important; }
+.other #w-links, .other #download, .other #own-sec, .other #own-sec + .icons, .other #files-sec, .other #files-sec + .icons, .other .w-icon, .other #in-hint { display: none !important; }
 /* Saves: the stage keeps its calculator, and says what Saves is */
 .saving .facts, .saving .set, .saving .go, .saving .w-icon, .saving .pager, .saving .act, .saving .w-back { display: none; }
 

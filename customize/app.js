@@ -83,7 +83,7 @@
   const kits = {};         // the kit of each language, loaded when picked
   const byId = {};
   const st = {
-    picked: new Set(), order: [], roms: [], apps: [], carts: [], cap: 'std', lang: 'en',
+    picked: new Set(), order: [], roms: [], apps: [], carts: [], making: [], cap: 'std', lang: 'en',
     app: { icon: 'NumPlay', name: 'NumPlay', open: 'numplay', secret: 0, hint: true },
     calc: 'numworks', port: {},  // (the games picked for each other calculator)
   };
@@ -351,15 +351,17 @@
   // Your own games and apps, under "Your own": a Game Boy, NES or Sega game as its cartridge, a PICO-8 cart as its
   // label, an app as its icon. Pressing one shows it on the stage, where a button takes it out.
   function renderOwn() {
-    const box = $('#in-more'), have = new Set();
+    const games = $('#in-more'), mine = $('#in-files'), have = new Set();
+    let box = games;
     const add = (key, cls, what, art, remove) => {
       have.add(key);
       if (box.querySelector('[data-k="' + key + '"]')) return;
       const b = el('button', 'app own ' + cls, { type: 'button', 'data-k': key, 'aria-label': what.title, 'data-tip': what.title });
       b.appendChild(art());
-      what.remove = remove;
+      what.remove = remove, what.k = key;
       b.addEventListener('click', () => select(what, b));
-      box.appendChild(b);
+      const was = key[0] === 'a' && box.querySelector('[data-k="m' + key.slice(1) + '"]');  // (a file made: in its place)
+      box.insertBefore(b, was || null);
     };
     const picture = (url) => () => el('img', '', { src: url, alt: '', draggable: 'false', width: 55, height: 56 });
     for (const r of st.roms) {
@@ -375,11 +377,29 @@
     for (const k of st.carts)
       add('p' + k.key, 'p8', { title: k.title, tag: 'PICO-8 cart, in NumPico', bytes: npPico.cartBytes(k), top: '#1d2b53', bottom: '#0a0f1f' },
         picture(k.url || KIT + 'icons/' + pk.id + '.png'), () => removeCart(k));
-    for (const a of st.apps)
+    for (const a of st.apps.filter((x) => !x.media))
       add('a' + a.key, 'nwa', { title: a.title, tag: a.file, bytes: a.flash, top: hex(a.accent.toString(16)), bottom: '#17171a' }, picture(a.url), () => removeApp(a));
-    for (const c of box.querySelectorAll('[data-k]')) if (!have.has(c.dataset.k)) c.remove();
-    $('#n-own').textContent = have.size || '';
-    box.classList.toggle('out', !!solo());  // (a game that takes the whole calculator leaves them out)
+    const nGames = have.size;
+    // Your files: pictures, PDFs, videos and books, each an app; one being made is a blank icon that fills from the
+    // bottom as it's made
+    box = mine;
+    for (const a of st.apps.filter((x) => x.media))
+      add('a' + a.key, 'nwa', { title: a.title, tag: a.tag, bytes: a.flash, top: hex(a.accent.toString(16)), bottom: '#17171a', screen: a.screen },
+        picture(a.url), () => removeApp(a));
+    for (const m of st.making)
+      add('m' + m.key, 'making', { title: m.title, tag: 'Being made', bytes: 0, top: '#3a3a3c', bottom: '#17171a' },
+        () => el('span', 'mk'), () => { m.gone = true; st.making = st.making.filter((x) => x !== m); render(); });
+    for (const c of [...games.querySelectorAll('[data-k]'), ...mine.querySelectorAll('[data-k]')]) if (!have.has(c.dataset.k)) c.remove();
+    // (one of your files shown on the stage while it was made, and now made: the stage shows the app it became)
+    if (pointed && typeof pointed === 'object' && pointed.k && !have.has(pointed.k)) {
+      const made = pointed.k[0] === 'm' && mine.querySelector('[data-k="a' + pointed.k.slice(1) + '"]');
+      hidePreview();
+      point(null);
+      if (made) queueMicrotask(() => made.click());
+    }
+    $('#n-own').textContent = nGames || '';
+    $('#n-files').textContent = have.size - nGames || '';
+    for (const b of [games, mine]) b.classList.toggle('out', !!solo());  // (a game that takes the whole calculator leaves them out)
   }
 
   // ------------------------------------------------------------------ the stage
@@ -411,6 +431,7 @@
     hidePreview();
     point(again ? null : what, again ? null : b);
     if (!again && typeof what === 'string') showPreview(what);
+    else if (!again && what && what.screen) showScreen(what);
   }
   // (and the focus, when it was on a button that goes with the game, goes back to the game's icon)
   const deselect = () => {
@@ -462,10 +483,11 @@
     stage.classList.toggle('pointing', !!g);
     stage.classList.toggle('saving', saving);
     const used = usedBytes(), cap = capacity(), picks = o ? portPicks() : ordered();
-    const n = o ? picks.length : s ? 1 : entries(), count = n + (n === 1 ? ' game' : ' games'), yours = o ? 'your games' : 'NumPlay';
+    const files = o || s ? 0 : st.apps.filter((x) => x.media).length, n = (o ? picks.length : s ? 1 : entries()) - files;
+    const count = n + (n === 1 ? ' game' : ' games') + (files ? ', ' + files + (files === 1 ? ' file' : ' files') : ''), yours = o ? 'your games' : 'NumPlay';
     let title, tag = null, a = count, b = '', no = false, would = 0, act = '';
     if (saving) { title = 'Your saves'; tag = 'Backed up when you plug in. Put back after a reset.'; }
-    else if (g && mine) { title = g.title; tag = g.tag; a = size(g.bytes); act = 'Take out'; }
+    else if (g && mine) { title = g.title; tag = g.tag; a = g.bytes ? size(g.bytes) : ''; act = 'Take out'; }  // (no size yet: being made)
     else if (g) {
       const id = pointed, on = isIn(id);
       const bytes = o ? portList()[id].size : alone(id) ? game(id).alone.size : flash(id);
@@ -612,7 +634,7 @@
     const held = document.activeElement === $('#w-act');
     deselect();
     what.remove();
-    const next = held && document.querySelector('#in-more .app');  // (by keyboard: on to the next of your files)
+    const next = held && document.querySelector('#in-more .app, #in-files .app');  // (by keyboard: on to the next of your files)
     if (next) next.focus({ preventScroll: true });
   }
   // (the page arriving: the screen starts with NumPlay alone on it; each game's block and its share of the space
@@ -676,6 +698,15 @@
     if (img.getAttribute('src') === src && img.complete && img.naturalWidth) come();
     else { p.classList.remove('show'); img.onload = come; img.src = src; }  // (over the screen once it has come)
     $('#status-line').textContent = g.title.toUpperCase();
+  }
+  // one of your files as its app first shows it
+  function showScreen(what) {
+    previewing = what;
+    const p = $('#preview'), img = p.querySelector('img');
+    p.classList.remove('show');
+    img.onload = () => { if (previewing === what) p.classList.add('show'); };
+    img.src = what.screen;
+    $('#status-line').textContent = what.title.toUpperCase();
   }
   function hidePreview() {
     previewing = null;
@@ -890,7 +921,7 @@
     g.putImageData(img, 0, 0);
     return c.toDataURL('image/png');
   }
-  async function appFrom(f, key) {
+  async function appFrom(f, key, about = {}) {
     const A = npApps, bytes = new Uint8Array(await f.arrayBuffer());
     const id = 'app' + key, index = 200 + key, info = A.appInfo(bytes);
     if (!kit.script.module) throw new Error("can't come in until NumPlay Studio's next update");
@@ -909,8 +940,8 @@
     const c = A.colors(info.icon), cd = A.card(info.icon, c.bottom);
     const z = new Uint8Array(await new Response(new Blob([cd.indices]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
     const file = ascii(f.name) || 'app.nwa', title = ascii(info.name) || ascii(f.name.replace(/\.nwa$/i, '')) || 'App';
-    const entry = A.entryObject({ id, index, title, tagline: file, ...c, data: m.data, bss: m.bss, palette: cd.palette, z });
-    return { key, id, index, title, file, obj: m.obj, entry, data: m.data, bss: m.bss, accent: c.accent,
+    const entry = A.entryObject({ id, index, title, tagline: about.tag || file, ...c, data: m.data, bss: m.bss, palette: cd.palette, z });
+    return { key, id, index, title, file, obj: m.obj, entry, data: m.data, bss: m.bss, accent: c.accent, media: !!about.media, tag: about.tag, screen: about.screen,
              flash: allocBytes(m.obj) + allocBytes(entry) + 8, url: info.icon ? iconUrlOf(info.icon) : KIT + 'variants/NumPlay.png' };
   }
   async function addApps(files) {
@@ -930,18 +961,102 @@
     st.apps = st.apps.filter((x) => x !== a);
     render();
   }
-  // Files of your own, by their kind: apps (.nwa) to your apps, PICO-8 carts to NumPico, the rest to Retro-Go. What
-  // reads the first two (apps.js, pico.js) is fetched when one comes, not with the page.
+
+  // ------------------------------------------------------------------ your pictures, PDFs, videos and books
+  // Each becomes an app of its own (NumView, games/numview): media.js makes the file into NumView's table, which is
+  // linked here with the viewer for its kind (kit apps/NumView-<viewer>-app.o.gz), its name and an icon made from
+  // it, into an .nwa that comes in as your own apps do. One at a time: a video stops where the room left ends.
+  const MEDIA_FILES = /\.(jpe?g|png|webp|gif|bmp|avif|pdf|mp4|mov|m4v|webm|epub|txt)$/i;
+  const MEDIA_LD = 'SECTIONS {\n  .rodata.np_media : { KEEP(*(.rodata.np_media)) np_numview_end = .; }\n}\n';
+  const urlOf = async (c) => (c.convertToBlob ? URL.createObjectURL(await c.convertToBlob()) : c.toDataURL('image/png'));
+  async function linkMedia(m) {
+    const [t, app] = await Promise.all([loadTools(), fetchBytes(KIT + 'apps/NumView-' + m.viewer + '-app.o.gz')]);
+    const name = new TextEncoder().encode(m.name), nz = new Uint8Array(name.length + 1);
+    nz.set(name);
+    const files = {
+      'app.o': app, 'media.ld': MEDIA_LD, 'icon.o': iconObject(m.icon),
+      'media.o': elfObject([{ name: '.rodata.np_media', sym: 'np_media', data: m.table, align: 4 },
+                            { name: '.rodata.eadk_app_name', sym: 'eadk_app_name', data: nz }]),
+    };
+    const l = await run(t.ld, ['-r', '-T', 'media.ld', 'app.o', 'media.o', 'icon.o', '-o', 'out.nwa'], files);
+    if (l.code) throw new Error(l.log || 'ld ' + l.code);
+    const s = await run(t.oc, ['--strip-unneeded', 'in.nwa', 'out.nwa'], { 'in.nwa': l.m.FS.readFile('out.nwa') });
+    if (s.code) throw new Error(s.log || 'objcopy ' + s.code);
+    return s.m.FS.readFile('out.nwa');
+  }
+  async function addMedia(files) {
+    const drop = $('#add-files');
+    if (solo()) { bump(drop, 'shake'); toast(byId[solo()].title + " takes the whole calculator, so there's no room for your files"); return; }
+    // (all of them on the shelf at once, each filling in turn)
+    const queue = files.map((f) => ({ f, key: ++appKey, title: f.name.replace(/\.[^.]+$/, ''), p: 0 }));
+    st.making.push(...queue);
+    render();
+    for (const m of queue) {
+      const f = m.f;
+      if (m.gone) continue;
+      if (entries() + 1 > MAX_GAMES) { bump(drop, 'shake'); toast('NumPlay holds ' + MAX_GAMES + ' games and apps at most'); break; }
+      const room = capacity() - total(ordered()) - 64 * 1024;  // (the viewer and its entry take the rest)
+      if (room <= 0) { bump(drop, 'shake'); overflow(-room); break; }
+      const fill = (p) => {
+        if (m.gone) throw new Error('taken out');  // (stops making it)
+        m.p = p;
+        const e = document.querySelector('[data-k="m' + m.key + '"] .mk');
+        if (e) e.style.setProperty('--p', Math.min(1, p).toFixed(3));
+      };
+      try {
+        const made = await npMedia.pack(f, { room, progress: fill, pdfjs: pdfjs });
+        fill(1);
+        const nwa = await linkMedia(made);
+        const a = await appFrom(new File([nwa], made.name + '.nwa'), m.key, { media: true, tag: made.tag, screen: await urlOf(made.screen) });
+        if (m.gone) continue;  // (taken out while it was made)
+        const over = total(ordered(), st.roms, st.apps.concat([a])) - capacity();
+        if (over > 0) { bump(drop, 'shake'); overflow(over); } else st.apps.push(a);
+      } catch (e) {
+        if (m.gone) continue;
+        bump(drop, 'shake');
+        if (e.over) overflow(e.over + 64 * 1024);
+        else {
+          console.error(e);
+          toast(f.name + ' ' + (/^(isn't|has no|is too)/.test(e.message) ? e.message : "couldn't be made into an app"));
+        }
+      } finally {
+        st.making = st.making.filter((x) => x !== m);
+        render();
+      }
+    }
+    st.making = st.making.filter((x) => !queue.includes(x));
+    render();
+  }
+  // pdf.js (pdfjs/), when a PDF comes
+  let pdfLib = null;
+  const pdfjs = () => pdfLib || (pdfLib = import('./pdfjs/pdf.min.mjs').then((lib) => {
+    lib.GlobalWorkerOptions.workerSrc = new URL('pdfjs/pdf.worker.min.mjs', location.href).href;
+    return lib;
+  }).catch((e) => { pdfLib = null; throw e; }));
+  // a PICO-8 cart: a .p8, or a .png the size of a cart's picture (160 x 205); any other .png is a picture
+  async function isCart(f) {
+    if (/\.p8(\.png)?$/i.test(f.name)) return true;
+    if (!/\.png$/i.test(f.name)) return false;
+    const h = new DataView(await f.slice(0, 24).arrayBuffer());
+    return h.byteLength >= 24 && h.getUint32(16) === 160 && h.getUint32(20) === 205;
+  }
+  // Files of your own, by their kind: apps (.nwa) to your apps, PICO-8 carts to NumPico, pictures, PDFs, videos and
+  // books to Your files, the rest to Retro-Go. What reads them (apps.js, pico.js, media.js) is fetched when one comes,
+  // not with the page.
   async function addFiles(all) {
-    const nwa = all.filter((f) => /\.nwa$/i.test(f.name)), p8 = pk ? all.filter((f) => /\.(p8|png)$/i.test(f.name)) : [];
-    const rest = all.filter((f) => !nwa.includes(f) && !p8.includes(f));
+    const nwa = all.filter((f) => /\.nwa$/i.test(f.name)), p8 = [];
+    if (pk) for (const f of all) if (await isCart(f)) p8.push(f);
+    const media = all.filter((f) => !p8.includes(f) && MEDIA_FILES.test(f.name));
+    const rest = all.filter((f) => !nwa.includes(f) && !p8.includes(f) && !media.includes(f));
     try {
-      if (nwa.length && !window.npApps) await script('apps.js');
+      if ((nwa.length || media.length) && !window.npApps) await script('apps.js');
       if (p8.length && !window.npPico) await script('pico.js');
+      if (media.length && !window.npMedia) await script('media.js');
     } catch (e) { toast("That didn't load, try again"); return; }
     if (nwa.length) await addApps(nwa);
     if (p8.length) await addCarts(p8);
     if (rest.length && rg) await addRoms(rest);
+    if (media.length) await addMedia(media);
   }
 
   // ------------------------------------------------------------------ moving games around
@@ -959,7 +1074,7 @@
   // a change to the shelf: what it moves slides from where it is seen to its new place (not with reduced motion)
   function slide(change) {
     if (still()) return change();
-    const all = [...buttons.values()].concat([...document.querySelectorAll('#games .sec, #games .foot, #in-more .app, #add')]);
+    const all = [...buttons.values()].concat([...document.querySelectorAll('#games .sec, #games .foot, #in-more .app, #add, #in-files .app, #add-files')]);
     const before = new Map(all.filter((e) => e.offsetParent).map((e) => { const r = e.getBoundingClientRect(); return [e, [r.left + scrollX, r.top + scrollY]]; }));
     change();
     for (const [e, was] of before) {
@@ -1298,6 +1413,15 @@
     }
     const obj = elfObject([{ name: '.rodata.eadk_app_icon', sym: 'eadk_app_icon', data: lz4(raw), flags: 3, type: 0 }]);
     return { url: c.toDataURL('image/png'), obj };
+  }
+  // the same from a 55 x 56 canvas (one of your files' icons, media.js)
+  function iconObject(c) {
+    const px = c.getContext('2d').getImageData(0, 0, 55, 56).data, raw = new Uint8Array(55 * 56 * 2);
+    for (let p = 0, q = 0; p < px.length; p += 4, q += 2) {
+      const v = ((px[p] >> 3) << 11) | ((px[p + 1] >> 2) << 5) | (px[p + 2] >> 3);
+      raw[q] = v & 255; raw[q + 1] = v >> 8;
+    }
+    return elfObject([{ name: '.rodata.eadk_app_icon', sym: 'eadk_app_icon', data: lz4(raw), flags: 3, type: 0 }]);
   }
 
   // Bytes the installer writes for an .nwa (tools/kit.py's installed_size), less its own start code.
@@ -2579,7 +2703,9 @@
     const exts = rg ? Object.keys(EXT).filter((x) => (rg.systems || [1, 2, 3]).includes(EXT[x])).map((x) => '.' + x) : [];
     $('#own-file').accept = exts.concat(pk ? ['.p8', '.png'] : [], ['.nwa']).join(',');
     $('#add-what').textContent = (rg ? ['Game Boy, NES, Sega'] : []).concat(pk ? ['PICO-8'] : [], ['an app']).join(', ').replace(/, ([^,]*)$/, ' or $1');
-    $('#own-file').addEventListener('change', (e) => { addFiles([...e.target.files]); e.target.value = ''; });
+    // ...and "Add files" your pictures, PDFs, videos and books (a page dropped anywhere sorts them by their kind)
+    for (const id of ['#own-file', '#files-file'])
+      $(id).addEventListener('change', (e) => { addFiles([...e.target.files]); e.target.value = ''; });
     let fileDrag = 0;
     const files = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
     addEventListener('dragenter', (e) => { if (files(e) && !other() && tab === 'games') { fileDrag++; document.body.classList.add('dragging'); e.preventDefault(); } });
