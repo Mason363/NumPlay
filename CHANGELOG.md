@@ -2,6 +2,10 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.26: Hollow Knight faster on the Casio
+
+- **Casio fx-CG50:** Hollow Knight and Fungal Wastes run about four times faster, and keep the game's own speed when frames are slow. Every game sends whole frames to the screen, once each, and does its maths in a third to half the time: Suika and Coreball show about twice as many frames.
+
 ## 1.24.25: Hollow Knight on the Casio
 
 - **Casio fx-CG50:** Hollow Knight and Hollow Knight: Fungal Wastes start, instead of stopping on a black screen with a System ERROR.
