@@ -2,7 +2,7 @@
 
 <img src="../media/calcs/ti84ce.png" height="200" align="right" alt="TI-84 Plus CE">
 
-15 free games for the TI-84 Plus CE, TI-84 Plus CE Python, TI-84 Plus CE-T and TI-83 Premium CE: Balatro, Block Blast, Pac-Man, 2 Players, Chess, Five Nights at Freddy's and more. The same games as on the NumWorks, made for this calculator's screen and keys.
+15 games for the TI-84 Plus CE, TI-84 Plus CE Python, TI-84 Plus CE-T and TI-83 Premium CE: Balatro, Block Blast, Pac-Man, 2 Players, Chess, Five Nights at Freddy's and more. The same games as on the NumWorks, made for this calculator's screen and keys.
 
 <a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-TI84CE.zip"><img src="https://img.shields.io/badge/Download-NumPlay--TI84CE.zip-1E7F74?style=for-the-badge" alt="Download NumPlay-TI84CE.zip"></a>
 

@@ -78,7 +78,7 @@ def numworks(games, out):
     big = [g for g in games if g.get("xl") and g["id"] in apps]
     lines = ["# NumPlay on the NumWorks", "",
              '<img src="../media/calcs/numworks.png" height="200" align="right" alt="NumWorks">', "",
-             f"{len(small)} free games in one app, NumPlay.nwa, and {len(big)} big games that install on their own. "
+             f"{len(small)} games in one app, NumPlay.nwa, and {len(big)} big games that install on their own. "
              "For the N0110, N0115 and N0120.", "",
              "## Install", "", INSTALL_NW, "", "## Keys", "",
              "The games use the calculator's own keys: arrows to move, **OK** and **EXE** to act, **Back** to pause or go back, "
@@ -105,7 +105,7 @@ def main():
         on = [g for g in games if target in g.get("ports", [])]
         lines = [f"# NumPlay on the {name}", "",
                  f'<img src="../media/calcs/{photo}" height="200" align="right" alt="{name}">', "",
-                 f"{len(on)} free games for {models}: {', '.join(g['title'] for g in on[:6])} and more. "
+                 f"{len(on)} games for {models}: {', '.join(g['title'] for g in on[:6])} and more. "
                  "The same games as on the NumWorks, made for this calculator's screen and keys.", "",
                  "> [!IMPORTANT]",
                  f"> **Beta testers wanted.** These builds haven't run on a real {name} yet. "

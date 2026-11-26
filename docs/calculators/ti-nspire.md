@@ -2,7 +2,7 @@
 
 <img src="../media/calcs/nspire.png" height="200" align="right" alt="TI-Nspire CX">
 
-78 free games for the TI-Nspire CX and CX II, CAS or not: NumBlocks, Hollow Knight, NumDrive, Celeste, Balatro, Undertale and more. The same games as on the NumWorks, made for this calculator's screen and keys.
+78 games for the TI-Nspire CX and CX II, CAS or not: NumBlocks, Hollow Knight, NumDrive, Celeste, Balatro, Undertale and more. The same games as on the NumWorks, made for this calculator's screen and keys.
 
 <a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Nspire.zip"><img src="https://img.shields.io/badge/Download-NumPlay--Nspire.zip-1E7F74?style=for-the-badge" alt="Download NumPlay-Nspire.zip"></a>
 

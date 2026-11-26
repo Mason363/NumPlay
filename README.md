@@ -5,7 +5,7 @@
 <h1 align="center">NumPlay</h1>
 
 <p align="center">
-  <b>27 free games for your NumWorks calculator, in one app.</b><br>
+  <b>27 games for your NumWorks calculator, in one app.</b><br>
   Plus 50 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.<br>
   Now on the <a href="#pick-your-calculator">TI-84 Plus CE, TI-Nspire CX and Casio fx-CG50</a> too.
 </p>

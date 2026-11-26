@@ -2,7 +2,7 @@
 
 <img src="../media/calcs/numworks.png" height="200" align="right" alt="NumWorks">
 
-27 free games in one app, NumPlay.nwa, and 50 big games that install on their own. For the N0110, N0115 and N0120.
+27 games in one app, NumPlay.nwa, and 50 big games that install on their own. For the N0110, N0115 and N0120.
 
 ## Install
 

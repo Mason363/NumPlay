@@ -2,7 +2,7 @@
 
 <img src="../media/calcs/casio_cg50.png" height="200" align="right" alt="Casio fx-CG50">
 
-73 free games for the Casio fx-CG50, Graph 90+E, fx-CG10 and fx-CG20: NumBlocks, Hollow Knight, NumDrive, Balatro, Undertale, NumDash and more. The same games as on the NumWorks, made for this calculator's screen and keys.
+73 games for the Casio fx-CG50, Graph 90+E, fx-CG10 and fx-CG20: NumBlocks, Hollow Knight, NumDrive, Balatro, Undertale, NumDash and more. The same games as on the NumWorks, made for this calculator's screen and keys.
 
 <a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-CasioCG.zip"><img src="https://img.shields.io/badge/Download-NumPlay--CasioCG.zip-1E7F74?style=for-the-badge" alt="Download NumPlay-CasioCG.zip"></a>
 
