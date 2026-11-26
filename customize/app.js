@@ -276,8 +276,8 @@
     save();
   }
   // The icons in their groups: yours, in the launcher's order, then the games and the big games as the kit ranks
-  // them. What a change moves slides to its new place, the groups' names too; the one that changed group comes up
-  // in its own, as it lands when it is in the air.
+  // them. What a change moves slides to its new place, the groups' names too; the one that changed group flies
+  // there (flyToggle), or without that comes up in its place.
   let arranged = false, moving = null;
   function arrange() {
     const o = other(), mine = o ? portPicks() : ordered();
@@ -291,7 +291,8 @@
       if (before) for (const [b, a] of before) {
         if (!b.animate) continue;
         const r = b.getBoundingClientRect(), dx = a.left - r.left, dy = a.top - r.top;
-        if (b === moving) b.animate([{ transform: 'scale(0.3)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: landAt || 120, easing: 'cubic-bezier(0.3, 1.45, 0.45, 1)', fill: 'backwards' });
+        if (b === moving && landAt) b.animate([{ opacity: 0 }, { opacity: 0, offset: 0.999 }, { opacity: 1 }], { duration: landAt });
+        else if (b === moving) b.animate([{ transform: 'scale(0.3)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 120, easing: 'cubic-bezier(0.3, 1.45, 0.45, 1)', fill: 'backwards' });
         else if (dx || dy) b.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 280, easing: 'cubic-bezier(0.2, 0.9, 0.25, 1)' });
       }
     }
@@ -473,23 +474,20 @@
   }
 
   // ------------------------------------------------------------------ what a press does, shown
-  // A game added leaves its place on the shelf and lands on the calculator's screen: its block opens there, the
-  // space fills and the figure counts down as it lands, not before. One taken out leaves its block and goes back to
-  // the shelf. Either way the stage goes back to your NumPlay first, so the screen shows the space, not the game's
-  // clip. One that doesn't fit doesn't move: the space shakes. And as the page arrives the calculator is empty and
-  // your games go into it one after the other: that is what the page is for.
+  // A game added leaves its group on the shelf and flies to its place among yours; as it lands its block opens on
+  // the calculator's screen, the space fills and the figure counts down. One taken out flies from among yours back
+  // to its group, and its space is free as it leaves. Either way the stage goes back to your NumPlay, where the
+  // screen shows the space. One that doesn't fit doesn't move: the space shakes. And as the page arrives the
+  // calculator is empty and your games go into it one after the other: that is what the page is for.
   const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const rectOf = (e) => (e && e.isConnected ? e.getBoundingClientRect() : null);
   const seen = (r) => !!r && r.width > 0 && r.bottom > 8 && r.top < innerHeight - 8;
   const POP = [{ opacity: 0, transform: 'scale(0.6)' }, { opacity: 1, transform: 'none' }], SPRING = 'cubic-bezier(0.3, 1.4, 0.5, 1)';
-  // where a game is on the calculator: its block on the screen, or on a phone with the screen scrolled away, the bar
-  // at the foot. And where it is on the shelf: its icon, or the edge of the window it is past
+  // where a game is on the calculator's screen (its block), and where it is on the shelf: its icon, or the edge of
+  // the window it is past
   function calcSpot(id) {
-    const r = rectOf(tiles.get(id)), d = $('#dock');
-    if (seen(r) && seen(rectOf($('#screen')))) return { x: r.left + r.width / 2, y: r.top + r.height / 2, k: Math.max(0.2, Math.min(1, Math.min(r.width, r.height) * 0.62 / 55)) };
-    if (!d.classList.contains('show')) return null;
-    const q = d.getBoundingClientRect();
-    return { x: q.left + 44, y: q.top + q.height / 2, k: 0.45, gone: true };
+    const r = rectOf(tiles.get(id));
+    return seen(r) ? { x: r.left + r.width / 2, y: r.top + r.height / 2, k: Math.max(0.2, Math.min(1, Math.min(r.width, r.height) * 0.62 / 55)) } : null;
   }
   function shelfSpot(b) {
     const r = rectOf(b);
@@ -497,31 +495,32 @@
     const x = r.left + r.width / 2, y = r.top + r.height / 2 - 4;
     return y < -20 ? { x, y: -50, k: 1, gone: true } : y > innerHeight + 20 ? { x, y: innerHeight + 50, k: 1, gone: true } : { x, y, k: 1 };
   }
-  // an icon in the air from a to b, on one arc, under the stage's top line; it fades at an end that is out of sight.
-  // Beside the stage it flies in the stage's own layer: over the calculator, behind the words
-  function fly(src, a, b, ms, delay = 0) {
+  // an icon in the air from a to b, on one arc (it bows up when it goes across, to the side when it goes up or down),
+  // a little bigger at the top of it, under the page's top line; it fades at an end that is out of sight
+  function fly(src, a, b, ms, o = {}) {
     if (still() || !a || !b) return;
-    const dist = Math.hypot(b.x - a.x, b.y - a.y), lift = Math.min(70, dist * 0.16), top = Math.min(a.y, b.y, 104), N = 14, frames = [];
+    const dx = b.x - a.x, dy = b.y - a.y, dist = Math.hypot(dx, dy) || 1, bow = Math.min(70, dist * 0.16);
+    const px = Math.abs(dy) / dist * bow, py = -Math.abs(dx) / dist * bow, top = Math.min(a.y, b.y, 104), N = 14, frames = [];
     for (let i = 0; i <= N; i++) {
-      const t = i / N, x = a.x + (b.x - a.x) * t, y = Math.max(top, a.y + (b.y - a.y) * t - lift * 4 * t * (1 - t));
-      const k = a.k + (b.k - a.k) * t * t * (3 - 2 * t);
+      const t = i / N, arc = 4 * t * (1 - t), x = a.x + dx * t + px * arc, y = Math.max(top, a.y + dy * t + py * arc);
+      const k = (a.k + (b.k - a.k) * t * t * (3 - 2 * t)) * (1 + 0.14 * arc);
       frames.push({ transform: 'translate(' + (x - 27.5).toFixed(1) + 'px,' + (y - 28).toFixed(1) + 'px) scale(' + k.toFixed(3) + ')',
         opacity: a.gone && t < 0.25 ? t * 4 : b.gone && t > 0.7 ? Math.max(0, (1 - t) / 0.3) : 1 });
     }
     const f = el('div', 'flyer');
     f.appendChild(el('img', '', { src, alt: '', width: 55, height: 56 }));
-    (innerWidth > 860 && seen(rectOf($('#screen'))) ? $('#stage') : document.body).appendChild(f);
-    const run = f.animate(frames, { duration: ms, delay, easing: 'cubic-bezier(0.5, 0, 0.3, 1)', fill: 'both' });
+    (o.host || document.body).appendChild(f);
+    const run = f.animate(frames, { duration: ms, delay: o.delay || 0, easing: 'cubic-bezier(0.5, 0, 0.3, 1)', fill: 'both' });
     run.onfinish = run.oncancel = () => f.remove();
   }
-  // (the stage's button, or two presses on an icon: the game goes in or comes out, and is seen to)
-  let landAt = 0, spaceAt = 0;  // while a game is in the air: when its place on the shelf shows, and when the space does
+  // (the stage's button, or two presses on an icon: the game goes in or comes out, and is seen to: it flies from its
+  // place on the shelf to its new one, among yours or back in its group)
+  let landAt = 0, spaceAt = 0;  // while a game is in the air: when its new place on the shelf shows, and when the space does
   function flyToggle(id) {
     const b = buttons.get(id);
     if (b.classList.contains('nofit')) return refuse(id);
     const was = isIn(id), src = b.querySelector('img').src, held = document.activeElement === $('#w-act');
-    const from = was ? calcSpot(id) : shelfSpot(b);
-    const ms = still() || !from ? 0 : seen(rectOf($('#screen'))) ? 520 : 400;
+    const from = shelfSpot(b), ms = still() || !from ? 0 : 460;
     landAt = ms;
     spaceAt = was ? 0 : ms;  // (taken out, the space is free as it leaves; added, it is taken as it lands)
     deselect();
@@ -531,9 +530,9 @@
     landAt = spaceAt = 0;
     if (held) b.focus({ preventScroll: true });
     if (!ms || isIn(id) === was) return;
-    fly(src, from, was ? shelfSpot(b) : calcSpot(id) || { x: from.x + 140, y: -50, k: 0.6, gone: true }, ms);
+    fly(src, from, shelfSpot(b), ms);
     const t = !was && tiles.get(id);
-    if (t && t.animate) t.animate(POP, { duration: 260, delay: ms - 70, easing: SPRING, fill: 'backwards' });
+    if (t && t.animate) t.animate(POP, { duration: 260, delay: ms - 40, easing: SPRING, fill: 'backwards' });
   }
   // (no room for it: it says why, and the space and the button shake)
   function refuse(id) {
@@ -556,7 +555,7 @@
     const fill = $('#m-fill'), cap = capacity(), used = usedBytes(), ms = 480, gap = Math.min(52, 1300 / ids.length);
     const lands = ids.map((id, i) => {
       const at = 220 + i * gap, land = at + ms - 70;
-      fly(buttons.get(id).querySelector('img').src, shelfSpot(buttons.get(id)), calcSpot(id), ms, at);
+      fly(buttons.get(id).querySelector('img').src, shelfSpot(buttons.get(id)), calcSpot(id), ms, { delay: at, host: innerWidth > 860 ? $('#stage') : null });
       tiles.get(id).animate(POP, { duration: 240, delay: land, easing: SPRING, fill: 'backwards' });
       return [land, sizes.get(id) || 0];
     });

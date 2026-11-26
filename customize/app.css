@@ -89,7 +89,7 @@ body.dragging-icon, body.dragging-icon * { cursor: grabbing !important; user-sel
 /* (a game on its way into the calculator, or out of it) */
 .flyer { position: fixed; left: 0; top: 0; z-index: 70; width: 55px; height: 56px; pointer-events: none; will-change: transform; }
 .flyer img { display: block; width: 55px; height: 56px; border-radius: 22%; image-rendering: pixelated; }
-/* (on the stage a game in the air goes over the calculator and behind the words) */
+/* (as the page arrives the games go into the calculator in the stage's layer: over the calculator, behind the words) */
 .stage > .flyer { z-index: 1; }
 @media (min-width: 861px) { .s-top, .words, .go { position: relative; z-index: 2; } }
 .add:hover, body.dragging .add { border-color: var(--ink); color: var(--ink); }
