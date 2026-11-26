@@ -2532,9 +2532,11 @@
       if (e.key === 'Escape') { closeSheet(); if (popOpen) closePops(); else if (pointed) deselect(); if (holding) { holding.classList.remove('held'); holding = null; } }
     });
 
-    // your own files: the + takes them all, and so does the page when they are dropped anywhere on it
+    // your own files: "Add your own" takes them all, and so does the page when they are dropped anywhere on it. It
+    // says what it takes: the consoles when Retro-Go is in the kit, PICO-8 when NumPico is, and apps
     const exts = rg ? Object.keys(EXT).filter((x) => (rg.systems || [1, 2, 3]).includes(EXT[x])).map((x) => '.' + x) : [];
     $('#own-file').accept = exts.concat(pk ? ['.p8', '.png'] : [], ['.nwa']).join(',');
+    $('#add-what').textContent = (rg ? ['Game Boy, NES, Sega'] : []).concat(pk ? ['PICO-8'] : [], ['an app']).join(', ').replace(/, ([^,]*)$/, ' or $1');
     $('#own-file').addEventListener('change', (e) => { addFiles([...e.target.files]); e.target.value = ''; });
     let fileDrag = 0;
     const files = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');

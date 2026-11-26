@@ -57,20 +57,21 @@
     <div id="games" class="view" role="tabpanel" aria-labelledby="tab-games">
       <h2 class="sec"><span id="in-head">In your NumPlay</span><i id="n-in"></i><em id="in-hint">drag to reorder</em></h2>
       <div id="in" class="icons"></div>
+      <h2 id="own-sec" class="sec"><span>Your own</span><i id="n-own"></i></h2>
+      <div class="icons">
+        <div id="in-more" class="group"></div>
+        <label id="add" class="add" for="own-file">
+          <span class="add-art" aria-hidden="true"><i class="c1"></i><i class="c2"></i><i class="c3"></i></span>
+          <b class="add-text">Add game files</b>
+          <span id="add-what" class="add-sub">Game Boy, NES, Sega, PICO-8 or an app</span>
+        </label>
+      </div>
+      <input id="own-file" type="file" multiple accept=".nwa">
       <p id="no-match" class="no-match" role="status" hidden></p>
       <h2 id="small-sec" class="sec"><span>Games</span><i id="n-small"></i></h2>
       <div id="small" class="icons"></div>
       <h2 id="big-sec" class="sec"><span>Big games</span><i id="n-big"></i></h2>
       <div id="big" class="icons"></div>
-      <h2 id="own-sec" class="sec"><span>Your own</span><i id="n-own"></i></h2>
-      <div class="icons">
-        <div id="in-more" class="group"></div>
-        <label id="add" class="add" for="own-file" data-tip="Add a game or an app">
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>
-          <span class="sr">Add a game or an app of your own</span>
-        </label>
-      </div>
-      <input id="own-file" type="file" multiple accept=".nwa">
       <footer class="foot">
         <a href="https://github.com/Mason363/NumPlay">Made by Mason Chen as part of NumPlay</a>
         <a href="../">NumPlay's page</a>
