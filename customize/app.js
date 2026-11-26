@@ -199,7 +199,8 @@
   }
 
   // ------------------------------------------------------------------ drawing
-  const tiles = new Map(), segs = new Map(), buttons = new Map();
+  const tiles = new Map(), buttons = new Map();
+  let shelfOrder = [];  // every game, as the kit ranks them: NumPlay's own first, then the big ones
   let shownUsed = 0, previewing = null;
 
   function render() {
@@ -245,134 +246,172 @@
     });
     for (const [k, e] of tiles) if (!seen.has(k)) { e.remove(); tiles.delete(k); }
 
-    // the bar beside it: the same blocks, stacked in the launcher's order
-    const bar = $('#bar'), keys = new Set();
-    list.forEach((it, i) => {
-      let e = segs.get(it.key);
-      if (!e) {
-        e = el('span', 'seg');
-        let next = null;  // (in its place among the blocks there already)
-        for (let j = i + 1; j < list.length && !next; j++) next = segs.get(list[j].key) || null;
-        segs.set(it.key, e);
-        bar.insertBefore(e, next);
-        void e.offsetHeight;  // (so its height grows from nothing)
-      }
-      e.style.height = Math.min(100, 100 * it.bytes / cap) + '%';
-      e.style.background = 'linear-gradient(90deg, ' + mix(it.color, 0.25) + ', ' + it.color + ' 55%, ' + mix(it.color, -0.3) + ')';
-      e.dataset.tip = it.name + '|' + size(it.bytes);
-      keys.add(it.key);
-    });
-    for (const [k, e] of segs) if (!keys.has(k)) { e.style.height = '0'; segs.delete(k); setTimeout(() => e.remove(), 260); }
-    const want = list.map((it) => segs.get(it.key));
-    if ([...bar.children].filter((c) => want.includes(c)).some((c, i) => c !== want[i])) for (const c of want) bar.appendChild(c);
-    bar.classList.toggle('over', over);
-    $('#used').textContent = (used / MiB).toFixed(2);
-    $('#cap-of').textContent = 'of ' + (other() ? 'about\n' : '') + +(cap / MiB).toFixed(2) + ' MB';
-
     $('#screen').classList.toggle('over', over);
     $('#screen').setAttribute('aria-label', 'Space on the calculator: ' + size(used) + ' of ' + size(cap) + ', each game a block its size');
 
     // the numbers
     shownUsed = used;
-    if (!previewing) $('#status-line').textContent = (used / MiB).toFixed(2) + ' OF ' + +(cap / MiB).toFixed(2) + ' MB';
+    if (!previewing) $('#status-line').textContent = restLine();
     $('#battery').style.width = 'calc(' + Math.min(100, 100 * used / cap) + '% - 2px)';
-    $('#dock-used').textContent = (used / MiB).toFixed(2) + ' of ' + mb(cap);
-    $('#dock').classList.toggle('over', over);
     if (other()) return renderPort(used, cap);
 
-    // the icons, in the order they go in the launcher
-    const s0 = solo(), picks = ordered();
+    // the icons: yours first, in the order they go in the launcher, then the rest
     for (const [id, b] of buttons) {
-      const g = byId[id], on = st.picked.has(id);
-      // (a game that goes on its own doesn't fit beside the games picked: grey then, though picking it still swaps)
-      const fits = alone(id) ? !bigger(id) && picks.every((p) => p === id) : !s0 && total(picks.concat([id])) <= cap;
+      const on = st.picked.has(id);
       b.classList.toggle('on', on);
-      b.classList.toggle('off', !on && fits);
-      b.classList.toggle('nofit', !on && !fits);
       b.setAttribute('aria-pressed', on);
-      b.dataset.tip = g.title + '|' + (alone(id) ? size(game(id).alone.size) + ', on its own' : size(flash(id)) +
-        (g.xl && st.lang !== 'en' ? ' · in English' : '') + ' · drag to move');
     }
     arrange();
-    $('#space-chip-label').textContent = mb(cap);
-    $('#space-chip').dataset.tip = SPACES[space().id] + '|your calculator\'s space for apps';
     // (a game on its own has its own icon, name and language)
     const s = solo(), file = s ? game(s).alone.file : rgAlone() ? 'RetroGo.nwa' : 'NumPlay.nwa';
-    for (const c of [$('#app-chip'), $('#lang-chip')]) c.disabled = !!s;
-    $('#download').setAttribute('aria-label', 'Download ' + file);
-    $('#download').dataset.tip = 'Download ' + file;
-    $('#dock-download').setAttribute('aria-label', 'Download ' + file);
-    $('#app-chip-icon').src = iconUrl();
-    $('#app-chip-icon').classList.toggle('custom', st.app.icon === 'custom');
-    $('#app-chip').dataset.tip = (s ? byId[s].title : st.app.name.trim() || 'No name') + '|its icon and name on your calculator, and how it opens';
-    $('#lang-chip').dataset.tip = LANGS[st.lang][1] + '|the language of its menus';
-    $('#lang-chip-label').textContent = LANGS[st.lang][0];
-    renderCarts();
+    for (const c of [$('#app-link'), $('#lang-link')]) c.disabled = !!s;
+    $('#download').textContent = 'Download ' + file;
+    $('#back-key').setAttribute('aria-label', 'Download ' + file);
+    $('#back-key').dataset.tip = 'Download ' + file;
+    renderOwn();
+    words();
     save();
   }
-  function arrange() {  // (the icons in the order they go in the launcher)
-    for (const box of [$('#small'), $('#big')]) {
-      const want = st.order.map((id) => buttons.get(id)).filter((b) => b && b.parentNode === box);
-      if ([...box.children].some((c, i) => c !== want[i])) for (const b of want) box.appendChild(b);
+  // The icons in their groups: yours, in the launcher's order, then the rest as the kit ranks them. One that changes
+  // group slides to its new place.
+  let arranged = false;
+  function arrange() {
+    const o = other(), mine = o ? portPicks() : ordered(), inBox = $('#in'), outBox = $('#out');
+    const rest = shelfOrder.filter((id) => !mine.includes(id));
+    const same = (box, ids) => { const k = [...box.children]; return k.length === ids.length && ids.every((id, i) => k[i] === buttons.get(id)); };
+    if (!same(inBox, mine) || !same(outBox, rest)) {
+      const all = mine.concat(rest).map((id) => buttons.get(id));
+      const before = arranged && !dragging ? new Map(all.filter((b) => b.offsetParent).map((b) => [b, b.getBoundingClientRect()])) : null;
+      for (const id of mine) inBox.appendChild(buttons.get(id));
+      for (const id of rest) outBox.appendChild(buttons.get(id));
+      if (before) for (const [b, a] of before) {
+        const r = b.getBoundingClientRect(), dx = a.left - r.left, dy = a.top - r.top;
+        if ((dx || dy) && b.animate) b.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 280, easing: 'cubic-bezier(0.2, 0.9, 0.25, 1)' });
+      }
     }
+    arranged = true;
+    $('#in-head').textContent = o ? 'Your games' : 'In your NumPlay';
+    $('#n-in').textContent = mine.length + (o ? 0 : st.roms.length + st.carts.length + st.apps.length);
+    $('#n-out').textContent = rest.filter((id) => !buttons.get(id).classList.contains('away')).length;
   }
 
-  function renderCarts() {
-    const box = $('#carts');
-    const have = new Set();
+  // Your own games and apps, after your games: a Game Boy, NES or Sega game as its cartridge, a PICO-8 cart as its
+  // label, an app as its icon. Pressing one takes it out; pointing at one says what it is, on the stage.
+  function renderOwn() {
+    const box = $('#in-more'), have = new Set();
+    const add = (key, cls, what, art, remove) => {
+      have.add(key);
+      if (box.querySelector('[data-k="' + key + '"]')) return;
+      const b = el('button', 'app own ' + cls, { type: 'button', 'data-k': key, 'aria-label': 'Take ' + what.title + ' out' });
+      b.appendChild(art());
+      b.addEventListener('click', () => { point(null); remove(); });
+      // (hidePreview first: a game left a moment ago would otherwise take the stage back)
+      b.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') { hidePreview(); point(what, b); } });
+      b.addEventListener('pointerleave', () => point(null));
+      b.addEventListener('focus', () => { hidePreview(); point(what, b); });
+      b.addEventListener('blur', () => point(null));
+      box.appendChild(b);
+    };
+    const picture = (url) => () => el('img', '', { src: url, alt: '', draggable: 'false', width: 55, height: 56 });
     for (const r of st.roms) {
-      have.add('c' + r.key);
-      if (box.querySelector('[data-k="c' + r.key + '"]')) continue;
-      const s = SYS[r.sys];
-      const c = el('button', 'cart enter', { type: 'button', 'data-k': 'c' + r.key, 'aria-label': 'Remove ' + r.name });
-      c.addEventListener('animationend', () => c.classList.remove('enter'), { once: true });
-      c.style.background = s.shell;
-      c.dataset.tip = r.name + '|' + s.name + ', ' + size(r.bytes.length);
-      const lab = c.appendChild(el('span', 'label'));
-      lab.style.background = s.color;
-      lab.textContent = s.tag;
-      c.appendChild(el('span', 'x')).innerHTML =
-        '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-      c.addEventListener('click', () => removeRom(r));
-      box.appendChild(c);
+      const sys = SYS[r.sys];
+      add('c' + r.key, 'rom', { title: r.name, tag: sys.name + ' game, in Retro-Go', bytes: romBytes(r), top: sys.color, bottom: '#17171a' }, () => {
+        const c = el('span', 'cart'), label = c.appendChild(el('span'));
+        c.style.background = sys.shell;
+        label.style.background = sys.color;
+        label.textContent = sys.tag;
+        return c;
+      }, () => removeRom(r));
     }
-    for (const c of box.querySelectorAll('.cart[data-k]')) if (!have.has(c.dataset.k)) c.remove();
-    const apps = $('#app-carts'), mine = new Set();
-    for (const a of st.apps) {
-      mine.add('a' + a.key);
-      if (apps.querySelector('[data-k="a' + a.key + '"]')) continue;
-      const c = el('button', 'cart app enter', { type: 'button', 'data-k': 'a' + a.key, 'aria-label': 'Remove ' + a.title });
-      c.addEventListener('animationend', () => c.classList.remove('enter'), { once: true });
-      c.style.backgroundImage = 'url(' + a.url + ')';
-      c.dataset.tip = a.title + '|' + a.file + ', ' + size(a.flash);
-      c.appendChild(el('span', 'x')).innerHTML =
-        '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-      c.addEventListener('click', () => removeApp(a));
-      apps.appendChild(c);
+    for (const k of st.carts)
+      add('p' + k.key, 'p8', { title: k.title, tag: 'PICO-8 cart, in NumPico', bytes: npPico.cartBytes(k), top: '#1d2b53', bottom: '#0a0f1f' },
+        picture(k.url || KIT + 'icons/' + pk.id + '.png'), () => removeCart(k));
+    for (const a of st.apps)
+      add('a' + a.key, 'nwa', { title: a.title, tag: a.file, bytes: a.flash, top: hex(a.accent.toString(16)), bottom: '#17171a' }, picture(a.url), () => removeApp(a));
+    for (const c of box.querySelectorAll('[data-k]')) if (!have.has(c.dataset.k)) c.remove();
+  }
+
+  // ------------------------------------------------------------------ the stage
+  // NumPlay's launcher at full size. At rest it is your app: its icon, its name, how many games and how full. With a
+  // game pointed at it is that game: its colors, top to bottom as the launcher paints them, its name, what it is, its
+  // size and whether it fits. The pager has a tick for each of your games, as the launcher's has.
+  const REST = ['#1f8073', '#0b2a33'];
+  let pointed = null;  // a game's id, or one of your own files: { title, tag, bytes, top, bottom }
+  const lum = (h) => { const n = parseInt(h.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
+  const restLine = () => (other() ? CALCS[st.calc].name : st.app.name.trim() || 'NumPlay').toUpperCase();
+  function point(what, b) {
+    for (const x of document.querySelectorAll('.app.at')) x.classList.remove('at');
+    pointed = what || null;
+    if (b) b.classList.add('at');
+    words();
+  }
+  // (what the stage says at rest under your app's name: what NumPlay is; on another calculator, what you get)
+  function lede() {
+    if (!other()) return ['Real games, rebuilt for the NumWorks. Choose yours and they go on your calculator as one app.'];
+    const name = el('span', 'name'), beta = el('a', 'beta');
+    name.textContent = CALCS[st.calc].name;  // (in one piece: "fx-CG50" doesn't break at its hyphen)
+    Object.assign(beta, { href: 'https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml', target: '_blank', rel: 'noopener', textContent: 'Beta: something wrong? Tell us' });
+    return ['Real games, rebuilt for the ', name, '. Choose yours and download them.', beta];
+  }
+  function words() {
+    const stage = $('#stage'), o = other(), saving = tab === 'saves';
+    const mine = typeof pointed === 'string' ? null : pointed, g = saving ? null : mine || byId[pointed] || null;
+    const s = solo(), lone = !o && !g && !saving ? (s ? byId[s] : rgAlone() ? rg : null) : null;
+    const top = mine && g ? mine.top : g || lone ? hex((g || lone).top) : REST[0], bottom = mine && g ? mine.bottom : g || lone ? hex((g || lone).bottom) : REST[1];
+    for (const e of [stage, $('#dock')]) {
+      e.style.setProperty('--top', top);
+      e.style.setProperty('--bottom', bottom);
+      e.classList.toggle('pale', lum(top) > 0.7);
     }
-    for (const c of apps.querySelectorAll('.cart[data-k]')) if (!mine.has(c.dataset.k)) c.remove();
-    const p8 = $('#p8-carts'), ours = new Set();
-    for (const k of st.carts) {
-      ours.add('p' + k.key);
-      if (p8.querySelector('[data-k="p' + k.key + '"]')) continue;
-      const c = el('button', 'cart p8 enter', { type: 'button', 'data-k': 'p' + k.key, 'aria-label': 'Remove ' + k.title });
-      c.addEventListener('animationend', () => c.classList.remove('enter'), { once: true });
-      if (k.url) c.style.backgroundImage = 'url(' + k.url + ')';
-      c.dataset.tip = k.title + '|PICO-8 cart, ' + size(npPico.cartBytes(k));
-      c.appendChild(el('span', 'x')).innerHTML =
-        '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-      c.addEventListener('click', () => removeCart(k));
-      p8.appendChild(c);
-    }
-    for (const c of p8.querySelectorAll('.cart[data-k]')) if (!ours.has(c.dataset.k)) c.remove();
+    stage.classList.toggle('pointing', !!g);
+    stage.classList.toggle('saving', saving);
+    const used = usedBytes(), cap = capacity(), picks = o ? portPicks() : ordered();
+    const n = o ? picks.length : entries();
+    const count = n + (n === 1 ? ' game' : ' games'), room = (used / MiB).toFixed(2) + ' of ' + (o ? 'about ' : '') + mb(cap);
+    let title, tag = null, a = count, b = room, no = used > cap;
+    if (saving) { title = 'Your saves'; tag = 'Backed up each time you plug your calculator in, and put back after an update or a reset.'; }
+    else if (g && mine) { title = g.title; tag = g.tag; a = size(g.bytes); b = 'In your NumPlay'; no = false; }
+    else if (g) {
+      const id = pointed, on = o ? st.port[st.calc].has(id) : st.picked.has(id);
+      const bytes = o ? portList()[id].size : alone(id) ? game(id).alone.size : flash(id);
+      title = g.title; tag = g.tagline || ''; a = size(bytes); no = false;
+      if (on) b = o ? 'In your games' : alone(id) ? 'On its own' : 'In your NumPlay';
+      else if (!o && alone(id)) { no = bigger(id); b = no ? 'Needs Nwagra' : 'Goes on its own'; }
+      else {
+        const over = o ? used + bytes - cap : total(picks.concat([id])) - cap;
+        no = over > 0 || (!o && !!s);
+        b = !no ? 'Fits' : !o && s ? 'No room beside ' + byId[s].title : 'Needs ' + size(over) + ' more';
+      }
+    } else if (o) title = CALCS[st.calc].name;
+    else if (lone) { title = lone.title; tag = lone.tagline || ''; if (s) { a = size(game(s).alone.size); b = 'On its own'; } }
+    else title = st.app.name.trim() || 'NumPlay';
+    $('#w-title').textContent = title;
+    const t = $('#w-tag');
+    if (tag !== null) { t.textContent = tag; t.dataset.rest = ''; }
+    else if (t.dataset.rest !== st.calc) { t.textContent = ''; t.append(...lede()); t.dataset.rest = st.calc; }
+    $('#w-a').textContent = a;
+    $('#w-b').textContent = b;
+    $('#w-b').classList.toggle('no', no);
+    const icon = $('#w-icon'), src = lone ? KIT + 'icons/' + lone.id + '.png' : iconUrl();
+    if (icon.getAttribute('src') !== src) icon.src = src;
+    icon.classList.toggle('custom', !lone && st.app.icon === 'custom');
+    // the pager: a tick for each of your games, the one pointed at marked (at rest the first, where the launcher opens)
+    const pager = $('#pager'), at = g ? (mine ? -1 : picks.indexOf(pointed)) : 0;
+    if (pager.children.length !== picks.length) { pager.textContent = ''; for (let i = 0; i < picks.length; i++) pager.appendChild(el('i')); }
+    [...pager.children].forEach((e, i) => e.classList.toggle('on', i === at));
+    // (a phone's bar says the same in two lines)
+    $('#dock-name').textContent = g ? title : count;
+    $('#dock-used').textContent = g ? a + ', ' + b.charAt(0).toLowerCase() + b.slice(1) : room;
   }
 
   // ------------------------------------------------------------------ the game on the screen
   let previewTimer = 0;
   function showPreview(id) {
     const g = byId[id];
-    if (!g || !g.preview || dragging) return;
+    if (!g || dragging) return;
     clearTimeout(previewTimer);
+    point(id, buttons.get(id));
+    if (!g.preview) return;
     previewing = id;
     const p = $('#preview'), img = p.querySelector('img');
     const src = MEDIA + (g.preview === true ? 'gallery/' + id + '.gif' : g.preview);
@@ -391,7 +430,8 @@
     const go = () => {
       previewing = null;
       $('#preview').classList.remove('show');
-      $('#status-line').textContent = (shownUsed / MiB).toFixed(2) + ' OF ' + +(capacity() / MiB).toFixed(2) + ' MB';
+      $('#status-line').textContent = restLine();
+      point(null);
     };
     if (later) previewTimer = setTimeout(go, later); else go();
   }
@@ -421,7 +461,7 @@
       if (!quiet) {
         bump(b, 'shake'); toast(byId[id].title + ' is ' + mb(game(id).alone.size) + (st.cap === 'e26' ? ": it needs Nwagra, which doesn't work on Epsilon 26"
           : ': it needs Nwagra. Pick it in the space for apps'));
-        if (st.cap !== 'e26' && popOpen !== $('#space-pop')) { renderSpaces(); openPop($('#space-pop'), $('#space-chip'), true); }
+        if (st.cap !== 'e26' && popOpen !== $('#space-pop')) { renderSpaces(); openPop($('#space-pop'), $('#space-link')); }
       }
       return;
     } else if (alone(id)) {
@@ -436,6 +476,10 @@
       if (s) { if (!quiet) { bump(b, 'shake'); toast(byId[s].title + ' takes the whole calculator. Pick it again to take it out'); } return; }
       const over = total(ordered().concat([id])) - capacity();
       if (over > 0) { if (!quiet) { bump(b, 'shake'); overflow(over); } return; }
+      // (it goes after the last of your games: where a game just added is looked for)
+      const order = st.order.filter((x) => x !== id);
+      order.splice(order.reduce((at, x, i) => (st.picked.has(x) ? i + 1 : at), 0), 0, id);
+      st.order = order;
       st.picked.add(id);
       bump(b, 'pop-on');
       if (!quiet) fetchObj(objPath(id)).catch(() => {});  // (ready by the time you install)
@@ -504,7 +548,7 @@
   const rgAlone = () => !!(rg && st.roms.some((r) => r.sys === MD));
 
   async function addRoms(files) {
-    if (solo()) { bump($('#drop'), 'shake'); toast(byId[solo()].title + " takes the whole calculator, so there's no room for Retro-Go"); return; }
+    if (solo()) { bump($('#add'), 'shake'); toast(byId[solo()].title + " takes the whole calculator, so there's no room for Retro-Go"); return; }
     const ok = new Set(rg && rg.systems ? rg.systems : [1, 2, 3]);
     for (const f of files) {
       const ext = (f.name.split('.').pop() || '').toLowerCase(), sys = EXT[ext];
@@ -517,7 +561,7 @@
       if (sys === MD && !rgAlone()) toast('Mega Drive games play in Retro-Go on its own: you get RetroGo.nwa with your games, without NumPlay');
       const r = { key: ++romKey, sys, bytes, name: romName(f.name) };
       const over = total(ordered(), st.roms.concat([r])) - capacity();
-      if (over > 0) { bump($('#drop'), 'shake'); tooBig(r) || overflow(over); continue; }
+      if (over > 0) { bump($('#add'), 'shake'); tooBig(r) || overflow(over); continue; }
       st.roms.push(r);
       fetchObj(objPath(rg.id)).catch(() => {});
     }
@@ -531,7 +575,7 @@
     const needs = st.cap === 'std' && fit('e26') ? 'Epsilon 26 or Nwagra' : st.cap === 'std' && fit('xl') ? 'Nwagra' : '';
     toast(r.name + ' is ' + mb(r.bytes.length) + ', more than ' + mb(capacity()) +
       (needs ? '. On ' + needs + '? Pick it in the space for apps' : ': too big for the calculator'));
-    if (needs && popOpen !== $('#space-pop')) { renderSpaces(); openPop($('#space-pop'), $('#space-chip'), true); }
+    if (needs && popOpen !== $('#space-pop')) { renderSpaces(); openPop($('#space-pop'), $('#space-link')); }
     $('#screen').classList.add('over');
     setTimeout(() => render(), 500);
     return true;
@@ -560,7 +604,7 @@
     return c.toDataURL('image/png');
   }
   async function addCarts(files) {
-    const drop = $('#p8-drop');
+    const drop = $('#add');
     if (solo()) { bump(drop, 'shake'); toast(byId[solo()].title + " takes the whole calculator, so there's no room for NumPico"); return; }
     for (const f of files) {
       let c;
@@ -623,7 +667,7 @@
              flash: allocBytes(m.obj) + allocBytes(entry) + 8, url: info.icon ? iconUrlOf(info.icon) : KIT + 'variants/NumPlay.png' };
   }
   async function addApps(files) {
-    const drop = $('#app-drop');
+    const drop = $('#add');
     if (solo()) { bump(drop, 'shake'); toast(byId[solo()].title + " takes the whole calculator, so there's no room for apps"); return; }
     for (const f of files) {
       if (entries() >= MAX_GAMES) { bump(drop, 'shake'); toast('NumPlay holds ' + MAX_GAMES + ' games and apps at most'); break; }
@@ -639,9 +683,22 @@
     st.apps = st.apps.filter((x) => x !== a);
     render();
   }
+  // Files of your own, by their kind: apps (.nwa) to your apps, PICO-8 carts to NumPico, the rest to Retro-Go. What
+  // reads the first two (apps.js, pico.js) is fetched when one comes, not with the page.
+  async function addFiles(all) {
+    const nwa = all.filter((f) => /\.nwa$/i.test(f.name)), p8 = pk ? all.filter((f) => /\.(p8|png)$/i.test(f.name)) : [];
+    const rest = all.filter((f) => !nwa.includes(f) && !p8.includes(f));
+    try {
+      if (nwa.length && !window.npApps) await script('apps.js');
+      if (p8.length && !window.npPico) await script('pico.js');
+    } catch (e) { toast("That didn't load, try again"); return; }
+    if (nwa.length) await addApps(nwa);
+    if (p8.length) await addCarts(p8);
+    if (rest.length && rg) await addRoms(rest);
+  }
 
   // ------------------------------------------------------------------ moving games around
-  // Drag an icon to change where its game sits in the launcher; a click still picks it. On a
+  // Among your games, drag an icon to change where its game sits in the launcher; a click still takes it out. On a
   // phone, hold an icon, then tap where it goes.
   let dragging = null, justDragged = false, holding = null;
   function flip(box, change) {
@@ -656,9 +713,9 @@
       requestAnimationFrame(() => { k.style.transition = ''; k.style.translate = ''; });
     }
   }
-  function commitOrder() {
-    const small = [...$('#small').children].map((b) => b.dataset.id), big = [...$('#big').children].map((b) => b.dataset.id);
-    st.order = small.concat(big, st.order.filter((id) => !small.includes(id) && !big.includes(id)));
+  function commitOrder() {  // (your games as they now are, then the rest in the order they had)
+    const mine = [...$('#in').children].map((b) => b.dataset.id);
+    st.order = mine.concat(st.order.filter((id) => !mine.includes(id)));
     render();
   }
   // The slot under the pointer comes from where the slots were when the drag began (they don't
@@ -1092,7 +1149,7 @@
   }
   function closePops() {
     for (const p of document.querySelectorAll('.pop')) p.hidden = true;
-    for (const c of document.querySelectorAll('.chip, .space-chip')) c.setAttribute('aria-expanded', 'false');
+    for (const c of document.querySelectorAll('[aria-haspopup]')) c.setAttribute('aria-expanded', 'false');
     popOpen = null;
   }
   function renderApp() {
@@ -1191,7 +1248,6 @@
   const onCalc = (id) => !other() || !!portList()[id];
   const portPicks = () => st.order.filter((id) => st.port[st.calc].has(id) && buttons.has(id) && onCalc(id));
   const portFiles = (e) => e.files || [e.file];
-  let lede = '';
   function setCalc(id) {
     st.calc = known(id) && calcReady(id) ? id : 'numworks';
     const c = CALCS[st.calc], o = other();
@@ -1208,18 +1264,6 @@
     }
     document.documentElement.classList.toggle('other', o);
     for (const [gid, b] of buttons) b.classList.toggle('away', !onCalc(gid));
-    const words = $('#lede');
-    words.textContent = o ? 'Real games, rebuilt for the ' : lede;
-    if (o) {  // (its name in one piece: "fx-CG50" doesn't break at its hyphen)
-      words.appendChild(el('span', 'name')).textContent = c.name;
-      words.append('. Choose yours and download them. ');
-      const beta = words.appendChild(el('a', 'beta'));
-      Object.assign(beta, { href: 'https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml',
-        target: '_blank', rel: 'noopener', textContent: 'Beta: something wrong? Tell us' });
-    }
-    $('#small-head').textContent = o ? 'Games' : 'Games in NumPlay';
-    document.querySelector('.side > .row-head').hidden = o && ![...$('#big').children].some((b) => !b.classList.contains('away'));
-    $('#calc-chip-img').src = 'calcs/' + st.calc + '.png';
     $('#calc-chip-label').textContent = c.name;
     $('#calc-chip').dataset.tip = c.name + '|your calculator';
     // its picture, as big as the NumWorks's (2000 of its pixels as tall), with Studio's screen under its cut-out LCD (a
@@ -1247,16 +1291,14 @@
     }
     // (the Casio's screen is wider: a game's 320 by 240 picture goes in the middle of it, squeezed to its height)
     scr.classList.toggle('wide', o && c.screen[0] / c.screen[1] > 1.5);
-    const dl = $('#dock-install');
+    const dl = $('#dock-install'), main = $('#install');
     dl.textContent = o ? 'Download' : 'Install';
-    dl.disabled = false;
-    if (o) for (const b of [$('#port-dl'), dl]) b.setAttribute('aria-label', 'Download ' + c.zip);
-    else dl.removeAttribute('aria-label');
-    if (o) $('#replay').removeAttribute('data-tip'); else $('#replay').dataset.tip = 'Play the intro again';
+    main.textContent = o ? 'Download ' + c.zip : 'Install on my calculator';
+    dl.disabled = main.disabled = false;
+    if (o) dl.setAttribute('aria-label', 'Download ' + c.zip); else dl.removeAttribute('aria-label');
+    if (o && tab === 'saves') showTab('games');
     hidePreview();
     searchApply();
-    fitGrid();
-    watchDock();
     render();
   }
   // (render's part for another calculator: the icons, as on the NumWorks, and its Download)
@@ -1264,18 +1306,15 @@
     const c = CALCS[st.calc], list = portList(), picks = st.port[st.calc];
     for (const [id, b] of buttons) {
       if (!list[id]) continue;
-      const on = picks.has(id), fits = on || used + list[id].size <= cap;
+      const on = picks.has(id);
       b.classList.toggle('on', on);
-      b.classList.toggle('off', !on && fits);
-      b.classList.toggle('nofit', !fits);
       b.setAttribute('aria-pressed', on);
-      b.dataset.tip = byId[id].title + '|' + size(list[id].size);
     }
     arrange();
-    const ids = portPicks(), n = ids.length;
-    $('#port-dl').disabled = $('#dock-install').disabled = !n;
-    $('#port-dl').dataset.tip = 'Download ' + c.zip + '|' + n + (n === 1 ? ' game' : ' games');
+    const ids = portPicks();
+    $('#install').disabled = $('#dock-install').disabled = !ids.length;
     store('numplay-port-' + st.calc, ids.join(','));
+    words();
     save();
   }
   function togglePort(id) {
@@ -1380,7 +1419,7 @@
   }
   async function portGo(btn) {
     const t = st.calc, c = CALCS[t], list = portList(t), ids = portPicks();
-    const keys = [$('#port-dl'), $('#dock-install')];
+    const keys = [$('#install'), $('#dock-install')];
     if (!ids.length || btn.classList.contains('busy')) return;
     for (const b of keys) b.classList.add('busy');
     openPortSheet(c);
@@ -1682,7 +1721,7 @@
       Object.assign(img.style, { left: U(-x0), top: U(-y0), width: U(1018), height: U(2000) });
       top.appendChild(img);
     }
-    for (const [key, b] of [['ok', $('#install')], ['back', $('#download')]]) {
+    for (const [key, b] of [['ok', $('#ok-key')], ['back', $('#back-key')]]) {
       calc.querySelector('.key3d[data-key="' + key + '"]').appendChild(b);
       b.style.transform = 'translateZ(' + U(KEY_H + 0.5) + ')';
     }
@@ -1872,11 +1911,10 @@
   }
   function goLight() {
     if (light.on) return;
-    if (introRun) { light.later = true; return; }  // (once the intro is over)
     try { sessionStorage.setItem('numplay-flat', '1'); } catch (e) { /* (no storage: light until the page is left) */ }
     // the 3D calculator goes: its sides, its keys (OK and Back keep their buttons), its sticker
     const calc = $('#calc'), plate = calc.querySelector('.plate');
-    for (const b of [$('#install'), $('#download')]) { b.style.transform = ''; plate.appendChild(b); }
+    for (const b of [$('#ok-key'), $('#back-key')]) { b.style.transform = ''; plate.appendChild(b); }
     for (const e of calc.querySelectorAll('.key3d, .keybed')) e.remove();
     document.querySelector('.body3d').textContent = '';
     if (sticker.lose) sticker.lose();
@@ -1891,7 +1929,7 @@
     light.on = true;
     document.documentElement.classList.add('flat');
     const plate = $('#calc').querySelector('.plate'), r = 57.5, cy = 924;
-    for (const [key, b, cx] of [['ok', $('#install'), 718.5], ['back', $('#download'), 858]]) {
+    for (const [key, b, cx] of [['ok', $('#ok-key'), 718.5], ['back', $('#back-key'), 858]]) {
       const k = part(plate, 'div', 'fkey', { left: U(cx - r), top: U(cy - r), width: U(2 * r), height: U(2 * r) });
       k.dataset.key = key;
       const img = el('img', '', { src: 'calculator.webp', alt: '', draggable: 'false' });
@@ -1978,23 +2016,14 @@
   }
 
   // ------------------------------------------------------------------ on a phone: install from under your thumb
-  // Once the calculator's keys are scrolled away, a bar at the bottom has them, with the space used.
-  // (on another calculator, once its Download is)
-  let docking = null;
+  // Once the stage's Install is scrolled away, a bar at the bottom has it, with the game you tapped or your NumPlay.
   function dock() {
-    const d = $('#dock');
     if (!window.IntersectionObserver) return;
-    docking = new IntersectionObserver(([e]) => {
-      const below = !e.isIntersecting && e.boundingClientRect.top < 0;
-      d.classList.toggle('show', below);
-      document.body.classList.toggle('docked', below);
-    });
-    watchDock();
-  }
-  function watchDock() {
-    if (!docking) return;
-    docking.disconnect();
-    docking.observe(other() ? $('#port-dl') : $('.legend.ok'));
+    new IntersectionObserver(([e]) => {
+      const gone = !e.isIntersecting && tab === 'games';
+      $('#dock').classList.toggle('show', gone);
+      document.body.classList.toggle('docked', gone);
+    }).observe($('#install'));
   }
 
   // ------------------------------------------------------------------ the sheet, tips and toasts
@@ -2037,142 +2066,44 @@
     document.addEventListener('pointerdown', () => tip.classList.remove('show'));
   }
 
-  // ------------------------------------------------------------------ the intro
-  // The page puts itself together. The calculator comes up into place, then the name and what NumPlay is,
-  // and the games take their places. Then each game you have goes into the calculator, in launcher order:
-  // its tick comes on, it lifts off its place, flies into the screen, and its block opens there as the
-  // count of space goes up. Last, the big games and your own come in beside it. Any key or click ends it.
-  let introRun = null;
-  function intro(force) {
-    const ready = () => document.documentElement.classList.remove('intro-wait');
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches || innerWidth < 900 || other()) return ready();
-    if (!force && store('numplay-intro3')) return ready();
-    store('numplay-intro3', '1');
-    if (introRun) introRun();
-    const anims = [], flyers = [], E = {
-      out: 'cubic-bezier(0.16, 1, 0.3, 1)', spring: 'cubic-bezier(0.34, 1.36, 0.64, 1)', soft: 'cubic-bezier(0.22, 1, 0.36, 1)',
-    };
-    const anim = (node, kf, opt) => { if (node) anims.push(node.animate(kf, { fill: 'backwards', ...opt })); };
-    const rect = (n) => n.getBoundingClientRect();
+  // ------------------------------------------------------------------ the tabs: Games, and Saves
+  // Your saves, backed up from the calculator and put back: saves.js, usb.js and saves-ui.js, fetched when Saves is
+  // first opened, or right away when the address asks for it (?saves, which it keeps while Saves is open)
+  let savesUi = null, tab = 'games';
+  const saves = () => {
+    if (!savesUi) savesUi = script('saves.js').then(() => script('usb.js')).then(() => script('saves-ui.js'))
+      .then(() => npSavesUi.start(kit, toast)).catch((e) => { savesUi = null; throw e; });
+    return savesUi;
+  };
+  function showTab(name) {
+    if (name === 'saves' && other()) name = 'games';  // (Saves talks to the NumWorks: the others keep their saves their own way)
+    const was = tab;
+    tab = name;
+    for (const t of ['games', 'saves']) {
+      $('#tab-' + t).setAttribute('aria-selected', t === name);
+      $('#' + t).hidden = t !== name;
+    }
+    document.querySelector('.search').style.visibility = name === 'saves' ? 'hidden' : '';
+    if (name === 'saves') $('#dock').classList.remove('show');
+    closePops();
     hidePreview();
-    document.body.classList.add('intro-on');
-    $('#tip').classList.remove('show');
-    // where everything ends up, before anything moves
-    const list = items(), cap = capacity(), used = list.reduce((a, it) => a + it.bytes, 0);
-    const games = ordered().filter((id) => buttons.get(id) && buttons.get(id).parentNode.id === 'small');
-    const from = new Map(games.map((id) => [id, rect(buttons.get(id).querySelector('img'))]));
-    const to = new Map(games.map((id) => [id, tiles.get(id) && rect(tiles.get(id))]));
-    // 1. the calculator, then the words, then the games in their places (a wave down the grid)
-    anim($('.device'), [{ opacity: 0 }, { opacity: 1 }], { duration: 700, easing: 'linear' });
-    anim($('#calc'), [{ translate: '0 80px', scale: '0.93' }, { translate: '0 0', scale: '1' }], { duration: 1400, easing: E.out });
-    anim($('.meter'), [{ opacity: 0, transform: 'translateY(24px)' }, { opacity: 1, transform: 'none' }], { duration: 900, delay: 500, easing: E.out });
-    anim($('.title span'), [{ transform: 'translateY(108%)' }, { transform: 'none' }], { duration: 1000, delay: 180, easing: E.out });
-    anim($('.lede'), [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 900, delay: 340, easing: E.out });
-    anim($('.chips'), [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 800, delay: 420, easing: E.out });
-    anim($('.games .row-head'), [{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 520, easing: 'linear' });
-    [...$('#small').children].forEach((b, i) => {
-      anim(b.querySelector('img'), [{ opacity: 0, transform: 'translateY(14px) scale(0.6)' }, { opacity: 1, transform: 'none' }],
-        { duration: 700, delay: 560 + i * 24, easing: E.spring });
-      if (!st.picked.has(b.dataset.id))  // (their + comes with them)
-        anim(b.querySelector('.badge'), [{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: 900 + i * 24, easing: 'linear' });
-    });
-    // 2. on the screen: the free space and NumPlay's own block first, the games' blocks as they land
-    const T0 = 1150, GAP = 70, FLY = 760, landed = [];
-    for (const [key, e] of tiles) {
-      const id = key, gi = games.indexOf(id);
-      const at = key === '_free' ? 700 : key === '_core' ? 980 : gi >= 0 ? T0 + gi * GAP + FLY * 0.82 : T0 + games.length * GAP + FLY;
-      anim(e, [{ opacity: 0, scale: '0.55' }, { opacity: 1, scale: '1' }], { duration: key === '_free' ? 500 : 620, delay: at, easing: key === '_free' ? 'linear' : E.spring });
-      const sg = segs.get(key);
-      if (sg) anim(sg, [{ height: '0%' }, { height: sg.style.height }], { duration: 560, delay: at, easing: E.out });
-      const it = list.find((x) => x.key === key);
-      if (it) landed.push([at, it.bytes]);
-    }
-    // 3. the flights: each game's copy lifts off its place and arcs into its block on the screen
-    games.forEach((id, i) => {
-      const a = from.get(id), b = to.get(id), btn = buttons.get(id);
-      anim(btn.querySelector('.badge'), [{ transform: 'scale(0)' }, { transform: 'scale(1)' }], { duration: 420, delay: T0 + i * GAP - 60, easing: E.spring });
-      if (!a || !b) return;
-      const f = el('div', 'flyer');
-      f.appendChild(el('img', '', { src: btn.querySelector('img').src, alt: '' }));
-      f.style.width = a.width + 'px';
-      f.style.opacity = '0';
-      document.body.appendChild(f);
-      const tw = Math.max(10, Math.min(b.width, b.height) * 0.62);
-      flyers.push({ f, start: T0 + i * GAP, x0: a.left, y0: a.top, w0: a.width, x1: b.left + b.width / 2 - tw / 2, y1: b.top + b.height / 2 - tw / 2, w1: tw });
-    });
-    // the count of space and the flights, a frame at a time
-    const t0 = performance.now(), ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-    let raf = 0, shown = 0;
-    const end = T0 + games.length * GAP + FLY + 300;
-    const frame = (now) => {
-      const t = now - t0;
-      for (const fl of flyers) {
-        const k = (t - fl.start) / FLY;
-        if (k < 0 || k > 1.05) { fl.f.style.opacity = '0'; continue; }
-        const e = ease(Math.min(1, k)), lift = 150 + 0.1 * Math.abs(fl.x1 - fl.x0);
-        const cx = (fl.x0 + fl.x1) / 2, cy = Math.min(fl.y0, fl.y1) - lift;
-        const x = (1 - e) * (1 - e) * fl.x0 + 2 * (1 - e) * e * cx + e * e * fl.x1;
-        const y = (1 - e) * (1 - e) * fl.y0 + 2 * (1 - e) * e * cy + e * e * fl.y1;
-        const sc = (fl.w0 + (fl.w1 - fl.w0) * e) / fl.w0;
-        fl.f.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) scale(' + sc.toFixed(3) + ')';
-        fl.f.style.opacity = String(k < 0.06 ? k / 0.06 : k > 0.86 ? Math.max(0, (1 - k) / 0.14) : 1);
-      }
-      const target = landed.reduce((a, [at, bytes]) => a + (t >= at ? bytes : 0), 0);
-      shown += (target - shown) * 0.2;
-      $('#status-line').textContent = (shown / MiB).toFixed(2) + ' OF ' + +(cap / MiB).toFixed(2) + ' MB';
-      $('#used').textContent = (shown / MiB).toFixed(2);
-      $('#battery').style.width = 'calc(' + Math.min(100, 100 * shown / cap) + '% - 2px)';
-      if (t < end) raf = requestAnimationFrame(frame); else finish();
-    };
-    raf = requestAnimationFrame(frame);
-    ready();
-    // 4. beside it: the big games and your own
-    const S = T0 + games.length * GAP + 200;
-    const side = $('.side');
-    [...side.querySelectorAll(':scope > .row-head, #retro > .row-head, #pico > .row-head, .drop, .foot')].forEach((n, i) =>
-      anim(n, [{ opacity: 0, transform: 'translateX(26px)' }, { opacity: 1, transform: 'none' }], { duration: 900, delay: S + (i ? 260 + i * 70 : 0), easing: E.out }));
-    [...$('#big').children].forEach((b, i) =>
-      anim(b, [{ opacity: 0, translate: '18px 0' }, { opacity: 1, translate: '0 0' }], { duration: 800, delay: S + 80 + i * 26, easing: E.out }));
-    function finish(e) {
-      // (a click that ends it is only that: it doesn't also pick the game under it)
-      if (e && e.type === 'pointerdown') addEventListener('click', (c) => { c.stopPropagation(); c.preventDefault(); }, { capture: true, once: true });
-      cancelAnimationFrame(raf);
-      for (const a of anims) a.finish();
-      for (const fl of flyers) fl.f.remove();
-      flyers.length = 0;
-      document.body.classList.remove('intro-on');
-      removeEventListener('pointerdown', finish, true);
-      removeEventListener('keydown', finish, true);
-      introRun = null;
-      hidePreview();
-      render();
-      if (light.later) goLight();
-    }
-    addEventListener('pointerdown', finish, true);
-    addEventListener('keydown', finish, true);
-    introRun = finish;
-  }
-
-  // the games in NumPlay fill their column down to the bottom of the window: as many to a row, and as big, as fits
-  // (in the narrower layouts, where more comes under them, five to a row)
-  function fitGrid() {
-    const box = $('#small'), n = [...box.children].filter((b) => !b.classList.contains('away')).length;
-    if (!n || innerWidth <= 1180) { box.classList.remove('fit'); return; }
-    const W = box.clientWidth, H = innerHeight - (box.getBoundingClientRect().top + scrollY) - 34;
-    let best = null;
-    for (let c = 3; c <= 7; c++) {
-      const r = Math.ceil(n / c), s = Math.min(W / (c + (c - 1) * 0.22), H / (r + (r - 1) * 0.3));
-      if (!best || s > best.s) best = { c, s };
-    }
-    if (H < 160 || best.s < 36) { box.classList.remove('fit'); return; }
-    box.style.setProperty('--cols', best.c);
-    box.style.setProperty('--s', Math.floor(Math.min(best.s, 124)) + 'px');
-    box.classList.add('fit');
+    words();
+    try {
+      const u = new URL(location.href);
+      u.searchParams.delete('saves');
+      const q = [...u.searchParams].map(([k, v]) => encodeURIComponent(k) + (v ? '=' + encodeURIComponent(v) : ''));
+      if (name === 'saves') q.push('saves');
+      history.replaceState(null, '', u.pathname + (q.length ? '?' + q.join('&') : '') + u.hash);
+    } catch (e) { /* (a file:// page) */ }
+    if (name === 'saves')
+      saves().then(() => { if (tab === 'saves') npSavesUi.open(); })
+        .catch(() => { toast("Saves didn't load, try again"); if (tab === 'saves') showTab('games'); });
+    else if (was === 'saves' && window.npSavesUi) npSavesUi.close();
   }
 
   // ------------------------------------------------------------------ search
   // A game shows when what's typed is in its name, its id or its initials ("fnaf", "hk", "pvz"), accents and
-  // punctuation aside. The grids keep their sizes; the others are only hidden
+  // punctuation aside. The others are only hidden
   const plain = (t) => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   let searchApply = () => {};
   function search() {
@@ -2186,7 +2117,7 @@
       let n = 0;
       const shown = (b) => !b.hidden && !b.classList.contains('away');
       for (const [b, k] of keys) { b.hidden = !!q && !k.includes(q); if (shown(b)) n++; }
-      $('.games .row-head').hidden = ![...$('#small').children].some(shown);
+      $('#out-sec').hidden = ![...$('#out').children].some(shown);
       const none = $('#no-match');
       none.hidden = !!n || !q;
       if (none.hidden) return;
@@ -2199,7 +2130,7 @@
     box.addEventListener('input', apply);
     box.addEventListener('keydown', (e) => { if (e.key === 'Escape' && box.value) { e.stopPropagation(); box.value = ''; apply(); } });
     document.addEventListener('keydown', (e) => {
-      if (e.key === '/' && !e.target.closest('input, textarea, select') && !e.metaKey && !e.ctrlKey) { e.preventDefault(); box.focus(); }
+      if (e.key === '/' && tab === 'games' && !e.target.closest('input, textarea, select') && !e.metaKey && !e.ctrlKey) { e.preventDefault(); box.focus(); }
     });
     apply();
   }
@@ -2210,7 +2141,7 @@
     try {
       kit = await fetch(KIT + 'kit.json').then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
     } catch (e) {
-      document.documentElement.classList.remove('intro-wait', 'loading');
+      document.documentElement.classList.remove('loading');
       toast("The games didn't load, try again in a minute");
       return;
     }
@@ -2227,34 +2158,28 @@
       if (c) { const j = JSON.parse(c); custom = { url: j.url, obj: Uint8Array.from(atob(j.obj), (x) => x.charCodeAt(0)) }; }
     } catch (e) { custom = null; }
 
-    const small = $('#small'), big = $('#big');
-    const badge = '<span class="badge" aria-hidden="true">' +
-      '<svg class="b-tick" viewBox="0 0 12 12"><path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
-      '<svg class="b-plus" viewBox="0 0 12 12"><path d="M6 2.5v7M2.5 6h7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span>';
-    for (const g of kit.games) {
-      if (g === rg || g === pk) continue;
-      const b = el('button', 'app off', { type: 'button', 'aria-label': g.title, 'aria-pressed': 'false', 'data-id': g.id });
-      b.appendChild(el('img', '', { src: KIT + 'icons/' + g.id + '.png', alt: '', draggable: 'false' }));
-      b.insertAdjacentHTML('beforeend', badge);
+    // the shelf: every game its icon; render puts each in its group
+    shelfOrder = kit.games.filter((g) => g !== rg && g !== pk).sort((a, b) => (a.xl - b.xl) || ((a.rank || 99) - (b.rank || 99))).map((g) => g.id);
+    for (const id of shelfOrder) {
+      const g = byId[id];
+      const b = el('button', 'app', { type: 'button', 'aria-label': g.title, 'aria-pressed': 'false', 'data-id': id });
+      b.appendChild(el('img', '', { src: KIT + 'icons/' + id + '.png', alt: '', draggable: 'false', width: 55, height: 56 }));
       b.addEventListener('click', () => {
         if (justDragged) { justDragged = false; return; }
-        toggle(g.id);
-        if (matchMedia('(hover: none)').matches) { showPreview(g.id); hidePreview(1600); }
+        toggle(id);
+        if (matchMedia('(hover: none)').matches) { showPreview(id); hidePreview(2400); }
       });
-      b.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') previewSoon(g.id); });
+      b.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') previewSoon(id); });
       b.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') hidePreview(120); });
-      b.addEventListener('focus', () => showPreview(g.id));
+      b.addEventListener('focus', () => { if (b.matches(':focus-visible')) showPreview(id); });
       b.addEventListener('contextmenu', (e) => { if (holding || e.pointerType === 'touch') e.preventDefault(); });
       b.addEventListener('blur', () => hidePreview(120));
-      (g.xl ? big : small).appendChild(b);
-      buttons.set(g.id, b);
+      $('#out').appendChild(b);
+      buttons.set(id, b);
     }
-    sortable(small);
-    sortable(big);
+    sortable($('#in'));
     search();
-    fitGrid();
-    addEventListener('resize', () => requestAnimationFrame(fitGrid));
-    if (document.fonts) document.fonts.ready.then(fitGrid);
+    for (const t of ['games', 'saves']) $('#tab-' + t).addEventListener('click', () => showTab(t));
 
     // the app's settings
     const sec = $('#secret');
@@ -2277,68 +2202,40 @@
       } catch (err) { toast("That picture didn't work, try a PNG or JPEG"); }
     });
     $('#calc-chip').addEventListener('click', (e) => { renderCalcs(); openPop($('#calc-pop'), e.currentTarget); });
-    $('#app-chip').addEventListener('click', (e) => { renderApp(); openPop($('#app-pop'), e.currentTarget); });
-    $('#lang-chip').addEventListener('click', (e) => { renderApp(); openPop($('#lang-pop'), e.currentTarget); });
+    $('#app-link').addEventListener('click', (e) => { renderApp(); openPop($('#app-pop'), e.currentTarget); });
+    $('#lang-link').addEventListener('click', (e) => { renderApp(); openPop($('#lang-pop'), e.currentTarget); });
+    $('#space-link').addEventListener('click', (e) => { renderSpaces(); openPop($('#space-pop'), e.currentTarget); });
     document.addEventListener('pointerdown', (e) => {
-      if (popOpen && !e.target.closest('.pop, .chip, .space-chip')) closePops();
+      if (popOpen && !e.target.closest('.pop, [aria-haspopup]')) closePops();
     });
-
-    $('#space-chip').addEventListener('click', (e) => { renderSpaces(); openPop($('#space-pop'), e.currentTarget, true); });
-    // your saves, backed up from the calculator and put back: saves.js, usb.js and saves-ui.js, fetched when
-    // Saves is first opened (or the address asks for it, ?saves)
-    let savesUi = null;
-    const saves = () => {
-      if (!savesUi) savesUi = script('saves.js').then(() => script('usb.js')).then(() => script('saves-ui.js'))
-        .then(() => npSavesUi.start(kit, toast)).catch((e) => { savesUi = null; throw e; });
-      return savesUi;
-    };
-    $('#saves-chip').addEventListener('click', () => { closePops(); saves().then(() => npSavesUi.open()).catch(() => toast("Saves didn't load, try again")); });
-    if (flag('saves')) saves().catch(() => {});
-    $('#install').addEventListener('click', (e) => go(e.currentTarget, true));
-    $('#download').addEventListener('click', (e) => go(e.currentTarget, false));
-    $('#dock-install').addEventListener('click', (e) => go(e.currentTarget, true));
-    $('#dock-download').addEventListener('click', (e) => go(e.currentTarget, false));
-    $('#port-dl').addEventListener('click', (e) => portGo(e.currentTarget));
-    dock();
-    for (const b of [$('#install'), $('#download'), $('#dock-install'), $('#dock-download'), $('#app-chip'), $('#lang-chip')]) {
+    // Install and Download: the stage's buttons, the calculator's OK and Back keys, and a phone's bar
+    for (const [b, sheet] of [[$('#install'), true], [$('#ok-key'), true], [$('#dock-install'), true], [$('#download'), false], [$('#back-key'), false]]) {
+      b.addEventListener('click', (e) => go(e.currentTarget, sheet));
       b.addEventListener('pointerenter', prefetch, { once: true });
       b.addEventListener('focus', prefetch, { once: true });
     }
+    dock();
     for (const s of [$('#sheet'), $('#port-sheet')])
       s.addEventListener('click', (e) => { if (e.target === s || e.target.closest('.sheet-close')) closeSheet(); });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { closeSheet(); closePops(); if (holding) { holding.classList.remove('held'); holding = null; } }
     });
 
-    if (rg) {
-      $('#retro').hidden = false;
-      const exts = Object.keys(EXT).filter((x) => (rg.systems || [1, 2, 3]).includes(EXT[x]));
-      $('#rom-file').accept = exts.map((x) => '.' + x).join(',');
-      $('#drop-sub').textContent = exts.map((x) => '.' + x).join(' ');
-      $('#rom-file').addEventListener('change', (e) => { addRoms([...e.target.files]); e.target.value = ''; });
-    }
-    if (pk) {
-      $('#pico').hidden = false;
-      $('#p8-file').addEventListener('change', (e) => { addCarts([...e.target.files]); e.target.value = ''; });
-    }
-    $('#app-file').addEventListener('change', (e) => { addApps([...e.target.files]); e.target.value = ''; });
-    // files dropped anywhere: apps (.nwa) to your apps, PICO-8 carts to NumPico, the rest to Retro-Go
+    // your own files: the + takes them all, and so does the page when they are dropped anywhere on it
+    const exts = rg ? Object.keys(EXT).filter((x) => (rg.systems || [1, 2, 3]).includes(EXT[x])).map((x) => '.' + x) : [];
+    $('#own-file').accept = exts.concat(pk ? ['.p8', '.png'] : [], ['.nwa']).join(',');
+    $('#own-file').addEventListener('change', (e) => { addFiles([...e.target.files]); e.target.value = ''; });
     let fileDrag = 0;
     const files = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
-    addEventListener('dragenter', (e) => { if (files(e) && !other()) { fileDrag++; document.body.classList.add('dragging'); e.preventDefault(); } });
+    addEventListener('dragenter', (e) => { if (files(e) && !other() && tab === 'games') { fileDrag++; document.body.classList.add('dragging'); e.preventDefault(); } });
     addEventListener('dragover', (e) => { if (files(e)) e.preventDefault(); });
     addEventListener('dragleave', () => { if (--fileDrag <= 0) { fileDrag = 0; document.body.classList.remove('dragging'); } });
-    addEventListener('drop', async (e) => {
+    addEventListener('drop', (e) => {
       if (!files(e)) return;
       e.preventDefault();
       fileDrag = 0;
       document.body.classList.remove('dragging');
-      if (other()) return;
-      const all = [...e.dataTransfer.files], nwa = all.filter((f) => /\.nwa$/i.test(f.name));
-      const p8 = all.filter((f) => /\.p8(\.png)?$/i.test(f.name)), rest = all.filter((f) => !nwa.includes(f) && !p8.includes(f));
-      if (nwa.length) await addApps(nwa);
-      if (p8.length && pk) await addCarts(p8);
-      if (rest.length && rg) addRoms(rest);
+      if (!other() && tab === 'games') addFiles([...e.dataTransfer.files]);
     });
     tips();
     if (lightFromStart()) buildFlat();
@@ -2346,15 +2243,13 @@
     addEventListener('resize', () => { if (innerWidth < 900) goLight(); });
     restore();
     // the calculator: the address's (?calc=ti84ce, from its page), or last time's
-    lede = $('#lede').textContent;
     const asked = new URLSearchParams(location.search).get('calc'), want = known(asked) ? asked : store('numplay-calc');
     setCalc(want);
     if (want && st.calc === want) store('numplay-calc', want);
     else if (known(asked)) toast('Games for the ' + CALCS[asked].name + ' are coming soon');
     if (st.lang !== 'en') loadKit(st.lang).then(render).catch(() => { st.lang = 'en'; render(); });
     render();
-    $('#replay').addEventListener('click', () => intro(true));
-    requestAnimationFrame(() => intro(new URLSearchParams(location.search).has('intro')));
+    if (flag('saves')) showTab('saves');
     addEventListener('hashchange', () => { restore(); render(); });
     stars();
     // The linker (ld and objcopy, 1.9 MB) is ready before Install is pressed: fetched at the first press or key

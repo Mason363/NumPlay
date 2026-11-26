@@ -1,4 +1,4 @@
-/* NumPlay Studio: Saves, the sheet. Your calculator's saves, game by game: backed up on this computer each time
+/* NumPlay Studio: Saves, the tab. Your calculator's saves, game by game: backed up on this computer each time
  * it is plugged in, and put back after an update or a reset emptied it. docs/saves.md tells all of it.
  *
  * saves.js reads and changes the calculator's files, usb.js carries them. Here:
@@ -138,7 +138,7 @@
       else if (!(e && e.code === 'none')) problem = say(e);
     }
     busy = '';
-    if (!opened) drop();  // (the sheet was closed meanwhile: the calculator is let go)
+    if (!opened) drop();  // (the tab was left meanwhile: the calculator is let go)
     render();
   }
   function drop() {
@@ -199,7 +199,7 @@
     moves: (t) => t + " can't be changed safely on this calculator's software", list: () => "The calculator's files couldn't be read" };
   const tell = (left) => left.map((l) => (WHY[l.why] || WHY.list)(title(l.id))).join('. ');
 
-  // ------------------------------------------------------------------ the sheet
+  // ------------------------------------------------------------------ the tab
   function button(cls, label, on, tip) {
     const b = el('button', cls);
     b.type = 'button';
@@ -390,23 +390,19 @@
   }
 
   // ------------------------------------------------------------------ opening and closing
-  let from = null;  // (what had the keyboard when the sheet opened: it gets it back)
+  // (the page opens the tab and leaves it: app.js's showTab, which also reads ?saves in the address)
   function open() {
-    if (!kit) return;
-    from = document.activeElement;
+    if (!kit || opened) return;
     opened = true;
     $('#saves').hidden = false;
     view = null; asking = null; problem = note = null;
     render();
-    const c = $('#saves .sheet-close');
-    if (c) c.focus();
     if (!calc && usbNow()) connect(false);  // (one this page was given before, if it is plugged in)
   }
   function close() {
     if (!opened) return;
     opened = false;
     $('#saves').hidden = true;
-    if (from && from.focus) from.focus();
     if (!busy) drop();  // (the calculator is let go: NumWorks' website, in another tab, can have it)
   }
   // kit: kit.json (its "saves": every game's files; without it, an older kit, the files are still backed up, as
@@ -415,14 +411,9 @@
     kit = k;
     toast = say || toast;
     who = S.owners(kit.saves || []);
-    const sheet = $('#saves');
-    sheet.addEventListener('click', (e) => { if (e.target === sheet || e.target.closest('.sheet-close')) close(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && opened && !busy) close(); });
     watch();
     ready = loadBackups();
-    if (/[?&]saves(=|&|$)/.test(location.search)) open();
     await ready;
-    if (opened) render();
   }
   let watched = null;
   function watch() {

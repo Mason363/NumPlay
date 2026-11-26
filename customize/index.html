@@ -9,7 +9,7 @@
 <link rel="canonical" href="https://mason363.github.io/NumPlay/customize/">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="theme-color" content="#f2f1ef">
+<meta name="theme-color" content="#f1f0ec">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="NumPlay">
 <meta property="og:title" content="NumPlay Studio: choose the games in your NumPlay">
@@ -37,118 +37,81 @@
   "isPartOf": { "@type": "SoftwareSourceCode", "name": "NumPlay", "codeRepository": "https://github.com/Mason363/NumPlay", "license": "https://www.gnu.org/licenses/gpl-3.0.html" }
 }
 </script>
+<link rel="preload" href="nunito.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="app.css">
-<script>
-  // (the intro plays the first time: the page stays hidden until it starts, so it doesn't show twice)
-  try {
-    if ((!localStorage.getItem('numplay-intro3') || /[?&]intro\b/.test(location.search)) && innerWidth >= 900 &&
-        !matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('intro-wait');
-  } catch (e) {}
-  setTimeout(() => document.documentElement.classList.remove('intro-wait'), 5000);
-</script>
 </head>
 <body>
-<main id="studio">
-  <div class="head">
-    <div class="top">
-      <h1 class="title"><button id="replay" type="button" data-tip="Play the intro again"><span>NumPlay</span></button></h1>
-      <div class="chips">
-        <button id="calc-chip" type="button" class="chip" aria-haspopup="dialog" aria-expanded="false">
-          <img id="calc-chip-img" src="calcs/numworks.png" alt="" width="16" height="32">
-          <span id="calc-chip-label">NumWorks</span>
-          <svg class="caret" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </button>
-        <button id="app-chip" type="button" class="chip" aria-haspopup="dialog" aria-expanded="false" data-tip="Its icon and name on your calculator, and how it opens">
-          <img id="app-chip-icon" src="kit/variants/NumPlay.png" alt="" width="28" height="28">
-          <svg class="caret" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </button>
-        <button id="lang-chip" type="button" class="chip lang" aria-haspopup="dialog" aria-expanded="false" data-tip="The language of its menus">
-          <span id="lang-chip-label">EN</span>
-          <svg class="caret" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </button>
+<main id="studio" class="page">
+  <section class="shelf">
+    <header class="head">
+      <h1 class="brand">NumPlay <span>Studio</span></h1>
+      <div class="tabs" role="tablist" aria-label="NumPlay Studio">
+        <button id="tab-games" type="button" role="tab" aria-selected="true" aria-controls="games">Games</button>
+        <button id="tab-saves" type="button" role="tab" aria-selected="false" aria-controls="saves" data-tip="Back up your saves|and put them back after an update or a reset">Saves</button>
       </div>
-    </div>
-    <p id="lede" class="lede">Real games, rebuilt for the NumWorks. Choose yours and they go on your calculator as one app.</p>
-    <div class="tools">
       <label class="search">
-        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M10.4 10.4l3.6 3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
-        <input id="search" type="search" placeholder="Search games" aria-label="Search games" autocomplete="off" spellcheck="false">
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10.4 10.4l3.6 3.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/></svg>
+        <input id="search" type="search" placeholder="Search" aria-label="Search games" autocomplete="off" spellcheck="false">
       </label>
-      <button id="saves-chip" type="button" class="chip saves" aria-haspopup="dialog" data-tip="Back up your saves|and put them back after an update or a reset">
-        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.5h11.5L20.5 7.5V19a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19V5A1.5 1.5 0 0 1 5 3.5z"/><path d="M8 3.5v5h7v-5"/><rect x="7.5" y="13" width="9" height="7.5" rx="1"/></svg>
-        <span>Saves</span>
-      </button>
-    </div>
-    <p id="no-match" class="no-match" role="status" hidden></p>
-  </div>
-
-  <div class="games">
-    <div class="row-head"><h2 id="small-head">Games in NumPlay</h2></div>
-    <section id="small" class="grid small" aria-label="Games in NumPlay, best first"></section>
-  </div>
-
-  <aside class="side" aria-label="Big games, your own Game Boy, NES and Sega games, and your own apps">
-    <div class="row-head">
-      <h2>Big games</h2>
-      <button id="space-chip" type="button" class="space-chip" aria-haspopup="dialog" aria-expanded="false" aria-label="Your calculator's space for apps">
-        <span id="space-chip-label">1.94 MB</span>
-        <svg class="caret" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      </button>
-    </div>
-    <section id="big" class="grid big" aria-label="Big games, best first"></section>
-    <section id="retro" class="retro" aria-label="Your own Game Boy, NES and Sega games" hidden>
-      <div class="row-head"><h2>Your own Game Boy, NES and Sega games</h2></div>
-      <label id="drop" class="drop" for="rom-file">
-        <span class="drop-art" aria-hidden="true"><i class="c1"></i><i class="c2"></i><i class="c3"></i></span>
-        <span class="drop-text">Add game files</span>
-        <span id="drop-sub" class="drop-sub">.gb .gbc .nes .sms .gg .sg .col</span>
-      </label>
-      <input id="rom-file" type="file" multiple accept=".gb,.gbc,.nes,.sms,.gg,.sg,.col">
-      <div id="carts" class="carts" aria-label="Your games"></div>
-    </section>
-    <section id="pico" class="retro" aria-label="Your own PICO-8 carts" hidden>
-      <div class="row-head"><h2>Your own PICO-8 carts</h2></div>
-      <label id="p8-drop" class="drop" for="p8-file">
-        <span class="drop-art pico" aria-hidden="true"><i class="c1"></i><i class="c2"></i><i class="c3"></i></span>
-        <span class="drop-text">Add carts</span>
-        <span class="drop-sub">.p8 .p8.png</span>
-      </label>
-      <input id="p8-file" type="file" multiple accept=".p8,.png">
-      <div id="p8-carts" class="carts" aria-label="Your carts"></div>
-    </section>
-    <section id="own" class="retro" aria-label="Your own apps">
-      <div class="row-head"><h2>Your own apps</h2></div>
-      <label id="app-drop" class="drop" for="app-file">
-        <span class="drop-art apps" aria-hidden="true"><i class="c1"></i><i class="c2"></i><i class="c3"></i></span>
-        <span class="drop-text">Add apps</span>
-        <span class="drop-sub">.nwa</span>
-      </label>
-      <input id="app-file" type="file" multiple accept=".nwa">
-      <div id="app-carts" class="carts" aria-label="Your apps"></div>
-    </section>
-    <footer class="foot">
-      <a href="https://github.com/Mason363/NumPlay">Made by Mason Chen as part of NumPlay</a>
-      <span aria-hidden="true">·</span>
-      <a href="../">NumPlay's page</a>
-    </footer>
-  </aside>
-
-  <section class="device" aria-label="Your calculator">
-    <div class="meter" aria-hidden="true">
-      <span id="used" class="used">0.00</span>
-      <div id="bar" class="bar"></div>
-      <span id="cap-of" class="cap-of"></span>
-    </div>
-    <div id="calc" class="calc">
-      <div class="plate">
-        <img class="calc-img" src="calculator.webp" alt="A NumWorks calculator" draggable="false" width="1018" height="2000">
-        <span class="legend ok" aria-hidden="true">install</span>
-        <span class="legend back" aria-hidden="true">download</span>
-        <button id="install" class="ok-key" type="button" aria-label="Install your NumPlay on your calculator" data-tip="Install it on your calculator"></button>
-        <button id="download" class="dl" type="button" aria-label="Download NumPlay.nwa" data-tip="Download NumPlay.nwa"></button>
+    </header>
+    <div id="games" class="view" role="tabpanel" aria-labelledby="tab-games">
+      <h2 class="sec"><span id="in-head">In your NumPlay</span><i id="n-in"></i></h2>
+      <div class="icons">
+        <div id="in" class="group"></div>
+        <div id="in-more" class="group"></div>
+        <label id="add" class="add" for="own-file" data-tip="Add a game or an app of your own">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>
+          <span class="sr">Add a game or an app of your own</span>
+        </label>
       </div>
-      <div class="well">
-        <img class="well-img" src="calculator.webp" alt="" draggable="false" width="1018" height="2000">
+      <input id="own-file" type="file" multiple accept=".nwa">
+      <p id="no-match" class="no-match" role="status" hidden></p>
+      <h2 id="out-sec" class="sec"><span>More games</span><i id="n-out"></i></h2>
+      <div id="out" class="icons"></div>
+      <footer class="foot">
+        <a href="https://github.com/Mason363/NumPlay">Made by Mason Chen as part of NumPlay</a>
+        <a href="../">NumPlay's page</a>
+      </footer>
+    </div>
+    <section id="saves" class="view saves" role="tabpanel" aria-labelledby="tab-saves" hidden>
+      <h2 id="saves-title" class="sec">Your saves</h2>
+      <div id="saves-body"></div>
+    </section>
+  </section>
+
+  <section id="stage" class="stage" aria-label="Your NumPlay">
+    <header class="s-top">
+      <svg class="glyph" viewBox="0 0 30 16" width="30" height="16" aria-hidden="true"><rect x="0.5" y="0.5" width="29" height="15" rx="7.5"/><path d="M8 4.6v6.8M4.6 8h6.8" stroke-width="2.4" stroke-linecap="round"/><circle cx="20" cy="9.6" r="1.9"/><circle cx="24.2" cy="6" r="1.9"/></svg>
+      <b>NumPlay</b>
+      <span id="pager" class="pager" aria-hidden="true"></span>
+      <button id="calc-chip" type="button" class="calc-pick" aria-haspopup="dialog" aria-expanded="false" data-tip="Your calculator"><span id="calc-chip-label">NumWorks</span><svg class="caret" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/></svg></button>
+    </header>
+    <div class="words">
+      <img id="w-icon" class="w-icon" src="kit/variants/NumPlay.png" alt="" width="55" height="56">
+      <h2 id="w-title">NumPlay</h2>
+      <p id="w-tag" class="tag">Real games, rebuilt for the NumWorks. Choose yours and they go on your calculator as one app.</p>
+      <p class="facts"><span id="w-a"></span><span id="w-b"></span></p>
+      <p id="w-links" class="links">
+        <button id="app-link" type="button" aria-haspopup="dialog" aria-expanded="false">Name and icon</button>
+        <button id="lang-link" type="button" aria-haspopup="dialog" aria-expanded="false">Language</button>
+        <button id="space-link" type="button" aria-haspopup="dialog" aria-expanded="false">Space</button>
+      </p>
+    </div>
+    <div class="go">
+      <button id="install" type="button" class="install">Install on my calculator</button>
+      <button id="download" type="button" class="download">Download NumPlay.nwa</button>
+    </div>
+    <div class="device">
+      <div id="calc" class="calc">
+        <div class="plate">
+          <img class="calc-img" src="calculator.webp" alt="A NumWorks calculator" draggable="false" width="1018" height="2000">
+          <span class="legend ok" aria-hidden="true">install</span>
+          <span class="legend back" aria-hidden="true">download</span>
+          <button id="ok-key" class="ok-key" type="button" aria-label="Install your NumPlay on your calculator" data-tip="Install it on your calculator"></button>
+          <button id="back-key" class="dl" type="button" aria-label="Download NumPlay.nwa" data-tip="Download NumPlay.nwa"></button>
+        </div>
+        <div class="well">
+          <img class="well-img" src="calculator.webp" alt="" draggable="false" width="1018" height="2000">
         <div id="screen" class="screen" role="img" aria-label="Space on the calculator">
           <div class="status"><span id="status-line"></span><span class="battery"><i id="battery"></i></span></div>
           <div id="map" class="map"></div>
@@ -158,15 +121,15 @@
             Drop to add
           </div>
         </div>
+        </div>
+        <div class="body3d" aria-hidden="true"></div>
+        <a id="star" class="sticker" href="https://github.com/Mason363/NumPlay" target="_blank" rel="noopener" aria-label="Star NumPlay on GitHub" data-tip="Star NumPlay on GitHub|it helps other people find it"></a>
       </div>
-      <div class="body3d" aria-hidden="true"></div>
-      <a id="star" class="sticker" href="https://github.com/Mason363/NumPlay" target="_blank" rel="noopener" aria-label="Star NumPlay on GitHub" data-tip="Star NumPlay on GitHub|it helps other people find it"></a>
-    </div>
-    <div id="port" class="port">
-      <div id="port-calc" class="port-calc">
-        <img id="port-img" class="port-img" alt="" draggable="false">
+      <div id="port" class="port">
+        <div id="port-calc" class="port-calc">
+          <img id="port-img" class="port-img" alt="" draggable="false">
+        </div>
       </div>
-      <button id="port-dl" type="button" class="install port-dl">Download</button>
     </div>
   </section>
 </main>
@@ -213,6 +176,7 @@
 </div>
 <input id="icon-file" type="file" accept="image/*" hidden>
 
+
 <div id="sheet" class="sheet" hidden>
   <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
     <button type="button" class="sheet-close" aria-label="Close">
@@ -236,15 +200,6 @@
     </a>
   </div>
 </div>
-<div id="saves" class="sheet" hidden>
-  <div class="sheet-card saves-card" role="dialog" aria-modal="true" aria-labelledby="saves-title">
-    <button type="button" class="sheet-close" aria-label="Close">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-    </button>
-    <h2 id="saves-title">Your saves</h2>
-    <div id="saves-body"></div>
-  </div>
-</div>
 <div id="port-sheet" class="sheet" hidden>
   <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="port-title">
     <button type="button" class="sheet-close" aria-label="Close">
@@ -263,17 +218,12 @@
 <noscript><p class="noscript">NumPlay Studio needs JavaScript to build your NumPlay. You can also <a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay.nwa">download NumPlay.nwa</a> with all of its games.</p></noscript>
 
 <div id="dock" class="dock" aria-label="Your NumPlay">
-  <span id="dock-used" class="dock-used"></span>
-  <button id="dock-download" type="button" class="dock-dl" aria-label="Download NumPlay.nwa">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>
-  </button>
-  <button id="dock-install" type="button" class="install dock-install">Install</button>
+  <div class="dock-info"><b id="dock-name"></b><span id="dock-used"></span></div>
+  <button id="dock-install" type="button" class="install">Install</button>
 </div>
-
+<div id="veil" class="veil" aria-hidden="true"><span>Drop to add to your NumPlay</span></div>
 <div id="tip" class="tip" role="tooltip"></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script src="apps.js"></script>
-<script src="pico.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

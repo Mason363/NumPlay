@@ -5,7 +5,7 @@ description: "How NumPlay Studio backs up the saves of every NumPlay game from a
 
 # Saves in NumPlay Studio
 
-[NumPlay Studio](https://mason363.github.io/NumPlay/customize/?saves) has a **Saves** button. Plug in a NumWorks and it shows every game's save on it, backs them all up in the browser, and puts them back after an update or a reset emptied the calculator.
+[NumPlay Studio](https://mason363.github.io/NumPlay/customize/?saves) has a **Saves** tab. Plug in a NumWorks and it shows every game's save on it, backs them all up in the browser, and puts them back after an update or a reset emptied the calculator.
 
 This page is for whoever works on NumPlay. It says what Saves does, why a new game needs nothing more to be covered, how it talks to the calculator, how it is tested, and what to check on a real calculator.
 
@@ -44,7 +44,7 @@ Three files in `customize/`, each with its own part.
 | --- | --- |
 | `saves.js` | The files as bytes. Reads the list, changes it, plans the writes, reads the copies, tells whose file it is, packs a backup. No browser needed. |
 | `usb.js` | The calculator over WebUSB. Finds its files, reads them, makes a change and reads it back. |
-| `saves-ui.js` | The sheet, and the backups kept in IndexedDB. |
+| `saves-ui.js` | The tab, and the backups kept in IndexedDB. |
 
 The page fetches the three when Saves is first opened, or right away with `?saves` in the address.
 
