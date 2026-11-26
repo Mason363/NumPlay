@@ -40,8 +40,6 @@
 
 ## Pick your calculator
 
-<p align="center"><img src="docs/media/calcs/lineup.png" width="720" alt="A NumWorks, a TI-84 Plus CE, a TI-Nspire CX II, a Casio fx-CG50 and a Casio Graph 35+E II"></p>
-
 > [!IMPORTANT]
 > **The TI-84 Plus CE, TI-Nspire and Casio games are out, in beta.** Download yours below, its page says how to install it. Something doesn't work? [Tell me](https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml).
 
