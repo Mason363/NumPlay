@@ -222,6 +222,7 @@ kit: $(KIT)/base.o $(B)/arm/arena.o $(KIT_GAMES) $(B)/NumPlay.nwa \
 	  --langs "$(LANGS)" --alone "$(foreach g,$(XL_GAMES),$(g)=$(if $(XL_FROM),$(XL_FROM)/)$(APP_$(g)))" \
 	  $(if $(XL_FROM),--english "$(XL_FROM)/$(B)/site-kit")
 	[ -n "$(XL_FROM)" ] || gzip -9n < games/retrogo/output/retrogo-app.o > $(B)/site-kit/apps/RetroGo-app.o.gz  # (Retro-Go on its own, Studio; not in a language's tree, which builds no app of it)
+	[ -n "$(XL_FROM)" ] || for k in pictures video book; do gzip -9n < games/numview/output/numview-$$k-app.o > $(B)/site-kit/apps/NumView-$$k-app.o.gz || exit 1; done  # (NumView's viewers, Studio: a file of yours linked with the one for its kind)
 
 # ...and in French and Chinese, from each language's tree (make lang), in site-kit/<code>. The big games stay in
 # English: their modules come from this build (XL_FROM), their names, taglines and screenshots from the tree
@@ -408,6 +409,7 @@ apps: | $(B)
 	$(MAKE) -C games/kingdomrush build NWLINK="$(NWLINK)" BUILD_DIR=../../$(B)/games/kingdomrush
 	$(MAKE) -C games/mrbullet build NWLINK="$(NWLINK)" BUILD_DIR=../../$(B)/games/mrbullet
 	$(MAKE) -C games/numpico build NWLINK="$(NWLINK)" BUILD_DIR=../../$(B)/games/numpico
+	$(MAKE) -C games/numview app NWLINK="$(NWLINK)"  # (NumView, for Studio: your pictures, PDFs, videos and books as apps)
 	$(MAKE) -C games/deltarune build NWLINK="$(NWLINK)" BUILD_DIR=../../$(B)/games/deltarune
 	$(MAKE) -C games/motox3m build NWLINK="$(NWLINK)" BUILD_DIR=../../$(B)/games/motox3m
 	$(MAKE) -C games/amongus build NWLINK="$(NWLINK)" BUILD_DIR=../../$(B)/games/amongus
