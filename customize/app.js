@@ -222,14 +222,14 @@
         if (t.tag) e.appendChild(el('b')).textContent = t.tag;
         map.appendChild(e);
         tiles.set(t.key, e);
-        if (t.id || t.rom || t.app || t.cart) e.addEventListener('click', () => (t.rom ? removeRom(t.rom) : t.app ? removeApp(t.app) : t.cart ? removeCart(t.cart) : toggle(t.id)));
+        if (t.id && buttons.has(t.id)) e.addEventListener('click', () => select(t.id, buttons.get(t.id)));
       }
       e.classList.toggle('free', !!t.free);
       e.style.left = (100 * t.x / W) + '%';
       e.style.top = (100 * t.y / H) + '%';
       e.style.width = (100 * t.w / W) + '%';
       e.style.height = (100 * t.h / H) + '%';
-      e.style.cursor = t.id || t.rom || t.app || t.cart ? 'pointer' : '';
+      e.style.cursor = t.id && buttons.has(t.id) ? 'pointer' : '';
       if (!t.free)
         e.style.background = 'radial-gradient(130% 130% at 30% 25%, ' + mix(t.color, 0.45) + ' 0%, ' + t.color + ' 45%, ' + mix(t.color, -0.55) + ' 100%)';
       const s = Math.min(t.w, t.h);
@@ -255,16 +255,19 @@
     $('#battery').style.width = 'calc(' + Math.min(100, 100 * used / cap) + '% - 2px)';
     if (other()) return renderPort(used, cap);
 
-    // the icons: yours first, in the order they go in the launcher, then the rest
+    // the icons: under each a bar, its share of the calculator's space, amber when that much isn't left
+    const s0 = solo(), picks = ordered();
     for (const [id, b] of buttons) {
-      const on = st.picked.has(id);
+      const on = st.picked.has(id), bytes = alone(id) ? game(id).alone.size : flash(id);
       b.classList.toggle('on', on);
       b.setAttribute('aria-pressed', on);
+      b.lastChild.style.width = Math.max(4, Math.min(100, 100 * bytes / cap)) + '%';
+      b.classList.toggle('nofit', !on && (alone(id) ? bigger(id) : !!s0 || total(picks.concat([id])) > cap));
     }
     arrange();
     // (a game on its own has its own icon, name and language)
-    const s = solo(), file = s ? game(s).alone.file : rgAlone() ? 'RetroGo.nwa' : 'NumPlay.nwa';
-    for (const c of [$('#app-link'), $('#lang-link')]) c.disabled = !!s;
+    const file = s0 ? game(s0).alone.file : rgAlone() ? 'RetroGo.nwa' : 'NumPlay.nwa';
+    for (const c of [$('#app-link'), $('#lang-link')]) c.disabled = !!s0;
     $('#download').textContent = 'Download ' + file;
     $('#back-key').setAttribute('aria-label', 'Download ' + file);
     $('#back-key').dataset.tip = 'Download ' + file;
@@ -272,44 +275,46 @@
     words();
     save();
   }
-  // The icons in their groups: yours, in the launcher's order, then the rest as the kit ranks them. One that changes
-  // group slides to its new place.
-  let arranged = false;
+  // The icons in their groups: yours, in the launcher's order, then the games and the big games as the kit ranks
+  // them. The ones a change moves slide to their new places; the one that changed group comes up in its own.
+  let arranged = false, moving = null;
   function arrange() {
-    const o = other(), mine = o ? portPicks() : ordered(), inBox = $('#in'), outBox = $('#out');
+    const o = other(), mine = o ? portPicks() : ordered();
     const rest = shelfOrder.filter((id) => !mine.includes(id));
-    const same = (box, ids) => { const k = [...box.children]; return k.length === ids.length && ids.every((id, i) => k[i] === buttons.get(id)); };
-    if (!same(inBox, mine) || !same(outBox, rest)) {
-      const all = mine.concat(rest).map((id) => buttons.get(id));
+    const want = [['#in', mine], ['#small', rest.filter((id) => !byId[id].xl)], ['#big', rest.filter((id) => byId[id].xl)]];
+    const same = ([box, ids]) => { const k = [...$(box).children]; return k.length === ids.length && ids.every((id, i) => k[i] === buttons.get(id)); };
+    if (!want.every(same)) {
+      const all = shelfOrder.map((id) => buttons.get(id));
       const before = arranged && !dragging ? new Map(all.filter((b) => b.offsetParent).map((b) => [b, b.getBoundingClientRect()])) : null;
-      for (const id of mine) inBox.appendChild(buttons.get(id));
-      for (const id of rest) outBox.appendChild(buttons.get(id));
+      for (const [box, ids] of want) for (const id of ids) $(box).appendChild(buttons.get(id));
       if (before) for (const [b, a] of before) {
+        if (!b.animate) continue;
         const r = b.getBoundingClientRect(), dx = a.left - r.left, dy = a.top - r.top;
-        if ((dx || dy) && b.animate) b.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 280, easing: 'cubic-bezier(0.2, 0.9, 0.25, 1)' });
+        if (b === moving) b.animate([{ transform: 'scale(0.3)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 120, easing: 'cubic-bezier(0.3, 1.45, 0.45, 1)', fill: 'backwards' });
+        else if (dx || dy) b.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 280, easing: 'cubic-bezier(0.2, 0.9, 0.25, 1)' });
       }
     }
     arranged = true;
+    const here = (ids) => ids.filter((id) => !buttons.get(id).classList.contains('away')).length;
     $('#in-head').textContent = o ? 'Your games' : 'In your NumPlay';
-    $('#n-in').textContent = mine.length + (o ? 0 : st.roms.length + st.carts.length + st.apps.length);
-    $('#n-out').textContent = rest.filter((id) => !buttons.get(id).classList.contains('away')).length;
+    $('#n-in').textContent = mine.length;
+    $('#n-small').textContent = here(want[1][1]);
+    $('#n-big').textContent = here(want[2][1]);
+    $('#in-hint').hidden = o || mine.length < 2;
+    searchApply();
   }
 
-  // Your own games and apps, after your games: a Game Boy, NES or Sega game as its cartridge, a PICO-8 cart as its
-  // label, an app as its icon. Pressing one takes it out; pointing at one says what it is, on the stage.
+  // Your own games and apps, under "Your own": a Game Boy, NES or Sega game as its cartridge, a PICO-8 cart as its
+  // label, an app as its icon. Pressing one shows it on the stage, where a button takes it out.
   function renderOwn() {
     const box = $('#in-more'), have = new Set();
     const add = (key, cls, what, art, remove) => {
       have.add(key);
       if (box.querySelector('[data-k="' + key + '"]')) return;
-      const b = el('button', 'app own ' + cls, { type: 'button', 'data-k': key, 'aria-label': 'Take ' + what.title + ' out' });
+      const b = el('button', 'app own ' + cls, { type: 'button', 'data-k': key, 'aria-label': what.title, 'data-tip': what.title });
       b.appendChild(art());
-      b.addEventListener('click', () => { point(null); remove(); });
-      // (hidePreview first: a game left a moment ago would otherwise take the stage back)
-      b.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') { hidePreview(); point(what, b); } });
-      b.addEventListener('pointerleave', () => point(null));
-      b.addEventListener('focus', () => { hidePreview(); point(what, b); });
-      b.addEventListener('blur', () => point(null));
+      what.remove = remove;
+      b.addEventListener('click', () => select(what, b));
       box.appendChild(b);
     };
     const picture = (url) => () => el('img', '', { src: url, alt: '', draggable: 'false', width: 55, height: 56 });
@@ -329,30 +334,54 @@
     for (const a of st.apps)
       add('a' + a.key, 'nwa', { title: a.title, tag: a.file, bytes: a.flash, top: hex(a.accent.toString(16)), bottom: '#17171a' }, picture(a.url), () => removeApp(a));
     for (const c of box.querySelectorAll('[data-k]')) if (!have.has(c.dataset.k)) c.remove();
+    $('#n-own').textContent = have.size || '';
   }
 
   // ------------------------------------------------------------------ the stage
-  // NumPlay's launcher at full size. At rest it is your app: its icon, its name, how many games and how full. With a
-  // game pointed at it is that game: its colors, top to bottom as the launcher paints them, its name, what it is, its
-  // size and whether it fits. The pager has a tick for each of your games, as the launcher's has.
+  // NumPlay's launcher at full size. At rest it is your app: its icon, its name, how many games. Press a game and it
+  // is that game: its colors, top to bottom as the launcher paints them, its name, what it is, its size and whether
+  // it fits, its clip on the calculator's screen, and a button that adds it or takes it out. The space left is a
+  // meter that stays; with a game shown that isn't in, it shows the part that game would take.
   const REST = ['#1f8073', '#0b2a33'];
-  let pointed = null;  // a game's id, or one of your own files: { title, tag, bytes, top, bottom }
+  let pointed = null;  // a game's id, or one of your own files: { title, tag, bytes, top, bottom, remove }
   const lum = (h) => { const n = parseInt(h.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
   const restLine = () => (other() ? CALCS[st.calc].name : st.app.name.trim() || 'NumPlay').toUpperCase();
+  const isIn = (id) => (other() ? st.port[st.calc].has(id) : st.picked.has(id));
   function point(what, b) {
     for (const x of document.querySelectorAll('.app.at')) x.classList.remove('at');
     pointed = what || null;
     if (b) b.classList.add('at');
     words();
   }
-  // (what the stage says at rest under your app's name: what NumPlay is; on another calculator, what you get)
+  // pressing an icon shows its game; pressing it again, Escape, or the way back on the stage, shows your NumPlay
+  function select(what, b) {
+    const again = pointed === what;
+    hidePreview();
+    point(again ? null : what, again ? null : b);
+    if (!again && typeof what === 'string') showPreview(what);
+  }
+  const deselect = () => { hidePreview(); point(null); };
+  // (what the stage says at rest under your app's name: what NumPlay is)
   function lede() {
-    if (!other()) return ['Real games, rebuilt for the NumWorks. Choose yours and they go on your calculator as one app.'];
+    if (!other()) return ['Real games for your NumWorks, in one app.'];
     const name = el('span', 'name'), beta = el('a', 'beta');
     name.textContent = CALCS[st.calc].name;  // (in one piece: "fx-CG50" doesn't break at its hyphen)
     Object.assign(beta, { href: 'https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml', target: '_blank', rel: 'noopener', textContent: 'Beta: something wrong? Tell us' });
-    return ['Real games, rebuilt for the ', name, '. Choose yours and download them.', beta];
+    return ['Real games for your ', name, '.', beta];
   }
+  // a name too long for its place gets smaller, never cut inside a word; three lines at most
+  function fitTitle() {
+    const h = $('#w-title');
+    h.style.fontSize = '';
+    let px = parseFloat(getComputedStyle(h).fontSize);
+    for (let i = 0; i < 8 && px > 24; i++) {
+      const wide = h.scrollWidth > h.clientWidth + 1, tall = h.offsetHeight > px * 0.96 * 3 + 2;
+      if (!wide && !tall) break;
+      px = Math.floor(wide ? Math.min(px * 0.92, px * h.clientWidth / h.scrollWidth) : px * 0.9);
+      h.style.fontSize = px + 'px';
+    }
+  }
+  let leftNow = null, leftRun = 0;
   function words() {
     const stage = $('#stage'), o = other(), saving = tab === 'saves';
     const mine = typeof pointed === 'string' ? null : pointed, g = saving ? null : mine || byId[pointed] || null;
@@ -366,24 +395,25 @@
     stage.classList.toggle('pointing', !!g);
     stage.classList.toggle('saving', saving);
     const used = usedBytes(), cap = capacity(), picks = o ? portPicks() : ordered();
-    const n = o ? picks.length : entries();
-    const count = n + (n === 1 ? ' game' : ' games'), room = (used / MiB).toFixed(2) + ' of ' + (o ? 'about ' : '') + mb(cap);
-    let title, tag = null, a = count, b = room, no = used > cap;
-    if (saving) { title = 'Your saves'; tag = 'Backed up each time you plug your calculator in, and put back after an update or a reset.'; }
-    else if (g && mine) { title = g.title; tag = g.tag; a = size(g.bytes); b = 'In your NumPlay'; no = false; }
+    const n = o ? picks.length : entries(), count = n + (n === 1 ? ' game' : ' games'), yours = o ? 'your games' : 'NumPlay';
+    let title, tag = null, a = count, b = '', no = false, would = 0, act = '';
+    if (saving) { title = 'Your saves'; tag = 'Backed up when you plug in. Put back after a reset.'; }
+    else if (g && mine) { title = g.title; tag = g.tag; a = size(g.bytes); act = 'Take out'; }
     else if (g) {
-      const id = pointed, on = o ? st.port[st.calc].has(id) : st.picked.has(id);
+      const id = pointed, on = isIn(id);
       const bytes = o ? portList()[id].size : alone(id) ? game(id).alone.size : flash(id);
-      title = g.title; tag = g.tagline || ''; a = size(bytes); no = false;
-      if (on) b = o ? 'In your games' : alone(id) ? 'On its own' : 'In your NumPlay';
+      title = g.title; tag = g.tagline || ''; a = size(bytes);
+      act = on ? 'Take out of ' + yours : 'Add to ' + yours;
+      if (on) b = 'In your ' + (o ? 'games' : 'NumPlay');
       else if (!o && alone(id)) { no = bigger(id); b = no ? 'Needs Nwagra' : 'Goes on its own'; }
       else {
         const over = o ? used + bytes - cap : total(picks.concat([id])) - cap;
         no = over > 0 || (!o && !!s);
         b = !no ? 'Fits' : !o && s ? 'No room beside ' + byId[s].title : 'Needs ' + size(over) + ' more';
+        would = bytes;
       }
     } else if (o) title = CALCS[st.calc].name;
-    else if (lone) { title = lone.title; tag = lone.tagline || ''; if (s) { a = size(game(s).alone.size); b = 'On its own'; } }
+    else if (lone) { title = lone.title; tag = lone.tagline || ''; }
     else title = st.app.name.trim() || 'NumPlay';
     $('#w-title').textContent = title;
     const t = $('#w-tag');
@@ -392,26 +422,114 @@
     $('#w-a').textContent = a;
     $('#w-b').textContent = b;
     $('#w-b').classList.toggle('no', no);
+    $('#w-back').hidden = !g;
+    $('#w-back-label').textContent = o ? 'Your games' : 'Your NumPlay';
+    $('#w-act').hidden = !g;
+    $('#w-act').textContent = act;
     const icon = $('#w-icon'), src = lone ? KIT + 'icons/' + lone.id + '.png' : iconUrl();
     if (icon.getAttribute('src') !== src) icon.src = src;
     icon.classList.toggle('custom', !lone && st.app.icon === 'custom');
-    // the pager: a tick for each of your games, the one pointed at marked (at rest the first, where the launcher opens)
+    fitTitle();
+    // the space: what's used, the part the game shown would take, and how much is left (counted to, not jumped to)
+    const left = cap - used;
+    $('#m-fill').style.width = Math.min(100, 100 * used / cap) + '%';
+    $('#m-would').style.width = Math.max(0, Math.min(100 - 100 * used / cap, 100 * would / cap)) + '%';
+    document.querySelector('.meter').classList.toggle('over', would > left);
+    $('#m-of').textContent = (left < 0 ? 'too much, of ' : 'left of ') + (o ? 'about ' : '') + mb(cap);
+    $('#m-bar').setAttribute('aria-label', size(Math.abs(left)) + (left < 0 ? ' too much' : ' left') + ' of ' + mb(cap));
+    const show = (v) => { $('#m-left').textContent = (Math.abs(v) / MiB).toFixed(2) + ' MB'; };
+    if (leftNow === null || still()) show(left);
+    else if (leftNow !== left) {
+      const from = leftNow, t0 = performance.now(), run = ++leftRun;
+      const step = (now) => {
+        if (run !== leftRun) return;
+        const k = Math.min(1, (now - t0) / 420);
+        show(from + (left - from) * (1 - Math.pow(1 - k, 3)));
+        if (k < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+    leftNow = left;
+    // the pager: a tick for each of your games, the one shown marked (at rest the first, where the launcher opens)
     const pager = $('#pager'), at = g ? (mine ? -1 : picks.indexOf(pointed)) : 0;
     if (pager.children.length !== picks.length) { pager.textContent = ''; for (let i = 0; i < picks.length; i++) pager.appendChild(el('i')); }
     [...pager.children].forEach((e, i) => e.classList.toggle('on', i === at));
-    // (a phone's bar says the same in two lines)
+    // (a phone's bar: the game shown and its button, or your NumPlay and Install)
+    const dl = $('#dock-install');
     $('#dock-name').textContent = g ? title : count;
-    $('#dock-used').textContent = g ? a + ', ' + b.charAt(0).toLowerCase() + b.slice(1) : room;
+    $('#dock-used').textContent = g ? a + (b ? ', ' + b.charAt(0).toLowerCase() + b.slice(1) : '') : (Math.abs(left) / MiB).toFixed(2) + ' MB ' + (left < 0 ? 'too much' : 'left');
+    dl.textContent = g ? (act.startsWith('Add') ? 'Add' : 'Take out') : o ? 'Download' : 'Install';
+    dl.disabled = !g && o && !picks.length;
+  }
+
+  // ------------------------------------------------------------------ what a press does, shown
+  // A game added flies from its place on the shelf into the calculator's screen, where its block opens as the space
+  // fills. One taken out flies back. One that doesn't fit goes there and comes back. And as the page arrives, your
+  // games go in one after the other: that is what the page is for.
+  const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const inView = (r) => !!r && r.width > 0 && r.bottom > 0 && r.top < innerHeight;
+  const tileScale = (r) => Math.max(0.2, Math.min(1, Math.min(r.width, r.height) * 0.62 / 55));
+  function fly(src, a, b, o = {}) {
+    if (still() || !inView(a) || !inView(b)) return;
+    const f = el('div', 'flyer');
+    f.appendChild(el('img', '', { src, alt: '', width: 55, height: 56 }));
+    document.body.appendChild(f);
+    const pos = (r, k) => 'translate(' + (r.left + r.width / 2 - 27.5).toFixed(1) + 'px,' + (r.top + r.height / 2 - 28).toFixed(1) + 'px) scale(' + k + ')';
+    const ka = o.ka || 1, kb = o.kb || 1;
+    const mid = { left: (a.left + b.left) / 2, top: Math.min(a.top, b.top) - 60, width: (a.width + b.width) / 2, height: (a.height + b.height) / 2 };
+    const frames = o.back ? [{ transform: pos(a, ka) }, { transform: pos(b, kb), offset: 0.55 }, { transform: pos(a, ka) }]
+      : [{ transform: pos(a, ka) }, { transform: pos(mid, Math.max(ka, kb) * 1.08), offset: 0.5 }, { transform: pos(b, kb) }];
+    const run = f.animate(frames, { duration: o.ms || 560, delay: o.delay || 0, easing: 'cubic-bezier(0.4, 0, 0.3, 1)', fill: 'both' });
+    run.onfinish = run.oncancel = () => f.remove();
+  }
+  // (the stage's button, or two presses on an icon: the game goes in or comes out, and is seen to)
+  function flyToggle(id) {
+    const b = buttons.get(id), was = isIn(id), src = b.querySelector('img').src, rect = (e) => (e ? e.getBoundingClientRect() : null);
+    const from = rect(b), tile0 = rect(tiles.get(id)), screen = rect($('#screen'));
+    moving = b;
+    toggle(id);
+    moving = null;
+    const now = isIn(id), tile = rect(tiles.get(id)) || screen;
+    if (now && !was) fly(src, from, tile, { kb: tileScale(tile) });
+    else if (!now && was && tile0) fly(src, tile0, rect(b), { ka: tileScale(tile0) });
+    else if (!now && !was) fly(src, from, screen, { kb: 0.9, back: true, ms: 640 });
+  }
+  function act() {
+    const what = pointed;
+    if (!what) return;
+    if (typeof what === 'string') flyToggle(what);
+    else { deselect(); what.remove(); }
+  }
+  function showLoad() {
+    if (still() || other() || tab !== 'games' || innerWidth <= 860) return;
+    ordered().forEach((id, i) => {
+      const b = buttons.get(id), t = tiles.get(id);
+      if (!b || !t) return;
+      const to = t.getBoundingClientRect();
+      fly(b.querySelector('img').src, b.getBoundingClientRect(), to, { kb: tileScale(to), delay: 200 + i * 32, ms: 620 });
+    });
+    const fill = $('#m-fill'), w = fill.style.width, used = usedBytes(), cap = capacity();
+    fill.style.transition = 'none';
+    fill.style.width = '0';
+    void fill.offsetWidth;
+    fill.style.transition = 'width 1500ms cubic-bezier(0.3, 0, 0.2, 1) 200ms';
+    fill.style.width = w;
+    setTimeout(() => { fill.style.transition = ''; }, 1900);
+    leftNow = cap;
+    const t0 = performance.now() + 200, run = ++leftRun;
+    const step = (now) => {
+      if (run !== leftRun) return;
+      const k = Math.max(0, Math.min(1, (now - t0) / 1500));
+      $('#m-left').textContent = ((cap - used * (1 - Math.pow(1 - k, 2))) / MiB).toFixed(2) + ' MB';
+      if (k < 1) requestAnimationFrame(step); else leftNow = cap - used;
+    };
+    requestAnimationFrame(step);
   }
 
   // ------------------------------------------------------------------ the game on the screen
-  let previewTimer = 0;
   function showPreview(id) {
     const g = byId[id];
-    if (!g || dragging) return;
-    clearTimeout(previewTimer);
-    point(id, buttons.get(id));
-    if (!g.preview) return;
+    if (!g || !g.preview || dragging) return;
     previewing = id;
     const p = $('#preview'), img = p.querySelector('img');
     const src = MEDIA + (g.preview === true ? 'gallery/' + id + '.gif' : g.preview);
@@ -419,21 +537,10 @@
     p.classList.add('show');
     $('#status-line').textContent = g.title.toUpperCase();
   }
-  // (the pointer's way in: a clip is a GIF of up to 4 MB to fetch and unpack, the page's heaviest moment, so the
-  // ones the pointer only crosses on its way aren't started; sooner when a clip is already up, to go from game to game)
-  function previewSoon(id) {
-    clearTimeout(previewTimer);
-    previewTimer = setTimeout(() => showPreview(id), previewing ? 70 : 150);
-  }
-  function hidePreview(later) {
-    clearTimeout(previewTimer);
-    const go = () => {
-      previewing = null;
-      $('#preview').classList.remove('show');
-      $('#status-line').textContent = restLine();
-      point(null);
-    };
-    if (later) previewTimer = setTimeout(go, later); else go();
+  function hidePreview() {
+    previewing = null;
+    $('#preview').classList.remove('show');
+    $('#status-line').textContent = restLine();
   }
 
   // ------------------------------------------------------------------ picking
@@ -1291,11 +1398,11 @@
     }
     // (the Casio's screen is wider: a game's 320 by 240 picture goes in the middle of it, squeezed to its height)
     scr.classList.toggle('wide', o && c.screen[0] / c.screen[1] > 1.5);
-    const dl = $('#dock-install'), main = $('#install');
-    dl.textContent = o ? 'Download' : 'Install';
+    const main = $('#install');
     main.textContent = o ? 'Download ' + c.zip : 'Install on my calculator';
-    dl.disabled = main.disabled = false;
-    if (o) dl.setAttribute('aria-label', 'Download ' + c.zip); else dl.removeAttribute('aria-label');
+    main.disabled = false;
+    pointed = null;
+    for (const x of document.querySelectorAll('.app.at')) x.classList.remove('at');
     if (o && tab === 'saves') showTab('games');
     hidePreview();
     searchApply();
@@ -1309,10 +1416,12 @@
       const on = picks.has(id);
       b.classList.toggle('on', on);
       b.setAttribute('aria-pressed', on);
+      b.lastChild.style.width = Math.max(4, Math.min(100, 100 * list[id].size / cap)) + '%';
+      b.classList.toggle('nofit', !on && used + list[id].size > cap);
     }
     arrange();
     const ids = portPicks();
-    $('#install').disabled = $('#dock-install').disabled = !ids.length;
+    $('#install').disabled = !ids.length;
     store('numplay-port-' + st.calc, ids.join(','));
     words();
     save();
@@ -1419,7 +1528,7 @@
   }
   async function portGo(btn) {
     const t = st.calc, c = CALCS[t], list = portList(t), ids = portPicks();
-    const keys = [$('#install'), $('#dock-install')];
+    const keys = [$('#install')];
     if (!ids.length || btn.classList.contains('busy')) return;
     for (const b of keys) b.classList.add('busy');
     openPortSheet(c);
@@ -2117,7 +2226,7 @@
       let n = 0;
       const shown = (b) => !b.hidden && !b.classList.contains('away');
       for (const [b, k] of keys) { b.hidden = !!q && !k.includes(q); if (shown(b)) n++; }
-      $('#out-sec').hidden = ![...$('#out').children].some(shown);
+      for (const k of ['small', 'big']) $('#' + k + '-sec').hidden = $('#' + k).hidden = ![...$('#' + k).children].some(shown);
       const none = $('#no-match');
       none.hidden = !!n || !q;
       if (none.hidden) return;
@@ -2158,23 +2267,20 @@
       if (c) { const j = JSON.parse(c); custom = { url: j.url, obj: Uint8Array.from(atob(j.obj), (x) => x.charCodeAt(0)) }; }
     } catch (e) { custom = null; }
 
-    // the shelf: every game its icon; render puts each in its group
+    // the shelf: every game its icon and the bar of its size; render puts each in its group. Pointing at one names
+    // it; pressing it shows it on the stage; pressing it twice adds it or takes it out
     shelfOrder = kit.games.filter((g) => g !== rg && g !== pk).sort((a, b) => (a.xl - b.xl) || ((a.rank || 99) - (b.rank || 99))).map((g) => g.id);
     for (const id of shelfOrder) {
       const g = byId[id];
-      const b = el('button', 'app', { type: 'button', 'aria-label': g.title, 'aria-pressed': 'false', 'data-id': id });
+      const b = el('button', 'app', { type: 'button', 'aria-label': g.title, 'aria-pressed': 'false', 'data-id': id, 'data-tip': g.title });
       b.appendChild(el('img', '', { src: KIT + 'icons/' + id + '.png', alt: '', draggable: 'false', width: 55, height: 56 }));
-      b.addEventListener('click', () => {
+      b.appendChild(el('i', 'sz'));
+      b.addEventListener('click', (e) => {
         if (justDragged) { justDragged = false; return; }
-        toggle(id);
-        if (matchMedia('(hover: none)').matches) { showPreview(id); hidePreview(2400); }
+        if (e.detail === 2) { if (pointed !== id) select(id, b); flyToggle(id); } else if (e.detail < 2) select(id, b);
       });
-      b.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') previewSoon(id); });
-      b.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') hidePreview(120); });
-      b.addEventListener('focus', () => { if (b.matches(':focus-visible')) showPreview(id); });
       b.addEventListener('contextmenu', (e) => { if (holding || e.pointerType === 'touch') e.preventDefault(); });
-      b.addEventListener('blur', () => hidePreview(120));
-      $('#out').appendChild(b);
+      $('#small').appendChild(b);
       buttons.set(id, b);
     }
     sortable($('#in'));
@@ -2208,17 +2314,21 @@
     document.addEventListener('pointerdown', (e) => {
       if (popOpen && !e.target.closest('.pop, [aria-haspopup]')) closePops();
     });
-    // Install and Download: the stage's buttons, the calculator's OK and Back keys, and a phone's bar
-    for (const [b, sheet] of [[$('#install'), true], [$('#ok-key'), true], [$('#dock-install'), true], [$('#download'), false], [$('#back-key'), false]]) {
+    // Install and Download: the stage's buttons and the calculator's OK and Back keys. The stage's other button
+    // adds the game shown, or takes it out. A phone's bar has whichever of the two the stage is showing
+    for (const [b, sheet] of [[$('#install'), true], [$('#ok-key'), true], [$('#download'), false], [$('#back-key'), false]]) {
       b.addEventListener('click', (e) => go(e.currentTarget, sheet));
       b.addEventListener('pointerenter', prefetch, { once: true });
       b.addEventListener('focus', prefetch, { once: true });
     }
+    $('#w-act').addEventListener('click', act);
+    $('#w-back').addEventListener('click', deselect);
+    $('#dock-install').addEventListener('click', (e) => (pointed ? act() : go(e.currentTarget, true)));
     dock();
     for (const s of [$('#sheet'), $('#port-sheet')])
       s.addEventListener('click', (e) => { if (e.target === s || e.target.closest('.sheet-close')) closeSheet(); });
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { closeSheet(); closePops(); if (holding) { holding.classList.remove('held'); holding = null; } }
+      if (e.key === 'Escape') { closeSheet(); if (popOpen) closePops(); else if (pointed) deselect(); if (holding) { holding.classList.remove('held'); holding = null; } }
     });
 
     // your own files: the + takes them all, and so does the page when they are dropped anywhere on it
@@ -2264,6 +2374,7 @@
     addEventListener('pointerdown', eager, true);
     addEventListener('keydown', eager, true);
     document.documentElement.classList.remove('loading');
+    requestAnimationFrame(showLoad);
   }
   start();
 })();

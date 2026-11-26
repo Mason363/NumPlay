@@ -24,7 +24,7 @@
 html, body { margin: 0; }
 /* nothing jumps as the page comes up: the scroll bar's room is kept, and the games show once they have all arrived */
 html { scrollbar-gutter: stable; }
-html.loading .sec, html.loading .icons, html.loading .foot, html.loading .facts { visibility: hidden; }
+html.loading .sec, html.loading .icons, html.loading .foot, html.loading .facts, html.loading .meter { visibility: hidden; }
 body {
   min-height: 100vh; background: var(--ground); color: var(--ink);
   font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; font-weight: 700;
@@ -40,7 +40,7 @@ a { color: inherit; }
 
 /* ---- the shelf */
 .shelf { min-width: 0; padding: 0 var(--pad) 48px; }
-.head { display: flex; align-items: baseline; gap: 0 clamp(16px, 2vw, 28px); min-height: 72px; line-height: 72px; }
+.head { display: flex; align-items: baseline; gap: 0 clamp(16px, 2vw, 28px); min-height: 72px; line-height: 72px; container-type: inline-size; }
 .brand { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -0.02em; white-space: nowrap; }
 .brand span { font-weight: 600; }
 .tabs { display: flex; gap: 20px; }
@@ -48,20 +48,25 @@ a { color: inherit; }
 .tabs button[aria-selected="true"] { color: var(--ink); }
 .tabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: 21px; height: 2px; background: var(--ink); }
 html.other .tabs { display: none; }  /* (Saves talks to the NumWorks: the other calculators keep their saves their own way) */
-.search { margin-left: auto; align-self: center; flex: 0 1 130px; min-width: 56px; display: flex; align-items: center; gap: 8px; height: 32px; border-bottom: 1.5px solid var(--ink); line-height: 1; cursor: text; }
+.search { margin-left: auto; align-self: center; flex: 0 1 130px; min-width: 82px; display: flex; align-items: center; gap: 8px; height: 32px; border-bottom: 1.5px solid var(--ink); line-height: 1; cursor: text; }
 .search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; font-size: 15px; font-weight: 700; }
 .search input::placeholder { color: var(--mute); }
 .search input::-webkit-search-cancel-button { display: none; }
 .sec { display: flex; align-items: baseline; gap: 10px; margin: 26px 0 16px; font-size: 15px; font-weight: 900; letter-spacing: 0.01em; }
 .view > .sec:first-child { margin-top: 10px; }
 .sec i { font-style: normal; font-weight: 800; color: var(--mute); font-variant-numeric: tabular-nums; }
+.sec em { margin-left: auto; font-style: normal; font-size: 13px; font-weight: 700; color: var(--mute); }
 .no-match { margin: 22px 0 0; font-size: 15px; font-weight: 700; line-height: 1.4; color: var(--text); }
-/* the games: each its icon, at its own size, nothing else. Yours come first, in the launcher's order; pressing one
-   moves it to the other group */
-.icons { display: grid; grid-template-columns: repeat(auto-fill, 55px); justify-content: space-between; gap: 22px 18px; min-height: 56px; }
+/* the games: each its icon, at its own size, and under it a bar: its share of the calculator's space (amber when
+   there isn't that much left). Yours come first, in the launcher's order; then the games, then the big ones */
+.icons { display: grid; grid-template-columns: repeat(auto-fill, 55px); justify-content: space-between; gap: 14px 18px; min-height: 64px; }
 .group { display: contents; }
-.app { position: relative; display: block; width: 55px; height: 56px; padding: 0; border: 0; background: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; user-select: none; }
+.app { position: relative; display: block; width: 55px; height: 64px; padding: 0; border: 0; background: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; user-select: none; }
 .app img { display: block; width: 55px; height: 56px; border-radius: 22%; image-rendering: pixelated; pointer-events: none; }
+.app::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--line); }
+.app .sz { position: absolute; left: 0; bottom: 0; z-index: 1; width: 0; height: 3px; background: var(--ink); transition: width var(--t) var(--ease); }
+.app.nofit .sz { background: #c9820a; }
+.app.own::after { display: none; }
 .app.at, .app:focus-visible { outline: 2px solid var(--ink); outline-offset: 5px; }
 .app.away { display: none; }
 .app.shake, .add.shake { animation: shake 380ms var(--ease); }
@@ -77,6 +82,9 @@ body.dragging-icon, body.dragging-icon * { cursor: grabbing !important; user-sel
 .cart span { margin: 0 6px 10px; height: 22px; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 10.5px; font-weight: 900; }
 .app.p8 img { border: 5px solid #1d2b53; border-radius: 6px; background: #1d2b53; }
 .add { display: flex; align-items: center; justify-content: center; width: 55px; height: 56px; border: 1.5px dashed var(--mute); color: var(--text); cursor: pointer; }
+/* (a game on its way into the calculator, or out of it) */
+.flyer { position: fixed; left: 0; top: 0; z-index: 70; width: 55px; height: 56px; pointer-events: none; will-change: transform; }
+.flyer img { display: block; width: 55px; height: 56px; border-radius: 22%; image-rendering: pixelated; }
 .add:hover, body.dragging .add { border-color: var(--ink); color: var(--ink); }
 #own-file { position: absolute; left: -9999px; }
 .foot { margin-top: 44px; display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13px; }
@@ -108,20 +116,36 @@ body.dragging .veil { display: flex; }
 .words { align-self: start; min-width: 0; padding-top: 56px; }
 .w-icon { display: block; margin-bottom: 18px; border-radius: 22%; image-rendering: pixelated; }
 .w-icon.custom { clip-path: inset(0 round 22%); }
-.words h2 { margin: 0; font-size: clamp(48px, 4.6vw, 68px); font-weight: 900; line-height: 0.96; letter-spacing: -0.025em; text-wrap: balance; overflow-wrap: break-word; }
+.w-back { display: flex; align-items: center; gap: 6px; height: 32px; margin: -4px 0 24px; padding: 0; border: 0; background: none; color: inherit; font-size: 15px; font-weight: 800; opacity: 0.86; }
+.w-back:hover { opacity: 1; }
+/* (a name never breaks inside a word: app.js makes a long one smaller, fitTitle) */
+.words h2 { margin: 0; font-size: clamp(48px, 4.6vw, 68px); font-weight: 900; line-height: 0.96; letter-spacing: -0.025em; text-wrap: balance; }
 .tag { margin: 18px 0 0; max-width: 15em; font-size: clamp(18px, 1.5vw, 22px); font-weight: 800; line-height: 1.25; opacity: 0.86; text-wrap: balance; }
 .tag .name { white-space: nowrap; }
 .tag .beta { display: block; margin-top: 8px; font-size: 15px; }
-.facts { margin: 26px 0 0; min-height: 1.4em; display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.facts { margin: 22px 0 0; min-height: 1.4em; display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.act { margin-top: 18px; }
 .facts .no { color: #ffd27a; }
 .links { margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 0 18px; }
 .links button, .download { padding: 0; border: 0; background: none; color: inherit; font-size: 15px; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
 .links button { min-height: 32px; opacity: 0.86; }
 .links button:hover { opacity: 1; }
 .links button:disabled { opacity: 0.4; cursor: default; }
-.stage.pointing .links { visibility: hidden; }
-.stage.pointing .w-icon { display: none; }
+.stage.pointing .links, .stage.pointing .w-icon { display: none; }
+/* (with a game shown, its button is the one to press: Install steps back) */
+.stage.pointing .go .install { background: none; color: inherit; box-shadow: inset 0 0 0 1.5px currentColor; }
 .go { grid-column: 1; grid-row: 3; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+/* the space: how much is left, always there. With a game shown that isn't in, the part it would take */
+.meter { align-self: stretch; margin-bottom: 14px; }
+.m-bar { position: relative; display: flex; height: 8px; background: rgba(255, 255, 255, 0.24); overflow: hidden; }
+.m-bar i { display: block; height: 100%; flex: none; width: 0; background: currentColor; transition: width 320ms var(--ease); }
+#m-would { opacity: 0.45; }
+.meter.over #m-would { opacity: 1; background: #ffc14d; }
+.m-line { margin: 9px 0 0; min-height: 28px; line-height: 28px; display: flex; align-items: baseline; gap: 7px; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }  /* (its room is kept before its figures come) */
+.m-line b { font-size: 21px; font-weight: 900; letter-spacing: -0.01em; }
+.m-line span { opacity: 0.8; }
+.stage.pale .m-bar { background: rgba(27, 27, 29, 0.16); }
+.stage.pale .meter.over #m-would { background: #b06a00; }
 .install {
   display: inline-flex; align-items: center; justify-content: center; height: 54px; padding: 0 26px; border: 0; border-radius: 3px;
   background: var(--ink); color: #ffffff; font-size: 17px; font-weight: 900; white-space: nowrap; text-decoration: none; cursor: pointer;
@@ -138,9 +162,9 @@ body.dragging .veil { display: flex; }
 .stage.pale .facts .no { color: #7a4300; }
 /* another calculator: its games only, as files in one zip, so NumPlay's app, the space for apps and your own files
    step aside */
-.other #w-links, .other #download, .other #add, .other #in-more, .other .w-icon { display: none !important; }
+.other #w-links, .other #download, .other #own-sec, .other #own-sec + .icons, .other .w-icon, .other #in-hint { display: none !important; }
 /* Saves: the stage keeps its calculator, and says what Saves is */
-.saving .facts, .saving .links, .saving .go, .saving .w-icon, .saving .pager { display: none; }
+.saving .facts, .saving .links, .saving .go, .saving .w-icon, .saving .pager, .saving .act, .saving .w-back { display: none; }
 
 /* ---- the calculator, built in 3D from its photo (--u is one of the photo's pixels): the front, with holes for the
    screen and the keys; the screen down in its recess; the keys standing up with their sides; rounded edges, sides
@@ -280,6 +304,7 @@ html.flat .sticker canvas { position: absolute; inset: 0; width: 100%; height: 1
 
 /* ---- Saves (saves-ui.js), on the shelf: the calculator's saves game by game, then the backups of them */
 #saves-title { margin-top: 10px; }
+#saves-title[hidden] + #saves-body { padding-top: 26px; }  /* (the stage already says "Your saves") */
 #saves-body { display: flex; flex-direction: column; gap: 30px; }
 #saves-body section { display: flex; flex-direction: column; }
 .sv-lede { margin: 0 0 18px; max-width: 30em; font-size: 16px; line-height: 1.45; color: var(--text); }
@@ -321,11 +346,17 @@ html.flat .sticker canvas { position: absolute; inset: 0; width: 100%; height: 1
 .saves .install { height: 50px; align-self: flex-start; }
 #saves-body > .install { margin-top: 18px; }
 
-/* (a narrower shelf: the name a little smaller, so Search keeps its room) */
+/* (a narrower shelf: the name a little smaller, then without "Studio", so Search always keeps room for its word) */
 @media (max-width: 1320px) {
   .brand { font-size: 20px; }
   .head { gap: 0 16px; }
   .tabs { gap: 16px; }
+}
+@container (max-width: 366px) { .brand span { display: none; } }
+@container (max-width: 306px) { .brand { font-size: 18px; } .tabs { gap: 12px; } .search { min-width: 78px; } }
+@media (min-width: 1181px) and (max-width: 1330px) {
+  .links { gap: 0 14px; }
+  .links button { font-size: 14px; }
 }
 /* ---- a narrower window: on the stage the words go above the calculator, which runs off its bottom */
 @media (max-width: 1180px) {
@@ -338,7 +369,10 @@ html.flat .sticker canvas { position: absolute; inset: 0; width: 100%; height: 1
   .tag { margin-top: 10px; max-width: none; font-size: 17px; }
   .facts { margin-top: 14px; font-size: 15px; }
   .links { margin-top: 6px; }
-  .go { flex-direction: row; align-items: center; gap: 18px; margin-top: 14px; }
+  .w-back { margin-bottom: 8px; }
+  .act { margin-top: 12px; }
+  .go { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin-top: 18px; }
+  .meter { flex: 0 0 100%; margin-bottom: 6px; }
   .install { height: 48px; padding: 0 22px; font-size: 16px; }
   .device { flex: 1 0 200px; align-self: center; width: var(--cw); margin-top: 22px; }
 }

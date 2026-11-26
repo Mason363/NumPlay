@@ -55,19 +55,22 @@
       </label>
     </header>
     <div id="games" class="view" role="tabpanel" aria-labelledby="tab-games">
-      <h2 class="sec"><span id="in-head">In your NumPlay</span><i id="n-in"></i></h2>
+      <h2 class="sec"><span id="in-head">In your NumPlay</span><i id="n-in"></i><em id="in-hint">drag to reorder</em></h2>
+      <div id="in" class="icons"></div>
+      <p id="no-match" class="no-match" role="status" hidden></p>
+      <h2 id="small-sec" class="sec"><span>Games</span><i id="n-small"></i></h2>
+      <div id="small" class="icons"></div>
+      <h2 id="big-sec" class="sec"><span>Big games</span><i id="n-big"></i></h2>
+      <div id="big" class="icons"></div>
+      <h2 id="own-sec" class="sec"><span>Your own</span><i id="n-own"></i></h2>
       <div class="icons">
-        <div id="in" class="group"></div>
         <div id="in-more" class="group"></div>
-        <label id="add" class="add" for="own-file" data-tip="Add a game or an app of your own">
+        <label id="add" class="add" for="own-file" data-tip="Add a game or an app">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>
           <span class="sr">Add a game or an app of your own</span>
         </label>
       </div>
       <input id="own-file" type="file" multiple accept=".nwa">
-      <p id="no-match" class="no-match" role="status" hidden></p>
-      <h2 id="out-sec" class="sec"><span>More games</span><i id="n-out"></i></h2>
-      <div id="out" class="icons"></div>
       <footer class="foot">
         <a href="https://github.com/Mason363/NumPlay">Made by Mason Chen as part of NumPlay</a>
         <a href="../">NumPlay's page</a>
@@ -87,10 +90,15 @@
       <button id="calc-chip" type="button" class="calc-pick" aria-haspopup="dialog" aria-expanded="false" data-tip="Your calculator"><span id="calc-chip-label">NumWorks</span><svg class="caret" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/></svg></button>
     </header>
     <div class="words">
+      <button id="w-back" type="button" class="w-back" hidden>
+        <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M7.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/></svg>
+        <span id="w-back-label">Your NumPlay</span>
+      </button>
       <img id="w-icon" class="w-icon" src="kit/variants/NumPlay.png" alt="" width="55" height="56">
       <h2 id="w-title">NumPlay</h2>
-      <p id="w-tag" class="tag">Real games, rebuilt for the NumWorks. Choose yours and they go on your calculator as one app.</p>
+      <p id="w-tag" class="tag">Real games for your NumWorks, in one app.</p>
       <p class="facts"><span id="w-a"></span><span id="w-b"></span></p>
+      <button id="w-act" type="button" class="install act" hidden>Add to NumPlay</button>
       <p id="w-links" class="links">
         <button id="app-link" type="button" aria-haspopup="dialog" aria-expanded="false">Name and icon</button>
         <button id="lang-link" type="button" aria-haspopup="dialog" aria-expanded="false">Language</button>
@@ -98,6 +106,10 @@
       </p>
     </div>
     <div class="go">
+      <div class="meter">
+        <div id="m-bar" class="m-bar" role="img" aria-label="Space left"><i id="m-fill"></i><i id="m-would"></i></div>
+        <p class="m-line"><b id="m-left"></b><span id="m-of"></span></p>
+      </div>
       <button id="install" type="button" class="install">Install on my calculator</button>
       <button id="download" type="button" class="download">Download NumPlay.nwa</button>
     </div>

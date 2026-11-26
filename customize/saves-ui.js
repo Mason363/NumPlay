@@ -232,16 +232,17 @@
     const body = $('#saves-body');
     if (!body || !kit) return;
     body.textContent = '';
-    $('#saves-title').textContent = view && view.name === 'put' ? 'Put back from ' + mid(label(view.backup)) : 'Your saves';
-    if (view && view.name === 'put') return renderPut(body);
+    const put = view && view.name === 'put', title = $('#saves-title');
+    title.hidden = !put;  // (the stage beside it says "Your saves" and what Saves does)
+    title.textContent = put ? 'Put back from ' + mid(label(view.backup)) : 'Your saves';
+    if (put) return renderPut(body);
     const u = usbNow();
     // the calculator
     const box = el('section', 'sv-calc');
     if (!calc) {
-      box.appendChild(el('p', 'sv-lede', 'Your saves are files on your calculator, and installing apps or a reset empties them. Plug it in to back them up here, and to put them back.'));
       if (u) {
         box.appendChild(button('install wide', busy || 'Connect your calculator', () => connect(true)));
-        box.appendChild(el('p', 'sv-hint', 'With its USB cable, and out of NumPlay (press the Home key). In exam mode it stays closed.'));
+        box.appendChild(el('p', 'sv-hint', 'Leave NumPlay first (Home key). Not in exam mode.'));
       } else box.appendChild(el('p', 'sv-warn', "This browser can't use USB. Open this page in Chrome or Edge, on a computer or an Android phone."));
     } else {
       const head = el('div', 'sv-head');
@@ -257,7 +258,7 @@
     body.appendChild(box);
     // the backups
     const sec = el('section', 'sv-backups'), h = el('div', 'sv-sub');
-    h.appendChild(el('h3', '', 'Your backups, kept in this browser'));
+    h.appendChild(el('h3', '', 'Backups'));
     const file = el('label', 'sv-link', 'Open a file');
     const inp = el('input');
     inp.type = 'file'; inp.accept = '.json,.py,application/json,text/x-python'; inp.hidden = true;
@@ -265,7 +266,7 @@
     file.appendChild(inp);
     h.appendChild(file);
     sec.appendChild(h);
-    if (!backups.length) sec.appendChild(el('p', 'sv-hint', 'None yet. One is made each time you plug your calculator in here.'));
+    if (!backups.length) sec.appendChild(el('p', 'sv-hint', 'None yet.'));
     const shown = view && view.name === 'all' ? backups : backups.slice(0, 4);
     for (const b of shown) {
       const games = [...holds(b.files).keys()].filter(isGame).length;
@@ -278,8 +279,8 @@
       sec.appendChild(asking && asking.key === b ? question() : line);
     }
     if (backups.length > shown.length) sec.appendChild(button('sv-link', 'All ' + backups.length, () => { view = { name: 'all' }; render(); }));
-    if (!db && backups.length) sec.appendChild(el('p', 'sv-warn', "This window doesn't keep backups. It may be a private one. Download the ones you want."));
-    else if (backups.length) sec.appendChild(el('p', 'sv-hint', 'Clearing this browser\'s data clears them, so download the ones that matter.'));
+    if (!db && backups.length) sec.appendChild(el('p', 'sv-warn', "This window doesn't keep backups. Download the ones you want."));
+    else if (backups.length) sec.appendChild(el('p', 'sv-hint', 'Kept in this browser only. Download the ones that matter.'));
     body.appendChild(sec);
   }
   const label = (b) => when(b.made);
@@ -338,7 +339,7 @@
   function renderPut(body) {
     const b = view.backup, theirs = holds(b.files), mine = calc && state && state.files ? holds(kept) : null;
     if (!mine) {
-      body.appendChild(el('p', 'sv-lede', 'Plug your calculator in to put this backup back on it.'));
+      body.appendChild(el('p', 'sv-lede', 'Plug your calculator in to put this backup back.'));
       if (usbNow()) body.appendChild(button('install wide', busy || 'Connect your calculator', () => connect(true)));
       else body.appendChild(el('p', 'sv-warn', "This browser can't use USB. Open this page in Chrome or Edge, on a computer or an Android phone."));
     } else {
