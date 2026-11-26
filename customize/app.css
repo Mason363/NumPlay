@@ -24,6 +24,10 @@
   --r-s: 8px;
   --r-m: 12px;
   --r-l: 18px;
+  /* a game's size, under its icon: green small, amber middle, red big (each at least 3:1 on the ground) */
+  --size-s: #1f9d55;
+  --size-m: #c27a00;
+  --size-l: #dc3545;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -80,15 +84,17 @@ html.other .tabs { display: none; }  /* (Saves talks to the NumWorks: the other 
 /* (the ring: round the icon, 2px out from it on every side. The icon sits 4px down in its button, which centres it,
    so the ring's box is the icon's grown by 4px each way; the size mark steps aside while it is ringed) */
 .app::before { content: ""; position: absolute; left: -4px; top: 0; box-sizing: border-box; width: 63px; height: 64px; border-radius: 16px; border: 2px solid transparent; pointer-events: none; transition: border-color 120ms linear; }
-/* (its size, as a line centred 3px under the icon (app.js, sizeMark): short for a small game, longer for a middle one,
-   and for a big one the whole bottom edge, wrapped part way up its round corners) */
-.app .sz { position: absolute; left: 0; top: 0; width: 55px; height: 64px; overflow: visible; fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; pointer-events: none; transition: opacity 120ms linear; }
+/* (its size, as a line centred 3px under the icon (app.js, sizeMark): short and green for a small game, longer and amber
+   for a middle one, and red for a big one, along the whole bottom edge and wrapped part way up its round corners) */
+.app .sz { position: absolute; left: 0; top: 0; width: 55px; height: 64px; overflow: visible; fill: none; stroke: var(--size-s); stroke-width: 3; stroke-linecap: round; pointer-events: none; transition: opacity 120ms linear; }
+.app[data-size="m"] .sz { stroke: var(--size-m); }
+.app[data-size="l"] .sz { stroke: var(--size-l); }
 /* (no room for it: gray. It can still be pressed, to see it and what it needs) */
 .app.nofit img { filter: grayscale(1); opacity: 0.4; }
-.app.nofit .sz { stroke: #b4b3ac; }
+.app.nofit .sz { opacity: 0.45; }  /* (no room for it: its size still shows, faded as its icon is) */
 #in-more.out .app { filter: grayscale(1); opacity: 0.4; }  /* (left out: a game is on its own) */
 /* (one of yours that a search finds: yours all stay in sight while you search) */
-.app.found::before { border-color: #e8940c; }
+.app.found::before { border-color: #2563eb; }  /* (blue: amber is a size) */
 .app:focus-visible { outline: 0; }
 .app.at::before, .app.held::before, .app:focus-visible::before { border-color: var(--ink); }
 .app.at .sz, .app.held .sz, .app.found .sz, .app:focus-visible .sz { opacity: 0; }
