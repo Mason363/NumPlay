@@ -18,6 +18,15 @@
 #define NPAL 104
 #endif
 #define NPX (STRIP_H * VIEW_W)
+/* (built for size, -Os as for the Casio fx-CG50: the smallest of the pixels' loops inlined still where most pixels
+   go, as -O2 has them; else a call each) */
+#ifdef __OPTIMIZE_SIZE__
+#define HOT static inline __attribute__((always_inline))
+#define COLD static __attribute__((noinline))
+#else
+#define HOT static inline
+#define COLD static inline
+#endif
 /* (the small ones of the pixels' loops: built for size, -Os as for the Casio fx-CG50, they were calls, as -O2 has
    them not) */
 #ifdef __OPTIMIZE_SIZE__
@@ -392,12 +401,19 @@ static inline int32_t fix_at(int64_t q) {
 }
 #endif
 
+#if NP_SOFT_FLOAT
+static int32_t cull_x, cull_y;   /* (the camera, in 64ths, a frame: ruling instances out in integers, item_box) */
+static int32_t cull_w, cull_h;   /* (the half view at the last depth, in 64ths, and a little more) */
+#endif
 static float inst_k(const Inst *in) {
 #if NP_SOFT_FLOAT
   /* (the last depth's: most instances are at a few) */
   static int16_t z = INT16_MIN;
   static float k;
-  if (in->z != z) z = in->z, k = FOCAL / (in->z * (1.0f / 128) - CAM_Z);
+  if (in->z != z) {
+    z = in->z, k = FOCAL / (in->z * (1.0f / 128) - CAM_Z);
+    cull_w = k > 0 ? to_i32((VIEW_W / 2 + 2) * 64 / k) + 2 : INT32_MAX, cull_h = k > 0 ? to_i32((VIEW_H / 2 + 2) * 64 / k) + 2 : INT32_MAX;
+  }
   return k;
 #else
   return FOCAL / (in->z * (1.0f / 128) - CAM_Z);
@@ -529,22 +545,31 @@ static bool inst_screen_box(const Inst *in, float *x0, float *y0, float *x1, flo
   *x0 = bx0, *y0 = by0, *x1 = bx1, *y1 = by1;
   return true;
 }
+#if NP_SOFT_FLOAT
+/* |h| n in 64ths, h a half float, rounded up (UINT32_MAX if too big to tell) */
+static uint32_t f16_64ths(uint16_t h, uint32_t n) {
+  uint32_t e = (h >> 10) & 31, v = ((e ? 1024u : 0) + (h & 1023)) * n;
+  int sh = (int)(e ? e : 1) - 19;   /* (h is v 2^(e - 25)) */
+  return e >= 26 ? UINT32_MAX : sh >= 0 ? v << sh : (v >> -sh) + 1;
+}
+#endif
 __attribute__((noinline)) static bool item_box(const Inst *in, Item *it) {
 #if NP_SOFT_FLOAT
   /* (no FPU: most of the instances near the camera are off the screen, nine in ten in King's Pass, and a box took
-     dozens of floats; one around any turn of the instance, from its origin and its size, rules them out first) */
+     dozens of floats; one around any turn of the instance, from its origin and its size, rules them out first, in
+     integers: in 64ths of a unit, farther from the camera than half the view at its depth and its size) */
   {
     float k = inst_k(in);
     if (!(k > 0) || k > 400) return false;
-    float ox = VIEW_W / 2 + (in->ax * (1.0f / 64) - g_cam_x) * k, oy = VIEW_H / 2 - (in->ay * (1.0f / 64) - g_cam_y) * k;
-    float fa = fabsf(f16(in->a)), fb = fabsf(f16(in->b)), r;
-    if (in->flags & F_SOLID) r = fa + fb;
+    uint32_t r;
+    if (in->flags & F_SOLID) r = f16_64ths(in->a, 1) + f16_64ths(in->b, 1);
     else {
       const TexRec *t = tex_rec(in->tex);
-      r = fa * t->w + fb * t->h;
+      r = f16_64ths(in->a, t->w) + f16_64ths(in->b, t->h);
     }
-    r = r * k + 1;
-    if (F_LT(ox + r, 0) || F_LT(VIEW_W, ox - r) || F_LT(oy + r, 0) || F_LT(VIEW_H, oy - r)) return false;
+    int32_t dx = in->ax - cull_x, dy = in->ay - cull_y;
+    if (r < 1u << 30 && ((uint32_t)(dx < 0 ? -dx : dx) > (uint32_t)cull_w + r || (uint32_t)(dy < 0 ? -dy : dy) > (uint32_t)cull_h + r))
+      return false;
   }
 #endif
   float bx0, by0, bx1, by1;
@@ -606,7 +631,7 @@ uint32_t g_kind_px[6];
 #endif
 /* (a strip's rows are whole words of cov: pixel p's bit is bit p of it all) */
 #define COVER_P(p) (((uint32_t *)(void *)cov)[(p) >> 5] |= 1u << ((p) & 31))
-static inline void take_over_a(Acc *a, uint32_t s) {
+HOT void take_over_a(Acc *a, uint32_t s) {
   uint32_t gt = a->gt, tt = (T_OF(gt) + 1) >> 1;
   a->rb += (s & 0xFF00FF) * tt;
   gt += ((s >> 8) & 255) * tt;   /* (green in the low half: never more than 16 bits) */
@@ -621,7 +646,7 @@ static inline void take_over_a(Acc *a, uint32_t s) {
   }
   a->gt = (gt & 0xFFFF) | t << 16;
 }
-static inline void take_over(int row, int x, int p, uint32_t s) {
+COLD void take_over(int row, int x, int p, uint32_t s) {
   (void)row, (void)x;
   take_over_a(acc + p, s);
 }
@@ -728,14 +753,15 @@ static void clip_lin(int32_t u0, int32_t du, int32_t U, int n, int *i0, int *i1)
   *i0 = a, *i1 = b > a ? b : a;
 }
 
-static inline uint32_t rgb_of565(uint32_t c) { return (c >> 11) << 19 | (c >> 5 & 63) << 10 | (c & 31) << 3; }
+HOT uint32_t rgb_of565(uint32_t c) { return (c >> 11) << 19 | (c >> 5 & 63) << 10 | (c & 31) << 3; }
 
-static inline uint32_t lerp4(uint32_t a, uint32_t b, uint32_t w) {   /* w: 0..256 */
+HOT uint32_t lerp4_in(uint32_t a, uint32_t b, uint32_t w) {   /* w: 0..256 */
   uint32_t iw = 256 - w;
   uint32_t rb = ((a & 0xFF00FF) * iw + (b & 0xFF00FF) * w) >> 8 & 0xFF00FF;
   uint32_t ag = (((a >> 8) & 0xFF00FF) * iw + ((b >> 8) & 0xFF00FF) * w) & 0xFF00FF00;
   return rb | ag;
 }
+static inline uint32_t lerp4(uint32_t a, uint32_t b, uint32_t w) { return lerp4_in(a, b, w); }
 
 typedef struct {
   uint16_t tex, tw;
@@ -941,7 +967,7 @@ static void run_axis(const Ctx *c, int y, int a, int b, uint16_t *tp, int ty, in
       const uint8_t *rw = t + vr * 8;
       for (; x < e; x++, p++, u += du) {
         int ur = (u >> 16) & 15, ci = rw[ur >> 1] >> ((ur & 1) << 2) & 15;
-        if (ci) take_over(row, x, p, c->pal[ci]);
+        if (ci) take_over_a(acc + p, c->pal[ci]);
       }
     } else {
       const uint8_t *rw = t + vr * 8;
@@ -1621,9 +1647,9 @@ static inline uint32_t to565(uint32_t rb, uint32_t g) {
   return (w >> 16 & 0xF800) | (w >> 11 & 31) | to6(g) << 5;
 }
 #else
-static inline uint32_t to5(uint32_t v) { return v >= (32u << 10) ? 31u : v >> 10; }
-static inline uint32_t to6(uint32_t v) { return v >= (64u << 9) ? 63u : v >> 9; }
-static inline uint32_t to565(uint32_t rb, uint32_t g) { return to5(rb >> 16) << 11 | to6(g) << 5 | to5(rb & 0xFFFF); }
+HOT uint32_t to5(uint32_t v) { return v >= (32u << 10) ? 31u : v >> 10; }
+HOT uint32_t to6(uint32_t v) { return v >= (64u << 9) ? 63u : v >> 9; }
+HOT uint32_t to565(uint32_t rb, uint32_t g) { return to5(rb >> 16) << 11 | to6(g) << 5 | to5(rb & 0xFFFF); }
 #endif
 
 /* 4 pixels with no light left from behind to 16 bits (green: gt's low half, gm 0xFFFF; or all of it, gm ~0, if
@@ -1656,8 +1682,8 @@ static void row_out(const Acc *A, uint16_t *O, const uint32_t *bl) {
     /* screen pixel 4i + j samples the background at i - 0.375 + j / 4: between texels i - 1 and i, then i and
      * i + 1 (bgline is one texel ahead) */
     uint32_t b0 = bl[0], b1 = bl[1], b2 = bl[2];
-    uint32_t p0 = bg_px(A, lerp4(b0, b1, 160)), p1 = bg_px(A + 1, lerp4(b0, b1, 224));
-    uint32_t p2 = bg_px(A + 2, lerp4(b1, b2, 32)), p3 = bg_px(A + 3, lerp4(b1, b2, 96));
+    uint32_t p0 = bg_px(A, lerp4_in(b0, b1, 160)), p1 = bg_px(A + 1, lerp4_in(b0, b1, 224));
+    uint32_t p2 = bg_px(A + 2, lerp4_in(b1, b2, 32)), p3 = bg_px(A + 3, lerp4_in(b1, b2, 96));
     uint32_t *o = (uint32_t *)(void *)O;
     o[0] = PX_PAIR(p0, p1), o[1] = PX_PAIR(p2, p3);
   }
@@ -1704,7 +1730,7 @@ __attribute__((noinline)) static void finish_strip(int sy0, int rows) {
       int r1 = r0 + bg_step;
       const uint16_t *a16 = bgbuf + (r0 < 0 ? 0 : r0 > last ? last : r0) * BG_W;
       const uint16_t *b16 = bgbuf + (r1 < 0 ? 0 : r1 > last ? last : r1) * BG_W;
-      for (int i = 0; i < BG_W; i++) bgline[i + 1] = lerp4(rgb_of565(a16[i]), rgb_of565(b16[i]), wv);
+      for (int i = 0; i < BG_W; i++) bgline[i + 1] = lerp4_in(rgb_of565(a16[i]), rgb_of565(b16[i]), wv);
       bgline[0] = bgline[1], bgline[BG_W + 1] = bgline[BG_W];
     }
     /* (two rows each: the second where the first's 8 bytes were read) */
@@ -1995,6 +2021,9 @@ void gfx_frame(void) {
   g_gfx_dropped = 0;
   float blur_z = roomless ? 1e9f : g_room.h->blur_z;
   bg_step = g_gfx_fast && !roomless ? 2 : 1;
+#if NP_SOFT_FLOAT
+  cull_x = (int32_t)floorf(g_cam_x * 64), cull_y = (int32_t)floorf(g_cam_y * 64);
+#endif
   /* the instances near the camera, back to front, and the actors among them: what is behind the blur plane is drawn
    * now (small), the rest kept */
   Item cur;

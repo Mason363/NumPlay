@@ -22,7 +22,12 @@ uint32_t perf_frames __attribute__((used));   /* read by tools/emu.py */
 uint32_t perf_updates __attribute__((used));
 
 #define TICK_MS 20      /* the game's step (Unity's fixed step) */
+#if NP_SOFT_FLOAT
+#define MAX_TICKS 12    /* steps caught up before a frame is drawn (the calculators without an FPU: the Casio fx-CG50 draws
+                           4 to 6 frames a second, and the game keeps its speed) */
+#else
 #define MAX_TICKS 4     /* steps caught up before a frame is drawn */
+#endif
 #define SLOW_MS 34      /* a frame's work (on average) over which the room is drawn fast (g_gfx_fast): under 29 fps... */
 #define QUICK_MS 18     /* ...and under which, fast, it is drawn whole again (whole, under 34: not back and forth) */
 
