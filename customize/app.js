@@ -103,6 +103,22 @@
   const langKit = () => kits[st.lang] || kit;
   const game = (id) => (langKit().byId || {})[id] || byId[id];  // (as the app's language has it)
   const flash = (id) => game(id).flash;
+  // (a game's size, told in three: small under 100 KB, middle under 1 MB, big from 1 MB, over half the calculator;
+  // from its own size, so it doesn't change with the language)
+  const sizeOf = (id) => (byId[id].flash >= MiB ? 'l' : byId[id].flash >= 100 * 1024 ? 'm' : 's');
+  const big = (id) => sizeOf(id) === 'l';
+  // (the mark under an icon: a line 3px under it, short for a small game, longer for a middle one, and for a big one
+  // its whole bottom edge, wrapped part way up its round corners. In the icon button's own coordinates)
+  const MARKS = { s: 'M22.5 64.5L32.5 64.5', m: 'M15.5 64.5L39.5 64.5', l: 'M-1.48 57.38A16.7 16.7 0 0 0 12.2 64.5L42.8 64.5A16.7 16.7 0 0 0 56.48 57.38' };
+  function sizeMark(id) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    svg.setAttribute('class', 'sz');
+    svg.setAttribute('viewBox', '0 0 55 64');
+    svg.setAttribute('aria-hidden', 'true');
+    path.setAttribute('d', MARKS[sizeOf(id)]);
+    svg.appendChild(path);
+    return svg;
+  }
   const romBytes = (r) => ROM_ENTRY + align4(r.bytes.length);
   const iconUrl = () => st.app.icon === 'custom' && custom ? custom.url : KIT + 'variants/' + st.app.icon + '.png';
   const ordered = () => st.order.filter((id) => st.picked.has(id));
@@ -200,7 +216,7 @@
 
   // ------------------------------------------------------------------ drawing
   const tiles = new Map(), buttons = new Map();
-  let shelfOrder = [];  // every game: NumPlay's own first, then the big ones; as the kit ranks them, then as you leave them
+  let shelfOrder = [];  // every game: the small and middle ones first, then the big ones; as the kit ranks them, then as you leave them
   let shownUsed = 0, previewing = null;
 
   function render() {
@@ -255,14 +271,13 @@
     $('#battery').style.width = 'calc(' + Math.min(100, 100 * used / cap) + '% - 2px)';
     if (other()) return renderPort(used, cap);
 
-    // the icons: under each a bar, its share of the calculator's space; gray when there is no room for it
+    // the icons: under each a mark of its size; gray when there is no room for it
     const s0 = solo(), picks = ordered();
     for (const [id, b] of buttons) {
-      const on = st.picked.has(id), bytes = alone(id) ? game(id).alone.size : flash(id);
+      const on = st.picked.has(id);
       const no = !on && (alone(id) ? bigger(id) : !!s0 || total(picks.concat([id])) > cap);
       b.classList.toggle('on', on);
       b.setAttribute('aria-label', byId[id].title + (on ? ', in your NumPlay' : no ? ', no room' : ''));
-      b.lastChild.style.width = Math.max(4, Math.min(100, 100 * bytes / cap)) + '%';
       b.classList.toggle('nofit', no);
     }
     arrange();
@@ -283,13 +298,15 @@
   function arrange() {
     const o = other(), mine = o ? portPicks() : ordered();
     const rest = shelfOrder.filter((id) => !mine.includes(id));
-    const want = [['#in', mine], ['#small', rest.filter((id) => !byId[id].xl)], ['#big', rest.filter((id) => byId[id].xl)]];
+    const want = [['#in', mine], ['#small', rest.filter((id) => !big(id))], ['#big', rest.filter(big)]];
     const same = ([box, ids]) => { const k = [...$(box).children]; return k.length === ids.length && ids.every((id, i) => k[i] === buttons.get(id)); };
     // (the groups' names and counts, and what a search hides and shows: before anything is measured to slide)
     const heads = () => {
       $('#in-head').textContent = o ? 'Your games' : 'In your NumPlay';
       $('#n-in').textContent = mine.length;
       $('#in-hint').hidden = o || mine.length < 2;
+      if (cleared && (mine.length || cleared.calc !== st.calc)) { clearTimeout(cleared.timer); cleared = null; }  // (a game added since: no Undo)
+      if (!cleared) { $('#clear').textContent = 'Clear'; $('#clear').hidden = !mine.length; }
       searchApply();
     };
     const set = () => { for (const [box, ids] of want) for (const id of ids) $(box).appendChild(buttons.get(id)); heads(); };
@@ -305,6 +322,32 @@
       }
     }
     arranged = true;
+  }
+
+  // Clear: every game out of yours at once (this calculator's, on another), each back to its group. For a few seconds
+  // after, the button is Undo, and puts them all back as they were
+  let cleared = null;
+  function clearAll() {
+    const b = $('#clear');
+    stopArrival();
+    deselect();
+    if (cleared) {  // (Undo)
+      const was = cleared;
+      cleared = null;
+      clearTimeout(was.timer);
+      if (was.calc !== st.calc) return render();
+      if (other()) st.port[st.calc] = new Set(was.picked);
+      else { st.picked = new Set(was.picked); before = was.before; }
+      return render();
+    }
+    const picked = other() ? st.port[st.calc] : st.picked;
+    if (!picked.size) return;
+    cleared = { calc: st.calc, picked: [...picked], before, timer: setTimeout(() => { cleared = null; render(); }, 6000) };
+    if (other()) st.port[st.calc] = new Set();
+    else { st.picked = new Set(); before = null; }
+    render();
+    b.textContent = 'Undo';
+    b.hidden = false;
   }
 
   // Your own games and apps, under "Your own": a Game Boy, NES or Sega game as its cartridge, a PICO-8 cart as its
@@ -977,7 +1020,7 @@
       d.ghost.style.transform = 'translate(' + (d.px - d.dx) + 'px,' + (d.py - d.dy) + 'px) scale(1.1) rotate(-4deg)';
       const top = $('#in-head').parentNode.getBoundingClientRect().top - 12, g = yours.getBoundingClientRect();
       const inside = d.inside = d.px > g.left - 30 && d.px < g.right + 30 && d.py > top && d.py < g.bottom + 20;
-      const box = !d.no && inside ? yours : $(byId[d.b.dataset.id].xl ? '#big' : '#small');
+      const box = !d.no && inside ? yours : $(big(d.b.dataset.id) ? '#big' : '#small');
       if (d.b.parentNode !== box) {
         slide(() => { box.appendChild(d.b); searchApply(); $('#n-in').textContent = yours.children.length; });
         d.slots = null;
@@ -1587,7 +1630,6 @@
       const no = !on && used + list[id].size > cap;
       b.classList.toggle('on', on);
       b.setAttribute('aria-label', byId[id].title + (on ? ', in your games' : no ? ', no room' : ''));
-      b.lastChild.style.width = Math.max(4, Math.min(100, 100 * list[id].size / cap)) + '%';
       b.classList.toggle('nofit', no);
     }
     arrange();
@@ -2457,7 +2499,7 @@
 
     // the shelf: every game its icon and the bar of its size; render puts each in its group. Pointing at one names
     // it; pressing it shows it on the stage; pressing it twice adds it or takes it out
-    shelfOrder = kit.games.filter((g) => g !== rg && g !== pk).sort((a, b) => (a.xl - b.xl) || ((a.rank || 99) - (b.rank || 99))).map((g) => g.id);
+    shelfOrder = kit.games.filter((g) => g !== rg && g !== pk).sort((a, b) => (big(a.id) - big(b.id)) || ((a.rank || 99) - (b.rank || 99))).map((g) => g.id);
     // (where you left them, when you have moved some: a game you haven't seen yet comes in beside its neighbor in rank)
     const left = (store('numplay-shelf') || '').split(',').filter((id) => shelfOrder.includes(id));
     if (left.length) {
@@ -2466,13 +2508,14 @@
         const prev = shelfOrder.slice(0, i).reverse().find((x) => left.includes(x));
         left.splice(prev ? left.indexOf(prev) + 1 : 0, 0, id);
       });
-      shelfOrder = left.sort((a, b) => byId[a].xl - byId[b].xl);
+      shelfOrder = left.sort((a, b) => big(a) - big(b));
     }
     for (const id of shelfOrder) {
       const g = byId[id];
       const b = el('button', 'app', { type: 'button', 'aria-label': g.title, 'data-id': id, 'data-tip': g.title });
       b.appendChild(el('img', '', { src: KIT + 'icons/' + id + '.png', alt: '', draggable: 'false', width: 55, height: 56 }));
-      b.appendChild(el('i', 'sz'));
+      b.appendChild(sizeMark(id));
+      b.dataset.size = sizeOf(id);
       b.addEventListener('click', (e) => {
         if (justDragged) { justDragged = false; return; }
         if (e.detail === 2) { if (pointed !== id) select(id, b); flyToggle(id); } else if (e.detail < 2) select(id, b);
@@ -2523,6 +2566,7 @@
     }
     $('#w-act').addEventListener('click', act);
     $('#w-back').addEventListener('click', deselect);
+    $('#clear').addEventListener('click', clearAll);
     $('#dock-install').addEventListener('click', (e) => (pointed ? act() : go(e.currentTarget, true)));
     dock();
     for (const s of [$('#sheet'), $('#port-sheet')])
