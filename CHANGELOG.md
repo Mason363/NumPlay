@@ -2,6 +2,10 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.27: Nwagra on Epsilon 26 again
+
+- **NumPlay Studio:** Nwagra on Epsilon 26 is back, with its 6.5 MB. The installer's NaN was a Retro-Go bug, fixed in 1.24.20, not Nwagra.
+
 ## 1.24.26: Hollow Knight faster on the Casio
 
 - **Casio fx-CG50:** Hollow Knight and Fungal Wastes run about four times faster, and keep the game's own speed when frames are slow. Every game sends whole frames to the screen, once each, and does its maths in a third to half the time: Suika and Coreball show about twice as many frames.
