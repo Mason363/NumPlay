@@ -255,7 +255,7 @@
     $('#battery').style.width = 'calc(' + Math.min(100, 100 * used / cap) + '% - 2px)';
     if (other()) return renderPort(used, cap);
 
-    // the icons: under each a bar, its share of the calculator's space, amber when that much isn't left
+    // the icons: under each a bar, its share of the calculator's space; gray when there is no room for it
     const s0 = solo(), picks = ordered();
     for (const [id, b] of buttons) {
       const on = st.picked.has(id), bytes = alone(id) ? game(id).alone.size : flash(id);
@@ -276,7 +276,8 @@
     save();
   }
   // The icons in their groups: yours, in the launcher's order, then the games and the big games as the kit ranks
-  // them. The ones a change moves slide to their new places; the one that changed group comes up in its own.
+  // them. What a change moves slides to its new place, the groups' names too; the one that changed group comes up
+  // in its own, as it lands when it is in the air.
   let arranged = false, moving = null;
   function arrange() {
     const o = other(), mine = o ? portPicks() : ordered();
@@ -284,13 +285,13 @@
     const want = [['#in', mine], ['#small', rest.filter((id) => !byId[id].xl)], ['#big', rest.filter((id) => byId[id].xl)]];
     const same = ([box, ids]) => { const k = [...$(box).children]; return k.length === ids.length && ids.every((id, i) => k[i] === buttons.get(id)); };
     if (!want.every(same)) {
-      const all = shelfOrder.map((id) => buttons.get(id));
+      const all = shelfOrder.map((id) => buttons.get(id)).concat([...document.querySelectorAll('#games .sec, #games .foot, #in-more .app, #add')]);
       const before = arranged && !dragging ? new Map(all.filter((b) => b.offsetParent).map((b) => [b, b.getBoundingClientRect()])) : null;
       for (const [box, ids] of want) for (const id of ids) $(box).appendChild(buttons.get(id));
       if (before) for (const [b, a] of before) {
         if (!b.animate) continue;
         const r = b.getBoundingClientRect(), dx = a.left - r.left, dy = a.top - r.top;
-        if (b === moving) b.animate([{ transform: 'scale(0.3)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 120, easing: 'cubic-bezier(0.3, 1.45, 0.45, 1)', fill: 'backwards' });
+        if (b === moving) b.animate([{ transform: 'scale(0.3)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: landAt || 120, easing: 'cubic-bezier(0.3, 1.45, 0.45, 1)', fill: 'backwards' });
         else if (dx || dy) b.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 280, easing: 'cubic-bezier(0.2, 0.9, 0.25, 1)' });
       }
     }
@@ -341,17 +342,22 @@
   // NumPlay's launcher at full size. At rest it is your app: its icon, its name, how many games. Press a game and it
   // is that game: its colors, top to bottom as the launcher paints them, its name, what it is, its size and whether
   // it fits, its clip on the calculator's screen, and a button that adds it or takes it out. The space left is a
-  // meter that stays; with a game shown that isn't in, it shows the part that game would take.
+  // meter that stays; with a game shown that isn't in, it shows the part that game would take. A game there is no
+  // room for is gray on the shelf, and so is its button here: pressing it says why.
   const REST = ['#1f8073', '#0b2a33'];
   let pointed = null;  // a game's id, or one of your own files: { title, tag, bytes, top, bottom, remove }
   const lum = (h) => { const n = parseInt(h.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
   const restLine = () => (other() ? CALCS[st.calc].name : st.app.name.trim() || 'NumPlay').toUpperCase();
   const isIn = (id) => (other() ? st.port[st.calc].has(id) : st.picked.has(id));
   function point(what, b) {
+    const stage = $('#stage'), h = innerWidth <= 860 ? stage.offsetHeight : 0;
     for (const x of document.querySelectorAll('.app.at')) x.classList.remove('at');
     pointed = what || null;
     if (b) b.classList.add('at');
     words();
+    // (on a phone the stage is above the shelf: if what it says made it taller or shorter, the shelf stays where it was)
+    const d = h ? stage.offsetHeight - h : 0;
+    if (d && document.querySelector('.words').getBoundingClientRect().bottom < 0) scrollBy(0, d);
   }
   // pressing an icon shows its game; pressing it again, Escape, or the way back on the stage, shows your NumPlay
   function select(what, b) {
@@ -426,12 +432,15 @@
     $('#w-back-label').textContent = o ? 'Your games' : 'Your NumPlay';
     $('#w-act').hidden = !g;
     $('#w-act').textContent = act;
+    $('#w-act').classList.toggle('no', no);
+    $('#w-act').setAttribute('aria-disabled', no);
     const icon = $('#w-icon'), src = lone ? KIT + 'icons/' + lone.id + '.png' : iconUrl();
     if (icon.getAttribute('src') !== src) icon.src = src;
     icon.classList.toggle('custom', !lone && st.app.icon === 'custom');
     fitTitle();
     // the space: what's used, the part the game shown would take, and how much is left (counted to, not jumped to)
-    const left = cap - used;
+    const left = cap - used, wait = spaceAt;
+    $('#m-fill').style.transitionDelay = $('#m-would').style.transitionDelay = wait ? wait + 'ms' : '';
     $('#m-fill').style.width = Math.min(100, 100 * used / cap) + '%';
     $('#m-would').style.width = Math.max(0, Math.min(100 - 100 * used / cap, 100 * would / cap)) + '%';
     document.querySelector('.meter').classList.toggle('over', would > left);
@@ -440,10 +449,10 @@
     const show = (v) => { $('#m-left').textContent = (Math.abs(v) / MiB).toFixed(2) + ' MB'; };
     if (leftNow === null || still()) show(left);
     else if (leftNow !== left) {
-      const from = leftNow, t0 = performance.now(), run = ++leftRun;
+      const from = leftNow, t0 = performance.now() + wait, run = ++leftRun;
       const step = (now) => {
         if (run !== leftRun) return;
-        const k = Math.min(1, (now - t0) / 420);
+        const k = Math.max(0, Math.min(1, (now - t0) / 420));
         show(from + (left - from) * (1 - Math.pow(1 - k, 3)));
         if (k < 1) requestAnimationFrame(step);
       };
@@ -459,40 +468,77 @@
     $('#dock-name').textContent = g ? title : count;
     $('#dock-used').textContent = g ? a + (b ? ', ' + b.charAt(0).toLowerCase() + b.slice(1) : '') : (Math.abs(left) / MiB).toFixed(2) + ' MB ' + (left < 0 ? 'too much' : 'left');
     dl.textContent = g ? (act.startsWith('Add') ? 'Add' : 'Take out') : o ? 'Download' : 'Install';
+    dl.classList.toggle('no', !!g && no);
     dl.disabled = !g && o && !picks.length;
   }
 
   // ------------------------------------------------------------------ what a press does, shown
-  // A game added flies from its place on the shelf into the calculator's screen, where its block opens as the space
-  // fills. One taken out flies back. One that doesn't fit goes there and comes back. And as the page arrives, your
-  // games go in one after the other: that is what the page is for.
+  // A game added leaves its place on the shelf and lands on the calculator's screen: its block opens there, the
+  // space fills and the figure counts down as it lands, not before. One taken out leaves its block and goes back to
+  // the shelf. Either way the stage goes back to your NumPlay first, so the screen shows the space, not the game's
+  // clip. One that doesn't fit doesn't move: the space shakes. And as the page arrives the calculator is empty and
+  // your games go into it one after the other: that is what the page is for.
   const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const inView = (r) => !!r && r.width > 0 && r.bottom > 0 && r.top < innerHeight;
-  const tileScale = (r) => Math.max(0.2, Math.min(1, Math.min(r.width, r.height) * 0.62 / 55));
-  function fly(src, a, b, o = {}) {
-    if (still() || !inView(a) || !inView(b)) return;
+  const rectOf = (e) => (e && e.isConnected ? e.getBoundingClientRect() : null);
+  const seen = (r) => !!r && r.width > 0 && r.bottom > 8 && r.top < innerHeight - 8;
+  const POP = [{ opacity: 0, transform: 'scale(0.6)' }, { opacity: 1, transform: 'none' }], SPRING = 'cubic-bezier(0.3, 1.4, 0.5, 1)';
+  // where a game is on the calculator: its block on the screen, or on a phone with the screen scrolled away, the bar
+  // at the foot. And where it is on the shelf: its icon, or the edge of the window it is past
+  function calcSpot(id) {
+    const r = rectOf(tiles.get(id)), d = $('#dock');
+    if (seen(r) && seen(rectOf($('#screen')))) return { x: r.left + r.width / 2, y: r.top + r.height / 2, k: Math.max(0.2, Math.min(1, Math.min(r.width, r.height) * 0.62 / 55)) };
+    if (!d.classList.contains('show')) return null;
+    const q = d.getBoundingClientRect();
+    return { x: q.left + 44, y: q.top + q.height / 2, k: 0.45, gone: true };
+  }
+  function shelfSpot(b) {
+    const r = rectOf(b);
+    if (!r || !r.width) return null;
+    const x = r.left + r.width / 2, y = r.top + r.height / 2 - 4;
+    return y < -20 ? { x, y: -50, k: 1, gone: true } : y > innerHeight + 20 ? { x, y: innerHeight + 50, k: 1, gone: true } : { x, y, k: 1 };
+  }
+  // an icon in the air from a to b, on one arc, under the stage's top line; it fades at an end that is out of sight.
+  // Beside the stage it flies in the stage's own layer: over the calculator, behind the words
+  function fly(src, a, b, ms, delay = 0) {
+    if (still() || !a || !b) return;
+    const dist = Math.hypot(b.x - a.x, b.y - a.y), lift = Math.min(70, dist * 0.16), top = Math.min(a.y, b.y, 104), N = 14, frames = [];
+    for (let i = 0; i <= N; i++) {
+      const t = i / N, x = a.x + (b.x - a.x) * t, y = Math.max(top, a.y + (b.y - a.y) * t - lift * 4 * t * (1 - t));
+      const k = a.k + (b.k - a.k) * t * t * (3 - 2 * t);
+      frames.push({ transform: 'translate(' + (x - 27.5).toFixed(1) + 'px,' + (y - 28).toFixed(1) + 'px) scale(' + k.toFixed(3) + ')',
+        opacity: a.gone && t < 0.25 ? t * 4 : b.gone && t > 0.7 ? Math.max(0, (1 - t) / 0.3) : 1 });
+    }
     const f = el('div', 'flyer');
     f.appendChild(el('img', '', { src, alt: '', width: 55, height: 56 }));
-    document.body.appendChild(f);
-    const pos = (r, k) => 'translate(' + (r.left + r.width / 2 - 27.5).toFixed(1) + 'px,' + (r.top + r.height / 2 - 28).toFixed(1) + 'px) scale(' + k + ')';
-    const ka = o.ka || 1, kb = o.kb || 1;
-    const mid = { left: (a.left + b.left) / 2, top: Math.min(a.top, b.top) - 60, width: (a.width + b.width) / 2, height: (a.height + b.height) / 2 };
-    const frames = o.back ? [{ transform: pos(a, ka) }, { transform: pos(b, kb), offset: 0.55 }, { transform: pos(a, ka) }]
-      : [{ transform: pos(a, ka) }, { transform: pos(mid, Math.max(ka, kb) * 1.08), offset: 0.5 }, { transform: pos(b, kb) }];
-    const run = f.animate(frames, { duration: o.ms || 560, delay: o.delay || 0, easing: 'cubic-bezier(0.4, 0, 0.3, 1)', fill: 'both' });
+    (innerWidth > 860 && seen(rectOf($('#screen'))) ? $('#stage') : document.body).appendChild(f);
+    const run = f.animate(frames, { duration: ms, delay, easing: 'cubic-bezier(0.5, 0, 0.3, 1)', fill: 'both' });
     run.onfinish = run.oncancel = () => f.remove();
   }
   // (the stage's button, or two presses on an icon: the game goes in or comes out, and is seen to)
+  let landAt = 0, spaceAt = 0;  // while a game is in the air: when its place on the shelf shows, and when the space does
   function flyToggle(id) {
-    const b = buttons.get(id), was = isIn(id), src = b.querySelector('img').src, rect = (e) => (e ? e.getBoundingClientRect() : null);
-    const from = rect(b), tile0 = rect(tiles.get(id)), screen = rect($('#screen'));
+    const b = buttons.get(id);
+    if (b.classList.contains('nofit')) return refuse(id);
+    const was = isIn(id), src = b.querySelector('img').src, held = document.activeElement === $('#w-act');
+    const from = was ? calcSpot(id) : shelfSpot(b);
+    const ms = still() || !from ? 0 : seen(rectOf($('#screen'))) ? 520 : 400;
+    landAt = ms;
+    spaceAt = was ? 0 : ms;  // (taken out, the space is free as it leaves; added, it is taken as it lands)
+    deselect();
     moving = b;
     toggle(id);
     moving = null;
-    const now = isIn(id), tile = rect(tiles.get(id)) || screen;
-    if (now && !was) fly(src, from, tile, { kb: tileScale(tile) });
-    else if (!now && was && tile0) fly(src, tile0, rect(b), { ka: tileScale(tile0) });
-    else if (!now && !was) fly(src, from, screen, { kb: 0.9, back: true, ms: 640 });
+    landAt = spaceAt = 0;
+    if (held) b.focus({ preventScroll: true });
+    if (!ms || isIn(id) === was) return;
+    fly(src, from, was ? shelfSpot(b) : calcSpot(id) || { x: from.x + 140, y: -50, k: 0.6, gone: true }, ms);
+    const t = !was && tiles.get(id);
+    if (t && t.animate) t.animate(POP, { duration: 260, delay: ms - 70, easing: SPRING, fill: 'backwards' });
+  }
+  // (no room for it: it says why, and the space and the button shake)
+  function refuse(id) {
+    toggle(id);
+    for (const e of [document.querySelector('.meter'), $('#w-act'), $('#dock-install')]) bump(e, 'shake');
   }
   function act() {
     const what = pointed;
@@ -500,30 +546,32 @@
     if (typeof what === 'string') flyToggle(what);
     else { deselect(); what.remove(); }
   }
+  // (the page arriving: the screen starts with NumPlay alone on it; each game's block and its share of the space
+  // show as its icon lands)
   function showLoad() {
-    if (still() || other() || tab !== 'games' || innerWidth <= 860) return;
-    ordered().forEach((id, i) => {
-      const b = buttons.get(id), t = tiles.get(id);
-      if (!b || !t) return;
-      const to = t.getBoundingClientRect();
-      fly(b.querySelector('img').src, b.getBoundingClientRect(), to, { kb: tileScale(to), delay: 200 + i * 32, ms: 620 });
+    if (still() || other() || tab !== 'games' || pointed || !seen(rectOf($('#screen'))) || !document.body.animate) return;
+    const sizes = new Map(items().map((it) => [it.key, it.bytes]));
+    const ids = ordered().filter((id) => tiles.get(id) && buttons.get(id));
+    if (!ids.length) return;
+    const fill = $('#m-fill'), cap = capacity(), used = usedBytes(), ms = 480, gap = Math.min(52, 1300 / ids.length);
+    const lands = ids.map((id, i) => {
+      const at = 220 + i * gap, land = at + ms - 70;
+      fly(buttons.get(id).querySelector('img').src, shelfSpot(buttons.get(id)), calcSpot(id), ms, at);
+      tiles.get(id).animate(POP, { duration: 240, delay: land, easing: SPRING, fill: 'backwards' });
+      return [land, sizes.get(id) || 0];
     });
-    const fill = $('#m-fill'), w = fill.style.width, used = usedBytes(), cap = capacity();
+    const base = used - lands.reduce((s, l) => s + l[1], 0), end = lands[lands.length - 1][0] + 220, t0 = performance.now(), run = ++leftRun;
     fill.style.transition = 'none';
-    fill.style.width = '0';
-    void fill.offsetWidth;
-    fill.style.transition = 'width 1500ms cubic-bezier(0.3, 0, 0.2, 1) 200ms';
-    fill.style.width = w;
-    setTimeout(() => { fill.style.transition = ''; }, 1900);
-    leftNow = cap;
-    const t0 = performance.now() + 200, run = ++leftRun;
+    leftNow = cap - used;
     const step = (now) => {
-      if (run !== leftRun) return;
-      const k = Math.max(0, Math.min(1, (now - t0) / 1500));
-      $('#m-left').textContent = ((cap - used * (1 - Math.pow(1 - k, 2))) / MiB).toFixed(2) + ' MB';
-      if (k < 1) requestAnimationFrame(step); else leftNow = cap - used;
+      const t = now - t0, mine = run === leftRun, done = t >= end || !mine;
+      const u = done ? used : base + lands.reduce((s, l) => s + l[1] * Math.max(0, Math.min(1, (t - l[0]) / 220)), 0);
+      if (mine) { fill.style.width = Math.min(100, 100 * u / cap) + '%'; $('#m-left').textContent = ((cap - u) / MiB).toFixed(2) + ' MB'; }
+      if (!done) return requestAnimationFrame(step);
+      void fill.offsetWidth;
+      fill.style.transition = '';
     };
-    requestAnimationFrame(step);
+    step(t0);
   }
 
   // ------------------------------------------------------------------ the game on the screen
@@ -533,8 +581,9 @@
     previewing = id;
     const p = $('#preview'), img = p.querySelector('img');
     const src = MEDIA + (g.preview === true ? 'gallery/' + id + '.gif' : g.preview);
-    if (img.getAttribute('src') !== src) img.src = src;
-    p.classList.add('show');
+    const come = () => { if (previewing === id) p.classList.add('show'); };
+    if (img.getAttribute('src') === src && img.complete && img.naturalWidth) come();
+    else { p.classList.remove('show'); img.onload = come; img.src = src; }  // (over the screen once it has come)
     $('#status-line').textContent = g.title.toUpperCase();
   }
   function hidePreview() {
@@ -2212,7 +2261,8 @@
 
   // ------------------------------------------------------------------ search
   // A game shows when what's typed is in its name, its id or its initials ("fnaf", "hk", "pvz"), accents and
-  // punctuation aside. The others are only hidden
+  // punctuation aside. The others are only hidden, except yours: what you have stays in sight, and the ones among
+  // them that match are ringed
   const plain = (t) => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   let searchApply = () => {};
   function search() {
@@ -2224,9 +2274,18 @@
     const apply = () => {
       const q = plain(box.value).replace(/ /g, '');
       let n = 0;
-      const shown = (b) => !b.hidden && !b.classList.contains('away');
-      for (const [b, k] of keys) { b.hidden = !!q && !k.includes(q); if (shown(b)) n++; }
-      for (const k of ['small', 'big']) $('#' + k + '-sec').hidden = $('#' + k).hidden = ![...$('#' + k).children].some(shown);
+      const shown = (b) => !b.hidden && !b.classList.contains('away'), yours = $('#in');
+      for (const [b, k] of keys) {
+        const hit = !q || k.includes(q), mine = b.parentNode === yours;
+        b.hidden = !hit && !mine;
+        b.classList.toggle('found', !!q && hit && mine);
+        if (hit && shown(b)) n++;
+      }
+      for (const k of ['small', 'big']) {
+        const here = [...$('#' + k).children].filter(shown).length;
+        $('#' + k + '-sec').hidden = $('#' + k).hidden = !here;
+        $('#n-' + k).textContent = here;  // (how many are shown: in a search, how many it found there)
+      }
       const none = $('#no-match');
       none.hidden = !!n || !q;
       if (none.hidden) return;
@@ -2374,7 +2433,7 @@
     addEventListener('pointerdown', eager, true);
     addEventListener('keydown', eager, true);
     document.documentElement.classList.remove('loading');
-    requestAnimationFrame(showLoad);
+    showLoad();
   }
   start();
 })();
