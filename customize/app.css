@@ -19,6 +19,11 @@
   --t: 180ms;
   --pad: clamp(28px, 3vw, 44px);
   --cw: 451.2px;  /* the calculator: its screen is then 320 by 240, one of its pixels to one of the page's */
+  /* corners, from the icons' own (22% of 55px, about 12px): small things, controls the size of an icon, and what
+     holds them */
+  --r-s: 8px;
+  --r-m: 12px;
+  --r-l: 18px;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -34,6 +39,7 @@ button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: inherit; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.w-back, .calc-pick, .download, .tabs button, .sheet-close, .sv-btn, .sv-link, .sv-icon { border-radius: var(--r-s); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 [hidden] { display: none !important; }
 .page { display: grid; grid-template-columns: minmax(0, 1fr) clamp(820px, 62vw, 1000px); min-height: 100vh; }
@@ -46,7 +52,7 @@ a { color: inherit; }
 .tabs { display: flex; gap: 20px; }
 .tabs button { position: relative; padding: 0; border: 0; background: none; font-size: 15px; font-weight: 800; color: var(--mute); }
 .tabs button[aria-selected="true"] { color: var(--ink); }
-.tabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: 21px; height: 2px; background: var(--ink); }
+.tabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: 21px; height: 2px; border-radius: 1px; background: var(--ink); }
 html.other .tabs { display: none; }  /* (Saves talks to the NumWorks: the other calculators keep their saves their own way) */
 .search { margin-left: auto; align-self: center; flex: 0 1 130px; min-width: 82px; display: flex; align-items: center; gap: 8px; height: 32px; border-bottom: 1.5px solid var(--ink); line-height: 1; cursor: text; }
 .search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; font-size: 15px; font-weight: 700; }
@@ -63,25 +69,27 @@ html.other .tabs { display: none; }  /* (Saves talks to the NumWorks: the other 
 .group { display: contents; }
 .app { position: relative; display: block; width: 55px; height: 64px; padding: 0; border: 0; background: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; user-select: none; }
 .app img { display: block; width: 55px; height: 56px; border-radius: 22%; image-rendering: pixelated; pointer-events: none; transition: filter 220ms linear, opacity 220ms linear; }
-.app::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--line); }
-.app .sz { position: absolute; left: 0; bottom: 0; z-index: 1; width: 0; height: 3px; background: var(--ink); transition: width var(--t) var(--ease); }
+.app::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; border-radius: 2px; background: var(--line); }
+.app::before { content: ""; position: absolute; left: -4px; top: -4px; width: 63px; height: 64px; border-radius: 16px; border: 2.5px solid transparent; pointer-events: none; transition: border-color 120ms linear; }
+.app .sz { position: absolute; left: 0; bottom: 0; z-index: 1; width: 0; height: 3px; border-radius: 2px; background: var(--ink); transition: width var(--t) var(--ease); }
 /* (no room for it: gray. It can still be pressed, to see it and what it needs) */
 .app.nofit img { filter: grayscale(1); opacity: 0.4; }
 .app.nofit .sz { background: #a9a8a1; }
 .app.own::after { display: none; }
 #in-more.out .app { filter: grayscale(1); opacity: 0.4; }  /* (left out: a game is on its own) */
 /* (one of yours that a search finds: yours all stay in sight while you search) */
-.app.found { outline: 2px solid #e8940c; outline-offset: 5px; }
-.app.at, .app:focus-visible { outline: 2px solid var(--ink); outline-offset: 5px; }
+.app.found::before { border-color: #e8940c; }
+.app:focus-visible { outline: 0; }
+.app.at::before, .app.held::before, .app:focus-visible::before { border-color: var(--ink); }
 .app.away { display: none; }
 .app.shake, .add.shake, .meter.shake, .act.shake, .dock .install.shake { animation: shake 380ms var(--ease); }
 @keyframes shake { 0%, 100% { translate: 0; } 20% { translate: -6px; } 45% { translate: 5px; } 70% { translate: -3px; } }
 .app.placeholder { opacity: 0; }  /* (the place a dragged icon would take: a gap, nothing in it) */
-.app.held { outline: 2px solid var(--ink); outline-offset: 5px; }
 .drag-ghost { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; will-change: transform; }
 .drag-ghost img { display: block; width: 100%; aspect-ratio: 55 / 56; border-radius: 22%; image-rendering: pixelated; }
 .drag-ghost.no img { filter: grayscale(1); opacity: 0.65; }
 /* (a game dragged from the other groups: your games are where it can be dropped) */
+#in { border-radius: var(--r-s); }  /* (so the outline below rounds as the drop box does) */
 .icons.aim { outline: 1.5px dashed #a3a29b; outline-offset: 10px; }
 .icons.aim.over { outline-color: var(--ink); }
 body.dragging-icon .app { pointer-events: none; }
@@ -133,7 +141,7 @@ body.dragging-icon, body.dragging-icon * { cursor: grabbing !important; user-sel
 .noscript { text-align: center; padding: 0 16px; }
 /* (files over the page: it takes them anywhere) */
 .veil { position: fixed; inset: 0; z-index: 48; display: none; align-items: center; justify-content: center; pointer-events: none; background: rgba(27, 27, 29, 0.6); }
-.veil span { padding: 16px 26px; background: #ffffff; color: var(--ink); font-size: 19px; font-weight: 900; }
+.veil span { padding: 16px 26px; border-radius: var(--r-l); background: #ffffff; color: var(--ink); font-size: 19px; font-weight: 900; }
 body.dragging .veil { display: flex; }
 
 /* ---- the stage */
@@ -184,7 +192,7 @@ body.dragging .veil { display: flex; }
 .go { grid-column: 1; grid-row: 3; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 /* the space: how much is left, always there. With a game shown that isn't in, the part it would take */
 .meter { align-self: stretch; margin-bottom: 14px; }
-.m-bar { position: relative; display: flex; height: 8px; background: rgba(255, 255, 255, 0.24); overflow: hidden; }
+.m-bar { position: relative; display: flex; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.24); overflow: hidden; }
 .m-bar i { display: block; height: 100%; flex: none; width: 0; background: currentColor; transition: width 320ms var(--ease); }
 #m-would { opacity: 0.45; }
 .meter.over #m-would { opacity: 1; background: #ffc14d; }
@@ -194,7 +202,7 @@ body.dragging .veil { display: flex; }
 .stage.pale .m-bar { background: rgba(27, 27, 29, 0.16); }
 .stage.pale .meter.over #m-would { background: #b06a00; }
 .install {
-  display: inline-flex; align-items: center; justify-content: center; height: 54px; padding: 0 26px; border: 0; border-radius: 3px;
+  display: inline-flex; align-items: center; justify-content: center; height: 54px; padding: 0 26px; border: 0; border-radius: var(--r-m);
   background: var(--ink); color: #ffffff; font-size: 17px; font-weight: 900; white-space: nowrap; text-decoration: none; cursor: pointer;
 }
 .stage .install, .dock .install { background: #ffffff; color: var(--ink); }
@@ -297,27 +305,29 @@ html.flat .well-img, html.flat .body3d { display: none; }
 html.flat .sticker canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
 /* ---- the pops: your calculator, the app's name and icon, its language, the space for apps */
-.pop { position: fixed; z-index: 40; width: 330px; background: #ffffff; color: var(--ink); border: 1.5px solid var(--ink); border-radius: 3px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.pop { position: fixed; z-index: 40; width: 330px; background: #ffffff; color: var(--ink); border: 1.5px solid var(--ink); border-radius: var(--r-l); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .pop.narrow { width: 170px; padding: 6px; }
 .pop-row { display: flex; align-items: center; gap: 10px; }
 .pop-label { width: 66px; flex-shrink: 0; font-size: 13px; font-weight: 800; color: var(--mute); }
 #app-pop { width: min(432px, calc(100vw - 24px)); }
 .icon-pick { display: flex; flex-wrap: wrap; gap: 14px 10px; }
-.icon-pick button { width: 55px; height: 56px; padding: 0; border: 0; background: transparent; position: relative; isolation: isolate; }
+.icon-pick button { width: 55px; height: 56px; padding: 0; border: 0; border-radius: 22%; background: transparent; position: relative; isolation: isolate; }
 .icon-pick button::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 22%; box-shadow: inset 0 0 0 1.5px #bdbcb5; }  /* (the invisible icon's place) */
 .icon-pick button img { width: 100%; height: 100%; display: block; border-radius: 22%; image-rendering: pixelated; }
-.icon-pick button[aria-checked="true"] { outline: 2px solid var(--ink); outline-offset: 4px; }
+.icon-pick button[aria-checked="true"] { outline: 2.5px solid var(--ink); outline-offset: 3px; }
 .icon-pick .upload { border: 1.5px dashed var(--mute); color: var(--text); display: flex; align-items: center; justify-content: center; }
 .icon-pick .upload::before { display: none; }
 .icon-pick .custom img { clip-path: inset(0 round 22%); }
-.field { flex: 1; min-width: 0; height: 38px; border: 1.5px solid var(--line); border-radius: 3px; padding: 0 10px; background: #ffffff; font-size: 15px; font-weight: 700; }
+.field { flex: 1; min-width: 0; height: 38px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 12px; background: #ffffff; font-size: 15px; font-weight: 700; }
 .field:focus { outline: 0; border-color: var(--ink); }
 .segctl { display: flex; gap: 0; }
 .segctl button { border: 1.5px solid var(--line); margin-left: -1.5px; background: #ffffff; padding: 8px 12px; font-size: 14px; font-weight: 800; color: var(--text); }
-.segctl button:first-child { margin-left: 0; }
+.segctl button:first-child { margin-left: 0; border-radius: 10px 0 0 10px; }
+.segctl button:last-child { border-radius: 0 10px 10px 0; }
 .segctl button[aria-checked="true"] { position: relative; border-color: var(--ink); background: var(--ink); color: #ffffff; }
 .segctl.col { flex-direction: column; }
-.segctl.col button { margin: 0; border: 0; text-align: left; padding: 10px 12px; font-size: 15px; color: var(--ink); }
+.segctl.col button { margin: 0; border: 0; border-radius: 10px; text-align: left; padding: 10px 12px; font-size: 15px; color: var(--ink); }
+.segctl.col button:hover:not([aria-checked="true"]):not(:disabled) { background: #f7f6f3; }
 .segctl.col button[aria-checked="true"] { background: var(--ground); color: var(--ink); }
 .tick { display: flex; align-items: center; gap: 5px; font-size: 14px; color: var(--text); white-space: nowrap; }
 .calc-pop { width: 280px; padding: 6px; }
@@ -332,24 +342,24 @@ html.flat .sticker canvas { position: absolute; inset: 0; width: 100%; height: 1
 .spaces button { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .spaces button b { font-weight: 900; font-variant-numeric: tabular-nums; }
 .nwagra { display: flex; flex-direction: column; gap: 8px; padding: 4px 8px 4px; }
-.xl-warn { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--warn); background: #fff1d4; padding: 8px 10px; }
+.xl-warn { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--warn); background: #fff1d4; padding: 8px 10px; border-radius: var(--r-s); }
 .xl-steps { margin: 0; padding-left: 20px; font-size: 13.5px; line-height: 1.6; color: var(--text); }
 
 /* ---- tooltip, toast and the sheet that says how to install */
-.tip { position: fixed; left: 0; top: 0; z-index: 55; pointer-events: none; background: var(--ink); color: #ffffff; font-size: 13px; font-weight: 800; white-space: nowrap; padding: 6px 10px; display: none; }
+.tip { position: fixed; left: 0; top: 0; z-index: 55; pointer-events: none; background: var(--ink); color: #ffffff; font-size: 13px; font-weight: 800; white-space: nowrap; padding: 6px 10px; border-radius: var(--r-s); display: none; }
 .tip.show { display: block; }
 .tip small { font-size: inherit; font-weight: 700; opacity: 0.75; margin-left: 6px; }
-.toast { position: fixed; left: 50%; bottom: 28px; z-index: 56; transform: translateX(-50%); background: var(--ink); color: #ffffff; font-size: 15px; font-weight: 800; line-height: 1.35; padding: 12px 18px; display: none; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; }
+.toast { position: fixed; left: 50%; bottom: 28px; z-index: 56; transform: translateX(-50%); background: var(--ink); color: #ffffff; font-size: 15px; font-weight: 800; line-height: 1.35; padding: 12px 18px; border-radius: var(--r-m); display: none; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; }
 .toast.show { display: block; }
 .sheet { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(27, 27, 29, 0.6); }
-.sheet-card { position: relative; width: min(420px, 100%); background: #ffffff; color: var(--ink); padding: 28px 28px 22px; }
+.sheet-card { position: relative; width: min(420px, 100%); background: #ffffff; color: var(--ink); padding: 28px 28px 22px; border-radius: var(--r-l); }
 .sheet-card h2 { margin: 0 0 20px; font-size: 21px; font-weight: 900; letter-spacing: -0.01em; padding-right: 36px; }
 .sheet-close { position: absolute; right: 10px; top: 10px; width: 44px; height: 44px; border: 0; background: none; display: flex; align-items: center; justify-content: center; }
 .steps { list-style: none; margin: 0 0 24px; padding: 0; display: flex; flex-direction: column; gap: 14px; }
 .steps li { display: flex; align-items: center; gap: 14px; font-size: 16px; font-weight: 700; line-height: 1.35; }
-.step-icon { width: 42px; height: 42px; border: 1.5px solid var(--line); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.step-icon { width: 42px; height: 42px; border: 1.5px solid var(--line); border-radius: var(--r-m); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .step-icon.n { font-size: 17px; font-weight: 900; }
-.star-ask { display: block; margin-top: 14px; padding: 12px 14px; background: #fff1d4; text-decoration: none; font-size: 15px; font-weight: 800; line-height: 1.4; }
+.star-ask { display: block; margin-top: 14px; padding: 12px 14px; border-radius: var(--r-m); background: #fff1d4; text-decoration: none; font-size: 15px; font-weight: 800; line-height: 1.4; }
 .star-ask:hover { background: #ffe6b0; }
 
 /* ---- Saves (saves-ui.js), on the shelf: the calculator's saves game by game, then the backups of them */
@@ -359,14 +369,14 @@ html.flat .sticker canvas { position: absolute; inset: 0; width: 100%; height: 1
 #saves-body section { display: flex; flex-direction: column; }
 .sv-lede { margin: 0 0 18px; max-width: 30em; font-size: 16px; line-height: 1.45; color: var(--text); }
 .sv-hint { margin: 10px 0 0; font-size: 13.5px; font-weight: 600; line-height: 1.4; color: var(--mute); }
-.sv-warn, .sv-note { margin: 12px 0 0; padding: 10px 13px; font-size: 14.5px; line-height: 1.4; }
+.sv-warn, .sv-note { margin: 12px 0 0; padding: 10px 13px; border-radius: var(--r-s); font-size: 14.5px; line-height: 1.4; }
 .sv-warn { background: #fff1d4; color: var(--warn); }
 .sv-note { background: #e2f1e6; color: #14532d; }
 .sv-busy { margin: 12px 0 0; font-size: 14.5px; color: var(--mute); }
 .sv-head { display: flex; align-items: baseline; gap: 10px; }
 .sv-head b { font-size: 17px; font-weight: 900; }
 .sv-head span { font-size: 14.5px; color: var(--mute); }
-.sv-meter { height: 6px; background: var(--line); margin-top: 12px; overflow: hidden; }
+.sv-meter { height: 6px; border-radius: 3px; background: var(--line); margin-top: 12px; overflow: hidden; }
 .sv-meter i { display: block; height: 100%; min-width: 6px; background: var(--amber); }
 .sv-status { display: flex; justify-content: space-between; gap: 12px; margin: 8px 0 0; font-size: 14px; color: var(--text); font-variant-numeric: tabular-nums; }
 .sv-ok { color: var(--ink); font-weight: 800; display: inline-flex; align-items: center; gap: 5px; }
@@ -380,7 +390,7 @@ html.flat .sticker canvas { position: absolute; inset: 0; width: 100%; height: 1
 .sv-icon:hover { color: var(--ink); }
 .sv-btn { border: 0; background: none; padding: 0; min-height: 44px; font-size: 14.5px; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; flex-shrink: 0; }
 .sv-backup { min-height: 60px; }
-.sv-ask { background: #fff1d4; padding: 6px 10px 6px 13px; border-top: 0; }
+.sv-ask { background: #fff1d4; padding: 6px 10px 6px 13px; border-top: 0; border-radius: var(--r-s); }
 .sv-calc > .sv-ask { margin-top: 10px; }
 .sv-q { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.35; color: var(--warn); }
 .sv-yes { color: #a02c00; }
@@ -444,7 +454,8 @@ html.flat .sticker canvas { position: absolute; inset: 0; width: 100%; height: 1
   /* (the settings side by side here, each a cell: its name over what it is set to) */
   .set { flex-direction: row; margin-top: 14px; border-top: 0; }
   .set button { flex: 1 1 0; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; height: 52px; margin-left: -1.5px; padding: 0 12px; border: 1.5px solid var(--rule); }
-  .set button:first-child { margin-left: 0; }
+  .set button:first-child { margin-left: 0; border-radius: var(--r-m) 0 0 var(--r-m); }
+  .set button:last-child { border-radius: 0 var(--r-m) var(--r-m) 0; }
   .set span { font-size: 12.5px; }
   .set b { margin-left: 0; max-width: 100%; }
   .set button::after { display: none; }
@@ -485,7 +496,7 @@ html.flat .sticker canvas { position: absolute; inset: 0; width: 100%; height: 1
   .dock {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; align-items: center; gap: 12px; padding: 10px 16px; color: #ffffff;
     background: linear-gradient(var(--top), var(--bottom) 160%); transition: --top 320ms linear, --bottom 320ms linear, transform 220ms var(--ease), visibility 0s 220ms;
-    transform: translateY(100%); visibility: hidden;
+    transform: translateY(100%); visibility: hidden; border-radius: var(--r-l) var(--r-l) 0 0;
   }
   .dock.show { transform: none; visibility: visible; transition: --top 320ms linear, --bottom 320ms linear, transform 220ms var(--ease); }
   .dock.pale { color: var(--ink); }
