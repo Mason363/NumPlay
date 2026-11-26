@@ -83,11 +83,11 @@ PORT_ID = hollowknight
 PORT_NAME = Hollow Knight
 PORT_SRC = src/res.c src/tex.c src/room.c src/gfx.c src/phys.c src/anim.c src/hero.c src/camera.c src/game.c src/world.c src/obj.c src/enemy.c src/hud.c src/spell.c src/text.c src/npc.c src/title.c src/vm.c src/msg.c src/save.c src/death.c src/menu.c src/inv.c src/shop.c src/collect.c src/stag.c src/map.c src/lzma/LzmaDec.c src/plat_eadk.c src/main.c
 PORT_ASM = src/data.S
-# (on the Casio, division by a loop instead of libgcc's table: 700 bytes less, to fit the add-in's 2 MB; and the data
-# with the numbers the game reads in place turned big-endian, as the calculator reads them: tools/bigendian.py)
+# (on the Casio, the data with the numbers the game reads in place turned big-endian, as the calculator reads them:
+# tools/bigendian.py)
 PORT_DATA = $(if $(filter casio-cg,$(TARGET)),build/casio-cg/data_be.bin,src/data.bin)
 PORT_DEPS = $(filter build/%,$(PORT_DATA))
-PORT_FLAGS = -DDATA_BIN='"$(PORT_DATA)"' -DEPSILON_XL=1 $(if $(filter casio-cg,$(TARGET)),-mdiv=call-div1)
+PORT_FLAGS = -DDATA_BIN='"$(PORT_DATA)"' -DEPSILON_XL=1
 include ../../platform/port.mk
 build/casio-cg/data_be.bin: src/data.bin tools/bigendian.py
 	@mkdir -p $(@D)

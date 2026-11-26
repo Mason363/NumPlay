@@ -18,6 +18,13 @@
 #define NPAL 104
 #endif
 #define NPX (STRIP_H * VIEW_W)
+/* (the small ones of the pixels' loops: built for size, -Os as for the Casio fx-CG50, they were calls, as -O2 has
+   them not) */
+#ifdef __OPTIMIZE_SIZE__
+#define HOT static inline __attribute__((always_inline))
+#else
+#define HOT static inline
+#endif
 bool g_gfx_fast;
 /* the strip's rows: each one of the screen's, or (fast) each two of them, where no HUD, text or menu is: the room's
  * drawn at half the height, its pixels' rows sampled between the two */
@@ -400,6 +407,18 @@ static float inst_k(const Inst *in) {
 /* the cosine and sine of a turn in 1/65536 (as cosf and sinf, to a float's precision): its octant, then the series on
  * [0, pi / 4] */
 static void cos_sin_turn(int rot, float *c, float *s) {
+#if NP_SOFT_FLOAT
+  /* (no FPU: the turns seen lately, kept; a room's are the same from frame to frame) */
+  static struct { uint16_t rot, ok; float c, s; } seen[256];
+  typeof(&seen[0]) e = &seen[((uint16_t)rot * 0x9E37u) >> 8 & 255];
+  if (e->ok && e->rot == (uint16_t)rot) {
+    *c = e->c, *s = e->s;
+    return;
+  }
+#define TURN_KEEP() (e->rot = (uint16_t)rot, e->ok = 1, e->c = *c, e->s = *s)
+#else
+#define TURN_KEEP()
+#endif
   uint32_t a = (uint16_t)rot, oct = a >> 13, r = a & 0x1FFF;
   float x = (float)((oct & 1) ? 0x2000 - r : r) * (6.2831853f / 65536.0f), x2 = x * x;
   float sn = x * (1 + x2 * (-1.0f / 6 + x2 * (1.0f / 120 + x2 * (-1.0f / 5040 + x2 * (1.0f / 362880)))));
@@ -414,6 +433,7 @@ static void cos_sin_turn(int rot, float *c, float *s) {
     case 6: *c = sn, *s = -cs; break;
     default: *c = cs, *s = -sn; break;
   }
+  TURN_KEEP();
 }
 
 /* the instance's u and v steps on screen (pixels a texel) */
@@ -462,6 +482,17 @@ static void inst_map(const Inst *in, Map *m) {
   }
 }
 
+#if NP_SOFT_FLOAT
+/* (a < b, neither NaN: in order as their bits are, the negatives' turned around; a float compare is a call) */
+static inline int32_t f_order(float f) {
+  int32_t i;
+  memcpy(&i, &f, 4);
+  return i < 0 ? INT32_MIN - i : i;
+}
+#define F_LT(a, b) (f_order(a) < f_order(b))
+#else
+#define F_LT(a, b) ((a) < (b))
+#endif
 /* an instance's box on screen (pixels, not clipped): false if it is not in front of the camera */
 static bool inst_screen_box(const Inst *in, float *x0, float *y0, float *x1, float *y1) {
   float k = inst_k(in);
@@ -484,10 +515,10 @@ static bool inst_screen_box(const Inst *in, float *x0, float *y0, float *x1, flo
       float xs[4] = {m.ox, m.ox + ux, m.ox + vx, m.ox + ux + vx}, ys[4] = {m.oy, m.oy + uy, m.oy + vy, m.oy + uy + vy};
       bx0 = bx1 = xs[0], by0 = by1 = ys[0];
       for (int i = 1; i < 4; i++) {
-        if (xs[i] < bx0) bx0 = xs[i];
-        if (xs[i] > bx1) bx1 = xs[i];
-        if (ys[i] < by0) by0 = ys[i];
-        if (ys[i] > by1) by1 = ys[i];
+        if (F_LT(xs[i], bx0)) bx0 = xs[i];
+        if (F_LT(bx1, xs[i])) bx1 = xs[i];
+        if (F_LT(ys[i], by0)) by0 = ys[i];
+        if (F_LT(by1, ys[i])) by1 = ys[i];
       }
     } else {
       float ex = m.ox + m.pu * r->w, ey = m.oy + m.pv * r->h;
@@ -499,6 +530,23 @@ static bool inst_screen_box(const Inst *in, float *x0, float *y0, float *x1, flo
   return true;
 }
 __attribute__((noinline)) static bool item_box(const Inst *in, Item *it) {
+#if NP_SOFT_FLOAT
+  /* (no FPU: most of the instances near the camera are off the screen, nine in ten in King's Pass, and a box took
+     dozens of floats; one around any turn of the instance, from its origin and its size, rules them out first) */
+  {
+    float k = inst_k(in);
+    if (!(k > 0) || k > 400) return false;
+    float ox = VIEW_W / 2 + (in->ax * (1.0f / 64) - g_cam_x) * k, oy = VIEW_H / 2 - (in->ay * (1.0f / 64) - g_cam_y) * k;
+    float fa = fabsf(f16(in->a)), fb = fabsf(f16(in->b)), r;
+    if (in->flags & F_SOLID) r = fa + fb;
+    else {
+      const TexRec *t = tex_rec(in->tex);
+      r = fa * t->w + fb * t->h;
+    }
+    r = r * k + 1;
+    if (F_LT(ox + r, 0) || F_LT(VIEW_W, ox - r) || F_LT(oy + r, 0) || F_LT(VIEW_H, oy - r)) return false;
+  }
+#endif
   float bx0, by0, bx1, by1;
   if (!inst_screen_box(in, &bx0, &by0, &bx1, &by1)) return false;
   if (bx1 <= 0 || by1 <= 0 || bx0 >= VIEW_W || by0 >= VIEW_H) return false;
