@@ -62,10 +62,12 @@ int main(void) {
       *hex++ = 0;
       snprintf(name, sizeof name, "%s", arg);
       uint32_t n = unhex(hex, data);
-      printf("%d %08x\n", ef_write(name, n ? data : NULL, n), (unsigned)sum());
+      int done = ef_write(name, n ? data : NULL, n); /* (before sum(): a call's arguments go in no set order) */
+      printf("%d %08x\n", done, (unsigned)sum());
     } else if (!strcmp(line, "r")) {
       arg[strcspn(arg, "\n")] = 0;
-      printf("%d %08x\n", ef_remove(arg), (unsigned)sum());
+      int done = ef_remove(arg);
+      printf("%d %08x\n", done, (unsigned)sum());
     } else if (!strncmp(line, "dump", 4)) {
       for (uint32_t i = 0; i < store_size; i++) printf("%02x", store[i]);
       putchar('\n');
