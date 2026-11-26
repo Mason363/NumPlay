@@ -259,10 +259,11 @@
     const s0 = solo(), picks = ordered();
     for (const [id, b] of buttons) {
       const on = st.picked.has(id), bytes = alone(id) ? game(id).alone.size : flash(id);
+      const no = !on && (alone(id) ? bigger(id) : !!s0 || total(picks.concat([id])) > cap);
       b.classList.toggle('on', on);
-      b.setAttribute('aria-pressed', on);
+      b.setAttribute('aria-label', byId[id].title + (on ? ', in your NumPlay' : no ? ', no room' : ''));
       b.lastChild.style.width = Math.max(4, Math.min(100, 100 * bytes / cap)) + '%';
-      b.classList.toggle('nofit', !on && (alone(id) ? bigger(id) : !!s0 || total(picks.concat([id])) > cap));
+      b.classList.toggle('nofit', no);
     }
     arrange();
     // (a game on its own has its own icon, name and language)
@@ -284,26 +285,26 @@
     const rest = shelfOrder.filter((id) => !mine.includes(id));
     const want = [['#in', mine], ['#small', rest.filter((id) => !byId[id].xl)], ['#big', rest.filter((id) => byId[id].xl)]];
     const same = ([box, ids]) => { const k = [...$(box).children]; return k.length === ids.length && ids.every((id, i) => k[i] === buttons.get(id)); };
-    if (!want.every(same)) {
-      const all = shelfOrder.map((id) => buttons.get(id)).concat([...document.querySelectorAll('#games .sec, #games .foot, #in-more .app, #add')]);
-      const before = arranged && !dragging ? new Map(all.filter((b) => b.offsetParent).map((b) => [b, b.getBoundingClientRect()])) : null;
-      for (const [box, ids] of want) for (const id of ids) $(box).appendChild(buttons.get(id));
-      if (before) for (const [b, a] of before) {
-        if (!b.animate) continue;
-        const r = b.getBoundingClientRect(), dx = a.left - r.left, dy = a.top - r.top;
-        if (b === moving && landAt) b.animate([{ opacity: 0 }, { opacity: 0, offset: 0.999 }, { opacity: 1 }], { duration: landAt });
-        else if (b === moving) b.animate([{ transform: 'scale(0.3)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 120, easing: 'cubic-bezier(0.3, 1.45, 0.45, 1)', fill: 'backwards' });
-        else if (dx || dy) b._slide = b.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 280, easing: 'cubic-bezier(0.2, 0.9, 0.25, 1)' });
+    // (the groups' names and counts, and what a search hides and shows: before anything is measured to slide)
+    const heads = () => {
+      $('#in-head').textContent = o ? 'Your games' : 'In your NumPlay';
+      $('#n-in').textContent = mine.length;
+      $('#in-hint').hidden = o || mine.length < 2;
+      searchApply();
+    };
+    const set = () => { for (const [box, ids] of want) for (const id of ids) $(box).appendChild(buttons.get(id)); heads(); };
+    if (want.every(same)) heads();
+    else if (!arranged || dragging) set();
+    else {
+      slide(set);
+      const b = moving;  // (it doesn't slide: it flies to its place, or comes up in it)
+      if (b && b.animate && !still()) {
+        if (b._slide) { b._slide.cancel(); b._slide = null; }
+        if (landAt) b.animate([{ opacity: 0 }, { opacity: 0, offset: 0.999 }, { opacity: 1 }], { duration: landAt });
+        else b.animate([{ transform: 'scale(0.3)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 120, easing: 'cubic-bezier(0.3, 1.45, 0.45, 1)', fill: 'backwards' });
       }
     }
     arranged = true;
-    const here = (ids) => ids.filter((id) => !buttons.get(id).classList.contains('away')).length;
-    $('#in-head').textContent = o ? 'Your games' : 'In your NumPlay';
-    $('#n-in').textContent = mine.length;
-    $('#n-small').textContent = here(want[1][1]);
-    $('#n-big').textContent = here(want[2][1]);
-    $('#in-hint').hidden = o || mine.length < 2;
-    searchApply();
   }
 
   // Your own games and apps, under "Your own": a Game Boy, NES or Sega game as its cartridge, a PICO-8 cart as its
@@ -337,6 +338,7 @@
       add('a' + a.key, 'nwa', { title: a.title, tag: a.file, bytes: a.flash, top: hex(a.accent.toString(16)), bottom: '#17171a' }, picture(a.url), () => removeApp(a));
     for (const c of box.querySelectorAll('[data-k]')) if (!have.has(c.dataset.k)) c.remove();
     $('#n-own').textContent = have.size || '';
+    box.classList.toggle('out', !!solo());  // (a game that takes the whole calculator leaves them out)
   }
 
   // ------------------------------------------------------------------ the stage
@@ -363,12 +365,19 @@
   }
   // pressing an icon shows its game; pressing it again, Escape, or the way back on the stage, shows your NumPlay
   function select(what, b) {
+    if (tab !== 'games') return;  // (a block on the screen pressed from Saves)
     const again = pointed === what;
     hidePreview();
     point(again ? null : what, again ? null : b);
     if (!again && typeof what === 'string') showPreview(what);
   }
-  const deselect = () => { hidePreview(); point(null); };
+  // (and the focus, when it was on a button that goes with the game, goes back to the game's icon)
+  const deselect = () => {
+    const b = document.querySelector('.app.at'), a = document.activeElement, back = b && a && (a.id === 'w-act' || a.id === 'w-back');
+    hidePreview();
+    point(null);
+    if (back) b.focus({ preventScroll: true });
+  };
   // (what the stage says at rest under your app's name: what NumPlay is)
   function lede() {
     if (!other()) return ['Real games for your NumWorks, in one app.'];
@@ -377,7 +386,8 @@
     Object.assign(beta, { href: 'https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml', target: '_blank', rel: 'noopener', textContent: 'Beta: something wrong? Tell us' });
     return ['Real games for your ', name, '.', beta];
   }
-  // a name too long for its place gets smaller, never cut inside a word; three lines at most
+  // a name too long for its place gets smaller, never cut inside a word; three lines at most, and no taller than
+  // there is room for
   function fitTitle() {
     const h = $('#w-title');
     h.style.fontSize = '';
@@ -388,6 +398,14 @@
       px = Math.floor(wide ? Math.min(px * 0.92, px * h.clientWidth / h.scrollWidth) : px * 0.9);
       h.style.fontSize = px + 'px';
     }
+    // (beside the calculator, in a short window: the words never reach the space and Install under them. A name gets
+    // smaller for it; if that is not enough, the line under the name and the settings step aside: `cramped`)
+    const stage = $('#stage'), words = h.parentNode, go = document.querySelector('.go');
+    stage.classList.remove('cramped');
+    if (!go.offsetParent || getComputedStyle(stage).display !== 'grid') return;
+    const over = () => words.getBoundingClientRect().bottom > go.getBoundingClientRect().top - 8;
+    for (let i = 0; i < 12 && px > 26 && over(); i++) { px = Math.floor(px * 0.92); h.style.fontSize = px + 'px'; }
+    if (over()) stage.classList.add('cramped');
   }
   let leftNow = null, leftRun = 0;
   function words() {
@@ -403,7 +421,7 @@
     stage.classList.toggle('pointing', !!g);
     stage.classList.toggle('saving', saving);
     const used = usedBytes(), cap = capacity(), picks = o ? portPicks() : ordered();
-    const n = o ? picks.length : entries(), count = n + (n === 1 ? ' game' : ' games'), yours = o ? 'your games' : 'NumPlay';
+    const n = o ? picks.length : s ? 1 : entries(), count = n + (n === 1 ? ' game' : ' games'), yours = o ? 'your games' : 'NumPlay';
     let title, tag = null, a = count, b = '', no = false, would = 0, act = '';
     if (saving) { title = 'Your saves'; tag = 'Backed up when you plug in. Put back after a reset.'; }
     else if (g && mine) { title = g.title; tag = g.tag; a = size(g.bytes); act = 'Take out'; }
@@ -446,13 +464,14 @@
     // the space: what's used, the part the game shown would take, and how much is left (counted to, not jumped to)
     const left = cap - used, wait = spaceAt;
     $('#m-fill').style.transitionDelay = $('#m-would').style.transitionDelay = wait ? wait + 'ms' : '';
-    $('#m-fill').style.width = Math.min(100, 100 * used / cap) + '%';
+    if (!arriving) $('#m-fill').style.width = Math.min(100, 100 * used / cap) + '%';  // (arriving, the arrival fills it)
     $('#m-would').style.width = Math.max(0, Math.min(100 - 100 * used / cap, 100 * would / cap)) + '%';
     document.querySelector('.meter').classList.toggle('over', would > left);
     $('#m-of').textContent = (left < 0 ? 'too much, of ' : 'left of ') + (o ? 'about ' : '') + mb(cap);
     $('#m-bar').setAttribute('aria-label', size(Math.abs(left)) + (left < 0 ? ' too much' : ' left') + ' of ' + mb(cap));
     const show = (v) => { $('#m-left').textContent = (Math.abs(v) / MiB).toFixed(2) + ' MB'; };
-    if (leftNow === null || still()) show(left);
+    if (arriving) { /* (the arrival counts it down) */ }
+    else if (leftNow === null || still()) show(left);
     else if (leftNow !== left) {
       const from = leftNow, t0 = performance.now() + wait, run = ++leftRun;
       const step = (now) => {
@@ -525,7 +544,7 @@
     const b = buttons.get(id);
     if (b.classList.contains('nofit')) return refuse(id);
     stopArrival();
-    const was = isIn(id), src = b.querySelector('img').src, held = document.activeElement === $('#w-act');
+    const was = isIn(id), src = b.querySelector('img').src, held = document.activeElement === $('#w-act') || document.activeElement === $('#dock-install');
     const from = shelfSpot(b), ms = still() || !from ? 0 : 460;
     landAt = ms;
     spaceAt = was ? 0 : ms;  // (taken out, the space is free as it leaves; added, it is taken as it lands)
@@ -548,8 +567,12 @@
   function act() {
     const what = pointed;
     if (!what) return;
-    if (typeof what === 'string') flyToggle(what);
-    else { deselect(); what.remove(); }
+    if (typeof what === 'string') return flyToggle(what);
+    const held = document.activeElement === $('#w-act');
+    deselect();
+    what.remove();
+    const next = held && document.querySelector('#in-more .app');  // (by keyboard: on to the next of your files)
+    if (next) next.focus({ preventScroll: true });
   }
   // (the page arriving: the screen starts with NumPlay alone on it; each game's block and its share of the space
   // show as its icon lands. Anything that needs the screen or the shelf as they are ends it there: stopArrival)
@@ -579,16 +602,22 @@
       going.push(tiles.get(id).animate(POP, { duration: 240, delay: land, easing: SPRING, fill: 'backwards' }));
       return [land, sizes.get(id) || 0];
     });
-    arriving = going.filter(Boolean);
-    const base = used - lands.reduce((s, l) => s + l[1], 0), end = lands[lands.length - 1][0] + 220, t0 = performance.now(), run = ++leftRun;
+    const mine = arriving = going.filter(Boolean);
+    const base = used - lands.reduce((s, l) => s + l[1], 0), end = lands[lands.length - 1][0] + 220, t0 = performance.now();
+    leftRun++;
     fill.style.transition = 'none';
-    leftNow = cap - used;
     const step = (now) => {
-      const t = now - t0, mine = run === leftRun, done = t >= end || !mine;
-      const u = done ? used : base + lands.reduce((s, l) => s + l[1] * Math.max(0, Math.min(1, (t - l[0]) / 220)), 0);
-      if (mine) { fill.style.width = Math.min(100, 100 * u / cap) + '%'; $('#m-left').textContent = ((cap - u) / MiB).toFixed(2) + ' MB'; }
-      if (!done) return requestAnimationFrame(step);
-      if (mine) arriving = null;
+      if (arriving !== mine) return;  // (ended early: stopArrival has set the space right)
+      const t = now - t0;
+      if (t < end) {
+        const u = base + lands.reduce((s, l) => s + l[1] * Math.max(0, Math.min(1, (t - l[0]) / 220)), 0);
+        fill.style.width = Math.min(100, 100 * u / cap) + '%';
+        $('#m-left').textContent = ((cap - u) / MiB).toFixed(2) + ' MB';
+        return requestAnimationFrame(step);
+      }
+      arriving = null;  // (all in: the space as it is now, which another language may have changed a little)
+      leftNow = null;
+      words();
       void fill.offsetWidth;
       fill.style.transition = '';
     };
@@ -614,10 +643,10 @@
   }
 
   // ------------------------------------------------------------------ picking
-  // the icon's answer to a press: up with a tick, back down, or no
+  // the icon's answer to a press there is no room for: no
   function bump(b, cls) {
-    if (!b) return;
-    b.classList.remove('pop-on', 'pop-off', 'shake');
+    if (!b || cls !== 'shake') return;
+    b.classList.remove('shake');
     void b.offsetWidth;  // (restarts it)
     b.classList.add(cls);
     b.addEventListener('animationend', () => b.classList.remove(cls), { once: true });
@@ -879,18 +908,6 @@
   // out. From the other groups into them, its game is added, where you let go of it. A click still shows the game.
   // On a phone, hold one of yours, then tap where it goes.
   let dragging = null, justDragged = false, holding = null, cancelDrag = () => {};
-  function flip(box, change) {
-    const kids = [...box.children], before = new Map(kids.map((k) => [k, k.getBoundingClientRect()]));
-    change();
-    for (const k of kids) {
-      const a = before.get(k), b = k.getBoundingClientRect();
-      const dx = a.left - b.left, dy = a.top - b.top;
-      if (!dx && !dy) continue;
-      k.style.transition = 'none';
-      k.style.translate = dx + 'px ' + dy + 'px';
-      requestAnimationFrame(() => { k.style.transition = ''; k.style.translate = ''; });
-    }
-  }
   function commitOrder() {  // (your games as they now are, then the rest in the order they had)
     const mine = [...$('#in').children].map((b) => b.dataset.id);
     st.order = mine.concat(st.order.filter((id) => !mine.includes(id)));
@@ -898,8 +915,9 @@
   }
   // where something on the shelf is laid out on the page, whatever is sliding it at the moment
   const pagePos = (e) => { let x = 0, y = 0; for (let n = e; n; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; } return [x, y]; };
-  // a change to the shelf while an icon is dragged: what it moves slides from where it is seen to its new place
+  // a change to the shelf: what it moves slides from where it is seen to its new place (not with reduced motion)
   function slide(change) {
+    if (still()) return change();
     const all = [...buttons.values()].concat([...document.querySelectorAll('#games .sec, #games .foot, #in-more .app, #add')]);
     const before = new Map(all.filter((e) => e.offsetParent).map((e) => { const r = e.getBoundingClientRect(); return [e, [r.left + scrollX, r.top + scrollY]]; }));
     change();
@@ -908,7 +926,7 @@
       if (!e.offsetParent || !e.animate) continue;
       const [x, y] = pagePos(e), dx = was[0] - x, dy = was[1] - y;
       if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
-      e._slide = e.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(0.2, 0.9, 0.25, 1)' });
+      e._slide = e.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 220, easing: 'cubic-bezier(0.2, 0.9, 0.25, 1)' });
     }
   }
   // (the groups as they are now seen become the shelf's order: a game stays where you left it)
@@ -927,14 +945,14 @@
     const yours = $('#in'), hint = $('#in-hint');
     $('#games').addEventListener('pointerdown', (e) => {
       const b = e.target.closest('.app[data-id]');
-      if (!b || e.button) return;
+      if (!b || e.button || e.ctrlKey) return;  // (ctrl and a press is the menu, on a Mac)
       if (e.pointerType === 'touch') {
         if (b.parentNode !== yours || other()) return;  // (another calculator's games are files: they have no order)
         if (holding === b) { b.classList.remove('held'); holding = null; justDragged = true; return; }
         if (holding && holding !== b) {  // (a phone: the held icon goes where you tap)
           const from = holding;
           holding.classList.remove('held'); holding = null; justDragged = true;
-          if (from.parentNode === yours) flip(yours, () => yours.insertBefore(from, [...yours.children].indexOf(from) < [...yours.children].indexOf(b) ? b.nextSibling : b));
+          if (from.parentNode === yours) slide(() => yours.insertBefore(from, [...yours.children].indexOf(from) < [...yours.children].indexOf(b) ? b.nextSibling : b));
           commitOrder();
           return;
         }
@@ -979,6 +997,7 @@
     addEventListener('pointermove', (e) => {
       const d = dragging;
       if (!d) return;
+      if (!(e.buttons & 1)) { if (d.on) cancelDrag(); else dragging = null; return; }  // (no button held: its release was lost)
       d.px = e.clientX; d.py = e.clientY;
       if (d.on || Math.hypot(e.clientX - d.x, e.clientY - d.y) < 6) return;
       d.on = true;
@@ -1035,6 +1054,7 @@
     addEventListener('pointerup', () => end(true));
     addEventListener('pointercancel', cancelDrag);
     addEventListener('blur', cancelDrag);
+    addEventListener('contextmenu', () => { if (dragging && !dragging.on) dragging = null; });
   }
 
   // ------------------------------------------------------------------ remembering a pick
@@ -1389,6 +1409,11 @@
     // (what opened it may be out of sight, a setting's row while a game is shown: then it goes by the stage's button)
     const from = chip.offsetParent ? chip : $('#w-act').offsetParent ? $('#w-act') : $('#m-bar');
     const r = from.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+    if (r.bottom < 0 || r.top > innerHeight) {  // (it is scrolled away, as on a phone far down the shelf)
+      pop.style.left = Math.max(12, (innerWidth - w) / 2) + 'px';
+      pop.style.top = Math.max(12, (innerHeight - h) / 2) + 'px';
+      return;
+    }
     if (side && r.right + 14 + w < innerWidth - 12) {  // (beside it, over the calculator, not over what it changes)
       pop.style.left = (r.right + 14) + 'px';
       pop.style.top = Math.max(12, Math.min(innerHeight - h - 12, r.top - 10)) + 'px';
@@ -1500,6 +1525,7 @@
   const portFiles = (e) => e.files || [e.file];
   function setCalc(id) {
     stopArrival();
+    if (holding) { holding.classList.remove('held'); holding = null; }
     st.calc = known(id) && calcReady(id) ? id : 'numworks';
     const c = CALCS[st.calc], o = other();
     if (o && !st.port[st.calc]) {  // (as last time, or the games NumPlay starts with; as many as fit, the biggest out first)
@@ -1558,10 +1584,11 @@
     for (const [id, b] of buttons) {
       if (!list[id]) continue;
       const on = picks.has(id);
+      const no = !on && used + list[id].size > cap;
       b.classList.toggle('on', on);
-      b.setAttribute('aria-pressed', on);
+      b.setAttribute('aria-label', byId[id].title + (on ? ', in your games' : no ? ', no room' : ''));
       b.lastChild.style.width = Math.max(4, Math.min(100, 100 * list[id].size / cap)) + '%';
-      b.classList.toggle('nofit', !on && used + list[id].size > cap);
+      b.classList.toggle('nofit', no);
     }
     arrange();
     const ids = portPicks();
@@ -2270,13 +2297,19 @@
 
   // ------------------------------------------------------------------ on a phone: install from under your thumb
   // Once the stage's Install is scrolled away, a bar at the bottom has it, with the game you tapped or your NumPlay.
+  function dockSet(away) {
+    const gone = away && tab === 'games';
+    $('#dock').classList.toggle('show', gone);
+    document.body.classList.toggle('docked', gone);
+  }
+  // (the observer only tells of a change: coming back from Saves, Install may be out of sight as it was before)
+  function dockNow() {
+    const r = $('#install').getBoundingClientRect();
+    if (r.width && getComputedStyle($('#dock')).display !== 'none') dockSet(r.bottom <= 0 || r.top >= innerHeight);
+  }
   function dock() {
     if (!window.IntersectionObserver) return;
-    new IntersectionObserver(([e]) => {
-      const gone = !e.isIntersecting && tab === 'games';
-      $('#dock').classList.toggle('show', gone);
-      document.body.classList.toggle('docked', gone);
-    }).observe($('#install'));
+    new IntersectionObserver(([e]) => dockSet(!e.isIntersecting)).observe($('#install'));
   }
 
   // ------------------------------------------------------------------ the sheet, tips and toasts
@@ -2340,8 +2373,8 @@
     document.querySelector('.search').style.visibility = name === 'saves' ? 'hidden' : '';
     if (name === 'saves') $('#dock').classList.remove('show');
     closePops();
-    hidePreview();
-    words();
+    deselect();  // (a game that was shown is put away: Saves has the stage)
+    if (name === 'games') dockNow();
     try {
       const u = new URL(location.href);
       u.searchParams.delete('saves');
@@ -2392,7 +2425,7 @@
     };
     searchApply = apply;
     box.addEventListener('input', apply);
-    box.addEventListener('keydown', (e) => { if (e.key === 'Escape' && box.value) { e.stopPropagation(); box.value = ''; apply(); } });
+    box.addEventListener('keydown', (e) => { if (e.key === 'Escape' && box.value && !(dragging && dragging.on)) { e.stopPropagation(); box.value = ''; apply(); } });
     document.addEventListener('keydown', (e) => {
       if (e.key === '/' && tab === 'games' && !e.target.closest('input, textarea, select') && !e.metaKey && !e.ctrlKey) { e.preventDefault(); box.focus(); }
     });
@@ -2437,12 +2470,14 @@
     }
     for (const id of shelfOrder) {
       const g = byId[id];
-      const b = el('button', 'app', { type: 'button', 'aria-label': g.title, 'aria-pressed': 'false', 'data-id': id, 'data-tip': g.title });
+      const b = el('button', 'app', { type: 'button', 'aria-label': g.title, 'data-id': id, 'data-tip': g.title });
       b.appendChild(el('img', '', { src: KIT + 'icons/' + id + '.png', alt: '', draggable: 'false', width: 55, height: 56 }));
       b.appendChild(el('i', 'sz'));
       b.addEventListener('click', (e) => {
         if (justDragged) { justDragged = false; return; }
         if (e.detail === 2) { if (pointed !== id) select(id, b); flyToggle(id); } else if (e.detail < 2) select(id, b);
+        // (by keyboard: on to its button, the stage's or the bar's, so Enter again adds it or takes it out)
+        if (!e.detail && pointed === id) ($('#dock').classList.contains('show') ? $('#dock-install') : $('#w-act')).focus({ preventScroll: true });
       });
       b.addEventListener('contextmenu', (e) => { if (holding || e.pointerType === 'touch') e.preventDefault(); });
       $('#small').appendChild(b);
