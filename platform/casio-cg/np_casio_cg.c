@@ -1,7 +1,8 @@
 /* NumPlay on the Casio fx-CG50, Graph 90+E, fx-CG10 and fx-CG20, with libfxcg (the Prizm SDK).
  *
  * The screen: the 320 x 240 picture in the middle of the 384 x 216 one, its 240 rows shown on 216 (one in ten left
- * out), drawn straight into the calculator's screen memory as the game pushes its rows. The keys: read from the
+ * out), drawn straight into the calculator's screen memory as the game pushes its rows and sent to the LCD whole
+ * where a frame ends (as on the TI-Nspire: where the game waits or reads the keys). The keys: read from the
  * keypad's own registers, every key held (platform/casio-cg/README.md has the map). The time: the calculator's
  * clock, 128 ticks a second. The files: <game>.sav in the storage memory, written when the game saves (at most
  * every few seconds) and when it ends.
@@ -35,7 +36,8 @@ static uint16_t *vram;
 static int16_t row_to[EADK_SCREEN_HEIGHT]; /* the screen row a picture row goes to, -1: left out */
 static int16_t row_from[VH];              /* the picture row a screen row shows */
 static bool started, dirty;
-static int last_update;
+static uint32_t last_update, drawn_at, waited_at, frame_ms; /* (ms) */
+static uint32_t now_ms(void) { return (uint32_t)eadk_timing_millis(); }
 
 static int ticks(void) { return RTC_GetTicks(); } /* 1/128 s, from midnight */
 static void start(void) {
@@ -51,19 +53,33 @@ static void start(void) {
     row_to[s] = (int16_t)d;
   }
   memset(vram, 0, VW * VH * 2);
-  last_update = ticks();
+  last_update = now_ms();
 }
 
 /* ---- the screen ---- */
+/* What the game draws is sent to the LCD (Bdisp_PutDisp_DD, a copy of the whole screen that the calculator waits
+ * for) where a frame ends: where the game waits (wait_for_vblank, msleep, event_get) or, in a game that doesn't wait
+ * between its frames, where it reads the keys. Sent from push_rect every 16 ms, as it was, a slow game's frame went
+ * out split, and over and over: Hollow Knight's 50 strips, each pushed as it was drawn, sent 20 to 36 copies a frame
+ * (Mason363/NumPlay#532). A frame drawn for long with neither (a loading screen) is shown as it goes, after twice
+ * the time between the last two frames (300 ms to 1 s). */
+static uint32_t clamp_ms(uint32_t ms, uint32_t lo, uint32_t hi) { return ms < lo ? lo : ms > hi ? hi : ms; }
 static void update(void) {
   if (!dirty) return;
   dirty = false;
   Bdisp_PutDisp_DD();
-  last_update = ticks();
+  uint32_t now = now_ms();
+  frame_ms = now - last_update, last_update = now;
 }
-static void maybe_update(void) {
-  int t = ticks();
-  if (t - last_update >= 2 || t < last_update) update(); /* (about 60 times a second at most) */
+/* the game waits: its frame is shown */
+static void waits(void) {
+  update();
+  waited_at = now_ms();
+}
+static void drawn(void) {
+  uint32_t now = now_ms();
+  if (!dirty) dirty = true, drawn_at = now;
+  else if (now - drawn_at >= clamp_ms(2 * frame_ms, 300, 1000)) update();
 }
 void eadk_display_push_rect(eadk_rect_t r, const eadk_color_t *px) {
   start();
@@ -73,8 +89,7 @@ void eadk_display_push_rect(eadk_rect_t r, const eadk_color_t *px) {
     int d = row_to[r.y + y];
     if (d >= 0) memcpy(&vram[d * VW + OX + r.x], px + y * r.width, (size_t)w * 2);
   }
-  dirty = true;
-  maybe_update();
+  drawn();
 }
 void eadk_display_push_rect_uniform(eadk_rect_t r, eadk_color_t c) {
   start();
@@ -84,7 +99,7 @@ void eadk_display_push_rect_uniform(eadk_rect_t r, eadk_color_t c) {
     uint16_t *o = &vram[d * VW + OX];
     for (int x = r.x; x < r.x + r.width && x < EADK_SCREEN_WIDTH; x++) o[x] = c;
   }
-  dirty = true;
+  if (!dirty) dirty = true, drawn_at = now_ms(); /* (games fill a pixel a call: no more here) */
 }
 void eadk_display_pull_rect(eadk_rect_t r, eadk_color_t *px) {
   start();
@@ -99,7 +114,7 @@ void eadk_display_pull_rect(eadk_rect_t r, eadk_color_t *px) {
 }
 bool eadk_display_wait_for_vblank(void) {
   start();
-  update();
+  waits();
   return true;
 }
 
@@ -128,6 +143,10 @@ static bool held(const uint16_t *k, int code) {
 }
 eadk_keyboard_state_t eadk_keyboard_scan(void) {
   start();
+  /* the frame's end in a game that doesn't wait between frames (60 a second at most): not in one that waited
+     lately, whose keys may be read while it draws (NumDash reads them between its strips) */
+  uint32_t now = now_ms();
+  if (dirty && now - last_update >= 16 && now - waited_at >= clamp_ms(2 * frame_ms, 100, 1000)) update();
   uint16_t k[8];
   memcpy(k, (const void *)0xA44B0000, sizeof k);
   eadk_keyboard_state_t s = 0;
@@ -138,12 +157,13 @@ eadk_keyboard_state_t eadk_keyboard_scan(void) {
 eadk_event_t eadk_event_get(int32_t *timeout) {
   static eadk_keyboard_state_t before = ~(eadk_keyboard_state_t)0;
   uint64_t until = eadk_timing_millis() + (uint64_t)(timeout && *timeout > 0 ? *timeout : 0);
+  waits(); /* (what was drawn is shown while the key is awaited) */
   do {
     eadk_keyboard_state_t now = eadk_keyboard_scan(), hit = now & ~before;
     before = now;
     for (int k = 0; k < 64; k++)
       if (hit >> k & 1) return (eadk_event_t)k;
-    update();
+    waits();
     OS_InnerWait_ms(5);
   } while (eadk_timing_millis() < until);
   if (timeout) *timeout = 0;
@@ -162,7 +182,7 @@ uint64_t eadk_timing_millis(void) {
 }
 void eadk_timing_msleep(uint32_t ms) {
   start();
-  update();
+  waits();
   if (ms) OS_InnerWait_ms((int)ms);
 }
 void eadk_timing_usleep(uint32_t us) { eadk_timing_msleep((us + 999) / 1000); }
@@ -264,6 +284,11 @@ void abort(void) {
     int key;
     GetKey(&key);
   }
+}
+/* (errno a variable of its own: newlib's is in its reentrancy struct, whose start pulls in its stdio, 3 KB) */
+int *__errno(void) {
+  static int e;
+  return &e;
 }
 void *_sbrk(ptrdiff_t n) { (void)n; errno = ENOMEM; return (void *)-1; }
 int _write(int f, const void *b, size_t n) { (void)f, (void)b; return (int)n; }

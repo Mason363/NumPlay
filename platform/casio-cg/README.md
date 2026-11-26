@@ -10,6 +10,10 @@ make port TARGET=casio-cg        (in a game's folder): build/casio-cg/<game>.g3a
 
 The game's 320 x 240 picture sits in the middle of the 384 x 216 screen, one row in ten left out. An add-in can be 2 MB at most: Celeste, FNAF World and Champion Island are bigger.
 
+The screen: a game draws into the calculator's screen memory, sent to the LCD whole (`Bdisp_PutDisp_DD`, which the calculator waits for) where a frame ends: where the game waits (`eadk_display_wait_for_vblank`, `eadk_timing_msleep`, `eadk_event_get`) or, in a game that doesn't wait between frames, where it reads the keys. A frame drawn for long with neither (a loading screen) is shown as it goes, after twice the time between the last two frames (300 ms to 1 s). As on the TI-Nspire.
+
+Floats: the SuperH has no FPU. `np_float.c` does single precision arithmetic in place of libgcc's, which unpacked each number into a struct (two hundred instructions an addition), with the same results in a third to a half of the time.
+
 | Key | NumWorks key |
 | --- | --- |
 | Arrows | Arrows |

@@ -121,7 +121,7 @@ else ifeq ($(TARGET),casio-cg)
 FXCG ?= $(HOME)/Documents/Assets/toolchains/casio
 CG_PATH = $(FXCG)/sh3eb/bin
 CG_DIR = $(PORT_OUT)/$(PORT_ID)
-CG_SRC = $(PORT_SRC) $(NP_PLATFORM)/casio-cg/np_casio_cg.c $(PORT_COMMON)
+CG_SRC = $(PORT_SRC) $(NP_PLATFORM)/casio-cg/np_casio_cg.c $(NP_PLATFORM)/casio-cg/np_float.c $(PORT_COMMON)
 CG_LIBC = $(FXCG)/newlib/sh-elf
 CG_FLAGS = $(PORT_CFLAGS) -Os -mb -m4a-nofpu -mhitachi -nostdlib -ffunction-sections -fdata-sections \
   -isystem $(CG_LIBC)/include -idirafter $(FXCG)/libfxcg/include
