@@ -5,9 +5,8 @@
 <h1 align="center">NumPlay</h1>
 
 <p align="center">
-  <b>27 games for your NumWorks calculator, in one app.</b><br>
-  Plus 50 big games that install on their own. For the N0110, N0115 and N0120, in English, French and Chinese.<br>
-  Now on the <a href="#pick-your-calculator">TI-84 Plus CE, TI-Nspire CX and Casio fx-CG50</a> too.
+  <b>27 games for your calculator in one app and 50 other games on their own.</b><br>
+  For the NumWorks, <a href="#pick-your-calculator">TI-84 Plus CE, TI-Nspire CX and Casio fx-CG50</a>, in English, French and Chinese.
 </p>
 
 <p align="center">
@@ -23,8 +22,6 @@
 
 <p align="center">
   <a href="https://mason363.github.io/NumPlay/customize/"><img src="docs/media/studio.png" width="640" alt="NumPlay Studio: your games on a shelf beside the calculator they go on. Pick yours, add Game Boy, NES and Sega games, and install in one click"></a>
-  <br>
-  <a href="https://mason363.github.io/NumPlay/customize/"><b>Make your own NumPlay in NumPlay Studio</b></a>
 </p>
 
 <p align="center">
@@ -35,17 +32,17 @@
   <img src="docs/media/launcher.gif" width="560" alt="The NumPlay launcher on a NumWorks calculator, scrolling through its games">
 </p>
 
-⭐ **Enjoying NumPlay?** Give it a star at the top of this page: it takes a second and helps other people find it.<br>
-💡 **Want a game that isn't here?** Check the [roadmap](#roadmap) first, then [ask for it in an issue](https://github.com/Mason363/NumPlay/issues/new/choose).
+⭐ **Enjoying NumPlay?** Star it: it helps others find it.<br>
+💡 **Want another game?** Check the [roadmap](#roadmap), then [ask for it](https://github.com/Mason363/NumPlay/issues/new/choose).
 
 ## Pick your calculator
 
 > [!IMPORTANT]
-> **The TI-84 Plus CE, TI-Nspire and Casio games are out, in beta.** Download yours below, its page says how to install it. Something doesn't work? [Tell me](https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml).
+> **The TI-84 Plus CE, TI-Nspire and Casio games are in beta.** Something doesn't work? [Tell me](https://github.com/Mason363/NumPlay/issues/new?template=beta-tester.yml).
 
 <table>
   <tr>
-    <td align="center" width="20%"><a href="docs/calculators/numworks.md"><img src="docs/media/calcs/numworks.png" height="150" alt="NumWorks"><br><b>NumWorks</b></a><br><sub>N0110, N0115, N0120<br>27 games, 50 big games</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay.nwa">Download</a></td>
+    <td align="center" width="20%"><a href="docs/calculators/numworks.md"><img src="docs/media/calcs/numworks.png" height="150" alt="NumWorks"><br><b>NumWorks</b></a><br><sub>N0110, N0115, N0120<br>77 games</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay.nwa">Download</a></td>
     <td align="center" width="20%"><a href="docs/calculators/ti-84-plus-ce.md"><img src="docs/media/calcs/ti84ce.png" height="150" alt="TI-84 Plus CE"><br><b>TI-84 Plus CE</b></a><br><sub>and TI-83 Premium CE<br>15 games</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-TI84CE.zip">Download</a></td>
     <td align="center" width="20%"><a href="docs/calculators/ti-nspire.md"><img src="docs/media/calcs/nspire.png" height="150" alt="TI-Nspire CX II"><br><b>TI-Nspire CX</b></a><br><sub>CX and CX II, with Ndless<br>78 games</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Nspire.zip">Download</a></td>
     <td align="center" width="20%"><a href="docs/calculators/casio-fx-cg50.md"><img src="docs/media/calcs/casio_cg50.png" height="150" alt="Casio fx-CG50"><br><b>Casio fx-CG50</b></a><br><sub>and Graph 90+E, fx-CG10, fx-CG20<br>73 games</sub><br><a href="https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-CasioCG.zip">Download</a></td>
@@ -53,11 +50,11 @@
   </tr>
 </table>
 
-Each calculator's page has its download and how to install it. The Casio Graph 35+E II comes later too.
+The Casio Graph 35+E II comes later.
 
 ## Games
 
-The games with a blue ring are all in one app, **NumPlay.nwa**. The others are big games: each one installs on its own.
+Games with a blue ring are all in **NumPlay.nwa**. The other games are downloaded independently.
 
 <table>
   <tr>
@@ -195,46 +192,42 @@ The games with a blue ring are all in one app, **NumPlay.nwa**. The others are b
   </tr>
 </table>
 
-## Your own Game Boy, NES, Sega and PICO-8 games
+## Your own games and files
 
 <table>
   <tr>
-    <td align="center" width="33%"><a href="games/retrogo/README.md"><img src="docs/media/readme/thumb_retrogo.png" width="200" alt="Retro-Go"><br><b>Retro-Go</b></a><br><sub>Game Boy, NES, Sega, Game & Watch and Mega Drive games, with Retro-Go's menus and save slots</sub></td>
-    <td align="center" width="33%"><a href="games/numpico/README.md"><img src="docs/media/readme/thumb_numpico.png" width="200" alt="NumPico"><br><b>NumPico</b></a><br><sub>Your own PICO-8 carts</sub></td>
+    <td align="center" width="33%"><a href="games/retrogo/README.md"><img src="docs/media/readme/thumb_retrogo.png" width="200" alt="Retro-Go"><br><b>Retro-Go</b></a><br><sub>Game Boy, NES, Sega, Game & Watch and Mega Drive games</sub></td>
+    <td align="center" width="33%"><a href="games/numpico/README.md"><img src="docs/media/readme/thumb_numpico.png" width="200" alt="NumPico"><br><b>NumPico</b></a><br><sub>PICO-8 carts</sub></td>
   </tr>
 </table>
 
-Retro-Go plays the Game Boy, Game Boy Color, NES, Master System, Game Gear, SG-1000, ColecoVision, Game & Watch and Mega Drive games you choose: games you own, or free ones like homebrew games. It isn't in NumPlay.nwa. Drop your games on [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) and you get a NumPlay with Retro-Go and your games inside. Big games, like the 2 MB Game Boy Color ones, need the extra space of Epsilon 26 or Nwagra: pick it in NumPlay Studio. Mega Drive games come in Retro-Go on its own, RetroGo.nwa, without NumPlay.
-
-NumPico plays the PICO-8 carts you choose: drop your .p8 and .p8.png files on [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) and you get a NumPlay with NumPico and your carts inside. Most carts fit; the biggest need more memory than the calculator has.
-
-Other apps for your calculator go in too: drop their .nwa files on [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) and each one gets its own card in your NumPlay.
+Drop them on [NumPlay Studio](https://mason363.github.io/NumPlay/customize/): games you own go in Retro-Go, PICO-8 carts in NumPico, and other apps, pictures, PDFs, videos and books each become an app. The largest games, like 2 MB Game Boy Color ones, need Epsilon 26 or Nwagra. Mega Drive games come in RetroGo.nwa, on its own.
 
 ## How to install
 
-You need your calculator, its USB cable, and a computer with **Google Chrome** or **Microsoft Edge**. It takes about 2 minutes.
+You need the calculator's USB cable and **Chrome** or **Edge**.
 
-1. **Download** [NumPlay.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay.nwa), or one of the big games above. Want other games in it? Pick them in [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) and it makes a NumPlay.nwa with just those.
-2. **Plug** your calculator into the computer and turn it on.
-3. **Go to** [my.numworks.com/apps](https://my.numworks.com/apps) and log in. No account? Sign up there, it's free.
-4. Click **Connect**, then pick your calculator in the small window that opens.
-5. **Add** the file you downloaded, then click **Install**. Keep the calculator plugged in until it's done.
-6. **Play!** On your calculator, press the **Home** key (the little house), go to the end of the apps and open **NumPlay**.
+1. **Download** [NumPlay.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay.nwa) or a game above, or make your own in [NumPlay Studio](https://mason363.github.io/NumPlay/customize/).
+2. **Plug in** your calculator and turn it on.
+3. **Go to** [my.numworks.com/apps](https://my.numworks.com/apps) and log in.
+4. Click **Connect** and pick your calculator.
+5. **Add** the file and click **Install**. Keep it plugged in until it's done.
+6. **Play:** press **Home** and open **NumPlay**, at the end of the apps.
 
 > [!TIP]
-> **Updating?** Install the new file the same way: your progress comes back by itself. Already have other apps from that website? Add them again in step 5 to keep them.
+> **Updating?** Install it the same way: your progress comes back. Add your other apps again in step 5 to keep them.
 
 <details>
 <summary><b>Which calculators work</b></summary>
 
 | Calculator | Software | What runs |
 | --- | --- | --- |
-| N0120 | Epsilon 23.2 or newer (the calculator's own software) | Everything |
-| N0110, N0115 | Epsilon 23.2 or newer | Everything. These models are about 2.5 times slower, so the big games show fewer frames per second, but they keep their speed. |
-| N0110, N0115 | Upsilon | NumPlay-Upsilon.nwa: 24 games (see Other versions) |
-| Any | Custom software built from Epsilon 25.2's source | Everything. These builds can give apps less memory (133 KB): on one that gives even less, a game that needs more says how much on its card. |
+| N0120 | Epsilon 23.2 or newer | Everything |
+| N0110, N0115 | Epsilon 23.2 or newer | Everything, at fewer frames per second in the heaviest games |
+| N0110, N0115 | Upsilon | NumPlay-Upsilon.nwa: 24 games |
+| Any | Custom builds of Epsilon 25.2 | Everything; a game that needs more memory than yours gives says so |
 
-To see your calculator's model and software, open **Settings**, then **About**. To update the software, go to [my.numworks.com](https://my.numworks.com) with the calculator plugged in.
+Your model and software: **Settings**, then **About**. To update it: [my.numworks.com](https://my.numworks.com).
 
 </details>
 
@@ -243,40 +236,39 @@ To see your calculator's model and software, open **Settings**, then **About**. 
 
 | File | What it is |
 | --- | --- |
-| [NumPlay-Invisible.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Invisible.nwa) | The same app, hidden: a blank white icon with no name, so it looks like an empty spot on the home screen. |
-| [NumPlay-Matrices.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Matrices.nwa) | The same app, in disguise: it looks like a math app called **Matrices**. |
-| [NumPlay-French.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-French.nwa) | NumPlay en français : tous les jeux, en français. |
-| [NumPlay-Chinese.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Chinese.nwa) | NumPlay 中文版：所有游戏，简体中文。 |
+| [NumPlay-Invisible.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Invisible.nwa) | Hidden: a blank icon with no name |
+| [NumPlay-Matrices.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Matrices.nwa) | Disguised as a math app, **Matrices** |
+| [NumPlay-French.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-French.nwa) | En français |
+| [NumPlay-Chinese.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Chinese.nwa) | 简体中文 |
 | [UniversalPaperclips-French.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/UniversalPaperclips-French.nwa) | Universal Paperclips en français. |
-| [NumPlay-Upsilon.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Upsilon.nwa) | For calculators running **Upsilon**: the 24 games that fit in the memory it gives apps. |
+| [NumPlay-Upsilon.nwa](https://github.com/Mason363/NumPlay/releases/latest/download/NumPlay-Upsilon.nwa) | For **Upsilon**: the 24 games that fit |
 
 <img src="docs/media/home_invisible.png" width="240" alt="The home screen with NumPlay-Invisible: the spot after Settings looks empty"> <img src="docs/media/home_matrices.png" width="240" alt="The home screen with NumPlay-Matrices among the calculator's own apps">
 
-Install any of them instead of NumPlay.nwa: your progress is the same in each. A few things stay in English in French and Chinese: words drawn into pictures, level names, key names, NumBlocks' commands and Portal Returns' stories. The big games come in English only, but Universal Paperclips also comes in French.
+Install one instead of NumPlay.nwa: your progress carries over. Words in pictures, level and key names stay in English. The games on their own are in English only, but Universal Paperclips also comes in French.
 
-**On Upsilon,** the NumWorks website doesn't install apps (it shows 0 KB free). Install [Node.js](https://nodejs.org), plug in the calculator, and run `npx nwlink install-nwa NumPlay-Upsilon.nwa` in the folder you downloaded it to. This needs an Upsilon that runs .nwa apps: its builds from June 2026 on. On an older one, like Upsilon 1.0.1, nwlink stops with "invalid length for memory": update Upsilon first from [its website](https://getupsilon.web.app).
+**On Upsilon,** install with [Node.js](https://nodejs.org): `npx nwlink install-nwa NumPlay-Upsilon.nwa`. It needs an Upsilon from June 2026 or later; on an older one nwlink says "invalid length for memory", so [update it](https://getupsilon.web.app) first.
 
 </details>
 
 <details>
 <summary><b>Keeping your saves</b></summary>
 
-- Your progress is saved on the calculator as files. Turning it off keeps them.
-- **Installing apps erases these files**, all but the Python scripts. So NumPlay keeps a copy of every save in a Python script, `numplay_saves.py` (the big games have their own), and your progress comes back the first time you open the game. Don't delete these scripts.
-- **A restart erases every file**, scripts included: the reset button on the back, or a crash. If your calculator restarts by itself while you play, please [open an issue](https://github.com/Mason363/NumPlay/issues/new/choose) with the game and what you were doing.
-- **Back them up in NumPlay Studio.** Plug your calculator into a computer, open [NumPlay Studio's Saves](https://mason363.github.io/NumPlay/customize/?saves) in Chrome or Edge and press Connect your calculator. It keeps a copy of every game's save each time you plug in, and puts them back after an update or a restart.
-- The calculator holds 42 KB of files in all. A big NumBlocks world can fill it: delete worlds or scripts you don't need to make room.
+- **Installing apps erases saves**, but not Python scripts: each game keeps a copy in one (`numplay_saves.py` and others) and gets it back. Don't delete them.
+- **A reset erases everything**, scripts included. If your calculator resets by itself, [tell me](https://github.com/Mason363/NumPlay/issues/new/choose) what you were playing.
+- **Back them up** in [NumPlay Studio's Saves](https://mason363.github.io/NumPlay/customize/?saves): it copies them each time you plug in, and puts them back after an update or a reset.
+- The calculator holds 42 KB of files: a big NumBlocks world can fill it.
 
 </details>
 
 <details>
 <summary><b>The app doesn't show up after installing</b></summary>
 
-- **The calculator restarts once after installing:** it shows the NumWorks logo, then asks for your language. That's normal. Your apps are at the end of the home screen.
-- **Each big game installs alone,** without NumPlay and without the other big games: if you pick more than fits, they don't install.
-- **Installing replaces the apps you installed before.** To keep one, add it again with the new one.
+- **It restarts once after installing** and asks for your language: that's normal. Your apps are at the end of the home screen.
+- **Some games take the whole space:** pick more than fits and they don't install.
+- **Installing replaces your other apps:** add them again to keep them.
 - **Nothing happens when you plug it in?** Try another cable: some only charge.
-- Check your calculator's software is **Epsilon 23.2 or newer** (Settings, then About).
+- You need **Epsilon 23.2 or newer** (Settings, then About).
 
 </details>
 
@@ -293,7 +285,7 @@ Install any of them instead of NumPlay.nwa: your progress is the same in each. A
 
 ## Make your own NumWorks games
 
-NumPlay is also a kit for making games and apps for the NumWorks calculator. Start from its template in one command, then use the same pieces its games are built with: 2D and 3D drawing that fits the calculator's memory, fonts in three languages, saves that survive a reinstall, physics, and an emulator that tests your game without a calculator. It works on macOS, Windows and Linux.
+NumPlay is also a kit for making NumWorks games: a template, 2D and 3D drawing, fonts in three languages, saves, physics and an emulator. On macOS, Windows and Linux.
 
 ```bash
 python3 tools/setup.py
@@ -303,11 +295,11 @@ python3 tools/setup.py
 python3 tools/new_game.py "My Game"
 ```
 
-Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, and **[Contributing](CONTRIBUTING.md)** if you'd like to help with NumPlay itself.
+Then read **[Make your own NumWorks game](docs/make-a-game.md)**. To help with NumPlay: **[Contributing](CONTRIBUTING.md)**.
 
 ## Roadmap
 
-[Vote](https://github.com/Mason363/NumPlay/issues?q=is%3Aissue+is%3Aopen+label%3A%22on+roadmap%22+sort%3Areactions-%2B1-desc) with a 👍 on the game you want next. The most voted come first.
+[Vote](https://github.com/Mason363/NumPlay/issues?q=is%3Aissue+is%3Aopen+label%3A%22on+roadmap%22+sort%3Areactions-%2B1-desc) 👍 for the next game. The most voted come first.
 
 <details>
 <summary><b>Done earlier: 49 more</b></summary>
@@ -318,25 +310,25 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] The Final Earth 2
 - [x] The Powder Toy (NumPowder)
 - [x] Block Blast
-- [x] Undertale: the whole Underground, from the Ruins to New Home and the neutral ending
-- [x] The Binding of Isaac: a whole run, from the Basement to the Cathedral
-- [x] Plants vs. Zombies: the whole Adventure, from the front lawn to the roof and Dr. Zomboss
+- [x] Undertale: the whole Underground
+- [x] The Binding of Isaac: a whole run
+- [x] Plants vs. Zombies: the whole Adventure
 - [x] Doom: Knee-Deep in the Dead, the shareware episode
-- [x] Five Nights at Freddy's: all five nights, the 6th and the Custom Night
-- [x] Pong and more two-player games: 2 Players, with Pong, Air Hockey, Tanks and Light Cycles
+- [x] Five Nights at Freddy's: every night
+- [x] 2 Players: Pong, Air Hockey, Tanks and Light Cycles
 - [x] Cookie Clicker
 - [x] Level Devil
-- [x] Sonic the Hedgehog: the whole 1991 game, Green Hill to the Final Zone, with the Special Stages
+- [x] Sonic the Hedgehog: the whole 1991 game
 - [x] Subway Surfers
 - [x] Hill Climb Racing
 - [x] Space Invaders
 - [x] Sokoban
 - [x] Sudoku
 - [x] Ultimate Tic-Tac-Toe
-- [x] Super Mario 64, in a repository of its own: [NumWorks-Super-Mario-64](https://github.com/Mason363/NumWorks-Super-Mario-64)
-- [x] Super Mario Bros., in a repository of its own: [NumWorks-Super-Mario-Bros](https://github.com/Mason363/NumWorks-Super-Mario-Bros)
-- [x] The Nether and the End in NumBlocks: portals, fortresses, strongholds and the Ender Dragon, in NumBlocks.nwa
-- [x] [Retro-Go](https://github.com/ducalex/retro-go) for Game Boy, Game Boy Color, NES, Master System and Game Gear: upload your own ROMs on the website and get a .nwa app that plays them
+- [x] Super Mario 64, in [its own repository](https://github.com/Mason363/NumWorks-Super-Mario-64)
+- [x] Super Mario Bros., in [its own repository](https://github.com/Mason363/NumWorks-Super-Mario-Bros)
+- [x] The Nether and the End in NumBlocks
+- [x] [Retro-Go](https://github.com/ducalex/retro-go) for Game Boy, Game Boy Color, NES, Master System and Game Gear
 - [x] Suika Game
 - [x] Stickman Hook
 - [x] Donkey Kong
@@ -346,7 +338,7 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] Tomb of the Mask
 - [x] UNO
 - [x] Friday Night Funkin'
-- [x] [NumPlay Studio](https://mason363.github.io/NumPlay/customize/), the website where you pick the games in your NumPlay, with Enlarged Extra Apps to fit several big games
+- [x] [NumPlay Studio](https://mason363.github.io/NumPlay/customize/), to pick the games in your NumPlay
 - [x] Universal Paperclips
 - [x] Bad Time Simulator: the Sans fight
 - [x] Mahjong
@@ -355,37 +347,36 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [x] Temple Run
 - [x] SG-1000 games in Retro-Go
 - [x] Five Nights at Freddy's 2
-- [x] Famidash, made for the calculator (not through an emulator)
+- [x] Famidash, made for the calculator
 - [x] Crossy Road: the characters and the prize machine
-- [x] Famidash: its newest and fullest version, HUGE, with 173 levels
+- [x] Famidash HUGE: 173 levels
 - [x] ColecoVision games in Retro-Go
 - [x] Five Nights at Freddy's 3
-
 - [x] Five Nights at Freddy's 4
 - [x] Clash Royale, against bots
 - [x] Cat Ninja
 - [x] A tower defense game: Kingdom Rush
-- [x] Deltarune: Chapter 1's start, from Kris's room to Castle Town, Lancer, Ralsei's lessons and the Field's first rooms
+- [x] Deltarune: Chapter 1's start
 - [x] Villages, desert temples and mineshafts in NumBlocks
 - [x] FNAF World
 - [x] Mr. Bullet
 
 </details>
 
-- [x] A PICO-8 emulator, NumPico: add your own .p8 games on the website
+- [x] NumPico, for PICO-8 carts
 - [x] Moto X3M
 - [x] Among Us, against bots
 - [x] 2 3 4 Player Games, with teams
 - [x] Deltarune: the Field, the Great Board and the start of the Forest
-- [x] Hollow Knight: Fungal Wastes (Queen's Station, Mantis Village and the Mantis Lords)
+- [x] Hollow Knight: Fungal Wastes
 - [x] circloO
 - [x] Kingdom Rush: the heroes
-- [x] Retro-Go: ROMs trimmed of their padding, so more of them fit
-- [x] More of Retro-Go: Game & Watch and Mega Drive
+- [x] Retro-Go: more ROMs fit
+- [x] Retro-Go: Game & Watch and Mega Drive
 - [ ] Into the Breach
 - [ ] A racing game: F1 or GT3
-- [ ] Deltarune: the rest of Chapter 1 (the Forest, the shops, the Card Castle, Jevil, the King), and each later chapter as an app of its own
-- [ ] Hollow Knight: more of Hallownest past Mantis Village (the rest of the Fungal Wastes, the City of Tears and on)
+- [ ] Deltarune: the rest of Chapter 1, and each later chapter
+- [ ] Hollow Knight: more of Hallownest past Mantis Village
 - [ ] Hill Climb Racing: the stages and vehicles added after version 1.10.2
 - [ ] Tower Destiny Survive
 - [ ] My Little Universe
@@ -393,16 +384,16 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Castle Crashers
 - [ ] Hotline Miami
 - [ ] Brawl Stars, against bots
-- [ ] Papers, Please, with the story and Endless
+- [ ] Papers, Please
 - [ ] OMORI
 - [ ] florr.io
 - [ ] Rider Worlds
-- [ ] Hollow Knight: Godhome, its boss fights in an app of their own
+- [ ] Hollow Knight: Godhome
 - [ ] Animal Well
 - [ ] Rider.io
 - [ ] Getting Over It
 - [ ] Hill Climb Racing 2
-- [ ] Hill Climb Racing in 3D, with a scooter, a BMX, a skateboard and roller skates
+- [ ] Hill Climb Racing in 3D
 - [ ] Dog Hotel
 - [ ] Kingdom Rush: Frontiers, Origins and Vengeance
 - [ ] Cult of the Lamb
@@ -422,16 +413,16 @@ Read **[Make your own NumWorks game](docs/make-a-game.md)** to go from there, an
 - [ ] Bowmasters, for two players or against a bot
 - [ ] OvO
 - [ ] Ragdoll Archers
-- [ ] The big games in French and Chinese too
+- [ ] The other games in French and Chinese too
 
 ## Credits
 
-NumPlay is a fan project, made out of love for these games and for the NumWorks calculator. If you enjoy a game here, go play the original and support the people who made it. NumWorks also has a great community making games: try [Numcraft](https://github.com/yannis300307/NumcraftRust), [Celeste Classic](https://github.com/BenchatonDev/Celeste-Numworks), [Tatone26's All the Apps](https://github.com/Tatone26/Numworks-games), the apps on [Nwagyu](https://nwagyu.org/guide/) and [yannis300307's list](https://gist.github.com/yannis300307/9123136f90877107ec0d49ba96b303e5).
+NumPlay is a fan project. If you enjoy a game here, play the original and support its makers. More NumWorks games: [Numcraft](https://github.com/yannis300307/NumcraftRust), [Celeste Classic](https://github.com/BenchatonDev/Celeste-Numworks), [Tatone26's All the Apps](https://github.com/Tatone26/Numworks-games), the apps on [Nwagyu](https://nwagyu.org/guide/) and [yannis300307's list](https://gist.github.com/yannis300307/9123136f90877107ec0d49ba96b303e5).
 
-- **reversal_lava63**, a beta tester who plays NumPlay's apps on a real calculator and reports what's wrong.
-- **[Gabriel](https://github.com/tomcalif9-stack)**, who made the home screen's moving backgrounds, translated NumPlay into French first, and tests it on Upsilon and an N0115.
-- **[LanoCodes17](https://github.com/LanoCodes17)**, whose idea the Konami code is: one of the secret ways into NumPlay from Matrices.
-- Everyone who reported a bug or suggested an improvement that made it in: **NEE** ([reversallava63](https://github.com/reversallava63)), **Gabriel**, **[briac134](https://github.com/briac134)**, **[Raphanobie](https://github.com/Raphanobie)**, **[zbigzo](https://github.com/zbigzo)**, **Yacine**, **PelicanMan75**, **[Spykube](https://github.com/Spykube)**, **[axio-m](https://github.com/axio-m)**, **[CleanCEZ](https://github.com/CleanCEZ)**, **[ZIOTI](https://github.com/ZIOTI)**, **[Saphire-132](https://github.com/Saphire-132)**, **[thegunpal](https://github.com/thegunpal)**, **[LilyTheCuteCatgirl](https://github.com/LilyTheCuteCatgirl)**, **[Henri-VIP](https://github.com/Henri-VIP)**, **[elouangrimm](https://github.com/elouangrimm)**, **[louloubrawl050607](https://github.com/louloubrawl050607)**, **[Spaghettiboy-55](https://github.com/Spaghettiboy-55)**, **[mosesfosterwtbw-a11y](https://github.com/mosesfosterwtbw-a11y)**, **[finleyrichard123-creator](https://github.com/finleyrichard123-creator)**, **[Banane-3000](https://github.com/Banane-3000)**, **[Squ1r3l](https://github.com/Squ1r3l)**, **[Truyty-1](https://github.com/Truyty-1)**, **[hellellelle](https://github.com/hellellelle)**, **[MadTDawg5](https://github.com/MadTDawg5)**, **[SnoepieMC](https://github.com/SnoepieMC)**, **[akiraunao-rgb](https://github.com/akiraunao-rgb)**, **[GraniteBlock](https://github.com/GraniteBlock)**, **[N1col4s21](https://github.com/N1col4s21)**, **[Alexoudu73](https://github.com/Alexoudu73)**, **[24Forrin](https://github.com/24Forrin)**, **[xLEVK1NGx](https://github.com/xLEVK1NGx)**, **[9ewrff](https://github.com/9ewrff)**, **[matos91250-cpu](https://github.com/matos91250-cpu)**, **[douwepronl](https://github.com/douwepronl)**, **[GLaDOS-still-alive](https://github.com/GLaDOS-still-alive)**, **[Temumu475](https://github.com/Temumu475)**, **[patrickivasenko-lang](https://github.com/patrickivasenko-lang)**, **[KYKY5435](https://github.com/KYKY5435)**, **[Denisarbeto](https://github.com/Denisarbeto)**, **[Someone3141591](https://github.com/Someone3141591)**, **[jobusbobus](https://github.com/jobusbobus)**, **[Drayen-Virest](https://github.com/Drayen-Virest)**, **[vortx25](https://github.com/vortx25)** and **[md3rn](https://github.com/md3rn)**. Thank you!
+- **reversal_lava63**, who beta tests on a real calculator.
+- **[Gabriel](https://github.com/tomcalif9-stack)**, who made the home screen's moving backgrounds and the first French translation, and tests on Upsilon and an N0115.
+- **[LanoCodes17](https://github.com/LanoCodes17)**, whose idea the Konami code into NumPlay from Matrices is.
+- Everyone whose bug report or idea made it in: **NEE** ([reversallava63](https://github.com/reversallava63)), **Gabriel**, **[briac134](https://github.com/briac134)**, **[Raphanobie](https://github.com/Raphanobie)**, **[zbigzo](https://github.com/zbigzo)**, **Yacine**, **PelicanMan75**, **[Spykube](https://github.com/Spykube)**, **[axio-m](https://github.com/axio-m)**, **[CleanCEZ](https://github.com/CleanCEZ)**, **[ZIOTI](https://github.com/ZIOTI)**, **[Saphire-132](https://github.com/Saphire-132)**, **[thegunpal](https://github.com/thegunpal)**, **[LilyTheCuteCatgirl](https://github.com/LilyTheCuteCatgirl)**, **[Henri-VIP](https://github.com/Henri-VIP)**, **[elouangrimm](https://github.com/elouangrimm)**, **[louloubrawl050607](https://github.com/louloubrawl050607)**, **[Spaghettiboy-55](https://github.com/Spaghettiboy-55)**, **[mosesfosterwtbw-a11y](https://github.com/mosesfosterwtbw-a11y)**, **[finleyrichard123-creator](https://github.com/finleyrichard123-creator)**, **[Banane-3000](https://github.com/Banane-3000)**, **[Squ1r3l](https://github.com/Squ1r3l)**, **[Truyty-1](https://github.com/Truyty-1)**, **[hellellelle](https://github.com/hellellelle)**, **[MadTDawg5](https://github.com/MadTDawg5)**, **[SnoepieMC](https://github.com/SnoepieMC)**, **[akiraunao-rgb](https://github.com/akiraunao-rgb)**, **[GraniteBlock](https://github.com/GraniteBlock)**, **[N1col4s21](https://github.com/N1col4s21)**, **[Alexoudu73](https://github.com/Alexoudu73)**, **[24Forrin](https://github.com/24Forrin)**, **[xLEVK1NGx](https://github.com/xLEVK1NGx)**, **[9ewrff](https://github.com/9ewrff)**, **[matos91250-cpu](https://github.com/matos91250-cpu)**, **[douwepronl](https://github.com/douwepronl)**, **[GLaDOS-still-alive](https://github.com/GLaDOS-still-alive)**, **[Temumu475](https://github.com/Temumu475)**, **[patrickivasenko-lang](https://github.com/patrickivasenko-lang)**, **[KYKY5435](https://github.com/KYKY5435)**, **[Denisarbeto](https://github.com/Denisarbeto)**, **[Someone3141591](https://github.com/Someone3141591)**, **[jobusbobus](https://github.com/jobusbobus)**, **[Drayen-Virest](https://github.com/Drayen-Virest)**, **[vortx25](https://github.com/vortx25)** and **[md3rn](https://github.com/md3rn)**. Thank you!
 - The other calculators' builds use the [CE C toolchain](https://github.com/CE-Programming/toolchain) and its libraries, [Ndless](https://github.com/ndless-nspire/Ndless), [libfxcg](https://github.com/Jonimoose/libfxcg), [newlib](https://sourceware.org/newlib/), GCC, [SDL](https://libsdl.org) and [Emscripten](https://emscripten.org).
 
 <details>
