@@ -881,7 +881,10 @@ def play(name, path, out, index=None, copy=None, tag=None, start=800):
     game's own copy of its saves: only the scripts are left before the second session, as after installing
     the app again. The problems, the stack used and the files after the first session."""
     nwa, save, keys1, home1, keys2, home2 = GAMES[name]
-    emu.configure(xl=os.path.getsize(path) > 2 * 1024 * 1024)  # (a 6 MB app: Enlarged Extra Apps)
+    # (a 6 MB app: Enlarged Extra Apps; the rest as the caller has it, as tests/test_kit.py sets the RAM and where
+    # the app area starts)
+    emu.configure(emu.MODEL, emu.SYSTEM, emu.EXT_RAM_LEN, xl=os.path.getsize(path) > 2 * 1024 * 1024,
+                  apps_start=emu.EXT_FLASH_START)
     tag = tag or name
     if index is not None:  # Home in a game quits NumPlay altogether
         keys1, home1 = through_launcher(index, keys1, home1, start)
