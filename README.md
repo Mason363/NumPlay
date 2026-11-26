@@ -35,6 +35,19 @@
 ⭐ **Enjoying NumPlay?** Star it: it helps others find it.<br>
 💡 **Want another game?** Check the [roadmap](#roadmap), then [ask for it](https://github.com/Mason363/NumPlay/issues/new/choose).
 
+## Your pictures, PDFs, videos and books
+
+Drop them on **Your files** in [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) and each one becomes an app on your NumWorks, with its own icon.
+
+<table>
+  <tr>
+    <td align="center" width="25%"><img src="docs/media/files_picture.png" width="200" alt="Van Gogh's The Starry Night as an app, zoomed in, with a small map of the painting in the corner"><br><b>Pictures</b><br><sub>+ and − zoom, arrows move</sub></td>
+    <td align="center" width="25%"><img src="docs/media/files_pdf.png" width="200" alt="A scientific paper's page as an app, zoomed into its figure, with its page number and a map"><br><b>PDFs</b><br><sub>Every page, zoom in to read</sub></td>
+    <td align="center" width="25%"><img src="docs/media/files_video.png" width="200" alt="A video of Hokusai's The Great Wave paused, with its time and length"><br><b>Videos</b><br><sub>OK pauses, Left and Right skip</sub></td>
+    <td align="center" width="25%"><img src="docs/media/files_book.png" width="200" alt="A book's first page, set in Nunito, with its page number"><br><b>Books</b><br><sub>+ and − change the text size</sub></td>
+  </tr>
+</table>
+
 ## Pick your calculator
 
 > [!IMPORTANT]
@@ -192,7 +205,7 @@ Games with a blue ring are all in **NumPlay.nwa**. The other games are downloade
   </tr>
 </table>
 
-## Your own games and files
+## Your own games
 
 <table>
   <tr>
@@ -201,7 +214,7 @@ Games with a blue ring are all in **NumPlay.nwa**. The other games are downloade
   </tr>
 </table>
 
-Drop them on [NumPlay Studio](https://mason363.github.io/NumPlay/customize/): games you own go in Retro-Go, PICO-8 carts in NumPico, and other apps, pictures, PDFs, videos and books each become an app. The largest games, like 2 MB Game Boy Color ones, need Epsilon 26 or Nwagra. Mega Drive games come in RetroGo.nwa, on its own.
+Drop them on [NumPlay Studio](https://mason363.github.io/NumPlay/customize/): games you own go in Retro-Go, PICO-8 carts in NumPico, and other apps each get their own card. The largest games, like 2 MB Game Boy Color ones, need Epsilon 26 or Nwagra. Mega Drive games come in RetroGo.nwa, on its own.
 
 ## How to install
 
@@ -507,6 +520,7 @@ NumPlay is a fan project. If you enjoy a game here, play the original and suppor
 - The **Nunito** and **Rammetto One** fonts, under the SIL Open Font License ([LICENSES](LICENSES)).
 - The **Fusion Pixel** font by TakWolf (with glyphs from **Ark Pixel**), under the SIL Open Font License ([license](LICENSES/OFL-1.1-Fusion-Pixel.txt)), for the Chinese letters.
 - **[Upsilon](https://github.com/UpsilonNumworks/Upsilon)**, the custom software NumPlay-Upsilon.nwa runs on.
+- Your files' apps show pictures and pages with a JPEG decoder after stb_image's (public domain), and NumPlay Studio draws PDFs with Mozilla's **[pdf.js](https://github.com/mozilla/pdf.js)** (Apache License 2.0, [license](LICENSES/Apache-2.0-pdf.js.txt)). The pictures above show [*Observation of Gravitational Waves from a Binary Black Hole Merger*](https://arxiv.org/abs/1602.03837) by the LIGO Scientific Collaboration and Virgo Collaboration (CC BY 4.0), and Van Gogh's *The Starry Night* and Hokusai's *The Great Wave off Kanagawa* (public domain).
 - **NumPlay Studio** builds your NumPlay right in the browser with **GNU ld and objcopy** from [binutils](https://www.gnu.org/software/binutils/) (GNU GPL v3), compiled to WebAssembly with [emscripten](https://emscripten.org). Your own .nwa apps in it come from **[Banane-3000](https://github.com/Banane-3000)**'s idea and fork.
 
 </details>
