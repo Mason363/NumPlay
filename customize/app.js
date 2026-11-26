@@ -351,6 +351,7 @@
   const restLine = () => (other() ? CALCS[st.calc].name : st.app.name.trim() || 'NumPlay').toUpperCase();
   const isIn = (id) => (other() ? st.port[st.calc].has(id) : st.picked.has(id));
   function point(what, b) {
+    if (what) stopArrival();  // (its clip goes over the screen)
     const stage = $('#stage'), h = innerWidth <= 860 ? stage.offsetHeight : 0;
     for (const x of document.querySelectorAll('.app.at')) x.classList.remove('at');
     pointed = what || null;
@@ -501,7 +502,7 @@
   // an icon in the air from a to b, on one arc (it bows up when it goes across, to the side when it goes up or down),
   // a little bigger at the top of it, under the page's top line; it fades at an end that is out of sight
   function fly(src, a, b, ms, o = {}) {
-    if (still() || !a || !b) return;
+    if (still() || !a || !b) return null;
     const dx = b.x - a.x, dy = b.y - a.y, dist = Math.hypot(dx, dy) || 1, bow = Math.min(70, dist * 0.16);
     const px = Math.abs(dy) / dist * bow, py = -Math.abs(dx) / dist * bow, top = Math.min(a.y, b.y, 104), N = 14, frames = [];
     for (let i = 0; i <= N; i++) {
@@ -515,6 +516,7 @@
     (o.host || document.body).appendChild(f);
     const run = f.animate(frames, { duration: ms, delay: o.delay || 0, easing: 'cubic-bezier(0.5, 0, 0.3, 1)', fill: 'both' });
     run.onfinish = run.oncancel = () => f.remove();
+    return run;
   }
   // (the stage's button, or two presses on an icon: the game goes in or comes out, and is seen to: it flies from its
   // place on the shelf to its new one, among yours or back in its group)
@@ -522,6 +524,7 @@
   function flyToggle(id) {
     const b = buttons.get(id);
     if (b.classList.contains('nofit')) return refuse(id);
+    stopArrival();
     const was = isIn(id), src = b.querySelector('img').src, held = document.activeElement === $('#w-act');
     const from = shelfSpot(b), ms = still() || !from ? 0 : 460;
     landAt = ms;
@@ -549,19 +552,34 @@
     else { deselect(); what.remove(); }
   }
   // (the page arriving: the screen starts with NumPlay alone on it; each game's block and its share of the space
-  // show as its icon lands)
+  // show as its icon lands. Anything that needs the screen or the shelf as they are ends it there: stopArrival)
+  let arriving = null;
+  function stopArrival() {
+    if (!arriving) return;
+    const all = arriving, fill = $('#m-fill');
+    arriving = null;
+    for (const a of all) a.cancel();
+    leftRun++;
+    leftNow = null;
+    fill.style.transition = 'none';
+    words();
+    void fill.offsetWidth;
+    fill.style.transition = '';
+  }
   function showLoad() {
     if (still() || other() || tab !== 'games' || pointed || !seen(rectOf($('#screen'))) || !document.body.animate) return;
     const sizes = new Map(items().map((it) => [it.key, it.bytes]));
     const ids = ordered().filter((id) => tiles.get(id) && buttons.get(id));
     if (!ids.length) return;
     const fill = $('#m-fill'), cap = capacity(), used = usedBytes(), ms = 480, gap = Math.min(52, 1300 / ids.length);
+    const going = [];
     const lands = ids.map((id, i) => {
       const at = 220 + i * gap, land = at + ms - 70;
-      fly(buttons.get(id).querySelector('img').src, shelfSpot(buttons.get(id)), calcSpot(id), ms, { delay: at, host: innerWidth > 860 ? $('#stage') : null });
-      tiles.get(id).animate(POP, { duration: 240, delay: land, easing: SPRING, fill: 'backwards' });
+      going.push(fly(buttons.get(id).querySelector('img').src, shelfSpot(buttons.get(id)), calcSpot(id), ms, { delay: at, host: innerWidth > 860 ? $('#stage') : null }));
+      going.push(tiles.get(id).animate(POP, { duration: 240, delay: land, easing: SPRING, fill: 'backwards' }));
       return [land, sizes.get(id) || 0];
     });
+    arriving = going.filter(Boolean);
     const base = used - lands.reduce((s, l) => s + l[1], 0), end = lands[lands.length - 1][0] + 220, t0 = performance.now(), run = ++leftRun;
     fill.style.transition = 'none';
     leftNow = cap - used;
@@ -570,6 +588,7 @@
       const u = done ? used : base + lands.reduce((s, l) => s + l[1] * Math.max(0, Math.min(1, (t - l[0]) / 220)), 0);
       if (mine) { fill.style.width = Math.min(100, 100 * u / cap) + '%'; $('#m-left').textContent = ((cap - u) / MiB).toFixed(2) + ' MB'; }
       if (!done) return requestAnimationFrame(step);
+      if (mine) arriving = null;
       void fill.offsetWidth;
       fill.style.transition = '';
     };
@@ -859,7 +878,7 @@
   // Drag an icon. Among your games it changes where its game sits in the launcher. Out of them, its game is taken
   // out. From the other groups into them, its game is added, where you let go of it. A click still shows the game.
   // On a phone, hold one of yours, then tap where it goes.
-  let dragging = null, justDragged = false, holding = null;
+  let dragging = null, justDragged = false, holding = null, cancelDrag = () => {};
   function flip(box, change) {
     const kids = [...box.children], before = new Map(kids.map((k) => [k, k.getBoundingClientRect()]));
     change();
@@ -965,6 +984,8 @@
       d.on = true;
       d.was = isIn(d.b.dataset.id);
       d.no = !d.was && d.b.classList.contains('nofit');
+      d.from = [d.b.parentNode, d.b.nextSibling];  // (where it goes back to if the drag is called off)
+      stopArrival();
       deselect();
       $('#tip').classList.remove('show');
       const r = d.b.getBoundingClientRect();
@@ -975,38 +996,45 @@
       document.body.appendChild(d.ghost);
       d.b.classList.add('placeholder');
       document.body.classList.add('dragging-icon');
-      yours.classList.toggle('aim', !d.was);
+      yours.classList.toggle('aim', !d.was && !d.no);
       hint.hidden = false;
       tick();
     });
-    const end = () => {
+    // (the drag over: `keep` what is shown, or put the icon back where it was picked up)
+    const end = (keep) => {
       const d = dragging;
       if (!d) return;
       dragging = null;
       if (!d.on) return;
       cancelAnimationFrame(d.raf);
-      justDragged = true;
+      justDragged = keep;
       setTimeout(() => { justDragged = false; }, 0);
       document.body.classList.remove('dragging-icon');
       yours.classList.remove('aim', 'over');
       hint.textContent = 'drag to reorder';
-      const id = d.b.dataset.id, here = d.b.parentNode === yours, g = d.ghost;
-      commitShelf();
-      if (d.no) { if (d.inside) refuse(id); }                                                   // no room: it says why
-      else if (here && !d.was) toggle(id, false, other() ? null : [...yours.children].map((k) => k.dataset.id));  // in: added, there
-      else if (!here && d.was) toggle(id);                                                      // out: taken out
-      else if (here && !other()) commitOrder();                                                 // among yours: its new place
+      const id = d.b.dataset.id, g = d.ghost;
+      if (!keep) slide(() => { d.from[0].insertBefore(d.b, d.from[1] && d.from[1].parentNode === d.from[0] ? d.from[1] : null); searchApply(); });
+      else {
+        const here = d.b.parentNode === yours;
+        commitShelf();
+        if (d.no) { if (d.inside) refuse(id); }                                                   // no room: it says why
+        else if (here && !d.was) toggle(id, false, other() ? null : [...yours.children].map((k) => k.dataset.id));  // in: added, there
+        else if (!here && d.was) toggle(id);                                                      // out: taken out
+        else if (here && !other()) commitOrder();                                                 // among yours: its new place
+      }
       arrange();  // (the shelf as things now are, whatever came of it)
       if (d.b.offsetParent) {  // (into its place)
         const [x, y] = pagePos(d.b);
         g.style.transition = 'transform 180ms cubic-bezier(0.2, 0.9, 0.25, 1)';
         g.style.transform = 'translate(' + (x - scrollX) + 'px,' + (y - scrollY) + 'px) scale(1) rotate(0deg)';
       } else { g.style.transition = 'opacity 150ms linear'; g.style.opacity = 0; }
-      setTimeout(() => { g.remove(); d.b.classList.remove('placeholder'); }, 190);
+      // (the icon is seen again once the one that was carried has settled on it, unless it is being carried again)
+      setTimeout(() => { g.remove(); if (!(dragging && dragging.on && dragging.b === d.b)) d.b.classList.remove('placeholder'); }, 190);
     };
-    addEventListener('pointerup', end);
-    addEventListener('pointercancel', end);
-    addEventListener('blur', end);
+    cancelDrag = () => end(false);
+    addEventListener('pointerup', () => end(true));
+    addEventListener('pointercancel', cancelDrag);
+    addEventListener('blur', cancelDrag);
   }
 
   // ------------------------------------------------------------------ remembering a pick
@@ -1471,6 +1499,7 @@
   const portPicks = () => st.order.filter((id) => st.port[st.calc].has(id) && buttons.has(id) && onCalc(id));
   const portFiles = (e) => e.files || [e.file];
   function setCalc(id) {
+    stopArrival();
     st.calc = known(id) && calcReady(id) ? id : 'numworks';
     const c = CALCS[st.calc], o = other();
     if (o && !st.port[st.calc]) {  // (as last time, or the games NumPlay starts with; as many as fit, the biggest out first)
@@ -2302,6 +2331,7 @@
   function showTab(name) {
     if (name === 'saves' && other()) name = 'games';  // (Saves talks to the NumWorks: the others keep their saves their own way)
     const was = tab;
+    stopArrival();
     tab = name;
     for (const t of ['games', 'saves']) {
       $('#tab-' + t).setAttribute('aria-selected', t === name);
@@ -2463,6 +2493,7 @@
     for (const s of [$('#sheet'), $('#port-sheet')])
       s.addEventListener('click', (e) => { if (e.target === s || e.target.closest('.sheet-close')) closeSheet(); });
     document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && dragging && dragging.on) { cancelDrag(); return; }  // (the icon back where it was picked up)
       if (e.key === 'Escape') { closeSheet(); if (popOpen) closePops(); else if (pointed) deselect(); if (holding) { holding.classList.remove('held'); holding = null; } }
     });
 
@@ -2486,6 +2517,7 @@
     if (lightFromStart()) buildFlat();
     else { build3d(); depth(); watchFrames(); }
     addEventListener('resize', () => { if (innerWidth < 900) goLight(); });
+    addEventListener('resize', () => { fitTitle(); if (popOpen) placePop(); });
     restore();
     // the calculator: the address's (?calc=ti84ce, from its page), or last time's
     const asked = new URLSearchParams(location.search).get('calc'), want = known(asked) ? asked : store('numplay-calc');
