@@ -354,8 +354,48 @@ typedef struct {
   float pu, pv;          /* (axis aligned) screen pixels a texel along u and v, signed */
   bool rot;
 } Map;
+#if NP_SOFT_FLOAT
+/* No FPU (the floats in software, a few dozen instructions each): each item's mapping is worked out once a frame, not
+ * again in each strip it is in, and the texel coordinates of its runs' first pixels, a dozen floats a run, in fixed
+ * point from it: (q0 + x qx + s qs) / 2^8 in 16.16, s the row's middle in half rows (Mason363/NumPlay#532) */
+typedef struct {
+  int64_t u0, v0;               /* (2^24ths of a texel) */
+  int32_t ux, us, vx, vs;
+  int32_t dux, dvx, du;         /* (the runs' steps: as they were, from the floats) */
+  bool ok;                      /* (else, the floats: texels too small on screen for these) */
+} Fix;
+static Map item_map[MAX_ITEMS], box_map;   /* (box_map: the last inst_screen_box's) */
+static Fix item_fix[MAX_ITEMS];
+static int32_t to_i32(float x) { return x >= 2147483520.0f ? INT32_MAX : x <= -2147483648.0f ? INT32_MIN : (int32_t)x; }
+static void fix_of(const Map *m, Fix *f) {
+  const float K = 65536.0f * 256;
+  /* (the steps of the runs the item has: turned or not; out of range where they never were taken) */
+  f->dux = to_i32(m->iux * 65536), f->dvx = to_i32(m->ivx * 65536), f->du = m->rot ? 0 : to_i32(65536.0f / m->pu);
+  f->ok = fabsf(m->iux) < 64 && fabsf(m->ivx) < 64 && fabsf(m->iuy) < 128 && fabsf(m->ivy) < 128;
+  if (!f->ok) return;
+  f->ux = (int32_t)(m->iux * K), f->us = (int32_t)(m->iuy * (K / 2));
+  f->vx = (int32_t)(m->ivx * K), f->vs = (int32_t)(m->ivy * (K / 2));
+  f->u0 = (int64_t)((m->iux * (0.5f - m->ox) - m->iuy * m->oy) * K);
+  f->v0 = (int64_t)((m->ivx * (0.5f - m->ox) - m->ivy * m->oy) * K);
+}
+/* q / 2^8, toward 0 (as a float made an int), at most an int's */
+static inline int32_t fix_at(int64_t q) {
+  int64_t r = q < 0 ? -(-q >> 8) : q >> 8;
+  return r > INT32_MAX ? INT32_MAX : r < INT32_MIN ? INT32_MIN : (int32_t)r;
+}
+#endif
 
-static float inst_k(const Inst *in) { return FOCAL / (in->z * (1.0f / 128) - CAM_Z); }
+static float inst_k(const Inst *in) {
+#if NP_SOFT_FLOAT
+  /* (the last depth's: most instances are at a few) */
+  static int16_t z = INT16_MIN;
+  static float k;
+  if (in->z != z) z = in->z, k = FOCAL / (in->z * (1.0f / 128) - CAM_Z);
+  return k;
+#else
+  return FOCAL / (in->z * (1.0f / 128) - CAM_Z);
+#endif
+}
 
 /* the cosine and sine of a turn in 1/65536 (as cosf and sinf, to a float's precision): its octant, then the series on
  * [0, pi / 4] */
@@ -378,6 +418,19 @@ static void cos_sin_turn(int rot, float *c, float *s) {
 
 /* the instance's u and v steps on screen (pixels a texel) */
 static void inst_axes(const Inst *in, float k, float *ux, float *uy, float *vx, float *vy) {
+#if NP_SOFT_FLOAT
+  /* (the last instance's again: inst_screen_box asks twice) */
+  static struct { uint16_t a, b, rot, rf; float k, ux, uy, vx, vy; } last;
+  uint16_t rf = in->flags & F_ROT;
+  if (in->a == last.a && in->b == last.b && rf == last.rf && (!rf || in->rot == last.rot) && k == last.k) {
+    *ux = last.ux, *uy = last.uy, *vx = last.vx, *vy = last.vy;
+    return;
+  }
+  last.a = in->a, last.b = in->b, last.rot = (uint16_t)in->rot, last.rf = rf, last.k = k;
+#define AXES_KEEP() (last.ux = *ux, last.uy = *uy, last.vx = *vx, last.vy = *vy)
+#else
+#define AXES_KEEP()
+#endif
   float a = f16(in->a) * k, b = f16(in->b) * k;
   if (in->flags & F_ROT) {
     float c, s;
@@ -386,6 +439,7 @@ static void inst_axes(const Inst *in, float k, float *ux, float *uy, float *vx, 
     *ux = a * c, *uy = -a * s, *vx = -b * s, *vy = -b * c;
   } else
     *ux = a, *uy = 0, *vx = 0, *vy = -b;
+  AXES_KEEP();
 }
 
 static void inst_map(const Inst *in, Map *m) {
@@ -420,6 +474,9 @@ static bool inst_screen_box(const Inst *in, float *x0, float *y0, float *x1, flo
     const TexRec *r = tex_rec(in->tex);
     Map m;
     inst_map(in, &m);
+#if NP_SOFT_FLOAT
+    box_map = m;
+#endif
     if (in->flags & F_ROT) {
       float ux, uy, vx, vy;
       inst_axes(in, k, &ux, &uy, &vx, &vy);
@@ -707,7 +764,26 @@ typedef struct {
   const uint32_t *pal;
   Item *it;
   bool solid;   /* (its palette's) */
+#if NP_SOFT_FLOAT
+  const Fix *f;
+#endif
 } Ctx;
+
+#if NP_SOFT_FLOAT
+/* a run's first pixel (a, on row y): its texel coordinates (16.16), less half a texel if `half` */
+static inline void run_start(const Ctx *c, int y, int a, bool half, int32_t *u, int32_t *v) {
+  const Fix *f = c->f;
+  if (f->ok) {
+    int32_t s = (2 * y + 1) * vsf, h = half ? 1 << 23 : 0;
+    *u = fix_at(f->u0 - h + (int64_t)a * f->ux + (int64_t)s * f->us);
+    *v = fix_at(f->v0 - h + (int64_t)a * f->vx + (int64_t)s * f->vs);
+    return;
+  }
+  const Map *m = c->m;
+  float fx = a + 0.5f - m->ox, fy = SY(y) - m->oy, hf = half ? 0.5f : 0;
+  *u = (int32_t)((m->iux * fx + m->iuy * fy - hf) * 65536), *v = (int32_t)((m->ivx * fx + m->ivy * fy - hf) * 65536);
+}
+#endif
 
 /* a run [a, b) of row y (all pixels with light left), by kind */
 static void run_solid(const Ctx *c, int y, int a, int b) {
@@ -723,8 +799,14 @@ static void run_axis(const Ctx *c, int y, int a, int b, uint16_t *tp, int ty, in
   bool a2 = r->fmt == FMT_ALPHA2, solid = c->solid;
   const uint8_t *codes = tex_row_codes(c->in->tex, ty);
   int sh = TILE_SHIFT(r->fmt), um = (1 << sh) - 1;
+#if NP_SOFT_FLOAT
+  int32_t du = c->f->du, u, v;
+  run_start(c, y, a, false, &u, &v);
+  (void)m, (void)v;
+#else
   int32_t du = (int32_t)(65536.0f / m->pu);
   int32_t u = (int32_t)((a + 0.5f - m->ox) * m->iux * 65536.0f);
+#endif
   int x = a, p = row * VIEW_W + a;
   while (x < b) {
     int ui = u >> 16;
@@ -985,10 +1067,18 @@ static void run_turned(const Ctx *c, int y, int a, int b, int *last_key, const u
   uint16_t tex = c->in->tex;
   const uint32_t *pal = c->pal;
   uint16_t *rtp = c->it->ar != 0xFFFF ? arena + c->it->ar : NULL;
+#if NP_SOFT_FLOAT
+  int32_t dux = c->f->dux, dvx = c->f->dvx, u, v;
+  run_start(c, y, a, false, &u, &v);
+  (void)m;
+#else
   int32_t dux = (int32_t)(m->iux * 65536), dvx = (int32_t)(m->ivx * 65536);
+#endif
   int32_t W16 = (int32_t)r->w << 16, H16 = (int32_t)r->h << 16;
+#if !NP_SOFT_FLOAT
   float fx = a + 0.5f - m->ox, fy = SY(y) - m->oy;
   int32_t u = (int32_t)((m->iux * fx + m->iuy * fy) * 65536), v = (int32_t)((m->ivx * fx + m->ivy * fy) * 65536);
+#endif
   int i0 = 0, i1 = b - a;
   clip_lin(u, dux, W16, b - a, &i0, &i1);
   clip_lin(v, dvx, H16, b - a, &i0, &i1);
@@ -1090,9 +1180,15 @@ static void run_soft(const Ctx *c, int y, int a, int b, const uint32_t *tx, uint
   int mode = c->mode, row = c->row, W = r->w, H = r->h;
   bool mono = r->fmt == FMT_SOFTA;
   const uint8_t *al = (const uint8_t *)tx;
+#if NP_SOFT_FLOAT
+  int32_t u0, v0, dux = c->f->dux, dvx = c->f->dvx;
+  run_start(c, y, a, true, &u0, &v0);
+  (void)m;
+#else
   float fx = a + 0.5f - m->ox, fy = SY(y) - m->oy;
   int32_t u0 = (int32_t)((m->iux * fx + m->iuy * fy - 0.5f) * 65536), v0 = (int32_t)((m->ivx * fx + m->ivy * fy - 0.5f) * 65536);
   int32_t dux = (int32_t)(m->iux * 65536), dvx = (int32_t)(m->ivx * 65536);
+#endif
   int o0 = 0, o1 = b - a;
   bool edged = sk & SOFT_EDGED;
   if (edged) {
@@ -1189,9 +1285,16 @@ static void run_soft(const Ctx *c, int y, int a, int b, const uint32_t *tx, uint
 static void run_bilinear(const Ctx *c, int y, int a, int b, BiTex *bt) {
   const Map *m = c->m;
   int mode = c->mode, row = c->row;
+#if NP_SOFT_FLOAT
+  int32_t u, v, dux = c->f->dux, dvx = c->f->dvx;
+  run_start(c, y, a, true, &u, &v);
+  u += 65536, v += 65536;
+  (void)m;
+#else
   float fx = a + 0.5f - m->ox, fy = SY(y) - m->oy;
   int32_t u = (int32_t)((m->iux * fx + m->iuy * fy - 0.5f) * 65536) + 65536, v = (int32_t)((m->ivx * fx + m->ivy * fy - 0.5f) * 65536) + 65536;
   int32_t dux = (int32_t)(m->iux * 65536), dvx = (int32_t)(m->ivx * 65536);
+#endif
   int i0 = 0, i1 = b - a;
   clip_lin(u, dux, (int32_t)(c->r->w + 1) << 16, b - a, &i0, &i1);
   clip_lin(v, dvx, (int32_t)(c->r->h + 1) << 16, b - a, &i0, &i1);
@@ -1227,7 +1330,12 @@ __attribute__((noinline)) static void draw_item(int idx, Item *it, int sy0, int 
   BiTex bt;
   if (!(in->flags & F_SOLID)) {
     c.r = tex_rec(in->tex);
+#if NP_SOFT_FLOAT
+    m = item_map[idx];
+    c.f = &item_fix[idx];
+#else
     inst_map(in, &m);
+#endif
     c.m = &m;
     if (c.r->fmt >= FMT_SOFT) {
       kind = 3;
@@ -1273,7 +1381,11 @@ __attribute__((noinline)) static void draw_item(int idx, Item *it, int sy0, int 
     if (x >= it->x1) continue;
     int ty = 0, vr = 0;
     if (kind == 1) {
+#if NP_SOFT_FLOAT
+      int v = c.f->ok ? fix_at(c.f->v0 + (int64_t)((2 * y + 1) * vsf) * c.f->vs) / 65536 : (int)((SY(y) - m.oy) * m.ivy);
+#else
       int v = (int)((SY(y) - m.oy) * m.ivy);
+#endif
       if (v < 0 || v >= c.r->h) continue;
       ty = v / TILE, vr = v & (TILE - 1);
       if (ty != it->cty || g_tex_overload) {
@@ -1794,6 +1906,9 @@ static bool add_item(const Inst *in, float blur_z) {
     return false;
   }
   arena_take(&cur, true);
+#if NP_SOFT_FLOAT
+  if (!(cur.in.flags & F_SOLID)) item_map[nitems] = box_map, fix_of(&box_map, &item_fix[nitems]);
+#endif
   items[nitems++] = cur;
   return true;
 }
