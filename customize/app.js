@@ -8,9 +8,8 @@
   const MEDIA = '../docs/media/';  // the games' clips (kit.json: previews/ or gallery/)
   const MiB = 1048576;
   // The calculator's space for apps (kit.json "spaces"): from where its software ends, 0x90200000 or, on Epsilon 26,
-  // 0x90180000, to 0x903F0000; with Enlarged Extra Apps (nwagyu's Nwagra, before Epsilon 26) on to the end of the
-  // flash, 0x90800000
-  const SPACES = { std: 'Every NumWorks', e26: 'Epsilon 26', xl: 'Nwagra' };
+  // 0x90180000, to 0x903F0000; with Enlarged Extra Apps (nwagyu's Nwagra) on to the end of the flash, 0x90800000
+  const SPACES = { std: 'Every NumWorks', e26: 'Epsilon 26', xl: 'Nwagra', xl26: 'Nwagra on Epsilon 26' };
   const XL_SPACE = 6 * MiB;  // (kits from before kit.json had spaces)
   const SYS = {
     1: { tag: 'GB', name: 'Game Boy', color: '#6d8a0c', shell: '#c9c9cf' },
@@ -92,8 +91,7 @@
   let romKey = 0, appKey = 0, cartKey = 0;
 
   // ------------------------------------------------------------------ sizes
-  // (not Nwagra on Epsilon 26, xl26, which kits before 1.24.19 list: there the installer shows the space as NaN)
-  const spaces = () => kit.spaces && kit.spaces.length ? kit.spaces.filter((s) => s.id in SPACES) :
+  const spaces = () => kit.spaces && kit.spaces.length ? kit.spaces :
     [{ id: 'std', size: kit.appSpace }, { id: 'xl', size: kit.xlAppSpace || XL_SPACE }];
   const space = () => spaces().find((s) => s.id === st.cap) || spaces()[0];
   const nwCap = () => space().size;
@@ -708,9 +706,8 @@
       if (alone(id) && before) { st.picked = new Set(before); before = null; }
     } else if (bigger(id)) {
       if (!quiet) {
-        bump(b, 'shake'); toast(byId[id].title + ' is ' + mb(game(id).alone.size) + (st.cap === 'e26' ? ": it needs Nwagra, which doesn't work on Epsilon 26"
-          : ': it needs Nwagra. Pick it in the space for apps'));
-        if (st.cap !== 'e26' && popOpen !== $('#space-pop')) { renderSpaces(); openPop($('#space-pop'), $('#space-link'), true); }
+        bump(b, 'shake'); toast(byId[id].title + ' is ' + mb(game(id).alone.size) + ': it needs Nwagra. Pick it in the space for apps');
+        if (popOpen !== $('#space-pop')) { renderSpaces(); openPop($('#space-pop'), $('#space-link'), true); }
       }
       return;
     } else if (alone(id)) {
@@ -821,7 +818,8 @@
     const alone = total([], [r]);
     if (alone <= capacity()) return false;
     const fit = (id) => spaces().some((s) => s.id === id && s.size >= alone);
-    const needs = st.cap === 'std' && fit('e26') ? 'Epsilon 26 or Nwagra' : st.cap === 'std' && fit('xl') ? 'Nwagra' : '';
+    const needs = st.cap === 'std' && fit('e26') ? 'Epsilon 26 or Nwagra' : !nwagra() && fit(st.cap === 'e26' ? 'xl26' : 'xl') ? 'Nwagra'
+      : st.cap === 'xl' && fit('xl26') ? SPACES.xl26 : '';
     toast(r.name + ' is ' + mb(r.bytes.length) + ', more than ' + mb(capacity()) +
       (needs ? '. On ' + needs + '? Pick it in the space for apps' : ': too big for the calculator'));
     if (needs && popOpen !== $('#space-pop')) { renderSpaces(); openPop($('#space-pop'), $('#space-link'), true); }
