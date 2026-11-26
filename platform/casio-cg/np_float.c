@@ -219,3 +219,74 @@ int __lesf2(float a, float b) { return cmp(a, b, 1); }
 int __gtsf2(float a, float b) { return cmp(a, b, -1); }
 int __gesf2(float a, float b) { return cmp(a, b, -1); }
 int __unordsf2(float a, float b) { return (U(a) & ~SIGN) > INF || (U(b) & ~SIGN) > INF; }
+
+/* ---- the count of leading and trailing zero bits, with a table of 16 bytes for libgcc's 256 ---- */
+int __clzsi2(uint32_t x) {
+  static const uint8_t top[16] = {4, 3, 2, 2, 1, 1, 1, 1};
+  int n = 0;
+  if (!(x >> 16)) n += 16, x <<= 16;
+  if (!(x >> 24)) n += 8, x <<= 8;
+  if (!(x >> 28)) n += 4, x <<= 4;
+  return n + top[x >> 28];
+}
+int __ctzsi2(uint32_t x) { return 31 - __clzsi2(x & -x); }
+
+/* ---- an angle less the nearest multiple of pi/2 (y[0] + y[1]), and which multiple: sinf, cosf and tanf's first
+ * step. As newlib's, to the bit, up to 2^7 pi/2 (201); past that (never an angle a game keeps) less precise, instead
+ * of newlib's 3 KB of 2/pi's digits. ---- */
+static const int32_t npio2_hw[32] = { /* (n pi/2, its float's top 24 bits) */
+  0x3FC90F00, 0x40490F00, 0x4096CB00, 0x40C90F00, 0x40FB5300, 0x4116CB00, 0x412FED00, 0x41490F00,
+  0x41623100, 0x417B5300, 0x418A3A00, 0x4196CB00, 0x41A35C00, 0x41AFED00, 0x41BC7E00, 0x41C90F00,
+  0x41D5A000, 0x41E23100, 0x41EEC200, 0x41FB5300, 0x4203F200, 0x420A3A00, 0x42108300, 0x4216CB00,
+  0x421D1400, 0x42235C00, 0x4229A500, 0x422FED00, 0x42363600, 0x423C7E00, 0x4242C700, 0x42490F00};
+int32_t __ieee754_rem_pio2f(float x, float *y) {
+  /* pi/2 in three parts of 17 bits (their products by n exact) and what each leaves */
+  const float invpio2 = F(0x3F22F984), pio2_1 = F(0x3FC90F80), pio2_1t = F(0x37354443), pio2_2 = F(0x37354400),
+              pio2_2t = F(0x2E85A308), pio2_3 = F(0x2E85A300), pio2_3t = F(0x248D3132);
+  int32_t hx = (int32_t)U(x), ix = hx & 0x7FFFFFFF;
+  float z, w, t, r, fn;
+  if (ix <= 0x3F490FD8) { /* |x| up to pi/4 */
+    y[0] = x, y[1] = 0;
+    return 0;
+  }
+  if (ix < 0x4016CBE4) { /* |x| up to 3 pi/4: n is 1 or -1 */
+    int near = (ix & 0xFFFFFFF0) == 0x3FC90FD0; /* (near pi/2: 72 bits of it) */
+    float p = near ? pio2_2t : pio2_1t;
+    if (hx > 0) {
+      z = x - pio2_1;
+      if (near) z -= pio2_2;
+      y[0] = z - p, y[1] = (z - y[0]) - p;
+      return 1;
+    }
+    z = x + pio2_1;
+    if (near) z += pio2_2;
+    y[0] = z + p, y[1] = (z - y[0]) + p;
+    return -1;
+  }
+  if (ix >= 0x7F800000) { /* (infinite, NaN) */
+    y[0] = y[1] = x - x;
+    return 0;
+  }
+  t = F((uint32_t)ix);
+  int32_t n = (int32_t)(t * invpio2 + 0.5f);
+  fn = (float)n;
+  r = t - fn * pio2_1;
+  w = fn * pio2_1t;
+  if (n < 32 && (ix & 0xFFFFFF00) != npio2_hw[n - 1]) /* (no cancellation) */
+    y[0] = r - w;
+  else {
+    int32_t j = ix >> 23;
+    y[0] = r - w;
+    if (j - (int32_t)(U(y[0]) >> 23 & 0xFF) > 8 || ix > 0x43490F80) { /* (a second step, and a third) */
+      t = r, w = fn * pio2_2, r = t - w, w = fn * pio2_2t - ((t - r) - w), y[0] = r - w;
+      if (j - (int32_t)(U(y[0]) >> 23 & 0xFF) > 25 || ix > 0x43490F80)
+        t = r, w = fn * pio2_3, r = t - w, w = fn * pio2_3t - ((t - r) - w), y[0] = r - w;
+    }
+  }
+  y[1] = (r - y[0]) - w;
+  if (hx < 0) {
+    y[0] = -y[0], y[1] = -y[1];
+    return -n;
+  }
+  return n;
+}
