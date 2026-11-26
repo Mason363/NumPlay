@@ -79,6 +79,10 @@ html.other .tabs { display: none; }  /* (Saves talks to the NumWorks: the other 
 .app.held { outline: 2px solid var(--ink); outline-offset: 5px; }
 .drag-ghost { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; will-change: transform; }
 .drag-ghost img { display: block; width: 100%; aspect-ratio: 55 / 56; border-radius: 22%; image-rendering: pixelated; }
+.drag-ghost.no img { filter: grayscale(1); opacity: 0.65; }
+/* (a game dragged from the other groups: your games are where it can be dropped) */
+.icons.aim { outline: 1.5px dashed #a3a29b; outline-offset: 10px; }
+.icons.aim.over { outline-color: var(--ink); }
 body.dragging-icon .app { pointer-events: none; }
 body.dragging-icon, body.dragging-icon * { cursor: grabbing !important; user-select: none; }
 /* your own: a Game Boy, NES or Sega game as its cartridge, a PICO-8 cart as its label, an app as its icon */

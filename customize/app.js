@@ -293,7 +293,7 @@
         const r = b.getBoundingClientRect(), dx = a.left - r.left, dy = a.top - r.top;
         if (b === moving && landAt) b.animate([{ opacity: 0 }, { opacity: 0, offset: 0.999 }, { opacity: 1 }], { duration: landAt });
         else if (b === moving) b.animate([{ transform: 'scale(0.3)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 120, easing: 'cubic-bezier(0.3, 1.45, 0.45, 1)', fill: 'backwards' });
-        else if (dx || dy) b.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 280, easing: 'cubic-bezier(0.2, 0.9, 0.25, 1)' });
+        else if (dx || dy) b._slide = b.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 280, easing: 'cubic-bezier(0.2, 0.9, 0.25, 1)' });
       }
     }
     arranged = true;
@@ -605,7 +605,7 @@
     $('#screen').classList.add('over');
     setTimeout(() => render(), 500);
   }
-  function toggle(id, quiet) {
+  function toggle(id, quiet, at) {  // (at: your games in order with this one among them, when it was dropped there)
     if (other()) return togglePort(id);
     const s = solo(), b = quiet ? null : buttons.get(id);
     if (st.picked.has(id)) {
@@ -631,9 +631,9 @@
       if (s) { if (!quiet) { bump(b, 'shake'); toast(byId[s].title + ' takes the whole calculator. Pick it again to take it out'); } return; }
       const over = total(ordered().concat([id])) - capacity();
       if (over > 0) { if (!quiet) { bump(b, 'shake'); overflow(over); } return; }
-      // (it goes after the last of your games: where a game just added is looked for)
-      const order = st.order.filter((x) => x !== id);
-      order.splice(order.reduce((at, x, i) => (st.picked.has(x) ? i + 1 : at), 0), 0, id);
+      // (it goes where it was dropped, or after the last of your games: where a game just added is looked for)
+      const order = at ? at.concat(st.order.filter((x) => !at.includes(x))) : st.order.filter((x) => x !== id);
+      if (!at) order.splice(order.reduce((n, x, i) => (st.picked.has(x) ? i + 1 : n), 0), 0, id);
       st.order = order;
       st.picked.add(id);
       bump(b, 'pop-on');
@@ -853,8 +853,9 @@
   }
 
   // ------------------------------------------------------------------ moving games around
-  // Among your games, drag an icon to change where its game sits in the launcher; a click still takes it out. On a
-  // phone, hold an icon, then tap where it goes.
+  // Drag an icon. Among your games it changes where its game sits in the launcher. Out of them, its game is taken
+  // out. From the other groups into them, its game is added, where you let go of it. A click still shows the game.
+  // On a phone, hold one of yours, then tap where it goes.
   let dragging = null, justDragged = false, holding = null;
   function flip(box, change) {
     const kids = [...box.children], before = new Map(kids.map((k) => [k, k.getBoundingClientRect()]));
@@ -873,18 +874,42 @@
     st.order = mine.concat(st.order.filter((id) => !mine.includes(id)));
     render();
   }
-  // The slot under the pointer comes from where the slots were when the drag began (they don't
-  // move: only which icon sits in them), so an icon sliding away can never send it back.
-  function sortable(box) {
-    box.addEventListener('pointerdown', (e) => {
-      const b = e.target.closest('.app');
-      if (!b || e.button || other()) return;  // (another calculator's games are files: they have no order)
+  // where something on the shelf is laid out on the page, whatever is sliding it at the moment
+  const pagePos = (e) => { let x = 0, y = 0; for (let n = e; n; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; } return [x, y]; };
+  // a change to the shelf while an icon is dragged: what it moves slides from where it is seen to its new place
+  function slide(change) {
+    const all = [...buttons.values()].concat([...document.querySelectorAll('#games .sec, #games .foot, #in-more .app, #add')]);
+    const before = new Map(all.filter((e) => e.offsetParent).map((e) => { const r = e.getBoundingClientRect(); return [e, [r.left + scrollX, r.top + scrollY]]; }));
+    change();
+    for (const [e, was] of before) {
+      if (e._slide) { e._slide.cancel(); e._slide = null; }
+      if (!e.offsetParent || !e.animate) continue;
+      const [x, y] = pagePos(e), dx = was[0] - x, dy = was[1] - y;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
+      e._slide = e.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(0.2, 0.9, 0.25, 1)' });
+    }
+  }
+  // (a game that isn't yours: its place in its group, as the kit ranks them)
+  function goHome(b) {
+    const box = $(byId[b.dataset.id].xl ? '#big' : '#small'), at = shelfOrder.indexOf(b.dataset.id);
+    box.insertBefore(b, [...box.children].find((k) => shelfOrder.indexOf(k.dataset.id) > at) || null);
+  }
+  // While an icon is dragged it sits, dimmed, where it would be if you let go: in a slot among yours when the pointer
+  // is over your games (the slots are where they were when it came in: they don't move, only which icon sits in
+  // them, so an icon sliding away can never send it back), and in its own group when it is not. Near the top or the
+  // foot of the window the page moves under it. Letting go keeps what is shown.
+  function draggable() {
+    const yours = $('#in'), hint = $('#in-hint');
+    $('#games').addEventListener('pointerdown', (e) => {
+      const b = e.target.closest('.app[data-id]');
+      if (!b || e.button) return;
       if (e.pointerType === 'touch') {
+        if (b.parentNode !== yours || other()) return;  // (another calculator's games are files: they have no order)
         if (holding === b) { b.classList.remove('held'); holding = null; justDragged = true; return; }
         if (holding && holding !== b) {  // (a phone: the held icon goes where you tap)
           const from = holding;
           holding.classList.remove('held'); holding = null; justDragged = true;
-          if (from.parentNode === box) flip(box, () => box.insertBefore(from, [...box.children].indexOf(from) < [...box.children].indexOf(b) ? b.nextSibling : b));
+          if (from.parentNode === yours) flip(yours, () => yours.insertBefore(from, [...yours.children].indexOf(from) < [...yours.children].indexOf(b) ? b.nextSibling : b));
           commitOrder();
           return;
         }
@@ -893,55 +918,81 @@
         addEventListener('pointerup', stop); addEventListener('pointercancel', stop);
         return;
       }
-      dragging = { b, box, x: e.clientX, y: e.clientY, on: false };
+      dragging = { b, x: e.clientX, y: e.clientY, px: e.clientX, py: e.clientY, on: false };
     });
-    let frame = 0;
+    const tick = () => {
+      const d = dragging;
+      if (!d || !d.on) return;
+      d.raf = requestAnimationFrame(tick);
+      const edge = 64, v = d.py < edge ? d.py - edge : d.py > innerHeight - edge ? d.py - (innerHeight - edge) : 0;
+      if (v) scrollBy(0, Math.max(-20, Math.min(20, v * 0.4)));
+      d.ghost.style.transform = 'translate(' + (d.px - d.dx) + 'px,' + (d.py - d.dy) + 'px) scale(1.1) rotate(-4deg)';
+      const top = $('#in-head').parentNode.getBoundingClientRect().top - 12, g = yours.getBoundingClientRect();
+      const inside = d.inside = d.px > g.left - 30 && d.px < g.right + 30 && d.py > top && d.py < g.bottom + 20;
+      if (!d.no && inside !== (d.b.parentNode === yours)) {
+        slide(() => { if (inside) yours.appendChild(d.b); else goHome(d.b); searchApply(); $('#n-in').textContent = yours.children.length; });
+        d.slots = null;
+      }
+      if (inside && !d.no && !other()) {
+        if (!d.slots) d.slots = [...yours.children].map((k) => { const [x, y] = pagePos(k); return [x + 27.5, y + 28]; });
+        const px = d.px + scrollX, py = d.py + scrollY, kids = [...yours.children], now = kids.indexOf(d.b);
+        let best = 0, bd = Infinity;
+        d.slots.forEach(([x, y], i) => { const dd = (x - px) ** 2 + (y - py) ** 2; if (dd < bd) { bd = dd; best = i; } });
+        if (best !== now) slide(() => yours.insertBefore(d.b, best > now ? kids[best].nextSibling : kids[best]));
+      }
+      yours.classList.toggle('over', inside);
+      const say = d.no ? 'no room for it' : d.was ? (!inside ? 'let go to take it out' : other() ? '' : 'drag to reorder') : inside ? 'let go to add it' : 'drop it here to add it';
+      if (hint.textContent !== say) hint.textContent = say;
+    };
     addEventListener('pointermove', (e) => {
       const d = dragging;
-      if (!d || d.box !== box) return;
-      if (!d.on) {
-        if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 6) return;
-        d.on = true;
-        hidePreview();
-        $('#tip').classList.remove('show');
-        d.slots = [...box.children].map((k) => { const r = k.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
-        const r = d.b.getBoundingClientRect();
-        d.dx = d.x - r.left; d.dy = d.y - r.top;
-        d.ghost = el('div', 'drag-ghost');
-        d.ghost.appendChild(el('img', '', { src: d.b.querySelector('img').src, alt: '' }));
-        d.ghost.style.width = r.width + 'px';
-        document.body.appendChild(d.ghost);
-        d.b.classList.add('placeholder');
-        document.body.classList.add('dragging-icon');
-      }
+      if (!d) return;
       d.px = e.clientX; d.py = e.clientY;
-      if (frame) return;
-      frame = requestAnimationFrame(() => {  // (once a frame: the pointer can move faster than the screen)
-        frame = 0;
-        if (!dragging || !d.on) return;
-        d.ghost.style.transform = 'translate(' + (d.px - d.dx) + 'px,' + (d.py - d.dy) + 'px) scale(1.1) rotate(-4deg)';
-        let best = 0, bd = Infinity;
-        d.slots.forEach(([x, y], i) => { const dd = (x - d.px) ** 2 + (y - d.py) ** 2; if (dd < bd) { bd = dd; best = i; } });
-        const kids = [...box.children], now = kids.indexOf(d.b);
-        if (best !== now) flip(box, () => box.insertBefore(d.b, best > now ? kids[best].nextSibling : kids[best]));
-      });
+      if (d.on || Math.hypot(e.clientX - d.x, e.clientY - d.y) < 6) return;
+      d.on = true;
+      d.was = isIn(d.b.dataset.id);
+      d.no = !d.was && d.b.classList.contains('nofit');
+      deselect();
+      $('#tip').classList.remove('show');
+      const r = d.b.getBoundingClientRect();
+      d.dx = d.x - r.left; d.dy = d.y - r.top;
+      d.ghost = el('div', 'drag-ghost' + (d.no ? ' no' : ''));
+      d.ghost.appendChild(el('img', '', { src: d.b.querySelector('img').src, alt: '' }));
+      d.ghost.style.width = r.width + 'px';
+      document.body.appendChild(d.ghost);
+      d.b.classList.add('placeholder');
+      document.body.classList.add('dragging-icon');
+      yours.classList.toggle('aim', !d.was);
+      hint.hidden = false;
+      tick();
     });
     const end = () => {
       const d = dragging;
-      if (!d || d.box !== box) return;
+      if (!d) return;
       dragging = null;
       if (!d.on) return;
+      cancelAnimationFrame(d.raf);
       justDragged = true;
       setTimeout(() => { justDragged = false; }, 0);
-      const r = d.b.getBoundingClientRect(), g = d.ghost;
-      g.style.transition = 'transform 160ms cubic-bezier(0.2, 0.9, 0.25, 1)';  // (into its place)
-      g.style.transform = 'translate(' + r.left + 'px,' + r.top + 'px) scale(1) rotate(0deg)';
-      setTimeout(() => { g.remove(); d.b.classList.remove('placeholder'); }, 170);
       document.body.classList.remove('dragging-icon');
-      commitOrder();
+      yours.classList.remove('aim', 'over');
+      hint.textContent = 'drag to reorder';
+      const id = d.b.dataset.id, here = d.b.parentNode === yours, g = d.ghost;
+      if (d.no) { if (d.inside) refuse(id); }                                                   // no room: it says why
+      else if (here && !d.was) toggle(id, false, other() ? null : [...yours.children].map((k) => k.dataset.id));  // in: added, there
+      else if (!here && d.was) toggle(id);                                                      // out: taken out
+      else if (here && !other()) commitOrder();                                                 // among yours: its new place
+      arrange();  // (the shelf as things now are, whatever came of it)
+      if (d.b.offsetParent) {  // (into its place)
+        const [x, y] = pagePos(d.b);
+        g.style.transition = 'transform 180ms cubic-bezier(0.2, 0.9, 0.25, 1)';
+        g.style.transform = 'translate(' + (x - scrollX) + 'px,' + (y - scrollY) + 'px) scale(1) rotate(0deg)';
+      } else { g.style.transition = 'opacity 150ms linear'; g.style.opacity = 0; }
+      setTimeout(() => { g.remove(); d.b.classList.remove('placeholder'); }, 190);
     };
     addEventListener('pointerup', end);
     addEventListener('pointercancel', end);
+    addEventListener('blur', end);
   }
 
   // ------------------------------------------------------------------ remembering a pick
@@ -2341,7 +2392,7 @@
       $('#small').appendChild(b);
       buttons.set(id, b);
     }
-    sortable($('#in'));
+    draggable();
     search();
     for (const t of ['games', 'saves']) $('#tab-' + t).addEventListener('click', () => showTab(t));
 
