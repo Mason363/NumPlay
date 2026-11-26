@@ -200,7 +200,7 @@
 
   // ------------------------------------------------------------------ drawing
   const tiles = new Map(), buttons = new Map();
-  let shelfOrder = [];  // every game, as the kit ranks them: NumPlay's own first, then the big ones
+  let shelfOrder = [];  // every game: NumPlay's own first, then the big ones; as the kit ranks them, then as you leave them
   let shownUsed = 0, previewing = null;
 
   function render() {
@@ -429,6 +429,9 @@
     $('#w-a').textContent = a;
     $('#w-b').textContent = b;
     $('#w-b').classList.toggle('no', no);
+    $('#app-now').textContent = st.app.name.trim() || (PRESETS[st.app.icon] || ['Your icon'])[0];
+    $('#lang-now').textContent = LANGS[st.lang][1];
+    $('#space-now').textContent = mb(cap);
     $('#w-back').hidden = !g;
     $('#w-back-label').textContent = o ? 'Your games' : 'Your NumPlay';
     $('#w-act').hidden = !g;
@@ -616,7 +619,7 @@
       if (!quiet) {
         bump(b, 'shake'); toast(byId[id].title + ' is ' + mb(game(id).alone.size) + (st.cap === 'e26' ? ": it needs Nwagra, which doesn't work on Epsilon 26"
           : ': it needs Nwagra. Pick it in the space for apps'));
-        if (st.cap !== 'e26' && popOpen !== $('#space-pop')) { renderSpaces(); openPop($('#space-pop'), $('#space-link')); }
+        if (st.cap !== 'e26' && popOpen !== $('#space-pop')) { renderSpaces(); openPop($('#space-pop'), $('#space-link'), true); }
       }
       return;
     } else if (alone(id)) {
@@ -730,7 +733,7 @@
     const needs = st.cap === 'std' && fit('e26') ? 'Epsilon 26 or Nwagra' : st.cap === 'std' && fit('xl') ? 'Nwagra' : '';
     toast(r.name + ' is ' + mb(r.bytes.length) + ', more than ' + mb(capacity()) +
       (needs ? '. On ' + needs + '? Pick it in the space for apps' : ': too big for the calculator'));
-    if (needs && popOpen !== $('#space-pop')) { renderSpaces(); openPop($('#space-pop'), $('#space-link')); }
+    if (needs && popOpen !== $('#space-pop')) { renderSpaces(); openPop($('#space-pop'), $('#space-link'), true); }
     $('#screen').classList.add('over');
     setTimeout(() => render(), 500);
     return true;
@@ -889,15 +892,18 @@
       e._slide = e.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(0.2, 0.9, 0.25, 1)' });
     }
   }
-  // (a game that isn't yours: its place in its group, as the kit ranks them)
-  function goHome(b) {
-    const box = $(byId[b.dataset.id].xl ? '#big' : '#small'), at = shelfOrder.indexOf(b.dataset.id);
-    box.insertBefore(b, [...box.children].find((k) => shelfOrder.indexOf(k.dataset.id) > at) || null);
+  // (the groups as they are now seen become the shelf's order: a game stays where you left it)
+  function commitShelf() {
+    const rest = [...$('#small').children, ...$('#big').children].map((b) => b.dataset.id), there = new Set(rest);
+    let i = 0;
+    shelfOrder = shelfOrder.map((id) => (there.has(id) ? rest[i++] : id));
+    store('numplay-shelf', shelfOrder.join(','));
   }
-  // While an icon is dragged it sits, dimmed, where it would be if you let go: in a slot among yours when the pointer
-  // is over your games (the slots are where they were when it came in: they don't move, only which icon sits in
-  // them, so an icon sliding away can never send it back), and in its own group when it is not. Near the top or the
-  // foot of the window the page moves under it. Letting go keeps what is shown.
+  // While an icon is dragged, the place it would take if you let go is kept open for it: a slot among yours when the
+  // pointer is over your games, and otherwise the slot nearest the pointer in its own group, Games or Big games (the
+  // slots are where they were when it came in: they don't move, only which icon sits in them, so an icon sliding
+  // away can never send it back). Near the top or the foot of the window the page moves under it. Letting go keeps
+  // what is shown, and the icon stays there.
   function draggable() {
     const yours = $('#in'), hint = $('#in-hint');
     $('#games').addEventListener('pointerdown', (e) => {
@@ -924,21 +930,28 @@
       const d = dragging;
       if (!d || !d.on) return;
       d.raf = requestAnimationFrame(tick);
-      const edge = 64, v = d.py < edge ? d.py - edge : d.py > innerHeight - edge ? d.py - (innerHeight - edge) : 0;
+      // (the page moves under it at the top and the foot of the window, once the pointer has come there from further in:
+      // a drag that starts at an edge doesn't set the page moving)
+      const edge = 64;
+      if (d.py > edge) d.up = true;
+      if (d.py < innerHeight - edge) d.down = true;
+      const v = d.py < edge && d.up ? d.py - edge : d.py > innerHeight - edge && d.down ? d.py - (innerHeight - edge) : 0;
       if (v) scrollBy(0, Math.max(-20, Math.min(20, v * 0.4)));
       d.ghost.style.transform = 'translate(' + (d.px - d.dx) + 'px,' + (d.py - d.dy) + 'px) scale(1.1) rotate(-4deg)';
       const top = $('#in-head').parentNode.getBoundingClientRect().top - 12, g = yours.getBoundingClientRect();
       const inside = d.inside = d.px > g.left - 30 && d.px < g.right + 30 && d.py > top && d.py < g.bottom + 20;
-      if (!d.no && inside !== (d.b.parentNode === yours)) {
-        slide(() => { if (inside) yours.appendChild(d.b); else goHome(d.b); searchApply(); $('#n-in').textContent = yours.children.length; });
+      const box = !d.no && inside ? yours : $(byId[d.b.dataset.id].xl ? '#big' : '#small');
+      if (d.b.parentNode !== box) {
+        slide(() => { box.appendChild(d.b); searchApply(); $('#n-in').textContent = yours.children.length; });
         d.slots = null;
       }
-      if (inside && !d.no && !other()) {
-        if (!d.slots) d.slots = [...yours.children].map((k) => { const [x, y] = pagePos(k); return [x + 27.5, y + 28]; });
-        const px = d.px + scrollX, py = d.py + scrollY, kids = [...yours.children], now = kids.indexOf(d.b);
+      if (box !== yours || !other()) {  // (into the slot nearest the pointer)
+        const kids = [...box.children].filter((k) => k.offsetParent), now = kids.indexOf(d.b);
+        if (!d.slots) d.slots = kids.map((k) => { const [x, y] = pagePos(k); return [x + 27.5, y + 28]; });
+        const px = d.px + scrollX, py = d.py + scrollY;
         let best = 0, bd = Infinity;
         d.slots.forEach(([x, y], i) => { const dd = (x - px) ** 2 + (y - py) ** 2; if (dd < bd) { bd = dd; best = i; } });
-        if (best !== now) slide(() => yours.insertBefore(d.b, best > now ? kids[best].nextSibling : kids[best]));
+        if (best !== now && kids[best]) slide(() => box.insertBefore(d.b, best > now ? kids[best].nextSibling : kids[best]));
       }
       yours.classList.toggle('over', inside);
       const say = d.no ? 'no room for it' : d.was ? (!inside ? 'let go to take it out' : other() ? '' : 'drag to reorder') : inside ? 'let go to add it' : 'drop it here to add it';
@@ -978,6 +991,7 @@
       yours.classList.remove('aim', 'over');
       hint.textContent = 'drag to reorder';
       const id = d.b.dataset.id, here = d.b.parentNode === yours, g = d.ghost;
+      commitShelf();
       if (d.no) { if (d.inside) refuse(id); }                                                   // no room: it says why
       else if (here && !d.was) toggle(id, false, other() ? null : [...yours.children].map((k) => k.dataset.id));  // in: added, there
       else if (!here && d.was) toggle(id);                                                      // out: taken out
@@ -1344,14 +1358,16 @@
   }
   function placePop() {
     const pop = popOpen, [chip, side] = popAt;
-    const r = chip.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
-    if (side && r.right + 16 + w < innerWidth - 12) {  // (beside it, over the calculator, not over the games)
-      pop.style.left = (r.right + 16) + 'px';
-      pop.style.top = Math.max(12, Math.min(innerHeight - h - 12, r.bottom - h)) + 'px';
+    // (what opened it may be out of sight, a setting's row while a game is shown: then it goes by the stage's button)
+    const from = chip.offsetParent ? chip : $('#w-act').offsetParent ? $('#w-act') : $('#m-bar');
+    const r = from.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+    if (side && r.right + 14 + w < innerWidth - 12) {  // (beside it, over the calculator, not over what it changes)
+      pop.style.left = (r.right + 14) + 'px';
+      pop.style.top = Math.max(12, Math.min(innerHeight - h - 12, r.top - 10)) + 'px';
       return;
     }
-    pop.style.left = Math.max(12, Math.min(innerWidth - w - 12, r.left + r.width / 2 - w / 2)) + 'px';
-    pop.style.top = (r.top - h - 12 < 12 ? r.bottom + 12 : r.top - h - 12) + 'px';
+    pop.style.left = Math.max(12, Math.min(innerWidth - w - 12, r.left)) + 'px';
+    pop.style.top = (r.bottom + 10 + h > innerHeight - 12 && r.top - h - 10 > 12 ? r.top - h - 10 : r.bottom + 10) + 'px';
   }
   function closePops() {
     for (const p of document.querySelectorAll('.pop')) p.hidden = true;
@@ -2379,6 +2395,16 @@
     // the shelf: every game its icon and the bar of its size; render puts each in its group. Pointing at one names
     // it; pressing it shows it on the stage; pressing it twice adds it or takes it out
     shelfOrder = kit.games.filter((g) => g !== rg && g !== pk).sort((a, b) => (a.xl - b.xl) || ((a.rank || 99) - (b.rank || 99))).map((g) => g.id);
+    // (where you left them, when you have moved some: a game you haven't seen yet comes in beside its neighbor in rank)
+    const left = (store('numplay-shelf') || '').split(',').filter((id) => shelfOrder.includes(id));
+    if (left.length) {
+      shelfOrder.forEach((id, i) => {
+        if (left.includes(id)) return;
+        const prev = shelfOrder.slice(0, i).reverse().find((x) => left.includes(x));
+        left.splice(prev ? left.indexOf(prev) + 1 : 0, 0, id);
+      });
+      shelfOrder = left.sort((a, b) => byId[a].xl - byId[b].xl);
+    }
     for (const id of shelfOrder) {
       const g = byId[id];
       const b = el('button', 'app', { type: 'button', 'aria-label': g.title, 'aria-pressed': 'false', 'data-id': id, 'data-tip': g.title });
@@ -2417,9 +2443,9 @@
       } catch (err) { toast("That picture didn't work, try a PNG or JPEG"); }
     });
     $('#calc-chip').addEventListener('click', (e) => { renderCalcs(); openPop($('#calc-pop'), e.currentTarget); });
-    $('#app-link').addEventListener('click', (e) => { renderApp(); openPop($('#app-pop'), e.currentTarget); });
-    $('#lang-link').addEventListener('click', (e) => { renderApp(); openPop($('#lang-pop'), e.currentTarget); });
-    $('#space-link').addEventListener('click', (e) => { renderSpaces(); openPop($('#space-pop'), e.currentTarget); });
+    $('#app-link').addEventListener('click', (e) => { renderApp(); openPop($('#app-pop'), e.currentTarget, true); });
+    $('#lang-link').addEventListener('click', (e) => { renderApp(); openPop($('#lang-pop'), e.currentTarget, true); });
+    $('#space-link').addEventListener('click', (e) => { renderSpaces(); openPop($('#space-pop'), e.currentTarget, true); });
     document.addEventListener('pointerdown', (e) => {
       if (popOpen && !e.target.closest('.pop, [aria-haspopup]')) closePops();
     });

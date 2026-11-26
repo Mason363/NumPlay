@@ -75,7 +75,7 @@ html.other .tabs { display: none; }  /* (Saves talks to the NumWorks: the other 
 .app.away { display: none; }
 .app.shake, .add.shake, .meter.shake, .act.shake, .dock .install.shake { animation: shake 380ms var(--ease); }
 @keyframes shake { 0%, 100% { translate: 0; } 20% { translate: -6px; } 45% { translate: 5px; } 70% { translate: -3px; } }
-.app.placeholder { opacity: 0.25; }
+.app.placeholder { opacity: 0; }  /* (the place a dragged icon would take: a gap, nothing in it) */
 .app.held { outline: 2px solid var(--ink); outline-offset: 5px; }
 .drag-ghost { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; will-change: transform; }
 .drag-ghost img { display: block; width: 100%; aspect-ratio: 55 / 56; border-radius: 22%; image-rendering: pixelated; }
@@ -137,12 +137,18 @@ body.dragging .veil { display: flex; }
 .facts { margin: 22px 0 0; min-height: 1.4em; display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .act { margin-top: 18px; }
 .facts .no { color: #ffd27a; }
-.links { margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 0 18px; }
-.links button, .download { padding: 0; border: 0; background: none; color: inherit; font-size: 15px; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
-.links button { min-height: 32px; opacity: 0.86; }
-.links button:hover { opacity: 1; }
-.links button:disabled { opacity: 0.4; cursor: default; }
-.stage.pointing .links, .stage.pointing .w-icon { display: none; }
+/* (the app's own settings: a row each, with what it is set to; a press opens its choices beside it) */
+.set { --rule: rgba(255, 255, 255, 0.3); margin: 22px 0 0; display: flex; flex-direction: column; border-top: 1.5px solid var(--rule); }
+.set button { display: flex; align-items: center; gap: 10px; min-width: 0; height: 44px; padding: 0; border: 0; border-bottom: 1.5px solid var(--rule); background: none; color: inherit; font-size: 15px; font-weight: 800; text-align: left; }
+.set span { flex: none; opacity: 0.82; }
+.set b { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 900; }
+.set button::after { content: ""; flex: none; width: 6px; height: 6px; margin: 0 4px 0 2px; border: solid currentColor; border-width: 2px 2px 0 0; rotate: 45deg; opacity: 0.8; transition: translate 120ms var(--ease); }
+.set button:hover span, .set button:hover::after, .set button[aria-expanded="true"]::after { opacity: 1; }
+.set button:hover::after, .set button[aria-expanded="true"]::after { translate: 3px; }
+.set button:disabled { opacity: 0.4; cursor: default; }
+.stage.pale .set { --rule: rgba(0, 0, 0, 0.25); }
+.download { padding: 0; border: 0; background: none; color: inherit; font-size: 15px; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
+.stage.pointing .set, .stage.pointing .w-icon { display: none; }
 /* (with a game shown, its button is the one to press: Install steps back) */
 .stage.pointing .go .install { background: none; color: inherit; box-shadow: inset 0 0 0 1.5px currentColor; }
 .stage .act.no, .stage.pale .act.no, .dock .install.no { background: none; color: inherit; box-shadow: inset 0 0 0 1.5px currentColor; opacity: 0.5; }
@@ -176,7 +182,7 @@ body.dragging .veil { display: flex; }
    step aside */
 .other #w-links, .other #download, .other #own-sec, .other #own-sec + .icons, .other .w-icon, .other #in-hint { display: none !important; }
 /* Saves: the stage keeps its calculator, and says what Saves is */
-.saving .facts, .saving .links, .saving .go, .saving .w-icon, .saving .pager, .saving .act, .saving .w-back { display: none; }
+.saving .facts, .saving .set, .saving .go, .saving .w-icon, .saving .pager, .saving .act, .saving .w-back { display: none; }
 
 /* ---- the calculator, built in 3D from its photo (--u is one of the photo's pixels): the front, with holes for the
    screen and the keys; the screen down in its recess; the keys standing up with their sides; rounded edges, sides
@@ -266,11 +272,14 @@ html.flat .sticker canvas { position: absolute; inset: 0; width: 100%; height: 1
 .pop.narrow { width: 170px; padding: 6px; }
 .pop-row { display: flex; align-items: center; gap: 10px; }
 .pop-label { width: 66px; flex-shrink: 0; font-size: 13px; font-weight: 800; color: var(--mute); }
-.icon-pick { display: flex; gap: 12px; }
-.icon-pick button { width: 55px; height: 56px; padding: 0; border: 0; background: transparent; position: relative; }
+#app-pop { width: min(432px, calc(100vw - 24px)); }
+.icon-pick { display: flex; flex-wrap: wrap; gap: 14px 10px; }
+.icon-pick button { width: 55px; height: 56px; padding: 0; border: 0; background: transparent; position: relative; isolation: isolate; }
+.icon-pick button::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 22%; box-shadow: inset 0 0 0 1.5px #bdbcb5; }  /* (the invisible icon's place) */
 .icon-pick button img { width: 100%; height: 100%; display: block; border-radius: 22%; image-rendering: pixelated; }
 .icon-pick button[aria-checked="true"] { outline: 2px solid var(--ink); outline-offset: 4px; }
 .icon-pick .upload { border: 1.5px dashed var(--mute); color: var(--text); display: flex; align-items: center; justify-content: center; }
+.icon-pick .upload::before { display: none; }
 .icon-pick .custom img { clip-path: inset(0 round 22%); }
 .field { flex: 1; min-width: 0; height: 38px; border: 1.5px solid var(--line); border-radius: 3px; padding: 0 10px; background: #ffffff; font-size: 15px; font-weight: 700; }
 .field:focus { outline: 0; border-color: var(--ink); }
@@ -366,10 +375,6 @@ html.flat .sticker canvas { position: absolute; inset: 0; width: 100%; height: 1
 }
 @container (max-width: 366px) { .brand span { display: none; } }
 @container (max-width: 306px) { .brand { font-size: 18px; } .tabs { gap: 12px; } .search { min-width: 78px; } }
-@media (min-width: 1181px) and (max-width: 1330px) {
-  .links { gap: 0 14px; }
-  .links button { font-size: 14px; }
-}
 /* ---- a narrower window: on the stage the words go above the calculator, which runs off its bottom */
 @media (max-width: 1180px) {
   .page { grid-template-columns: minmax(0, 1fr) min(56vw, 600px); }
@@ -380,7 +385,13 @@ html.flat .sticker canvas { position: absolute; inset: 0; width: 100%; height: 1
   .words h2 { font-size: 46px; }
   .tag { margin-top: 10px; max-width: none; font-size: 17px; }
   .facts { margin-top: 14px; font-size: 15px; }
-  .links { margin-top: 6px; }
+  /* (the settings side by side here, each a cell: its name over what it is set to) */
+  .set { flex-direction: row; margin-top: 14px; border-top: 0; }
+  .set button { flex: 1 1 0; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; height: 52px; margin-left: -1.5px; padding: 0 12px; border: 1.5px solid var(--rule); }
+  .set button:first-child { margin-left: 0; }
+  .set span { font-size: 12.5px; }
+  .set b { margin-left: 0; max-width: 100%; }
+  .set button::after { display: none; }
   .w-back { margin-bottom: 8px; }
   .act { margin-top: 12px; }
   .go { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin-top: 18px; }
