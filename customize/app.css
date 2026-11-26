@@ -70,7 +70,9 @@ html.other .tabs { display: none; }  /* (Saves talks to the NumWorks: the other 
 .app { position: relative; display: block; width: 55px; height: 64px; padding: 0; border: 0; background: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; user-select: none; }
 .app img { display: block; width: 55px; height: 56px; border-radius: 22%; image-rendering: pixelated; pointer-events: none; transition: filter 220ms linear, opacity 220ms linear; }
 .app::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; border-radius: 2px; background: var(--line); }
-.app::before { content: ""; position: absolute; left: -4px; top: -4px; width: 63px; height: 64px; border-radius: 16px; border: 2.5px solid transparent; pointer-events: none; transition: border-color 120ms linear; }
+/* (the ring: round the icon, 2px out from it on every side. The icon sits 4px down in its button, which centres it
+   above its bar, so the ring's box is the icon's grown by 4px each way; the bar steps aside while it is ringed) */
+.app::before { content: ""; position: absolute; left: -4px; top: 0; box-sizing: border-box; width: 63px; height: 64px; border-radius: 16px; border: 2px solid transparent; pointer-events: none; transition: border-color 120ms linear; }
 .app .sz { position: absolute; left: 0; bottom: 0; z-index: 1; width: 0; height: 3px; border-radius: 2px; background: var(--ink); transition: width var(--t) var(--ease); }
 /* (no room for it: gray. It can still be pressed, to see it and what it needs) */
 .app.nofit img { filter: grayscale(1); opacity: 0.4; }
@@ -81,6 +83,7 @@ html.other .tabs { display: none; }  /* (Saves talks to the NumWorks: the other 
 .app.found::before { border-color: #e8940c; }
 .app:focus-visible { outline: 0; }
 .app.at::before, .app.held::before, .app:focus-visible::before { border-color: var(--ink); }
+.app.at::after, .app.at .sz, .app.held::after, .app.held .sz, .app.found::after, .app.found .sz, .app:focus-visible::after, .app:focus-visible .sz { opacity: 0; }
 .app.away { display: none; }
 .app.shake, .add.shake, .meter.shake, .act.shake, .dock .install.shake { animation: shake 380ms var(--ease); }
 @keyframes shake { 0%, 100% { translate: 0; } 20% { translate: -6px; } 45% { translate: 5px; } 70% { translate: -3px; } }
@@ -97,7 +100,7 @@ body.dragging-icon, body.dragging-icon * { cursor: grabbing !important; user-sel
 /* your own: a Game Boy, NES or Sega game as its cartridge, a PICO-8 cart as its label, an app as its icon */
 .cart { display: flex; flex-direction: column; justify-content: flex-end; width: 47px; height: 56px; margin: 0 4px; border-radius: 4px 12px 4px 4px; box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.14); pointer-events: none; }
 .cart span { margin: 0 6px 10px; height: 22px; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 10.5px; font-weight: 900; }
-.app.p8 img { border: 5px solid #1d2b53; border-radius: 6px; background: #1d2b53; }
+.app.p8 img { border: 5px solid #1d2b53; border-radius: 22%; background: #1d2b53; }  /* (an icon's corners, as the rest) */
 /* (your own files' way in, under your games, as NumPlay Studio has always drawn it: three cartridges fanned, a Game
    Boy's, an NES's and a Master System's, that lift apart when you point at the box or bring files over the page) */
 .add {
@@ -314,7 +317,7 @@ html.flat .sticker canvas { position: absolute; inset: 0; width: 100%; height: 1
 .icon-pick button { width: 55px; height: 56px; padding: 0; border: 0; border-radius: 22%; background: transparent; position: relative; isolation: isolate; }
 .icon-pick button::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 22%; box-shadow: inset 0 0 0 1.5px #bdbcb5; }  /* (the invisible icon's place) */
 .icon-pick button img { width: 100%; height: 100%; display: block; border-radius: 22%; image-rendering: pixelated; }
-.icon-pick button[aria-checked="true"] { outline: 2.5px solid var(--ink); outline-offset: 3px; }
+.icon-pick button[aria-checked="true"] { outline: 2px solid var(--ink); outline-offset: 2px; }  /* (as the shelf's ring) */
 .icon-pick .upload { border: 1.5px dashed var(--mute); color: var(--text); display: flex; align-items: center; justify-content: center; }
 .icon-pick .upload::before { display: none; }
 .icon-pick .custom img { clip-path: inset(0 round 22%); }
