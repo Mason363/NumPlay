@@ -5,7 +5,7 @@ The website (site/) runs GNU ld in the browser on the same objects the Makefile 
 NumPlay.nwa from: base.o (the launcher), arena.o (the RAM the games share), an app name and
 icon, and one object per game, with a script made of script.json's parts (tools/gen_games.py).
 This copies them to OUT, gzipped, with kit.json (the games, their sizes, colours and
-limits), each game's icon and thumbnail, and checks that every game has the clip the website plays
+limits, and every game's save files, "saves", for the website's Saves), each game's icon and thumbnail, and checks that every game has the clip the website plays
 (docs/media/previews/ or gallery/), that linking the default games from OUT
 gives NumPlay.nwa's bytes on the calculator, and that each big game ("xl", for calculators
 with Enlarged Extra Apps: up to xlAppSpace bytes of apps) links with the launcher alone. The
@@ -337,11 +337,15 @@ def main():
             if os.path.exists(theirs) and gzip.open(mine).read() == gzip.open(theirs).read():
                 os.remove(mine)
                 g["en"] = True
+    # every game's files (games.json "records", a name ending with "*" for every file starting with the rest), in
+    # the launcher's order, whether or not the game is in the kit: the website's Saves (customize/saves.js) tells
+    # by them whose save a file on the calculator is
+    saves = [{"id": g["id"], "title": g["title"], "records": g["records"]} for g in manifest]
     kit = {"version": a.version, "appSpace": a.app_space, "xlAppSpace": a.xl_app_space, "ram": a.ram,
            "ramLimit": a.ram_limit, "upsilonRam": a.upsilon_ram, "launcherRam": launcher_ram,
            "arena": int(re.search(r"\.space (\d+)", open(os.path.join(B, "gen", "arena.s")).read()).group(1)),
            "spaces": spaces, "base": base, "baseAlone": base_alone, "runtime": runtime, "numplay": len(bins[0]), "link": LINK, "variants": variants,
-           "langs": ["en"] + a.langs.split(), "script": script, "games": games}
+           "langs": ["en"] + a.langs.split(), "script": script, "games": games, "saves": saves}
     json.dump(kit, open(os.path.join(O, "kit.json"), "w"), indent=1)
     shutil.rmtree(tmp)
     print(f"kit: {len(games)} games, NumPlay.nwa's {len(bins[0])} bytes linked again from {O}; RAM: NumPlay's own "

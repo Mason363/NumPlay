@@ -20,6 +20,7 @@ OTHER = [
     f"python3 tests/test_small_ram.py {NUMPLAY}",
     f"python3 tests/test_backgrounds.py {NUMPLAY} build/compiled/NumPlay-Upsilon.nwa",
     "python3 tests/test_apps.py build/data",
+    f"python3 tests/test_saves.py {NUMPLAY}",
 ]
 HOST = ["numblocks", "numdrive", "championisland", "undertale", "doom", "isaac", "pvz", "fnaf", "sonic", "subway",
         "hillclimb", "leveldevil", "cookieclicker", "jetpackjoyride", "donkeykong", "dune", "monkeymart",

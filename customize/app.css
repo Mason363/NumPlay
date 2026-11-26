@@ -21,6 +21,10 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
+/* nothing jumps as the page comes up: the scroll bar's room is kept before there is one, and what the games push
+   down when they arrive (your own games and apps, under the big ones) shows once they have */
+html { scrollbar-gutter: stable; }
+html.loading .retro, html.loading .foot { visibility: hidden; }
 body {
   min-height: 100vh;
   background: var(--bg);
@@ -50,8 +54,9 @@ main {
 .title button { border: 0; padding: 0 0.04em 0.06em 0; background: none; font: inherit; letter-spacing: inherit; cursor: pointer; display: block; overflow: hidden; }
 .title span { display: block; }
 .chips { display: flex; gap: 8px; }
+.tools { grid-column: 1 / -1; margin-top: 14px; display: flex; align-items: center; gap: 8px; }  /* (the search, and your saves beside it) */
 .search {
-  grid-column: 1 / -1; margin-top: 14px; max-width: 360px; height: 42px; padding: 0 14px; border-radius: 21px;
+  flex: 1; min-width: 0; max-width: 360px; height: 42px; padding: 0 14px; border-radius: 21px;
   background: var(--card); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); display: flex; align-items: center; gap: 9px;
   color: var(--mute); cursor: text;
 }
@@ -412,6 +417,52 @@ body.dragging .drop-hint { display: flex; }
 .install.wide { width: 100%; }
 .star-ask { display: block; margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: #fff7e0; text-decoration: none; font-size: 14px; font-weight: 600; line-height: 1.4; }
 .star-ask:hover { background: #ffefc2; }
+
+/* ---- Saves (saves-ui.js): the calculator's saves game by game, and the backups of them */
+.chip.saves { height: 42px; padding: 0 15px 0 12px; gap: 7px; flex-shrink: 0; }
+html.other .chip.saves { display: none; }  /* (Saves talks to the NumWorks: the other calculators keep their saves their own way) */
+.saves-card { width: min(520px, 100%); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; padding-bottom: 22px; }
+#saves-body { overflow-y: auto; overscroll-behavior: contain; margin: 0 -12px -6px; padding: 0 12px 6px; display: flex; flex-direction: column; gap: 22px; }
+#saves-body section { display: flex; flex-direction: column; }
+.sv-lede { margin: 0 0 16px; font-size: 15px; line-height: 1.45; color: var(--text); font-weight: 500; }
+.sv-hint { margin: 10px 0 0; font-size: 13px; line-height: 1.4; color: var(--mute); }
+.sv-warn, .sv-note { margin: 12px 0 0; padding: 10px 13px; border-radius: 12px; font-size: 13.5px; font-weight: 550; line-height: 1.4; }
+.sv-warn { background: #fff0e2; color: #7a3600; }
+.sv-note { background: #e6f5ea; color: #14532d; }
+.sv-busy { margin: 12px 0 0; font-size: 13.5px; font-weight: 600; color: var(--mute); }
+.sv-head { display: flex; align-items: baseline; gap: 10px; }
+.sv-head b { font-size: 16px; letter-spacing: -0.2px; }
+.sv-head span { font-size: 13px; color: var(--mute); font-weight: 550; }
+.sv-meter { height: 8px; border-radius: 4px; background: var(--track); margin-top: 12px; overflow: hidden; }
+.sv-meter i { display: block; height: 100%; min-width: 8px; background: var(--ink); border-radius: 4px; }
+.sv-status { display: flex; justify-content: space-between; gap: 12px; margin: 7px 0 0; font-size: 12.5px; color: var(--mute); font-weight: 600; }
+.sv-ok { color: #1a7f37; display: inline-flex; align-items: center; gap: 4px; }
+.sv-list { display: flex; flex-direction: column; margin-top: 8px; }
+.sv-row, .sv-backup { display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 5px 0; }
+.sv-row img { width: 34px; height: 34px; border-radius: 22%; flex-shrink: 0; margin-right: 2px; }
+.sv-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.sv-name b { font-size: 14.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sv-name span { font-size: 12.5px; color: var(--mute); font-weight: 500; line-height: 1.35; }
+.sv-icon { width: 34px; height: 34px; border: 0; border-radius: 17px; background: none; color: var(--mute); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.sv-icon:hover { background: var(--track); color: var(--ink); }
+.sv-btn { border: 0; border-radius: 999px; background: var(--track); padding: 8px 14px; font-size: 13px; font-weight: 650; cursor: pointer; flex-shrink: 0; }
+.sv-btn:hover { background: #d7d5d0; }
+.sv-ask { background: #fff0e2; border-radius: 12px; padding: 5px 8px 5px 13px; margin: 0 -8px; }
+.sv-calc > .sv-ask { margin-top: 10px; }
+.sv-q { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; line-height: 1.35; color: #7a3600; }
+.sv-no { background: #ffffff; }
+.sv-yes, .sv-yes:hover { background: #c2410c; color: #ffffff; }
+.sv-link { border: 0; background: none; padding: 0; font-size: 13px; font-weight: 650; color: var(--ink); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; align-self: flex-start; }
+.sv-back { margin-top: 16px; align-self: center; }
+.sv-sub { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 2px; }
+.sv-sub h3 { margin: 0; font-size: 13px; font-weight: 650; color: var(--mute); }
+.sv-pick { cursor: pointer; }
+.sv-pick input { width: 20px; height: 20px; accent-color: var(--ink); flex-shrink: 0; cursor: inherit; }
+.sv-same { cursor: default; }
+.sv-same img, .sv-same .sv-name { opacity: 0.5; }
+.saves-card button:disabled { cursor: default; opacity: 0.55; }
+.saves-card .install.wide + .sv-hint { text-align: center; }
+#saves-body > .install.wide { margin-top: 16px; }
 
 .foot { margin-top: auto; padding-top: 22px; font-size: 12px; color: var(--mute); display: flex; flex-wrap: wrap; gap: 4px 8px; }
 .foot a { color: var(--mute); text-decoration: none; }

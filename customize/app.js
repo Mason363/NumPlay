@@ -380,6 +380,12 @@
     p.classList.add('show');
     $('#status-line').textContent = g.title.toUpperCase();
   }
+  // (the pointer's way in: a clip is a GIF of up to 4 MB to fetch and unpack, the page's heaviest moment, so the
+  // ones the pointer only crosses on its way aren't started; sooner when a clip is already up, to go from game to game)
+  function previewSoon(id) {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(() => showPreview(id), previewing ? 70 : 150);
+  }
   function hidePreview(later) {
     clearTimeout(previewTimer);
     const go = () => {
@@ -1820,7 +1826,9 @@
       const r = dev.getBoundingClientRect(), on = mx >= r.left && mx <= r.right && my >= r.top && my <= r.bottom;
       tx = on ? clamp((mx - r.left) / r.width - 0.5, -0.5, 0.5) : 0;
       ty = on ? clamp((my - r.top) / r.height - 0.4, -0.5, 0.5) : 0;
-      kick();
+      // (away from the calculator, with it at rest, nothing is drawn: the sticker keeps the light it had. Drawing
+      // it for every move anywhere, 13 canvases in the 3D scene, made each move over the games cost a whole scene)
+      if (on || over || Math.abs(x) + Math.abs(y) > 0.0005) kick();
     }, { passive: true });
     document.documentElement.addEventListener('pointerleave', () => { tx = 0; ty = 0; kick(); });
     star.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') { over = true; kick(); } });
@@ -2202,7 +2210,7 @@
     try {
       kit = await fetch(KIT + 'kit.json').then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
     } catch (e) {
-      document.documentElement.classList.remove('intro-wait');
+      document.documentElement.classList.remove('intro-wait', 'loading');
       toast("The games didn't load, try again in a minute");
       return;
     }
@@ -2233,7 +2241,7 @@
         toggle(g.id);
         if (matchMedia('(hover: none)').matches) { showPreview(g.id); hidePreview(1600); }
       });
-      b.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') showPreview(g.id); });
+      b.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') previewSoon(g.id); });
       b.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') hidePreview(120); });
       b.addEventListener('focus', () => showPreview(g.id));
       b.addEventListener('contextmenu', (e) => { if (holding || e.pointerType === 'touch') e.preventDefault(); });
@@ -2276,6 +2284,16 @@
     });
 
     $('#space-chip').addEventListener('click', (e) => { renderSpaces(); openPop($('#space-pop'), e.currentTarget, true); });
+    // your saves, backed up from the calculator and put back: saves.js, usb.js and saves-ui.js, fetched when
+    // Saves is first opened (or the address asks for it, ?saves)
+    let savesUi = null;
+    const saves = () => {
+      if (!savesUi) savesUi = script('saves.js').then(() => script('usb.js')).then(() => script('saves-ui.js'))
+        .then(() => npSavesUi.start(kit, toast)).catch((e) => { savesUi = null; throw e; });
+      return savesUi;
+    };
+    $('#saves-chip').addEventListener('click', () => { closePops(); saves().then(() => npSavesUi.open()).catch(() => toast("Saves didn't load, try again")); });
+    if (flag('saves')) saves().catch(() => {});
     $('#install').addEventListener('click', (e) => go(e.currentTarget, true));
     $('#download').addEventListener('click', (e) => go(e.currentTarget, false));
     $('#dock-install').addEventListener('click', (e) => go(e.currentTarget, true));
@@ -2339,7 +2357,18 @@
     requestAnimationFrame(() => intro(new URLSearchParams(location.search).has('intro')));
     addEventListener('hashchange', () => { restore(); render(); });
     stars();
-    if (!other()) (window.requestIdleCallback || setTimeout)(() => loadTools().catch(() => {}), { timeout: 3000 });
+    // The linker (ld and objcopy, 1.9 MB) is ready before Install is pressed: fetched at the first press or key
+    // anywhere, not as the page comes up (someone who only looks never pays for it), and not at all ahead of
+    // time when the browser asks to save data (then Install fetches it)
+    const eager = () => {
+      removeEventListener('pointerdown', eager, true);
+      removeEventListener('keydown', eager, true);
+      if (other() || (navigator.connection && navigator.connection.saveData)) return;
+      (window.requestIdleCallback || setTimeout)(() => loadTools().catch(() => {}), { timeout: 3000 });
+    };
+    addEventListener('pointerdown', eager, true);
+    addEventListener('keydown', eager, true);
+    document.documentElement.classList.remove('loading');
   }
   start();
 })();

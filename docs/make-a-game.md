@@ -95,6 +95,7 @@ And the tools, all in `tools/`:
 | `sizes.py` | How much flash and RAM each game takes inside NumPlay |
 | `lang.py` | Builds the French and Chinese versions |
 | `../tests/test_games.py` | Plays every app in the emulator and checks its saves survive a reinstall |
+| `../tests/test_saves.py` | Checks [NumPlay Studio's Saves](saves.md) reads every game's save files and puts them back as the calculator does |
 
 ## What the calculator gives you
 

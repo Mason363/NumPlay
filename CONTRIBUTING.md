@@ -48,7 +48,7 @@ Then:
 | `launcher/` | NumPlay itself: the home screen, settings, saves, the 2D drawing every small game shares |
 | `games/<game>/` | One game: `src/` (with `icon.png`), `Makefile`, `README.md`, `docs/` pictures, `lang/` translations, `tests/` |
 | `games/common/` | What every game uses: Home safety, files, text, compression |
-| `games/games.json` | The games in NumPlay, in the launcher's order, with their colours and screenshots |
+| `games/games.json` | The games in NumPlay, in the launcher's order, with their colours, screenshots and save files |
 | `sdk/template/` | Star Catcher, the template new games start from |
 | `tools/` | Builders, the emulator, icons, translations, sizes |
 | `tests/` | Tests of NumPlay and every app |
@@ -64,7 +64,7 @@ A **big game** builds as its own `.nwa` (like `games/finalearth2`), with a build
 - **Keys anyone gets**: arrows move, OK or EXE acts, Back pauses or goes back, Home quits from anywhere. The keys are written on the screen whenever there's something to learn.
 - **A pause menu in the game's own look**, with Quit game, which asks first.
 - **An icon** of 55 x 56 pixels with NumPlay's rounded corners: `python3 tools/icon.py picture.png games/<game>/src/icon.png`. For a port, start from the original's own icon.
-- **Saves that always come back**: packed bytes with a magic and a version number; old versions read or reset cleanly, never a crash. Save on Home, on quitting and every so often while playing.
+- **Saves that always come back**: packed bytes with a magic and a version number; old versions read or reset cleanly, never a crash. Save on Home, on quitting and every so often while playing. Name every file the game writes in `games/games.json` (`"records"`): NumPlay's reset, its copy of the saves and [NumPlay Studio's Saves](docs/saves.md) all go by that list.
 - **Every calculator**: it runs on the N0110, N0115 and N0120 (the first two are 2.5 times slower: keep the game's speed with a fixed tick rate and catch-up), fits the RAM (`make check`), and says so if it needs more than Upsilon gives (107 KB).
 - **Speed**: 30 frames a second on the N0120.
 - **Honest credits**: the original's makers, every borrowed picture, font and library, and "not affiliated with" them.
@@ -80,7 +80,8 @@ Before a pull request:
 1. `make -C games/<game> test` if your game has tests, and add some if it hasn't: its rules against the original, a scripted playthrough, and a few hundred random-key runs that must not crash.
 2. Run it in the emulator (`tools/emu.py`), also with `--model n0110`.
 3. `make -j4 check NWLINK=nwlink` if you touched NumPlay or a game inside it.
-4. Play the first minute as someone who has never seen the game.
+4. `python3 tests/test_saves.py` if you added a game or changed the files one saves to: it checks NumPlay Studio can back them up and put them back.
+5. Play the first minute as someone who has never seen the game.
 
 If you can, try it on a real calculator too, and say which one in the pull request.
 

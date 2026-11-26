@@ -35,6 +35,11 @@ jobs:
       - name: Kit links
         run: python3 tests/test_kit.py --only links
 
+      # ...and the kit tells NumPlay Studio's Saves every game's save files (tests/ci.py runs the rest of this test,
+      # with the launcher in the emulator)
+      - name: Kit saves
+        run: python3 tests/test_saves.py --kit build/data/site-kit
+
       - uses: actions/upload-artifact@v4
         with:
           name: nwa
