@@ -69,8 +69,10 @@ EADK_SIM_CFLAGS := $(shell $(NWLINK) eadk-cflags-simulator)
 
 .SECONDEXPANSION:
 
+CATALOG ?= games/games.json
+
 # Per-game facts (order, screenshots) come from games/games.json.
-$(B)/games.mk: games/games.json tools/games_mk.py | $(B)
+$(B)/games.mk: $(CATALOG) tools/games_mk.py | $(B)
 	$(PY) tools/games_mk.py $< > $@
 -include $(B)/games.mk
 
@@ -141,12 +143,12 @@ $(foreach g,$(STD_GAMES),$(eval MOD_$(g) = $(if $(filter $(g),$(GAMES_REDIRECT))
 MODULES = $(foreach g,$(GAMES),$(B)/modules/$(g).o)
 
 # ------------------------------------------------------------------ generated glue
-$(B)/gen/numplay.ld: games/games.json tools/gen_games.py $(foreach g,$(GAMES) $(OPTIONAL_GAMES),$(B)/modules/$(g).o)
+$(B)/gen/numplay.ld: $(CATALOG) tools/gen_games.py $(foreach g,$(GAMES) $(OPTIONAL_GAMES),$(B)/modules/$(g).o)
 # (and the big games' modules, which take minutes: only for the kit)
 $(B)/gen/numplay.ld: $(if $(filter kit kit-langs,$(MAKECMDGOALS)),$(foreach g,$(XL_GAMES),$(B)/modules/$(g).o))
-	$(PY) tools/gen_games.py games/games.json $(B)/modules $(B)/gen
+	$(PY) tools/gen_games.py $(CATALOG) $(B)/modules $(B)/gen
 
-$(B)/gen/shots_%.c: games/games.json tools/shots.py $$(SHOTS_$$*) | $(B)
+$(B)/gen/shots_%.c: $(CATALOG) tools/shots.py $$(SHOTS_$$*) | $(B)
 	cd games/$* && $(PY) ../../tools/shots.py --id $* --index $(INDEX_$*) $(COLORS_$*) ../../$@ $(SHOTS_REL_$*)
 
 # Retro-Go's table of games (tools/romtable.py): empty, or ROMS="a.gb b.nes" to try some games
@@ -206,7 +208,7 @@ $(B)/variant/%-icon.o: $$(ICON_$$*) | $(B)
 
 # ------------------------------------------------------------------ NumPlay.nwa
 $(B)/%.nwa: $(KIT)/base.o $(B)/arm/arena.o $(NP_GAMES) $(B)/variant/%-name.o $(B)/variant/%-icon.o
-	$(ARM_LD) $(KIT_LINK) -T $(B)/gen/numplay.ld $(KIT)/base.o $(B)/arm/arena.o \
+	$(ARM_LD) $(KIT_LINK) -Map=$@.map -T $(B)/gen/numplay.ld $(KIT)/base.o $(B)/arm/arena.o \
 	  $(B)/variant/$*-name.o $(B)/variant/$*-icon.o $(NP_GAMES) -o $@
 	arm-none-eabi-strip --strip-unneeded $@
 	@if [ "$*" = NumPlay ]; then $(PY) tools/sizes.py $@ $(B)/modules; fi
@@ -263,8 +265,8 @@ check: nwa apps
 # ------------------------------------------------------------------ NumPlay-Upsilon.nwa
 # The same kit, with the games that fit Upsilon's RAM (its arena is NumPlay's: each game's place
 # in it doesn't depend on the others).
-$(B)/gen-upsilon/numplay.ld: games/games.json tools/gen_games.py $(foreach g,$(UPSILON_GAMES),$(B)/modules/$(g).o)
-	$(PY) tools/gen_games.py games/games.json $(B)/modules $(B)/gen-upsilon --only "$(UPSILON_GAMES)"
+$(B)/gen-upsilon/numplay.ld: $(CATALOG) tools/gen_games.py $(foreach g,$(UPSILON_GAMES),$(B)/modules/$(g).o)
+	$(PY) tools/gen_games.py $(CATALOG) $(B)/modules $(B)/gen-upsilon --only "$(UPSILON_GAMES)"
 $(B)/NumPlay-Upsilon.nwa: $(KIT)/base.o $(B)/arm/arena.o $(foreach g,$(UPSILON_GAMES),$(KIT)/games/$(g).o) \
   $(B)/variant/NumPlay-name.o $(B)/variant/NumPlay-icon.o $(B)/gen-upsilon/numplay.ld
 	$(ARM_LD) $(KIT_LINK) -T $(B)/gen-upsilon/numplay.ld $(filter %.o,$^) -o $@
@@ -508,8 +510,8 @@ $(B)/sim/%.mod: FORCE | $(B)
 	@if [ "$*" != tetris ]; then $(MAKE) --no-print-directory -C games/$* sim-module NWLINK="$(NWLINK)" $(if $(filter $*,$(GAMES_REDIRECT)),$(call GAME_REDIRECT_ARG,$*),); \
 	else $(MAKE) --no-print-directory $(SIM_tetris); fi
 
-$(B)/sim/gen/gametable.c: games/games.json tools/gen_games.py $(MODULES)
-	$(PY) tools/gen_games.py games/games.json $(B)/modules $(B)/sim/gen --simulator
+$(B)/sim/gen/gametable.c: $(CATALOG) tools/gen_games.py $(MODULES)
+	$(PY) tools/gen_games.py $(CATALOG) $(B)/modules $(B)/sim/gen --simulator
 
 sim: $(B)/NumPlay.nwb
 $(B)/NumPlay.nwb: $(LAUNCHER_SRC) $(LAUNCHER_H) $(B)/sim/gen/gametable.c $(foreach g,$(GAMES),$(B)/gen/shots_$(g).c) \
@@ -582,3 +584,10 @@ clean:
 	-$(MAKE) -C games/flappydunk clean
 	-cd games/tetris/tetris && $(CARGO) clean
 	-$(foreach g,$(STD_GAMES),$(MAKE) -C games/$(g) clean;)
+
+# A separate output tree keeps Foundation objects away from upstream builds.
+.PHONY: foundation
+foundation:
+	$(PY) tools/foundation.py catalog build/foundation-games.json
+	$(MAKE) B=build/foundation CATALOG=build/foundation-games.json VERSION=0.1.0 VARIANTS=TwiliPlay NAME_TwiliPlay='"TwiliPlay"' ICON_TwiliPlay=launcher/assets/icon.png build/foundation/TwiliPlay.nwa
+	$(PY) tools/foundation.py check build/foundation
