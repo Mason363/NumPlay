@@ -16,6 +16,7 @@
 #include "../../common/np_text.h"
 #ifdef __TICE__
 #include <string.h>
+#include <wchar.h>
 #endif
 
 #if NP_MODULE /* (np_file_read and np_file_write: NumPlay's, launcher/src/np.h) */
@@ -252,14 +253,14 @@ static void pong_paint(void) {
 static float mx[2], my[2], mvx[2], mvy[2], qx, qy, qvx, qvy, qaim;
 
 #ifdef __TICE__
-static void mallet_mid(void);
+static void hk_keep(void);
 #endif
 static void hockey_start(void) { /* the puck to the one who was scored on */
   int to = winner < 2 ? 1 - winner : rn(2);
   for (int p = 0; p < 2; p++) mx[p] = p ? RX1 - 40 : RX0 + 40, my[p] = RYM, mvx[p] = mvy[p] = 0;
   qx = to ? 220 : 100, qy = RYM, qvx = qvy = 0, qaim = (float)(rn(44) - 22); /* where the computer aims */
 #ifdef __TICE__
-  mallet_mid();
+  hk_keep();
 #endif
   bot.x = RX1 - 40, bot.y = RYM;
 }
@@ -386,47 +387,250 @@ static void hockey_step(void) {
 }
 #define ICE HEX(0xEDF4FA)
 #ifdef __TICE__
-static void puck(const int *a) { /* at a[0], a[1] */
-  disc(a[0] + 2, a[1] + 3, QR, gfx_mix(ICE, 0, 10)), disc(a[0], a[1], QR, HEX(0x22252E)), disc(a[0], a[1], QR - 3, HEX(0x3B3F4C));
+/* ---- Air Hockey on the TI-84 Plus CE, where a strip a mallet or the puck crosses is drawn again every frame: the
+   rink and the pieces drawn from how they look, kept, rather than from their dozen calls and discs each time. The same
+   pixels: what's kept is what those calls drew. */
+static void rink_calls(void) { /* (the rink as hockey_paint draws it elsewhere) */
+  const color_t RED = HEX(0xE25555), BLUE = HEX(0x5C8FE6), RIM = HEX(0x8D9BB0);
+  gfx_fill(0, 22, SCREEN_W, SCREEN_H - 22, INK);
+  box(RX0 - 5, RY0 - 5, RX1 - RX0 + 10, RY1 - RY0 + 10, 14, RIM);
+  box(RX0, RY0, RX1 - RX0, RY1 - RY0, 10, ICE);
+  gfx_fill(159, RY0, 3, RY1 - RY0, RED);
+  for (int k = 0; k < 3; k++) {
+    int c = k == 1, d = 80 - 20 * c;
+    gfx_rrect_outline(k * 150 - 30 + 10 * c, RYM - d / 2, d, d, d / 2, 2, c ? RED : BLUE, 220);
+  }
+  for (int k = 0; k < 2; k++) {
+    gfx_fill(k ? RX1 + 5 : 0, RY0, k ? SCREEN_W - RX1 - 5 : RX0 - 5, RY1 - RY0, INK);
+    gfx_fill(k ? RX1 : RX0 - 5, RY0, 5, RY1 - RY0, RIM);
+    gfx_fill(k ? RX1 : RX0 - 6, GY0, 6, GY1 - GY0, HEX(0x0B0E1C));
+  }
 }
-/* A mallet's middle (its discs inside the dark one, rows and columns -MID to MID round it), drawn once and copied
-   after: a row's pixels from mid_a to mid_b, those not the dark disc's own */
-#define MID 10
-static color_t mid_px[2][2 * MID + 1][2 * MID + 1];
-static int8_t mid_a[2][2 * MID + 1], mid_b[2][2 * MID + 1];
-static bool mid_made;
-static void mallet_mid(void) { /* (in the strip, between frames) */
-  if (mid_made) return;
-  mid_made = true;
-  int y0 = gfx_y0, y1 = gfx_y1;
-  gfx_y0 = 0, gfx_y1 = STRIP_H;
-  for (int p = 0; p < 2; p++)
-    for (int top = -MID; top <= MID; top += STRIP_H) { /* (rows top to top + 15 of it in the strip's) */
-      gfx_fill(0, 0, 2 * MID + 1, STRIP_H, dark[p]);
-      disc(MID, -top, MR - 3, team[p]);
-      disc(MID, -top, 6, dark[p]);
-      disc(MID - 1, -top - 1, 4, light[p]);
-      for (int r = 0; r < STRIP_H && top + r <= MID; r++) {
-        int k = top + r + MID, a = 2 * MID + 1, b = -1;
-        for (int i = 0; i <= 2 * MID; i++)
-          if ((mid_px[p][k][i] = gfx_buf[r * SCREEN_W + i]) != dark[p]) a = a < i ? a : i, b = i;
-        mid_a[p][k] = (int8_t)a, mid_b[p][k] = (int8_t)b;
+/* The rink from row RK0 to RK1 (the rest, by its corners, by its calls): a row without the rings or the goals, and
+   each row's runs of other pixels (a run: its column in 2 bytes, low then high + 2 * its length, then each pixel's
+   colour's place in pal). A puck or a mallet: its shadow (radius R, 2 right and 3 down), its dark disc (R) and its
+   middle inside the dark one; each row (from R up to R + 2 down): the pixels the dark disc covers whole, from a to b,
+   as all the discs leave them, and the n others the shadow or the dark disc touch, mixed with what's under them
+   (each: its column from the left of the piece, the shadow's level, the dark disc's) */
+#define RK0 48
+#define RK1 208
+#define RUNS 2000 /* (1814 used) */
+#define MIXES 400 /* (276 used) */
+#define WHOLES 1240 /* (1216 used) */
+typedef struct {
+  int8_t a, b;
+  uint8_t n;
+  uint16_t mix, whole;
+} piece_row_t;
+typedef struct {
+  color_t row[SCREEN_W], pal[64];
+  uint16_t at[RK1 - RK0 + 1];
+  uint8_t runs[RUNS];
+  piece_row_t piece[2][2 * MR + 3]; /* the puck's, a mallet's */
+  uint8_t mix[MIXES][3];
+  color_t whole[WHOLES];
+  uint16_t whole_at[3]; /* the puck's, player 1's mallet's, player 2's */
+} hk_t;
+/* (the room Light Cycles' grid takes, Air Hockey's things in it: one game at a time) */
+static union {
+  hk_t hk;
+  struct { /* Light Cycles' grid, and the columns of the cells its computer reaches (room) */
+    uint8_t cell[54][80], x[256];
+  } lc;
+  struct { /* Tanks' rectangles at every angle (quad_rows), its walls across each row (maze_spans) */
+    uint16_t at[64][3], used;
+    int16_t wall_span[2 * 7][12][2];
+    uint8_t wall_spans[2 * 7];
+    int8_t rows[7000];
+  } tq;
+} shared;
+static enum { BY_NONE, BY_HOCKEY, BY_CYCLES, BY_TANKS } shared_by;
+static bool hk_ok;
+#define GOAL HEX(0x0B0E1C)
+static bool rink_ok;
+static int rink_next, rink_pal; /* (the next row to keep, the colours kept) */
+static bool goal_col(int x) { return (x >= RX0 - 6 && x < RX0) || (x >= RX1 && x < RX1 + 6); }
+/* the rows of the strip just drawn by rink_calls, kept: the first strip from RK0 gives the plain row (its row 60, with
+   no ring and no goal) */
+static void rink_keep(void) {
+  hk_t *h = &shared.hk;
+  unsigned used = rink_next == RK0 ? 0 : h->at[rink_next - RK0];
+  if (rink_next == RK0) memcpy(h->row, gfx_buf + (60 - RK0) * SCREEN_W, sizeof h->row), rink_pal = 0;
+  for (int r = 0; r < STRIP_H; r++) {
+    int y = rink_next + r;
+    bool goal = y >= GY0 && y < GY1;
+    const color_t *p = gfx_buf + r * SCREEN_W;
+    h->at[y - RK0] = (uint16_t)used;
+    if (!goal && !memcmp(p, h->row, sizeof h->row)) continue;
+    for (int x = 0; x < SCREEN_W;) {
+      if (p[x] == (goal && goal_col(x) ? GOAL : h->row[x])) {
+        x++;
+        continue;
+      }
+      int x0 = x;
+      while (x < SCREEN_W && x - x0 < 127 && p[x] != (goal && goal_col(x) ? GOAL : h->row[x])) x++;
+      if (used + 2 + (unsigned)(x - x0) > RUNS) {
+        rink_next = RK1 + 1; /* (no room: drawn by its calls) */
+        return;
+      }
+      h->runs[used++] = (uint8_t)x0, h->runs[used++] = (uint8_t)(x0 >> 8 | (x - x0) << 1);
+      for (int i = x0; i < x; i++) {
+        int k = 0;
+        while (k < rink_pal && h->pal[k] != p[i]) k++;
+        if (k == rink_pal && rink_pal++ == 64) {
+          rink_next = RK1 + 1;
+          return;
+        }
+        h->pal[k] = p[i], h->runs[used++] = (uint8_t)k;
       }
     }
+  }
+  h->at[rink_next + STRIP_H - RK0] = (uint16_t)used;
+  if ((rink_next += STRIP_H) == RK1) rink_ok = true;
+}
+static void rink_at(const int *a) { /* the rink over the rows being drawn, in the columns being drawn */
+  hk_t *h = &shared.hk;
+  if (!rink_ok || gfx_y0 < RK0 || gfx_y1 > RK1) {
+    rink_calls();
+    if (!rink_ok && gfx_y0 == rink_next && gfx_x0 == 0 && gfx_x1 == SCREEN_W) rink_keep();
+    return;
+  }
+  int x0 = gfx_x0, x1 = gfx_x1;
+  color_t *p = gfx_buf;
+  for (int y = gfx_y0; y < gfx_y1; y++, p += SCREEN_W) {
+    memcpy(p + x0, h->row + x0, (size_t)(x1 - x0) * sizeof(color_t));
+    if (y >= GY0 && y < GY1) /* (the goals) */
+      for (int k = 0; k < 2; k++) {
+        int g0 = k ? RX1 : RX0 - 6, g1 = g0 + 6;
+        for (int x = x0 > g0 ? x0 : g0, e = x1 < g1 ? x1 : g1; x < e; x++) p[x] = GOAL;
+      }
+    for (const uint8_t *e = h->runs + h->at[y - RK0], *end = h->runs + h->at[y - RK0 + 1]; e < end;) {
+      int x = e[0] | (e[1] & 1) << 8, n = e[1] >> 1;
+      if (x >= x1) break; /* (the runs from left to right) */
+      if (x + n > x0)
+        for (int i = x < x0 ? x0 - x : 0, i1 = x + n > x1 ? x1 - x : n; i < i1; i++) p[x + i] = h->pal[e[2 + i]];
+      e += 2 + n;
+    }
+  }
+}
+/* the puck's (kind 0) or a mallet's (kind 1, player p's) discs inside the dark one, at (x, y) */
+static void piece_middle(int kind, int p, int x, int y, bool green) {
+  if (!kind) {
+    disc(x, y, QR - 3, green ? 0x07E0 : HEX(0x3B3F4C));
+    return;
+  }
+  disc(x, y, MR - 3, green ? 0x07E0 : team[p]);
+  disc(x, y, 6, green ? 0x07E0 : dark[p]);
+  disc(x - 1, y - 1, 4, green ? 0x07E0 : light[p]);
+}
+static color_t piece_dark(int kind, int p) { return kind ? dark[p] : HEX(0x22252E); }
+static bool piece_keep(int kind, unsigned *mixes, unsigned *wholes) {
+  hk_t *h = &shared.hk;
+  int R = kind ? MR : QR, W = 2 * R + 2, sets = kind ? 2 : 1;
+  static uint8_t level[64], l0[STRIP_H][2 * MR + 2], l1[STRIP_H][2 * MR + 2]; /* (a level from the green on black) */
+  for (int g = 0; g < 64; g++) level[g] = 255;
+  for (int t = 0; t <= 32; t++) {
+    int g = gfx_mix(0, 0x07E0, t) >> 5 & 63;
+    if (level[g] != 255) return false;
+    level[g] = (uint8_t)t;
+  }
+  gfx_y0 = 0, gfx_y1 = STRIP_H;
+  unsigned width = 0; /* (its whole pixels, for one set of colours) */
+  for (int top = -R; top < R + 3; top += STRIP_H) { /* its rows top to top + 15 in the strip's: their shape */
+    for (int pass = 0; pass < 3; pass++) { /* the shadow's levels, the dark disc's, the middle's reach */
+      gfx_fill(0, 0, W, STRIP_H, 0);
+      if (pass < 2) disc(R + 2 * !pass, -top + 3 * !pass, R, 0x07E0);
+      else piece_middle(kind, 0, R, -top, true);
+      for (int r = 0; r < STRIP_H; r++)
+        for (int i = 0; i < W; i++) {
+          color_t c = gfx_buf[r * SCREEN_W + i];
+          int l = c & ~0x07E0 ? 255 : level[c >> 5 & 63];
+          if (l == 255) return false;
+          if (pass == 0) l0[r][i] = (uint8_t)l;
+          else if (pass == 1) l1[r][i] = (uint8_t)l;
+          else if (l && l1[r][i] < 32) return false; /* (the middle reaching out of the dark disc) */
+        }
+    }
+    for (int r = 0; r < STRIP_H && top + r < R + 3; r++) {
+      piece_row_t *pr = &h->piece[kind][top + r + R];
+      int a = W, b = -1;
+      pr->mix = (uint16_t)*mixes, pr->n = 0;
+      for (int i = 0; i < W; i++)
+        if (l1[r][i] >= 32) {
+          if (b >= 0 && b != i - 1) return false; /* (not one run) */
+          a = a < i ? a : i, b = i;
+        } else if (l0[r][i] || l1[r][i]) {
+          if (*mixes == MIXES) return false;
+          h->mix[*mixes][0] = (uint8_t)i, h->mix[*mixes][1] = l0[r][i], h->mix[(*mixes)++][2] = l1[r][i], pr->n++;
+        }
+      pr->a = (int8_t)a, pr->b = (int8_t)b, pr->whole = (uint16_t)width;
+      if (a <= b) width += (unsigned)(b - a + 1);
+    }
+  }
+  if (*wholes + width * (unsigned)sets > WHOLES) return false;
+  for (int set = 0; set < sets; set++) h->whole_at[kind + set] = (uint16_t)(*wholes + width * (unsigned)set);
+  *wholes += width * (unsigned)sets;
+  for (int top = -R; top < R + 3; top += STRIP_H) /* its pixels covered whole, as the discs leave them */
+    for (int set = 0; set < sets; set++) {
+      gfx_fill(0, 0, W, STRIP_H, 0);
+      disc(R + 2, -top + 3, R, gfx_mix(ICE, 0, 10)), disc(R, -top, R, piece_dark(kind, set));
+      piece_middle(kind, set, R, -top, false);
+      for (int r = 0; r < STRIP_H && top + r < R + 3; r++) {
+        const piece_row_t *pr = &h->piece[kind][top + r + R];
+        for (int i = pr->a; i <= pr->b; i++) h->whole[h->whole_at[kind + set] + pr->whole + (i - pr->a)] = gfx_buf[r * SCREEN_W + i];
+      }
+    }
+  return true;
+}
+static void hk_keep(void) { /* (between frames, in the strip) */
+  if (shared_by == BY_HOCKEY) return;
+  shared_by = BY_HOCKEY;
+  int y0 = gfx_y0, y1 = gfx_y1;
+  unsigned mixes = 0, wholes = 0;
+  hk_ok = piece_keep(0, &mixes, &wholes) && piece_keep(1, &mixes, &wholes);
+  rink_ok = false, rink_next = RK0; /* (kept as the next frame draws it whole) */
   gfx_y0 = y0, gfx_y1 = y1;
+}
+/* piece kind (0 the puck, 1 player p's mallet) at (x, y) over the rows being drawn; false: not there (off the screen's
+   sides) */
+color_t gfx_ce_mix(color_t a, color_t b, unsigned t); /* (gfx_mix's own: platform/ti84ce/gfx_ce.c) */
+static bool piece_at(int kind, int p, int x, int y) {
+  hk_t *h = &shared.hk;
+  int R = kind ? MR : QR;
+  if (!hk_ok || x - R < 0 || x + R + 2 > SCREEN_W) return false;
+  color_t S = gfx_mix(ICE, 0, 10), D = piece_dark(kind, p);
+  const color_t *whole = h->whole + h->whole_at[kind + p];
+  int k = gfx_y0 - (y - R), k1 = gfx_y1 - (y - R);
+  k = k < 0 ? 0 : k, k1 = k1 > 2 * R + 3 ? 2 * R + 3 : k1;
+  for (color_t *line = gfx_buf + (y - R + k - gfx_y0) * SCREEN_W + x - R; k < k1; k++, line += SCREEN_W) {
+    const piece_row_t *pr = &h->piece[kind][k];
+    if (pr->a <= pr->b) memcpy(line + pr->a, whole + pr->whole, (size_t)(pr->b - pr->a + 1) * sizeof(color_t));
+    for (const uint8_t(*m)[3] = h->mix + pr->mix, (*e)[3] = m + pr->n; m < e; m++) {
+      color_t q = line[(*m)[0]];
+      if ((*m)[1]) q = (*m)[1] >= 32 ? S : gfx_ce_mix(q, S, (*m)[1]);
+      if ((*m)[2]) q = gfx_ce_mix(q, D, (*m)[2]);
+      line[(*m)[0]] = q;
+    }
+  }
+  return true;
+}
+static void puck(const int *a) { /* at a[0], a[1] */
+  if (!piece_at(0, 0, a[0], a[1]))
+    disc(a[0] + 2, a[1] + 3, QR, gfx_mix(ICE, 0, 10)), disc(a[0], a[1], QR, HEX(0x22252E)), disc(a[0], a[1], QR - 3, HEX(0x3B3F4C));
 }
 static void mallet(const int *a) { /* at a[0], a[1], player a[2]'s */
   int x = a[0], y = a[1], p = a[2];
+  if (piece_at(1, p, x, y)) return;
   disc(x + 2, y + 3, MR, gfx_mix(ICE, 0, 10));
   disc(x, y, MR, dark[p]);
-  for (int k = 0; k <= 2 * MID; k++) { /* (the rest as it was drawn: no other disc reaches out of the dark one) */
-    int row = y + k - MID, a0 = mid_a[p][k], a1 = mid_b[p][k];
-    if (row >= gfx_y0 && row < gfx_y1 && a0 <= a1)
-      memcpy(gfx_buf + (row - gfx_y0) * SCREEN_W + x - MID + a0, &mid_px[p][k][a0], (size_t)(a1 - a0 + 1) * sizeof(color_t));
-  }
+  piece_middle(1, p, x, y, false);
 }
 #endif
 static void hockey_paint(void) {
+#ifdef __TICE__
+  static const int none[1];
+  gfx_call(rink_at, none, 0, 0, 22, SCREEN_W, SCREEN_H - 22); /* (one call a strip) */
+#else
   const color_t RED = HEX(0xE25555), BLUE = HEX(0x5C8FE6), RIM = HEX(0x8D9BB0);
   gfx_fill(0, 22, SCREEN_W, SCREEN_H - 22, INK);
   box(RX0 - 5, RY0 - 5, RX1 - RX0 + 10, RY1 - RY0 + 10, 14, RIM);
@@ -441,6 +645,7 @@ static void hockey_paint(void) {
     gfx_fill(k ? RX1 : RX0 - 5, RY0, 5, RY1 - RY0, RIM);
     gfx_fill(k ? RX1 : RX0 - 6, GY0, 6, GY1 - GY0, HEX(0x0B0E1C));
   }
+#endif
 #ifdef __TICE__
   int q[2] = {(int)qx, (int)qy};
   moving(puck, q, 2, q[0] - QR, q[1] - QR, 2 * QR + 2, 2 * QR + 3, RY0, RY1 + 3, !phase);
@@ -507,11 +712,14 @@ static bool solid(int x, int y) {
 static uint8_t xzone[SCREEN_W], yzone[SCREEN_H], ways[TROWS * TCOLS]; /* ways: each cell's open sides, open_way's */
 static uint16_t zones[TROWS * TCOLS];
 static bool open_way(int k, int d);
+static bool solid_px(unsigned px, unsigned py) { /* (the pixel's, on the screen) */
+  unsigned a = xzone[px], b = yzone[py];
+  return zones[(b & 15) * TCOLS + (a & 15)] >> ((a >> 4) + (b >> 4)) & 1;
+}
 static bool solid(int x, int y) {
   unsigned px = (unsigned)(x >> 8), py = (unsigned)(y >> 8);
   if (px >= SCREEN_W || py >= SCREEN_H) return solid_at(x, y);
-  unsigned a = xzone[px], b = yzone[py];
-  return zones[(b & 15) * TCOLS + (a & 15)] >> ((a >> 4) + (b >> 4)) & 1;
+  return solid_px(px, py);
 }
 static int maze_n; /* (a new maze each round) */
 static void zones_make(void) { /* (for a new maze) */
@@ -580,6 +788,8 @@ static void tanks_start(void) {
 #endif
 #ifdef __TICE__
   maze++;
+  if (shared_by != BY_TANKS) /* (the rectangles' rows, kept from here on) */
+    shared_by = BY_TANKS, memset(shared.tq.at, 0, sizeof shared.tq.at), shared.tq.used = 0;
 #endif
   for (int p = 0; p < 2; p++) {
     int c = p ? TCOLS - 1 - rn(3) : rn(3);
@@ -592,11 +802,25 @@ static void tanks_start(void) {
 static bool tank_stuck(int p, int x, int y) {
   if (!dead[1 - p] && near(x, y, 1 - p, 2 * TR)) return true;
 #if NP_SOFT_FLOAT
-  static int probe[16][2]; /* (the same 16 points round it) */
+  /* (the same 16 points round it: in whole pixels and 256ths, added to the tank's without shifting each) */
+  static int probe[16][2];
+  static int8_t whole[16][2];
+  static uint8_t part[16][2];
   if (!probe[0][0])
-    for (int i = 0; i < 16; i++) probe[i][0] = cos64(4 * i) * TR * 2, probe[i][1] = sin64(4 * i) * TR * 2;
+    for (int i = 0; i < 16; i++)
+      for (int k = 0; k < 2; k++) {
+        probe[i][k] = (k ? sin64(4 * i) : cos64(4 * i)) * TR * 2;
+        whole[i][k] = (int8_t)(probe[i][k] >> 8), part[i][k] = (uint8_t)(probe[i][k] & 255);
+      }
+  int px = x >> 8, py = y >> 8, fx = x & 255, fy = y & 255;
+  if (px < 32 || px >= SCREEN_W - 32 || py < 32 || py >= SCREEN_H - 32) { /* (near the screen's edges: as solid does) */
+    for (int i = 0; i < 16; i++)
+      if (solid(x + probe[i][0], y + probe[i][1])) return true;
+    return false;
+  }
   for (int i = 0; i < 16; i++)
-    if (solid(x + probe[i][0], y + probe[i][1])) return true;
+    if (solid_px((unsigned)(px + whole[i][0] + (fx + part[i][0] > 255)), (unsigned)(py + whole[i][1] + (fy + part[i][1] > 255))))
+      return true;
 #else
   for (int i = 0; i < 64; i += 4)
     if (solid(x + cos64(i) * TR * 2, y + sin64(i) * TR * 2)) return true;
@@ -637,6 +861,18 @@ static bool line_far(int x, int y, int vx, int vy) {
   int dx = (tx_[0] - x) >> 8, dy = (ty_[0] - y) >> 8, cross = dx * vy - dy * vx, m = (TR + 4) * 128;
   return dx * vx + dy * vy < 0 ? dx * dx + dy * dy >= (TR + 4) * (TR + 4) : cross >= m || cross <= -m;
 }
+/* how many 16 ms steps from (x, y) at (vx, vy) stay in the middle of its cell (2 pixels or more from every side) */
+static int steps_open(int x, int y, int vx, int vy) {
+  unsigned px = (unsigned)(x >> 8), py = (unsigned)(y >> 8);
+  if (px >= SCREEN_W || py >= SCREEN_H || (xzone[px] >> 4) != 1 || (yzone[py] >> 4) != 3) return 0;
+  int x0 = (TX0 + (xzone[px] & 15) * TCS + 2) << 8, y0 = (TY0 + (yzone[py] & 15) * TCS + 2) << 8, k = 400, n;
+  int x1 = x0 + ((TCS - 4) << 8), y1 = y0 + ((TCS - 4) << 8); /* (its middle: x0 to x1, y0 to y1) */
+  if (vx > 0 && (n = (x1 - 1 - x) / (4 * vx)) < k) k = n;
+  if (vx < 0 && (n = (x - x0) / (-4 * vx)) < k) k = n;
+  if (vy > 0 && (n = (y1 - 1 - y) / (4 * vy)) < k) k = n;
+  if (vy < 0 && (n = (y - y0) / (-4 * vy)) < k) k = n;
+  return k;
+}
 __attribute__((noinline))
 #endif
 static bool shot_finds(int a, int b) {
@@ -648,6 +884,11 @@ static bool shot_finds(int a, int b) {
   bool far = line_far(x, y, vx, vy), first = true;
   if (far && !b) return false;
   for (int i = 0; i < 400; i++) {
+    if (first && far) { /* (and the steps that stay in the open middle of a cell, where it can't hit a wall: at once) */
+      int k = steps_open(x, y, vx, vy);
+      if (k >= 400 - i) return false;
+      x += 4 * vx * k, y += 4 * vy * k, i += k;
+    }
     int ox = vx, oy = vy;
     roll(&x, &y, &vx, &vy, 16);
     if (ox != vx || oy != vy) {
@@ -736,9 +977,17 @@ CE_APART static void tanks_cpu(int *v, int *turn) {
     static int8_t SIN[80]; /* (sin64 from a table, cos64 16 on) */
     if (!SIN[4])
       for (int a = 0; a < 80; a++) SIN[a] = (int8_t)sin64(a);
-    for (int a = 0, best = INT_MIN / 2, x = gx >> 8, y = gy >> 8; a < 64; a++) {
-      int d = x * SIN[a + 16] + y * SIN[a];
-      if (d > best) best = d, want = a;
+    static int was_x = INT_MIN, was_y, was_want; /* (the last answer: the same pixels apart, the same way) */
+    int d[32], x = gx >> 8, y = gy >> 8; /* (half a turn on, the opposite: sin64(a + 32) is -sin64(a)) */
+    if (x == was_x && y == was_y) {
+      want = was_want;
+    } else {
+      for (int a = 0; a < 32; a++) d[a] = x * SIN[a + 16] + y * SIN[a];
+      for (int a = 0, best = INT_MIN / 2; a < 64; a++) {
+        int v = a < 32 ? d[a] : -d[a - 32];
+        if (v > best) best = v, want = a;
+      }
+      was_x = x, was_y = y, was_want = want;
     }
 #else
     for (int a = 0, best = INT_MIN / 2; a < 64; a++) { /* the way of the 64 nearest to it */
@@ -787,17 +1036,15 @@ static void tanks_step(void) {
   if (dead[k] && ago(dead_t[k]) > 1200) point(dead[0] && dead[1] ? 2 : !dead[0] ? 0 : 1);
 }
 #if NP_SOFT_FLOAT
-/* Where multiplication and division are slow (the TI-84 Plus CE), the last rectangles' rows, kept: the same for any
-   x and y (quad below at 0, 0), from row y0 to y0 + n, each from lo to hi (none: hi < lo) */
+/* Where multiplication and division are slow (the TI-84 Plus CE), the rectangles' rows, kept: the same for any x and
+   y (quad below at 0, 0), from row q[0], q[1] of them, each from q[2 + 2i] to q[3 + 2i] (none: before it). On the CE,
+   during Tanks, every angle's in the room Air Hockey's drawings take; else (or no room) each tank (quad_tank) keeps
+   the last of each of its three. */
 #define QUAD_ROWS 32
-static struct {
-  int8_t a, l0, l1, w, y0, n, lo[QUAD_ROWS], hi[QUAD_ROWS];
-} quads[8];
-static uint8_t quad_next;
-static int quad_kept(int a, int l0, int l1, int w) { /* its place in quads, or -1 */
-  for (int k = 0; k < 8; k++)
-    if (quads[k].n && quads[k].a == a && quads[k].l0 == l0 && quads[k].l1 == l1 && quads[k].w == w) return k;
-  int c = cos64(a), s = sin64(a), vx[4], vy[4], k = quad_next;
+static int8_t quad_slot[6][2 + 2 * QUAD_ROWS], quad_key[6][4];
+static int quad_tank;
+static bool quad_make(int a, int l0, int l1, int w, int8_t *q) { /* false: more rows than QUAD_ROWS */
+  int c = cos64(a), s = sin64(a), vx[4], vy[4];
   for (int i = 0; i < 4; i++) {
     int l = i == 1 || i == 2 ? l1 : l0, e = i < 2 ? -w : w;
     vx[i] = (c * l + s * e) / 127, vy[i] = (s * l - c * e) / 127;
@@ -805,11 +1052,9 @@ static int quad_kept(int a, int l0, int l1, int w) { /* its place in quads, or -
   int y0 = vy[0], y1 = vy[0];
   for (int i = 1; i < 4; i++) y0 = vy[i] < y0 ? vy[i] : y0, y1 = vy[i] > y1 ? vy[i] : y1;
   y0 = (y0 >> 2) - 1, y1 = (y1 >> 2) + 2;
-  if (y1 - y0 > QUAD_ROWS) return -1;
-  quad_next = (uint8_t)((k + 1) & 7);
-  quads[k].a = (int8_t)a, quads[k].l0 = (int8_t)l0, quads[k].l1 = (int8_t)l1, quads[k].w = (int8_t)w;
-  quads[k].y0 = (int8_t)y0, quads[k].n = (int8_t)(y1 - y0);
-  for (int row = y0; row < y1; row++) {
+  if (y1 - y0 > QUAD_ROWS) return false;
+  q[0] = (int8_t)y0, q[1] = (int8_t)(y1 - y0), q += 2;
+  for (int row = y0; row < y1; row++, q += 2) {
     int yc = 4 * row + 2, lo = 1 << 20, hi = -lo;
     for (int i = 0; i < 4; i++) {
       int j = (i + 1) & 3;
@@ -818,37 +1063,58 @@ static int quad_kept(int a, int l0, int l1, int w) { /* its place in quads, or -
         lo = xx < lo ? xx : lo, hi = xx > hi ? xx : hi;
       }
     }
-    quads[k].lo[row - y0] = (int8_t)(hi > lo ? (lo + 2) >> 2 : 1), quads[k].hi[row - y0] = (int8_t)(hi > lo ? (hi + 2) >> 2 : 0);
+    q[0] = (int8_t)(hi > lo ? (lo + 2) >> 2 : 1), q[1] = (int8_t)(hi > lo ? (hi + 2) >> 2 : 0);
   }
-  return k;
+  return true;
+}
+static const int8_t *quad_rows(int a, int l0, int l1, int w) { /* null: too many rows */
+  int kind = l1 == 24 ? 1 : l1 == 52 ? 2 : 0, k = quad_tank * 3 + kind;
+#ifdef __TICE__
+  static const int8_t KIND[3][3] = {{-32, 32, 28}, {-24, 24, 18}, {0, 52, 6}};
+  if (shared_by == BY_TANKS && l0 == KIND[kind][0] && l1 == KIND[kind][1] && w == KIND[kind][2]) {
+    uint16_t *at = &shared.tq.at[a & 63][kind];
+    if (!*at && shared.tq.used + 2 + 2 * QUAD_ROWS <= sizeof shared.tq.rows && quad_make(a, l0, l1, w, shared.tq.rows + shared.tq.used))
+      *at = (uint16_t)(shared.tq.used + 1), shared.tq.used += 2 + 2 * (uint8_t)shared.tq.rows[shared.tq.used + 1];
+    if (*at) return shared.tq.rows + *at - 1;
+  }
+#endif
+  if (quad_slot[k][1] && quad_key[k][0] == a && quad_key[k][1] == l0 && quad_key[k][2] == l1 && quad_key[k][3] == w)
+    return quad_slot[k];
+  quad_key[k][0] = (int8_t)a, quad_key[k][1] = (int8_t)l0, quad_key[k][2] = (int8_t)l1, quad_key[k][3] = (int8_t)w;
+  if (quad_make(a, l0, l1, w, quad_slot[k])) return quad_slot[k];
+  quad_slot[k][1] = 0;
+  return 0;
 }
 #endif
 /* a rectangle from l0 to l1 ahead of (x, y) the way a faces, w to either side (quarter pixels) */
 static void quad(int x, int y, int a, int l0, int l1, int w, color_t col) {
 #if NP_SOFT_FLOAT
-  int k = quad_kept(a, l0, l1, w);
-  if (k >= 0) {
+  const int8_t *q = quad_rows(a, l0, l1, w);
+  if (q) { /* (its rows in the strip only) */
+    int top = y + q[0], i = gfx_y0 - top, n = gfx_y1 - top;
+    i = i < 0 ? 0 : i, n = n > q[1] ? q[1] : n;
 #ifdef __TICE__
-    color_t *line = gfx_buf + (y + quads[k].y0 - gfx_y0) * SCREEN_W; /* (its rows in the strip, from its first) */
+    color_t *line = gfx_buf + (top + i - gfx_y0) * SCREEN_W;
 #endif
-    for (int i = 0, row = y + quads[k].y0; i < quads[k].n; i++, row++) {
-#ifdef __TICE__
-      if (i) line += SCREEN_W;
-#endif
-      if (row >= gfx_y0 && row < gfx_y1 && quads[k].hi[i] >= quads[k].lo[i]) {
+    for (const int8_t *e = q + 2 + 2 * i; i < n; i++, e += 2) {
+      int lo = e[0], hi = e[1];
+      if (hi >= lo) {
 #ifdef __TICE__ /* (a tank being drawn: its rows straight into the strip, the columns not drawn left out as it's sent) */
-        int x0 = x + quads[k].lo[i], x1 = x + quads[k].hi[i];
-        if (!gfx_listing && x0 >= 0 && x1 <= SCREEN_W) {
-          for (color_t *p = line + x0, *e = line + x1; p < e; p++) *p = col;
+        if (!gfx_listing && x + lo >= 0 && x + hi <= SCREEN_W) {
+          if (hi > lo) wmemset((wchar_t *)line + x + lo, (wchar_t)col, (size_t)(hi - lo));
+          line += SCREEN_W;
           continue;
         }
 #endif
-        gfx_fill(x + quads[k].lo[i], row, quads[k].hi[i] - quads[k].lo[i], 1, col);
+        gfx_fill(x + lo, top + i, hi - lo, 1, col);
       }
+#ifdef __TICE__
+      line += SCREEN_W;
+#endif
     }
     return;
   }
-#endif
+#else /* (where they're kept, a tank's rectangles always fit: 24 rows at most) */
   int c = cos64(a), s = sin64(a), vx[4], vy[4];
   for (int i = 0; i < 4; i++) {
     int l = i == 1 || i == 2 ? l1 : l0, e = i < 2 ? -w : w;
@@ -868,8 +1134,12 @@ static void quad(int x, int y, int a, int l0, int l1, int w, color_t col) {
     }
     if (hi > lo) gfx_fill((lo + 2) >> 2, row, ((hi + 2) >> 2) - ((lo + 2) >> 2), 1, col);
   }
+#endif
 }
 static void tank(int x, int y, int a, int p) {
+#if NP_SOFT_FLOAT
+  quad_tank = p;
+#endif
   quad(x + 1, y + 2, a, -32, 32, 28, HEX(0xB9BBB6)); /* its shadow */
   quad(x, y, a, -32, 32, 28, dark[p]);
   quad(x, y, a, -24, 24, 18, team[p]);
@@ -878,12 +1148,79 @@ static void tank(int x, int y, int a, int p) {
   disc(x, y, 2, light[p]);
 }
 #ifdef __TICE__
-static void walls_at(const int *a) { /* the walls over the rows being drawn */
-  for (int r = clampi((gfx_y0 - TY0 - 2) / TCS - 1, 0, TROWS); r <= clampi((gfx_y1 - TY0 + 2) / TCS, 0, TROWS); r++)
-    for (int c = 0; c <= TCOLS; c++) {
-      if (H(r, c)) gfx_fill(TX0 + c * TCS - 2, TY0 + r * TCS - 2, TCS + 4, 4, HEX(0x3A3F4B));
-      if (V(r, c)) gfx_fill(TX0 + c * TCS - 2, TY0 + r * TCS - 2, 4, TCS + 4, HEX(0x3A3F4B));
+/* a row's pixels x0 to x1 (as far as the columns being drawn go) in colour c */
+static void row_fill(color_t *row, int x0, int x1, color_t c) {
+  x0 = x0 > gfx_x0 ? x0 : gfx_x0, x1 = x1 < gfx_x1 ? x1 : gfx_x1;
+  if (x1 > x0) wmemset((wchar_t *)row + x0, (wchar_t)c, (size_t)(x1 - x0));
+}
+/* The walls across a row: for each wall row r (0 to TROWS: its first 4 rows, then the rest of its cell, -1 none),
+   the walls' spans from left to right, merged, kept for the maze (maze_spans) */
+#define WALL_SPANS 12
+#define wall_span shared.tq.wall_span
+#define wall_spans shared.tq.wall_spans
+_Static_assert(sizeof wall_spans == 2 * (TROWS + 1) && sizeof wall_span[0] == WALL_SPANS * 4, "the walls' spans");
+static int wall_maze = -1;
+static void maze_spans(void) {
+  wall_maze = maze;
+  for (int k = 0; k < 2 * (TROWS + 1); k++) {
+    int r = k >> 1, top = !(k & 1), n = 0;
+    for (int c = 0, x = TX0 - 2; c <= TCOLS; c++, x += TCS) {
+      int x0 = 0, x1 = 0; /* (this column's, then its H wall to the next) */
+      for (int part = 0; part < 2; part++) {
+        if (!part) {
+          if (!((r < TROWS && vwall[r][c]) || (top && r && vwall[r - 1][c]))) continue;
+          x0 = x, x1 = x + 4;
+        } else {
+          if (!(top && c < TCOLS && hwall[r][c])) continue;
+          x0 = x, x1 = x + TCS + 4;
+        }
+        if (n && x0 <= wall_span[k][n - 1][1]) { /* (touching the last one: one span) */
+          if (x1 > wall_span[k][n - 1][1]) wall_span[k][n - 1][1] = (int16_t)x1;
+        } else if (n < WALL_SPANS) {
+          wall_span[k][n][0] = (int16_t)x0, wall_span[k][n][1] = (int16_t)x1, n++;
+        } else {
+          wall_maze = -1; /* (no room: drawn wall by wall) */
+        }
+      }
     }
+    wall_spans[k] = (uint8_t)n;
+  }
+}
+/* the floor and the walls over the rows being drawn, a row at a time, in the columns being drawn (as their gfx_fill
+   calls would draw them) */
+static void maze_at(const int *a) {
+  if (wall_maze != maze) maze_spans();
+  int c0 = (gfx_x0 - TX0 - TCS - 2) / TCS, c1 = (gfx_x1 - TX0 + 2) / TCS + 1; /* (the walls' columns there, or more) */
+  c0 = c0 < 0 ? 0 : c0, c1 = c1 > TCOLS ? TCOLS : c1;
+  int top = gfx_y0 < 22 ? 22 : gfx_y0; /* (from under the score bar, as the floor's fill) */
+  int t = top - (TY0 - 2), r = t < 0 ? -1 : t / TCS, f = t < 0 ? t : t - r * TCS; /* the wall row, and the row in it */
+  color_t *row = gfx_buf + (top - gfx_y0) * SCREEN_W, *same = 0; /* (same: a row of the same kind drawn: copied) */
+  int kind = -2;
+  for (int y = top; y < gfx_y1; y++, row += SCREEN_W) {
+    int k = r >= 0 && r <= TROWS ? 2 * r + (f >= 4) : -1;
+    if (k == kind && wall_maze == maze) {
+      memcpy(row + gfx_x0, same + gfx_x0, (size_t)(gfx_x1 - gfx_x0) * sizeof(color_t));
+      if (++f == TCS) f = 0, r++;
+      else if (!f) r = 0;
+      continue;
+    }
+    kind = k, same = row;
+    row_fill(row, 0, SCREEN_W, HEX(0xE6E6E1));
+    if (r >= 0 && r <= TROWS) { /* (a wall's row across: from TY0 + r * TCS - 2, 4 rows) */
+      if (wall_maze == maze) {
+        int k = 2 * r + (f >= 4);
+        for (int i = 0; i < wall_spans[k]; i++)
+          if (wall_span[k][i][0] < gfx_x1 && wall_span[k][i][1] > gfx_x0) row_fill(row, wall_span[k][i][0], wall_span[k][i][1], HEX(0x3A3F4B));
+      } else {
+        for (int c = c0, x = TX0 + c0 * TCS - 2; c <= c1; c++, x += TCS) {
+          if (f < 4 && c < TCOLS && hwall[r][c]) row_fill(row, x, x + TCS + 4, HEX(0x3A3F4B));
+          if ((r < TROWS && vwall[r][c]) || (f < 4 && r && vwall[r - 1][c])) row_fill(row, x, x + 4, HEX(0x3A3F4B));
+        }
+      }
+    }
+    if (++f == TCS) f = 0, r++;
+    else if (!f) r = 0; /* (from above the maze into its first wall's rows) */
+  }
 }
 static void tank_at(const int *a) { tank(a[0], a[1], a[2], a[3]); }
 static void shells_at(const int *a) { /* (over the rows being drawn) */
@@ -892,10 +1229,10 @@ static void shells_at(const int *a) { /* (over the rows being drawn) */
 }
 #endif
 static void tanks_paint(void) {
-  gfx_fill(0, 22, SCREEN_W, SCREEN_H - 22, HEX(0xE6E6E1));
 #ifdef __TICE__
-  gfx_call(walls_at, &maze, 1, TX0 - 2, TY0 - 2, TCOLS * TCS + 4, TROWS * TCS + 4); /* (one call a strip) */
+  gfx_call(maze_at, &maze, 1, 0, 22, SCREEN_W, SCREEN_H - 22); /* (one call a strip) */
 #else
+  gfx_fill(0, 22, SCREEN_W, SCREEN_H - 22, HEX(0xE6E6E1));
   for (int r = 0; r <= TROWS; r++)
     for (int c = 0; c <= TCOLS; c++) {
       if (H(r, c)) gfx_fill(TX0 + c * TCS - 2, TY0 + r * TCS - 2, TCS + 4, 4, HEX(0x3A3F4B));
@@ -903,19 +1240,22 @@ static void tanks_paint(void) {
     }
 #endif
 #ifdef __TICE__
-  if (gfx_listing) /* (the shells: in each strip, one call saying where those in it are) */
+  if (gfx_listing) { /* (the shells: in each strip, one call saying where those in it are) */
+    int sx[SHELLS], sy[SHELLS];
+    for (int i = 0; i < SHELLS; i++) sx[i] = sh[i].x >> 8, sy[i] = sh[i].own < 0 ? -99 : sh[i].y >> 8;
     for (int s = TY0 & ~15; s < TY0 + TROWS * TCS; s += 16) {
       int a[8] = {0}, n = 0, x0 = SCREEN_W, x1 = 0;
       for (int i = 0; i < SHELLS; i++) {
-        int x = sh[i].x >> 8, y = sh[i].y >> 8;
-        if (sh[i].own < 0 || y + 2 <= s || y - 2 >= s + 16) continue;
+        int x = sx[i], y = sy[i];
+        if (y + 2 <= s || y - 2 >= s + 16) continue;
         a[n < 7 ? n : 7] += x | y << 9 | i << 18, n++;
         x0 = x - 2 < x0 ? x - 2 : x0, x1 = x + 2 > x1 ? x + 2 : x1;
       }
       gfx_call(shells_at, a, 8, n ? x0 : 0, s, n ? x1 - x0 : 0, 16);
     }
-  else
+  } else {
     shells_at(0);
+  }
 #else
   for (int i = 0; i < SHELLS; i++)
     if (sh[i].own >= 0) disc(sh[i].x >> 8, sh[i].y >> 8, 2, HEX(0x1E1F24));
@@ -944,7 +1284,8 @@ static void tanks_paint(void) {
 #define CY0 24
 #ifdef __TICE__ /* (little RAM: room marks the cells it reaches in cell itself, and reaches 223 at most) */
 #define QMAX 256
-static uint8_t cell[CH][CW];
+#define cell shared.lc.cell /* (in the room Air Hockey's drawings take) */
+_Static_assert(sizeof cell == CH * CW, "Light Cycles' grid");
 /* each strip's changes: a count, and the columns its cells changed in since its list last said so (said) */
 static unsigned changes[15];
 static int changed_x0[15], changed_x1[15];
@@ -977,6 +1318,7 @@ static void cycles_start(void) { /* side by side, each on its own lane, the othe
   }
   tick_t = round_t = now;
 #ifdef __TICE__
+  shared_by = BY_CYCLES;
   cycles_changed(0, CY0, SCREEN_W, CY0 + CH * 4);
 #endif
 }
@@ -984,15 +1326,19 @@ static bool free_at(int x, int y) { return x >= 0 && y >= 0 && x < CW && y < CH 
 /* the free cells the computer could still reach from (x, y), up to cap */
 static int room(int x, int y, int cap) {
   if (!free_at(x, y)) return 0;
-#ifdef __TICE__
+#ifdef __TICE__ /* (each cell by its place in the grid and its column: no division) */
+  uint8_t *grid = &cell[0][0], *qx = shared.lc.x;
   int n = 1;
-  queue[0] = (uint16_t)(y * CW + x), cell[y][x] = 3;
-  for (int h = 0; h < n && n < cap; h++)
-    for (int d = 0; d < 4; d++) {
-      int nx = queue[h] % CW + DX[d], ny = queue[h] / CW + DY[d];
-      if (free_at(nx, ny) && n < QMAX) cell[ny][nx] = 3, queue[n++] = (uint16_t)(ny * CW + nx);
+  queue[0] = (uint16_t)(y * CW + x), qx[0] = (uint8_t)x, grid[queue[0]] = 3;
+  for (int h = 0; h < n && n < cap; h++) {
+    int i = queue[h], c = qx[h];
+    for (int d = 0; d < 4; d++) { /* (right, down, left, up) */
+      int j = d == 0 ? (c + 1 < CW ? i + 1 : -1) : d == 1 ? (i + CW < CW * CH ? i + CW : -1)
+            : d == 2 ? (c ? i - 1 : -1) : (i >= CW ? i - CW : -1);
+      if (j >= 0 && !grid[j] && n < QMAX) grid[j] = 3, qx[n] = (uint8_t)(c + (d == 0) - (d == 2)), queue[n++] = (uint16_t)j;
     }
-  for (int i = 0; i < n; i++) (&cell[0][0])[queue[i]] = 0;
+  }
+  for (int i = 0; i < n; i++) grid[queue[i]] = 0;
 #else
   if (!++gen)
     for (uint8_t *m = &mark[0][0]; m < &mark[0][0] + CW * CH; m++) *m = 0;
@@ -1050,8 +1396,16 @@ static void cycles_step(void) {
   }
 }
 static void cycles_cells(const int *a) { /* the trails' cells over the rows being drawn */
+#ifdef __TICE__ /* (and the columns being drawn: a cell draws from a pixel left of its own to its right side) */
+  int c0 = gfx_x0 < 4 ? 0 : (gfx_x0 - 4) >> 2, c1 = (gfx_x1 >> 2) + 1;
+  c1 = c1 > CW ? CW : c1;
+#endif
   for (int r = clampi((gfx_y0 - CY0) / 4, 0, CH); r < clampi((gfx_y1 - CY0) / 4 + 1, 0, CH); r++)
+#ifdef __TICE__
+    for (int c = c0; c < c1; c++) {
+#else
     for (int c = 0; c < CW; c++) {
+#endif
       int v = cell[r][c];
       if (!v) continue;
       int l = c && cell[r][c - 1] == v, u = r && cell[r - 1][c] == v; /* its light, joined to the trail before */
