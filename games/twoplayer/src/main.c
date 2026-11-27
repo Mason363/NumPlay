@@ -14,6 +14,9 @@
 #include <limits.h>
 #include "../../../launcher/src/gfx.h"
 #include "../../common/np_text.h"
+#ifdef __TICE__
+#include <string.h>
+#endif
 
 #if NP_MODULE /* (np_file_read and np_file_write: NumPlay's, launcher/src/np.h) */
 #define np_app_begin()
@@ -248,10 +251,16 @@ static void pong_paint(void) {
 #define QR 9  /* the puck */
 static float mx[2], my[2], mvx[2], mvy[2], qx, qy, qvx, qvy, qaim;
 
+#ifdef __TICE__
+static void mallet_mid(void);
+#endif
 static void hockey_start(void) { /* the puck to the one who was scored on */
   int to = winner < 2 ? 1 - winner : rn(2);
   for (int p = 0; p < 2; p++) mx[p] = p ? RX1 - 40 : RX0 + 40, my[p] = RYM, mvx[p] = mvy[p] = 0;
   qx = to ? 220 : 100, qy = RYM, qvx = qvy = 0, qaim = (float)(rn(44) - 22); /* where the computer aims */
+#ifdef __TICE__
+  mallet_mid();
+#endif
   bot.x = RX1 - 40, bot.y = RYM;
 }
 /* the puck off something round at (x, y) moving at (vx, vy) */
@@ -293,15 +302,16 @@ static void hockey_cpu(float *tx, float *ty) {
    board or past a goal line. False: a point was just won. */
 #define FX 4096
 static int fx(float v) { return (int)(v * FX + (v < 0 ? -.5f : .5f)); }
-static int iabs(int v) { return v < 0 ? -v : v; }
+static bool in_reach(int d, int r) { return d < r && d > -r; } /* |d| < r */
 static bool puck_steps(void) {
   int x = fx(qx), y = fx(qy), vx = fx(qvx / 1000), vy = fx(qvy / 1000), bx[2], by[2];
   for (int p = 0; p < 2; p++) bx[p] = fx(mx[p]), by[p] = fx(my[p]);
   for (int i = 0; i < ms; i++) {
     x += vx, y += vy;
-    bool near = false;
-    for (int k = 0; k < 4; k++) near |= iabs(x - (k & 1 ? RX1 : RX0) * FX) < QR * FX && iabs(y - (k & 2 ? GY1 : GY0) * FX) < QR * FX;
-    for (int p = 0; p < 2; p++) near |= iabs(x - bx[p]) < (MR + QR) * FX && iabs(y - by[p]) < (MR + QR) * FX;
+    /* (within reach of a post, then of a mallet: the far ones first, the CE's compiler making slow work of the rest) */
+    bool near = (in_reach(x - RX0 * FX, QR * FX) || in_reach(x - RX1 * FX, QR * FX)) &&
+                (in_reach(y - GY0 * FX, QR * FX) || in_reach(y - GY1 * FX, QR * FX));
+    for (int p = 0; p < 2 && !near; p++) near = in_reach(x - bx[p], (MR + QR) * FX) && in_reach(y - by[p], (MR + QR) * FX);
     if (near) { /* (as the float steps: the posts, the mallets, and a mallet pressing it into a corner giving way) */
       qx = (float)x / FX, qy = (float)y / FX;
       for (int k = 0; k < 4; k++) knock(k & 1 ? RX1 : RX0, k & 2 ? GY1 : GY0, 0, 0, 0);
@@ -320,7 +330,7 @@ static bool puck_steps(void) {
       return false;
     }
     for (int p = 0; p < 2; p++)
-      if (iabs(x - bx[p]) < (MR + QR) * FX && iabs(y - by[p]) < (MR + QR) * FX) {
+      if (in_reach(x - bx[p], (MR + QR) * FX) && in_reach(y - by[p], (MR + QR) * FX)) {
         qx = (float)x / FX, qy = (float)y / FX;
         float dx = mx[p] - qx, dy = my[p] - qy, d = len(dx, dy) + .01f;
         if (d < MR + QR) mx[p] = qx + dx / d * (MR + QR), my[p] = qy + dy / d * (MR + QR), bx[p] = fx(mx[p]), by[p] = fx(my[p]);
@@ -379,13 +389,41 @@ static void hockey_step(void) {
 static void puck(const int *a) { /* at a[0], a[1] */
   disc(a[0] + 2, a[1] + 3, QR, gfx_mix(ICE, 0, 10)), disc(a[0], a[1], QR, HEX(0x22252E)), disc(a[0], a[1], QR - 3, HEX(0x3B3F4C));
 }
+/* A mallet's middle (its discs inside the dark one, rows and columns -MID to MID round it), drawn once and copied
+   after: a row's pixels from mid_a to mid_b, those not the dark disc's own */
+#define MID 10
+static color_t mid_px[2][2 * MID + 1][2 * MID + 1];
+static int8_t mid_a[2][2 * MID + 1], mid_b[2][2 * MID + 1];
+static bool mid_made;
+static void mallet_mid(void) { /* (in the strip, between frames) */
+  if (mid_made) return;
+  mid_made = true;
+  int y0 = gfx_y0, y1 = gfx_y1;
+  gfx_y0 = 0, gfx_y1 = STRIP_H;
+  for (int p = 0; p < 2; p++)
+    for (int top = -MID; top <= MID; top += STRIP_H) { /* (rows top to top + 15 of it in the strip's) */
+      gfx_fill(0, 0, 2 * MID + 1, STRIP_H, dark[p]);
+      disc(MID, -top, MR - 3, team[p]);
+      disc(MID, -top, 6, dark[p]);
+      disc(MID - 1, -top - 1, 4, light[p]);
+      for (int r = 0; r < STRIP_H && top + r <= MID; r++) {
+        int k = top + r + MID, a = 2 * MID + 1, b = -1;
+        for (int i = 0; i <= 2 * MID; i++)
+          if ((mid_px[p][k][i] = gfx_buf[r * SCREEN_W + i]) != dark[p]) a = a < i ? a : i, b = i;
+        mid_a[p][k] = (int8_t)a, mid_b[p][k] = (int8_t)b;
+      }
+    }
+  gfx_y0 = y0, gfx_y1 = y1;
+}
 static void mallet(const int *a) { /* at a[0], a[1], player a[2]'s */
   int x = a[0], y = a[1], p = a[2];
   disc(x + 2, y + 3, MR, gfx_mix(ICE, 0, 10));
   disc(x, y, MR, dark[p]);
-  disc(x, y, MR - 3, team[p]);
-  disc(x, y, 6, dark[p]);
-  disc(x - 1, y - 1, 4, light[p]);
+  for (int k = 0; k <= 2 * MID; k++) { /* (the rest as it was drawn: no other disc reaches out of the dark one) */
+    int row = y + k - MID, a0 = mid_a[p][k], a1 = mid_b[p][k];
+    if (row >= gfx_y0 && row < gfx_y1 && a0 <= a1)
+      memcpy(gfx_buf + (row - gfx_y0) * SCREEN_W + x - MID + a0, &mid_px[p][k][a0], (size_t)(a1 - a0 + 1) * sizeof(color_t));
+  }
 }
 #endif
 static void hockey_paint(void) {
@@ -475,7 +513,9 @@ static bool solid(int x, int y) {
   unsigned a = xzone[px], b = yzone[py];
   return zones[(b & 15) * TCOLS + (a & 15)] >> ((a >> 4) + (b >> 4)) & 1;
 }
+static int maze_n; /* (a new maze each round) */
 static void zones_make(void) { /* (for a new maze) */
+  maze_n++;
   static const uint8_t AT[3] = {0, TCS / 2, TCS - 1}; /* a pixel in each part */
   for (int i = 0; i < SCREEN_W; i++) {
     int c = clampi((i - TX0) / TCS, 0, TCOLS - 1), f = i - TX0 - c * TCS;
@@ -591,16 +631,38 @@ static void roll(int *x, int *y, int *vx, int *vy, int h) {
 /* Would a shell fired at a from the computer's tank find the player's, bouncing at most b
    times, before its own? */
 #if NP_SOFT_FLOAT
+/* the player's tank well off the line from (x, y) the way (vx, vy) goes: no point of it near the tank (its distance
+   from the line, or from (x, y) when behind it, past TR by more than the rounding of the positions to pixels) */
+static bool line_far(int x, int y, int vx, int vy) {
+  int dx = (tx_[0] - x) >> 8, dy = (ty_[0] - y) >> 8, cross = dx * vy - dy * vx, m = (TR + 4) * 128;
+  return dx * vx + dy * vy < 0 ? dx * dx + dy * dy >= (TR + 4) * (TR + 4) : cross >= m || cross <= -m;
+}
 __attribute__((noinline))
 #endif
 static bool shot_finds(int a, int b) {
   int x = tx_[1], y = ty_[1], vx = cos64(a), vy = sin64(a);
 #if NP_SOFT_FLOAT
-  if (!b) { /* (straight to a wall: none when the player's tank is well off its line, without following it there) */
-    int dx = (tx_[0] - x) >> 8, dy = (ty_[0] - y) >> 8, cross = dx * vy - dy * vx, m = (TR + 4) * 128;
-    if (dx * vx + dy * vy < 0 ? dx * dx + dy * dy >= (TR + 4) * (TR + 4) : cross >= m || cross <= -m) return false;
+  /* Without following it step by step where it can't find anything: a shell going straight from (x, y) passes near
+     the player's tank only when the tank is near its line. Its first stretch, going away from the computer's tank,
+     never comes near that one either; and after the last bounce allowed, a stretch well off the player's ends it. */
+  bool far = line_far(x, y, vx, vy), first = true;
+  if (far && !b) return false;
+  for (int i = 0; i < 400; i++) {
+    int ox = vx, oy = vy;
+    roll(&x, &y, &vx, &vy, 16);
+    if (ox != vx || oy != vy) {
+      if (--b < 0) return false;
+      if (first) {
+        first = false;
+        if (line_far(x, y, vx, vy) && !b) return false;
+      }
+    }
+    if (first && far) continue;
+    if (near(x, y, 0, TR)) return true;
+    if (i > 8 && near(x, y, 1, TR + 3)) return false;
   }
-#endif
+  return false;
+#else
   for (int i = 0; i < 400; i++) {
     int ox = vx, oy = vy;
     roll(&x, &y, &vx, &vy, 16);
@@ -609,6 +671,7 @@ static bool shot_finds(int a, int b) {
     if (i > 8 && near(x, y, 1, TR + 3)) return false;
   }
   return false;
+#endif
 }
 /* the computer's tank: a shot when it sees one, a little off, else the way to the player, cell
    by cell through the maze (found breadth first from the player) */
@@ -618,6 +681,9 @@ static bool shot_finds(int a, int b) {
 static uint8_t way_dist[TROWS * TCOLS], way_q[TROWS * TCOLS];
 __attribute__((noinline)) static int way_on(int me, int you) {
   static const uint8_t BIT[4] = {1, 2, 4, 8};
+  static int was_me = -1, was_you, was_maze, was_next; /* (the last answer: the tanks stay in a cell a while) */
+  if (me == was_me && you == was_you && maze_n == was_maze) return was_next;
+  was_me = me, was_you = you, was_maze = maze_n;
   int n = 1, next = you;
   for (int i = 0; i < TROWS * TCOLS; i++) way_dist[i] = 255;
   way_dist[you] = 0, way_q[0] = (uint8_t)you;
@@ -630,7 +696,7 @@ __attribute__((noinline)) static int way_on(int me, int you) {
   }
   for (int d = 0; d < 4; d++)
     if (me != you && ways[me] & BIT[d] && way_dist[me + STEP[d]] < way_dist[me]) next = me + STEP[d];
-  return next;
+  return was_next = next;
 }
 #define CE_APART __attribute__((noinline)) /* (the same: a function the CE's compiler handles faster on its own) */
 #else
@@ -666,10 +732,20 @@ CE_APART static void tanks_cpu(int *v, int *turn) {
 #endif
     int gx = ((TX0 + next % TCOLS * TCS + TCS / 2) << 8) - tx_[1], gy = ((TY0 + next / TCOLS * TCS + TCS / 2) << 8) - ty_[1];
     if (next == you) gx = tx_[0] - tx_[1], gy = ty_[0] - ty_[1];
+#if NP_SOFT_FLOAT
+    static int8_t SIN[80]; /* (sin64 from a table, cos64 16 on) */
+    if (!SIN[4])
+      for (int a = 0; a < 80; a++) SIN[a] = (int8_t)sin64(a);
+    for (int a = 0, best = INT_MIN / 2, x = gx >> 8, y = gy >> 8; a < 64; a++) {
+      int d = x * SIN[a + 16] + y * SIN[a];
+      if (d > best) best = d, want = a;
+    }
+#else
     for (int a = 0, best = INT_MIN / 2; a < 64; a++) { /* the way of the 64 nearest to it */
       int d = (gx >> 8) * cos64(a) + (gy >> 8) * sin64(a);
       if (d > best) best = d, want = a;
     }
+#endif
     *v = clampi(6 - (((want - dir + 32) & 63) - 32) * (((want - dir + 32) & 63) - 32), 0, 1) * (36 + 9 * cpu);
   }
   int d = ((want - dir + 32) & 63) - 32;
@@ -752,9 +828,24 @@ static void quad(int x, int y, int a, int l0, int l1, int w, color_t col) {
 #if NP_SOFT_FLOAT
   int k = quad_kept(a, l0, l1, w);
   if (k >= 0) {
-    for (int i = 0, row = y + quads[k].y0; i < quads[k].n; i++, row++)
-      if (row >= gfx_y0 && row < gfx_y1 && quads[k].hi[i] >= quads[k].lo[i])
+#ifdef __TICE__
+    color_t *line = gfx_buf + (y + quads[k].y0 - gfx_y0) * SCREEN_W; /* (its rows in the strip, from its first) */
+#endif
+    for (int i = 0, row = y + quads[k].y0; i < quads[k].n; i++, row++) {
+#ifdef __TICE__
+      if (i) line += SCREEN_W;
+#endif
+      if (row >= gfx_y0 && row < gfx_y1 && quads[k].hi[i] >= quads[k].lo[i]) {
+#ifdef __TICE__ /* (a tank being drawn: its rows straight into the strip, the columns not drawn left out as it's sent) */
+        int x0 = x + quads[k].lo[i], x1 = x + quads[k].hi[i];
+        if (!gfx_listing && x0 >= 0 && x1 <= SCREEN_W) {
+          for (color_t *p = line + x0, *e = line + x1; p < e; p++) *p = col;
+          continue;
+        }
+#endif
         gfx_fill(x + quads[k].lo[i], row, quads[k].hi[i] - quads[k].lo[i], 1, col);
+      }
+    }
     return;
   }
 #endif

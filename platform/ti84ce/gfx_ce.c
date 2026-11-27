@@ -117,6 +117,7 @@ static void widen(cursor_t *k, const uint8_t *e) {
   }
   default: k->full = true; return;
   }
+  if (a >= b) return; /* (an empty call draws nothing: no column changed) */
   if (a < k->x0) k->x0 = a;
   if (b > k->x1) k->x1 = b;
 }
@@ -626,15 +627,14 @@ void gfx_rrect_outline(int x, int y, int w, int h, int r, int th, color_t c, int
     }
     if (g) {
       if (g->lo[jj] == RING_UNSEEN) ring_row(g, jj, ri, shift, m0);
-      int lo = g->lo[jj];
+      int lo = g->lo[jj], e = g->hi[jj];
       const uint8_t *lv = g->at[jj] != 0xFFFF ? g->k + g->at[jj] : 0;
-      for (int i = lo, e = g->hi[jj]; i <= e; i++) {
-        int xl = x + i, xr = x + w - 1 - i;
-        if ((xl < gx0 || xl >= gx1) && (xr < gx0 || xr >= gx1)) continue; /* (not drawn) */
-        int k = lv ? lv[i - lo] : ring(2 * (r - i) - 1, qb, r, ri, shift, t, &d_in);
-        ring_px(p, xl, c, k);
-        if (xr != xl) ring_px(p, xr, c, k);
-      }
+      /* the left side's pixels in the columns drawn, then the right side's (only those: a run of columns crossing a
+         wide ring went through all of it) */
+      for (int i = NP_MAX(lo, gx0 - x), i1 = NP_MIN(e, gx1 - 1 - x); i <= i1; i++)
+        ring_px(p, x + i, c, lv ? lv[i - lo] : ring(2 * (r - i) - 1, qb, r, ri, shift, t, &d_in));
+      for (int i = NP_MAX(lo, x + w - gx1), i1 = NP_MIN(e, x + w - 1 - gx0); i <= i1; i++)
+        if (x + w - 1 - i != x + i) ring_px(p, x + w - 1 - i, c, lv ? lv[i - lo] : ring(2 * (r - i) - 1, qb, r, ri, shift, t, &d_in));
       continue;
     }
     /* only the columns drawn (when only some changed, the others are left as they are) */
