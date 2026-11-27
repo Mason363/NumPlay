@@ -11,8 +11,13 @@
 #include <string.h>
 #include "data.h"
 
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__ /* (a number's low bytes are its last) */
+#define high_byte(a) (*((uint8_t *)&(a) + sizeof(a) - 2))
+#define low_byte(a) (*((uint8_t *)&(a) + sizeof(a) - 1))
+#else
 #define high_byte(a) (*((uint8_t *)&(a) + 1))
 #define low_byte(a) (*((uint8_t *)&(a)))
+#endif
 #define MSB(x) ((uint8_t)(((uint16_t)(x)) >> 8))
 #define LSB(x) ((uint8_t)(x))
 

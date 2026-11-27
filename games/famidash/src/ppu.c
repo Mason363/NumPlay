@@ -44,7 +44,11 @@ static const uint8_t *bank_ptr(uint8_t b) {
 static uint32_t spread4[16];
 void ppu_init(void) {
   for (int n = 0; n < 16; n++)
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__ /* (four pixels a word, the first in its first byte: on a big-endian CPU the top) */
+    spread4[n] = (uint32_t)((n >> 3) & 1) << 24 | (uint32_t)((n >> 2) & 1) << 16 | (uint32_t)((n >> 1) & 1) << 8 | (uint32_t)(n & 1);
+#else
     spread4[n] = (uint32_t)((n >> 3) & 1) | (uint32_t)((n >> 2) & 1) << 8 | (uint32_t)((n >> 1) & 1) << 16 | (uint32_t)(n & 1) << 24;
+#endif
 }
 
 static uint16_t rgb(uint32_t c, uint8_t emp) {
