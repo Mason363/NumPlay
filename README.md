@@ -39,7 +39,7 @@
 
 ## Your pictures, PDFs, videos and books
 
-Drop them on **Your files** in [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) and each one becomes an app on your NumWorks, with its own icon.
+Drop your files in [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) to view them on your calculator.
 
 <table>
   <tr>

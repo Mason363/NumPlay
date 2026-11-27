@@ -1,4 +1,4 @@
-<!-- README.md translated: 0778f17cc9c585d0b4463ae1978308c757d5fa2e -->
+<!-- README.md translated: 89778b2010a0cc8491eb52d4f4938f6e667c3936 -->
 <p align="center">
   <img src="docs/media/icon.png" width="96" alt="Icône de NumPlay">
 </p>
@@ -40,7 +40,7 @@
 
 ## Tes images, PDF, vidéos et livres
 
-Dépose-les dans **Your files**, dans [NumPlay Studio](https://mason363.github.io/NumPlay/customize/), et chacun devient une app sur ta NumWorks, avec sa propre icône.
+Dépose tes fichiers dans [NumPlay Studio](https://mason363.github.io/NumPlay/customize/) pour les voir sur ta calculatrice.
 
 <table>
   <tr>
