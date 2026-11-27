@@ -450,6 +450,48 @@ static int corner_cov(unsigned d, int r) {
 /* the row of a rounded box's corner a row is in: rows from the top or bottom edge, or -1 between the corners */
 static int corner_row(int j, int h, int r) { return j < r ? j : j >= h - r ? h - 1 - j : -1; }
 
+/* The corners of the last rounded boxes drawn, by radius and level: for each row from the top or bottom edge, the
+ * levels of its pixels from the side up to the first one whole (n), so a box is drawn without measuring its corners
+ * again (2 Players' mallets, five discs each, took most of Air Hockey's frames) */
+#define CORNER_POOL 1024
+#define CORNERS_KEPT 12
+static uint8_t *corner_pool;
+static unsigned corner_used;
+static struct {
+  uint8_t r, t;
+  uint16_t at;
+} corner_dir[CORNERS_KEPT];
+static uint8_t corner_count;
+static bool corner_none; /* (no room for the pool) */
+/* radius r's corner at level t: each row's count of pixels before the first whole one (r bytes), then r levels a
+   row; null when it doesn't fit (the pool starts again when full) */
+static const uint8_t *corner_tab(int r, int t) {
+  for (int i = 0; i < corner_count; i++)
+    if (corner_dir[i].r == r && corner_dir[i].t == t) return corner_pool + corner_dir[i].at;
+  unsigned size = (unsigned)(r + r * r);
+  if (r < 1 || size > CORNER_POOL || corner_none) return 0;
+  if (!corner_pool && !(corner_pool = malloc(CORNER_POOL))) {
+    corner_none = true;
+    return 0;
+  }
+  if (corner_count == CORNERS_KEPT || corner_used + size > CORNER_POOL) corner_count = 0, corner_used = 0;
+  uint8_t *g = corner_pool + corner_used;
+  corner_dir[corner_count].r = (uint8_t)r, corner_dir[corner_count].t = (uint8_t)t;
+  corner_dir[corner_count++].at = (uint16_t)corner_used;
+  corner_used += size;
+  for (int jj = 0; jj < r; jj++) {
+    uint8_t *k = g + r + jj * r;
+    int i = 0;
+    for (; i < r; i++) {
+      int cov = corner_cov(dist_at(r - 1 - jj, r - 1 - i), r);
+      if (cov >= 32) break;
+      k[i] = (uint8_t)(cov * t >> 5);
+    }
+    g[jj] = (uint8_t)i;
+  }
+  return g;
+}
+
 void gfx_rrect(int x, int y, int w, int h, int r, color_t c, int a) {
   LIST(y, y + h, L_RRECT, (unsigned)x, (unsigned)y, (unsigned)w, (unsigned)h, (unsigned)r, c, (unsigned)a);
   if (w <= 0 || h <= 0 || x >= gx1 || x + w <= gx0 || a < 4) return; /* (a < 4: nothing to see) */
@@ -457,12 +499,23 @@ void gfx_rrect(int x, int y, int w, int h, int r, color_t c, int a) {
   if (2 * r > h) r = h / 2;
   int ya = NP_MAX(y, gfx_y0), yb = NP_MIN(y + h, gfx_y1);
   int t = (a + 4) >> 3;
-  bool table = dist_upto(r);
+  const uint8_t *g = ya < yb && (ya - y < r || yb - y > h - r) ? corner_tab(r, t) : 0;
+  bool table = g || dist_upto(r);
   for (int row = ya; row < yb; row++) {
     int jj = corner_row(row - y, h, r);
     int solid0 = x, solid1 = x + w;
     color_t *p = px_at(0, row);
-    if (jj >= 0) {
+    if (jj >= 0 && g) {
+      const uint8_t *k = g + r + jj * r;
+      int n = g[jj];
+      for (int i = 0; i < n; i++)
+        if (k[i]) {
+          int xl = x + i, xr = x + w - 1 - i;
+          if (xl >= gx0 && xl < gx1) p[xl] = ce_mix(p[xl], c, k[i]);
+          if (xr >= gx0 && xr < gx1) p[xr] = ce_mix(p[xr], c, k[i]);
+        }
+      solid0 = x + n, solid1 = x + w - n;
+    } else if (jj >= 0) {
       const uint16_t *d = table ? dist + (r - 1 - jj) * DMAX + r - 1 : 0; /* d[-i]: pixel i of the corner */
       for (int i = 0; i < r; i++) {
         int cov = corner_cov(d ? d[-i] : dist_f(r - 1 - jj, r - 1 - i), r);

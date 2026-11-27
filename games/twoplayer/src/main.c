@@ -127,6 +127,23 @@ static const char *who(int p) {
 }
 static void box(int x, int y, int w, int h, int r, color_t c) { gfx_rrect(x, y, w, h, r, c, 256); }
 static void disc(int x, int y, int r, color_t c) { gfx_circle(x, y, r, c, 256); }
+#ifdef __TICE__
+/* Something that moves about, drawn by fn(a) in the box x, y, w, h (on: there at all), on the TI-84 Plus CE: one
+   call in the list of every strip from row y0 to y1, there or not, so the strips' lists keep their length as it
+   goes from one to another and only the columns it left and came to are drawn again (a list changing length is
+   drawn again whole) */
+static void moving(void (*fn)(const int *a), const int *a, int n, int x, int y, int w, int h, int y0, int y1, bool on) {
+  static const int none[8];
+  if (!gfx_listing) {
+    if (on) fn(a);
+    return;
+  }
+  for (int s = y0 & ~15; s < y1; s += 16) {
+    bool in = on && y < s + 16 && y + h > s;
+    gfx_call(fn, in ? a : none, n, in ? x : 0, s, in ? w : 0, 16);
+  }
+}
+#endif
 
 /* A match: points, then the next point or round once the last one has been seen. */
 static void point(int w) {
@@ -357,8 +374,22 @@ static void hockey_step(void) {
   if (s * f > 560) f = 560 / s;
   qvx *= f, qvy *= f;
 }
+#define ICE HEX(0xEDF4FA)
+#ifdef __TICE__
+static void puck(const int *a) { /* at a[0], a[1] */
+  disc(a[0] + 2, a[1] + 3, QR, gfx_mix(ICE, 0, 10)), disc(a[0], a[1], QR, HEX(0x22252E)), disc(a[0], a[1], QR - 3, HEX(0x3B3F4C));
+}
+static void mallet(const int *a) { /* at a[0], a[1], player a[2]'s */
+  int x = a[0], y = a[1], p = a[2];
+  disc(x + 2, y + 3, MR, gfx_mix(ICE, 0, 10));
+  disc(x, y, MR, dark[p]);
+  disc(x, y, MR - 3, team[p]);
+  disc(x, y, 6, dark[p]);
+  disc(x - 1, y - 1, 4, light[p]);
+}
+#endif
 static void hockey_paint(void) {
-  const color_t RED = HEX(0xE25555), BLUE = HEX(0x5C8FE6), RIM = HEX(0x8D9BB0), ICE = HEX(0xEDF4FA);
+  const color_t RED = HEX(0xE25555), BLUE = HEX(0x5C8FE6), RIM = HEX(0x8D9BB0);
   gfx_fill(0, 22, SCREEN_W, SCREEN_H - 22, INK);
   box(RX0 - 5, RY0 - 5, RX1 - RX0 + 10, RY1 - RY0 + 10, 14, RIM);
   box(RX0, RY0, RX1 - RX0, RY1 - RY0, 10, ICE);
@@ -372,6 +403,14 @@ static void hockey_paint(void) {
     gfx_fill(k ? RX1 : RX0 - 5, RY0, 5, RY1 - RY0, RIM);
     gfx_fill(k ? RX1 : RX0 - 6, GY0, 6, GY1 - GY0, HEX(0x0B0E1C));
   }
+#ifdef __TICE__
+  int q[2] = {(int)qx, (int)qy};
+  moving(puck, q, 2, q[0] - QR, q[1] - QR, 2 * QR + 2, 2 * QR + 3, RY0, RY1 + 3, !phase);
+  for (int p = 0; p < 2; p++) {
+    int m[3] = {(int)mx[p], (int)my[p], p};
+    moving(mallet, m, 3, m[0] - MR, m[1] - MR, 2 * MR + 2, 2 * MR + 3, RY0, RY1 + 3, true);
+  }
+#else
   if (!phase) disc((int)qx + 2, (int)qy + 3, QR, gfx_mix(ICE, 0, 10)), disc((int)qx, (int)qy, QR, HEX(0x22252E)),
               disc((int)qx, (int)qy, QR - 3, HEX(0x3B3F4C));
   for (int p = 0; p < 2; p++) {
@@ -382,6 +421,7 @@ static void hockey_paint(void) {
     disc(x, y, 6, dark[p]);
     disc(x - 1, y - 1, 4, light[p]);
   }
+#endif
 }
 
 /* ------------------------------------------------------------ Tanks
@@ -400,6 +440,9 @@ static int tx_[2], ty_[2], ta[2], ai_aim;
 static bool dead[2];
 static uint32_t dead_t[2], ai_t, ai_shot;
 static struct { int x, y, vx, vy, life, own; } sh[SHELLS]; /* own -1: none */
+#ifdef __TICE__
+static int maze; /* (a new one each round) */
+#endif
 
 static bool H(int r, int c) { return r >= 0 && r <= TROWS && c >= 0 && c < TCOLS && hwall[r][c]; }
 static bool V(int r, int c) { return r >= 0 && r < TROWS && c >= 0 && c <= TCOLS && vwall[r][c]; }
@@ -407,7 +450,11 @@ static int tcell(int x, int y) { /* the cell at (x, y), in 256ths of a pixel */
   return clampi(((y >> 8) - TY0) / TCS, 0, TROWS - 1) * TCOLS + clampi(((x >> 8) - TX0) / TCS, 0, TCOLS - 1);
 }
 /* inside a wall (or out of the maze)? */
+#if NP_SOFT_FLOAT
+static bool solid_at(int x, int y) {
+#else
 static bool solid(int x, int y) {
+#endif
   int k = tcell(x, y), r = k / TCOLS, c = k % TCOLS, fx = (x >> 8) - TX0 - c * TCS, fy = (y >> 8) - TY0 - r * TCS;
   bool L = fx < 2, R = fx >= TCS - 2, T = fy < 2, B = fy >= TCS - 2;
   if ((T && H(r, c)) || (B && H(r + 1, c)) || (L && V(r, c)) || (R && V(r, c + 1))) return true;
@@ -415,13 +462,59 @@ static bool solid(int x, int y) {
   int gr = r + B, gc = c + R;
   return (L || R) && (T || B) && (H(gr, gc - 1) || H(gr, gc) || V(gr - 1, gc) || V(gr, gc));
 }
+#if NP_SOFT_FLOAT
+/* Where division is slow (the TI-84 Plus CE, a shell's or the computer's look at the walls hundreds of times a
+   frame), the same answer looked up: a column's cell and part of it (bits 4 and up: its left wall 0, the middle 1,
+   its right wall 2), a row's (its top 0, the middle 3, its bottom 6), and each cell's nine parts, in a wall or not */
+static uint8_t xzone[SCREEN_W], yzone[SCREEN_H], ways[TROWS * TCOLS]; /* ways: each cell's open sides, open_way's */
+static uint16_t zones[TROWS * TCOLS];
+static bool open_way(int k, int d);
+static bool solid(int x, int y) {
+  unsigned px = (unsigned)(x >> 8), py = (unsigned)(y >> 8);
+  if (px >= SCREEN_W || py >= SCREEN_H) return solid_at(x, y);
+  unsigned a = xzone[px], b = yzone[py];
+  return zones[(b & 15) * TCOLS + (a & 15)] >> ((a >> 4) + (b >> 4)) & 1;
+}
+static void zones_make(void) { /* (for a new maze) */
+  static const uint8_t AT[3] = {0, TCS / 2, TCS - 1}; /* a pixel in each part */
+  for (int i = 0; i < SCREEN_W; i++) {
+    int c = clampi((i - TX0) / TCS, 0, TCOLS - 1), f = i - TX0 - c * TCS;
+    xzone[i] = (uint8_t)(c | (f < 2 ? 0 : f >= TCS - 2 ? 2 : 1) << 4);
+  }
+  for (int i = 0; i < SCREEN_H; i++) {
+    int r = clampi((i - TY0) / TCS, 0, TROWS - 1), f = i - TY0 - r * TCS;
+    yzone[i] = (uint8_t)(r | (f < 2 ? 0 : f >= TCS - 2 ? 6 : 3) << 4);
+  }
+  for (int k = 0; k < TROWS * TCOLS; k++) {
+    ways[k] = 0;
+    for (int d = 0; d < 4; d++) ways[k] |= (uint8_t)(open_way(k, d) << d);
+    zones[k] = 0;
+    for (int z = 0; z < 9; z++) {
+      int x = TX0 + k % TCOLS * TCS + AT[z % 3], y = TY0 + k / TCOLS * TCS + AT[z / 3];
+      zones[k] |= (uint16_t)(solid_at(x << 8, y << 8) << z);
+    }
+  }
+}
+#endif
 static bool open_way(int k, int d) { /* from cell k to the next one in direction d (right, down, left, up) */
   int r = k / TCOLS, c = k % TCOLS;
   return d == 0 ? !V(r, c + 1) : d == 1 ? !H(r + 1, c) : d == 2 ? !V(r, c) : !H(r, c);
 }
+#if NP_SOFT_FLOAT
+#define OPEN(k, d) (ways[k] >> (d) & 1)
+#else
+#define OPEN(k, d) open_way(k, d)
+#endif
 static const int8_t STEP[4] = {1, TCOLS, -1, -TCOLS};
 static bool near(int x, int y, int p, int r) {
+#if NP_SOFT_FLOAT /* (the far ones first, without the multiplications) */
+  int R = r << 8;
+  x -= tx_[p], y -= ty_[p];
+  if (x >= R || x <= -R || y >= R || y <= -R) return false;
+  x >>= 8, y >>= 8;
+#else
   x = (x - tx_[p]) >> 8, y = (y - ty_[p]) >> 8;
+#endif
   return x * x + y * y < r * r;
 }
 static void tanks_start(void) {
@@ -442,6 +535,12 @@ static void tanks_start(void) {
       if (!rn(3)) hwall[r][c] = 0;
       if (!rn(3)) vwall[r][c] = 0;
     }
+#if NP_SOFT_FLOAT
+  zones_make();
+#endif
+#ifdef __TICE__
+  maze++;
+#endif
   for (int p = 0; p < 2; p++) {
     int c = p ? TCOLS - 1 - rn(3) : rn(3);
     tx_[p] = (TX0 + c * TCS + TCS / 2) << 8, ty_[p] = (TY0 + rn(TROWS) * TCS + TCS / 2) << 8;
@@ -452,8 +551,16 @@ static void tanks_start(void) {
 }
 static bool tank_stuck(int p, int x, int y) {
   if (!dead[1 - p] && near(x, y, 1 - p, 2 * TR)) return true;
+#if NP_SOFT_FLOAT
+  static int probe[16][2]; /* (the same 16 points round it) */
+  if (!probe[0][0])
+    for (int i = 0; i < 16; i++) probe[i][0] = cos64(4 * i) * TR * 2, probe[i][1] = sin64(4 * i) * TR * 2;
+  for (int i = 0; i < 16; i++)
+    if (solid(x + probe[i][0], y + probe[i][1])) return true;
+#else
   for (int i = 0; i < 64; i += 4)
     if (solid(x + cos64(i) * TR * 2, y + sin64(i) * TR * 2)) return true;
+#endif
   return false;
 }
 static void fire(int p) {
@@ -467,7 +574,12 @@ static void fire(int p) {
 }
 /* a shell's way for h ms, off the walls it meets */
 static void roll(int *x, int *y, int *vx, int *vy, int h) {
+#if NP_SOFT_FLOAT /* (no multiplication or division for the usual steps) */
+  int nx = *x + (h == 16 ? *vx * 4 : h == 8 ? *vx * 2 : *vx * h / 4);
+  int ny = *y + (h == 16 ? *vy * 4 : h == 8 ? *vy * 2 : *vy * h / 4);
+#else
   int nx = *x + *vx * h / 4, ny = *y + *vy * h / 4;
+#endif
   if (!solid(nx, ny)) {
     *x = nx, *y = ny;
     return;
@@ -478,8 +590,17 @@ static void roll(int *x, int *y, int *vx, int *vy, int h) {
 }
 /* Would a shell fired at a from the computer's tank find the player's, bouncing at most b
    times, before its own? */
+#if NP_SOFT_FLOAT
+__attribute__((noinline))
+#endif
 static bool shot_finds(int a, int b) {
   int x = tx_[1], y = ty_[1], vx = cos64(a), vy = sin64(a);
+#if NP_SOFT_FLOAT
+  if (!b) { /* (straight to a wall: none when the player's tank is well off its line, without following it there) */
+    int dx = (tx_[0] - x) >> 8, dy = (ty_[0] - y) >> 8, cross = dx * vy - dy * vx, m = (TR + 4) * 128;
+    if (dx * vx + dy * vy < 0 ? dx * dx + dy * dy >= (TR + 4) * (TR + 4) : cross >= m || cross <= -m) return false;
+  }
+#endif
   for (int i = 0; i < 400; i++) {
     int ox = vx, oy = vy;
     roll(&x, &y, &vx, &vy, 16);
@@ -491,7 +612,31 @@ static bool shot_finds(int a, int b) {
 }
 /* the computer's tank: a shot when it sees one, a little off, else the way to the player, cell
    by cell through the maze (found breadth first from the player) */
-static void tanks_cpu(int *v, int *turn) {
+#if NP_SOFT_FLOAT
+/* The next cell on the way from cell me to cell you, found breadth first from you (as tanks_cpu does it elsewhere):
+   on its own, its tables outside the stack, which the CE's compiler reaches slowly in a big function */
+static uint8_t way_dist[TROWS * TCOLS], way_q[TROWS * TCOLS];
+__attribute__((noinline)) static int way_on(int me, int you) {
+  static const uint8_t BIT[4] = {1, 2, 4, 8};
+  int n = 1, next = you;
+  for (int i = 0; i < TROWS * TCOLS; i++) way_dist[i] = 255;
+  way_dist[you] = 0, way_q[0] = (uint8_t)you;
+  for (int h = 0; h < n; h++) {
+    int k = way_q[h], w = ways[k];
+    for (int d = 0; d < 4; d++) {
+      int j = k + STEP[d];
+      if (w & BIT[d] && way_dist[j] == 255) way_dist[j] = (uint8_t)(way_dist[k] + 1), way_q[n++] = (uint8_t)j;
+    }
+  }
+  for (int d = 0; d < 4; d++)
+    if (me != you && ways[me] & BIT[d] && way_dist[me + STEP[d]] < way_dist[me]) next = me + STEP[d];
+  return next;
+}
+#define CE_APART __attribute__((noinline)) /* (the same: a function the CE's compiler handles faster on its own) */
+#else
+#define CE_APART
+#endif
+CE_APART static void tanks_cpu(int *v, int *turn) {
   static const int16_t RELOAD[4] = {0, 2300, 1700, 1200}, LOOK[4] = {0, 700, 500, 350};
   static const int8_t BOUNCES[4] = {0, 0, 0, 1};
   int dir = ta[1] >> 8, want = dir;
@@ -506,15 +651,19 @@ static void tanks_cpu(int *v, int *turn) {
     want = ai_aim;
     if (want == dir && ago(ai_shot) > (uint32_t)RELOAD[cpu]) fire(1), ai_shot = now, ai_t = now - 200;
   } else {
+#if NP_SOFT_FLOAT
+    int you = tcell(tx_[0], ty_[0]), next = way_on(tcell(tx_[1], ty_[1]), you);
+#else
     uint8_t dist[TROWS * TCOLS], q[TROWS * TCOLS];
     int me = tcell(tx_[1], ty_[1]), you = tcell(tx_[0], ty_[0]), n = 1, next = you;
     for (int i = 0; i < TROWS * TCOLS; i++) dist[i] = 255;
     dist[you] = 0, q[0] = (uint8_t)you;
     for (int h = 0; h < n; h++)
       for (int d = 0; d < 4; d++)
-        if (open_way(q[h], d) && dist[q[h] + STEP[d]] == 255) dist[q[h] + STEP[d]] = dist[q[h]] + 1, q[n++] = (uint8_t)(q[h] + STEP[d]);
+        if (OPEN(q[h], d) && dist[q[h] + STEP[d]] == 255) dist[q[h] + STEP[d]] = dist[q[h]] + 1, q[n++] = (uint8_t)(q[h] + STEP[d]);
     for (int d = 0; d < 4; d++)
-      if (me != you && open_way(me, d) && dist[me + STEP[d]] < dist[me]) next = me + STEP[d];
+      if (me != you && OPEN(me, d) && dist[me + STEP[d]] < dist[me]) next = me + STEP[d];
+#endif
     int gx = ((TX0 + next % TCOLS * TCS + TCS / 2) << 8) - tx_[1], gy = ((TY0 + next / TCOLS * TCS + TCS / 2) << 8) - ty_[1];
     if (next == you) gx = tx_[0] - tx_[1], gy = ty_[0] - ty_[1];
     for (int a = 0, best = INT_MIN / 2; a < 64; a++) { /* the way of the 64 nearest to it */
@@ -561,8 +710,54 @@ static void tanks_step(void) {
   int k = dead[0] && (!dead[1] || dead_t[0] < dead_t[1]) ? 0 : 1; /* the first one hit */
   if (dead[k] && ago(dead_t[k]) > 1200) point(dead[0] && dead[1] ? 2 : !dead[0] ? 0 : 1);
 }
+#if NP_SOFT_FLOAT
+/* Where multiplication and division are slow (the TI-84 Plus CE), the last rectangles' rows, kept: the same for any
+   x and y (quad below at 0, 0), from row y0 to y0 + n, each from lo to hi (none: hi < lo) */
+#define QUAD_ROWS 32
+static struct {
+  int8_t a, l0, l1, w, y0, n, lo[QUAD_ROWS], hi[QUAD_ROWS];
+} quads[8];
+static uint8_t quad_next;
+static int quad_kept(int a, int l0, int l1, int w) { /* its place in quads, or -1 */
+  for (int k = 0; k < 8; k++)
+    if (quads[k].n && quads[k].a == a && quads[k].l0 == l0 && quads[k].l1 == l1 && quads[k].w == w) return k;
+  int c = cos64(a), s = sin64(a), vx[4], vy[4], k = quad_next;
+  for (int i = 0; i < 4; i++) {
+    int l = i == 1 || i == 2 ? l1 : l0, e = i < 2 ? -w : w;
+    vx[i] = (c * l + s * e) / 127, vy[i] = (s * l - c * e) / 127;
+  }
+  int y0 = vy[0], y1 = vy[0];
+  for (int i = 1; i < 4; i++) y0 = vy[i] < y0 ? vy[i] : y0, y1 = vy[i] > y1 ? vy[i] : y1;
+  y0 = (y0 >> 2) - 1, y1 = (y1 >> 2) + 2;
+  if (y1 - y0 > QUAD_ROWS) return -1;
+  quad_next = (uint8_t)((k + 1) & 7);
+  quads[k].a = (int8_t)a, quads[k].l0 = (int8_t)l0, quads[k].l1 = (int8_t)l1, quads[k].w = (int8_t)w;
+  quads[k].y0 = (int8_t)y0, quads[k].n = (int8_t)(y1 - y0);
+  for (int row = y0; row < y1; row++) {
+    int yc = 4 * row + 2, lo = 1 << 20, hi = -lo;
+    for (int i = 0; i < 4; i++) {
+      int j = (i + 1) & 3;
+      if ((vy[i] <= yc) != (vy[j] <= yc)) {
+        int xx = vx[i] + (yc - vy[i]) * (vx[j] - vx[i]) / (vy[j] - vy[i]);
+        lo = xx < lo ? xx : lo, hi = xx > hi ? xx : hi;
+      }
+    }
+    quads[k].lo[row - y0] = (int8_t)(hi > lo ? (lo + 2) >> 2 : 1), quads[k].hi[row - y0] = (int8_t)(hi > lo ? (hi + 2) >> 2 : 0);
+  }
+  return k;
+}
+#endif
 /* a rectangle from l0 to l1 ahead of (x, y) the way a faces, w to either side (quarter pixels) */
 static void quad(int x, int y, int a, int l0, int l1, int w, color_t col) {
+#if NP_SOFT_FLOAT
+  int k = quad_kept(a, l0, l1, w);
+  if (k >= 0) {
+    for (int i = 0, row = y + quads[k].y0; i < quads[k].n; i++, row++)
+      if (row >= gfx_y0 && row < gfx_y1 && quads[k].hi[i] >= quads[k].lo[i])
+        gfx_fill(x + quads[k].lo[i], row, quads[k].hi[i] - quads[k].lo[i], 1, col);
+    return;
+  }
+#endif
   int c = cos64(a), s = sin64(a), vx[4], vy[4];
   for (int i = 0; i < 4; i++) {
     int l = i == 1 || i == 2 ? l1 : l0, e = i < 2 ? -w : w;
@@ -591,22 +786,62 @@ static void tank(int x, int y, int a, int p) {
   disc(x, y, 4, dark[p]);
   disc(x, y, 2, light[p]);
 }
+#ifdef __TICE__
+static void walls_at(const int *a) { /* the walls over the rows being drawn */
+  for (int r = clampi((gfx_y0 - TY0 - 2) / TCS - 1, 0, TROWS); r <= clampi((gfx_y1 - TY0 + 2) / TCS, 0, TROWS); r++)
+    for (int c = 0; c <= TCOLS; c++) {
+      if (H(r, c)) gfx_fill(TX0 + c * TCS - 2, TY0 + r * TCS - 2, TCS + 4, 4, HEX(0x3A3F4B));
+      if (V(r, c)) gfx_fill(TX0 + c * TCS - 2, TY0 + r * TCS - 2, 4, TCS + 4, HEX(0x3A3F4B));
+    }
+}
+static void tank_at(const int *a) { tank(a[0], a[1], a[2], a[3]); }
+static void shells_at(const int *a) { /* (over the rows being drawn) */
+  for (int i = 0; i < SHELLS; i++)
+    if (sh[i].own >= 0) disc(sh[i].x >> 8, sh[i].y >> 8, 2, HEX(0x1E1F24));
+}
+#endif
 static void tanks_paint(void) {
   gfx_fill(0, 22, SCREEN_W, SCREEN_H - 22, HEX(0xE6E6E1));
+#ifdef __TICE__
+  gfx_call(walls_at, &maze, 1, TX0 - 2, TY0 - 2, TCOLS * TCS + 4, TROWS * TCS + 4); /* (one call a strip) */
+#else
   for (int r = 0; r <= TROWS; r++)
     for (int c = 0; c <= TCOLS; c++) {
       if (H(r, c)) gfx_fill(TX0 + c * TCS - 2, TY0 + r * TCS - 2, TCS + 4, 4, HEX(0x3A3F4B));
       if (V(r, c)) gfx_fill(TX0 + c * TCS - 2, TY0 + r * TCS - 2, 4, TCS + 4, HEX(0x3A3F4B));
     }
+#endif
+#ifdef __TICE__
+  if (gfx_listing) /* (the shells: in each strip, one call saying where those in it are) */
+    for (int s = TY0 & ~15; s < TY0 + TROWS * TCS; s += 16) {
+      int a[8] = {0}, n = 0, x0 = SCREEN_W, x1 = 0;
+      for (int i = 0; i < SHELLS; i++) {
+        int x = sh[i].x >> 8, y = sh[i].y >> 8;
+        if (sh[i].own < 0 || y + 2 <= s || y - 2 >= s + 16) continue;
+        a[n < 7 ? n : 7] += x | y << 9 | i << 18, n++;
+        x0 = x - 2 < x0 ? x - 2 : x0, x1 = x + 2 > x1 ? x + 2 : x1;
+      }
+      gfx_call(shells_at, a, 8, n ? x0 : 0, s, n ? x1 - x0 : 0, 16);
+    }
+  else
+    shells_at(0);
+#else
   for (int i = 0; i < SHELLS; i++)
     if (sh[i].own >= 0) disc(sh[i].x >> 8, sh[i].y >> 8, 2, HEX(0x1E1F24));
+#endif
   for (int p = 0; p < 2; p++) {
     int x = tx_[p] >> 8, y = ty_[p] >> 8;
     int32_t t = (int32_t)ago(dead_t[p]);
+#ifdef __TICE__
+    int a[4] = {x, y, ta[p] >> 8, p};
+    moving(tank_at, a, 4, x - 15, y - 15, 31, 32, TY0 - 4, TY0 + TROWS * TCS + 4, !dead[p]);
+    if (!dead[p]) continue;
+#else
     if (!dead[p]) {
       tank(x, y, ta[p] >> 8, p);
       continue;
     }
+#endif
     gfx_circle(x, y, 9, HEX(0x55524C), 150); /* what is left of it */
     if (t < 700) gfx_circle(x, y, 6 + t / 30, HEX(0xFF8A2A), 256 - t * 256 / 700), gfx_circle(x, y, 3 + t / 50, HEX(0xFFE066), 256 - t * 256 / 700);
   }
@@ -616,8 +851,27 @@ static void tanks_paint(void) {
 #define CW 80 /* the grid, 4 pixels a cell */
 #define CH 54
 #define CY0 24
+#ifdef __TICE__ /* (little RAM: room marks the cells it reaches in cell itself, and reaches 223 at most) */
+#define QMAX 256
+static uint8_t cell[CH][CW];
+/* each strip's changes: a count, and the columns its cells changed in since its list last said so (said) */
+static unsigned changes[15];
+static int changed_x0[15], changed_x1[15];
+static bool said[15];
+static void cycles_changed(int x0, int y0, int x1, int y1) { /* pixels x0..x1, y0..y1 (cells, or all) */
+  for (int s = y0 > 0 ? y0 >> 4 : 0; s < 15 && s <= (y1 - 1) >> 4; s++) {
+    if (said[s] || changed_x1[s] <= changed_x0[s]) changed_x0[s] = x0, changed_x1[s] = x1, said[s] = false;
+    else changed_x0[s] = x0 < changed_x0[s] ? x0 : changed_x0[s], changed_x1[s] = x1 > changed_x1[s] ? x1 : changed_x1[s];
+    changes[s]++;
+  }
+}
+static void cell_changed(int x, int y) { /* (what it and its neighbours draw) */
+  cycles_changed(x * 4 - 4, CY0 + y * 4 - 4, x * 4 + 8, CY0 + y * 4 + 8);
+}
+#else
 #define QMAX 1024
 static uint8_t cell[CH][CW], mark[CH][CW], gen;
+#endif
 static uint16_t queue[QMAX];
 static int hx[2], hy[2], hd[2], turns[2][2], nturns[2];
 static bool crashed[2];
@@ -631,11 +885,24 @@ static void cycles_start(void) { /* side by side, each on its own lane, the othe
     cell[hy[p]][hx[p]] = (uint8_t)(p + 1);
   }
   tick_t = round_t = now;
+#ifdef __TICE__
+  cycles_changed(0, CY0, SCREEN_W, CY0 + CH * 4);
+#endif
 }
 static bool free_at(int x, int y) { return x >= 0 && y >= 0 && x < CW && y < CH && !cell[y][x]; }
 /* the free cells the computer could still reach from (x, y), up to cap */
 static int room(int x, int y, int cap) {
   if (!free_at(x, y)) return 0;
+#ifdef __TICE__
+  int n = 1;
+  queue[0] = (uint16_t)(y * CW + x), cell[y][x] = 3;
+  for (int h = 0; h < n && n < cap; h++)
+    for (int d = 0; d < 4; d++) {
+      int nx = queue[h] % CW + DX[d], ny = queue[h] / CW + DY[d];
+      if (free_at(nx, ny) && n < QMAX) cell[ny][nx] = 3, queue[n++] = (uint16_t)(ny * CW + nx);
+    }
+  for (int i = 0; i < n; i++) (&cell[0][0])[queue[i]] = 0;
+#else
   if (!++gen)
     for (uint8_t *m = &mark[0][0]; m < &mark[0][0] + CW * CH; m++) *m = 0;
   int n = 1;
@@ -645,6 +912,7 @@ static int room(int x, int y, int cap) {
       int nx = queue[h] % CW + DX[d], ny = queue[h] / CW + DY[d];
       if (free_at(nx, ny) && mark[ny][nx] != gen && n < QMAX) mark[ny][nx] = gen, queue[n++] = (uint16_t)(ny * CW + nx);
     }
+#endif
   return n;
 }
 /* the computer's way, at a human's pace: the turn that leaves it the most room and the longest
@@ -681,7 +949,12 @@ static void cycles_step(void) {
     }
     if (nx[0] == nx[1] && ny[0] == ny[1]) crashed[0] = crashed[1] = true;
     for (int p = 0; p < 2; p++)
-      if (!crashed[p]) hx[p] = nx[p], hy[p] = ny[p], cell[hy[p]][hx[p]] = (uint8_t)(p + 1);
+      if (!crashed[p]) {
+        hx[p] = nx[p], hy[p] = ny[p], cell[hy[p]][hx[p]] = (uint8_t)(p + 1);
+#ifdef __TICE__
+        cell_changed(hx[p], hy[p]);
+#endif
+      }
     if (crashed[0] || crashed[1]) point(crashed[0] && crashed[1] ? 2 : crashed[0]);
   }
 }
@@ -699,6 +972,13 @@ static void cycles_grid(const int *a) { /* the night and its grid */
   gfx_fill(0, 22, SCREEN_W, SCREEN_H - 22, HEX(0x060A18));
   for (int i = 0; i < SCREEN_W; i += 16) gfx_fill(i, CY0, 1, SCREEN_H, HEX(0x111B36)), gfx_fill(0, CY0 + i, SCREEN_W, 1, HEX(0x111B36));
 }
+#ifdef __TICE__
+static void nothing(const int *a) {}
+static void head_at(const int *a) { /* a light cycle's head at a[0], a[1], player a[2]'s */
+  gfx_circle(a[0], a[1], 6, light[a[2]], 90);
+  gfx_fill(a[0] - 2, a[1] - 2, 4, 4, WHITE);
+}
+#endif
 static void cycles_paint(void) {
 #ifdef __TICE__
   static const int none[1];
@@ -706,17 +986,15 @@ static void cycles_paint(void) {
 #else
   cycles_grid(0);
 #endif
-#ifdef __TICE__ /* (the TI-84 Plus CE: each strip's list holds its cells as they are and one call drawing them, not two
-                   fills a cell: a strip is drawn again only when its cells changed) */
+#ifdef __TICE__ /* (the TI-84 Plus CE: each strip's list says how many times its cells changed, where they last did,
+                   and holds one call drawing them, not two fills a cell: only the columns where they changed are drawn
+                   again) */
   if (gfx_listing) {
-    int y0 = gfx_y0, y1 = gfx_y1;
-    for (int y = y0 & ~15; y < y1; y += 16) {
-      int a = clampi((y - CY0) / 4 - 1, 0, CH), b = clampi((y + 16 - CY0 + 3) / 4, 0, CH); /* (and the row above) */
-      if (a >= b) continue;
-      gfx_y0 = y < y0 ? y0 : y, gfx_y1 = y + 16 > y1 ? y1 : y + 16;
-      gfx_list(cell[a], (unsigned)(b - a) * CW);
+    for (int s = CY0 >> 4; s < 15; s++) {
+      int a = (int)changes[s];
+      gfx_call(nothing, &a, 1, changed_x0[s], s * 16, changed_x1[s] - changed_x0[s], 16);
+      said[s] = true;
     }
-    gfx_y0 = y0, gfx_y1 = y1;
     gfx_call(cycles_cells, none, 0, 0, CY0, SCREEN_W, CH * 4);
   } else {
     cycles_cells(0);
@@ -727,8 +1005,13 @@ static void cycles_paint(void) {
   for (int p = 0; p < 2; p++) {
     int x = hx[p] * 4 + 2, y = CY0 + hy[p] * 4 + 2;
     int32_t t = (int32_t)ago(phase_t);
+#ifdef __TICE__
+    int a[3] = {x, y, p};
+    moving(head_at, a, 3, x - 6, y - 6, 12, 12, CY0, CY0 + CH * 4, true);
+#else
     gfx_circle(x, y, 6, light[p], 90);
     gfx_fill(x - 2, y - 2, 4, 4, WHITE);
+#endif
     if (crashed[p] && phase) { /* a flash where it hit */
       x += DX[hd[p]] * 3, y += DY[hd[p]] * 3;
       if (t < 800) gfx_circle(x, y, 4 + t / 25, WHITE, 230 - t * 230 / 800);
