@@ -137,16 +137,20 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("nwa")
     ap.add_argument("--out", default="build/test_progress")
+    ap.add_argument("--catalog", default=os.path.join(os.path.dirname(__file__), "..", "games", "games.json"))
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     # (the games in NumPlay.nwa: not those the customizer adds, "default": false)
-    games = [g for g in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "games", "games.json")))
+    games = [g for g in json.load(open(a.catalog, encoding="utf-8"))
              if g.get("default", True)]
     rnd = random.Random(7)
     script = ("pi.py", b"\x01print(3.14159)\n\x00")
     # a save for every file the games write (binary, zeros included), and NumPlay's settings
     saves = {"numplay.set": bytes([ord("N"), 1, 0, 0])}
     for g in games:
+        # Games with their own recovery script restore on launch (storage.c: own_copy).
+        if any(name.endswith(".py") for name in g["records"]):
+            continue
         for r in g["records"]:
             # a name ending with "*" stands for records starting with the rest (NumBlocks' regions: "nb1r-1_2.nbe")
             for n in ([r[:-1] + "0_0.nbe", r[:-1] + "-1_2.nbe"] if r.endswith("*") else [r]):
