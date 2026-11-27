@@ -88,5 +88,12 @@ PORT_ID = amongus
 PORT_NAME = Among Us
 PORT_SRC = $(filter-out src/plat_host.c,$(wildcard src/*.c))
 PORT_ASM = src/data.S
-PORT_FLAGS = -Isrc -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"' -fno-math-errno
+# (on the Casio, the data with the numbers the game reads in place turned big-endian, as the calculator reads them:
+# tools/bigendian.py)
+PORT_DATA = $(if $(filter casio-cg,$(TARGET)),build/casio-cg/data_be.bin,src/data.bin)
+PORT_DEPS = $(filter build/%,$(PORT_DATA))
+PORT_FLAGS = -Isrc -DEPSILON_XL=1 -DDATA_BIN='"$(PORT_DATA)"' -fno-math-errno
 include ../../platform/port.mk
+build/casio-cg/data_be.bin: src/data.bin src/data.h tools/bigendian.py
+	@mkdir -p $(@D)
+	$(Q) python3 tools/bigendian.py src/data.bin src/data.h $@
