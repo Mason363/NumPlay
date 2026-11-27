@@ -7,7 +7,8 @@
  *  - rows are filled by the C library's LDIR copies (wmemset, an overlapping memcpy for patterns);
  *  - colours mix with the eZ80's 8-bit multiplies (ce_mix) or tables, never 32-bit math;
  *  - rounded corners, outlines and shadows measure their distances in a table instead of with sqrtf.
- * The pictures are the NumWorks's, to a rounding of their anti-aliased edges. */
+ * The pictures are the NumWorks's, to a rounding of their anti-aliased edges. A game that draws no pictures, shadows
+ * or corner masks can leave them out of its program (GFX_NO_IMAGE, GFX_NO_SHADOW, GFX_NO_CORNERS). */
 #include <stdlib.h>
 #include <sys/lcd.h>
 #include <wchar.h>
@@ -652,6 +653,7 @@ void gfx_rrect_outline(int x, int y, int w, int h, int r, int th, color_t c, int
   }
 }
 
+#ifndef GFX_NO_SHADOW
 void gfx_shadow(int x, int y, int w, int h, int r, int blur, int a) {
   LIST(y - blur, y + h + blur, L_SHADOW, (unsigned)x, (unsigned)y, (unsigned)w, (unsigned)h, (unsigned)r,
        (unsigned)blur, (unsigned)a);
@@ -683,9 +685,11 @@ void gfx_shadow(int x, int y, int w, int h, int r, int blur, int a) {
     }
   }
 }
+#endif
 
 void gfx_circle(int cx, int cy, int r, color_t c, int a) { gfx_rrect(cx - r, cy - r, 2 * r, 2 * r, r, c, a); }
 
+#ifndef GFX_NO_IMAGE
 void gfx_image(const uint8_t *idx, const color_t *pal, int ncolors, int sw, int sh, int dx, int dy, int dw, int dh,
                int radius, int dim) {
   LIST(dy, dy + dh, L_IMAGE, (unsigned)idx, (unsigned)pal, (unsigned)ncolors, (unsigned)sw, (unsigned)sh,
@@ -727,6 +731,7 @@ void gfx_image(const uint8_t *idx, const color_t *pal, int ncolors, int sw, int 
     for (int x = a0; x < a1; x++, fx += step) p[x] = pal[src[fx >> 16]];
   }
 }
+#endif
 
 /* A mask (4-bit coverage) in one colour, drawn by ce_mask: its coverage as a mixing level (0..32) for the last
  * alpha, the colour, and the mixes it made, by level (a generation, the pixel, the mix), kept while the colour is
@@ -901,6 +906,7 @@ void gfx_mask(const uint8_t *mask, int w, int h, int x, int y, color_t c, int a)
   }
 }
 
+#ifndef GFX_NO_CORNERS
 void gfx_corners(int x, int y, int w, int h, int r, color_t c) {
   LIST(y, y + h, L_CORNERS, (unsigned)x, (unsigned)y, (unsigned)w, (unsigned)h, (unsigned)r, c);
   if (x >= gx1 || x + w <= gx0) return;
@@ -920,6 +926,7 @@ void gfx_corners(int x, int y, int w, int h, int r, color_t c) {
     }
   }
 }
+#endif
 
 /* a strip drawn from its list */
 static void replay(const uint8_t *e, const uint8_t *end) {
@@ -932,7 +939,10 @@ static void replay(const uint8_t *e, const uint8_t *end) {
     case L_VGRAD: gfx_vgrad(v[0], v[1], v[2], v[3], (unsigned)v[4], (unsigned)v[5]); break;
     case L_RRECT: gfx_rrect(v[0], v[1], v[2], v[3], v[4], (color_t)v[5], v[6]); break;
     case L_OUTLINE: gfx_rrect_outline(v[0], v[1], v[2], v[3], v[4], v[5], (color_t)v[6], v[7]); break;
+#ifndef GFX_NO_SHADOW
     case L_SHADOW: gfx_shadow(v[0], v[1], v[2], v[3], v[4], v[5], v[6]); break;
+#endif
+#ifndef GFX_NO_IMAGE
     case L_IMAGE: {
       int x0 = gfx_clip_x0, x1 = gfx_clip_x1;
       gfx_clip_x0 = v[11], gfx_clip_x1 = v[12];
@@ -940,8 +950,11 @@ static void replay(const uint8_t *e, const uint8_t *end) {
       gfx_clip_x0 = x0, gfx_clip_x1 = x1;
       break;
     }
+#endif
     case L_MASK: gfx_mask((const uint8_t *)v[0], v[1], v[2], v[3], v[4], (color_t)v[5], v[6]); break;
+#ifndef GFX_NO_CORNERS
     case L_CORNERS: gfx_corners(v[0], v[1], v[2], v[3], v[4], (color_t)v[5]); break;
+#endif
     case L_CALL: ((void (*)(const int *))v[4])(v + 6); break;
     case L_TEXT:
     case L_TEXTC:
