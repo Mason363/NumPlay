@@ -165,6 +165,12 @@ static void clouds(uint16_t *row, int y) {
   }
 }
 
+/* two pixels as one word, a left of b, in the CPU's byte order */
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define PX_PAIR(a, b) ((a) << 16 | (b))
+#else
+#define PX_PAIR(a, b) ((a) | (b) << 16)
+#endif
 void scene_background(void) {
   /* (rows with the same table and haze share the hazed copy) */
   static uint16_t hazed[GROUND_W];
@@ -205,7 +211,7 @@ void scene_background(void) {
     /* (two pixels a word, from a pixel on a word) */
     if (x < xb && (uintptr_t)(p + x) & 2) p[x++] = lut[(uint32_t)u >> 16], u += du;
     for (; x + 1 < xb; x += 2, u += 2 * du)
-      *(uint32_t *)(void *)(p + x) = lut[(uint32_t)u >> 16] | (uint32_t)lut[(uint32_t)(u + du) >> 16] << 16;
+      *(uint32_t *)(void *)(p + x) = PX_PAIR(lut[(uint32_t)u >> 16], (uint32_t)lut[(uint32_t)(u + du) >> 16]);
     if (x < xb) p[x++] = lut[(uint32_t)u >> 16];
     for (; x < SCREEN_W; x++) p[x] = right;
     if (g->x0 < g->x1) r_band_depth(y, g->x0, g->x1, g->depth);
