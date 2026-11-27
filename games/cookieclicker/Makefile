@@ -86,5 +86,12 @@ PORT_ID = cookieclicker
 PORT_NAME = Cookie Clicker
 PORT_SRC = src/ascend.c src/elder.c src/game.c src/garden.c src/grimoire.c src/logic.c src/lumps.c src/main.c src/menus.c src/minigames.c src/news.c src/numbers.c src/pantheon.c src/prestige.c src/rows.c src/save.c src/season.c src/shimmer.c src/special.c src/text.c src/tooltip.c src/ui.c src/ui_left.c src/ui_store.c src/upgrades.c src/gfx.c src/plat_eadk.c
 PORT_ASM = src/data.S
-PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
+# (on the Casio, the data with the numbers the game reads in place turned big-endian, as the calculator reads them:
+# tools/bigendian.py)
+PORT_DATA = $(if $(filter casio-cg,$(TARGET)),build/casio-cg/data_be.bin,src/data.bin)
+PORT_DEPS = $(filter build/%,$(PORT_DATA))
+PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"$(PORT_DATA)"'
 include ../../platform/port.mk
+build/casio-cg/data_be.bin: src/data.bin src/data.h tools/bigendian.py
+	@mkdir -p $(@D)
+	$(Q) python3 tools/bigendian.py src/data.bin src/data.h $@
