@@ -1,0 +1,706 @@
+{
+ "version": "1.24.29",
+ "commit": "3be1cba4a29be0327a81ab3aad4690eb5b5f71c1",
+ "targets": {
+  "ti84ce": {
+   "balatro": {
+    "files": [
+     "BALATRO.8xp",
+     "BALART0.8xv",
+     "BALART1.8xv",
+     "BALART2.8xv",
+     "BALART3.8xv",
+     "BALATRO.8xp.0.8xv",
+     "BALATRO.8xp.1.8xv",
+     "BALBG0.8xv",
+     "BALBG1.8xv",
+     "BALBG2.8xv",
+     "BALCB.8xv",
+     "BALCP.8xv",
+     "BALCV0.8xv",
+     "BALCV1.8xv",
+     "BALED.8xv",
+     "BALFIRE.8xv",
+     "BALLUT.8xv"
+    ],
+    "size": 680077
+   },
+   "blockblast": {
+    "file": "BLOCKBLA.8xp",
+    "size": 34823
+   },
+   "chess": {
+    "file": "CHESS.8xp",
+    "size": 36361
+   },
+   "pacman": {
+    "file": "PACMAN.8xp",
+    "size": 23680
+   },
+   "connectfour": {
+    "file": "CONNECTF.8xp",
+    "size": 25737
+   },
+   "solitaire": {
+    "file": "SOLITAIR.8xp",
+    "size": 30512
+   },
+   "minesweeper": {
+    "file": "MINESWEE.8xp",
+    "size": 26063
+   },
+   "breakout": {
+    "file": "BREAKOUT.8xp",
+    "size": 19042
+   },
+   "twoplayer": {
+    "file": "TWOPLAYE.8xp",
+    "size": 51458
+   },
+   "invaders": {
+    "file": "INVADERS.8xp",
+    "size": 29855
+   },
+   "sudoku": {
+    "file": "SUDOKU.8xp",
+    "size": 34052
+   },
+   "uttt": {
+    "file": "UTTT.8xp",
+    "size": 33665
+   },
+   "sokoban": {
+    "file": "SOKOBAN.8xp",
+    "size": 37207
+   },
+   "fnaf": {
+    "files": [
+     "FNAF.8xp",
+     "FNAFD0.8xv",
+     "FNAFD1.8xv",
+     "FNAFD2.8xv",
+     "FNAFD3.8xv",
+     "FNAFD4.8xv",
+     "FNAFD5.8xv",
+     "FNAFD6.8xv",
+     "FNAFD7.8xv",
+     "FNAFD8.8xv",
+     "FNAFD9.8xv"
+    ],
+    "size": 627261
+   },
+   "imposter": {
+    "file": "IMPOSTER.8xp",
+    "size": 52284
+   }
+  },
+  "nspire": {
+   "numdash": {
+    "file": "numdash.tns",
+    "size": 574704
+   },
+   "crossyroad": {
+    "file": "crossyroad.tns",
+    "size": 64640
+   },
+   "numblocks": {
+    "file": "numblocks.tns",
+    "size": 802516
+   },
+   "numdrive": {
+    "file": "numdrive.tns",
+    "size": 329664
+   },
+   "balatro": {
+    "file": "balatro.tns",
+    "size": 373292
+   },
+   "buckshot": {
+    "file": "buckshot.tns",
+    "size": 297840
+   },
+   "blockblast": {
+    "file": "blockblast.tns",
+    "size": 56372
+   },
+   "suika": {
+    "file": "suika.tns",
+    "size": 64084
+   },
+   "portal": {
+    "file": "portal.tns",
+    "size": 87780
+   },
+   "dinorun": {
+    "file": "dinorun.tns",
+    "size": 48748
+   },
+   "doodlejump": {
+    "file": "doodlejump.tns",
+    "size": 151480
+   },
+   "chess": {
+    "file": "chess.tns",
+    "size": 82492
+   },
+   "flappybird": {
+    "file": "flappybird.tns",
+    "size": 56416
+   },
+   "flappydunk": {
+    "file": "flappydunk.tns",
+    "size": 383612
+   },
+   "towerblock": {
+    "file": "towerblock.tns",
+    "size": 55268
+   },
+   "coreball": {
+    "file": "coreball.tns",
+    "size": 53892
+   },
+   "pacman": {
+    "file": "pacman.tns",
+    "size": 55380
+   },
+   "snake": {
+    "file": "snake.tns",
+    "size": 76120
+   },
+   "connectfour": {
+    "file": "connectfour.tns",
+    "size": 47232
+   },
+   "solitaire": {
+    "file": "solitaire.tns",
+    "size": 72620
+   },
+   "g2048": {
+    "file": "g2048.tns",
+    "size": 52092
+   },
+   "minesweeper": {
+    "file": "minesweeper.tns",
+    "size": 63076
+   },
+   "breakout": {
+    "file": "breakout.tns",
+    "size": 48676
+   },
+   "twoplayer": {
+    "file": "twoplayer.tns",
+    "size": 81892
+   },
+   "invaders": {
+    "file": "invaders.tns",
+    "size": 42252
+   },
+   "sudoku": {
+    "file": "sudoku.tns",
+    "size": 53148
+   },
+   "uttt": {
+    "file": "uttt.tns",
+    "size": 54280
+   },
+   "sokoban": {
+    "file": "sokoban.tns",
+    "size": 58052
+   },
+   "meowdoku": {
+    "file": "meowdoku.tns",
+    "size": 76364
+   },
+   "retrogo": {
+    "file": "retrogo.tns",
+    "size": 763760
+   },
+   "celeste": {
+    "file": "celeste.tns",
+    "size": 2336980
+   },
+   "hollowknight": {
+    "file": "hollowknight.tns",
+    "size": 2168096
+   },
+   "hkfungal": {
+    "file": "hkfungal.tns",
+    "size": 1629896
+   },
+   "undertale": {
+    "file": "undertale.tns",
+    "size": 1866996
+   },
+   "deltarune": {
+    "file": "deltarune.tns",
+    "size": 1247004
+   },
+   "championisland": {
+    "file": "championisland.tns",
+    "size": 2224040
+   },
+   "finalearth2": {
+    "file": "finalearth2.tns",
+    "size": 1046804
+   },
+   "numpowder": {
+    "file": "numpowder.tns",
+    "size": 607540
+   },
+   "subway": {
+    "file": "subway.tns",
+    "size": 1715872
+   },
+   "fnaf": {
+    "file": "fnaf.tns",
+    "size": 1102480
+   },
+   "doom": {
+    "file": "doom.tns",
+    "size": 2004824
+   },
+   "isaac": {
+    "file": "isaac.tns",
+    "size": 1255420
+   },
+   "hillclimb": {
+    "file": "hillclimb.tns",
+    "size": 1483412
+   },
+   "pvz": {
+    "file": "pvz.tns",
+    "size": 1787444
+   },
+   "sonic": {
+    "file": "sonic.tns",
+    "size": 967708
+   },
+   "cookieclicker": {
+    "file": "cookieclicker.tns",
+    "size": 1311472
+   },
+   "leveldevil": {
+    "file": "leveldevil.tns",
+    "size": 105332
+   },
+   "jetpackjoyride": {
+    "file": "jetpackjoyride.tns",
+    "size": 696520
+   },
+   "stickmanhook": {
+    "file": "stickmanhook.tns",
+    "size": 232224
+   },
+   "donkeykong": {
+    "file": "donkeykong.tns",
+    "size": 104928
+   },
+   "dune": {
+    "file": "dune.tns",
+    "size": 374132
+   },
+   "monkeymart": {
+    "file": "monkeymart.tns",
+    "size": 646708
+   },
+   "tombofthemask": {
+    "file": "tombofthemask.tns",
+    "size": 295940
+   },
+   "uno": {
+    "file": "uno.tns",
+    "size": 100764
+   },
+   "fnf": {
+    "file": "fnf.tns",
+    "size": 1903308
+   },
+   "angrybirds": {
+    "file": "angrybirds.tns",
+    "size": 1826672
+   },
+   "numvisuals": {
+    "file": "numvisuals.tns",
+    "size": 119728
+   },
+   "polytrack": {
+    "file": "polytrack.tns",
+    "size": 1365444
+   },
+   "paperclips": {
+    "file": "paperclips.tns",
+    "size": 187992
+   },
+   "badtime": {
+    "file": "badtime.tns",
+    "size": 234344
+   },
+   "mahjong": {
+    "file": "mahjong.tns",
+    "size": 62528
+   },
+   "rider": {
+    "file": "rider.tns",
+    "size": 769656
+   },
+   "snowrider": {
+    "file": "snowrider.tns",
+    "size": 476500
+   },
+   "templerun": {
+    "file": "templerun.tns",
+    "size": 1895492
+   },
+   "fnaf2": {
+    "file": "fnaf2.tns",
+    "size": 1822756
+   },
+   "fnaf3": {
+    "file": "fnaf3.tns",
+    "size": 1420280
+   },
+   "fnaf4": {
+    "file": "fnaf4.tns",
+    "size": 1339864
+   },
+   "fnafworld": {
+    "file": "fnafworld.tns",
+    "size": 4882004
+   },
+   "famidash": {
+    "file": "famidash.tns",
+    "size": 1719208
+   },
+   "clashroyale": {
+    "file": "clashroyale.tns",
+    "size": 1383896
+   },
+   "catninja": {
+    "file": "catninja.tns",
+    "size": 217760
+   },
+   "kingdomrush": {
+    "file": "kingdomrush.tns",
+    "size": 1808892
+   },
+   "mrbullet": {
+    "file": "mrbullet.tns",
+    "size": 577608
+   },
+   "motox3m": {
+    "file": "motox3m.tns",
+    "size": 1983564
+   },
+   "amongus": {
+    "file": "amongus.tns",
+    "size": 1721640
+   },
+   "imposter": {
+    "file": "imposter.tns",
+    "size": 84344
+   },
+   "fourplayer": {
+    "file": "fourplayer.tns",
+    "size": 136964
+   },
+   "circloo": {
+    "file": "circloo.tns",
+    "size": 192092
+   }
+  },
+  "casio-cg": {
+   "numdash": {
+    "file": "numdash.g3a",
+    "size": 532092
+   },
+   "crossyroad": {
+    "file": "crossyroad.g3a",
+    "size": 64044
+   },
+   "numblocks": {
+    "file": "numblocks.g3a",
+    "size": 694576
+   },
+   "numdrive": {
+    "file": "numdrive.g3a",
+    "size": 306024
+   },
+   "balatro": {
+    "file": "balatro.g3a",
+    "size": 318296
+   },
+   "buckshot": {
+    "file": "buckshot.g3a",
+    "size": 289224
+   },
+   "blockblast": {
+    "file": "blockblast.g3a",
+    "size": 61340
+   },
+   "suika": {
+    "file": "suika.g3a",
+    "size": 68836
+   },
+   "portal": {
+    "file": "portal.g3a",
+    "size": 70052
+   },
+   "dinorun": {
+    "file": "dinorun.g3a",
+    "size": 55048
+   },
+   "doodlejump": {
+    "file": "doodlejump.g3a",
+    "size": 155468
+   },
+   "chess": {
+    "file": "chess.g3a",
+    "size": 69928
+   },
+   "flappybird": {
+    "file": "flappybird.g3a",
+    "size": 56148
+   },
+   "flappydunk": {
+    "file": "flappydunk.g3a",
+    "size": 369156
+   },
+   "towerblock": {
+    "file": "towerblock.g3a",
+    "size": 61384
+   },
+   "coreball": {
+    "file": "coreball.g3a",
+    "size": 59872
+   },
+   "pacman": {
+    "file": "pacman.g3a",
+    "size": 54544
+   },
+   "snake": {
+    "file": "snake.g3a",
+    "size": 69164
+   },
+   "connectfour": {
+    "file": "connectfour.g3a",
+    "size": 49608
+   },
+   "solitaire": {
+    "file": "solitaire.g3a",
+    "size": 60908
+   },
+   "g2048": {
+    "file": "g2048.g3a",
+    "size": 52940
+   },
+   "minesweeper": {
+    "file": "minesweeper.g3a",
+    "size": 57416
+   },
+   "breakout": {
+    "file": "breakout.g3a",
+    "size": 50376
+   },
+   "twoplayer": {
+    "file": "twoplayer.g3a",
+    "size": 77364
+   },
+   "invaders": {
+    "file": "invaders.g3a",
+    "size": 47132
+   },
+   "sudoku": {
+    "file": "sudoku.g3a",
+    "size": 59572
+   },
+   "uttt": {
+    "file": "uttt.g3a",
+    "size": 60316
+   },
+   "sokoban": {
+    "file": "sokoban.g3a",
+    "size": 63220
+   },
+   "meowdoku": {
+    "file": "meowdoku.g3a",
+    "size": 78176
+   },
+   "hollowknight": {
+    "file": "hollowknight.g3a",
+    "size": 2096064
+   },
+   "hkfungal": {
+    "file": "hkfungal.g3a",
+    "size": 1553320
+   },
+   "undertale": {
+    "file": "undertale.g3a",
+    "size": 1755536
+   },
+   "deltarune": {
+    "file": "deltarune.g3a",
+    "size": 1144552
+   },
+   "finalearth2": {
+    "file": "finalearth2.g3a",
+    "size": 875856
+   },
+   "numpowder": {
+    "file": "numpowder.g3a",
+    "size": 473792
+   },
+   "subway": {
+    "file": "subway.g3a",
+    "size": 1691284
+   },
+   "fnaf": {
+    "file": "fnaf.g3a",
+    "size": 1104168
+   },
+   "doom": {
+    "file": "doom.g3a",
+    "size": 1844020
+   },
+   "isaac": {
+    "file": "isaac.g3a",
+    "size": 1216524
+   },
+   "hillclimb": {
+    "file": "hillclimb.g3a",
+    "size": 1399424
+   },
+   "pvz": {
+    "file": "pvz.g3a",
+    "size": 1748832
+   },
+   "sonic": {
+    "file": "sonic.g3a",
+    "size": 924248
+   },
+   "cookieclicker": {
+    "file": "cookieclicker.g3a",
+    "size": 1228792
+   },
+   "leveldevil": {
+    "file": "leveldevil.g3a",
+    "size": 105872
+   },
+   "jetpackjoyride": {
+    "file": "jetpackjoyride.g3a",
+    "size": 688420
+   },
+   "stickmanhook": {
+    "file": "stickmanhook.g3a",
+    "size": 224888
+   },
+   "donkeykong": {
+    "file": "donkeykong.g3a",
+    "size": 92624
+   },
+   "dune": {
+    "file": "dune.g3a",
+    "size": 352896
+   },
+   "monkeymart": {
+    "file": "monkeymart.g3a",
+    "size": 641068
+   },
+   "tombofthemask": {
+    "file": "tombofthemask.g3a",
+    "size": 236948
+   },
+   "uno": {
+    "file": "uno.g3a",
+    "size": 89392
+   },
+   "fnf": {
+    "file": "fnf.g3a",
+    "size": 1894056
+   },
+   "angrybirds": {
+    "file": "angrybirds.g3a",
+    "size": 1792832
+   },
+   "numvisuals": {
+    "file": "numvisuals.g3a",
+    "size": 125144
+   },
+   "polytrack": {
+    "file": "polytrack.g3a",
+    "size": 1343716
+   },
+   "paperclips": {
+    "file": "paperclips.g3a",
+    "size": 157012
+   },
+   "badtime": {
+    "file": "badtime.g3a",
+    "size": 185084
+   },
+   "mahjong": {
+    "file": "mahjong.g3a",
+    "size": 66604
+   },
+   "rider": {
+    "file": "rider.g3a",
+    "size": 660236
+   },
+   "snowrider": {
+    "file": "snowrider.g3a",
+    "size": 455544
+   },
+   "templerun": {
+    "file": "templerun.g3a",
+    "size": 1875060
+   },
+   "fnaf2": {
+    "file": "fnaf2.g3a",
+    "size": 1821876
+   },
+   "fnaf3": {
+    "file": "fnaf3.g3a",
+    "size": 1381348
+   },
+   "fnaf4": {
+    "file": "fnaf4.g3a",
+    "size": 1297080
+   },
+   "famidash": {
+    "file": "famidash.g3a",
+    "size": 1656268
+   },
+   "clashroyale": {
+    "file": "clashroyale.g3a",
+    "size": 1339380
+   },
+   "catninja": {
+    "file": "catninja.g3a",
+    "size": 202320
+   },
+   "kingdomrush": {
+    "file": "kingdomrush.g3a",
+    "size": 1737188
+   },
+   "mrbullet": {
+    "file": "mrbullet.g3a",
+    "size": 530429
+   },
+   "motox3m": {
+    "file": "motox3m.g3a",
+    "size": 1911980
+   },
+   "amongus": {
+    "file": "amongus.g3a",
+    "size": 1659456
+   },
+   "imposter": {
+    "file": "imposter.g3a",
+    "size": 85100
+   },
+   "fourplayer": {
+    "file": "fourplayer.g3a",
+    "size": 120724
+   }
+  }
+ }
+}
