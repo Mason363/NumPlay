@@ -114,5 +114,12 @@ PORT_NAME = PolyTrack
 PORT_SRC = $(HOT) src/plat_eadk.c src/main.c src/draw.c src/save.c src/ghost.c src/data.c ../../launcher/src/gfx.c \
   ../../launcher/src/xfont.c
 PORT_ASM = src/data.S
-PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc -DDATA_BIN='"src/data.bin"' -ffp-contract=off
+# (on the Casio, the data with the numbers the game reads in place turned big-endian, as the calculator reads them:
+# tools/bigendian.py)
+PORT_DATA = $(if $(filter casio-cg,$(TARGET)),build/casio-cg/data_be.bin,src/data.bin)
+PORT_DEPS = $(filter build/%,$(PORT_DATA))
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc -DDATA_BIN='"$(PORT_DATA)"' -ffp-contract=off
 include ../../platform/port.mk
+build/casio-cg/data_be.bin: src/data.bin src/data.h tools/bigendian.py
+	@mkdir -p $(@D)
+	$(Q) python3 tools/bigendian.py src/data.bin src/data.h $@
