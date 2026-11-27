@@ -115,6 +115,12 @@ static void blit_scaled_flip(const pic_t *p, int x, int y, int w, int h, int alp
   }
 }
 
+/* two pixels as one word, a left of b, in the CPU's byte order */
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define PX_PAIR(a, b) ((a) << 16 | (b))
+#else
+#define PX_PAIR(a, b) ((a) | (b) << 16)
+#endif
 /* the background, 16 colours (darkened by dark1000 thousandths), zoomed round the screen's middle */
 void draw_bg(const uint16_t *pal, int dark1000, float zoom) {
   color_t lut[16];
@@ -126,7 +132,7 @@ void draw_bg(const uint16_t *pal, int dark1000, float zoom) {
       uint32_t *dst = (uint32_t *)(gfx_buf + (r - gfx_y0) * SCREEN_W);
       for (int i = 0; i < SCREEN_W / 2; i++) {
         unsigned v = src[i];
-        dst[i] = lut[v & 15] | (uint32_t)lut[v >> 4] << 16;
+        dst[i] = PX_PAIR(lut[v & 15], (uint32_t)lut[v >> 4]);
       }
     }
     return;
