@@ -1062,6 +1062,12 @@ static void show_cell(uint16_t *d, int w, int x, int y, uint32_t c, int wt) {
     }
 }
 
+/* two pixels as one word, a left of b, in the CPU's byte order */
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define PX_PAIR(a, b) ((a) << 16 | (b))
+#else
+#define PX_PAIR(a, b) ((a) | (b) << 16)
+#endif
 static int push_w;   /* the sim's bands go to the screen up to here (an unchanging menu at the right isn't redrawn) */
 static void band_show(int cr, uint32_t (*src)[XRES], bool lens, const Overlay *o, uint16_t *sbuf) {
   int y0 = cr * BAND_ROWS, w = SCREEN_W;
@@ -1087,7 +1093,7 @@ static void band_show(int cr, uint32_t (*src)[XRES], bool lens, const Overlay *o
           continue;
         }
         uint32_t a = rgb565(sp[0]), b = rgb565(sp[1]);
-        uint32_t w0 = a | a << 16, w1 = a | b << 16, w2 = b | b << 16;
+        uint32_t w0 = a | a << 16, w1 = PX_PAIR(a, b), w2 = b | b << 16;
         d0[0] = w0, d0[1] = w1, d0[2] = w2;
         d1[0] = w0, d1[1] = w1, d1[2] = w2;
         d2[0] = w0, d2[1] = w1, d2[2] = w2;
