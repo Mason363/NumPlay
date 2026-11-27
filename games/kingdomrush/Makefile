@@ -82,5 +82,12 @@ PORT_ID = kingdomrush
 PORT_NAME = Kingdom Rush
 PORT_SRC = src/bullet.c src/enemy.c src/enemy2.c src/game.c src/level.c src/main.c src/menus.c src/play.c src/power.c src/save.c src/site.c src/soldier.c src/special.c src/stats.c src/strings.c src/tower.c src/ui.c src/pic.c src/gfx.c src/plat_eadk.c src/hero.c
 PORT_ASM = src/data.S
-PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
+# (on the Casio, the data with the numbers the game reads in place turned big-endian, as the calculator reads them:
+# tools/bigendian.py)
+PORT_DATA = $(if $(filter casio-cg,$(TARGET)),build/casio-cg/data_be.bin,src/data.bin)
+PORT_DEPS = $(filter build/%,$(PORT_DATA))
+PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"$(PORT_DATA)"'
 include ../../platform/port.mk
+build/casio-cg/data_be.bin: src/data.bin tools/bigendian.py
+	@mkdir -p $(@D)
+	$(Q) python3 tools/bigendian.py $< $@
