@@ -169,5 +169,12 @@ PORT_SRC = src/d_event.c src/d_iwad.c src/d_loop.c src/d_mode.c src/deh_str.c sr
 PORT_ASM = src/nw/data.S
 PORT_CXX = src/pd_render.cpp
 PORT_CXXFLAGS = -std=gnu++17
-PORT_FLAGS = -DEPSILON_XL=1 $(INC) -fwrapv -DNDEBUG -DDOOM_WHX='"$(WHX)"' -DDOOM_MIP='"$(MIP)"' -w
+# (on the Casio, the WHX with the numbers the engine reads in place turned big-endian, as the calculator reads them:
+# tools/bigendian.py)
+PORT_WHX = $(if $(filter casio-cg,$(TARGET)),build/casio-cg/$(basename $(notdir $(WHX)))_be.whx,$(WHX))
+PORT_DEPS = $(filter build/casio-cg/%,$(PORT_WHX))
+PORT_FLAGS = -DEPSILON_XL=1 $(INC) -fwrapv -DNDEBUG -DDOOM_WHX='"$(PORT_WHX)"' -DDOOM_MIP='"$(MIP)"' -w
 include ../../platform/port.mk
+build/casio-cg/$(basename $(notdir $(WHX)))_be.whx: $(WHX) tools/bigendian.py
+	@mkdir -p $(@D)
+	$(Q) python3 tools/bigendian.py $< $@
