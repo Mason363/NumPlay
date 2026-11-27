@@ -183,7 +183,10 @@ const char *eadk_external_data = 0;
 size_t eadk_external_data_size = 0;
 
 /* the files: a 4 KB buffer, kept in the appvar */
-#define STORAGE_SIZE 4096
+#ifndef NP_STORAGE_SIZE /* (a game whose files are small can give the rest of the room to its drawing) */
+#define NP_STORAGE_SIZE 4096
+#endif
+#define STORAGE_SIZE NP_STORAGE_SIZE
 static uint8_t storage[STORAGE_SIZE + 16];
 static bool loaded;
 static char var[9];

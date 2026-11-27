@@ -85,7 +85,9 @@ typedef struct {
 static cursor_t cur[SLOTS];
 static int list_base = -1;          /* the first strip's row */
 static cursor_t *strip_of[SCREEN_H]; /* each row's strip, from there */
-static int gx0, gx1 = SCREEN_W; /* the columns drawn */
+int gfx_x0, gfx_x1 = SCREEN_W; /* the columns drawn (gfx.h) */
+#define gx0 gfx_x0
+#define gx1 gfx_x1
 
 enum { L_FILL = 1, L_ALPHA, L_VGRAD, L_RRECT, L_OUTLINE, L_SHADOW, L_IMAGE, L_MASK, L_CORNERS, L_TEXT, L_TEXTC, L_TEXTR, L_CALL };
 

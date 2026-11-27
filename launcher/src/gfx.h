@@ -23,6 +23,7 @@ void gfx_list_always(void);
 void gfx_list_rows(int top, int bottom); /* the strips over these rows: drawn every time */
 /* fn(a) draws (with gfx_*) in the box x, y, w, h what a[0..n) say (8 at most): one call in the strips' lists */
 void gfx_call(void (*fn)(const int *a), const int *a, int n, int x, int y, int w, int h);
+extern int gfx_x0, gfx_x1; /* the columns drawn: a call may leave the others as they are */
 #endif
 
 color_t gfx_mix(color_t a, color_t b, int t32);   /* t32 = 0..32 */
