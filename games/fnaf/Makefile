@@ -86,7 +86,13 @@ PORT_ID = fnaf
 PORT_NAME = Five Nights at Freddys
 PORT_SRC = src/calls.c src/game.c src/main.c src/night.c src/save.c src/view.c src/pic.c src/gfx.c src/plat_eadk.c
 PORT_ASM = src/data.S
-PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
+# (on the Casio, the data with the numbers the game reads in place turned big-endian: tools/bigendian.py)
+PORT_DATA = $(if $(filter casio-cg,$(TARGET)),build/casio-cg/data_be.bin,src/data.bin)
+PORT_DEPS = $(filter build/%,$(PORT_DATA))
+PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"$(PORT_DATA)"'
 # the TI-84 Plus CE has a version of its own (ce/: 8-bit pictures in appvars)
 PORT_CE = ce
 include ../../platform/port.mk
+build/casio-cg/data_be.bin: src/data.bin tools/bigendian.py
+	@mkdir -p $(@D)
+	$(Q) python3 tools/bigendian.py $< $@
