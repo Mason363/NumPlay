@@ -924,7 +924,11 @@ static uint32_t tile_hash(int x) {
   uint32_t h = 2166136261u;
   for (int y = 0; y < BAND; y++) {
     const uint32_t *p = (const uint32_t *)(const void *)(band + y * W + x);
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__ /* (the words as a little-endian CPU reads them: the same tiles redrawn) */
+    for (int i = 0; i < TILE_W / 4; i++) h = (h ^ __builtin_bswap32(p[i])) * 16777619u;
+#else
     for (int i = 0; i < TILE_W / 4; i++) h = (h ^ p[i]) * 16777619u;
+#endif
   }
   return h;
 }
