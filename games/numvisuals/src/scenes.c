@@ -272,6 +272,14 @@ static void synth_init(void) {
     M.sd.neon[d] = (uint8_t)(d < 10 ? 255 : 220 * fall((d - 10) * 32 / 40) >> 8);
   stars_init(M.sd.st, 90, 90);
 }
+/* a ridge's light d sixteenths of a pixel from its edge. Past 1023 (the near ridge high at the screen's sides) that's
+ * the stars' bytes after neon[]: on a big-endian CPU, their int16s' bytes as a little-endian one has them, as the
+ * NumWorks draws */
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define RIDGE_NEON(d) neon[(d) < 1024 || ((d) - 1024) % (int)sizeof(star_t) >= 4 ? (d) : (d) ^ 1]
+#else
+#define RIDGE_NEON(d) neon[d]
+#endif
 static void synth(void) {
   int t = (int)now, phase = t / 60 % 160; /* the sun's stripes, 1/16 pixels */
   const uint8_t *neon = M.sd.neon;
@@ -299,11 +307,11 @@ static void synth(void) {
           r = lerp8(r, ur, cov), g = lerp8(g, ug, cov), b = lerp8(b, ub, cov);
         }
         if (y16 >= M.sd.m1[x] - 32) { /* the far ridge: a dark face, a neon edge */
-          int e = y16 - M.sd.m1[x], f = clampi(e + 8, 0, 16) * 16, n = neon[iabs(e)] * 150 >> 8;
+          int e = y16 - M.sd.m1[x], f = clampi(e + 8, 0, 16) * 16, n = RIDGE_NEON(iabs(e)) * 150 >> 8;
           r = lerp8(r, 26, f) + (255 * n >> 8), g = lerp8(g, 6, f) + (60 * n >> 8), b = lerp8(b, 48, f) + (220 * n >> 8);
         }
         if (y16 >= M.sd.m2[x] - 32) { /* the near ridge */
-          int e = y16 - M.sd.m2[x], f = clampi(e + 8, 0, 16) * 16, n = neon[iabs(e)];
+          int e = y16 - M.sd.m2[x], f = clampi(e + 8, 0, 16) * 16, n = RIDGE_NEON(iabs(e));
           r = lerp8(r, 16, f) + (255 * n >> 8), g = lerp8(g, 3, f) + (40 * n >> 8), b = lerp8(b, 32, f) + (200 * n >> 8);
         }
         p[x] = dith(r, g, b, bt[x & 3]);
