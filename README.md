@@ -4,6 +4,8 @@
 
 <h1 align="center">NumPlay</h1>
 
+<p align="center"><b>English</b> &nbsp;·&nbsp; <a href="README.fr.md">Français</a></p>
+
 <p align="center">
   <b>27 games for your calculator in one app and 50 other games on their own.</b><br>
   For the NumWorks, <a href="#pick-your-calculator">TI-84 Plus CE, TI-Nspire CX and Casio fx-CG50</a>, in English, French and Chinese.

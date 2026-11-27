@@ -1,0 +1,19 @@
+name: README
+
+# README.fr.md, the README in French, has to translate README.md as it is now: tools/readme_fr.py checks it (the
+# README.md it was translated from, and the same pictures, links, numbers and headings), so a change to README.md
+# shows red here until its translation comes with it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  french:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: README.fr.md translates README.md
+        run: python3 tools/readme_fr.py
