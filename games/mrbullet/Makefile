@@ -124,5 +124,12 @@ PORT_SRC = src/draw.c src/plat_eadk.c src/main.c src/ui.c src/game.c src/res.c s
 PORT_ASM = src/data.S
 PORT_CXX = $(PHYS)
 PORT_CXXFLAGS = -DNDEBUG -Isrc/box2d -fno-strict-aliasing
-PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc -DDATA_BIN='"src/data.bin"'
+# (on the Casio, the data with the numbers the game reads in place turned big-endian, as the calculator reads them:
+# tools/bigendian.py)
+PORT_DATA = $(if $(filter casio-cg,$(TARGET)),build/casio-cg/data_be.bin,src/data.bin)
+PORT_DEPS = $(filter build/%,$(PORT_DATA))
+PORT_FLAGS = -DEPSILON_XL=1 -I../../launcher/src -Isrc -DDATA_BIN='"$(PORT_DATA)"'
 include ../../platform/port.mk
+build/casio-cg/data_be.bin: src/data.bin tools/bigendian.py
+	@mkdir -p $(@D)
+	$(Q) python3 tools/bigendian.py $< $@
