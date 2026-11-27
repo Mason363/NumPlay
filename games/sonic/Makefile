@@ -83,5 +83,12 @@ PORT_ID = sonic
 PORT_NAME = Sonic the Hedgehog
 PORT_SRC = src/anim.c src/collide.c src/dle.c src/ending.c src/game.c src/hud.c src/level.c src/main.c src/menus.c src/obj.c src/obj_cards.c src/obj_common.c src/obj_ghz.c src/obj_items.c src/obj_lz.c src/obj_mz.c src/obj_sbz.c src/obj_slz.c src/obj_syz.c src/objects.c src/palette.c src/react.c src/save.c src/screens.c src/solid.c src/sonic.c src/special.c src/ui.c src/water.c src/vdp.c src/plat_eadk.c
 PORT_ASM = src/data.S
-PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"src/data.bin"'
+# (on the Casio, the data with the numbers the game reads in place turned big-endian, as the calculator reads them:
+# tools/bigendian.py)
+PORT_DATA = $(if $(filter casio-cg,$(TARGET)),build/casio-cg/data_be.bin,src/data.bin)
+PORT_DEPS = $(filter build/%,$(PORT_DATA))
+PORT_FLAGS = -DEPSILON_XL=1 -DDATA_BIN='"$(PORT_DATA)"'
 include ../../platform/port.mk
+build/casio-cg/data_be.bin: src/data.bin src/data.h tools/bigendian.py
+	@mkdir -p $(@D)
+	$(Q) python3 tools/bigendian.py src/data.bin src/data.h $@

@@ -25,8 +25,13 @@ extern const uint8_t s1_data[];
 typedef union {
   int32_t l;
   struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__ /* (a big-endian calculator, the fx-CG50: the high half first) */
+    int16_t i;
+    uint16_t f;
+#else
     uint16_t f;
     int16_t i;
+#endif
   } w;
 } fix_t;
 
