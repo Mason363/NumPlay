@@ -437,11 +437,9 @@ static union {
   struct { /* Light Cycles' grid, and the columns of the cells its computer reaches (room) */
     uint8_t cell[54][80], x[256];
   } lc;
-  struct { /* Tanks' rectangles at every angle (quad_rows), its walls across each row (maze_spans) */
+  struct { /* Tanks' rectangles at every angle (quad_rows) */
     uint16_t at[64][3], used;
-    int16_t wall_span[2 * 7][12][2];
-    uint8_t wall_spans[2 * 7];
-    int8_t rows[7000];
+    int8_t rows[7600];
   } tq;
 } shared;
 static enum { BY_NONE, BY_HOCKEY, BY_CYCLES, BY_TANKS } shared_by;
@@ -514,42 +512,29 @@ static void rink_at(const int *a) { /* the rink over the rows being drawn, in th
   }
 }
 /* the puck's (kind 0) or a mallet's (kind 1, player p's) discs inside the dark one, at (x, y) */
-static void piece_middle(int kind, int p, int x, int y, bool green) {
+static void piece_middle(int kind, int p, int x, int y) {
   if (!kind) {
-    disc(x, y, QR - 3, green ? 0x07E0 : HEX(0x3B3F4C));
+    disc(x, y, QR - 3, HEX(0x3B3F4C));
     return;
   }
-  disc(x, y, MR - 3, green ? 0x07E0 : team[p]);
-  disc(x, y, 6, green ? 0x07E0 : dark[p]);
-  disc(x - 1, y - 1, 4, green ? 0x07E0 : light[p]);
+  disc(x, y, MR - 3, team[p]);
+  disc(x, y, 6, dark[p]);
+  disc(x - 1, y - 1, 4, light[p]);
 }
 static color_t piece_dark(int kind, int p) { return kind ? dark[p] : HEX(0x22252E); }
 static bool piece_keep(int kind, unsigned *mixes, unsigned *wholes) {
   hk_t *h = &shared.hk;
   int R = kind ? MR : QR, W = 2 * R + 2, sets = kind ? 2 : 1;
   static uint8_t level[64], l0[STRIP_H][2 * MR + 2], l1[STRIP_H][2 * MR + 2]; /* (a level from the green on black) */
-  for (int g = 0; g < 64; g++) level[g] = 255;
-  for (int t = 0; t <= 32; t++) {
-    int g = gfx_mix(0, 0x07E0, t) >> 5 & 63;
-    if (level[g] != 255) return false;
-    level[g] = (uint8_t)t;
-  }
+  for (int t = 0; t <= 32; t++) level[gfx_mix(0, 0x07E0, t) >> 5 & 63] = (uint8_t)t;
   gfx_y0 = 0, gfx_y1 = STRIP_H;
   unsigned width = 0; /* (its whole pixels, for one set of colours) */
   for (int top = -R; top < R + 3; top += STRIP_H) { /* its rows top to top + 15 in the strip's: their shape */
-    for (int pass = 0; pass < 3; pass++) { /* the shadow's levels, the dark disc's, the middle's reach */
+    for (int pass = 0; pass < 2; pass++) { /* the shadow's levels, the dark disc's (the middle stays inside it) */
       gfx_fill(0, 0, W, STRIP_H, 0);
-      if (pass < 2) disc(R + 2 * !pass, -top + 3 * !pass, R, 0x07E0);
-      else piece_middle(kind, 0, R, -top, true);
+      disc(R + 2 * !pass, -top + 3 * !pass, R, 0x07E0);
       for (int r = 0; r < STRIP_H; r++)
-        for (int i = 0; i < W; i++) {
-          color_t c = gfx_buf[r * SCREEN_W + i];
-          int l = c & ~0x07E0 ? 255 : level[c >> 5 & 63];
-          if (l == 255) return false;
-          if (pass == 0) l0[r][i] = (uint8_t)l;
-          else if (pass == 1) l1[r][i] = (uint8_t)l;
-          else if (l && l1[r][i] < 32) return false; /* (the middle reaching out of the dark disc) */
-        }
+        for (int i = 0; i < W; i++) (pass ? l1 : l0)[r][i] = level[gfx_buf[r * SCREEN_W + i] >> 5 & 63];
     }
     for (int r = 0; r < STRIP_H && top + r < R + 3; r++) {
       piece_row_t *pr = &h->piece[kind][top + r + R];
@@ -557,7 +542,6 @@ static bool piece_keep(int kind, unsigned *mixes, unsigned *wholes) {
       pr->mix = (uint16_t)*mixes, pr->n = 0;
       for (int i = 0; i < W; i++)
         if (l1[r][i] >= 32) {
-          if (b >= 0 && b != i - 1) return false; /* (not one run) */
           a = a < i ? a : i, b = i;
         } else if (l0[r][i] || l1[r][i]) {
           if (*mixes == MIXES) return false;
@@ -574,7 +558,7 @@ static bool piece_keep(int kind, unsigned *mixes, unsigned *wholes) {
     for (int set = 0; set < sets; set++) {
       gfx_fill(0, 0, W, STRIP_H, 0);
       disc(R + 2, -top + 3, R, gfx_mix(ICE, 0, 10)), disc(R, -top, R, piece_dark(kind, set));
-      piece_middle(kind, set, R, -top, false);
+      piece_middle(kind, set, R, -top);
       for (int r = 0; r < STRIP_H && top + r < R + 3; r++) {
         const piece_row_t *pr = &h->piece[kind][top + r + R];
         for (int i = pr->a; i <= pr->b; i++) h->whole[h->whole_at[kind + set] + pr->whole + (i - pr->a)] = gfx_buf[r * SCREEN_W + i];
@@ -623,7 +607,7 @@ static void mallet(const int *a) { /* at a[0], a[1], player a[2]'s */
   if (piece_at(1, p, x, y)) return;
   disc(x + 2, y + 3, MR, gfx_mix(ICE, 0, 10));
   disc(x, y, MR, dark[p]);
-  piece_middle(1, p, x, y, false);
+  piece_middle(1, p, x, y);
 }
 #endif
 static void hockey_paint(void) {
@@ -693,11 +677,8 @@ static int tcell(int x, int y) { /* the cell at (x, y), in 256ths of a pixel */
   return clampi(((y >> 8) - TY0) / TCS, 0, TROWS - 1) * TCOLS + clampi(((x >> 8) - TX0) / TCS, 0, TCOLS - 1);
 }
 /* inside a wall (or out of the maze)? */
-#if NP_SOFT_FLOAT
-static bool solid_at(int x, int y) {
-#else
+#if !NP_SOFT_FLOAT
 static bool solid(int x, int y) {
-#endif
   int k = tcell(x, y), r = k / TCOLS, c = k % TCOLS, fx = (x >> 8) - TX0 - c * TCS, fy = (y >> 8) - TY0 - r * TCS;
   bool L = fx < 2, R = fx >= TCS - 2, T = fy < 2, B = fy >= TCS - 2;
   if ((T && H(r, c)) || (B && H(r + 1, c)) || (L && V(r, c)) || (R && V(r, c + 1))) return true;
@@ -705,7 +686,7 @@ static bool solid(int x, int y) {
   int gr = r + B, gc = c + R;
   return (L || R) && (T || B) && (H(gr, gc - 1) || H(gr, gc) || V(gr - 1, gc) || V(gr, gc));
 }
-#if NP_SOFT_FLOAT
+#else
 /* Where division is slow (the TI-84 Plus CE, a shell's or the computer's look at the walls hundreds of times a
    frame), the same answer looked up: a column's cell and part of it (bits 4 and up: its left wall 0, the middle 1,
    its right wall 2), a row's (its top 0, the middle 3, its bottom 6), and each cell's nine parts, in a wall or not */
@@ -716,15 +697,13 @@ static bool solid_px(unsigned px, unsigned py) { /* (the pixel's, on the screen)
   unsigned a = xzone[px], b = yzone[py];
   return zones[(b & 15) * TCOLS + (a & 15)] >> ((a >> 4) + (b >> 4)) & 1;
 }
-static bool solid(int x, int y) {
-  unsigned px = (unsigned)(x >> 8), py = (unsigned)(y >> 8);
-  if (px >= SCREEN_W || py >= SCREEN_H) return solid_at(x, y);
-  return solid_px(px, py);
+static bool solid(int x, int y) { /* (off the screen: the part of the cell at its edge, the same) */
+  int px = x >> 8, py = y >> 8;
+  return solid_px((unsigned)(px < 0 ? 0 : px >= SCREEN_W ? SCREEN_W - 1 : px), (unsigned)(py < 0 ? 0 : py >= SCREEN_H ? SCREEN_H - 1 : py));
 }
 static int maze_n; /* (a new maze each round) */
 static void zones_make(void) { /* (for a new maze) */
   maze_n++;
-  static const uint8_t AT[3] = {0, TCS / 2, TCS - 1}; /* a pixel in each part */
   for (int i = 0; i < SCREEN_W; i++) {
     int c = clampi((i - TX0) / TCS, 0, TCOLS - 1), f = i - TX0 - c * TCS;
     xzone[i] = (uint8_t)(c | (f < 2 ? 0 : f >= TCS - 2 ? 2 : 1) << 4);
@@ -737,9 +716,12 @@ static void zones_make(void) { /* (for a new maze) */
     ways[k] = 0;
     for (int d = 0; d < 4; d++) ways[k] |= (uint8_t)(open_way(k, d) << d);
     zones[k] = 0;
-    for (int z = 0; z < 9; z++) {
-      int x = TX0 + k % TCOLS * TCS + AT[z % 3], y = TY0 + k / TCOLS * TCS + AT[z / 3];
-      zones[k] |= (uint16_t)(solid_at(x << 8, y << 8) << z);
+    for (int z = 0, r = k / TCOLS, c = k % TCOLS; z < 9; z++) { /* (as solid finds it in that part of the cell) */
+      bool L = z % 3 == 0, R = z % 3 == 2, T = z < 3, B = z >= 6;
+      int gr = r + B, gc = c + R;
+      bool w = (T && H(r, c)) || (B && H(r + 1, c)) || (L && V(r, c)) || (R && V(r, c + 1)) ||
+               ((L || R) && (T || B) && (H(gr, gc - 1) || H(gr, gc) || V(gr - 1, gc) || V(gr, gc)));
+      zones[k] |= (uint16_t)(w << z);
     }
   }
 }
@@ -803,24 +785,20 @@ static bool tank_stuck(int p, int x, int y) {
   if (!dead[1 - p] && near(x, y, 1 - p, 2 * TR)) return true;
 #if NP_SOFT_FLOAT
   /* (the same 16 points round it: in whole pixels and 256ths, added to the tank's without shifting each) */
-  static int probe[16][2];
   static int8_t whole[16][2];
   static uint8_t part[16][2];
-  if (!probe[0][0])
+  if (!whole[0][0])
     for (int i = 0; i < 16; i++)
       for (int k = 0; k < 2; k++) {
-        probe[i][k] = (k ? sin64(4 * i) : cos64(4 * i)) * TR * 2;
-        whole[i][k] = (int8_t)(probe[i][k] >> 8), part[i][k] = (uint8_t)(probe[i][k] & 255);
+        int v = (k ? sin64(4 * i) : cos64(4 * i)) * TR * 2;
+        whole[i][k] = (int8_t)(v >> 8), part[i][k] = (uint8_t)(v & 255);
       }
   int px = x >> 8, py = y >> 8, fx = x & 255, fy = y & 255;
-  if (px < 32 || px >= SCREEN_W - 32 || py < 32 || py >= SCREEN_H - 32) { /* (near the screen's edges: as solid does) */
-    for (int i = 0; i < 16; i++)
-      if (solid(x + probe[i][0], y + probe[i][1])) return true;
-    return false;
+  for (int i = 0; i < 16; i++) {
+    int qx = px + whole[i][0] + (fx + part[i][0] > 255), qy = py + whole[i][1] + (fy + part[i][1] > 255);
+    if (solid_px((unsigned)(qx < 0 ? 0 : qx >= SCREEN_W ? SCREEN_W - 1 : qx), (unsigned)(qy < 0 ? 0 : qy >= SCREEN_H ? SCREEN_H - 1 : qy)))
+      return true; /* (off the screen: as solid does) */
   }
-  for (int i = 0; i < 16; i++)
-    if (solid_px((unsigned)(px + whole[i][0] + (fx + part[i][0] > 255)), (unsigned)(py + whole[i][1] + (fy + part[i][1] > 255))))
-      return true;
 #else
   for (int i = 0; i < 64; i += 4)
     if (solid(x + cos64(i) * TR * 2, y + sin64(i) * TR * 2)) return true;
@@ -1086,6 +1064,13 @@ static const int8_t *quad_rows(int a, int l0, int l1, int w) { /* null: too many
   return 0;
 }
 #endif
+#ifdef __TICE__
+/* a row's pixels x0 to x1 (as far as the columns being drawn go) in colour c */
+static void row_fill(color_t *row, int x0, int x1, color_t c) {
+  x0 = x0 > gfx_x0 ? x0 : gfx_x0, x1 = x1 < gfx_x1 ? x1 : gfx_x1;
+  if (x1 > x0) wmemset((wchar_t *)row + x0, (wchar_t)c, (size_t)(x1 - x0));
+}
+#endif
 /* a rectangle from l0 to l1 ahead of (x, y) the way a faces, w to either side (quarter pixels) */
 static void quad(int x, int y, int a, int l0, int l1, int w, color_t col) {
 #if NP_SOFT_FLOAT
@@ -1099,14 +1084,11 @@ static void quad(int x, int y, int a, int l0, int l1, int w, color_t col) {
     for (const int8_t *e = q + 2 + 2 * i; i < n; i++, e += 2) {
       int lo = e[0], hi = e[1];
       if (hi >= lo) {
-#ifdef __TICE__ /* (a tank being drawn: its rows straight into the strip, the columns not drawn left out as it's sent) */
-        if (!gfx_listing && x + lo >= 0 && x + hi <= SCREEN_W) {
-          if (hi > lo) wmemset((wchar_t *)line + x + lo, (wchar_t)col, (size_t)(hi - lo));
-          line += SCREEN_W;
-          continue;
-        }
+#ifdef __TICE__ /* (a tank being drawn: its rows straight into the strip) */
+        if (!gfx_listing) row_fill(line, x + lo, x + hi, col);
+        else
 #endif
-        gfx_fill(x + lo, top + i, hi - lo, 1, col);
+          gfx_fill(x + lo, top + i, hi - lo, 1, col);
       }
 #ifdef __TICE__
       line += SCREEN_W;
@@ -1148,75 +1130,26 @@ static void tank(int x, int y, int a, int p) {
   disc(x, y, 2, light[p]);
 }
 #ifdef __TICE__
-/* a row's pixels x0 to x1 (as far as the columns being drawn go) in colour c */
-static void row_fill(color_t *row, int x0, int x1, color_t c) {
-  x0 = x0 > gfx_x0 ? x0 : gfx_x0, x1 = x1 < gfx_x1 ? x1 : gfx_x1;
-  if (x1 > x0) wmemset((wchar_t *)row + x0, (wchar_t)c, (size_t)(x1 - x0));
-}
-/* The walls across a row: for each wall row r (0 to TROWS: its first 4 rows, then the rest of its cell, -1 none),
-   the walls' spans from left to right, merged, kept for the maze (maze_spans) */
-#define WALL_SPANS 12
-#define wall_span shared.tq.wall_span
-#define wall_spans shared.tq.wall_spans
-_Static_assert(sizeof wall_spans == 2 * (TROWS + 1) && sizeof wall_span[0] == WALL_SPANS * 4, "the walls' spans");
-static int wall_maze = -1;
-static void maze_spans(void) {
-  wall_maze = maze;
-  for (int k = 0; k < 2 * (TROWS + 1); k++) {
-    int r = k >> 1, top = !(k & 1), n = 0;
-    for (int c = 0, x = TX0 - 2; c <= TCOLS; c++, x += TCS) {
-      int x0 = 0, x1 = 0; /* (this column's, then its H wall to the next) */
-      for (int part = 0; part < 2; part++) {
-        if (!part) {
-          if (!((r < TROWS && vwall[r][c]) || (top && r && vwall[r - 1][c]))) continue;
-          x0 = x, x1 = x + 4;
-        } else {
-          if (!(top && c < TCOLS && hwall[r][c])) continue;
-          x0 = x, x1 = x + TCS + 4;
-        }
-        if (n && x0 <= wall_span[k][n - 1][1]) { /* (touching the last one: one span) */
-          if (x1 > wall_span[k][n - 1][1]) wall_span[k][n - 1][1] = (int16_t)x1;
-        } else if (n < WALL_SPANS) {
-          wall_span[k][n][0] = (int16_t)x0, wall_span[k][n][1] = (int16_t)x1, n++;
-        } else {
-          wall_maze = -1; /* (no room: drawn wall by wall) */
-        }
-      }
-    }
-    wall_spans[k] = (uint8_t)n;
-  }
-}
-/* the floor and the walls over the rows being drawn, a row at a time, in the columns being drawn (as their gfx_fill
-   calls would draw them) */
+/* the floor and the walls over the rows being drawn, in the columns being drawn (as their gfx_fill calls would draw
+   them): a row of each kind (a wall row's first 4 rows, the rest of its cell), the next ones of that kind copied */
 static void maze_at(const int *a) {
-  if (wall_maze != maze) maze_spans();
   int c0 = (gfx_x0 - TX0 - TCS - 2) / TCS, c1 = (gfx_x1 - TX0 + 2) / TCS + 1; /* (the walls' columns there, or more) */
   c0 = c0 < 0 ? 0 : c0, c1 = c1 > TCOLS ? TCOLS : c1;
   int top = gfx_y0 < 22 ? 22 : gfx_y0; /* (from under the score bar, as the floor's fill) */
   int t = top - (TY0 - 2), r = t < 0 ? -1 : t / TCS, f = t < 0 ? t : t - r * TCS; /* the wall row, and the row in it */
-  color_t *row = gfx_buf + (top - gfx_y0) * SCREEN_W, *same = 0; /* (same: a row of the same kind drawn: copied) */
-  int kind = -2;
-  for (int y = top; y < gfx_y1; y++, row += SCREEN_W) {
+  color_t *row = gfx_buf + (top - gfx_y0) * SCREEN_W, *same = 0;
+  for (int y = top, kind = -2; y < gfx_y1; y++, row += SCREEN_W) {
     int k = r >= 0 && r <= TROWS ? 2 * r + (f >= 4) : -1;
-    if (k == kind && wall_maze == maze) {
+    if (k == kind) {
       memcpy(row + gfx_x0, same + gfx_x0, (size_t)(gfx_x1 - gfx_x0) * sizeof(color_t));
-      if (++f == TCS) f = 0, r++;
-      else if (!f) r = 0;
-      continue;
-    }
-    kind = k, same = row;
-    row_fill(row, 0, SCREEN_W, HEX(0xE6E6E1));
-    if (r >= 0 && r <= TROWS) { /* (a wall's row across: from TY0 + r * TCS - 2, 4 rows) */
-      if (wall_maze == maze) {
-        int k = 2 * r + (f >= 4);
-        for (int i = 0; i < wall_spans[k]; i++)
-          if (wall_span[k][i][0] < gfx_x1 && wall_span[k][i][1] > gfx_x0) row_fill(row, wall_span[k][i][0], wall_span[k][i][1], HEX(0x3A3F4B));
-      } else {
+    } else {
+      kind = k, same = row;
+      row_fill(row, 0, SCREEN_W, HEX(0xE6E6E1));
+      if (k >= 0) /* (a wall's row across: from TY0 + r * TCS - 2, 4 rows) */
         for (int c = c0, x = TX0 + c0 * TCS - 2; c <= c1; c++, x += TCS) {
           if (f < 4 && c < TCOLS && hwall[r][c]) row_fill(row, x, x + TCS + 4, HEX(0x3A3F4B));
           if ((r < TROWS && vwall[r][c]) || (f < 4 && r && vwall[r - 1][c])) row_fill(row, x, x + 4, HEX(0x3A3F4B));
         }
-      }
     }
     if (++f == TCS) f = 0, r++;
     else if (!f) r = 0; /* (from above the maze into its first wall's rows) */

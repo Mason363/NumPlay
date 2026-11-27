@@ -88,6 +88,7 @@ $(BUILD_DIR)/sim-module.o: $(SRC) $(HEADERS) | $(BUILD_DIR)
 PORT_ID = twoplayer
 PORT_NAME = 2 Players
 PORT_SRC = src/main.c ../../launcher/src/gfx.c ../../launcher/src/xfont.c
-# (on the CE: its one small file in 512 bytes, the rest of the room for its drawing)
-PORT_CE_FLAGS = -DNP_STORAGE_SIZE=512
+# (on the CE: its one small file in 512 bytes, the rest of the room for its drawing, and none of the pictures,
+# shadows or corner masks it never draws)
+PORT_CE_FLAGS = -DNP_STORAGE_SIZE=512 -DGFX_NO_IMAGE -DGFX_NO_SHADOW -DGFX_NO_CORNERS
 include ../../platform/port.mk
