@@ -28,6 +28,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HERE = os.path.join(ROOT, "tools", "be_check")
 ARMEB = os.path.expanduser(os.environ.get("ARMEB", "~/Documents/Assets/toolchains/armeb"))
 ARCH = ["-marm", "-mcpu=cortex-a15", "-mfpu=vfpv4", "-mfloat-abi=hard", "-mno-unaligned-access"]
+# (the games' ARM-only paths stay out, as on the SuperH: it has no FPU, no saturating or SIMD instructions)
+NOT_ARM = ["-U__ARM_FEATURE_SAT", "-U__ARM_FEATURE_SIMD32", "-U__ARM_FEATURE_DSP", "-U__ARM_FP"]
 KEYS = {"left": 0, "up": 1, "down": 2, "right": 3, "ok": 4, "back": 5, "home": 6, "shift": 12, "alpha": 13, "xnt": 14,
         "var": 15, "toolbox": 16, "backspace": 17, "exe": 52, "zero": 48, "one": 42, "two": 43, "three": 44, "four": 36,
         "five": 37, "six": 38, "seven": 30, "eight": 31, "nine": 32, "plus": 45, "minus": 46}
@@ -67,7 +69,7 @@ def build(gid, endian, out):
             return None, f"{dep}: {r.stderr[-400:]}"
     lib = os.path.join(ARMEB, f"newlib-{endian}", "arm-none-eabi")
     flags = [f for f in shlex.split(v["FLAGS"]) if not f.startswith("-m")]
-    common = ARCH + [f"-m{endian}-endian", "-Os", "-ffunction-sections", "-fdata-sections", "-fno-common",
+    common = ARCH + NOT_ARM + [f"-m{endian}-endian", "-Os", "-ffunction-sections", "-fdata-sections", "-fno-common",
                      "-fsanitize=alignment", "-fsanitize-trap=alignment", "-isystem", os.path.join(lib, "include"),
                      "-DNP_PORT=1", "-DNP_SOFT_FLOAT=1", f"-DNP_APP_ID=\"{v['ID']}\"", f"-DNP_APP_NAME=\"{v['NAME']}\"",
                      "-I" + os.path.join(ROOT, "platform", "include"), "-w"] + flags
