@@ -2,6 +2,11 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.29: The Casio games right
+
+- **Casio fx-CG50:** Cookie Clicker, Angry Birds, Moto X3M, Among Us and Doom start. Five Nights at Freddy's 1 to 4, The Binding of Isaac, Plants vs. Zombies, Kingdom Rush, Mr Bullet, Sonic the Hedgehog, The Final Earth 2, PolyTrack, Subway Surfers, Friday Night Funkin', NumPowder, Famidash, Chrome Dino and NumVisuals look and play as on the NumWorks.
+- **TI-84 Plus CE:** 2 Players' Air Hockey, Tanks and Light Cycles about twice as fast again against the computer.
+
 ## 1.24.28: Hill Climb Racing on the Casio
 
 - **Casio fx-CG50:** Hill Climb Racing starts.
