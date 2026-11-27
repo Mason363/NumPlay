@@ -2,6 +2,12 @@
 
 What's new in each version of NumPlay. Every file of every version is on the [downloads page](https://github.com/Mason363/NumPlay/releases).
 
+## 1.24.28: Hill Climb Racing on the Casio
+
+- **Casio fx-CG50:** Hill Climb Racing starts.
+- **TI-84 Plus CE:** 2 Players' Air Hockey, Tanks and Light Cycles run two to four times faster.
+- **NumPlay Studio:** Your files. Your pictures, PDFs, videos and books as apps.
+
 ## 1.24.27: Nwagra on Epsilon 26 again
 
 - **NumPlay Studio:** Nwagra on Epsilon 26 is back, with its 6.5 MB. The installer's NaN was a Retro-Go bug, fixed in 1.24.20, not Nwagra.
