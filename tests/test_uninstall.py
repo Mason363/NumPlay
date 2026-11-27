@@ -65,7 +65,7 @@ def main():
     # Home: the settings card is last. Settings: the games are listed in order,
     # each with Reset and Uninstall.
     installed = [g for g in order]
-    row = installed.index(target)
+    row = installed.index(target) + 3  # Shared Starlight settings prefix
     t = 1500
     keys = []
     for _ in range(len(installed)):

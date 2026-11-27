@@ -137,16 +137,23 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("nwa")
     ap.add_argument("--out", default="build/test_progress")
+    ap.add_argument("--catalog", default=os.path.join(os.path.dirname(__file__), "..", "games", "games.json"))
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     # (the games in NumPlay.nwa: not those the customizer adds, "default": false)
-    games = [g for g in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "games", "games.json")))
+    games = [g for g in json.load(open(a.catalog, encoding="utf-8"))
              if g.get("default", True)]
     rnd = random.Random(7)
     script = ("pi.py", b"\x01print(3.14159)\n\x00")
     # a save for every file the games write (binary, zeros included), and NumPlay's settings
     saves = {"numplay.set": bytes([ord("N"), 1, 0, 0])}
+    # All launcher variants in this fork share the Starlight settings.
+    saves["twili_anim.set"] = b"\x01\x00"
+    saves["twili.set"] = b"T\x01\x00"
     for g in games:
+        # Games with their own recovery script restore on launch (storage.c: own_copy).
+        if any(name.endswith(".py") for name in g["records"]):
+            continue
         for r in g["records"]:
             # a name ending with "*" stands for records starting with the rest (NumBlocks' regions: "nb1r-1_2.nbe")
             for n in ([r[:-1] + "0_0.nbe", r[:-1] + "-1_2.nbe"] if r.endswith("*") else [r]):
@@ -181,9 +188,13 @@ def main():
 
         # to the settings card, open it, Reset on the first game's row, then the red button
         n = len(games)
-        lead = [(1200 + 300 * i, "right") for i in range(n)] + [(1500 + 300 * n, "ok"), (2600 + 300 * n, "ok"),
-                                                                (3400 + 300 * n, "right")]
-        t = 3900 + 300 * n
+        lead = [(1200 + 300 * i, "right") for i in range(n)] + [(1500 + 300 * n, "ok")]
+        t = 2600 + 300 * n
+        # Appearance, Background and System information precede game rows.
+        lead += [(t + 300 * i, "down") for i in range(3)]
+        t += 900
+        lead += [(t, "ok"), (t + 800, "right")]
+        t += 1300
         # 3. a short press only shows "Hold OK": nothing is reset
         keys = presses(*lead, (t, "ok"), (t + 700, "back"), (t + 1500, "back"))
         recs, p = run(a.nwa, st, keys, t + 2500, a.out, "3_short")

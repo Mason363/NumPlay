@@ -4,6 +4,8 @@
 #include <string.h>
 #include "sys.h"
 #include "ui.h"
+#include "theme.h"
+#include "live.h"
 #include "../../games/common/np_text.h"
 
 #define BG_TOP 0x3B4252
@@ -30,12 +32,13 @@ static char *fmt_kb(char *out, uint32_t bytes) {
 }
 
 /* ---------------------------------------------------------------- list */
-enum { ROW_GAME, ROW_RESET_ALL, ROW_DISGUISE, ROW_SECRET, ROW_HINT };
+enum { ROW_GAME, ROW_RESET_ALL, ROW_DISGUISE, ROW_SECRET, ROW_HINT, ROW_THEME, ROW_BG, ROW_INFO, ROW_MOTION };
 typedef struct {
   int n, sel, top, action; /* action: on a game, 0 Reset, 1 Uninstall */
-  int8_t kind[NP_MAX_GAMES + 4], game[NP_MAX_GAMES + 4];
+  int8_t kind[NP_MAX_GAMES + 5], game[NP_MAX_GAMES + 5];
   int ngames;
   np_config_t cfg;
+  bool motion;
   float cursor;       /* animated selection */
 } list_t;
 
@@ -45,12 +48,13 @@ static const char *const secret_names[NP_SECRET_COUNT] = {T("x,n,t key"), T("var
 
 static void build_rows(list_t *l) {
   l->n = l->ngames = 0;
+  l->kind[l->n++] = ROW_THEME;
+  l->kind[l->n++] = ROW_BG;
+  l->kind[l->n++] = ROW_INFO;
   for (int i = 0; i < np_game_count; i++)
     if (np_game_installed(i)) l->kind[l->n] = ROW_GAME, l->game[l->n++] = (int8_t)i, l->ngames++;
+  l->kind[l->n++] = ROW_MOTION;
   l->kind[l->n++] = ROW_RESET_ALL;
-  l->kind[l->n++] = ROW_DISGUISE;
-  l->kind[l->n++] = ROW_SECRET;
-  l->kind[l->n++] = ROW_HINT;
   l->sel = NP_MIN(l->sel, l->n - 1);
 }
 
@@ -75,8 +79,8 @@ static void pill(int x, int y, int w, const char *label, bool on, uint32_t color
 }
 
 static void row_text(int y, const char *title, const char *sub, int a) {
-  gfx_text(&np_font_body, 18, y + 15, title, 0xFFFF, a);
-  gfx_text(&np_font_small, 18, y + 28, sub, 0xFFFF, a * 150 / 256);
+  gfx_text(&np_font_body, 18, y + 15, title, gfx_rgb(np_theme()->text), a);
+  gfx_text(&np_font_small, 18, y + 28, sub, gfx_rgb(np_theme()->text), a * 150 / 256);
 }
 
 static void toggle(int y, bool on, int a) {
@@ -87,21 +91,23 @@ static void toggle(int y, bool on, int a) {
 
 static void list_scene(void *ctx) {
   list_t *l = ctx;
-  gfx_vgrad(0, 0, SCREEN_W, SCREEN_H, BG_TOP, BG_BOTTOM);
+  const np_theme_t *th = np_theme();
+  color_t tx = gfx_rgb(th->text);
+  gfx_vgrad(0, 0, SCREEN_W, SCREEN_H, th->bg, th->bg2);
   if (gfx_y0 < 44) {
-    gfx_icon(&np_icon_back, 14, 17, 0xFFFF, 200);
-    gfx_text(&np_font_title, 36, 30, T("Settings"), 0xFFFF, 256);
+    gfx_icon(&np_icon_back, 14, 17, tx, 200);
+    gfx_text(&np_font_title, 36, 30, T("Settings"), tx, 256);
     uint32_t total = 0;
-    for (int i = 0; i < l->ngames; i++) total += np_game_size(l->game[i]);
+    for (int i = 0; i < l->ngames; i++) total += np_game_size(l->game[i+3]);
     char kb[16];
     if (l->ngames) {
-      gfx_text_right(&np_font_small, SCREEN_W - 14, 20, T("INSTALLED GAMES"), 0xFFFF, 150);
-      gfx_text_right(&np_font_body, SCREEN_W - 14, 34, fmt_kb(kb, total), 0xFFFF, 230);
+      gfx_text_right(&np_font_small, SCREEN_W - 14, 20, T("GAME STORAGE"), tx, 150);
+      gfx_text_right(&np_font_body, SCREEN_W - 14, 34, fmt_kb(kb, total), tx, 230);
     }
   }
   /* selection highlight slides between rows */
   float cy = ROWS_Y + (l->cursor - l->top) * (ROW_H + 4);
-  gfx_rrect(10, (int)cy, SCREEN_W - 20, ROW_H, 10, 0xFFFF, 46);
+  gfx_rrect(10, (int)cy, SCREEN_W - 20, ROW_H, 10, gfx_rgb(th->accent), 90);
   for (int r = 0; r < 5; r++) {
     int i = l->top + r, y = ROWS_Y + r * (ROW_H + 4);
     if (y >= gfx_y1 || y + (i >= l->n ? 60 : ROW_H + 4) <= gfx_y0) continue; /* the credits are taller */
@@ -110,26 +116,42 @@ static void list_scene(void *ctx) {
       if (i != l->n) continue;
       int w = gfx_text_width(&np_font_body, T("Made with ")) + 12 + gfx_text_width(&np_font_body, T(" by Mason Chen"));
       int x = 160 - w / 2;
-      x = gfx_text(&np_font_body, x, y + 20, T("Made with "), 0xFFFF, 230);
+      x = gfx_text(&np_font_body, x, y + 20, T("Made with "), tx, 230);
       gfx_icon(&np_icon_heart, x + 1, y + 12, gfx_rgb(DANGER), 256);
-      gfx_text(&np_font_body, x + 12, y + 20, T(" by Mason Chen"), 0xFFFF, 230);
-      gfx_text_center(&np_font_small, 160, y + 36, "github.com/Mason363/NumPlay", 0xFFFF, 170);
-      gfx_text_center(&np_font_small, 160, y + 50, "NumPlay " NP_VERSION, 0xFFFF, 120);
+      gfx_text(&np_font_body, x + 12, y + 20, T(" by Mason Chen"), tx, 230);
+      gfx_text_center(&np_font_small, 160, y + 36, "github.com/Mason363/NumPlay", tx, 170);
+      gfx_text_center(&np_font_small, 160, y + 50, "TwiliPlay " NP_VERSION, tx, 120);
       continue;
     }
     bool on = i == l->sel;
     char kb[16];
     switch (l->kind[i]) {
+      case ROW_MOTION:
+        gfx_text(&np_font_body, 18, y + 15, "Animations", tx, 256);
+        gfx_text_right(&np_font_small, 300, y + 15, l->motion ? "On" : "Off", tx, 256);
+        break;
+      case ROW_THEME:
+        gfx_text(&np_font_body, 18, y + 15, "Appearance", tx, 256);
+        gfx_text(&np_font_small, 18, y + 28, "Left/Right or OK: Theme", tx, 200);
+        gfx_text_right(&np_font_small, 300, y + 15, th->name, tx, 256);
+        break;
+      case ROW_BG:
+        row_text(y, "Background", "Left/Right or OK: Change", 256);
+        gfx_text_right(&np_font_small, 300, y + 15, live_mode() == LIVE_COUNT ? "Starlight" : live_name(live_mode()), tx, 256);
+        break;
+      case ROW_INFO:
+        row_text(y, "System information", "OK: View details", 256);
+        break;
       case ROW_GAME: {
         int game = l->game[i];
         draw_thumb(game, 16, y + 4, 35, 26);
-        gfx_text(&np_font_body, 60, y + 15, np_games[game].title, 0xFFFF, 256);
-        gfx_text(&np_font_small, 60, y + 28, fmt_kb(kb, np_game_size(game)), 0xFFFF, 150);
+        gfx_text(&np_font_body, 60, y + 15, np_games[game].title, tx, 256);
+        gfx_text(&np_font_small, 60, y + 28, fmt_kb(kb, np_game_size(game)), tx, 150);
         if (on) {
           pill(SCREEN_W - 170, y + 7, 58, T("Reset"), l->action == 0, ACCENT);
           pill(SCREEN_W - 104, y + 7, 86, "", l->action == 1, DANGER);
-          gfx_icon(&np_icon_trash, SCREEN_W - 96, y + 9, 0xFFFF, l->action == 1 ? 256 : 190);
-          gfx_text(&np_font_small, SCREEN_W - 78, y + 21, T("Uninstall"), 0xFFFF, l->action == 1 ? 256 : 190);
+          gfx_icon(&np_icon_trash, SCREEN_W - 96, y + 9, tx, l->action == 1 ? 256 : 190);
+          gfx_text(&np_font_small, SCREEN_W - 78, y + 21, T("Uninstall"), tx, l->action == 1 ? 256 : 190);
         }
         break;
       }
@@ -152,10 +174,10 @@ static void list_scene(void *ctx) {
         row_text(y, T("Secret way in"), T("Opens NumPlay from Matrices"), a);
         const char *v = secret_names[l->cfg.secret];
         int w = gfx_text_width(&np_font_small, v);
-        gfx_text_right(&np_font_small, SCREEN_W - 32, y + 21, v, 0xFFFF, a);
+        gfx_text_right(&np_font_small, SCREEN_W - 32, y + 21, v, tx, a);
         if (on) {
-          gfx_icon(&np_icon_left, SCREEN_W - 44 - w, y + 10, 0xFFFF, a);
-          gfx_icon(&np_icon_right, SCREEN_W - 26, y + 10, 0xFFFF, a);
+          gfx_icon(&np_icon_left, SCREEN_W - 44 - w, y + 10, tx, a);
+          gfx_icon(&np_icon_right, SCREEN_W - 26, y + 10, tx, a);
         }
         break;
       }
@@ -380,9 +402,36 @@ static bool uninstall_flow(int game) {
   return r == NP_UNINSTALL_OK;
 }
 
+static void info_scene(void *ctx) {
+  list_t *l = ctx;
+  const np_theme_t *th = np_theme();
+  color_t tx = gfx_rgb(th->text);
+  gfx_vgrad(0, 0, SCREEN_W, SCREEN_H, th->bg, th->bg2);
+  gfx_text_center(&np_font_title, 160, 30, "TwiliPlay", tx, 256);
+  gfx_text_center(&np_font_small, 160, 45, "STARLIGHT EDITION", tx, 200);
+  gfx_rrect(10, 55, 300, 130, 9, gfx_rgb(th->panel), 256);
+  gfx_text(&np_font_body, 20, 76, "Version", tx, 256);
+  gfx_text_right(&np_font_body, 300, 76, NP_VERSION, tx, 256);
+  gfx_text(&np_font_body, 20, 98, "Target device", tx, 256);
+  gfx_text_right(&np_font_body, 300, 98, "N0120", tx, 256);
+  char count[] = "00";
+  count[0] += l->ngames / 10; count[1] += l->ngames % 10;
+  gfx_text(&np_font_body, 20, 120, "Installed games", tx, 256);
+  gfx_text_right(&np_font_body, 300, 120, count, tx, 256);
+  uint32_t total = 0;
+  for (int i = 0; i < l->n; i++) if (l->kind[i] == ROW_GAME) total += np_game_size(l->game[i]);
+  char kb[16];
+  gfx_text(&np_font_body, 20, 142, "Game storage", tx, 256);
+  gfx_text_right(&np_font_body, 300, 142, fmt_kb(kb, total), tx, 256);
+  gfx_text_center(&np_font_small, 160, 170, "Based on NumPlay by Mason Chen", tx, 256);
+  gfx_text_center(&np_font_small, 160, 205, "github.com/Mason363/NumPlay", tx, 200);
+  gfx_text_center(&np_font_small, 160, 233, "Back: Settings", tx, 256);
+}
+
 void np_settings(void) {
   ui_init();
   list_t l = {0};
+  l.motion = np_motion_load();
   np_config_load(&l.cfg);
   build_rows(&l);
   ui_keys_t k = {np_keys(), 0, 0};
@@ -397,6 +446,23 @@ void np_settings(void) {
     int kind = l.kind[l.sel];
     if (p & K_UP) l.sel = NP_MAX(l.sel - 1, 0), l.action = 0;
     if (p & K_DOWN) l.sel = NP_MIN(l.sel + 1, l.n - 1), l.action = 0;
+    if (kind == ROW_BG && (p & (K_LEFT | K_RIGHT | K_OK))) {
+      live_set((live_mode() + ((p & K_LEFT) ? LIVE_COUNT : 1)) % (LIVE_COUNT + 1));
+      np_bg_save(live_mode());
+    }
+    if (kind == ROW_INFO && (p & K_OK)) {
+      ui_frame(info_scene, &l);
+      ui_keys_t info_keys = {np_keys(), 0, 0};
+      for (;;) {
+        uint32_t q = ui_poll(&info_keys);
+        if (q & (K_BACK | K_OK | K_HOME)) break;
+        np_sleep(16);
+      }
+      k.held = np_keys();
+      dirty = true;
+    }
+    if (kind == ROW_MOTION && (p & (K_LEFT | K_RIGHT | K_OK)) && np_motion_save(!l.motion)) l.motion = !l.motion;
+    if (kind == ROW_THEME && (p & (K_LEFT | K_RIGHT | K_OK))) np_theme_step((p & K_LEFT) ? -1 : 1);
     if (kind == ROW_GAME && (p & (K_LEFT | K_RIGHT))) l.action = (p & K_RIGHT) != 0;
     if (kind == ROW_SECRET && (p & (K_LEFT | K_RIGHT | K_OK))) {
       l.cfg.secret = (uint8_t)((l.cfg.secret + ((p & K_LEFT) ? NP_SECRET_COUNT - 1 : 1)) % NP_SECRET_COUNT);
@@ -417,7 +483,7 @@ void np_settings(void) {
     }
     scroll(&l);
     if (p) dirty = true;
-    float c = ui_approach(l.cursor, (float)l.sel, dt, 0.05f);
+    float c = l.motion ? ui_approach(l.cursor, (float)l.sel, dt, 0.05f) : l.sel;
     if (c != l.cursor) dirty = true;
     l.cursor = c;
     if (dirty) {

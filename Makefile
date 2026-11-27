@@ -69,8 +69,10 @@ EADK_SIM_CFLAGS := $(shell $(NWLINK) eadk-cflags-simulator)
 
 .SECONDEXPANSION:
 
+CATALOG ?= games/games.json
+
 # Per-game facts (order, screenshots) come from games/games.json.
-$(B)/games.mk: games/games.json tools/games_mk.py | $(B)
+$(B)/games.mk: $(CATALOG) tools/games_mk.py | $(B)
 	$(PY) tools/games_mk.py $< > $@
 -include $(B)/games.mk
 
@@ -141,12 +143,12 @@ $(foreach g,$(STD_GAMES),$(eval MOD_$(g) = $(if $(filter $(g),$(GAMES_REDIRECT))
 MODULES = $(foreach g,$(GAMES),$(B)/modules/$(g).o)
 
 # ------------------------------------------------------------------ generated glue
-$(B)/gen/numplay.ld: games/games.json tools/gen_games.py $(foreach g,$(GAMES) $(OPTIONAL_GAMES),$(B)/modules/$(g).o)
+$(B)/gen/numplay.ld: $(CATALOG) tools/gen_games.py $(foreach g,$(GAMES) $(OPTIONAL_GAMES),$(B)/modules/$(g).o)
 # (and the big games' modules, which take minutes: only for the kit)
 $(B)/gen/numplay.ld: $(if $(filter kit kit-langs,$(MAKECMDGOALS)),$(foreach g,$(XL_GAMES),$(B)/modules/$(g).o))
-	$(PY) tools/gen_games.py games/games.json $(B)/modules $(B)/gen
+	$(PY) tools/gen_games.py $(CATALOG) $(B)/modules $(B)/gen
 
-$(B)/gen/shots_%.c: games/games.json tools/shots.py $$(SHOTS_$$*) | $(B)
+$(B)/gen/shots_%.c: $(CATALOG) tools/shots.py $$(SHOTS_$$*) | $(B)
 	cd games/$* && $(PY) ../../tools/shots.py --id $* --index $(INDEX_$*) $(COLORS_$*) ../../$@ $(SHOTS_REL_$*)
 
 # Retro-Go's table of games (tools/romtable.py): empty, or ROMS="a.gb b.nes" to try some games
@@ -188,12 +190,14 @@ $(KIT)/games/%.o: $(B)/modules/%.o $(B)/arm/entry_%.o $(B)/arm/shots_%.o $(B)/ar
 # The big games bring their libraries along: they only call the launcher (KIT_API, which tools/kit.py
 # checks), so base.o is the same without them.
 KIT_API = numplay_launcher np_keyboard_scan np_event_get np_display_draw_string np_sbrk
+# Root the bare-metal abort dependencies before the relocatable LTO link;
+# the final section-GC link will discard unused runtime functions.
 KIT_SMALL = $(foreach g,$(GAMES) $(OPTIONAL_GAMES),$(KIT)/games/$(g).o)
 $(KIT)/base.o: $(LAUNCHER_OBJS) $(KIT_SMALL) tools/kit_base.ld
 	$(ARM_CC) $(ARM_CFLAGS) -nostartfiles --specs=nano.specs -Wl,--relocatable -Wl,--unique -Wl,--gc-sections \
-	  -Wl,-e,main -Wl,-u,eadk_api_level -Wl,-T,tools/kit_base.ld -flinker-output=nolto-rel $(LAUNCHER_OBJS) \
-	  $(foreach s,$(KIT_API),-Wl,-u,$(s)) \
-	  $$(arm-none-eabi-nm -u $(KIT_SMALL) | awk '$$1 == "U" || $$1 == "w" {print "-Wl,-u," $$2}' | sort -u) -lm -lgcc -o $@
+	  -Wl,-e,main -Wl,-u,eadk_api_level $(BASE_MAP_FLAG) -Wl,-T,tools/kit_base.ld -flinker-output=nolto-rel $(LAUNCHER_OBJS) \
+	  $(foreach s,$(KIT_API) _exit _kill _getpid,-Wl,-u,$(s)) \
+	  $$(arm-none-eabi-nm -u $(KIT_SMALL) | awk '$$1 == "U" || $$1 == "w" {print "-Wl,-u," $$2}' | sort -u) -lm -lgcc -lnosys -o $@
 
 .SECONDARY: $(foreach v,$(VARIANTS),$(B)/variant/$(v)-name.o $(B)/variant/$(v)-icon.o) \
   $(foreach g,$(KIT_ALL),$(B)/arm/shots_$(g).o $(B)/arm/entry_$(g).o $(B)/arm/marks_$(g).o)
@@ -205,9 +209,14 @@ $(B)/variant/%-icon.o: $$(ICON_$$*) | $(B)
 	$(NWLINK) png-icon-o $< $@
 
 # ------------------------------------------------------------------ NumPlay.nwa
+# TwiliPlay embeds the upstream empty cartridge table (no third-party carts).
+$(B)/twili-carts.o: games/numpico/tools/p8cart.py | $(B)
+	$(PY) -I $< -o $@
+$(B)/TwiliPlay.nwa: $(B)/twili-carts.o
+
 $(B)/%.nwa: $(KIT)/base.o $(B)/arm/arena.o $(NP_GAMES) $(B)/variant/%-name.o $(B)/variant/%-icon.o
-	$(ARM_LD) $(KIT_LINK) -T $(B)/gen/numplay.ld $(KIT)/base.o $(B)/arm/arena.o \
-	  $(B)/variant/$*-name.o $(B)/variant/$*-icon.o $(NP_GAMES) -o $@
+	$(ARM_LD) $(KIT_LINK) $(FINAL_MAP_FLAG) -T $(B)/gen/numplay.ld $(KIT)/base.o $(B)/arm/arena.o \
+	  $(B)/variant/$*-name.o $(B)/variant/$*-icon.o $(NP_GAMES) $(if $(filter TwiliPlay,$*),$(B)/twili-carts.o) -o $@
 	arm-none-eabi-strip --strip-unneeded $@
 	@if [ "$*" = NumPlay ]; then $(PY) tools/sizes.py $@ $(B)/modules; fi
 
@@ -263,8 +272,8 @@ check: nwa apps
 # ------------------------------------------------------------------ NumPlay-Upsilon.nwa
 # The same kit, with the games that fit Upsilon's RAM (its arena is NumPlay's: each game's place
 # in it doesn't depend on the others).
-$(B)/gen-upsilon/numplay.ld: games/games.json tools/gen_games.py $(foreach g,$(UPSILON_GAMES),$(B)/modules/$(g).o)
-	$(PY) tools/gen_games.py games/games.json $(B)/modules $(B)/gen-upsilon --only "$(UPSILON_GAMES)"
+$(B)/gen-upsilon/numplay.ld: $(CATALOG) tools/gen_games.py $(foreach g,$(UPSILON_GAMES),$(B)/modules/$(g).o)
+	$(PY) tools/gen_games.py $(CATALOG) $(B)/modules $(B)/gen-upsilon --only "$(UPSILON_GAMES)"
 $(B)/NumPlay-Upsilon.nwa: $(KIT)/base.o $(B)/arm/arena.o $(foreach g,$(UPSILON_GAMES),$(KIT)/games/$(g).o) \
   $(B)/variant/NumPlay-name.o $(B)/variant/NumPlay-icon.o $(B)/gen-upsilon/numplay.ld
 	$(ARM_LD) $(KIT_LINK) -T $(B)/gen-upsilon/numplay.ld $(filter %.o,$^) -o $@
@@ -508,8 +517,8 @@ $(B)/sim/%.mod: FORCE | $(B)
 	@if [ "$*" != tetris ]; then $(MAKE) --no-print-directory -C games/$* sim-module NWLINK="$(NWLINK)" $(if $(filter $*,$(GAMES_REDIRECT)),$(call GAME_REDIRECT_ARG,$*),); \
 	else $(MAKE) --no-print-directory $(SIM_tetris); fi
 
-$(B)/sim/gen/gametable.c: games/games.json tools/gen_games.py $(MODULES)
-	$(PY) tools/gen_games.py games/games.json $(B)/modules $(B)/sim/gen --simulator
+$(B)/sim/gen/gametable.c: $(CATALOG) tools/gen_games.py $(MODULES)
+	$(PY) tools/gen_games.py $(CATALOG) $(B)/modules $(B)/sim/gen --simulator
 
 sim: $(B)/NumPlay.nwb
 $(B)/NumPlay.nwb: $(LAUNCHER_SRC) $(LAUNCHER_H) $(B)/sim/gen/gametable.c $(foreach g,$(GAMES),$(B)/gen/shots_$(g).c) \
@@ -582,3 +591,11 @@ clean:
 	-$(MAKE) -C games/flappydunk clean
 	-cd games/tetris/tetris && $(CARGO) clean
 	-$(foreach g,$(STD_GAMES),$(MAKE) -C games/$(g) clean;)
+
+# A separate output tree keeps Foundation objects away from upstream builds.
+.PHONY: foundation
+foundation:
+	$(PY) tools/foundation.py catalog build/foundation-games.json
+	$(MAKE) B=build/foundation BASE_MAP_FLAG='-Wl,-Map,build/foundation/kit/base.o.map' FINAL_MAP_FLAG='-Map=build/foundation/TwiliPlay.nwa.map' CATALOG=build/foundation-games.json VERSION=0.2.0 VARIANTS=TwiliPlay NAME_TwiliPlay='"TwiliPlay"' ICON_TwiliPlay=launcher/assets/icon.png build/foundation/TwiliPlay.nwa
+	$(PY) tools/foundation.py check build/foundation
+	$(PY) tools/foundation_footprint.py build/foundation

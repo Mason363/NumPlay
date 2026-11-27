@@ -104,6 +104,30 @@ bool np_bg_save(int mode) {
   return ef_write(BG_NAME, d, sizeof d);
 }
 
+/* TwiliPlay theme, independent of the original NumPlay config. */
+#define MOTION_NAME "twili_anim.set"
+bool np_motion_load(void) {
+  uint32_t len;
+  const uint8_t *p = ef_read(MOTION_NAME, &len);
+  return !(p && len == 2 && p[0] == 1 && p[1] == 0);
+}
+bool np_motion_save(bool enabled) {
+  uint8_t value[] = {1, enabled};
+  return ef_write(MOTION_NAME, value, sizeof value);
+}
+#define THEME_NAME "twili.set"
+bool np_theme_load(int *id) {
+  uint32_t len = 0;
+  const uint8_t *d = ef_read(THEME_NAME, &len);
+  if (!d || len != 3 || d[0] != 'T' || d[1] != 1) return false;
+  *id = d[2];
+  return true;
+}
+bool np_theme_save(int id) {
+  uint8_t d[3] = {'T', 1, (uint8_t)id};
+  return ef_write(THEME_NAME, d, sizeof d);
+}
+
 /* A game's save, for a game that uses NumPlay's file functions instead of its own (Block Blast). */
 const uint8_t *np_file_read(const char *name, uint32_t *len) { return ef_read(name, len); }
 bool np_file_write(const char *name, const void *data, uint32_t len) { return ef_write(name, data, len); }
@@ -182,6 +206,8 @@ static bool own_copy(int g) {
 static bool save_name(int i, char out[64]) {
   if (i-- == 0) return strcpy(out, CONFIG_NAME), true;
   if (i-- == 0) return strcpy(out, BG_NAME), true; /* the home screen's background */
+  if (i-- == 0) return strcpy(out, MOTION_NAME), true;
+  if (i-- == 0) return strcpy(out, THEME_NAME), true; /* TwiliPlay's theme */
   for (int g = 0; g < np_game_count; g++)
     for (const char *const *r = own_copy(g) ? NULL : np_games[g].records; r && *r; r++) {
       bool seen = false;

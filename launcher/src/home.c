@@ -1,27 +1,33 @@
 /* The home screen: a carousel of game cards. The selected card is large,
  * its neighbours peek in from the sides, and the card cycles through the
- * game's screenshots. The last card opens the settings. */
+ * game's screenshots. The last card opens the settings.
+ * TwiliPlay look: the colours come from the current theme (theme.c), Up and
+ * Down change it. */
 #include "ui.h"
 #include "live.h"
+#include "theme.h"
 #include "../../games/common/np_text.h"
 
-#define CARD_W 200
-#define CARD_H 152
-#define CARD_CX 160
-#define CARD_CY 103
-#define SPACING 184
+#define CARD_W 176
+#define CARD_H 128
+#define CARD_CX 104
+#define CARD_CY 109
+#define SPACING 340
 #define FRAME 4
 #define SHOT_MS 2600
 #define SLIDE_MS 520
+#define TOAST_MS 1400
+#define STAR_COUNT 24
 
 #define SETTINGS_TOP 0x4A5163
 #define SETTINGS_BOTTOM 0x1C1F27
-#define SETTINGS_ACCENT 0x6C7A96
 
 typedef struct {
   int n;
   int8_t item[NP_MAX_GAMES + 1]; /* game index, or -1 for the settings card */
   int sel;
+  bool library;
+  bool motion;
   float pos;            /* scroll position, in cards */
   int shot;             /* screenshot shown on the selected card */
   float slide;          /* 0..1 while sliding to the next screenshot */
@@ -29,24 +35,18 @@ typedef struct {
   float badge;          /* play badge, 0..1 */
   float zoom;           /* launch animation, 0..1 */
   float intro;
+  uint16_t toast;       /* ms left showing the theme's name */
 } home_t;
 
 static bool first_open = true;
 
-static uint32_t item_color(int game, int which) {
-  if (game < 0) return which == 0 ? SETTINGS_TOP : which == 1 ? SETTINGS_BOTTOM : SETTINGS_ACCENT;
-  const np_game_t *g = &np_games[game];
-  return which == 0 ? g->top : which == 1 ? g->bottom : g->accent;
-}
-
 static const char *item_title(int game) { return game < 0 ? T("Settings") : np_games[game].title; }
 /* under the name, the tagline; or, when the calculator's software gives apps too little RAM for the
  * game, how much it lacks */
-static const char *item_tagline(int game) {
+static const char *item_tagline(int game, char line[96]) {
   if (game < 0) return T("Reset, uninstall, more");
   uint32_t missing = np_game_ram_missing(game);
   if (!missing) return np_games[game].tagline;
-  static char line[96];
   char digits[8];
   int n = 0;
   for (uint32_t kb = (missing + 1023) / 1024; kb || !n; kb /= 10) digits[n++] = (char)('0' + kb % 10);
@@ -66,6 +66,31 @@ static void draw_settings_art(int x, int y, int w, int h, int dim) {
   gfx_vgrad(x, y, w, h, top, bottom);
   const np_icon_t *gear = &np_icon_gear;
   if (w > gear->w + 8) gfx_icon(gear, x + (w - gear->w) / 2, y + (h - gear->h) / 2 - 2, 0xFFFF, 200 - dim / 2);
+}
+
+/* TwiliPlay look: procedural stars and logo, no bitmaps */
+static void draw_stars(const np_theme_t *th) {
+  color_t ca = gfx_rgb(th->star_a), cb = gfx_rgb(th->star_b);
+  for (uint32_t i = 0; i < STAR_COUNT; i++) {
+    uint32_t h1 = (i + 1) * 2654435761u, h2 = (i + 17) * 2246822519u;
+    int x = (int)((h1 >> 16) % SCREEN_W), y = (int)((h2 >> 16) % SCREEN_H);
+    if (y + 2 < gfx_y0 || y - 1 >= gfx_y1) continue;
+    int a = 50 + (int)((h1 >> 8) & 63) * 2;
+    color_t c = (i & 1) ? ca : cb;
+    if (i % 6 == 0) {
+      gfx_fill_alpha(x - 1, y, 3, 1, c, a);
+      gfx_fill_alpha(x, y - 1, 1, 3, c, a);
+    } else {
+      int s = 1 + (int)(i & 1);
+      gfx_fill_alpha(x, y, s, s, c, a);
+    }
+  }
+}
+static void draw_star(int cx, int cy, int r, color_t c, int a) {
+  for (int dy = -r; dy <= r; dy++) {
+    int t = r - (dy < 0 ? -dy : dy), hw = (t * t + r / 2) / r;
+    gfx_fill_alpha(cx - hw, cy + dy, 2 * hw + 1, 1, c, a);
+  }
 }
 
 static void draw_card(home_t *h, int k, float d) {
@@ -88,7 +113,8 @@ static void draw_card(home_t *h, int k, float d) {
   int x = (int)(cx - w / 2), y = (int)(cy - hh / 2), iw = (int)w, ih = (int)hh;
   if (x >= SCREEN_W || x + iw <= 0) return;
   if (ad < 0.6f && z == 0) gfx_shadow(x, y + 5, iw, ih, (int)radius, 12, 120);
-  color_t frame_color = gfx_mix(0xFFFF, 0, dim >> 3);
+  const np_theme_t *th = np_theme();
+  color_t frame_color = gfx_mix(gfx_rgb(ad < 0.5f ? th->accent : th->panel), gfx_rgb(th->bg), dim >> 3);
   gfx_rrect(x, y, iw, ih, (int)radius, frame_color, 256);
   int fx = (int)frame, ir = NP_MAX((int)(radius - frame + 1), 0);
   int ix = x + fx, iy = y + fx, iiw = iw - 2 * fx, iih = ih - 2 * fx;
@@ -120,51 +146,55 @@ static void draw_card(home_t *h, int k, float d) {
     int r = (int)(15 * b);
     int bx = x + iw - 14, by = y + ih - 14;
     gfx_circle(bx, by + 2, r + 2, 0, 60);
-    gfx_circle(bx, by, r + 2, 0xFFFF, 256);
-    gfx_circle(bx, by, r, gfx_rgb(item_color(game, 2)), 256);
-    if (b > 0.8f) gfx_icon(&np_icon_play, bx - 4, by - 6, 0xFFFF, (int)(256 * (b - 0.8f) * 5));
+    gfx_circle(bx, by, r + 2, gfx_rgb(th->text), 256);
+    gfx_circle(bx, by, r, gfx_rgb(th->accent), 256);
+    if (b > 0.8f) gfx_icon(&np_icon_play, bx - 4, by - 6, gfx_rgb(th->bg), (int)(256 * (b - 0.8f) * 5));
   }
 }
 
 static void scene(void *ctx) {
   home_t *h = ctx;
-  /* background: the theme of the card in front, blended while scrolling */
-  int a = (int)h->pos;
-  if (a < 0) a = 0;
-  if (a > h->n - 1) a = h->n - 1;
-  int b = NP_MIN(a + 1, h->n - 1);
-  int t = (int)((h->pos - a) * 256);
-  t = NP_CLAMP(t, 0, 256);
-  uint32_t top = gfx_lerp888(item_color(h->item[a], 0), item_color(h->item[b], 0), t);
-  uint32_t bottom = gfx_lerp888(item_color(h->item[a], 1), item_color(h->item[b], 1), t);
-  if (live_active()) { /* a moving background (Backspace), Gabriel's port of NumVisuals' */
+  const np_theme_t *th = np_theme();
+  bool live = h->motion && live_active();
+  color_t tx = live ? 0xFFFF : gfx_rgb(th->text);
+  if (live) {
     live_strip();
   } else {
-    gfx_vgrad(0, 0, SCREEN_W, SCREEN_H, top, bottom);
-    /* a faint dot grid gives the background some texture */
-    for (int y = (gfx_y0 + 15) / 16 * 16 + 8 - 16; y < gfx_y1; y += 16) {
-      if (y < gfx_y0) continue;
-      for (int x = 8; x < SCREEN_W; x += 16) gfx_fill_alpha(x, y, 2, 1, 0xFFFF, 22);
-    }
+    gfx_vgrad(0, 0, SCREEN_W, SCREEN_H, th->bg, th->bg2);
+    draw_stars(th);
   }
-
   float z = ui_ease_in_out(h->zoom);
   int ui_alpha = (int)(256 * (1 - z));
-  /* header */
-  if (gfx_y0 < 26 && ui_alpha > 0) {
-    gfx_icon(&np_icon_logo, 12, 6, 0xFFFF, ui_alpha);
-    gfx_text(&np_font_body, 40, 18, "NumPlay", 0xFFFF, ui_alpha);
-    /* where we are in the carousel; with many cards the dots get closer */
-    int pitch = NP_MIN(10, 190 / (h->n + 1));
-    int dx = SCREEN_W - 10 - (h->n + 1) * pitch;
-    for (int i = 0; i < h->n; i++) {
-      float near = 1 - NP_MIN(absf(i - h->pos), 1.f);
-      int w = pitch - 4 + (int)(pitch * near);
-      gfx_rrect(dx, 11, w, 6, NP_MIN(3, w / 2), 0xFFFF, (int)((90 + 166 * near) * ui_alpha / 256));
-      dx += w + 4;
-    }
+  if (gfx_y0 < 28 && ui_alpha > 0) {
+    draw_star(21, 14, 9, gfx_rgb(th->accent), ui_alpha);
+    draw_star(32, 6, 3, gfx_rgb(th->star_b), ui_alpha);
+    gfx_text(&np_font_body, 38, 14, "TwiliPlay", tx, ui_alpha);
+    gfx_text(&np_font_small, 39, 25, "STARLIGHT EDITION", tx, ui_alpha * 170 / 256);
+    gfx_rrect(230, 5, 80, 24, 7, gfx_rgb(th->panel), ui_alpha);
+    gfx_text_center(&np_font_small, 270, 20, h->toast ? th->name : h->library ? "LIBRARY" : "HOME", tx, ui_alpha);
   }
-  /* cards, far ones first */
+  if (h->library) {
+    int count = h->n - 1;
+    int top = NP_CLAMP(h->sel - 3, 0, NP_MAX(0, count - 7));
+    color_t panel = gfx_rgb(th->panel), accent = gfx_rgb(th->accent);
+    gfx_text(&np_font_small, 12, 43, "GAME LIBRARY", tx, 256);
+    if (!count) gfx_text_center(&np_font_body, 160, 120, "No games installed", tx, 256);
+    for (int row = 0; row < 7 && top + row < count; row++) {
+      int k = top + row, y = 49 + row * 24;
+      bool chosen = k == h->sel;
+      gfx_rrect(10, y, 290, 21, 5, chosen ? accent : panel, 256);
+      gfx_text(&np_font_body, 20, y + 15, item_title(h->item[k]), chosen ? gfx_rgb(th->bg) : tx, 256);
+      if (chosen) gfx_text_right(&np_font_small, 290, y + 15, "OK", gfx_rgb(th->bg), 256);
+    }
+    if (count > 7) {
+      gfx_rrect(305, 49, 5, 165, 2, panel, 256);
+      int thumb = 165 * 7 / count;
+      gfx_rrect(305, 49 + (165 - thumb) * top / (count - 7), 5, thumb, 2, accent, 256);
+    }
+    gfx_rrect(10, 221, 300, 17, 5, panel, 256);
+    gfx_text_center(&np_font_small, 160, 233, "Up/Down: Browse   Back: Home", tx, 256);
+    return;
+  }
   int lo = NP_MAX((int)h->pos - 2, 0), hi = NP_MIN((int)h->pos + 2, h->n - 1);
   for (int pass = 3; pass >= 0; pass--)
     for (int k = lo; k <= hi; k++) {
@@ -173,29 +203,30 @@ static void scene(void *ctx) {
       if (ring == pass && (k == h->sel || z < 1)) draw_card(h, k, d);
     }
   if (ui_alpha <= 0) return;
-  /* screenshot progress under the card */
-  int front = (int)(h->pos + 0.5f);
-  front = NP_CLAMP(front, 0, h->n - 1);
+  int front = NP_CLAMP((int)(h->pos + 0.5f), 0, h->n - 1);
   float away = absf(h->pos - front);
   int text_alpha = (int)(ui_alpha * NP_CLAMP(1 - away * 2.2f, 0.f, 1.f));
   int game = h->item[front];
-  if (gfx_y1 > 180 && text_alpha > 0) {
-    if (game >= 0 && np_games[game].nshots > 1) {
-      int n = np_games[game].nshots, seg = 22, gap = 5;
-      int x0 = CARD_CX - (n * seg + (n - 1) * gap) / 2;
-      float progress = front == h->sel ? (h->slide > 0 ? 1.f : NP_MIN(h->shot_time / (float)SHOT_MS, 1.f)) : 0;
-      for (int i = 0; i < n; i++) {
-        int x = x0 + i * (seg + gap);
-        gfx_rrect(x, 185, seg, 4, 2, 0xFFFF, text_alpha * 70 / 256);
-        int fill = i < h->shot ? seg : i == h->shot ? (int)(seg * progress) : 0;
-        if (fill >= 4) gfx_rrect(x, 185, fill, 4, 2, 0xFFFF, text_alpha * 230 / 256);
-      }
-    }
-    /* who made the game, when it isn't ours: under the card */
-    if (game >= 0 && np_games[game].credit && np_games[game].nshots <= 1)
-      gfx_text_center(&np_font_small, CARD_CX, 193, np_games[game].credit, 0xFFFF, text_alpha * 150 / 256);
-    gfx_text_center(&np_font_title, CARD_CX, 213, item_title(game), 0xFFFF, text_alpha);
-    gfx_text_center(&np_font_body, CARD_CX, 231, item_tagline(game), 0xFFFF, text_alpha * 190 / 256);
+  if (text_alpha > 0) {
+    color_t panel = gfx_rgb(th->panel), accent = gfx_rgb(th->accent);
+    gfx_rrect(200, 45, 110, 128, 9, panel, text_alpha);
+    gfx_text_center(&np_font_small, 255, 62, game < 0 ? "SYSTEM" : "SELECTED GAME", tx, text_alpha);
+    char index[] = "00 / 00";
+    index[0] = '0' + (front + 1) / 10;
+    index[1] = '0' + (front + 1) % 10;
+    int count = h->n - 1;
+    index[5] = '0' + count / 10;
+    index[6] = '0' + count % 10;
+    gfx_text_center(&np_font_body, 255, 87, game < 0 ? "Settings" : index, tx, text_alpha);
+    gfx_rrect(212, 100, 86, 4, 2, tx, text_alpha / 4);
+    gfx_rrect(212, 100, game < 0 ? 86 : NP_MAX(4, 86 * (front + 1) / NP_MAX(1, count)), 4, 2, accent, text_alpha);
+    gfx_rrect(210, 122, 90, 35, 7, accent, text_alpha);
+    gfx_text_center(&np_font_body, 255, 144, game < 0 ? "OK: Open" : "OK: Play", gfx_rgb(th->bg), text_alpha);
+    gfx_text_center(&np_font_title, 160, 198, item_title(game), tx, text_alpha);
+    char tagline[96];
+    gfx_text_center(&np_font_small, 160, 214, item_tagline(game, tagline), tx, text_alpha);
+    gfx_rrect(10, 221, 300, 17, 5, panel, ui_alpha);
+    gfx_text_center(&np_font_small, 160, 233, "Up: Library   Down: Theme   L/R: Browse", tx, ui_alpha);
   }
 }
 
@@ -210,6 +241,15 @@ static int build_items(home_t *h) {
 
 static bool bg_loaded;
 
+static void splash(void *ctx) {
+  (void)ctx;
+  const np_theme_t *t = np_theme();
+  gfx_fill(0, 0, SCREEN_W, SCREEN_H, gfx_rgb(t->bg));
+  gfx_fill(159, 66, 2, 18, gfx_rgb(t->accent));
+  gfx_fill(151, 74, 18, 2, gfx_rgb(t->accent));
+  gfx_text_center(&np_font_body, 160, 117, "TwiliPlay", gfx_rgb(t->text), 256);
+  gfx_text_center(&np_font_small, 160, 139, "STARLIGHT EDITION", gfx_rgb(t->accent), 256);
+}
 int np_home(int *selected, bool returning) {
   if (!bg_loaded) { /* once per run: the background chosen last time (before ui_init, which makes its tables) */
     bg_loaded = true;
@@ -218,6 +258,7 @@ int np_home(int *selected, bool returning) {
   }
   ui_init();
   home_t h = {0};
+  h.motion = np_motion_load();
   build_items(&h);
   /* the game played last, or else the first game there is: never Settings,
    * unless it was just open or no game is left */
@@ -228,10 +269,20 @@ int np_home(int *selected, bool returning) {
   if (h.n == 1) h.sel = 0;
   h.pos = h.sel;
   if (first_open) {
-    h.pos = h.sel + 1.2f;
+    if (h.motion) {
+      ui_frame(splash, NULL);
+      uint32_t start = np_millis();
+      while (np_millis() - start < 360) {
+        uint32_t key = np_keys();
+        if (key & K_HOME) return -2;
+        if (key) { np_wait_release(); break; }
+        np_sleep(8);
+      }
+      h.pos = h.sel + 1.2f;
+    }
     first_open = false;
   }
-  bool unzooming = returning && h.item[h.sel] == *selected && *selected >= 0;
+  bool unzooming = h.motion && returning && h.item[h.sel] == *selected && *selected >= 0;
   if (unzooming) h.zoom = 1;
   ui_keys_t keys = {np_keys(), 0, 0};  /* ignore keys still held from before */
   uint32_t last = np_millis();
@@ -243,6 +294,28 @@ int np_home(int *selected, bool returning) {
     uint32_t elapsed = now - last;
     last = now;
     uint32_t pressed = ui_poll(&keys);
+    if (h.library) {
+      int before = h.sel;
+      if (pressed & K_HOME) return -2;
+      if (pressed & K_BACK) {
+        h.library = false;
+        h.pos = h.sel;
+        h.shot = 0; h.slide = 0; h.shot_time = 0; h.badge = 0;
+        dirty = true;
+      } else {
+        if (pressed & K_UP) h.sel = NP_MAX(0, h.sel - 1);
+        if (pressed & K_DOWN) h.sel = NP_MIN(h.sel + 1, NP_MAX(0, h.n - 2));
+        if ((pressed & K_OK) && h.item[h.sel] >= 0 && !np_game_ram_missing(h.item[h.sel])) {
+          *selected = h.item[h.sel];
+          return *selected;
+        }
+        if (h.sel != before) dirty = true;
+        if (dirty) { if (h.motion) live_frame(now); ui_frame(scene, &h); dirty = false; }
+        else np_sleep(16);
+        continue;
+      }
+      pressed = 0;
+    }
     if (result == -3) {
       int before = h.sel;
       if (pressed & K_LEFT) h.sel = NP_MAX(h.sel - 1, 0);
@@ -254,6 +327,19 @@ int np_home(int *selected, bool returning) {
         h.badge = 0;
       }
       if ((pressed & K_OK) && (h.item[h.sel] < 0 || !np_game_ram_missing(h.item[h.sel]))) result = h.item[h.sel];
+      if (pressed & K_UP) {
+        h.library = true;
+        h.sel = NP_MIN(h.sel, NP_MAX(0, h.n - 2));
+        h.zoom = 0;
+        unzooming = false;
+        dirty = true;
+        continue;
+      }
+      if (pressed & K_DOWN) {
+        np_theme_step(-1);
+        h.toast = TOAST_MS;
+        dirty = true;
+      }
       if (pressed & K_BACKSPACE) { /* the next background, then none */
         live_next();
         np_bg_save(live_mode());
@@ -263,7 +349,7 @@ int np_home(int *selected, bool returning) {
       if (pressed & (K_HOME | K_BACK)) return -2;
     }
     /* motion */
-    float pos = ui_approach(h.pos, (float)h.sel, dt, 0.075f);
+    float pos = h.motion ? ui_approach(h.pos, (float)h.sel, dt, 0.075f) : h.sel;
     bool moving = pos != h.pos;
     if (moving) dirty = true;
     h.pos = pos;
@@ -271,10 +357,10 @@ int np_home(int *selected, bool returning) {
     bool settled = !moving;
     if (settled && game >= 0 && result == -3) {
       if (h.badge < 1) {
-        h.badge = NP_MIN(h.badge + dt / 0.22f, 1.f);
+        h.badge = h.motion ? NP_MIN(h.badge + dt / 0.22f, 1.f) : 1.f;
         dirty = true;
       }
-      if (np_games[game].nshots > 1) {
+      if (h.motion && np_games[game].nshots > 1) {
         if (h.slide > 0) {
           h.slide += elapsed / (float)SLIDE_MS;
           if (h.slide >= 1) {
@@ -303,7 +389,7 @@ int np_home(int *selected, bool returning) {
           return -1;
         }
       } else {
-        h.zoom = NP_MIN(h.zoom + dt / 0.24f, 1.f);
+        h.zoom = h.motion ? NP_MIN(h.zoom + dt / 0.24f, 1.f) : 1.f;
         dirty = true;
         if (h.zoom >= 1) {
           ui_frame(scene, &h);
@@ -312,13 +398,17 @@ int np_home(int *selected, bool returning) {
         }
       }
     }
-    if (live_active()) dirty = true; /* the background moves: every frame */
+    if (h.toast) {
+      h.toast = elapsed >= h.toast ? 0 : (uint16_t)(h.toast - elapsed);
+      if (!h.toast) dirty = true;
+    }
+    if (h.motion && live_active()) dirty = true; /* the background moves: every frame */
     if (dirty) {
-      live_frame(now);
+      if (h.motion) live_frame(now);
       ui_frame(scene, &h);
       dirty = bar_dirty = false;
     } else if (bar_dirty) {
-      gfx_render(scene, &h, 176, 192);  /* the strip holding the progress bar */
+      /* No screenshot progress bar in the Stage 2 layout. */
       bar_dirty = false;
     } else {
       np_sleep(16);
